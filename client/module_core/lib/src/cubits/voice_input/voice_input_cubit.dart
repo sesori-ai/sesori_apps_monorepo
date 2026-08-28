@@ -10,11 +10,14 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
   late final VoiceTranscriptionSession _session = _service.createSession();
   late final StreamSubscription<void> _maxDurationSubscription;
   late final StreamSubscription<VoiceTranscriptionPreview> _previewSubscription;
+  bool _limitReachedDuringStart = false;
 
   this : super(const VoiceInputState.idle()) {
     _maxDurationSubscription = _service.maxDurationReachedStream(session: _session).listen((_) {
       if (state is VoiceInputRecording) {
         unawaited(stopAndTranscribe(limitReached: true));
+      } else if (state is VoiceInputStarting) {
+        _limitReachedDuringStart = true;
       }
     });
     _previewSubscription = _service.previewStream(session: _session).listen(_handlePreview);
@@ -25,12 +28,17 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
 
   Future<void> startRecording({required String projectId}) async {
     if (state is! VoiceInputIdle) return;
+    _limitReachedDuringStart = false;
     emit(const VoiceInputState.starting());
 
     try {
       await _service.start(session: _session, projectId: projectId);
       if (isClosed || state is! VoiceInputStarting) return;
       emit(VoiceInputState.recording(preview: _service.currentPreview(session: _session)));
+      if (_limitReachedDuringStart) {
+        _limitReachedDuringStart = false;
+        unawaited(stopAndTranscribe(limitReached: true));
+      }
     } on VoiceTranscriptionError catch (error, stackTrace) {
       if (error is! MicrophonePermissionDeniedError) {
         loge("Failed to start recording", error, stackTrace);

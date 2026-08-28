@@ -34,24 +34,62 @@ class RealtimeVoiceApi({
     if (token == null) {
       throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);
     }
-    final channel = await connector.connect(
-      uri: Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
-      headers: {"Authorization": "Bearer $token"},
-      connectTimeout: realtimeVoiceConnectTimeout,
-    );
+
+    late final WebSocketChannel channel;
+    try {
+      channel = await connector.connect(
+        uri: Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
+        headers: {"Authorization": "Bearer $token"},
+        connectTimeout: realtimeVoiceConnectTimeout,
+      );
+    } on RealtimeWebSocketOpenException catch (error) {
+      if (error.timedOut) {
+        throw RealtimeVoiceOpenTimeoutException(cause: error, httpStatus: error.httpStatus);
+      }
+      throw switch (error.httpStatus) {
+        401 => RealtimeVoiceOpenAuthenticationException(cause: error, httpStatus: error.httpStatus),
+        404 => RealtimeVoiceOpenHandshakeNotFoundException(cause: error, httpStatus: error.httpStatus),
+        429 => RealtimeVoiceOpenHandshakeRateLimitedException(cause: error, httpStatus: error.httpStatus),
+        _ => RealtimeVoiceOpenTransportException(cause: error, httpStatus: error.httpStatus),
+      };
+    }
+
     final session = RealtimeVoiceSession(channel: channel);
     try {
       session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
     } on Object {
       // The session already subscribed to the channel, so a send that fails
-      // between `ready` and the start frame would strand the transport. Release
-      // it here and let the original failure reach the caller unchanged.
-      unawaited(session.close());
+      // between `ready` and the start frame would strand the transport.
+      await session.close();
       rethrow;
     }
     return session;
   }
 }
+
+sealed class const RealtimeVoiceOpenException({
+  // ignore: no_slop_linter/prefer_specific_type, API failures retain arbitrary transport causes
+  required final Object? cause,
+  required final int? httpStatus,
+}) implements Exception;
+
+final class const RealtimeVoiceOpenAuthenticationException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenException;
+
+sealed class const RealtimeVoiceOpenHandshakeException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenException;
+
+final class const RealtimeVoiceOpenHandshakeNotFoundException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenHandshakeException;
+
+final class const RealtimeVoiceOpenHandshakeRateLimitedException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenHandshakeException;
+
+final class const RealtimeVoiceOpenTimeoutException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenException;
+
+final class const RealtimeVoiceOpenTransportException({required super.cause, required super.httpStatus})
+    extends RealtimeVoiceOpenException;
 
 final class RealtimeVoiceSession({required final WebSocketChannel channel}) {
   final StreamController<RealtimeVoiceEvent> _events = StreamController<RealtimeVoiceEvent>();
@@ -63,6 +101,10 @@ final class RealtimeVoiceSession({required final WebSocketChannel channel}) {
   bool _finishRequested = false;
 
   this {
+    // The stream reports failures immediately, while finish() may not be called
+    // until later or at all. Attach an observer now so completing the terminal
+    // future with an error can never become an unhandled zone error.
+    _terminal.future.ignore();
     _subscription = channel.stream.listen(
       _handleInbound,
       onError: _handleInboundError,

@@ -208,7 +208,7 @@ void main() {
     when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => connection.sendAudio(any())).thenReturn(null);
     when(connection.finish).thenAnswer(
-      (_) async => const VoiceRealtimeTerminalCompleted(),
+      (_) async => const VoiceRealtimeTerminalCompleted(reason: VoiceRealtimeCompletionReason.finished),
     );
     when(connection.cancel).thenAnswer((_) async {});
     when(connection.close).thenAnswer((_) async {});
@@ -245,6 +245,58 @@ void main() {
     );
   });
 
+  test("empty realtime completion is terminal before release and after finish", () async {
+    for (final completionBeforeRelease in [true, false]) {
+      const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+      final frames = StreamController<Uint8List>.broadcast();
+      final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+      final events = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+      final connection = MockVoiceRealtimeConnection();
+      addTearDown(frames.close);
+      addTearDown(formats.close);
+      addTearDown(events.close);
+      when(repository.discoverCapabilities).thenAnswer(
+        (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+      );
+      when(captureSession.startRealtime).thenAnswer(
+        (_) async => VoiceRealtimeCapture(
+          format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+          frames: frames.stream,
+          formatChanges: formats.stream,
+        ),
+      );
+      when(captureSession.resumeRealtime).thenAnswer((_) async {});
+      when(captureSession.stopRealtime).thenAnswer((_) async {});
+      when(() => connection.events).thenAnswer((_) => events.stream);
+      when(connection.finish).thenAnswer(
+        (_) async => const VoiceRealtimeTerminalCompleted(reason: VoiceRealtimeCompletionReason.finished),
+      );
+      when(connection.cancel).thenAnswer((_) async {});
+      when(connection.close).thenAnswer((_) async {});
+      when(
+        () => repository.openRealtime(
+          audio: any(named: "audio"),
+          projectKey: any(named: "projectKey"),
+        ),
+      ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
+      final candidateSession = service.createSession();
+
+      final starting = service.start(session: candidateSession, projectId: "project-123");
+      await Future<void>.delayed(Duration.zero);
+      events.add(const VoiceRealtimeReady());
+      await starting;
+      if (completionBeforeRelease) {
+        events.add(const VoiceRealtimeCompleted(reason: VoiceRealtimeCompletionReason.finished));
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      await expectLater(
+        service.stopAndTranscribe(session: candidateSession),
+        throwsA(isA<EmptyTranscriptError>()),
+      );
+    }
+  });
+
   test("terminal completion during startup does not resurrect stopped realtime capture", () async {
     const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
     final frames = StreamController<Uint8List>.broadcast();
@@ -277,18 +329,54 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
+    final limitReached = service.maxDurationReachedStream(session: session).first;
     final starting = service.start(session: session, projectId: "project-123");
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeTranscript(confirmedDelta: "done", provisional: ""));
-    events.add(const VoiceRealtimeCompleted());
+    events.add(const VoiceRealtimeCompleted(reason: VoiceRealtimeCompletionReason.sessionLimit));
     resumeCompleter.complete();
     await starting;
+    await limitReached;
 
     verify(captureSession.resumeRealtime).called(1);
     expect(await service.stopAndTranscribe(session: session), "done");
     verify(captureSession.stopRealtime).called(1);
+  });
+
+  test("cancellation waits for pending native realtime startup before releasing capture", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final frames = StreamController<Uint8List>.broadcast();
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final captureStart = Completer<VoiceRealtimeCapture>();
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer((_) => captureStart.future);
+
+    final starting = service.start(session: session, projectId: "project-123");
+    final cancelledStart = expectLater(starting, throwsA(isA<TranscriptionCancelledError>()));
+    await Future<void>.delayed(Duration.zero);
+    var cancellationSettled = false;
+    final cancelling = service.cancel(session: session).whenComplete(() => cancellationSettled = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(cancellationSettled, isFalse);
+
+    captureStart.complete(
+      VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    await cancelling;
+    await cancelledStart;
+
+    verify(captureSession.cancel).called(1);
+    verifyNever(captureSession.resumeRealtime);
   });
 
   test("cancellation during realtime ready wait settles startup without resume or fallback", () async {
@@ -352,7 +440,8 @@ void main() {
     );
     when(captureSession.resumeRealtime).thenAnswer((_) async {});
     when(() => connection.events).thenAnswer((_) => events.stream);
-    when(connection.cancel).thenAnswer((_) async {});
+    final realtimeCancel = Completer<void>();
+    when(connection.cancel).thenAnswer((_) => realtimeCancel.future);
     when(connection.close).thenAnswer((_) async {});
     when(
       () => repository.openRealtime(
@@ -367,12 +456,15 @@ void main() {
     await starting;
     formats.add(const VoiceRealtimeCaptureFormat(sampleRate: 24000));
     await Future<void>.delayed(Duration.zero);
+    final released = service.stopAndTranscribe(session: session);
     await Future<void>.delayed(Duration.zero);
+    verifyNever(captureSession.start);
 
+    realtimeCancel.complete();
+    expect(await released, "hello");
     verify(connection.cancel).called(1);
     verify(captureSession.cancel).called(1);
     verify(captureSession.start).called(1);
-    expect(await service.stopAndTranscribe(session: session), "hello");
   });
 
   test("post-audio realtime transport failure preserves confirmed partial without async Retry", () async {
@@ -433,6 +525,88 @@ void main() {
         projectKey: any(named: "projectKey"),
       ),
     );
+  });
+
+  test("stale realtime finish cannot dispose a newer interaction", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final firstFrames = StreamController<Uint8List>.broadcast();
+    final firstFormats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final firstEvents = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+    final secondFrames = StreamController<Uint8List>.broadcast();
+    final secondFormats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final secondEvents = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+    final firstConnection = MockVoiceRealtimeConnection();
+    final secondConnection = MockVoiceRealtimeConnection();
+    final firstFinish = Completer<VoiceRealtimeTerminalOutcome>();
+    addTearDown(firstFrames.close);
+    addTearDown(firstFormats.close);
+    addTearDown(firstEvents.close);
+    addTearDown(secondFrames.close);
+    addTearDown(secondFormats.close);
+    addTearDown(secondEvents.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    var captureStarts = 0;
+    when(captureSession.startRealtime).thenAnswer((_) async {
+      final first = captureStarts++ == 0;
+      return VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: first ? firstFrames.stream : secondFrames.stream,
+        formatChanges: first ? firstFormats.stream : secondFormats.stream,
+      );
+    });
+    when(captureSession.resumeRealtime).thenAnswer((_) async {});
+    when(captureSession.stopRealtime).thenAnswer((_) async {});
+    when(() => firstConnection.events).thenAnswer((_) => firstEvents.stream);
+    when(() => secondConnection.events).thenAnswer((_) => secondEvents.stream);
+    when(firstConnection.finish).thenAnswer((_) => firstFinish.future);
+    when(secondConnection.finish).thenAnswer(
+      (_) async => const VoiceRealtimeTerminalCompleted(reason: VoiceRealtimeCompletionReason.finished),
+    );
+    when(firstConnection.cancel).thenAnswer((_) async {});
+    when(firstConnection.close).thenAnswer((_) async {});
+    when(secondConnection.cancel).thenAnswer((_) async {});
+    when(secondConnection.close).thenAnswer((_) async {});
+    var opens = 0;
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer(
+      (_) async => VoiceRealtimeOpenOutcome.opened(
+        connection: opens++ == 0 ? firstConnection : secondConnection,
+      ),
+    );
+
+    final firstStart = service.start(session: session, projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    firstEvents.add(const VoiceRealtimeReady());
+    await firstStart;
+    firstEvents.add(const VoiceRealtimeTranscript(confirmedDelta: "old", provisional: ""));
+    await Future<void>.delayed(Duration.zero);
+    final staleStop = service.stopAndTranscribe(session: session);
+    await Future<void>.delayed(Duration.zero);
+    await service.cancel(session: session);
+
+    final secondStart = service.start(session: session, projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    secondEvents.add(const VoiceRealtimeReady());
+    await secondStart;
+    secondEvents.add(const VoiceRealtimeTranscript(confirmedDelta: "new", provisional: "draft"));
+    await Future<void>.delayed(Duration.zero);
+
+    firstFinish.complete(
+      const VoiceRealtimeTerminalCompleted(reason: VoiceRealtimeCompletionReason.finished),
+    );
+    expect(await staleStop, "old");
+    expect(service.currentPreview(session: session).confirmedText, "new");
+    expect(service.currentPreview(session: session).provisionalText, "draft");
+    verifyNever(secondConnection.cancel);
+    verifyNever(secondConnection.close);
+
+    expect(await service.stopAndTranscribe(session: session), "new");
   });
 
   test("shares one in-flight prewarm attempt per composer session", () async {

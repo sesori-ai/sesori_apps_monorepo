@@ -6,36 +6,19 @@ import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
-import "../../api/models/voice_capabilities_api_model.dart";
 import "../../logging/logging.dart";
 import "project_glossary_key.dart";
 import "voice_transcription_failure_metadata.dart";
 
 /// Timeout for the transcription upload request.
 const _uploadTimeout = Duration(seconds: 120);
-const _capabilitiesTimeout = Duration(seconds: 5);
 
 /// API layer for voice endpoints on the auth server.
 ///
 /// Uses [AuthenticatedHttpApiClient] which handles token injection, proactive refresh,
 /// and 401 retry automatically — this class never touches tokens directly.
 @lazySingleton
-class VoiceApi(final AuthenticatedHttpApiClient _client, final HttpApiClient _publicClient) {
-  Future<ApiResponse<VoiceCapabilitiesApiModel>> discoverCapabilities() async {
-    try {
-      return await _publicClient
-          .get(
-            Uri.parse("$authBaseUrl/voice/capabilities"),
-            fromJson: VoiceCapabilitiesApiModel.parse,
-          )
-          .timeout(_capabilitiesTimeout);
-    } on TimeoutException catch (error) {
-      return ApiResponse.error(ApiError.dartHttpClient(error));
-    } on FormatException catch (error) {
-      return ApiResponse.error(ApiError.jsonParsing(error.message));
-    }
-  }
-
+class VoiceApi(final AuthenticatedHttpApiClient _client) {
   /// Uploads an audio file for transcription.
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward

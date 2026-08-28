@@ -11,7 +11,12 @@ final class const VoiceRealtimeTranscript({
   required final String provisional,
 }) extends VoiceRealtimeConnectionEvent;
 
-final class const VoiceRealtimeCompleted() extends VoiceRealtimeConnectionEvent;
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors.
+// ignore: use_primary_constructors
+enum VoiceRealtimeCompletionReason { finished, sessionLimit, quotaLimit }
+
+final class const VoiceRealtimeCompleted({required final VoiceRealtimeCompletionReason reason})
+    extends VoiceRealtimeConnectionEvent;
 
 final class const VoiceRealtimeFailed({required final VoiceRealtimeFailure failure})
     extends VoiceRealtimeConnectionEvent;
@@ -28,7 +33,8 @@ final class const VoiceRealtimeContractFailure({required super.innerError}) exte
 
 sealed class const VoiceRealtimeTerminalOutcome();
 
-final class const VoiceRealtimeTerminalCompleted() extends VoiceRealtimeTerminalOutcome;
+final class const VoiceRealtimeTerminalCompleted({required final VoiceRealtimeCompletionReason reason})
+    extends VoiceRealtimeTerminalOutcome;
 
 final class const VoiceRealtimeTerminalFailed({required final VoiceRealtimeFailure failure})
     extends VoiceRealtimeTerminalOutcome;

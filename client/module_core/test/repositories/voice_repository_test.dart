@@ -1,12 +1,35 @@
+import "dart:async";
+import "dart:convert";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/api/models/realtime_voice_protocol.dart";
 import "package:sesori_dart_core/src/api/models/voice_capabilities_api_model.dart";
 import "package:test/test.dart";
+import "package:web_socket_channel/web_socket_channel.dart";
 
 class MockVoiceApi() extends Mock implements VoiceApi;
 
+class MockVoiceCapabilitiesApi() extends Mock implements VoiceCapabilitiesApi;
+
 class MockRealtimeVoiceApi() extends Mock implements RealtimeVoiceApi;
+
+class _RepositoryRealtimeChannel({required final StreamController<Object?> controller})
+    extends Mock
+    implements WebSocketChannel {
+  final _sink = _RepositoryRealtimeSink();
+
+  @override
+  Stream<dynamic> get stream => controller.stream;
+
+  @override
+  WebSocketSink get sink => _sink;
+}
+
+class _RepositoryRealtimeSink() extends Mock implements WebSocketSink {
+  @override
+  Future<void> close([int? closeCode, String? closeReason]) async {}
+}
 
 void main() {
   setUpAll(() {
@@ -14,17 +37,19 @@ void main() {
   });
 
   late MockVoiceApi api;
+  late MockVoiceCapabilitiesApi capabilitiesApi;
   late MockRealtimeVoiceApi realtimeApi;
   late VoiceRepository repository;
 
   setUp(() {
     api = MockVoiceApi();
+    capabilitiesApi = MockVoiceCapabilitiesApi();
     realtimeApi = MockRealtimeVoiceApi();
-    repository = VoiceRepository(api: api, realtimeApi: realtimeApi);
+    repository = VoiceRepository(api: api, capabilitiesApi: capabilitiesApi, realtimeApi: realtimeApi);
   });
 
   test("maps capability API responses into closed product outcomes", () async {
-    when(api.discoverCapabilities).thenAnswer(
+    when(capabilitiesApi.discover).thenAnswer(
       (_) async => ApiResponse.success(
         const VoiceCapabilitiesApiModel(realtimeEnabled: true, protocolVersions: [1]),
       ),
@@ -39,17 +64,17 @@ void main() {
       ),
     );
 
-    when(api.discoverCapabilities).thenAnswer(
+    when(capabilitiesApi.discover).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
     );
     expect(await repository.discoverCapabilities(), isA<VoiceCapabilitiesAsyncFallback>());
 
-    when(api.discoverCapabilities).thenAnswer(
+    when(capabilitiesApi.discover).thenAnswer(
       (_) async => ApiResponse.error(ApiError.jsonParsing("bad capabilities")),
     );
     expect(await repository.discoverCapabilities(), isA<VoiceCapabilitiesContractFailure>());
 
-    when(api.discoverCapabilities).thenAnswer(
+    when(capabilitiesApi.discover).thenAnswer(
       (_) async => ApiResponse.success(
         const VoiceCapabilitiesApiModel(realtimeEnabled: true, protocolVersions: [2]),
       ),
@@ -82,6 +107,47 @@ void main() {
         projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
       );
       expect(outcome.runtimeType, entry.value);
+    }
+  });
+
+  test("preserves every server completion reason in repository events", () async {
+    const cases = {
+      RealtimeCompleteReason.finished: VoiceRealtimeCompletionReason.finished,
+      RealtimeCompleteReason.sessionLimit: VoiceRealtimeCompletionReason.sessionLimit,
+      RealtimeCompleteReason.quotaLimit: VoiceRealtimeCompletionReason.quotaLimit,
+    };
+
+    for (final MapEntry(key: apiReason, value: domainReason) in cases.entries) {
+      final inbound = StreamController<Object?>.broadcast();
+      final apiSession = RealtimeVoiceSession(
+        channel: _RepositoryRealtimeChannel(controller: inbound),
+      );
+      when(
+        () => realtimeApi.start(
+          audio: any(named: "audio"),
+          projectKey: any(named: "projectKey"),
+        ),
+      ).thenAnswer((_) async => apiSession);
+
+      final outcome = await repository.openRealtime(
+        audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
+        projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
+      );
+      final connection = (outcome as VoiceRealtimeOpened).connection;
+      final eventFuture = connection.events.first;
+      inbound.add(
+        jsonEncode({
+          "type": "complete",
+          "reason": apiReason.wireName,
+          "dailySecondsRemaining": 0,
+        }),
+      );
+
+      expect(
+        await eventFuture,
+        isA<VoiceRealtimeCompleted>().having((event) => event.reason, "reason", domainReason),
+      );
+      await inbound.close();
     }
   });
 

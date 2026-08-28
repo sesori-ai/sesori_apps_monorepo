@@ -252,6 +252,33 @@ void main() {
     await session.close();
   });
 
+  test("cancellation waits for pending realtime startup and rolls native capture back", () async {
+    final nativeFrames = StreamController<Uint8List>.broadcast();
+    final startStreamCompleter = Completer<Stream<Uint8List>>();
+    addTearDown(nativeFrames.close);
+    when(() => recorder.startStream(any())).thenAnswer((_) => startStreamCompleter.future);
+    final session = capture.createSession();
+
+    final starting = session.startRealtime();
+    final cancelledStart = expectLater(starting, throwsA(isA<VoiceCaptureFailed>()));
+    await Future<void>.delayed(Duration.zero);
+    var cancellationSettled = false;
+    final cancelling = session.cancel().whenComplete(() => cancellationSettled = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(cancellationSettled, isFalse);
+
+    startStreamCompleter.complete(nativeFrames.stream);
+    await cancelledStart;
+    await cancelling;
+
+    verify(recorder.cancel).called(1);
+    verifyNever(wakeLockService.acquire);
+    await session.start();
+    verify(() => recorder.start(any(), path: recordingPath)).called(1);
+    await session.cancel();
+    await session.close();
+  });
+
   test("cancellation while realtime resume is pending cannot resurrect native capture", () async {
     final nativeFrames = StreamController<Uint8List>.broadcast();
     final resumeCompleter = Completer<void>();

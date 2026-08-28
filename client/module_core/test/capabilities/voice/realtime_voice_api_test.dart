@@ -248,16 +248,55 @@ void main() {
       connector = _Connector();
       connector.useDelayedConnect = true;
       api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
-      final error = RealtimeVoiceOpenAuthenticationException(cause: StateError("unauthorized"), httpStatus: 401);
+      final connectorError = RealtimeWebSocketOpenException(
+        cause: StateError("unauthorized"),
+        httpStatus: 401,
+        timedOut: false,
+      );
 
       final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
       await pumpEventQueue();
-      connector.connectCompleter.completeError(error);
+      connector.connectCompleter.completeError(connectorError);
 
-      await expectLater(startFuture, throwsA(same(error)));
+      await expectLater(
+        startFuture,
+        throwsA(
+          isA<RealtimeVoiceOpenAuthenticationException>()
+              .having((error) => error.cause, "cause", same(connectorError))
+              .having((error) => error.httpStatus, "httpStatus", 401),
+        ),
+      );
       expect(connector.channel.outbound, isEmpty);
     },
   );
+
+  test("Given connector open facts When starting Then maps them into API-layer failures", () async {
+    final cases = <RealtimeWebSocketOpenException, Type>{
+      const RealtimeWebSocketOpenException(cause: null, httpStatus: 404, timedOut: false):
+          RealtimeVoiceOpenHandshakeNotFoundException,
+      const RealtimeWebSocketOpenException(cause: null, httpStatus: 429, timedOut: false):
+          RealtimeVoiceOpenHandshakeRateLimitedException,
+      const RealtimeWebSocketOpenException(cause: null, httpStatus: null, timedOut: true):
+          RealtimeVoiceOpenTimeoutException,
+      const RealtimeWebSocketOpenException(cause: null, httpStatus: null, timedOut: false):
+          RealtimeVoiceOpenTransportException,
+    };
+
+    for (final MapEntry(key: connectorError, value: apiErrorType) in cases.entries) {
+      connector = _Connector();
+      connector.useDelayedConnect = true;
+      api = RealtimeVoiceApi(connector: connector, tokenProvider: tokenProvider);
+
+      final startFuture = api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+      await pumpEventQueue();
+      connector.connectCompleter.completeError(connectorError);
+
+      await expectLater(
+        startFuture,
+        throwsA(predicate<Object>((error) => error.runtimeType == apiErrorType)),
+      );
+    }
+  });
 
   test("Given no fresh token When starting Then throws provider-neutral authentication open failure", () async {
     api = RealtimeVoiceApi(connector: connector, tokenProvider: _NullTokenProvider());
@@ -331,6 +370,19 @@ void main() {
       await terminal;
     },
   );
+
+  test("Given transport fails before finish When observed Then no terminal future error escapes", () async {
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);
+    final streamErrors = <Object>[];
+    final subscription = session.events.listen(null, onError: streamErrors.add);
+    final error = StateError("socket failed");
+
+    connector.channel.inbound.addError(error, StackTrace.current);
+    await pumpEventQueue(times: 3);
+
+    expect(streamErrors, [same(error)]);
+    await subscription.cancel();
+  });
 
   test("Given malformed inbound data When received Then emits stream error and closes", () async {
     final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: null);

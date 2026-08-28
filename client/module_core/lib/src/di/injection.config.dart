@@ -40,6 +40,7 @@ import 'package:sesori_dart_core/src/api/storage/notification_preferences_device
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
 import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
+import 'package:sesori_dart_core/src/api/voice_capabilities_api.dart' as _i702;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i896;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
@@ -175,10 +176,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => const _i895.DefaultModelSelector(),
     );
     gh.lazySingleton<_i176.VoiceApi>(
-      () => _i176.VoiceApi(
-        gh<_i442.AuthenticatedHttpApiClient>(),
-        gh<_i442.HttpApiClient>(),
-      ),
+      () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -226,14 +224,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i835.LegalApi>(
       () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),
     );
+    gh.lazySingleton<_i702.VoiceCapabilitiesApi>(
+      () => _i702.VoiceCapabilitiesApi(client: gh<_i442.HttpApiClient>()),
+    );
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
-    );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(
-        api: gh<_i176.VoiceApi>(),
-        realtimeApi: gh<_i394.RealtimeVoiceApi>(),
-      ),
     );
     gh.lazySingleton<_i957.PluginPreferenceApi>(
       () => _i957.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
@@ -255,6 +250,13 @@ extension GetItInjectableX on _i174.GetIt {
         localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
         routeSource: gh<_i366.RouteSource>(),
+      ),
+    );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        capabilitiesApi: gh<_i702.VoiceCapabilitiesApi>(),
+        realtimeApi: gh<_i394.RealtimeVoiceApi>(),
       ),
     );
     gh.lazySingleton<_i679.VoiceTranscriptionService>(

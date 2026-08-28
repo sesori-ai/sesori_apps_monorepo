@@ -24,7 +24,7 @@ void main() {
       expect(client.connectTimeout, connectTimeout);
     });
 
-    test("maps channel ready timeout to provider-neutral timeout while preserving cause", () async {
+    test("preserves channel ready timeout facts without voice policy", () async {
       final cause = TimeoutException("connect timed out");
       final channel = _ReadyFailureWebSocketChannel(error: cause);
       final connector = IoRealtimeWebSocketConnector(client: _CapturingIoRealtimeWebSocketClient(channel: channel));
@@ -35,33 +35,25 @@ void main() {
           headers: const {},
           connectTimeout: const Duration(seconds: 10),
         ),
-        throwsA(isA<RealtimeVoiceOpenTimeoutException>().having((error) => error.cause, "cause", same(cause))),
-      );
-    });
-
-    test("maps HTTP 401 handshake failure to authentication", () async {
-      await _expectStatusClassification(
-        statusCode: 401,
-        matcher: isA<RealtimeVoiceOpenAuthenticationException>(),
-      );
-    });
-
-    test("maps HTTP 404 handshake failure to notFound", () async {
-      await _expectStatusClassification(
-        statusCode: 404,
-        matcher: isA<RealtimeVoiceOpenHandshakeNotFoundException>().having((error) => error.httpStatus, "status", 404),
-      );
-    });
-
-    test("maps HTTP 429 handshake failure to rateLimited", () async {
-      await _expectStatusClassification(
-        statusCode: 429,
-        matcher: isA<RealtimeVoiceOpenHandshakeRateLimitedException>().having(
-          (error) => error.httpStatus,
-          "status",
-          429,
+        throwsA(
+          isA<RealtimeWebSocketOpenException>()
+              .having((error) => error.cause, "cause", same(cause))
+              .having((error) => error.httpStatus, "httpStatus", isNull)
+              .having((error) => error.timedOut, "timedOut", isTrue),
         ),
       );
+    });
+
+    test("preserves HTTP 401 handshake status for API policy", () async {
+      await _expectStatusFacts(statusCode: 401);
+    });
+
+    test("preserves HTTP 404 handshake status for API policy", () async {
+      await _expectStatusFacts(statusCode: 404);
+    });
+
+    test("preserves HTTP 429 handshake status for API policy", () async {
+      await _expectStatusFacts(statusCode: 429);
     });
 
     test("maps generic ready failure to transport", () async {
@@ -75,7 +67,11 @@ void main() {
           headers: const {},
           connectTimeout: const Duration(seconds: 10),
         ),
-        throwsA(isA<RealtimeVoiceOpenTransportException>().having((error) => error.cause, "cause", same(cause))),
+        throwsA(
+          isA<RealtimeWebSocketOpenException>()
+              .having((error) => error.cause, "cause", same(cause))
+              .having((error) => error.timedOut, "timedOut", isFalse),
+        ),
       );
     });
 
@@ -87,7 +83,7 @@ void main() {
 
       await expectLater(
         connector.connect(uri: uri, headers: const {}, connectTimeout: const Duration(milliseconds: 100)),
-        throwsA(isA<RealtimeVoiceOpenTransportException>()),
+        throwsA(isA<RealtimeWebSocketOpenException>()),
       );
     });
 
@@ -110,7 +106,7 @@ void main() {
   });
 }
 
-Future<void> _expectStatusClassification({required int statusCode, required Matcher matcher}) async {
+Future<void> _expectStatusFacts({required int statusCode}) async {
   final cause = WebSocketChannelException.from(WebSocketException("handshake failed", statusCode));
   final channel = _ReadyFailureWebSocketChannel(error: cause);
   final connector = IoRealtimeWebSocketConnector(client: _CapturingIoRealtimeWebSocketClient(channel: channel));
@@ -122,10 +118,10 @@ Future<void> _expectStatusClassification({required int statusCode, required Matc
       connectTimeout: const Duration(seconds: 10),
     ),
     throwsA(
-      allOf(
-        matcher,
-        predicate<RealtimeVoiceOpenException>((error) => identical(error.cause, cause), "preserves cause"),
-      ),
+      isA<RealtimeWebSocketOpenException>()
+          .having((error) => error.cause, "cause", same(cause))
+          .having((error) => error.httpStatus, "httpStatus", statusCode)
+          .having((error) => error.timedOut, "timedOut", isFalse),
     ),
   );
 }

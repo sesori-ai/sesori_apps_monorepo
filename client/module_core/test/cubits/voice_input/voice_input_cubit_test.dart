@@ -64,6 +64,32 @@ void main() {
     },
   );
 
+  test("a server limit reached during startup auto-stops after recording becomes ready", () async {
+    final startCompleter = Completer<void>();
+    when(
+      () => service.start(
+        session: session,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) => startCompleter.future);
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+
+    final starting = cubit.startRecording(projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    maxDurationController.add(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<VoiceInputStarting>());
+
+    startCompleter.complete();
+    await starting;
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cubit.state, const VoiceInputState.completed(transcript: "hello"));
+    verify(() => service.stopAndTranscribe(session: session)).called(1);
+  });
+
   blocTest<VoiceInputCubit, VoiceInputState>(
     "maps a permission failure into start-specific state",
     setUp: () {

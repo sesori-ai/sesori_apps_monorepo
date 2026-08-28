@@ -46,6 +46,7 @@ export "src/api/session_api.dart";
 export "src/api/storage/composer_draft_storage.dart";
 export "src/api/storage/notification_preferences_device_id_storage.dart";
 export "src/api/storage/product_analytics_preference_storage.dart";
+export "src/api/voice_capabilities_api.dart";
 export "src/capabilities/notifications/register_token_request.dart";
 export "src/capabilities/relay/relay_client.dart";
 export "src/capabilities/relay/room_key_storage.dart";

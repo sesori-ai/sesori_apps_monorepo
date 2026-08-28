@@ -6,15 +6,19 @@ import "package:sesori_auth/sesori_auth.dart";
 
 import "../api/models/realtime_voice_protocol.dart";
 import "../api/realtime_voice_api.dart";
+import "../api/voice_capabilities_api.dart";
 import "../capabilities/voice/voice_api.dart";
-import "../foundation/platform/realtime_websocket_connector.dart";
 import "../models/voice_capabilities.dart";
 import "../models/voice_realtime.dart";
 
 @lazySingleton
-class VoiceRepository({required final VoiceApi _api, required final RealtimeVoiceApi _realtimeApi}) {
+class VoiceRepository({
+  required final VoiceApi _api,
+  required final VoiceCapabilitiesApi _capabilitiesApi,
+  required final RealtimeVoiceApi _realtimeApi,
+}) {
   Future<VoiceCapabilitiesDiscoveryOutcome> discoverCapabilities() async {
-    final response = await _api.discoverCapabilities();
+    final response = await _capabilitiesApi.discover();
     return switch (response) {
       SuccessResponse(:final data) when data.protocolVersions.contains(1) => VoiceCapabilitiesAvailable(
         capabilities: VoiceCapabilities(
@@ -28,7 +32,7 @@ class VoiceRepository({required final VoiceApi _api, required final RealtimeVoic
       ErrorResponse(error: JsonParsingError()) => const VoiceCapabilitiesContractFailure(
         reason: "Realtime capability response could not be parsed",
       ),
-      // COMPATIBILITY 2026-08-14 (v1.8.0): Auth servers before capability discovery, disabled rollout
+      // COMPATIBILITY 2026-08-14 (v1.8.2): Auth servers before capability discovery, disabled rollout
       // deployments, and transient public endpoint failures preserve the released async transcription path.
       // Remove only after every supported auth server exposes protocol 1.
       ErrorResponse() => const VoiceCapabilitiesAsyncFallback(),
@@ -127,7 +131,9 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
     try {
       final event = await _session.finish();
       return switch (event) {
-        RealtimeVoiceCompleteEvent() => const VoiceRealtimeTerminalCompleted(),
+        RealtimeVoiceCompleteEvent(:final reason) => VoiceRealtimeTerminalCompleted(
+          reason: _mapCompleteReason(reason),
+        ),
         RealtimeVoiceErrorEvent(:final code) => VoiceRealtimeTerminalFailed(
           failure: _mapServerFailure(code),
         ),
@@ -158,8 +164,14 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
       confirmedDelta: confirmedDelta,
       provisional: provisional,
     ),
-    RealtimeVoiceCompleteEvent() => const VoiceRealtimeCompleted(),
+    RealtimeVoiceCompleteEvent(:final reason) => VoiceRealtimeCompleted(reason: _mapCompleteReason(reason)),
     RealtimeVoiceErrorEvent(:final code) => VoiceRealtimeFailed(failure: _mapServerFailure(code)),
+  };
+
+  static VoiceRealtimeCompletionReason _mapCompleteReason(RealtimeCompleteReason reason) => switch (reason) {
+    RealtimeCompleteReason.finished => VoiceRealtimeCompletionReason.finished,
+    RealtimeCompleteReason.sessionLimit => VoiceRealtimeCompletionReason.sessionLimit,
+    RealtimeCompleteReason.quotaLimit => VoiceRealtimeCompletionReason.quotaLimit,
   };
 
   static VoiceRealtimeFailure _mapConnectionFailure(Object error) => switch (error) {

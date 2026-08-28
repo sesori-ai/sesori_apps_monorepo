@@ -123,8 +123,10 @@ final class _FlutterVoiceCaptureSession({
   _VoiceCaptureActivityLease? _activityLease;
   RecordConfig? _latestRealtimeConfig;
   String? _currentPath;
+  Future<VoiceRealtimeCapture>? _realtimeStartFuture;
   _VoiceNativeCaptureMode _mode = _VoiceNativeCaptureMode.idle;
   bool _realtimeConfigCallbackSet = false;
+  bool _realtimeStartCancellationRequested = false;
   bool _isClosed = false;
 
   @override
@@ -197,10 +199,23 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<VoiceRealtimeCapture> startRealtime() async {
-    if (_isClosed || _mode != _VoiceNativeCaptureMode.idle) {
+    if (_isClosed || _mode != _VoiceNativeCaptureMode.idle || _realtimeStartFuture != null) {
       throw VoiceCaptureError.failed(innerError: null);
     }
 
+    _realtimeStartCancellationRequested = false;
+    late final Future<VoiceRealtimeCapture> trackedFuture;
+    trackedFuture = _startRealtime().whenComplete(() {
+      if (identical(_realtimeStartFuture, trackedFuture)) {
+        _realtimeStartFuture = null;
+        _realtimeStartCancellationRequested = false;
+      }
+    });
+    _realtimeStartFuture = trackedFuture;
+    return await trackedFuture;
+  }
+
+  Future<VoiceRealtimeCapture> _startRealtime() async {
     final activityLease = await _owner._acquireActivity();
     try {
       await _requirePermission();
@@ -215,11 +230,13 @@ final class _FlutterVoiceCaptureSession({
       _realtimeConfigCallbackSet = true;
       final nativeFrames = await _recorder.startStream(realtimeConfig.requestedRecordConfig);
       _mode = _VoiceNativeCaptureMode.realtimePaused;
+      _throwIfRealtimeStartCancelled();
       _realtimeFrameSubscription = nativeFrames.listen(
         frameController.add,
         onError: frameController.addError,
       );
       await _recorder.pause();
+      _throwIfRealtimeStartCancelled();
       _activityLease = activityLease;
 
       return VoiceRealtimeCapture(
@@ -318,6 +335,16 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<void> cancel() async {
+    final realtimeStartFuture = _realtimeStartFuture;
+    if (realtimeStartFuture != null) {
+      _realtimeStartCancellationRequested = true;
+      try {
+        await realtimeStartFuture;
+      } on VoiceCaptureError {
+        // The startup path owns rollback before its future settles.
+      }
+    }
+
     _stopAmplitudeMonitoring();
     final mode = _mode;
     _mode = _VoiceNativeCaptureMode.idle;
@@ -414,6 +441,14 @@ final class _FlutterVoiceCaptureSession({
       controller.add(_validateRealtimeFormat());
     } on VoiceCaptureError catch (error, stackTrace) {
       controller.addError(error, stackTrace);
+    }
+  }
+
+  void _throwIfRealtimeStartCancelled() {
+    if (_realtimeStartCancellationRequested) {
+      throw VoiceCaptureError.failed(
+        innerError: StateError("Realtime capture was cancelled while starting"),
+      );
     }
   }
 

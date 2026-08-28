@@ -35,38 +35,33 @@ class IoRealtimeWebSocketConnector({required final IoRealtimeWebSocketClient cli
       return channel;
     } on TimeoutException catch (error) {
       _closeAfterFailedReady(channel);
-      throw RealtimeVoiceOpenTimeoutException(cause: error, httpStatus: null);
+      throw RealtimeWebSocketOpenException(cause: error, httpStatus: null, timedOut: true);
     } on WebSocketChannelException catch (error) {
       _closeAfterFailedReady(channel);
       throw _mapWebSocketChannelException(error);
     } on Object catch (error) {
       _closeAfterFailedReady(channel);
-      throw RealtimeVoiceOpenTransportException(cause: error, httpStatus: null);
+      throw RealtimeWebSocketOpenException(cause: error, httpStatus: null, timedOut: false);
     }
   }
 
   void _closeAfterFailedReady(WebSocketChannel channel) {
     // Best-effort cleanup on an already-failed socket. Without a handler a
     // throwing close becomes an unhandled async error that masks the mapped
-    // RealtimeVoiceOpenException the caller is about to receive.
+    // RealtimeWebSocketOpenException the caller is about to receive.
     unawaited(
       channel.sink.close(status.normalClosure).catchError((Object error, StackTrace stackTrace) {
-        logw("Realtime voice socket close after failed ready failed");
+        logw("Realtime voice socket close after failed ready failed", error, stackTrace);
       }),
     );
   }
 
-  RealtimeVoiceOpenException _mapWebSocketChannelException(WebSocketChannelException error) {
+  RealtimeWebSocketOpenException _mapWebSocketChannelException(WebSocketChannelException error) {
     final inner = error.inner;
-    if (inner is TimeoutException) {
-      return RealtimeVoiceOpenTimeoutException(cause: error, httpStatus: null);
-    }
-    final httpStatus = inner is WebSocketException ? inner.httpStatusCode : null;
-    return switch (httpStatus) {
-      401 => RealtimeVoiceOpenAuthenticationException(cause: error, httpStatus: httpStatus),
-      404 => RealtimeVoiceOpenHandshakeNotFoundException(cause: error, httpStatus: httpStatus),
-      429 => RealtimeVoiceOpenHandshakeRateLimitedException(cause: error, httpStatus: httpStatus),
-      _ => RealtimeVoiceOpenTransportException(cause: error, httpStatus: httpStatus),
-    };
+    return RealtimeWebSocketOpenException(
+      cause: error,
+      httpStatus: inner is WebSocketException ? inner.httpStatusCode : null,
+      timedOut: inner is TimeoutException,
+    );
   }
 }

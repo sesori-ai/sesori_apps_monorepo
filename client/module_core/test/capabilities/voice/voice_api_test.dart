@@ -8,20 +8,16 @@ import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:test/test.dart";
 
-class MockPublicHttpApiClient() extends Mock implements HttpApiClient;
-
 void main() {
   setUpAll(registerCoreFallbackValues);
 
   group("VoiceApi.transcribe", () {
     late MockAuthenticatedHttpApiClient mockAuthenticatedHttpApiClient;
-    late MockPublicHttpApiClient publicClient;
     late VoiceApi voiceApi;
 
     setUp(() {
       mockAuthenticatedHttpApiClient = MockAuthenticatedHttpApiClient();
-      publicClient = MockPublicHttpApiClient();
-      voiceApi = VoiceApi(mockAuthenticatedHttpApiClient, publicClient);
+      voiceApi = VoiceApi(mockAuthenticatedHttpApiClient);
     });
 
     Future<String> createAudioPath() async {

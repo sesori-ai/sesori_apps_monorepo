@@ -56,11 +56,13 @@ void main() {
   late _RecordingAuthClient authClient;
   late _RecordingPublicClient publicClient;
   late VoiceApi api;
+  late VoiceCapabilitiesApi capabilitiesApi;
 
   setUp(() {
     authClient = _RecordingAuthClient();
     publicClient = _RecordingPublicClient();
-    api = VoiceApi(authClient, publicClient);
+    api = VoiceApi(authClient);
+    capabilitiesApi = VoiceCapabilitiesApi(client: publicClient);
   });
 
   test("capability API parses the exact endpoint payload without choosing a product mode", () async {
@@ -71,7 +73,7 @@ void main() {
       },
     };
 
-    final result = await api.discoverCapabilities();
+    final result = await capabilitiesApi.discover();
 
     expect(publicClient.lastUrl, Uri.parse("$authBaseUrl/voice/capabilities"));
     expect(
@@ -86,7 +88,7 @@ void main() {
     final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "missing");
     publicClient.error = error;
 
-    final result = await api.discoverCapabilities();
+    final result = await capabilitiesApi.discover();
 
     expect(
       result,
@@ -98,7 +100,7 @@ void main() {
     fakeAsync((async) {
       publicClient.hang = true;
       ApiResponse<VoiceCapabilitiesApiModel>? result;
-      api.discoverCapabilities().then((value) => result = value);
+      capabilitiesApi.discover().then((value) => result = value);
 
       async.elapse(const Duration(seconds: 4));
       async.flushMicrotasks();
@@ -117,7 +119,7 @@ void main() {
       },
     };
 
-    final result = await api.discoverCapabilities();
+    final result = await capabilitiesApi.discover();
 
     expect(
       result,

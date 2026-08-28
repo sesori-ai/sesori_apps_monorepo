@@ -25,8 +25,10 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   are discarded rather than queued. A transport or supported-format failure before the first sent frame may restart as
   a fresh async recording; after the first sent frame there is no file fallback.
 - Realtime confirmed text appends and provisional text replaces in the interaction-local preview without mutating the
-  draft. Finish commits one final voice span. A post-audio failure commits only non-empty confirmed text, drops
-  provisional text, shows the typed provider-neutral error, and never exposes async Retry/Discard.
+  draft. Finish commits one final voice span. Server `session_limit` and `quota_limit` completion auto-stop through the
+  same Cubit seam; an empty confirmed completion is terminal rather than a false success. A post-audio failure commits
+  only non-empty confirmed text, drops provisional text, shows the typed provider-neutral error, and never exposes
+  async Retry/Discard.
 - Initial cancel stops the recorder, releases the wake lock, attempts audio-file deletion, and invalidates any
   in-flight transcription so a late response cannot land in a newer interaction. Cancelling a manual retry returns
   to the saved-recording state without deleting its artifact.
@@ -81,8 +83,8 @@ interruptions such as a call.
   abandonment duplicates a submission or lets a retry finish into the cleared composer; cleanup is not attempted on
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
 - Realtime audio is forwarded before `ready`, a raw project ID leaves the device, provisional text mutates the draft,
-  a post-audio failure offers full-recording Retry, confirmed partial text is lost, or a late event lands in a newer
-  composer interaction.
+  a server limit completion leaves the composer recording, an empty completion silently succeeds, a post-audio failure
+  offers full-recording Retry, confirmed partial text is lost, or a late event lands in a newer composer interaction.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project paths, repository origins, filenames,
