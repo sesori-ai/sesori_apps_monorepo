@@ -44,8 +44,8 @@ Plan: [PLAN.md](PLAN.md)
   - State: completed on `github-copilot-harness/step-7-verify-retire`; the
     duplicate cold replay blocker was fixed in #1171 and targeted verification passed
   - PR: [#1176](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1176)
-  - Evidence: see the privacy-safe matrix below; every unexecuted requirement
-    remains recorded as accepted Partial coverage
+  - Evidence: see the privacy-safe matrix below; all 11 rows remain Partial and
+    the owner accepted each row's remaining required coverage as incomplete
 
 ## Decisions
 
@@ -59,8 +59,8 @@ Plan: [PLAN.md](PLAN.md)
 - Do not bundle Copilot binaries; managed installation downloads the official
   unmodified asset directly from GitHub after explicit user intent.
 - Fix the sole release-blocking replay failure before retirement; by directing
-  retirement after only affected replay checks, the owner accepted every
-  remaining unexecuted requirement as honest non-blocking Partial coverage.
+  retirement after only affected replay checks, the owner accepted all 11
+  matrix rows as honest non-blocking Partial coverage.
 
 ## Step 7 Verification Evidence
 
@@ -81,17 +81,21 @@ Execution date: 2026-08-28.
 - Privacy: repository evidence contains no prompts, transcripts, paths, tokens,
   account/session identifiers, image bytes, or raw logs.
 
+Every row is Partial. Its evidence identifies verified behavior and known gaps;
+any required scenario not explicitly evidenced remains unexecuted within the
+owner-accepted row-level reduction.
+
 | Matrix row | Result | Privacy-safe evidence |
 |---|---|---|
 | Plugin runtime installation | **Partial** | Client install progressed from missing runtime to ready/active `1.0.80`; official metadata matched all six archives; compatible PATH won over managed selection; explicit current, too-old, and unbranded executables classified correctly; checksum failure, cancellation, placement, provisioning, and superseded cleanup automation passed. Malformed branded version output was not exercised. |
 | Plugin setup and lifecycle | **Partial** | Missing/managed/PATH/explicit/too-old/unrecognized setup, capability gating, enable/disable/restart, plugin-local SIGKILL degradation, demand reconnect, clean shutdown, and another harness remaining available passed. Alternate host, unauthenticated normal profile, environment-token/BYOK authentication, rendered selected-version and setup/runtime/work facts, capability-appropriate controls, default badge, idle-timeout default/persisted override, and per-harness catalog scan progress/result announcement were not exercised. |
-| Projects and sessions | **Partial** | Explicit import and unchanged re-import completed, normal reads stayed database-only while Copilot was disabled, and local attribution remained `copilot`. The live catalog fit one page. Live cancellation, first-page/later-page failure, healthy multi-page exhaustion with automatic list adoption, child resolution, list/unseen rendering, and phone/wide-pane deeper-pull scan fan-out were not exercised and remained automated-only where covered. |
-| Session creation and options | **Partial** | The phone created a dedicated Copilot session; Agent and Plan applied and persisted; an exact advertised command executed. No model/reasoning values were invented when this account advertised none; automated stale-selection, model-specific reasoning, no-mode, and authentication failure coverage passed. Account type, healthy live no-mode catalog, create-route launch/duplicate/Back behavior, durable route replacement, generated title/branch updates, stale-cache refresh presentation, and picker/loading/no-harness states were not exercised. |
+| Projects and sessions | **Partial** | Explicit import and unchanged re-import completed, normal reads stayed database-only while Copilot was disabled, and local attribution remained `copilot`. The live catalog fit one page. Live cancellation, first-page/later-page failure, healthy multi-page exhaustion with automatic list adoption, child resolution, bridge-derived project creation/count, list/unseen rendering, phone/wide-pane deeper-pull scan fan-out, and iOS/Android system-back-edge, unreserved-edge, and Android button-navigation row actions were not exercised and remained automated-only where covered. |
+| Session creation and options | **Partial** | The phone created a dedicated Copilot session; Agent and Plan applied and persisted; an exact advertised command executed. No model/reasoning values were invented when this account advertised none; automated stale-selection, model-specific reasoning, no-mode, and authentication failure coverage passed. Account type, healthy live no-mode catalog, create-route launch/duplicate/Back behavior, durable route replacement, generated title/branch updates, stale-cache refresh presentation, picker/loading/no-harness states, and slash-command dispatch without bridge context presentation were not exercised. |
 | Session turns | **Partial** | Phone-visible text, tools, statuses, exact command, two simultaneously busy sessions, queued-prompt cancellation, abort cleanup, and a selected mode change passed. No reasoning was emitted by the available implicit model, which is not a failure under the documented boundary. Live stale-selection refresh/warning/single retry with queued-prompt preservation, composer and sending-to-queued transient presentation, and shared-output-bound normalization were not exercised. |
-| Session history and recovery | **Partial** | Plugin restart and unexpected process replacement recovered in the full run. After #1171, a fresh three-message live tool transcript retained the identical semantic multiset after a clean bridge restart and first cold read, with zero extra duplicates. A greater-than-50-message client flow covering backward pagination, continuation, and cold reopen was not exercised live. |
+| Session history and recovery | **Partial** | Plugin restart and unexpected process replacement recovered in the full run. After #1171, a fresh three-message live tool transcript retained the identical semantic multiset after a clean bridge restart and first cold read, with zero extra duplicates. A greater-than-50-message client flow covering backward pagination, continuation, and cold reopen plus live upstream-only message backfill were not exercised. |
 | Questions and permissions | **Partial** | A real Copilot permission exposed Once, Reject, and Always; each outcome behaved correctly, rejection prevented mutation, abort retired a pending request, and no question capability was claimed. Copilot clarification arrived as normal text, consistent with the upstream `ask_user` limitation. Child attribution, archived-session refusal, suppressed completion notifications while permission remained pending, and safe cancellation when no exact Once or Reject ACP option exists were not exercised. |
 | Attachments and images | **Partial** | The phone sent a 64×64 single-color PNG and Copilot identified it correctly. Model/account rejection; live/reloaded image presentation; generated/tool-output images, ordering, and viewer actions; and current-route failure restoration/background-failure non-restoration were not exercised. |
-| Tools and file changes | **Partial** | Live completed and aborted tools, permission linkage, exact workspace mutation, and the phone's one-file `+1/-0` diff passed. After #1171, one terminal live tool remained one terminal tool after cold replay; the three-message semantic multiset and one-file `+1/-0` diff were unchanged. Read-only negative file-change and genuinely failing tool cases, bounded output, exactly-one mutation signaling, consistent title/status/error presentation, and tool/subtask/agent rendering were not exercised. |
+| Tools and file changes | **Partial** | Live completed and aborted tools, permission linkage, exact workspace mutation, and the phone's one-file `+1/-0` diff passed. After #1171, one terminal live tool remained one terminal tool after cold replay; the three-message semantic multiset and one-file `+1/-0` diff were unchanged. Read-only negative file-change and genuinely failing tool cases, bounded output, exactly-one mutation signaling, consistent title/status/error presentation, tool/subtask/agent rendering, and replayed tool-call identity convergence were not exercised. |
 | Session archiving and deletion | **Partial** | Local deletion removed one session and its clean dedicated worktree; explicit re-import did not resurrect it. Standard close removed it from the public ACP catalog. Client archive/list/detail, deletion without worktree cleanup, visible cleanup refusal, branch retention, a tombstone challenged by a still-listed row, and private retained history inspection were not exercised. |
 | Compatibility and branding | **Partial** | Automated unknown-id fallback and both theme assets passed; the phone rendered the exact GitHub Copilot name and white Primer icon in dark mode. Light-theme client rendering and an older-client/older-bridge build pair were not exercised. |
 
@@ -114,6 +118,5 @@ close but no delete operation.
 - Architecture implementation review: required after each architecture-bearing
   implementation step, scoped to that step's branch against its target
 - Final regression matrix: executed; #1171 resolved both replay failures, and
-  the owner accepted every explicitly recorded unexecuted requirement as
-  non-blocking Partial coverage by directing retirement after only affected
-  replay checks
+  the owner accepted all 11 rows as non-blocking Partial coverage by directing
+  retirement after only affected replay checks

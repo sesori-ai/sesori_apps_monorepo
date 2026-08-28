@@ -214,8 +214,8 @@ concurrent sessions, queued-prompt cancellation, abort, Once/Reject/Always
 permissions, pending-permission abort cleanup, accepted image input, client
 diffs, plugin-local crash/reconnect, clean shutdown, and local deletion. The
 owner directed retirement after fixing the sole release blocker and rerunning
-only affected coverage, thereby accepting the remaining unexecuted requirements
-as non-blocking Partial coverage. The accepted reductions are:
+only affected coverage, thereby accepting all 11 matrix rows at Partial,
+including required scenarios not evidenced below. Known reductions include:
 
 - **Runtime installation:** malformed branded version output.
 - **Setup and lifecycle:** alternate bridge host, unauthenticated normal profile,
@@ -225,16 +225,19 @@ as non-blocking Partial coverage. The accepted reductions are:
   progress/result announcement.
 - **Projects and sessions:** live catalog cancellation, first-page and later-page
   failure, healthy multi-page exhaustion with automatic list adoption, child
-  resolution, list/unseen rendering, and phone/wide-pane deeper-pull scan fan-out.
+  resolution, bridge-derived project creation/count, list/unseen rendering,
+  phone/wide-pane deeper-pull scan fan-out, and iOS/Android system-back-edge,
+  unreserved-edge, and Android button-navigation row actions.
 - **Creation and options:** account type, healthy live no-mode catalog,
   create-route launch/duplicate/Back behavior, durable route replacement,
-  generated title/branch updates, stale-cache refresh presentation, and
-  picker/loading/no-harness states.
+  generated title/branch updates, stale-cache refresh presentation,
+  picker/loading/no-harness states, and slash-command dispatch without bridge
+  context presentation.
 - **Turns:** live stale-selection refresh/warning/single retry with queued-prompt
   preservation, composer and sending-to-queued transient presentation, and
   shared-output-bound normalization.
 - **History and recovery:** a greater-than-50-message client pagination,
-  continuation, and cold-reopen flow.
+  continuation, and cold-reopen flow plus live upstream-only message backfill.
 - **Questions and permissions:** child attribution, archived-session refusal,
   suppressed completion notifications while permission remains pending, and
   safe cancellation when no exact Once or Reject ACP option exists.
@@ -243,7 +246,8 @@ as non-blocking Partial coverage. The accepted reductions are:
   current-route failure restoration/background-failure non-restoration.
 - **Tools and file changes:** read-only negative file-change and genuinely failing
   tool cases, bounded output, exactly-one mutation signaling, consistent
-  title/status/error presentation, and tool/subtask/agent rendering.
+  title/status/error presentation, tool/subtask/agent rendering, and replayed
+  tool-call identity convergence.
 - **Archiving and deletion:** client archive/list/detail, deletion without
   worktree cleanup, visible cleanup refusal, branch retention, a tombstone
   challenged by a still-listed row, and private retained-history inspection.
