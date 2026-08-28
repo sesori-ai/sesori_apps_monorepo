@@ -23,7 +23,7 @@
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** in PR #1160.
    - **Evidence:** initialize-only API, typed mapping, repositories, sole-owner tracker, options service, generated output,
-     18 package tests, fatal-info analysis, LSP diagnostics, architecture approval, and the 1,500-line budget pass.
+     19 package tests, fatal-info analysis, LSP diagnostics, architecture approval, and the 1,500-line budget pass.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
    - **State:** not started.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
@@ -73,8 +73,9 @@
 - [x] Add exact `session/set_model` model/optional-effort writes with typed cause-preserving failures.
 - [x] Keep `GrokCatalogTracker` as the sole last-good catalog owner across initialize, new/load, and refresh capture.
 - [x] Expose one primary agent/provider with opaque model IDs and exact canonical effort strings.
-- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention, selection variants, and failed writes.
-- [x] Run 18 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
+- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention, load-default isolation, stale options,
+  effort-only fallback, selection variants, and failed writes.
+- [x] Run 19 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
 - [x] Keep the measured Step 3 change below the 1,500-line soft cap (currently 1,305 lines before tracker updates).
 - [x] Run architecture implementation review over the Step 3 branch against the Step 2 branch; approved.
 - [x] After #1156 merged, sync to `origin/main`, publish PR #1160, and start its monitor.

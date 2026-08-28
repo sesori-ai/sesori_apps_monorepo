@@ -50,13 +50,22 @@ void main() {
     expect(api.probeCount, 2);
   });
 
-  test("initialize, new, and load captures replace catalog through its tracker", () async {
+  test("initialize, new, and load captures replace catalog without load changing process defaults", () async {
     final fixture = _service(api: _FakeGrokAcpApi());
     fixture.service.captureInitializeResult(result: _initializeResult());
     expect(fixture.catalogTracker.snapshot?.currentModel?.id, "synthetic:model-alpha");
+    expect((await fixture.service.listAgents()).single.model?.variant, "high");
 
+    final loaded = _jsonFixture(name: "initialize.json");
+    final loadedMeta = loaded["_meta"] as Map<String, dynamic>;
+    final loadedModelState = loadedMeta["modelState"] as Map<String, dynamic>;
+    loadedModelState["currentModelId"] = "opaque/provider:model-beta";
+    final loadedModels = loadedModelState["availableModels"] as List<dynamic>;
+    final loadedDefaultModel = loadedModels.first as Map<String, dynamic>;
+    final loadedDefaultMeta = loadedDefaultModel["_meta"] as Map<String, dynamic>;
+    loadedDefaultMeta["reasoningEffort"] = "low";
     fixture.service.captureSessionConfig(
-      result: AcpNewSessionResult.fromJson(_jsonFixture(name: "session.json")),
+      result: AcpNewSessionResult.fromJson({"sessionId": "loaded-session", "models": loadedModelState}),
       sessionId: "loaded-session",
       fromNewSession: false,
     );
@@ -66,6 +75,7 @@ void main() {
       fixture.configurationTracker.snapshotForSession(sessionId: "loaded-session").modelId,
       "opaque/provider:model-beta",
     );
+    expect((await fixture.service.listAgents()).single.model?.variant, "high");
 
     fixture.service.captureSessionConfig(
       result: AcpNewSessionResult.fromJson(_jsonFixture(name: "session.json")),
@@ -99,6 +109,27 @@ void main() {
     ]);
   });
 
+  test("effort-only selection uses the advertised model fallback", () async {
+    final api = _FakeGrokAcpApi();
+    final fixture = _service(api: api);
+    final initialize = _jsonFixture(name: "initialize.json");
+    final meta = initialize["_meta"] as Map<String, dynamic>;
+    final modelState = meta["modelState"] as Map<String, dynamic>;
+    modelState.remove("currentModelId");
+    fixture.service.captureInitializeResult(result: AcpInitializeResult.fromJson(initialize));
+
+    final options = await fixture.service.listProviders();
+    expect(options.providers.single.defaultModelID, "synthetic:model-alpha");
+    await fixture.service.applyTurnSelection(
+      liveClient: _FakeAcpStdioClient(),
+      sessionId: "s1",
+      model: null,
+      variant: const PluginSessionVariant(id: "low"),
+    );
+
+    expect(api.selections.single, (sessionId: "s1", modelId: "synthetic:model-alpha", reasoningEffort: "low"));
+  });
+
   test("rejects stale selections before the API call", () async {
     final api = _FakeGrokAcpApi();
     final fixture = _service(api: api);
@@ -108,10 +139,19 @@ void main() {
       fixture.service.applyTurnSelection(
         liveClient: _FakeAcpStdioClient(),
         sessionId: "s1",
+        model: const (providerID: "removed-provider", modelID: "synthetic:model-alpha"),
+        variant: null,
+      ),
+      throwsA(isA<PluginStaleOptionsException>()),
+    );
+    await expectLater(
+      fixture.service.applyTurnSelection(
+        liveClient: _FakeAcpStdioClient(),
+        sessionId: "s1",
         model: const (providerID: GrokPluginIdentity.id, modelID: "missing"),
         variant: null,
       ),
-      throwsA(isA<PluginOperationException>()),
+      throwsA(isA<PluginStaleOptionsException>()),
     );
     await expectLater(
       fixture.service.applyTurnSelection(
@@ -120,7 +160,7 @@ void main() {
         model: null,
         variant: const PluginSessionVariant(id: "unknown"),
       ),
-      throwsA(isA<PluginOperationException>()),
+      throwsA(isA<PluginStaleOptionsException>()),
     );
     expect(api.selections, isEmpty);
   });

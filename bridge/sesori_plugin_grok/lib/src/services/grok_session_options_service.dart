@@ -21,6 +21,8 @@ class GrokSessionOptionsService({
 }) {
   static const Duration _selectionTimeout = Duration(seconds: 30);
 
+  String? _processDefaultReasoningEffort;
+
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
@@ -82,26 +84,27 @@ class GrokSessionOptionsService({
   }) async {
     if (model == null && variant == null) return;
     if (model != null && model.providerID != _pluginId) {
-      throw const PluginOperationException(
+      throw const PluginStaleOptionsException(
         GrokSessionConfigRepository.selectionOperation,
-        message: "Requested Grok provider is unavailable",
+        message: "Grok no longer offers the requested provider",
       );
     }
     final catalog = _catalogTracker.snapshot;
     final current = _configurationTracker.snapshotForSession(sessionId: sessionId);
-    final modelId = model?.modelID ?? current.modelId ?? catalog?.currentModel?.id;
-    final catalogModel = modelId == null ? null : catalog?.modelById(id: modelId);
+    final currentModelId = current.modelId;
+    final trackedModel = currentModelId == null ? null : catalog?.modelById(id: currentModelId);
+    final catalogModel = model == null ? trackedModel ?? catalog?.defaultModel : catalog?.modelById(id: model.modelID);
     if (catalogModel == null) {
-      throw const PluginOperationException(
+      throw const PluginStaleOptionsException(
         GrokSessionConfigRepository.selectionOperation,
-        message: "Requested Grok model is unavailable",
+        message: "Grok no longer offers the requested model",
       );
     }
     final reasoningEffort = variant?.id;
     if (reasoningEffort != null && !catalogModel.reasoningEfforts.contains(reasoningEffort)) {
-      throw const PluginOperationException(
+      throw const PluginStaleOptionsException(
         GrokSessionConfigRepository.selectionOperation,
-        message: "Requested Grok reasoning effort is unavailable",
+        message: "Grok no longer offers the requested reasoning effort",
       );
     }
     final selectedModelId = catalogModel.id;
@@ -137,6 +140,7 @@ class GrokSessionOptionsService({
     _catalogTracker.replaceCatalog(catalog: catalog);
     if (!updateProcessDefaults) return;
     final current = catalog.currentModel;
+    _processDefaultReasoningEffort = current?.currentReasoningEffort;
     _configurationTracker.setProcessDefaults(
       modelId: current?.id,
       providerId: current == null ? null : _pluginId,
@@ -148,6 +152,10 @@ class GrokSessionOptionsService({
     final configuredModelId = _configurationTracker.processDefaults.modelId;
     final selected = configuredModelId == null ? null : catalog?.modelById(id: configuredModelId);
     final defaultModel = selected ?? catalog?.defaultModel;
+    final processDefaultReasoningEffort =
+        defaultModel?.reasoningEfforts.contains(_processDefaultReasoningEffort) ?? false
+        ? _processDefaultReasoningEffort
+        : null;
     return PluginSessionOptions(
       agents: [
         PluginAgent(
@@ -158,7 +166,7 @@ class GrokSessionOptionsService({
               : PluginAgentModel(
                   modelID: defaultModel.id,
                   providerID: _pluginId,
-                  variant: defaultModel.currentReasoningEffort,
+                  variant: processDefaultReasoningEffort,
                 ),
           mode: PluginAgentMode.primary,
           hidden: false,
