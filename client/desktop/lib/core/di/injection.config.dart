@@ -28,6 +28,9 @@ import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
     as _i11;
+import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
+import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
+    as _i665;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
@@ -63,6 +66,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(),
+    );
+    gh.lazySingleton<_i316.SystemTray>(
+      () => _i81.FlutterSystemTray(),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i316.DesktopApplicationTerminator>(
+      () => _i665.IoDesktopApplicationTerminator(),
     );
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i91.NoOpAttributionClient(),

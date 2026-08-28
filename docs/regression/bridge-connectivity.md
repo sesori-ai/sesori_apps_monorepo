@@ -71,6 +71,12 @@ explicit restart, and the connection states the app presents.
 - Conversational GUI prompt answers are sent only for a prompt still owned by
   the connected helper and clear that prompt only after the frame is accepted
   by the live control socket. Expected shutdown remains repository-owned.
+- The desktop tray derives its status, active-session count, and On/Off action
+  from the process service and control-status tracker. Quit expected-stops the
+  helper before process exit; a stop failure keeps the desktop alive.
+- Tray initialization failure keeps the desktop window visible. Linux claims a
+  usable tray only when the session bus has a live StatusNotifier watcher, so a
+  stock GNOME session without an AppIndicator host cannot become tray-only.
 
 ## Regression Levels
 
@@ -79,7 +85,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, aggregate status, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, aggregate status, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -121,6 +127,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
   spawning a second helper after manual Start or Off.
 - A stale prompt answer reaching a newer helper, a failed prompt send removing
   the pending prompt, or conversational sends bypassing the command service.
+- A stale tray menu, an invisible Linux tray causing the only window to hide,
+  Quit exiting before helper teardown, or a failed stop still terminating the app.
 
 ## Known Limitations
 

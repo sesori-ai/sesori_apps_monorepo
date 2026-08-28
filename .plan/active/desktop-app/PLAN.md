@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 5/22 (status semantics + dead control-protocol removal)
+- **Status:** Active — step 6/22 (tray + bridge control cubit)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -42,7 +42,7 @@ current `main`:
   `ControlChannelTokenService` (GUI is sole token authority),
   `BridgeControlMessageDispatcher`, `ControlPromptService`,
   `ControlUnregisterService`, `ControlStatusNotifier`, `BridgeIdStorage`,
-  `ControlChannelLossListener`, `SupervisedExitCode { restart(86),
+  `ControlChannelLossListener`, `BridgeSupervisedExitCode { restart(86),
   authRequired(87), bridgeContention(88) }`, self-update disabled when
   supervised, mode-agnostic single-live precedence, relay takeover close code
   4007, and the `tool/dev_control_host.dart` harness. Wired once at
