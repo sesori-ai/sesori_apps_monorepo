@@ -20,9 +20,12 @@ class const ProjectGlossaryTermCalculator() {
     r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
   );
+  static const String _credentialXmlNamePattern =
+      r"(?:[A-Za-z_][A-Za-z0-9]*[.:\-_])*(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)"
+      r"(?:[.:\-_][A-Za-z0-9_-]+)*";
   static final RegExp _credentialXmlElementPattern = RegExp(
-    r'''<(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)\b[^>]*'''
-    r'''(?:/>|>[\s\S]*?</(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)\s*>)''',
+    "<$_credentialXmlNamePattern(?=\\s|/?>)[^>]*"
+    "(?:/>|>[\\s\\S]*?</$_credentialXmlNamePattern\\s*>)",
     caseSensitive: false,
   );
   static final RegExp _authorizationCredentialPattern = RegExp(

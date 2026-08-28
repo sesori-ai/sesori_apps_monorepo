@@ -51,6 +51,8 @@ void main() {
           '''{"Authorization":"CustomScheme customCredentialValue123"}''',
           '''<server><password>CorrectHorse</password><credential value="AttributeSecretValue"/></server>''',
           "<api-key>Azure Falcon Battery</api-key>",
+          "<db.password>DottedSecretValue</db.password>",
+          "<mvn:server.password>Quartz Meadow Cedar</mvn:server.password>",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -80,6 +82,10 @@ void main() {
       "Azure",
       "Falcon",
       "Battery",
+      "DottedSecretValue",
+      "Quartz",
+      "Meadow",
+      "Cedar",
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
