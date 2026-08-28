@@ -5,6 +5,8 @@ import "../api/grok_acp_api.dart";
 
 /// Validates and delegates exact Grok session-local model writes.
 class GrokSessionConfigRepository({required final GrokAcpApi _api}) {
+  static const String selectionOperation = GrokAcpApi.sessionSetModelMethod;
+
   Future<void> setSelection({
     required AcpStdioClient liveClient,
     required String sessionId,
@@ -14,7 +16,7 @@ class GrokSessionConfigRepository({required final GrokAcpApi _api}) {
   }) async {
     if (sessionId.isEmpty || modelId.isEmpty || (reasoningEffort?.isEmpty ?? false)) {
       throw const PluginOperationException(
-        GrokAcpApi.sessionSetModelMethod,
+        selectionOperation,
         message: "Grok selection values must not be empty",
       );
     }
@@ -29,7 +31,7 @@ class GrokSessionConfigRepository({required final GrokAcpApi _api}) {
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
         PluginOperationException(
-          GrokAcpApi.sessionSetModelMethod,
+          selectionOperation,
           message: "Grok rejected the requested session options",
           cause: error,
         ),

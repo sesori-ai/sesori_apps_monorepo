@@ -2,7 +2,6 @@ import "package:acp_plugin/acp_plugin.dart"
     show AcpCommandTracker, AcpInitializeResult, AcpNewSessionResult, AcpSessionConfigurationTracker, AcpStdioClient;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../api/grok_acp_api.dart";
 import "../models/grok_model_catalog.dart";
 import "../repositories/grok_catalog_repository.dart";
 import "../repositories/grok_session_config_repository.dart";
@@ -84,7 +83,7 @@ class GrokSessionOptionsService({
     if (model == null && variant == null) return;
     if (model != null && model.providerID != _pluginId) {
       throw const PluginOperationException(
-        GrokAcpApi.sessionSetModelMethod,
+        GrokSessionConfigRepository.selectionOperation,
         message: "Requested Grok provider is unavailable",
       );
     }
@@ -94,14 +93,14 @@ class GrokSessionOptionsService({
     final catalogModel = modelId == null ? null : catalog?.modelById(id: modelId);
     if (catalogModel == null) {
       throw const PluginOperationException(
-        GrokAcpApi.sessionSetModelMethod,
+        GrokSessionConfigRepository.selectionOperation,
         message: "Requested Grok model is unavailable",
       );
     }
     final reasoningEffort = variant?.id;
     if (reasoningEffort != null && !catalogModel.reasoningEfforts.contains(reasoningEffort)) {
       throw const PluginOperationException(
-        GrokAcpApi.sessionSetModelMethod,
+        GrokSessionConfigRepository.selectionOperation,
         message: "Requested Grok reasoning effort is unavailable",
       );
     }
