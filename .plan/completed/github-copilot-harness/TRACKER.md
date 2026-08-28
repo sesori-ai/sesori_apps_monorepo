@@ -15,15 +15,23 @@ Plan: [PLAN.md](PLAN.md)
 - [x] **Step 3/7** — `⚙️ [github-copilot-harness] feat(copilot): add runtime setup and lifecycle [step 3/7]`
   - State: merged
   - PR: [#1158](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1158)
-  - Evidence: 5 Copilot package tests, 266 shared ACP tests, and 47 focused app tests pass; owning analyzers report no issues; Makefile verification includes the package; live `1.0.80` probes confirmed authenticated scratch discovery and `session/set_config_option`; architecture implementation review passed
+  - Evidence: 5 Copilot package tests, 266 shared ACP tests, and 47 focused app
+    tests pass; owning analyzers report no issues; Makefile verification includes
+    the package; live `1.0.80` probes confirmed authenticated scratch discovery
+    and `session/set_config_option`; architecture implementation review passed
 - [x] **Step 4/7** — `⚙️ [github-copilot-harness] feat(copilot): install the managed Copilot CLI [step 4/7]`
   - State: merged
   - PR: [#1159](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1159)
-  - Evidence: 13 package tests pass; analyzer reports no issues; all six official `1.0.80` asset names and SHA-256 digests match the GitHub release API; architecture implementation review passed
+  - Evidence: 13 package tests pass; analyzer reports no issues; all six official
+    `1.0.80` asset names and SHA-256 digests match the GitHub release API;
+    architecture implementation review passed
 - [x] **Step 5/7** — `⚙️ [github-copilot-harness] feat(app): activate and brand GitHub Copilot [step 5/7]`
   - State: merged
   - PR: [#1161](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1161)
-  - Evidence: bridge app analyzer and 6 focused registration/CLI tests pass; shared analyzer and 8 plugin-identity compatibility tests pass; module_prego analyzer and 24 branding/fallback tests pass; downstream mobile analyzer reports no issues; architecture implementation review passed
+  - Evidence: bridge app analyzer and 6 focused registration/CLI tests pass;
+    shared analyzer and 8 plugin-identity compatibility tests pass; module_prego
+    analyzer and 24 branding/fallback tests pass; downstream mobile analyzer
+    reports no issues; architecture implementation review passed
 - [x] **Step 6/7** — `🌱 [github-copilot-harness] docs: document Copilot regression coverage [step 6/7]`
   - State: merged
   - PR: [#1163](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1163)
@@ -36,7 +44,8 @@ Plan: [PLAN.md](PLAN.md)
   - State: completed on `github-copilot-harness/step-7-verify-retire`; the
     duplicate cold replay blocker was fixed in #1171 and targeted verification passed
   - PR: [#1176](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1176)
-  - Evidence: see the privacy-safe matrix below; unavailable environmental variants remain recorded as accepted Partial coverage
+  - Evidence: see the privacy-safe matrix below; every unexecuted requirement
+    remains recorded as accepted Partial coverage
 
 ## Decisions
 
@@ -47,8 +56,11 @@ Plan: [PLAN.md](PLAN.md)
 - Keep Copilot `ask_user` unsupported until upstream forwards it over ACP.
 - Map standard Copilot model, mode, and thought-level options; keep its permission config backend-private.
 - Do not read Copilot credential or private session files.
-- Do not bundle Copilot binaries; managed installation downloads the official unmodified asset directly from GitHub after explicit user intent.
-- Fix the sole release-blocking replay failure before retirement; accept the unavailable host/profile/version variants as honest non-blocking Partial coverage after affected checks pass.
+- Do not bundle Copilot binaries; managed installation downloads the official
+  unmodified asset directly from GitHub after explicit user intent.
+- Fix the sole release-blocking replay failure before retirement; by directing
+  retirement after only affected replay checks, the owner accepted every
+  remaining unexecuted requirement as honest non-blocking Partial coverage.
 
 ## Step 7 Verification Evidence
 
@@ -62,25 +74,26 @@ Execution date: 2026-08-28.
 - Client: Flutter debug build on the `sesori-dev-1` iPhone 17 simulator,
   iOS 26.5; traffic traversed client → relay → isolated slot-1 bridge → Copilot.
 - Account: an already authenticated Copilot entitlement was used without
-  inspecting identity, tier, credentials, settings, or private history. It
-  advertised Agent, Plan, and Autopilot modes plus 38 commands, but no selectable
-  model or reasoning catalog.
+  inspecting identity, tier, credentials, settings, or private history. The
+  account type is therefore an accepted coverage omission. It advertised Agent,
+  Plan, and Autopilot modes plus 38 commands, but no selectable model or
+  reasoning catalog.
 - Privacy: repository evidence contains no prompts, transcripts, paths, tokens,
   account/session identifiers, image bytes, or raw logs.
 
 | Matrix row | Result | Privacy-safe evidence |
 |---|---|---|
-| Plugin runtime installation | **Pass** | Client install progressed from missing runtime to ready/active `1.0.80`; official metadata matched all six archives; compatible PATH won over managed selection; explicit current, too-old, and unbranded executables classified correctly; checksum failure, cancellation, placement, provisioning, and superseded cleanup automation passed. |
+| Plugin runtime installation | **Partial** | Client install progressed from missing runtime to ready/active `1.0.80`; official metadata matched all six archives; compatible PATH won over managed selection; explicit current, too-old, and unbranded executables classified correctly; checksum failure, cancellation, placement, provisioning, and superseded cleanup automation passed. Malformed branded version output was not exercised. |
 | Plugin setup and lifecycle | **Partial** | Missing/managed/PATH/explicit/too-old/unrecognized setup, capability gating, enable/disable/restart, plugin-local SIGKILL degradation, demand reconnect, clean shutdown, and another harness remaining available passed. A live unauthenticated normal profile and alternate host were unavailable. |
-| Projects and sessions | **Partial** | Explicit import and unchanged re-import completed, normal reads stayed database-only while Copilot was disabled, and local attribution remained `copilot`. The live catalog fit one page; cancellation and later-page fail-soft behavior remained automated-only. |
+| Projects and sessions | **Partial** | Explicit import and unchanged re-import completed, normal reads stayed database-only while Copilot was disabled, and local attribution remained `copilot`. The live catalog fit one page; live cancellation, first-page failure, and later-page fail-soft behavior were not all exercised and remained automated-only where covered. |
 | Session creation and options | **Pass** | The phone created a dedicated Copilot session; Agent and Plan applied and persisted; an exact advertised command executed. No model/reasoning values were invented when this account advertised none; automated stale-selection, model-specific reasoning, no-mode, and authentication failure coverage passed. |
 | Session turns | **Pass** | Phone-visible text, tools, statuses, exact command, two simultaneously busy sessions, queued-prompt cancellation, abort cleanup, and a selected mode change passed. No reasoning was emitted by the available implicit model, which is not a failure under the documented boundary. |
-| Session history and recovery | **Pass** | Plugin restart and unexpected process replacement recovered in the full run. After #1171, a fresh three-message live tool transcript retained the identical semantic multiset after a clean bridge restart and first cold read, with zero extra duplicates. |
+| Session history and recovery | **Partial** | Plugin restart and unexpected process replacement recovered in the full run. After #1171, a fresh three-message live tool transcript retained the identical semantic multiset after a clean bridge restart and first cold read, with zero extra duplicates. A greater-than-50-message client flow covering backward pagination, continuation, and cold reopen was not exercised live. |
 | Questions and permissions | **Pass** | A real Copilot permission exposed Once, Reject, and Always; each outcome behaved correctly, rejection prevented mutation, abort retired a pending request, and no question capability was claimed. Copilot clarification arrived as normal text, consistent with the upstream `ask_user` limitation. |
 | Attachments and images | **Partial** | The phone sent a 64×64 single-color PNG and Copilot identified it correctly. No model/account rejection was available to exercise. |
-| Tools and file changes | **Pass** | Live completed and aborted tools, permission linkage, exact workspace mutation, and the phone's one-file `+1/-0` diff passed. After #1171, one terminal live tool remained one terminal tool after cold replay; the three-message semantic multiset and one-file `+1/-0` diff were unchanged. |
+| Tools and file changes | **Partial** | Live completed and aborted tools, permission linkage, exact workspace mutation, and the phone's one-file `+1/-0` diff passed. After #1171, one terminal live tool remained one terminal tool after cold replay; the three-message semantic multiset and one-file `+1/-0` diff were unchanged. A live read-only tool with a negative file-change observation was not exercised. |
 | Session archiving and deletion | **Partial** | Local deletion removed one session and its clean dedicated worktree; explicit re-import did not resurrect it. Standard close removed it from the public ACP catalog, so the tombstone was not challenged by a still-listed row and private retained history was not inspected. |
-| Compatibility and branding | **Partial** | Automated unknown-id fallback and both theme assets passed; the phone rendered the exact GitHub Copilot name and white Primer icon in dark mode. An older-client/older-bridge build pair was unavailable. |
+| Compatibility and branding | **Partial** | Automated unknown-id fallback and both theme assets passed; the phone rendered the exact GitHub Copilot name and white Primer icon in dark mode. Light-theme client rendering and an older-client/older-bridge build pair were not exercised. |
 
 Automated verification passed with no analyzer issues: 13 Copilot tests, 267
 shared ACP tests, 45 managed-runtime tests, 177 focused bridge-app tests, 26
@@ -98,5 +111,9 @@ close but no delete operation.
 ## Review And Verification
 
 - Architecture plan review: approved after clarifying ACP lifecycle and bridge/client/shared ownership
-- Architecture implementation review: required after each architecture-bearing implementation step, scoped to that step's branch against its target
-- Final regression matrix: executed; both replay Fail rows passed after #1171, and the owner accepted the unavailable environmental variants as non-blocking Partial coverage for retirement
+- Architecture implementation review: required after each architecture-bearing
+  implementation step, scoped to that step's branch against its target
+- Final regression matrix: executed; #1171 resolved both replay failures, and
+  the owner accepted every explicitly recorded unexecuted requirement as
+  non-blocking Partial coverage by directing retirement after only affected
+  replay checks

@@ -214,11 +214,15 @@ concurrent sessions, queued-prompt cancellation, abort, Once/Reject/Always
 permissions, pending-permission abort cleanup, accepted image input, client
 diffs, plugin-local crash/reconnect, clean shutdown, and local deletion. The
 owner directed retirement after fixing the sole release blocker and rerunning
-only affected coverage. Unavailable variants remain honestly Partial as
-non-blocking environmental gaps: alternate bridge host, older client/bridge
-pair, unauthenticated normal Copilot profile, multi-page live catalog, a
-model/account image rejection, and direct observation of retained private
-Copilot history. No product failure remains.
+only affected coverage, thereby accepting the remaining unexecuted requirements
+as non-blocking Partial coverage. Those reductions are: alternate bridge host;
+older client/bridge pair; account type; unauthenticated normal Copilot profile;
+malformed branded version output; live catalog cancellation and first-page
+failure; multi-page live catalog failure; a greater-than-50-message client
+pagination, continuation, and cold-reopen flow; a model/account image rejection;
+a read-only tool with a negative file-change observation; light-theme client
+branding; and direct observation of retained private Copilot history. No
+product failure remains.
 
 ## Risks And Test Focus
 
