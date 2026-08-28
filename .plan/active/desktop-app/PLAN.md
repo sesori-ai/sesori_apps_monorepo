@@ -105,7 +105,11 @@ change in this plan is step 5 (status semantics + dead-protocol removal).
 | C10 | `SystemTray`/`WindowHost`/`LaunchAtLogin` are dumb Layer-0 adapters in `module_desktop_core` with shell implementations; Layer-4 cubits drive them. If the OS tray is unavailable (stock GNOME), fall back to windowed mode and never boot hidden. |
 | C11 | Desktop uninstall/reset (distribution plan) may touch only desktop-owned state; `token.json` and the managed runtime roots are shared with the standalone CLI. Desktop-namespaced GUI state from day one. |
 | C12 | `module_desktop_core` layering: `foundation` → `api` → `repositories`/`trackers` → `services` → `control`/`cubits`; dispatchers write down into trackers; cubits read trackers; no same-layer service deps (Layer-4 orchestrators compose services). Cubits are shell-constructed, not DI-registered. |
-| C13 | Desktop mirrors `sesori_bridge_foundation` primitives (process executor, download/checksum/archive) as patterns; it never imports bridge-workspace code. |
+| C13 | Desktop mirrors `sesori_bridge_foundation` primitives (process executor, download/checksum/archive) as patterns; it never imports bridge-workspace code (each side opens browsers/URLs through its own adapter). |
+
+Legacy `ADR A*` identifiers still cited in code comments and tests map here
+(the superseded plan's docs were deleted): A4→C4, A8→C3, A9→C6, A11→C13,
+A13→C8, A22→C9.
 
 ## Architecture
 
@@ -162,7 +166,11 @@ the process API**: spawn, graceful-signal/kill, exit stream, raw stdio
 hand-off, the expected-exit marker, and the atomic expected-stop operation
 (mark + graceful signal together, with a bounded grace deadline and a kill
 fallback that preserves the marker — a helper that hangs in teardown can
-never block Off/Quit or leave an orphan). Services never call the process API
+never block Off/Quit or leave an orphan). The grace deadline strictly exceeds
+the bridge's own bounded shutdown (phase budgets + backstop slack + emergency
+disposal cap) so the fallback never preempts the helper's plugin disposal,
+and the kill terminates the helper's process tree/group, not just its PID —
+otherwise backend processes outlive a forced stop. Services never call the process API
 directly
 (mirrors the `AppUpdater → AppUpdateApi → AppUpdateRepository` precedent in
 this package's docs). Plus Layer 2
@@ -253,10 +261,12 @@ adapter; close hides, quit matches tray semantics. Prego theme adoption in the
 desktop shell via a small theme-assembly helper **added to `module_prego`**
 (the terminal owner: `ThemeData` from `PregoColors`/`PregoTextTheme` +
 extensions); step 14 converges `client/app` on the same helper. Window
-contents v1: account + sign-out (interim semantics: stop the helper via
-expected-stop **before** the local sign-out, so a signed-out GUI never leaves
-a running helper holding a usable token; full coordinated logout with
-unregister arrives in step 11), bridge on/off, status (relay /
+contents v1: account + sign-out — introduces **`DesktopLogoutOrchestrator`**
+(Layer 4) with the interim sequence: stop the helper via expected-stop
+**before** the local sign-out, so a signed-out GUI never leaves a running
+helper holding a usable token (cubits/shell never sequence services
+themselves; step 11 extends this same orchestrator with unregister
+coordination) — bridge on/off, status (relay /
 registration / plugin health / session count / takeover / login-required /
 crash give-up with recent log lines), open-logs affordance. Creates
 `docs/regression/desktop-bridge-supervision.md`.
@@ -292,8 +302,12 @@ focuses the first; stale-lock recovery after a GUI crash. Layer-4
 last-on bridge behind the auth gate (no same-layer service deps).
 
 **Step 10 — 🚧 `module_auth` logout/rejection hardening (approved refactor
-R1).** A logout generation checked before any async persist/emit (kills the
-restore-after-logout re-save race), and `/auth/refresh` 4xx-rejection
+R1).** A logout generation enforced **atomically around persistence**, not
+just checked before it: token persistence goes through a single seam that
+rechecks the generation after the awaited storage writes and clears them on
+mismatch (or serializes persistence with logout) — a pre-check alone leaves a
+window across `saveTokens()`'s two awaited writes. Kills the
+restore-after-logout re-save race. Also `/auth/refresh` 4xx-rejection
 distinguished from transport failure (a definitive rejection clears the
 persisted tokens/user **before** emitting `unauthenticated`, so a relaunch
 cannot restore the revoked account — covered by a relaunch test; offline
@@ -311,9 +325,12 @@ desktop-owned `BridgeIdStore` (step-2 storage pattern) written by
 `BridgeStatusTracker` on the `registered` event down the existing
 dispatcher→tracker path, seeded from disk at startup so a GUI relaunch with a
 dead helper still knows what to delete. **`DesktopLogoutOrchestrator`**
-(Layer 4) composes `ControlCommandService` (`unregister_and_exit` send),
-`BridgeProcessService` (bounded wait → kill if needed), `BridgeRepository.
-deleteBridge` (dead/absent-helper fallback using the persisted id), and
+(extending the step-7 orchestrator) composes `ControlCommandService`
+(`unregister_and_exit` send), `BridgeProcessService` (bounded wait → kill if
+needed), `BridgeRepository.deleteBridge` — attempted **always**, not only for
+a dead helper: the helper's own unregister failure is swallowed by design and
+unacknowledged, so the idempotent persisted-id deletion (404 = success) is
+what actually guarantees no leaked registration — and
 `AuthSession.logoutCurrentDevice()` (safe against late restores per step 10).
 Every network step is best-effort with a bounded timeout; logout always
 completes offline, then clears local tokens only (never account-wide).
@@ -356,7 +373,10 @@ client coexist; no second reconnect driver).
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
 `build_context_x` extensions; `client/app` consumes them from the package and
 converges on the `module_prego` theme-assembly helper from step 7 (~70-file
-mechanical import churn). Desktop CI path filters
+mechanical import churn). The **desktop shell also wires the package here**:
+dependency, `localizationsDelegates` + `supportedLocales` on its root app —
+`context.loc` throws without them, and step 15's shared screens are the first
+desktop consumers. Desktop CI path filters
 gain `client/module_app_ui/**`; mobile CI gains the package's analyze/test.
 *Overage: mechanical move churn.*
 
@@ -365,8 +385,12 @@ constructor/BlocProvider, navigation via callbacks, shell links/`package_info`
 behind injected strategies; notification prefs stay a mobile-injected
 section), move settings + harnesses screens to `module_app_ui`, render in the
 desktop window: setup states, enable/disable/restart, install with SSE
-progress, harness login, idle policy, catalog rescan. **This delivers desktop
-onboarding.** Mobile behavior unchanged.
+progress, harness login, idle policy, catalog rescan. The moved surface's
+logout action becomes an **injected strategy**: mobile keeps the direct
+`SettingsCubit.logout()` behavior; desktop routes it through
+`DesktopLogoutOrchestrator` so cockpit sign-out never bypasses helper
+stop/unregister. **This delivers desktop onboarding.** Mobile behavior
+unchanged.
 
 **Step 16 — 🚧 Project list + session list slice + desktop offline strategy.**
 Decouple and move both lists (incl. `session_split`). Bridge-offline /
@@ -378,7 +402,11 @@ install copy + `reconnectBridge()`; desktop offers **Start the bridge** (drives
 **Step 17 — 🚧 Session detail: transcript slice.** Move the
 transcript/rendering half (streaming messages, markdown/code, tool parts,
 subtask tiles, queued-prompt rendering, permission/question surfaces) with
-decoupling as in step 15. Coordinate with the in-flight `claude-inline-subtasks`
+decoupling as in step 15. The desktop shell registers the image-action seams
+this slice resolves (`ImageSaver`/`ImageClipboard`/`ImageSharer` — the mobile
+shell already has desktop-aware `ImageSaver` selection to reuse), or the
+affected actions hide behind explicit capabilities — no dead controls, no
+missing-registration crashes. Coordinate with the in-flight `claude-inline-subtasks`
 series (rebase order agreed at implementation time). *Overage: mechanical move
 churn.*
 
