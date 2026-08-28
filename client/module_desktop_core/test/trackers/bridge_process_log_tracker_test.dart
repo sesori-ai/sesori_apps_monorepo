@@ -20,6 +20,7 @@ void main() {
       tracker = BridgeProcessLogTracker.forTesting(
         storage: storage,
         maxEntries: 2,
+        maxPendingPersistenceEntries: 3,
         storageWarningInterval: const Duration(minutes: 1),
         now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
@@ -58,9 +59,9 @@ void main() {
         ]),
       );
       expect(tracker.snapshots.value, tracker.snapshot);
-      expect(storage.lines, hasLength(3));
-      expect(storage.lines.first, contains("[stdout] hello"));
-      expect(storage.lines.last, contains("[stderr] error"));
+      expect(storage.logicalLines, hasLength(3));
+      expect(storage.logicalLines.first, contains("[stdout] hello"));
+      expect(storage.logicalLines.last, contains("[stderr] error"));
     });
 
     test("malformed bytes cannot stop the pipe drain", () async {
@@ -73,7 +74,7 @@ void main() {
       await pumpEventQueue();
 
       expect(tracker.snapshot.map((entry) => entry.message), containsAll(<String>["�", "after"]));
-      expect(storage.lines, hasLength(2));
+      expect(storage.logicalLines, hasLength(2));
     });
 
     test("storage failures are rate-limited and never stop capture", () async {
@@ -101,6 +102,32 @@ void main() {
       expect(tracker.snapshot.map((entry) => entry.message), ["three", "four"]);
     });
 
+    test("bounds queued persistence and batches the newest pending lines", () async {
+      final Completer<void> releaseWrite = Completer<void>();
+      storage.writeGate = releaseWrite.future;
+      await tracker.attach(stdout: stdout.stream, stderr: stderr.stream);
+
+      for (int index = 0; index < 10; index++) {
+        stdout.add(utf8.encode("line-$index\n"));
+      }
+      await pumpEventQueue();
+
+      expect(storage.attempts, 1);
+      expect(tracker.snapshot.map((entry) => entry.message), ["line-8", "line-9"]);
+      expect(warnings, hasLength(1));
+
+      releaseWrite.complete();
+      await pumpEventQueue();
+
+      expect(storage.attempts, 2);
+      expect(storage.logicalLines, hasLength(4));
+      expect(storage.logicalLines.first, endsWith("line-0"));
+      expect(
+        storage.logicalLines.skip(1),
+        everyElement(anyOf(endsWith("line-7"), endsWith("line-8"), endsWith("line-9"))),
+      );
+    });
+
     test("attaching a new process cancels the old pipe subscriptions", () async {
       await tracker.attach(stdout: stdout.stream, stderr: stderr.stream);
       final StreamController<List<int>> replacementStdout = StreamController<List<int>>(sync: true);
@@ -122,10 +149,17 @@ class _RecordingLogStorage() implements BridgeProcessLogStorage {
   final List<String> lines = <String>[];
   int attempts = 0;
   Object? error;
+  Future<void>? writeGate;
+
+  List<String> get logicalLines => lines.expand((chunk) => chunk.split("\n")).toList(growable: false);
 
   @override
   Future<void> appendLine({required String line}) async {
     attempts++;
+    final Future<void>? gate = writeGate;
+    if (gate != null) {
+      await gate;
+    }
     final Object? failure = error;
     if (failure != null) {
       throw failure;

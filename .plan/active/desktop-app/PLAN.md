@@ -194,7 +194,7 @@ rotation/replacement — helper output carries paths/identifiers/errors,
 mirroring the bridge's data-directory hardening; a storage write failure is
 caught and logged **rate-limited** by the tracker — a persistently unwritable
 disk must not turn every helper line into a warning — and never stops the
-drain). Pure Dart, fully unit-tested. *Overage: ~1.6k changed lines including
+drain). Pure Dart, fully unit-tested. *Overage: ~1.8k changed lines including
 generated control-union code and focused process, repository, storage, and
 pipe-drain test suites; the atomic stop and non-blocking log contracts land as
 one cohesive boundary.*

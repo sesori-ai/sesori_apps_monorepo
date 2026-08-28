@@ -99,6 +99,46 @@ void main() {
       expect(await exit, const BridgeProcessExit(pid: 123, exitCode: -9, expected: true));
     });
 
+    test("a failed stop can be retried while the same child remains active", () async {
+      await _spawn(repository);
+      final Future<BridgeProcessExit> exit = repository.exits.first;
+      controlServer.sendError = const ControlHelperNotConnectedException();
+      processApi.gracefulSignalResult = false;
+      processApi.killError = StateError("taskkill failed");
+
+      await expectLater(repository.stopExpected(), throwsA(isA<StateError>()));
+      expect(repository.isRunning, isTrue);
+
+      processApi.killError = null;
+      processApi.onKill = () {
+        fixture.exitCode.complete(-9);
+      };
+      await repository.stopExpected();
+
+      expect(processApi.killedTreePids, [123, 123]);
+      expect((await exit).expected, isTrue);
+    });
+
+    test("a stalled process-tree kill is bounded and remains retryable", () async {
+      await _spawn(repository);
+      final Future<BridgeProcessExit> exit = repository.exits.first;
+      controlServer.sendError = const ControlHelperNotConnectedException();
+      processApi.gracefulSignalResult = false;
+      processApi.killFuture = Completer<void>().future;
+
+      await expectLater(repository.stopExpected(), throwsA(isA<TimeoutException>()));
+      expect(repository.isRunning, isTrue);
+
+      processApi.killFuture = null;
+      processApi.onKill = () {
+        fixture.exitCode.complete(-9);
+      };
+      await repository.stopExpected();
+
+      expect(processApi.killedTreePids, [123, 123]);
+      expect((await exit).expected, isTrue);
+    });
+
     test("a helper that exceeds the graceful deadline is tree-killed without losing the marker", () async {
       await _spawn(repository);
       final Future<BridgeProcessExit> exit = repository.exits.first;
@@ -165,6 +205,8 @@ class _FakeBridgeProcessApi({required final BridgeProcessApiHandle handle}) impl
   bool gracefulSignalResult = true;
   void Function()? onGracefulSignal;
   void Function()? onKill;
+  Object? killError;
+  Future<void>? killFuture;
 
   @override
   Future<BridgeProcessApiHandle> spawn({
@@ -184,7 +226,15 @@ class _FakeBridgeProcessApi({required final BridgeProcessApiHandle handle}) impl
   @override
   Future<void> killProcessTree({required int pid}) async {
     killedTreePids.add(pid);
+    final Object? failure = killError;
+    if (failure != null) {
+      throw failure;
+    }
     onKill?.call();
+    final Future<void>? pending = killFuture;
+    if (pending != null) {
+      await pending;
+    }
   }
 }
 

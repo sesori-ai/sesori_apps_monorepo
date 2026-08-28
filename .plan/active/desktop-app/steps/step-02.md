@@ -15,12 +15,15 @@ Date: 2026-08-28.
   exit events with an expected marker, and an idempotent atomic expected stop
   that marks before sending `shutdown`, falls back to POSIX SIGTERM when the
   channel is absent, waits beyond the bridge's complete teardown/backstop
-  budget, and tree-kills without losing the marker.
+  budget, bounds the force-kill command and exit wait, permits a failed stop to
+  be retried while the child remains active, and tree-kills without losing the
+  marker.
 - Added desktop-owned rotating helper logs: a shell-provided application-support
   directory seam, Layer-1 `BridgeProcessLogStorage` with a 5 MiB active-file cap
   plus one rotation and POSIX 0700/0600 hardening, and Layer-2
   `BridgeProcessLogTracker` with malformed-UTF-8-tolerant continuous pipe drain,
-  a last-200 ring buffer, snapshots, and rate-limited persistence warnings.
+  a last-200 ring buffer, snapshots, a bounded/batched persistence queue, and
+  rate-limited persistence and overflow warnings.
 - Registered the new boundaries in desktop phase-1 / desktop-core phase-4 DI
   and exported their public contracts.
 
@@ -31,7 +34,7 @@ spawn and handshake remain step 3.
 
 Actual implementation complexity was revised from `⚙️` to `🚧`: the cohesive
 change crosses a shared wire contract, bridge lifecycle composition, OS process
-control, secure persistence, and desktop DI. The ~1.6k-line soft-cap overage is
+control, secure persistence, and desktop DI. The ~1.8k-line soft-cap overage is
 recorded in `PLAN.md`; generated union code and focused primitive tests account
 for the excess.
 
@@ -44,7 +47,7 @@ and class cohesion all match the plan.
 ## Verification
 
 - `client/module_desktop_core`: `dart analyze --fatal-infos` — clean.
-- `client/module_desktop_core`: `dart test` — 72 tests passed.
+- `client/module_desktop_core`: `dart test` — 75 tests passed.
 - `shared/sesori_shared`: `dart analyze --fatal-infos` — clean.
 - `shared/sesori_shared`: `dart test test/protocol/control_message_test.dart` —
   18 tests passed.

@@ -122,7 +122,20 @@ class BridgeProcessRepository.forTesting({
     if (active == null) {
       return Future<void>.value();
     }
-    return active.stopFuture ??= _stopExpected(active: active);
+    return active.stopFuture ??= _runStopExpected(active: active);
+  }
+
+  Future<void> _runStopExpected({required _ActiveBridgeProcess active}) async {
+    try {
+      await _stopExpected(active: active);
+    } on Object {
+      // Keep concurrent callers on one atomic stop attempt, but do not let one
+      // failed platform command permanently poison future Off/Quit retries.
+      if (identical(_active, active)) {
+        active.stopFuture = null;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _stopExpected({required _ActiveBridgeProcess active}) async {
@@ -173,7 +186,7 @@ class BridgeProcessRepository.forTesting({
   }
 
   Future<void> _forceKillAndWait({required _ActiveBridgeProcess active}) async {
-    await _processApi.killProcessTree(pid: active.handle.pid);
+    await _processApi.killProcessTree(pid: active.handle.pid).timeout(_forcedExitTimeout);
     await active.handle.exitCode.timeout(_forcedExitTimeout);
   }
 

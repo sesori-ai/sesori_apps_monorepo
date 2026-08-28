@@ -42,6 +42,7 @@ typedef BridgeProcessLogWarningReporter = void Function({
 class BridgeProcessLogTracker.forTesting({
   required final BridgeProcessLogStorage _storage,
   required final int _maxEntries,
+  required final int _maxPendingPersistenceEntries,
   required final Duration _storageWarningInterval,
   required final DateTime Function() _now,
   required final BridgeProcessLogWarningReporter _reportWarning,
@@ -50,23 +51,29 @@ class BridgeProcessLogTracker.forTesting({
     : this.forTesting(
         storage: storage,
         maxEntries: defaultMaxEntries,
+        maxPendingPersistenceEntries: defaultMaxPendingPersistenceEntries,
         storageWarningInterval: defaultStorageWarningInterval,
         now: DateTime.now,
         reportWarning: _logWarning,
       );
 
   @visibleForTesting
-  this : assert(_maxEntries > 0, "maxEntries must be positive");
+  this
+    : assert(_maxEntries > 0, "maxEntries must be positive"),
+      assert(_maxPendingPersistenceEntries > 0, "maxPendingPersistenceEntries must be positive");
 
   static const int defaultMaxEntries = 200;
+  static const int defaultMaxPendingPersistenceEntries = 200;
   static const Duration defaultStorageWarningInterval = Duration(minutes: 1);
 
   final ListQueue<BridgeProcessLogEntry> _entries = ListQueue<BridgeProcessLogEntry>();
+  final ListQueue<BridgeProcessLogEntry> _pendingPersistenceEntries = ListQueue<BridgeProcessLogEntry>();
   final BehaviorSubject<List<BridgeProcessLogEntry>> _entrySnapshots =
       BehaviorSubject<List<BridgeProcessLogEntry>>.seeded(const <BridgeProcessLogEntry>[]);
-  final Set<Future<void>> _pendingPersistence = <Future<void>>{};
   CompositeSubscription _subscriptions = CompositeSubscription();
+  Future<void>? _persistenceDrain;
   DateTime? _nextStorageWarningAt;
+  DateTime? _nextQueueWarningAt;
 
   List<BridgeProcessLogEntry> get snapshot => List<BridgeProcessLogEntry>.unmodifiable(_entries);
 
@@ -113,18 +120,39 @@ class BridgeProcessLogTracker.forTesting({
     }
     _entrySnapshots.add(snapshot);
 
-    final Future<void> persistence = _persist(entry: entry);
-    _pendingPersistence.add(persistence);
-    unawaited(
-      persistence.whenComplete(() {
-        _pendingPersistence.remove(persistence);
-      }),
-    );
+    if (_pendingPersistenceEntries.length >= _maxPendingPersistenceEntries) {
+      _pendingPersistenceEntries.removeFirst();
+      _reportQueueOverflow();
+    }
+    _pendingPersistenceEntries.addLast(entry);
+    _persistenceDrain ??= _drainPersistence();
   }
 
-  Future<void> _persist({required BridgeProcessLogEntry entry}) async {
+  /// Persists at most one in-flight batch while retaining a bounded queue for
+  /// output that arrives during the write. One storage flush can therefore
+  /// cover the entire backlog, and a verbose helper cannot build an unbounded
+  /// future chain or make disposal await one write per captured line.
+  Future<void> _drainPersistence() async {
     try {
-      await _storage.appendLine(line: _format(entry: entry));
+      while (_pendingPersistenceEntries.isNotEmpty) {
+        final List<BridgeProcessLogEntry> batch = List<BridgeProcessLogEntry>.of(
+          _pendingPersistenceEntries,
+          growable: false,
+        );
+        _pendingPersistenceEntries.clear();
+        await _persist(entries: batch);
+      }
+    } finally {
+      _persistenceDrain = null;
+      if (_pendingPersistenceEntries.isNotEmpty) {
+        _persistenceDrain = _drainPersistence();
+      }
+    }
+  }
+
+  Future<void> _persist({required List<BridgeProcessLogEntry> entries}) async {
+    try {
+      await _storage.appendLine(line: entries.map((entry) => _format(entry: entry)).join("\n"));
       _nextStorageWarningAt = null;
     } on Object catch (error, stackTrace) {
       final DateTime now = _now();
@@ -140,6 +168,20 @@ class BridgeProcessLogTracker.forTesting({
     }
   }
 
+  void _reportQueueOverflow() {
+    final DateTime now = _now();
+    final DateTime? nextWarningAt = _nextQueueWarningAt;
+    if (nextWarningAt != null && now.isBefore(nextWarningAt)) {
+      return;
+    }
+    _nextQueueWarningAt = now.add(_storageWarningInterval);
+    _reportWarning(
+      message: "Supervised bridge output exceeded the bounded persistence queue; dropping oldest pending lines",
+      error: StateError("Bridge log persistence queue reached $_maxPendingPersistenceEntries entries"),
+      stackTrace: StackTrace.current,
+    );
+  }
+
   static String _format({required BridgeProcessLogEntry entry}) =>
       "${entry.timestamp.toUtc().toIso8601String()} [${entry.source.name}] ${entry.message}";
 
@@ -152,7 +194,13 @@ class BridgeProcessLogTracker.forTesting({
   @disposeMethod
   Future<void> dispose() async {
     await _subscriptions.cancel();
-    await Future.wait<void>(_pendingPersistence);
+    while (true) {
+      final Future<void>? drain = _persistenceDrain;
+      if (drain == null) {
+        break;
+      }
+      await drain;
+    }
     await _entrySnapshots.close();
   }
 }
