@@ -157,10 +157,10 @@ packages:
     dependency: transitive
     description:
       name: dart_style
-      sha256: "3f88fc9c96c568d631356507355a2d1e983ee000c9ac008bdcb39b5bf53ce777"
+      sha256: "82ade9fc4273f29ed673e33166944465225b4f7fc5d4aaef48605cc751c18fc1"
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.12"
+    version: "3.1.13"
   ffi:
     dependency: transitive
     description:
@@ -189,10 +189,10 @@ packages:
     dependency: "direct dev"
     description:
       name: freezed
-      sha256: "9ec135696554923c59339d46dd50adbaf81099be06ffda0fb9c06f410aea9137"
+      sha256: "27585a6c2b9ac28ffb7b45d87fd1502332af1eb90e1c9f5eb1acb24c71d26e17"
       url: "https://pub.dev"
     source: hosted
-    version: "4.0.0-dev.3"
+    version: "4.0.0"
   freezed_annotation:
     dependency: "direct main"
     description:
@@ -554,4 +554,4 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.13.1 <4.0.0"
+  dart: ">=3.13.2 <4.0.0"

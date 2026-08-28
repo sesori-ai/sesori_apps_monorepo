@@ -60,6 +60,6 @@ dev_dependencies:
   # production code reaches sqlite3 only transitively through drift.
   sqlite3: ^3.5.2
   build_runner: any
-  freezed: 4.0.0-dev.3
+  freezed: ^4.0.0
   json_serializable: ^6.14.1
   drift_dev: 2.34.3

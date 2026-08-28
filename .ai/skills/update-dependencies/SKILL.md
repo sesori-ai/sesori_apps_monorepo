@@ -36,6 +36,9 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `bridge/sesori_plugin_claude/pubspec.yaml`
 - `bridge/sesori_plugin_pi/pubspec.yaml`
 - `bridge/sesori_plugin_hermes/pubspec.yaml`
+- `bridge/sesori_plugin_copilot/pubspec.yaml`
+- `bridge/sesori_plugin_grok/pubspec.yaml`
+- `bridge/sesori_plugin_deepseek/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
@@ -119,6 +122,16 @@ flutter --version
 ```
 
 If `flutter --version` still reports the old version after `asdf set`, run `asdf reshim flutter` (or open a new shell) and re-run `flutter --version`.
+
+Two recurring environment traps on this machine (both hit 2026-08-28):
+
+- **The shell profile puts a pinned `~/.asdf/installs/flutter/<old>-stable/bin` on `PATH` ahead of `~/.asdf/shims`**, so `which flutter` keeps resolving the old SDK no matter what `asdf set` writes. `asdf current flutter` will correctly report the new version while `flutter --version` reports the old one. Prefix every `flutter`/`dart` command in this workflow with `export PATH="$HOME/.asdf/shims:$PATH"` (the Makefile targets included) and verify with `which flutter` before trusting any version output.
+- **`asdf install flutter latest` reports "already installed" for a half-extracted install.** If the version dir contains only `flutter_macos_*.zip`, or `flutter --version` fails with `fatal: not a git repository`, the extraction was interrupted. `asdf uninstall` alone is not enough — the plugin's `mv`-based install then fails with "Directory not empty". Fully remove both dirs and reinstall:
+
+  ```bash
+  rm -rf ~/.asdf/installs/flutter/<version> ~/.asdf/downloads/flutter/<version>
+  asdf install flutter <version>
+  ```
 </step>
 
 <step name="1.2">Check and update environment constraints in all pubspec.yaml files **except `shared/no_slop_linter/pubspec.yaml`** (manually managed).
@@ -158,6 +171,9 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/sesori_plugin_claude/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_pi/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_hermes/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_copilot/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_grok/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_deepseek/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
 
 Example:
@@ -238,6 +254,9 @@ set -e
 (cd bridge/sesori_plugin_claude && dart pub outdated)
 (cd bridge/sesori_plugin_pi && dart pub outdated)
 (cd bridge/sesori_plugin_hermes && dart pub outdated)
+(cd bridge/sesori_plugin_copilot && dart pub outdated)
+(cd bridge/sesori_plugin_grok && dart pub outdated)
+(cd bridge/sesori_plugin_deepseek && dart pub outdated)
 (cd bridge/app && dart pub outdated)
 ```
 
@@ -265,7 +284,7 @@ set -e
 <step name="3.1">For each pubspec.yaml, in this order:
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
-2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/app`
+2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/sesori_plugin_copilot`, `bridge/sesori_plugin_grok`, `bridge/sesori_plugin_deepseek`, `bridge/app`
 3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_desktop_core`, `client/design_catalog`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
@@ -544,7 +563,7 @@ Report this list at the end of the update process for visibility.
 <success_criteria>
 
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
-- Environment constraints (sdk, flutter) updated in 22 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — 13 bridge, 8 client, and `shared/sesori_shared`)
+- Environment constraints (sdk, flutter) updated in 25 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — 16 bridge, 8 client, and `shared/sesori_shared`)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
