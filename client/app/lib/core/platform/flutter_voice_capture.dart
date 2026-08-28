@@ -12,6 +12,7 @@ import "../../capabilities/voice/recording_file_provider.dart";
 import "../../capabilities/voice/wake_lock_service.dart";
 
 const _amplitudeInterval = Duration(milliseconds: 100);
+const _sharedPrewarmWaitTimeout = Duration(seconds: 2);
 const double _amplitudeFloor = -60;
 
 @LazySingleton(as: VoiceCapture)
@@ -21,6 +22,7 @@ class FlutterVoiceCapture({
   required final WakeLockService _wakeLockService,
   required final AudioFormatConfig _audioFormat,
   @ignoreParam @visibleForTesting final AudioRecorder Function() _recorderFactory = AudioRecorder.new,
+  @ignoreParam @visibleForTesting final Duration _prewarmWaitTimeout = _sharedPrewarmWaitTimeout,
 }) implements VoiceCapture {
   Future<void>? _prewarmFuture;
   int _activeCaptures = 0;
@@ -72,7 +74,14 @@ class FlutterVoiceCapture({
 
   Future<_VoiceCaptureActivityLease> _acquireActivity() async {
     final prewarmFuture = _prewarmFuture;
-    if (prewarmFuture != null) await prewarmFuture;
+    if (prewarmFuture != null) {
+      try {
+        await prewarmFuture.timeout(_prewarmWaitTimeout);
+      } on TimeoutException catch (error, stackTrace) {
+        loge("Timed out waiting for shared recorder prewarm", error, stackTrace);
+        throw VoiceCaptureError.failed(innerError: error);
+      }
+    }
     _activeCaptures++;
     return _VoiceCaptureActivityLease._(owner: this);
   }

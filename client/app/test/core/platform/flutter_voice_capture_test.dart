@@ -143,6 +143,58 @@ void main() {
     await session.close();
   });
 
+  test("bounds a later shared prewarm wait without cancelling its native operation", () async {
+    final boundedCapture = FlutterVoiceCapture(
+      recorderPrewarmClient: prewarmClient,
+      fileProvider: fileProvider,
+      wakeLockService: wakeLockService,
+      audioFormat: audioFormat,
+      recorderFactory: () => recorder,
+      prewarmWaitTimeout: Duration.zero,
+    );
+    await boundedCapture.prewarm();
+    clearInteractions(prewarmClient);
+
+    final prewarmCompleter = Completer<void>();
+    when(
+      () => prewarmClient.prewarm(
+        sampleRate: any(named: "sampleRate"),
+        bitRate: any(named: "bitRate"),
+        numChannels: any(named: "numChannels"),
+      ),
+    ).thenAnswer((_) => prewarmCompleter.future);
+    final prewarm = boundedCapture.prewarm();
+    final session = boundedCapture.createSession();
+
+    await expectLater(
+      session.start(),
+      throwsA(
+        isA<VoiceCaptureFailed>().having(
+          (error) => error.innerError,
+          "innerError",
+          isA<TimeoutException>(),
+        ),
+      ),
+    );
+    verifyNever(() => recorder.start(any(), path: any(named: "path")));
+
+    final sharedPrewarm = boundedCapture.prewarm();
+    verify(
+      () => prewarmClient.prewarm(
+        sampleRate: audioFormat.sampleRate,
+        bitRate: audioFormat.bitRate,
+        numChannels: audioFormat.numChannels,
+      ),
+    ).called(1);
+    prewarmCompleter.complete();
+    await Future.wait([prewarm, sharedPrewarm]);
+
+    await session.start();
+    verify(() => recorder.start(any(), path: recordingPath)).called(1);
+    await session.cancel();
+    await session.close();
+  });
+
   test("does not reconfigure native audio while another session is active", () async {
     final session = capture.createSession();
     await session.start();
