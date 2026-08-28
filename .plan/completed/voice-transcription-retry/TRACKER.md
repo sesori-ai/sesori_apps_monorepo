@@ -74,7 +74,7 @@
 - [x] Record the async-only product scope, server-first rollout, privacy, analytics, cleanup, and duplicate-work risk.
 - [x] Define fixed five-step titles, repositories, changed-line targets, and L4 matrix.
 - [x] Run `architecture-plan-review` through a sub-agent.
-- [x] Apply all four blocking architecture-plan findings directly; do not re-review routine corrections.
+- [x] Apply every blocking architecture-plan finding within the delivered async scope directly; do not re-review routine corrections.
 - [x] Inspect all seven Codex PR-review threads across both review rounds and both review summaries.
 - [x] Apply Cubit ownership, service lifetime, substantive service operations, retry-cancel retention, provider-quota, and same-PR regression findings; clarify why platform capture has no pass-through API/repository.
 - [x] Collapse the fixed series from six steps to five after moving regression documentation into Step 4.
@@ -132,7 +132,8 @@
 - **Reviewer:** `architecture-plan-review` sub-agent
 - **Reviewed scope:** initial complete `.plan/active/voice-transcription-retry/`
 - **Verdict:** rejected after pre-review gate passed
-- **Blocking findings:** singleton/composer ownership mismatch; missing OpenAI retryability-versus-HTTP compatibility owner; app-shell Service directly calling Layer-1 API without Repository
+- **Blocking findings retained for the delivered async scope:** singleton/composer ownership mismatch; missing OpenAI retryability-versus-HTTP compatibility owner; app-shell Service directly calling Layer-1 API without Repository
+- **Scope reconciliation:** the completed tracker records only findings applicable to behavior merged on `main`; unrelated unpublished work is not a retirement dependency and is intentionally excluded
 - **Initial corrections applied:** composer-scoped factory service with synchronous disposal fence; Foundation/API/Repository/Service layering; composition-injected auth public-error policies and complete reason table
 - **PR review round 1:** accepted module_core Cubit ownership, lazy-singleton service plus per-composer session, provider-quota classification, and same-PR async regression documentation; declined a pass-through capture API/repository because scoped platform rules explicitly permit direct interface consumption, then clarified the two dependency paths
 - **PR review round 2:** made the lazy service substantively own every operation/transition with the session reduced to state only; split initial cancellation from manual-retry cancellation so Retry cancellation preserves the artifact

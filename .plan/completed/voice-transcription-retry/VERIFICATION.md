@@ -18,13 +18,13 @@ matrix, not a claim that physical microphone, audio-session, haptics, or hardwar
 | Status | Journey | Privacy-safe evidence |
 |---|---|---|
 | Pass | Voice-first local connection failure retains one completed recording | Composer showed persistent **Recording saved**, Retry, and Discard; retained cache file was 76,616 bytes. |
-| Pass | Voice-first manual Retry succeeds without recording again | The retained artifact was reused and editable transcript text appeared. Screenshots: `/tmp/voice-retry-pending-voice-first.png`, `/tmp/voice-retry-success-voice-first.png`. |
-| Pass | Text-first retry preserves the existing draft | Existing draft `Okay. Bye.` remained while Retry/Discard was visible and after eventual success. Screenshots: `/tmp/voice-retry-pending-text-first.png`, `/tmp/voice-retry-success-text-first.png`. |
+| Pass | Voice-first manual Retry succeeds without recording again | The retained artifact was reused and editable transcript text appeared. Screenshots: [`pending-voice-first.png`](evidence/pending-voice-first.png), [`success-voice-first.png`](evidence/success-voice-first.png). |
+| Pass | Text-first retry preserves the existing draft | Existing draft `Okay. Bye.` remained while Retry/Discard was visible and after eventual success. Screenshots: [`pending-text-first.png`](evidence/pending-text-first.png), [`success-text-first.png`](evidence/success-text-first.png). |
 | Pass | Explicit authoritative retryable failure | Local HTTP fixture returned a typed 503 body with `retryable: true`; the composer retained the file and exposed Retry/Discard. |
 | Pass | Explicit terminal unusable/non-retryable failure | Local fixture returned terminal metadata; the composer returned to normal input with no Retry and attempted deletion. |
 | Pass | Older-server omission is terminal | Local fixture omitted retryability; the client did not infer from status/error and showed no Retry. |
 | Pass | Quota/auth rejection is terminal | Local quota fixture produced no Retry; automated repository/route coverage retains authentication and quota mapping. |
-| Pass | Cancelling a hanging manual Retry retains ownership | Cancel returned to Retry/Discard with the same artifact. Screenshot: `/tmp/voice-retry-cancel-retained.png`. |
+| Pass | Cancelling a hanging manual Retry retains ownership | Cancel returned to Retry/Discard with the same artifact. Screenshot: [`cancel-retained.png`](evidence/cancel-retained.png). |
 | Pass | Discard and composer disposal delete the retained artifact | Discard reduced app audio files to zero. A second retained file was observed before route exit and zero files remained after composer disposal. |
 | Pass | Background/system interruption does not strand capture state | Backgrounding during active capture returned at the project surface with zero app audio files; background/foreground of retry-pending retained its actions while the process stayed alive. |
 | Pass | Permission revoked between interactions prevents upload | Simulator microphone permission was revoked; the next interaction created no audio file and did not increment the local upload fixture request count. Permission was restored afterwards. |
@@ -39,8 +39,11 @@ Temporary localhost endpoints supplied retryable, terminal, omitted-metadata, qu
 remains in Git. Stub, Flutter, and bridge processes were stopped, and only the owned `sesori-dev-1` simulator was shut
 down.
 
-The live provider initially returned a malformed/non-JSON 504. The client treated unknown metadata as terminal, as
-required. A later authenticated production request returned HTTP 200 and completed the provider row.
+The initial live attempt returned a malformed/non-JSON 504 from the hosted boundary. It carried no server-authoritative
+retryability metadata, so the client intentionally treated it as terminal and did not count it as evidence for either the
+typed transient-retry journey or provider success. Inferring provider behavior from the HTTP status would violate the
+locked compatibility contract. The deterministic typed 503 fixture separately proved retained retry, and a later
+authenticated production request returned HTTP 200 to complete the provider-success row.
 
 ## Automated evidence
 
