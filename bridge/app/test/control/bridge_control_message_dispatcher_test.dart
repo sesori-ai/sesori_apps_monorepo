@@ -15,6 +15,7 @@ void main() {
     late _RecordingTokenService tokenService;
     late _RecordingPromptService promptService;
     late _RecordingUnregisterService unregisterService;
+    late int shutdownCalls;
     late BridgeControlMessageDispatcher dispatcher;
 
     setUp(() {
@@ -22,11 +23,15 @@ void main() {
       tokenService = _RecordingTokenService();
       promptService = _RecordingPromptService();
       unregisterService = _RecordingUnregisterService();
+      shutdownCalls = 0;
       dispatcher = BridgeControlMessageDispatcher(
         client: client,
         tokenService: tokenService,
         promptService: promptService,
         unregisterService: unregisterService,
+        shutdown: () async {
+          shutdownCalls++;
+        },
       );
       addTearDown(dispatcher.dispose);
     });
@@ -59,6 +64,15 @@ void main() {
 
       expect(promptService.responses, equals([("p-1", true), ("p-2", false)]));
       expect(tokenService.responses, isEmpty);
+    });
+
+    test("routes shutdown to the graceful exit delegate", () async {
+      dispatcher.start();
+      client.emit(_encode(const ControlMessage.shutdown()));
+      await pumpEventQueue();
+
+      expect(shutdownCalls, equals(1));
+      expect(unregisterService.calls, isZero);
     });
 
     test("routes unregister_and_exit to the unregister service delegate", () async {
@@ -114,6 +128,7 @@ void main() {
         tokenService: realTokenService,
         promptService: realPromptService,
         unregisterService: _RecordingUnregisterService(),
+        shutdown: () async {},
       );
       addTearDown(wired.dispose);
       wired.start();

@@ -7,8 +7,8 @@ user-run checkpoints, not PRs; only the user marks them passed.
 
 | Step | Title | Status |
 |---|---|---|
-| 1 | 🌿 Raise plan; supersede + delete old desktop plan | in-progress |
-| 2 | ⚙️ Bridge process primitives (API, repository, log tracker/storage) | pending |
+| 1 | 🌿 Raise plan; supersede + delete old desktop plan | done |
+| 2 | 🚧 Bridge process primitives (API, repository, log tracker/storage) | done |
 | 3 | 🚧 `BridgeProcessService`: authenticated spawn + control channel live | pending |
 | 4 | 🚧 Exit-code state machine + prompt-answer seam | pending |
 | 5 | 🌿 Status semantics + dead control-protocol removal | pending |

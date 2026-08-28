@@ -157,9 +157,9 @@ enum SupervisedExitCode(
   /// respawn whose fresh replace prompt the GUI answers with accept.
   bridgeContention(88),
 
-  /// The GUI's `unregister_and_exit` logout command: a deliberate clean stop,
-  /// so the GUI must not respawn.
-  logout(0),
+  /// A GUI-requested `shutdown` or `unregister_and_exit`: a deliberate clean
+  /// stop, so the GUI must not respawn.
+  cleanStop(0),
 
   /// The control channel to the GUI was lost past the grace period (ADR A9):
   /// an abnormal exit — the parent is gone, so a loss must never read as a
@@ -186,7 +186,7 @@ class const BridgeRuntimeRunner._() {
     CatalogImportConsoleListener? catalogImportConsoleListener;
     Future<void>? sessionRun;
     // The single typed slot for a deliberate supervised exit (restart /
-    // auth-required / contention / logout / control-channel loss). Set at the
+    // auth-required / contention / clean stop / control-channel loss). Set at the
     // moment an outcome is decided — BEFORE any shutdown runs — so both the
     // explicit return and the coordinator backstop report the same code even
     // when the stop hangs or throws (the backstop's timing varies with how
@@ -406,19 +406,21 @@ class const BridgeRuntimeRunner._() {
           machineName: machineName,
         );
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
-        // Handles the GUI's `unregister_and_exit` logout command: unregister the
-        // bridgeId, then gracefully shut down and exit 0 (a clean stop, so the
-        // GUI does not respawn us). Record the logout sentinel first so a hung
-        // shutdown's backstop still reports 0 rather than a latched-failure 1.
+        // Both GUI clean-stop commands share the same graceful teardown path;
+        // unregister_and_exit performs its DELETE first. Record the clean-stop
+        // sentinel before teardown so a hung shutdown's backstop still reports
+        // 0 rather than a latched-failure 1.
+        Future<void> terminateSupervisedCleanly() {
+          requestedSupervisedExit = SupervisedExitCode.cleanStop;
+          return _shutdownThenExit(
+            shutdownCoordinator: shutdownCoordinator,
+            code: SupervisedExitCode.cleanStop.code,
+          );
+        }
+
         final controlUnregisterService = ControlUnregisterService(
           registrationService: supervisedRegistrationService,
-          terminate: () {
-            requestedSupervisedExit = SupervisedExitCode.logout;
-            return _shutdownThenExit(
-              shutdownCoordinator: shutdownCoordinator,
-              code: SupervisedExitCode.logout.code,
-            );
-          },
+          terminate: terminateSupervisedCleanly,
         );
         // The single inbound subscriber: decodes GUI→helper frames once and
         // routes them to the owning service. Started before the bootstrap token
@@ -428,6 +430,7 @@ class const BridgeRuntimeRunner._() {
           tokenService: controlChannelTokenService,
           promptService: controlPromptService,
           unregisterService: controlUnregisterService,
+          shutdown: terminateSupervisedCleanly,
         );
         controlMessageDispatcher.start();
         shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
@@ -982,7 +985,7 @@ class const BridgeRuntimeRunner._() {
         // that must NOT happen: the exit must stay the sentinel so the GUI
         // respawns (86), prompts for login (87), or offers a take-over (88)
         // rather than treating it as a crash. For every other exit — including
-        // logout and control-channel loss, whose graceful path exits the
+        // clean stop and control-channel loss, whose graceful path exits the
         // process itself — preserve the loud-failure behaviour by rethrowing.
         switch (requestedSupervisedExit) {
           case SupervisedExitCode.restart:
@@ -993,7 +996,7 @@ class const BridgeRuntimeRunner._() {
               error,
               stackTrace,
             );
-          case SupervisedExitCode.logout:
+          case SupervisedExitCode.cleanStop:
           case SupervisedExitCode.controlChannelLost:
           case null:
             rethrow;
@@ -1126,10 +1129,10 @@ class const BridgeRuntimeRunner._() {
   }
 
   /// Runs the ordered shutdown (stopping the plugin and any owned runtime),
-  /// then exits with [code]. Two supervised paths use it: the control-channel
-  /// parent-loss policy (ADR A9) and the GUI logout `unregister_and_exit`
-  /// command. Running the ordered shutdown first means a hard exit can never
-  /// orphan the backend process. If the stop hangs, the coordinator backstop
+  /// then exits with [code]. Supervised parent-loss, normal GUI `shutdown`, and
+  /// GUI logout `unregister_and_exit` all use it. Running the ordered shutdown
+  /// first means a hard exit can never orphan the backend process. If the stop
+  /// hangs, the coordinator backstop
   /// fires; for the loss path the abnormal code recorded via
   /// `requestAbnormalExit` is reported so a loss is never seen as a clean exit.
   /// The precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
@@ -1140,7 +1143,7 @@ class const BridgeRuntimeRunner._() {
     try {
       await shutdownCoordinator.shutdown();
     } catch (error, stackTrace) {
-      Log.w("[control] graceful shutdown after control-channel loss failed", error, stackTrace);
+      Log.w("[control] graceful supervised shutdown failed", error, stackTrace);
     }
     io.exit(code);
   }

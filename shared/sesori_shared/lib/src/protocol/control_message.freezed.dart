@@ -44,6 +44,10 @@ ControlMessage _$ControlMessageFromJson(
           return ControlRestart.fromJson(
             json
           );
+                case 'shutdown':
+          return ControlShutdown.fromJson(
+            json
+          );
                 case 'unregister_and_exit':
           return ControlUnregisterAndExit.fromJson(
             json
@@ -584,6 +588,45 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
   return 'ControlMessage.restart()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class ControlShutdown implements ControlMessage {
+  const ControlShutdown({ String? $type}): $type = $type ?? 'shutdown';
+  factory ControlShutdown.fromJson(Map<String, dynamic> json) => _$ControlShutdownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ControlShutdownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlShutdown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ControlMessage.shutdown()';
 }
 
 

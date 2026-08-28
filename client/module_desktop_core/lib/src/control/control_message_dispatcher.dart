@@ -80,7 +80,11 @@ class ControlMessageDispatcher({
         // Advisory heads-up only — the exit-code sentinel is authoritative
         // for the supervisor's respawn decision.
         logd("Helper announced an intentional restart");
-      case ControlTokenResponse() || ControlTokenUpdate() || ControlPromptResponse() || ControlUnregisterAndExit():
+      case ControlTokenResponse() ||
+          ControlTokenUpdate() ||
+          ControlPromptResponse() ||
+          ControlShutdown() ||
+          ControlUnregisterAndExit():
         // GUI→helper-direction variants are never inbound commands.
         logd("Ignoring a GUI-direction control message arriving inbound");
     }

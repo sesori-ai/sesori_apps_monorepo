@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 1/22 (plan + supersede)
+- **Status:** Active — step 2/22 (bridge process primitives)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Current implementation base:** `main` (branch `jade-lynx` worktree)
+- **Current implementation base:** `main`
 - **Delivery:** 22-step PR series titled
   `<emoji> [desktop-app] <description> [step <x>/22]`
 - **Architecture plan review:** performed 2026-08-28 (approve-with-fixes); all
@@ -139,8 +139,8 @@ client/desktop ──────────┼→ module_app_ui → module_cor
 
 ## Steps
 
-Sizes are soft-capped at 1,500 changed lines; steps 1, 14, 17, 18 record
-expected overages (mechanical deletions/moves) below. Any step that ships or
+Sizes are soft-capped at 1,500 changed lines; steps 1, 2, 14, 17, 18 record
+expected overages below. Any step that ships or
 materially changes user-facing behavior updates the directly affected
 `docs/regression/` feature document in the same PR; step 21 is final
 reconciliation only, never the first write.
@@ -159,7 +159,7 @@ verification: stale docstrings in `control_status_notifier.dart` /
 "Subsystem" (it is part of the core layered app). Docs/comments only — no
 behavior change. *Overage: ~3.1k deleted doc lines, mechanical.*
 
-**Step 2 — ⚙️ Bridge process primitives.** `module_desktop_core` Layer 1
+**Step 2 — 🚧 Bridge process primitives.** `module_desktop_core` Layer 1
 process API (spawn/kill/exit stream/stdout+stderr streams; non-positive-PID
 guard), Layer 2 `BridgeProcessRepository` — the **single Layer-2 boundary over
 the process API**: spawn, graceful-signal/kill, exit stream, raw stdio
@@ -194,7 +194,10 @@ rotation/replacement — helper output carries paths/identifiers/errors,
 mirroring the bridge's data-directory hardening; a storage write failure is
 caught and logged **rate-limited** by the tracker — a persistently unwritable
 disk must not turn every helper line into a warning — and never stops the
-drain). Pure Dart, fully unit-tested.
+drain). Pure Dart, fully unit-tested. *Overage: ~1.6k changed lines including
+generated control-union code and focused process, repository, storage, and
+pipe-drain test suites; the atomic stop and non-blocking log contracts land as
+one cohesive boundary.*
 
 **Step 3 — 🚧 `BridgeProcessService` (Layer 3): the channel comes alive.**
 Collaborators (all lower-layer): `BridgeProcessRepository` (all process

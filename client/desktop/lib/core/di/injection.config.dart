@@ -24,10 +24,13 @@ import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart
     as _i757;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
+import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
+    as _i11;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
+import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -43,6 +46,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
+    );
+    gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
+      () => _i11.FlutterDesktopApplicationSupportDirectory(),
     );
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i20.DesktopOAuthDeviceDescriptorProvider(

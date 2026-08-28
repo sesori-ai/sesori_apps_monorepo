@@ -133,6 +133,12 @@ ControlRestart _$ControlRestartFromJson(Map json) =>
 Map<String, dynamic> _$ControlRestartToJson(ControlRestart instance) =>
     <String, dynamic>{'type': instance.$type};
 
+ControlShutdown _$ControlShutdownFromJson(Map json) =>
+    ControlShutdown($type: json['type'] as String?);
+
+Map<String, dynamic> _$ControlShutdownToJson(ControlShutdown instance) =>
+    <String, dynamic>{'type': instance.$type};
+
 ControlUnregisterAndExit _$ControlUnregisterAndExitFromJson(Map json) =>
     ControlUnregisterAndExit($type: json['type'] as String?);
 

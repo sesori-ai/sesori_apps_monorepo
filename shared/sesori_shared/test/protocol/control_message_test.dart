@@ -19,6 +19,7 @@ void main() {
       ),
       "prompt_response": const ControlMessage.promptResponse(id: "p-1", accepted: true),
       "restart": const ControlMessage.restart(),
+      "shutdown": const ControlMessage.shutdown(),
       "unregister_and_exit": const ControlMessage.unregisterAndExit(),
       "registered": const ControlMessage.registered(bridgeId: "br_abc12345"),
       "provision_progress": const ControlMessage.provisionProgress(

@@ -27,6 +27,7 @@ void main() {
       tokenService: service,
       promptService: ControlPromptService(client: client),
       unregisterService: _NoopUnregisterService(),
+      shutdown: () async {},
     )..start();
     addTearDown(dispatcher.dispose);
     return service;

@@ -2,6 +2,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/no_op_analytics_client.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,8 @@ void main() {
     expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
+    expect(getIt.isRegistered<DesktopApplicationSupportDirectory>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
   });
 
   test("desktop bootstrap leaves the mobile thumbnail cache unbound and unresolved", () {

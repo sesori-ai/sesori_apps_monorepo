@@ -347,6 +347,7 @@ class _DevControlHost({
       case ControlStatus():
       case ControlPromptResponse():
       case ControlRestart():
+      case ControlShutdown():
       case ControlUnregisterAndExit():
       case ControlRegistered():
       case ControlProvisionProgressMessage():
