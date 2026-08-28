@@ -44,18 +44,18 @@ import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_a
     as _i178;
 import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart'
     as _i901;
-import 'package:sesori_mobile/core/platform/firebase/no_op_android_analytics_release_cutoff_source.dart'
-    as _i2;
+import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart'
+    as _i1005;
 import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart'
     as _i52;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
     as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
+import 'package:sesori_mobile/core/platform/firebase_analytics_release_cutoff_source.dart'
+    as _i425;
 import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
-import 'package:sesori_mobile/core/platform/firebase_android_analytics_release_cutoff_source.dart'
-    as _i903;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
@@ -186,6 +186,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.enabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
+      () => _i1005.NoOpAnalyticsReleaseCutoffSource(),
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseDisabled},
@@ -194,10 +198,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i853.SingularAttributionStartup(
         singular: gh<_i776.SingularStaticAdapter>(),
       ),
-    );
-    gh.lazySingleton<_i948.AndroidAnalyticsReleaseCutoffSource>(
-      () => _i2.NoOpAndroidAnalyticsReleaseCutoffSource(),
-      registerFor: {_firebaseDisabled},
     );
     gh.lazySingleton<_i948.AnalyticsClient>(
       () => _i901.NoOpAnalyticsClient(),
@@ -267,8 +267,8 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i948.AndroidAnalyticsReleaseCutoffSource>(
-      () => _i903.FirebaseAndroidAnalyticsReleaseCutoffSource(
+    gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
+      () => _i425.FirebaseAnalyticsReleaseCutoffSource(
         remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
       ),
       registerFor: {_firebaseEnabled},

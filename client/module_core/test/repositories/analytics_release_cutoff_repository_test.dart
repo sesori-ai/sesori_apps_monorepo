@@ -1,17 +1,17 @@
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/src/api/android_analytics_release_cutoff_api.dart";
-import "package:sesori_dart_core/src/repositories/android_analytics_release_cutoff_repository.dart";
+import "package:sesori_dart_core/src/api/analytics_release_cutoff_api.dart";
+import "package:sesori_dart_core/src/repositories/analytics_release_cutoff_repository.dart";
 import "package:test/test.dart";
 
-class _MockAndroidAnalyticsReleaseCutoffApi() extends Mock implements AndroidAnalyticsReleaseCutoffApi;
+class _MockAnalyticsReleaseCutoffApi() extends Mock implements AnalyticsReleaseCutoffApi;
 
 void main() {
-  late _MockAndroidAnalyticsReleaseCutoffApi api;
-  late AndroidAnalyticsReleaseCutoffRepository repository;
+  late _MockAnalyticsReleaseCutoffApi api;
+  late AnalyticsReleaseCutoffRepository repository;
 
   setUp(() {
-    api = _MockAndroidAnalyticsReleaseCutoffApi();
-    repository = AndroidAnalyticsReleaseCutoffRepository(api: api);
+    api = _MockAnalyticsReleaseCutoffApi();
+    repository = AnalyticsReleaseCutoffRepository(api: api);
   });
 
   test("maps a positive build number to the typed cutoff", () async {

@@ -4,8 +4,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../di/firebase_register_module.dart";
 
 @firebaseDisabledEnvironment
-@LazySingleton(as: AndroidAnalyticsReleaseCutoffSource)
-class NoOpAndroidAnalyticsReleaseCutoffSource() implements AndroidAnalyticsReleaseCutoffSource {
+@LazySingleton(as: AnalyticsReleaseCutoffSource)
+class NoOpAnalyticsReleaseCutoffSource() implements AnalyticsReleaseCutoffSource {
   @override
   Future<int?> fetchLatestSubmittedProductionBuild() async => null;
 }

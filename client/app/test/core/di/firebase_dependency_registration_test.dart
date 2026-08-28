@@ -8,7 +8,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
-import "package:sesori_mobile/core/platform/firebase/no_op_android_analytics_release_cutoff_source.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
@@ -34,14 +34,14 @@ void main() {
   test("disabled Firebase environment binds the interfaces to no-ops", () {
     expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
     expect(
-      getIt<AndroidAnalyticsReleaseCutoffSource>(),
-      isA<NoOpAndroidAnalyticsReleaseCutoffSource>(),
+      getIt<AnalyticsReleaseCutoffSource>(),
+      isA<NoOpAnalyticsReleaseCutoffSource>(),
     );
     expect(getIt<FailureReporter>(), isA<NoOpFailureReporter>());
     expect(getIt<PushMessagingSource>(), isA<NoOpPushMessagingSource>());
     expect(
-      getIt<AndroidAnalyticsReleaseCutoffRepository>(),
-      isA<AndroidAnalyticsReleaseCutoffRepository>(),
+      getIt<AnalyticsReleaseCutoffRepository>(),
+      isA<AnalyticsReleaseCutoffRepository>(),
     );
   });
 

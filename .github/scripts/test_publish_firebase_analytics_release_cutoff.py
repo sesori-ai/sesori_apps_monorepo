@@ -29,7 +29,7 @@ class _FakeRemoteConfigClient:
 class PublishCutoffTest(unittest.TestCase):
     def test_parameter_key_matches_the_mobile_source(self) -> None:
         mobile_source = Path(
-            "client/app/lib/core/platform/firebase_android_analytics_release_cutoff_source.dart"
+            "client/app/lib/core/platform/firebase_analytics_release_cutoff_source.dart"
         ).read_text()
 
         self.assertIn(f'parameterKey = "{PARAMETER_KEY}"', mobile_source)

@@ -1,13 +1,13 @@
 import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
-import "package:sesori_mobile/core/platform/firebase_android_analytics_release_cutoff_source.dart";
+import "package:sesori_mobile/core/platform/firebase_analytics_release_cutoff_source.dart";
 
 class _MockFirebaseRemoteConfig() extends Mock implements FirebaseRemoteConfig;
 
 void main() {
   late _MockFirebaseRemoteConfig remoteConfig;
-  late FirebaseAndroidAnalyticsReleaseCutoffSource source;
+  late FirebaseAnalyticsReleaseCutoffSource source;
 
   setUpAll(() {
     registerFallbackValue(
@@ -20,13 +20,13 @@ void main() {
 
   setUp(() {
     remoteConfig = _MockFirebaseRemoteConfig();
-    source = FirebaseAndroidAnalyticsReleaseCutoffSource(remoteConfig: remoteConfig);
+    source = FirebaseAnalyticsReleaseCutoffSource(remoteConfig: remoteConfig);
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetch()).thenAnswer((_) async {});
     when(() => remoteConfig.lastFetchStatus).thenReturn(RemoteConfigFetchStatus.success);
     when(() => remoteConfig.activate()).thenAnswer((_) async => true);
     when(
-      () => remoteConfig.getInt(FirebaseAndroidAnalyticsReleaseCutoffSource.parameterKey),
+      () => remoteConfig.getInt(FirebaseAnalyticsReleaseCutoffSource.parameterKey),
     ).thenReturn(738);
   });
 
@@ -40,7 +40,7 @@ void main() {
       () => remoteConfig.fetch(),
       () => remoteConfig.lastFetchStatus,
       () => remoteConfig.activate(),
-      () => remoteConfig.getInt(FirebaseAndroidAnalyticsReleaseCutoffSource.parameterKey),
+      () => remoteConfig.getInt(FirebaseAnalyticsReleaseCutoffSource.parameterKey),
     ]);
   });
 
