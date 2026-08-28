@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -37,6 +38,7 @@ void main() {
           projectsDao: projectsDao,
           sessionDao: sessionDao,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
             gitPathExists: ({required String gitPath}) => gitDirectoryExists,
           ),
@@ -735,6 +737,7 @@ void main() {
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
             gitPathExists: ({required String gitPath}) => true,
           ),
@@ -835,6 +838,7 @@ void main() {
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
             gitPathExists: ({required String gitPath}) => true,
           ),

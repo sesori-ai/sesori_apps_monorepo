@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -14,6 +15,7 @@ void main() {
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = false;
       service = GitCliApi(
+        streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: processRunner,
         gitPathExists: ({required String gitPath}) => gitDirectoryExists,
       );

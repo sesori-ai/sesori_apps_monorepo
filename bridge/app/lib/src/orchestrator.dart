@@ -30,6 +30,7 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
@@ -213,7 +214,11 @@ class Orchestrator({
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
-    final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final gitCliApi = GitCliApi(
+      processRunner: _processRunner,
+      streamingProcessRunner: const StreamingProcessRunner(),
+      gitPathExists: _gitPathExists,
+    );
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,

@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/api/gh_pull_request_batch.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
@@ -603,6 +604,7 @@ PrSourceRepository _selectionRepository({required GhCliApi ghCli}) {
   return PrSourceRepository(
     ghCli: ghCli,
     gitCli: GitCliApi(
+      streamingProcessRunner: const StreamingProcessRunner(),
       processRunner: _QueueProcessRunner(results: const []),
       gitPathExists: ({required String gitPath}) => true,
     ),
@@ -686,6 +688,7 @@ PrSourceRepository _repository({
   return PrSourceRepository(
     ghCli: GhCliApi(processRunner: _QueueProcessRunner(results: ghResults)),
     gitCli: GitCliApi(
+      streamingProcessRunner: const StreamingProcessRunner(),
       processRunner: _QueueProcessRunner(results: gitResults),
       gitPathExists: ({required String gitPath}) => gitPathExists,
     ),
