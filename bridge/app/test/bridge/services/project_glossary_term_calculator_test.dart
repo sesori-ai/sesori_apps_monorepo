@@ -44,6 +44,7 @@ void main() {
         metadataDocuments: const [
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
+          '''password = "Correct Horse Battery Staple"''',
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -61,6 +62,10 @@ void main() {
       "K7MDENG",
       "bPxRfiCYEXAMPLEKEY",
       "SuperSecretProductionPassword",
+      "Correct",
+      "Horse",
+      "Battery",
+      "Staple",
       "abcdefghijklmnopqrstuvwxyz",
       "BasicCredentialValue123",
       "aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -71,6 +76,19 @@ void main() {
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
+  });
+
+  test("keeps short symbolic language names", () {
+    final terms = calculator.calculate(
+      source: ProjectGlossarySource(
+        projectName: "AcmeCompiler",
+        repositoryName: null,
+        trackedPaths: const ["src/C#/Compiler.cs", "src/F#/Parser.fs"],
+        metadataDocuments: const ["AcmeCompiler supports C# and F#."],
+      ),
+    );
+
+    expect(terms, containsAll(["C#", "F#"]));
   });
 
   test("requires repeated metadata evidence for ordinary lowercase prose", () {

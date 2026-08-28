@@ -10,14 +10,14 @@ class const ProjectGlossaryTermCalculator() {
   static const int maximumTerms = 50;
 
   static final RegExp _metadataTokenPattern = RegExp(
-    "[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*",
+    "(?:[CFcf]#|[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*)",
   );
   static final RegExp _metadataSecretSpanPattern = RegExp(
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
   );
   static final RegExp _credentialAssignmentPattern = RegExp(
     r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*'''
-    r'''["']?[^"'\s,;}\]]+["']?''',
+    r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
   );
   static final RegExp _authorizationCredentialPattern = RegExp(
@@ -47,6 +47,8 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _startsWithLetterPattern = RegExp("^[A-Za-z]");
   static final RegExp _credentialNonAlphaNumericPattern = RegExp("[^A-Za-z0-9]");
   static final RegExp _credentialDelimiterPattern = RegExp("[/=_+.]");
+
+  static const Set<String> _shortSymbolicTerms = {"c#", "f#"};
 
   static const Set<String> _credentialPrefixes = {
     "aiza",
@@ -235,7 +237,7 @@ when with web widget widgets will windows window workspace www
     if (_looksCredentialShaped(term)) return false;
 
     final minimumLength = _allCapsPattern.hasMatch(term) ? 2 : 3;
-    if (term.length < minimumLength) return false;
+    if (term.length < minimumLength && !_shortSymbolicTerms.contains(folded)) return false;
     if (_hasDigitPattern.allMatches(term).length > 6) return false;
     return true;
   }
