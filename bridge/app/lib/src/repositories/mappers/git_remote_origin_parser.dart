@@ -1,7 +1,9 @@
+typedef _ScpRemote = ({String? user, String host, String path});
+
 /// Canonicalizes a Git remote for ownership-sensitive glossary scoping.
 ///
 /// Known GitHub transport aliases collapse to one forge origin. Unknown hosts
-/// retain protocol, endpoint, SSH account, and exact repository path so the
+/// retain protocol, endpoint, SSH account, and exact repository target so the
 /// bridge never merges repositories without evidence that they are equivalent.
 class const GitRemoteOriginParser() {
   static const Set<String> _gitSchemes = {"http", "https", "ssh", "git", "git+ssh"};
@@ -13,7 +15,9 @@ class const GitRemoteOriginParser() {
     "git": 9418,
     "git+ssh": 22,
   };
-  static final RegExp _scpLikeRemote = RegExp(r"^(?:([^@\s]+)@)?([^:/\\]{2,}):(.+)$");
+  static final RegExp _bracketedScpRemote = RegExp(r"^(?:([^@\s]+)@)?\[([^\]\s]+)\]:(.+)$");
+  static final RegExp _scpLikeRemote = RegExp(r"^(?:([^@\s]+)@)?([^:/\\\s]+):(.+)$");
+  static final RegExp _windowsDrivePath = RegExp(r"^[A-Za-z]:[\\/]");
 
   String? parse({required String remoteUrl}) {
     final value = remoteUrl.trim();
@@ -28,20 +32,40 @@ class const GitRemoteOriginParser() {
       return githubOrigin ?? _canonicalizeGenericUri(uri: uri);
     }
 
-    final match = _scpLikeRemote.firstMatch(value);
-    if (match == null) return null;
-    final user = match.group(1);
-    final host = match.group(2)!.toLowerCase();
-    final path = match.group(3)!;
-    if (!_hasRepositoryPath(path: path)) return null;
+    final scpRemote = _parseScpRemote(value: value);
+    if (scpRemote == null || !_hasRepositoryPath(path: scpRemote.path)) return null;
 
-    if (host == "github.com") {
-      return _githubOrigin(path: path);
+    if (scpRemote.host == "github.com") {
+      return _githubOrigin(path: scpRemote.path);
     }
-    return _canonicalizeGenericSsh(user: user, host: host, path: path);
+    return _canonicalizeGenericSsh(
+      user: scpRemote.user,
+      host: scpRemote.host,
+      path: scpRemote.path,
+    );
+  }
+
+  _ScpRemote? _parseScpRemote({required String value}) {
+    if (_windowsDrivePath.hasMatch(value)) return null;
+    final bracketed = _bracketedScpRemote.firstMatch(value);
+    if (bracketed != null) {
+      return (
+        user: bracketed.group(1),
+        host: bracketed.group(2)!.toLowerCase(),
+        path: bracketed.group(3)!,
+      );
+    }
+    final regular = _scpLikeRemote.firstMatch(value);
+    if (regular == null) return null;
+    return (
+      user: regular.group(1),
+      host: regular.group(2)!.toLowerCase(),
+      path: regular.group(3)!,
+    );
   }
 
   String? _parseGithubUri({required Uri uri}) {
+    if (uri.hasQuery || uri.hasFragment) return null;
     final defaultPort = _defaultPorts[uri.scheme];
     final usesDefaultEndpoint = !uri.hasPort || uri.port == defaultPort;
     if (uri.host == "github.com" && usesDefaultEndpoint) {
@@ -78,6 +102,7 @@ class const GitRemoteOriginParser() {
       port: port,
       path: uri.path,
       query: uri.hasQuery ? uri.query : null,
+      fragment: uri.hasFragment ? uri.fragment : null,
     ).toString();
   }
 

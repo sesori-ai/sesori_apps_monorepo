@@ -63,6 +63,28 @@ void main() {
     );
   });
 
+  test("retains fragments in generic repository targets", () {
+    expect(
+      parser.parse(remoteUrl: "ssh://git@code.internal/repo.git#team"),
+      "ssh://git@code.internal/repo.git#team",
+    );
+    expect(
+      parser.parse(remoteUrl: "ssh://git@code.internal/repo.git#team"),
+      isNot(parser.parse(remoteUrl: "ssh://git@code.internal/repo.git")),
+    );
+  });
+
+  test("accepts short and bracketed IPv6 scp hosts", () {
+    expect(
+      parser.parse(remoteUrl: "h:repo.git"),
+      "ssh-relative://h/repo.git",
+    );
+    expect(
+      parser.parse(remoteUrl: "git@[2001:db8::1]:repo.git"),
+      "ssh-relative://git@[2001:db8::1]/repo.git",
+    );
+  });
+
   test("retains SSH users for generic server ownership", () {
     expect(
       parser.parse(remoteUrl: "alice@code.internal:repo.git"),
