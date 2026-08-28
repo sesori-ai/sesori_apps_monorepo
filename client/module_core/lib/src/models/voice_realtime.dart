@@ -21,15 +21,30 @@ final class const VoiceRealtimeCompleted({required final VoiceRealtimeCompletion
 final class const VoiceRealtimeFailed({required final VoiceRealtimeFailure failure})
     extends VoiceRealtimeConnectionEvent;
 
-sealed class const VoiceRealtimeFailure({required final Object? innerError});
+sealed class const VoiceRealtimeFailure({
+  required final Object? innerError,
+  required final StackTrace? innerStackTrace,
+});
 
-final class const VoiceRealtimeQuotaFailure({required super.innerError}) extends VoiceRealtimeFailure;
+final class const VoiceRealtimeQuotaFailure({
+  required super.innerError,
+  required super.innerStackTrace,
+}) extends VoiceRealtimeFailure;
 
-final class const VoiceRealtimeTemporaryUnavailableFailure({required super.innerError}) extends VoiceRealtimeFailure;
+final class const VoiceRealtimeTemporaryUnavailableFailure({
+  required super.innerError,
+  required super.innerStackTrace,
+}) extends VoiceRealtimeFailure;
 
-final class const VoiceRealtimeInterruptedFailure({required super.innerError}) extends VoiceRealtimeFailure;
+final class const VoiceRealtimeInterruptedFailure({
+  required super.innerError,
+  required super.innerStackTrace,
+}) extends VoiceRealtimeFailure;
 
-final class const VoiceRealtimeContractFailure({required super.innerError}) extends VoiceRealtimeFailure;
+final class const VoiceRealtimeContractFailure({
+  required super.innerError,
+  required super.innerStackTrace,
+}) extends VoiceRealtimeFailure;
 
 sealed class const VoiceRealtimeTerminalOutcome();
 

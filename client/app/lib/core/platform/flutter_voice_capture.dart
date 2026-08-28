@@ -119,6 +119,7 @@ final class _FlutterVoiceCaptureSession({
   StreamSubscription<Uint8List>? _realtimeFrameSubscription;
   StreamController<Uint8List>? _realtimeFrameController;
   StreamController<VoiceRealtimeCaptureFormat>? _realtimeFormatController;
+  ({VoiceCaptureError error, StackTrace stackTrace})? _pendingRealtimeFrameFailure;
   WakeLockLease? _wakeLockLease;
   _VoiceCaptureActivityLease? _activityLease;
   RecordConfig? _latestRealtimeConfig;
@@ -127,6 +128,7 @@ final class _FlutterVoiceCaptureSession({
   _VoiceNativeCaptureMode _mode = _VoiceNativeCaptureMode.idle;
   bool _realtimeConfigCallbackSet = false;
   bool _realtimeStartCancellationRequested = false;
+  bool _realtimeStreamCompletionExpected = false;
   bool _isClosed = false;
 
   @override
@@ -221,7 +223,9 @@ final class _FlutterVoiceCaptureSession({
       await _requirePermission();
       final realtimeConfig = _audioFormat.realtimeRecorder;
       _latestRealtimeConfig = realtimeConfig.requestedRecordConfig;
-      final frameController = StreamController<Uint8List>.broadcast();
+      final frameController = StreamController<Uint8List>.broadcast(
+        onListen: _deliverPendingRealtimeFrameFailure,
+      );
       final formatController = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
       _realtimeFrameController = frameController;
       _realtimeFormatController = formatController;
@@ -233,7 +237,13 @@ final class _FlutterVoiceCaptureSession({
       _throwIfRealtimeStartCancelled();
       _realtimeFrameSubscription = nativeFrames.listen(
         frameController.add,
-        onError: frameController.addError,
+        onError: (Object error, StackTrace stackTrace) {
+          _surfaceRealtimeFrameFailure(
+            error: error is VoiceCaptureError ? error : VoiceCaptureError.failed(innerError: error),
+            stackTrace: stackTrace,
+          );
+        },
+        onDone: _handleRealtimeFramesDone,
       );
       await _recorder.pause();
       _throwIfRealtimeStartCancelled();
@@ -321,6 +331,7 @@ final class _FlutterVoiceCaptureSession({
     if (_mode != _VoiceNativeCaptureMode.realtime && _mode != _VoiceNativeCaptureMode.realtimePaused) {
       throw VoiceCaptureError.failed(innerError: null);
     }
+    _realtimeStreamCompletionExpected = true;
     try {
       await _recorder.stop();
     } catch (error, stackTrace) {
@@ -444,6 +455,43 @@ final class _FlutterVoiceCaptureSession({
     }
   }
 
+  void _handleRealtimeFramesDone() {
+    if (_realtimeStreamCompletionExpected ||
+        (_mode != _VoiceNativeCaptureMode.realtime && _mode != _VoiceNativeCaptureMode.realtimePaused)) {
+      return;
+    }
+    _surfaceRealtimeFrameFailure(
+      error: VoiceCaptureError.failed(
+        innerError: StateError("Native realtime audio stream ended unexpectedly"),
+      ),
+      stackTrace: StackTrace.current,
+    );
+  }
+
+  void _surfaceRealtimeFrameFailure({
+    required VoiceCaptureError error,
+    required StackTrace stackTrace,
+  }) {
+    final controller = _realtimeFrameController;
+    if (controller == null || controller.isClosed) return;
+    final failure = (error: error, stackTrace: stackTrace);
+    if (controller.hasListener) {
+      controller.addError(failure.error, failure.stackTrace);
+    } else {
+      _pendingRealtimeFrameFailure ??= failure;
+    }
+  }
+
+  void _deliverPendingRealtimeFrameFailure() {
+    scheduleMicrotask(() {
+      final controller = _realtimeFrameController;
+      final failure = _pendingRealtimeFrameFailure;
+      if (controller == null || controller.isClosed || !controller.hasListener || failure == null) return;
+      _pendingRealtimeFrameFailure = null;
+      controller.addError(failure.error, failure.stackTrace);
+    });
+  }
+
   void _throwIfRealtimeStartCancelled() {
     if (_realtimeStartCancellationRequested) {
       throw VoiceCaptureError.failed(
@@ -479,9 +527,11 @@ final class _FlutterVoiceCaptureSession({
     _realtimeFrameSubscription = null;
     await _realtimeFrameController?.close();
     _realtimeFrameController = null;
+    _pendingRealtimeFrameFailure = null;
     await _realtimeFormatController?.close();
     _realtimeFormatController = null;
     _latestRealtimeConfig = null;
+    _realtimeStreamCompletionExpected = false;
   }
 
   void _startAmplitudeMonitoring() {

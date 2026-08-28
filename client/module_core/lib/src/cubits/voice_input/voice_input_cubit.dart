@@ -49,7 +49,12 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
         final limitReached = _limitReachedDuringStart || terminalCause == VoiceRealtimeTerminalCause.limitReached;
         _limitReachedDuringStart = false;
         _realtimeTerminalDuringStart = null;
-        unawaited(stopAndTranscribe(limitReached: limitReached));
+        unawaited(
+          Future<void>.delayed(
+            Duration.zero,
+            () => stopAndTranscribe(limitReached: limitReached),
+          ),
+        );
       }
     } on VoiceTranscriptionError catch (error, stackTrace) {
       if (error is! MicrophonePermissionDeniedError) {
@@ -253,7 +258,24 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
     required StackTrace stackTrace,
   }) {
     if (error is! NotAuthenticatedVoiceError && error is! NetworkVoiceError) {
-      loge("Transcription failed", error, stackTrace);
+      final originatingStackTrace = switch (error) {
+        ContractVoiceError(:final innerStackTrace) ||
+        RealtimeQuotaVoiceError(:final innerStackTrace) ||
+        RealtimeTemporaryUnavailableVoiceError(:final innerStackTrace) ||
+        RealtimeInterruptedVoiceError(:final innerStackTrace) => innerStackTrace,
+        MicrophonePermissionDeniedError() ||
+        RecordingFailedError() ||
+        NotRecordingError() ||
+        NotAuthenticatedVoiceError() ||
+        RetryableServerVoiceError() ||
+        ServerVoiceError() ||
+        EmptyTranscriptError() ||
+        NetworkVoiceError() ||
+        MissingRecordingArtifactError() ||
+        TranscriptionCancelledError() ||
+        VoiceRealtimePartialTranscriptionError() => null,
+      };
+      loge("Transcription failed", error, originatingStackTrace ?? stackTrace);
     }
   }
 

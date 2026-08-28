@@ -177,6 +177,42 @@ void main() {
     expect(completedCount, 1);
   });
 
+  testWidgets("terminal event during startup preserves gesture ownership and limit notice", (tester) async {
+    final startCompleter = Completer<void>();
+    final terminalController = StreamController<VoiceRealtimeTerminalCause>.broadcast();
+    addTearDown(terminalController.close);
+    when(
+      () => voiceTranscriptionService.realtimeTerminalStream(session: voiceSession),
+    ).thenAnswer((_) => terminalController.stream);
+    when(
+      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+    ).thenAnswer((_) => startCompleter.future);
+    when(
+      () => voiceTranscriptionService.stopAndTranscribe(session: voiceSession),
+    ).thenAnswer((_) async => "captured before limit");
+
+    await tester.pumpWidget(buildHarness());
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump();
+    terminalController.add(VoiceRealtimeTerminalCause.limitReached);
+    await tester.pump();
+    startCompleter.complete();
+    await tester.pump();
+    await tester.pump(Duration.zero);
+    await tester.pump();
+    await gesture.up();
+
+    expect(find.text("Recording limit reached (15 minutes)"), findsOneWidget);
+    expect(draftChanges.map((draft) => draft.text), ["captured before limit"]);
+    expect(completedCount, 1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).called(1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("preview live region announces only stable confirmed text", (tester) async {
     final stopCompleter = Completer<String>();
     when(
@@ -251,7 +287,10 @@ void main() {
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
       VoiceRealtimePartialTranscriptionError(
         confirmedText: "captured text",
-        failure: VoiceTranscriptionError.realtimeInterrupted(innerError: Exception("closed")),
+        failure: VoiceTranscriptionError.realtimeInterrupted(
+          innerError: Exception("closed"),
+          innerStackTrace: null,
+        ),
       ),
     );
 
@@ -277,22 +316,34 @@ void main() {
     final scenarios = <({String name, VoiceTranscriptionError failure, String message})>[
       (
         name: "quota",
-        failure: VoiceTranscriptionError.realtimeQuota(innerError: null),
+        failure: VoiceTranscriptionError.realtimeQuota(
+          innerError: null,
+          innerStackTrace: null,
+        ),
         message: "Voice input quota reached. Try again later.",
       ),
       (
         name: "capacity",
-        failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(innerError: null),
+        failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(
+          innerError: null,
+          innerStackTrace: null,
+        ),
         message: "Voice input is temporarily unavailable. Try again in a moment.",
       ),
       (
         name: "timeout",
-        failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(innerError: TimeoutException("finish")),
+        failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(
+          innerError: TimeoutException("finish"),
+          innerStackTrace: null,
+        ),
         message: "Voice input is temporarily unavailable. Try again in a moment.",
       ),
       (
         name: "transport",
-        failure: VoiceTranscriptionError.realtimeInterrupted(innerError: Exception("closed")),
+        failure: VoiceTranscriptionError.realtimeInterrupted(
+          innerError: Exception("closed"),
+          innerStackTrace: null,
+        ),
         message: "Voice connection was interrupted. Try again.",
       ),
       (
@@ -300,6 +351,7 @@ void main() {
         failure: VoiceTranscriptionError.realtimeContract(
           reason: "unsupported protocol",
           innerError: const FormatException("unsupported protocol"),
+          innerStackTrace: null,
         ),
         message: "Voice input needs an app update. Update Sesori and try again.",
       ),
@@ -308,6 +360,7 @@ void main() {
         failure: VoiceTranscriptionError.realtimeContract(
           reason: "bad frame",
           innerError: const FormatException("bad frame"),
+          innerStackTrace: null,
         ),
         message: "Voice input needs an app update. Update Sesori and try again.",
       ),
@@ -371,6 +424,7 @@ void main() {
         failure: VoiceTranscriptionError.contractFailure(
           reason: "bad capabilities",
           innerError: const FormatException("bad capabilities"),
+          innerStackTrace: null,
         ),
         message: "Voice input needs an app update. Update Sesori and try again.",
       ),

@@ -96,6 +96,33 @@ void main() {
     verify(() => service.stopAndTranscribe(session: session)).called(1);
   });
 
+  test("realtime terminal during startup remains observable before its queued stop", () async {
+    final startCompleter = Completer<void>();
+    when(
+      () => service.start(
+        session: session,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) => startCompleter.future);
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+
+    final starting = cubit.startRecording(projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    realtimeTerminalController.add(VoiceRealtimeTerminalCause.limitReached);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<VoiceInputStarting>());
+
+    startCompleter.complete();
+    await starting;
+    expect(cubit.state, const VoiceInputState.recording(preview: emptyPreview));
+
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, const VoiceInputState.completed(transcript: "hello"));
+    verify(() => service.stopAndTranscribe(session: session)).called(1);
+  });
+
   blocTest<VoiceInputCubit, VoiceInputState>(
     "maps a permission failure into start-specific state",
     setUp: () {
@@ -195,7 +222,10 @@ void main() {
     when(() => service.stopAndTranscribe(session: session)).thenThrow(
       VoiceRealtimePartialTranscriptionError(
         confirmedText: "confirmed words",
-        failure: VoiceTranscriptionError.realtimeInterrupted(innerError: Exception("closed")),
+        failure: VoiceTranscriptionError.realtimeInterrupted(
+          innerError: Exception("closed"),
+          innerStackTrace: null,
+        ),
       ),
     );
     final cubit = VoiceInputCubit(service: service);
@@ -221,7 +251,10 @@ void main() {
     when(() => service.stopAndTranscribe(session: session)).thenThrow(
       VoiceRealtimePartialTranscriptionError(
         confirmedText: "confirmed words",
-        failure: VoiceTranscriptionError.realtimeInterrupted(innerError: Exception("closed")),
+        failure: VoiceTranscriptionError.realtimeInterrupted(
+          innerError: Exception("closed"),
+          innerStackTrace: null,
+        ),
       ),
     );
     final cubit = VoiceInputCubit(service: service);

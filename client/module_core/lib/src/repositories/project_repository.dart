@@ -46,6 +46,19 @@ class ProjectRepository({
     return _api.getProject(projectId: projectId);
   }
 
+  Future<ProjectGlossaryKey?> resolveVoiceGlossaryKey({required String projectId}) async {
+    try {
+      final response = await _api.getProject(projectId: projectId);
+      return switch (response) {
+        SuccessResponse(:final data) => data.voiceGlossaryKey,
+        ErrorResponse() => null,
+      };
+    } on Object catch (error, stackTrace) {
+      logw("Failed to load the bridge-derived voice glossary key", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<ApiResponse<void>> hideProject({required String projectId}) {
     return _api.hideProject(projectId: projectId);
   }

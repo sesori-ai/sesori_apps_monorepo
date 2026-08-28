@@ -6,11 +6,9 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../api/models/realtime_voice_protocol.dart";
-import "../api/project_api.dart";
 import "../api/realtime_voice_api.dart";
 import "../api/voice_capabilities_api.dart";
 import "../capabilities/voice/voice_api.dart";
-import "../logging/logging.dart";
 import "../models/voice_capabilities.dart";
 import "../models/voice_realtime.dart";
 
@@ -18,7 +16,6 @@ import "../models/voice_realtime.dart";
 class VoiceRepository({
   required final VoiceApi _api,
   required final VoiceCapabilitiesApi _capabilitiesApi,
-  required final ProjectApi _projectApi,
   required final RealtimeVoiceApi _realtimeApi,
 }) {
   Future<VoiceCapabilitiesDiscoveryOutcome> discoverCapabilities() async {
@@ -41,19 +38,6 @@ class VoiceRepository({
       // Remove only after every supported auth server exposes protocol 1.
       ErrorResponse() => const VoiceCapabilitiesAsyncFallback(),
     };
-  }
-
-  Future<ProjectGlossaryKey?> resolveProjectGlossaryKey({required String projectId}) async {
-    try {
-      final response = await _projectApi.getProject(projectId: projectId);
-      return switch (response) {
-        SuccessResponse(:final data) => data.voiceGlossaryKey,
-        ErrorResponse() => null,
-      };
-    } on Object catch (error, stackTrace) {
-      logw("Failed to load the bridge-derived voice glossary key", error, stackTrace);
-      return null;
-    }
   }
 
   Future<VoiceRealtimeOpenOutcome> openRealtime({
@@ -129,8 +113,10 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
       await for (final event in _session.events) {
         yield _mapEvent(event);
       }
-    } on Object catch (error) {
-      yield VoiceRealtimeFailed(failure: _mapConnectionFailure(error));
+    } on Object catch (error, stackTrace) {
+      yield VoiceRealtimeFailed(
+        failure: _mapConnectionFailure(error: error, stackTrace: stackTrace),
+      );
     }
   }
 
@@ -138,8 +124,10 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
   void sendAudio(Uint8List frame) {
     try {
       _session.sendAudio(frame);
-    } on Object catch (error) {
-      throw VoiceRealtimeConnectionException(failure: _mapConnectionFailure(error));
+    } on Object catch (error, stackTrace) {
+      throw VoiceRealtimeConnectionException(
+        failure: _mapConnectionFailure(error: error, stackTrace: stackTrace),
+      );
     }
   }
 
@@ -155,11 +143,13 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
           failure: _mapServerFailure(code),
         ),
         RealtimeVoiceReadyEvent() || RealtimeVoiceTranscriptEvent() => const VoiceRealtimeTerminalFailed(
-          failure: VoiceRealtimeContractFailure(innerError: null),
+          failure: VoiceRealtimeContractFailure(innerError: null, innerStackTrace: null),
         ),
       };
-    } on Object catch (error) {
-      return VoiceRealtimeTerminalFailed(failure: _mapConnectionFailure(error));
+    } on Object catch (error, stackTrace) {
+      return VoiceRealtimeTerminalFailed(
+        failure: _mapConnectionFailure(error: error, stackTrace: stackTrace),
+      );
     }
   }
 
@@ -191,14 +181,26 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
     RealtimeCompleteReason.quotaLimit => VoiceRealtimeCompletionReason.quotaLimit,
   };
 
-  static VoiceRealtimeFailure _mapConnectionFailure(Object error) => switch (error) {
-    RealtimeVoiceProtocolException() || FormatException() => VoiceRealtimeContractFailure(innerError: error),
-    RealtimeVoiceTransportClosedException() => VoiceRealtimeInterruptedFailure(innerError: error),
-    _ => VoiceRealtimeInterruptedFailure(innerError: error),
+  static VoiceRealtimeFailure _mapConnectionFailure({
+    required Object error,
+    required StackTrace stackTrace,
+  }) => switch (error) {
+    RealtimeVoiceProtocolException() || FormatException() => VoiceRealtimeContractFailure(
+      innerError: error,
+      innerStackTrace: stackTrace,
+    ),
+    RealtimeVoiceTransportClosedException() => VoiceRealtimeInterruptedFailure(
+      innerError: error,
+      innerStackTrace: stackTrace,
+    ),
+    _ => VoiceRealtimeInterruptedFailure(innerError: error, innerStackTrace: stackTrace),
   };
 
   static VoiceRealtimeFailure _mapServerFailure(RealtimeVoiceErrorCode code) => switch (code) {
-    RealtimeVoiceErrorCode.quotaExhausted => const VoiceRealtimeQuotaFailure(innerError: null),
+    RealtimeVoiceErrorCode.quotaExhausted => const VoiceRealtimeQuotaFailure(
+      innerError: null,
+      innerStackTrace: null,
+    ),
     RealtimeVoiceErrorCode.audioTimeout ||
     RealtimeVoiceErrorCode.providerTimeout ||
     RealtimeVoiceErrorCode.internalError ||
@@ -206,11 +208,17 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
     RealtimeVoiceErrorCode.providerCapacity ||
     RealtimeVoiceErrorCode.providerUnavailable ||
     RealtimeVoiceErrorCode.slowClient ||
-    RealtimeVoiceErrorCode.serviceRestarting => const VoiceRealtimeTemporaryUnavailableFailure(innerError: null),
+    RealtimeVoiceErrorCode.serviceRestarting => const VoiceRealtimeTemporaryUnavailableFailure(
+      innerError: null,
+      innerStackTrace: null,
+    ),
     RealtimeVoiceErrorCode.invalidMessage ||
     RealtimeVoiceErrorCode.unsupportedProtocol ||
     RealtimeVoiceErrorCode.invalidAudio ||
-    RealtimeVoiceErrorCode.providerRejected => const VoiceRealtimeContractFailure(innerError: null),
+    RealtimeVoiceErrorCode.providerRejected => const VoiceRealtimeContractFailure(
+      innerError: null,
+      innerStackTrace: null,
+    ),
   };
 }
 

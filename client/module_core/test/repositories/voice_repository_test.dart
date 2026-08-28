@@ -13,8 +13,6 @@ class MockVoiceApi() extends Mock implements VoiceApi;
 
 class MockVoiceCapabilitiesApi() extends Mock implements VoiceCapabilitiesApi;
 
-class MockProjectApi() extends Mock implements ProjectApi;
-
 class MockRealtimeVoiceApi() extends Mock implements RealtimeVoiceApi;
 
 class _RepositoryRealtimeChannel({required final StreamController<Object?> controller})
@@ -42,7 +40,6 @@ void main() {
 
   late MockVoiceApi api;
   late MockVoiceCapabilitiesApi capabilitiesApi;
-  late MockProjectApi projectApi;
   late MockRealtimeVoiceApi realtimeApi;
   late VoiceRepository repository;
   final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
@@ -50,12 +47,10 @@ void main() {
   setUp(() {
     api = MockVoiceApi();
     capabilitiesApi = MockVoiceCapabilitiesApi();
-    projectApi = MockProjectApi();
     realtimeApi = MockRealtimeVoiceApi();
     repository = VoiceRepository(
       api: api,
       capabilitiesApi: capabilitiesApi,
-      projectApi: projectApi,
       realtimeApi: realtimeApi,
     );
   });
@@ -92,23 +87,6 @@ void main() {
       ),
     );
     expect(await repository.discoverCapabilities(), isA<VoiceCapabilitiesContractFailure>());
-  });
-
-  test("uses only the bridge-derived glossary key and degrades for an older bridge", () async {
-    when(
-      () => projectApi.getProject(projectId: "project-123"),
-    ).thenAnswer(
-      (_) async => ApiResponse.success(
-        Project(id: "project-123", name: "Project", path: "/project", time: null, voiceGlossaryKey: projectKey),
-      ),
-    );
-
-    expect(await repository.resolveProjectGlossaryKey(projectId: "project-123"), projectKey);
-
-    when(
-      () => projectApi.getProject(projectId: "project-123"),
-    ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
-    expect(await repository.resolveProjectGlossaryKey(projectId: "project-123"), isNull);
   });
 
   test("maps realtime open failures into closed repository outcomes", () async {
@@ -178,6 +156,36 @@ void main() {
       );
       await inbound.close();
     }
+  });
+
+  test("preserves the originating realtime event-stream stack", () async {
+    final inbound = StreamController<Object?>.broadcast();
+    addTearDown(inbound.close);
+    final apiSession = RealtimeVoiceSession(
+      channel: _RepositoryRealtimeChannel(controller: inbound),
+    );
+    when(
+      () => realtimeApi.start(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) async => apiSession);
+
+    final outcome = await repository.openRealtime(
+      audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
+      projectKey: projectKey,
+    );
+    final connection = (outcome as VoiceRealtimeOpened).connection;
+    final eventFuture = connection.events.first;
+    final origin = StackTrace.fromString("socket event origin");
+    inbound.addError(StateError("socket failed"), origin);
+
+    expect(
+      await eventFuture,
+      isA<VoiceRealtimeFailed>()
+          .having((event) => event.failure.innerError, "innerError", isA<StateError>())
+          .having((event) => event.failure.innerStackTrace, "innerStackTrace", same(origin)),
+    );
   });
 
   test("maps success and forwards the typed artifact facts", () async {

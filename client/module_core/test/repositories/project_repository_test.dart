@@ -86,6 +86,30 @@ void main() {
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
   });
 
+  test("resolves only the bridge-derived glossary key and degrades without project data", () async {
+    final api = MockProjectApi();
+    final repository = ProjectRepository(
+      api: api,
+      filesystemApi: MockFilesystemApi(),
+      sessionApi: MockSessionApi(),
+    );
+    final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
+    when(
+      () => api.getProject(projectId: "project-1"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        Project(id: "project-1", name: "Project", path: "/project", time: null, voiceGlossaryKey: projectKey),
+      ),
+    );
+
+    expect(await repository.resolveVoiceGlossaryKey(projectId: "project-1"), projectKey);
+
+    when(
+      () => api.getProject(projectId: "project-1"),
+    ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+    expect(await repository.resolveVoiceGlossaryKey(projectId: "project-1"), isNull);
+  });
+
   group("host paths", () {
     test("creates a child with Windows host separators", () async {
       final api = MockProjectApi();

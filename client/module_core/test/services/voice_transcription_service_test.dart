@@ -9,6 +9,8 @@ import "package:test/test.dart";
 
 class MockVoiceRepository() extends Mock implements VoiceRepository;
 
+class MockProjectRepository() extends Mock implements ProjectRepository;
+
 class MockVoiceCapture() extends Mock implements VoiceCapture;
 
 class MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
@@ -17,6 +19,7 @@ class MockVoiceRealtimeConnection() extends Mock implements VoiceRealtimeConnect
 
 void main() {
   late MockVoiceRepository repository;
+  late MockProjectRepository projectRepository;
   late MockVoiceCapture capture;
   late MockVoiceCaptureSession captureSession;
   late VoiceTranscriptionService service;
@@ -34,13 +37,14 @@ void main() {
 
   setUp(() {
     repository = MockVoiceRepository();
+    projectRepository = MockProjectRepository();
     capture = MockVoiceCapture();
     captureSession = MockVoiceCaptureSession();
     when(capture.createSession).thenReturn(captureSession);
     when(capture.prewarm).thenAnswer((_) async {});
     when(repository.discoverCapabilities).thenAnswer((_) async => const VoiceCapabilitiesAsyncFallback());
     when(
-      () => repository.resolveProjectGlossaryKey(projectId: any(named: "projectId")),
+      () => projectRepository.resolveVoiceGlossaryKey(projectId: any(named: "projectId")),
     ).thenAnswer((_) async => projectKey);
     when(() => captureSession.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(captureSession.start).thenAnswer((_) async {});
@@ -59,7 +63,11 @@ void main() {
         projectKey: any(named: "projectKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.success(transcript: "hello"));
-    service = VoiceTranscriptionService(repository: repository, capture: capture);
+    service = VoiceTranscriptionService(
+      repository: repository,
+      projectRepository: projectRepository,
+      capture: capture,
+    );
     session = service.createSession();
   });
 
@@ -113,7 +121,42 @@ void main() {
         projectKey: projectKey,
       ),
     ).called(1);
-    verify(() => repository.resolveProjectGlossaryKey(projectId: "project-123")).called(1);
+    verify(() => projectRepository.resolveVoiceGlossaryKey(projectId: "project-123")).called(1);
+    verifyNever(captureSession.startRealtime);
+  });
+
+  test("older bridge glossary omission keeps async transcription usable without a key", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: false, supportsProtocol1: true);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(
+      () => projectRepository.resolveVoiceGlossaryKey(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => null);
+
+    await service.start(session: session, projectId: "project-123");
+    expect(await service.stopAndTranscribe(session: session), "hello");
+
+    verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectKey: null,
+      ),
+    ).called(1);
+  });
+
+  test("pending capability discovery starts the released async capture without waiting", () async {
+    final discovery = Completer<VoiceCapabilitiesDiscoveryOutcome>();
+    when(repository.discoverCapabilities).thenAnswer((_) => discovery.future);
+
+    try {
+      await service.start(session: session, projectId: "project-123").timeout(const Duration(seconds: 1));
+    } finally {
+      if (!discovery.isCompleted) discovery.complete(const VoiceCapabilitiesAsyncFallback());
+    }
+
+    verify(captureSession.start).called(1);
     verifyNever(captureSession.startRealtime);
   });
 
@@ -559,7 +602,8 @@ void main() {
     events.add(const VoiceRealtimeTranscript(confirmedDelta: "confirmed", provisional: "lost"));
     await Future<void>.delayed(Duration.zero);
     final terminalReached = service.realtimeTerminalStream(session: session).first;
-    events.addError(Exception("connection closed"), StackTrace.current);
+    final origin = StackTrace.fromString("socket stream origin");
+    events.addError(Exception("connection closed"), origin);
     expect(await terminalReached, VoiceRealtimeTerminalCause.failed);
 
     await expectLater(
@@ -567,7 +611,12 @@ void main() {
       throwsA(
         isA<VoiceRealtimePartialTranscriptionError>()
             .having((error) => error.confirmedText, "confirmedText", "confirmed")
-            .having((error) => error.failure, "failure", isA<RealtimeInterruptedVoiceError>()),
+            .having((error) => error.failure, "failure", isA<RealtimeInterruptedVoiceError>())
+            .having(
+              (error) => (error.failure as RealtimeInterruptedVoiceError).innerStackTrace,
+              "originating stack trace",
+              same(origin),
+            ),
       ),
     );
     await expectLater(service.retry(session: session), throwsA(isA<MissingRecordingArtifactError>()));

@@ -252,6 +252,23 @@ void main() {
     await session.close();
   });
 
+  test("unexpected native realtime stream completion surfaces a capture failure", () async {
+    final nativeFrames = StreamController<Uint8List>.broadcast();
+    addTearDown(() async {
+      if (!nativeFrames.isClosed) await nativeFrames.close();
+    });
+    when(() => recorder.startStream(any())).thenAnswer((_) async => nativeFrames.stream);
+    final session = capture.createSession();
+    final realtime = await session.startRealtime();
+
+    // Completion can race ahead of the service's setup listener.
+    await nativeFrames.close();
+    await expectLater(realtime.frames, emitsError(isA<VoiceCaptureFailed>()));
+
+    await session.cancel();
+    await session.close();
+  });
+
   test("cancellation waits for pending realtime startup and rolls native capture back", () async {
     final nativeFrames = StreamController<Uint8List>.broadcast();
     final startStreamCompleter = Completer<Stream<Uint8List>>();

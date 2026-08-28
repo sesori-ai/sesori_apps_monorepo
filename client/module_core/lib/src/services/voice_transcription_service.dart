@@ -8,6 +8,7 @@ import "../logging/logging.dart";
 import "../models/voice_capabilities.dart";
 import "../models/voice_realtime.dart";
 import "../platform/voice_capture.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/voice_repository.dart";
 
 const maxRecordingDuration = Duration(minutes: 15);
@@ -18,6 +19,7 @@ const _realtimeFinishTimeout = Duration(seconds: 10);
 @lazySingleton
 class VoiceTranscriptionService({
   required final VoiceRepository _repository,
+  required final ProjectRepository _projectRepository,
   required final VoiceCapture _capture,
 }) {
   VoiceTranscriptionSession createSession() => VoiceTranscriptionSession._(
@@ -43,6 +45,7 @@ class VoiceTranscriptionService({
       return Future<void>.value();
     }
 
+    _beginCapabilityDiscovery(session: session);
     final existing = session._prewarmFuture;
     if (existing != null) return existing;
 
@@ -60,6 +63,45 @@ class VoiceTranscriptionService({
     } catch (error, stackTrace) {
       logw("Failed to prewarm voice capture", error, stackTrace);
     }
+  }
+
+  void _beginCapabilityDiscovery({required VoiceTranscriptionSession session}) {
+    if (session._capabilitiesOutcome != null ||
+        session._capabilitiesDiscoveryFuture != null ||
+        session._state is _VoiceSessionClosing ||
+        session._state is _VoiceSessionDisposed) {
+      return;
+    }
+
+    late final Future<void> trackedFuture;
+    trackedFuture = _loadCapabilities(session: session).whenComplete(() {
+      if (identical(session._capabilitiesDiscoveryFuture, trackedFuture)) {
+        session._capabilitiesDiscoveryFuture = null;
+      }
+    });
+    session._capabilitiesDiscoveryFuture = trackedFuture;
+  }
+
+  Future<void> _loadCapabilities({required VoiceTranscriptionSession session}) async {
+    try {
+      final outcome = await _repository.discoverCapabilities();
+      if (session._state is! _VoiceSessionDisposed) session._capabilitiesOutcome = outcome;
+    } on Object catch (error, stackTrace) {
+      logw("Failed to pre-discover realtime voice capability", error, stackTrace);
+      if (session._state is! _VoiceSessionDisposed) {
+        session._capabilitiesOutcome = const VoiceCapabilitiesAsyncFallback();
+      }
+    }
+  }
+
+  Future<VoiceCapabilitiesDiscoveryOutcome> _capabilitiesForStart({
+    required VoiceTranscriptionSession session,
+  }) async {
+    _beginCapabilityDiscovery(session: session);
+    // Give an already-completed discovery one microtask to publish its result,
+    // but never delay the active hold on network capability discovery.
+    await Future<void>.value();
+    return session._capabilitiesOutcome ?? const VoiceCapabilitiesAsyncFallback();
   }
 
   Future<void> start({required VoiceTranscriptionSession session, required String projectId}) {
@@ -89,10 +131,10 @@ class VoiceTranscriptionService({
       if (prewarmFuture != null) await prewarmFuture.timeout(_recorderPrewarmTimeout);
       _ensureGeneration(session: session, generation: generation);
 
-      final discovery = await _repository.discoverCapabilities();
+      final discovery = await _capabilitiesForStart(session: session);
       _ensureGeneration(session: session, generation: generation);
       final projectKey = switch (discovery) {
-        VoiceCapabilitiesAvailable() => await _repository.resolveProjectGlossaryKey(projectId: projectId),
+        VoiceCapabilitiesAvailable() => await _projectRepository.resolveVoiceGlossaryKey(projectId: projectId),
         VoiceCapabilitiesAsyncFallback() || VoiceCapabilitiesContractFailure() => null,
       };
       _ensureGeneration(session: session, generation: generation);
@@ -142,6 +184,7 @@ class VoiceTranscriptionService({
     VoiceCapabilitiesContractFailure(:final reason) => throw VoiceTranscriptionError.contractFailure(
       reason: reason,
       innerError: FormatException(reason),
+      innerStackTrace: null,
     ),
     VoiceCapabilitiesAvailable(:final capabilities) => () {
       if (capabilities.canUseRealtimeProtocol1) {
@@ -226,7 +269,11 @@ class VoiceTranscriptionService({
       case VoiceRealtimeOpenNotAuthenticated():
         throw VoiceTranscriptionError.notAuthenticated();
       case VoiceRealtimeOpenContractFailure(:final reason, :final cause):
-        throw VoiceTranscriptionError.contractFailure(reason: reason, innerError: cause);
+        throw VoiceTranscriptionError.contractFailure(
+          reason: reason,
+          innerError: cause,
+          innerStackTrace: null,
+        );
       case VoiceRealtimeOpenUnexpectedFailure(:final error):
         throw VoiceTranscriptionError.recordingFailed(innerError: error);
     }
@@ -272,7 +319,10 @@ class VoiceTranscriptionService({
         _handleRealtimeDomainFailure(
           session: session,
           interaction: interaction,
-          failure: VoiceRealtimeInterruptedFailure(innerError: error),
+          failure: VoiceRealtimeInterruptedFailure(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
           allowPreAudioFallback: true,
         );
       },
@@ -281,7 +331,10 @@ class VoiceTranscriptionService({
           _handleRealtimeDomainFailure(
             session: session,
             interaction: interaction,
-            failure: const VoiceRealtimeInterruptedFailure(innerError: null),
+            failure: const VoiceRealtimeInterruptedFailure(
+              innerError: null,
+              innerStackTrace: null,
+            ),
             allowPreAudioFallback: true,
           );
         }
@@ -395,11 +448,14 @@ class VoiceTranscriptionService({
         failure: error.failure,
         allowPreAudioFallback: true,
       );
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       _handleRealtimeDomainFailure(
         session: session,
         interaction: interaction,
-        failure: VoiceRealtimeInterruptedFailure(innerError: error),
+        failure: VoiceRealtimeInterruptedFailure(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
         allowPreAudioFallback: true,
       );
     }
@@ -414,6 +470,7 @@ class VoiceTranscriptionService({
     final error = VoiceTranscriptionError.realtimeContract(
       reason: "Realtime recorder format changed after setup",
       innerError: StateError("Realtime recorder sample rate changed"),
+      innerStackTrace: StackTrace.current,
     );
     if (!interaction.sentAudio) {
       _requestRealtimeFallback(session: session, interaction: interaction, cause: error);
@@ -440,6 +497,7 @@ class VoiceTranscriptionService({
         VoiceCaptureRealtimeUnsupported() => VoiceTranscriptionError.realtimeContract(
           reason: "Realtime recorder format became unsupported after audio started",
           innerError: typed,
+          innerStackTrace: stackTrace,
         ),
         VoiceCapturePermissionDenied() ||
         VoiceCaptureFailed() => VoiceTranscriptionError.recordingFailed(innerError: typed),
@@ -462,18 +520,24 @@ class VoiceTranscriptionService({
   }
 
   VoiceTranscriptionError _mapRealtimeFailure(VoiceRealtimeFailure failure) => switch (failure) {
-    VoiceRealtimeQuotaFailure(:final innerError) => VoiceTranscriptionError.realtimeQuota(
+    VoiceRealtimeQuotaFailure(:final innerError, :final innerStackTrace) => VoiceTranscriptionError.realtimeQuota(
       innerError: innerError,
+      innerStackTrace: innerStackTrace,
     ),
-    VoiceRealtimeTemporaryUnavailableFailure(:final innerError) => VoiceTranscriptionError.realtimeTemporaryUnavailable(
-      innerError: innerError,
-    ),
-    VoiceRealtimeInterruptedFailure(:final innerError) => VoiceTranscriptionError.realtimeInterrupted(
-      innerError: innerError,
-    ),
-    VoiceRealtimeContractFailure(:final innerError) => VoiceTranscriptionError.realtimeContract(
+    VoiceRealtimeTemporaryUnavailableFailure(:final innerError, :final innerStackTrace) =>
+      VoiceTranscriptionError.realtimeTemporaryUnavailable(
+        innerError: innerError,
+        innerStackTrace: innerStackTrace,
+      ),
+    VoiceRealtimeInterruptedFailure(:final innerError, :final innerStackTrace) =>
+      VoiceTranscriptionError.realtimeInterrupted(
+        innerError: innerError,
+        innerStackTrace: innerStackTrace,
+      ),
+    VoiceRealtimeContractFailure(:final innerError, :final innerStackTrace) => VoiceTranscriptionError.realtimeContract(
       reason: "Realtime voice contract failure",
       innerError: innerError ?? const FormatException("Realtime voice contract failure"),
+      innerStackTrace: innerStackTrace,
     ),
   };
 
@@ -503,6 +567,7 @@ class VoiceTranscriptionService({
             VoiceTranscriptionError.contractFailure(
               reason: "Realtime session completed before ready",
               innerError: StateError("Realtime complete before ready"),
+              innerStackTrace: StackTrace.current,
             ),
           );
         }
@@ -537,7 +602,12 @@ class VoiceTranscriptionService({
     interaction.forwardFrames = false;
     if (session._state is _VoiceSessionStarting) {
       if (!interaction.startFailure.isCompleted) {
-        interaction.startFailure.complete(VoiceTranscriptionError.realtimeInterrupted(innerError: cause));
+        interaction.startFailure.complete(
+          VoiceTranscriptionError.realtimeInterrupted(
+            innerError: cause,
+            innerStackTrace: cause is RealtimeInterruptedVoiceError ? cause.innerStackTrace : null,
+          ),
+        );
       }
       return;
     }
@@ -656,11 +726,14 @@ class VoiceTranscriptionService({
         return _requireRealtimeTranscript(interaction: interaction);
       } on VoiceRealtimePartialTranscriptionError {
         rethrow;
-      } on TimeoutException catch (error) {
+      } on TimeoutException catch (error, stackTrace) {
         _ensureGeneration(session: session, generation: generation);
         throw VoiceRealtimePartialTranscriptionError(
           confirmedText: interaction.confirmedText,
-          failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(innerError: error),
+          failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
         );
       } on VoiceRealtimeConnectionException catch (error) {
         _ensureGeneration(session: session, generation: generation);
@@ -670,11 +743,14 @@ class VoiceTranscriptionService({
         );
       } on VoiceTranscriptionError {
         rethrow;
-      } on Object catch (error) {
+      } on Object catch (error, stackTrace) {
         _ensureGeneration(session: session, generation: generation);
         throw VoiceRealtimePartialTranscriptionError(
           confirmedText: interaction.confirmedText,
-          failure: VoiceTranscriptionError.realtimeInterrupted(innerError: error),
+          failure: VoiceTranscriptionError.realtimeInterrupted(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
         );
       }
     } finally {
@@ -1071,6 +1147,8 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   ProjectGlossaryKey? _projectKey;
   _RealtimeVoiceInteraction? _realtime;
   Future<VoiceRealtimeCapture>? _realtimeCaptureStartFuture;
+  VoiceCapabilitiesDiscoveryOutcome? _capabilitiesOutcome;
+  Future<void>? _capabilitiesDiscoveryFuture;
   Future<void>? _prewarmFuture;
   Future<void>? _startFuture;
   Future<VoiceRecordingArtifact>? _stopFuture;
@@ -1189,15 +1267,32 @@ sealed class const VoiceTranscriptionError._(final String message) implements Ex
 
   factory cancelled() = TranscriptionCancelledError._;
 
-  factory contractFailure({required String reason, required Object innerError}) = ContractVoiceError._;
+  factory contractFailure({
+    required String reason,
+    required Object innerError,
+    required StackTrace? innerStackTrace,
+  }) = ContractVoiceError._;
 
-  factory realtimeContract({required String reason, required Object innerError}) = ContractVoiceError._;
+  factory realtimeContract({
+    required String reason,
+    required Object innerError,
+    required StackTrace? innerStackTrace,
+  }) = ContractVoiceError._;
 
-  factory realtimeQuota({required Object? innerError}) = RealtimeQuotaVoiceError._;
+  factory realtimeQuota({
+    required Object? innerError,
+    required StackTrace? innerStackTrace,
+  }) = RealtimeQuotaVoiceError._;
 
-  factory realtimeTemporaryUnavailable({required Object? innerError}) = RealtimeTemporaryUnavailableVoiceError._;
+  factory realtimeTemporaryUnavailable({
+    required Object? innerError,
+    required StackTrace? innerStackTrace,
+  }) = RealtimeTemporaryUnavailableVoiceError._;
 
-  factory realtimeInterrupted({required Object? innerError}) = RealtimeInterruptedVoiceError._;
+  factory realtimeInterrupted({
+    required Object? innerError,
+    required StackTrace? innerStackTrace,
+  }) = RealtimeInterruptedVoiceError._;
 
   @override
   String toString() => "VoiceTranscriptionError: $message";
@@ -1244,21 +1339,32 @@ final class const TranscriptionCancelledError._() extends VoiceTranscriptionErro
   this : super._("Transcription cancelled");
 }
 
-final class const ContractVoiceError._({required final String reason, required final Object innerError})
-    extends VoiceTranscriptionError {
+final class const ContractVoiceError._({
+  required final String reason,
+  required final Object innerError,
+  required final StackTrace? innerStackTrace,
+}) extends VoiceTranscriptionError {
   this : super._("Voice contract failure: $reason");
 }
 
-final class const RealtimeQuotaVoiceError._({required final Object? innerError}) extends VoiceTranscriptionError {
+final class const RealtimeQuotaVoiceError._({
+  required final Object? innerError,
+  required final StackTrace? innerStackTrace,
+}) extends VoiceTranscriptionError {
   this : super._("Realtime voice quota exhausted");
 }
 
-final class const RealtimeTemporaryUnavailableVoiceError._({required final Object? innerError})
-    extends VoiceTranscriptionError {
+final class const RealtimeTemporaryUnavailableVoiceError._({
+  required final Object? innerError,
+  required final StackTrace? innerStackTrace,
+}) extends VoiceTranscriptionError {
   this : super._("Realtime voice temporarily unavailable");
 }
 
-final class const RealtimeInterruptedVoiceError._({required final Object? innerError}) extends VoiceTranscriptionError {
+final class const RealtimeInterruptedVoiceError._({
+  required final Object? innerError,
+  required final StackTrace? innerStackTrace,
+}) extends VoiceTranscriptionError {
   this : super._("Realtime voice interrupted");
 }
 
