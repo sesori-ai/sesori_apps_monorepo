@@ -34,7 +34,7 @@ class const ProjectGlossaryTermCalculator() {
     r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
   );
   static final RegExp _yamlBlockHeaderPattern = RegExp(
-    r'''^([ \t]*)["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*:\s*[|>][1-9+-]*\s*(?:#.*)?\r?$''',
+    r'''^([ \t]*)(-[ \t]+)?["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*:\s*[|>][1-9+-]*\s*(?:#.*)?\r?$''',
   );
   static final RegExp _xmlNameAcronymBoundaryPattern = RegExp("([A-Z]+)([A-Z][a-z])");
   static final RegExp _xmlNameCamelBoundaryPattern = RegExp("([a-z0-9])([A-Z])");
@@ -256,13 +256,13 @@ when with web widget widgets will windows window workspace www
     var index = 0;
     while (index < lines.length) {
       final header = _yamlBlockHeaderPattern.firstMatch(lines[index]);
-      if (header == null || !_isCredentialName(header.group(2)!)) {
+      if (header == null || !_isCredentialName(header.group(3)!)) {
         filtered.add(lines[index]);
         index++;
         continue;
       }
 
-      final headerIndent = header.group(1)!.length;
+      final headerIndent = header.group(1)!.length + (header.group(2)?.length ?? 0);
       filtered.add("");
       index++;
       while (index < lines.length) {

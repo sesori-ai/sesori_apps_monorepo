@@ -48,6 +48,7 @@ void main() {
           'password = """Topaz Riverstone\nSilverPine"""',
           "token = '''Amber Willow'''",
           "server:\n  password: >-\n    YamlOrchid CopperMeadow\n    HiddenCedar\n  framework: SafeFramework",
+          "users:\n  - password: |+\n      SequenceOrchid HiddenMeadow\n    framework: SequenceSafeFramework",
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -83,6 +84,8 @@ void main() {
       "YamlOrchid",
       "CopperMeadow",
       "HiddenCedar",
+      "SequenceOrchid",
+      "HiddenMeadow",
       "abcdefghijklmnopqrstuvwxyz",
       "BasicCredentialValue123",
       "aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -105,7 +108,7 @@ void main() {
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
-    expect(terms, contains("SafeFramework"));
+    expect(terms, containsAll(["SafeFramework", "SequenceSafeFramework"]));
   });
 
   test("keeps short symbolic language names", () {
