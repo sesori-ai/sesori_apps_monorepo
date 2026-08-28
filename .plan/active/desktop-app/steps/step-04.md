@@ -50,14 +50,14 @@ and the two Layer-3 services do not depend on each other.
 ## Verification
 
 - `client/module_desktop_core`: `dart analyze --fatal-infos` — clean.
-- `client/module_desktop_core`: `dart test` — 106 tests passed.
-- Focused process/command/API/DI suites — 30 tests passed, covering all deliberate
+- `client/module_desktop_core`: `dart test` — 108 tests passed.
+- Focused process/command/API/DI suites — 32 tests passed, covering all deliberate
   exit classes, auth recovery versus manual Off, bounded give-up with recent
-  logs, tracker-owned stable-runtime reset, early exit-86 restart serialization,
-  both manual timer-cancellation paths, and prompt send/retention/stale-id behavior.
+  logs, disconnect-aware stable-runtime reset, pre-return exit claiming, early
+  exit-86 serialization, timer cancellation, and prompt send/retention behavior.
 - `client/desktop`: `dart analyze --fatal-infos` — clean.
 - `client/desktop`: `flutter test` — 22 tests passed; four-phase DI resolves
   both Layer-3 services.
 - Regenerated desktop-core Injectable output with `build_runner`.
-- Change size after review fixes: 1,397 changed lines including new files,
+- Change size after review fixes: 1,497 changed lines including new files,
   under the 1,500-line soft cap.

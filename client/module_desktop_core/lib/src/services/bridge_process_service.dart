@@ -111,8 +111,10 @@ class BridgeProcessService.forTesting({
   int _successfulAuthenticationGeneration = 0;
   int _authenticationGenerationAtSpawn = 0;
   late AuthState _lastObservedAuthState;
+  BridgeProcessExit? _pendingStartupExit;
   int? _activePid;
   DateTime? _healthySince;
+  bool _startupExitPolicyClaimed = false;
   bool _disposed = false;
   BridgeProcessDesiredState _desiredState = BridgeProcessDesiredState.off;
 
@@ -184,6 +186,8 @@ class BridgeProcessService.forTesting({
       return;
     }
 
+    _pendingStartupExit = null;
+    _startupExitPolicyClaimed = false;
     _publish(const BridgeProcessStarting());
     bool controlStartAttempted = false;
     bool childCreated = false;
@@ -202,17 +206,20 @@ class BridgeProcessService.forTesting({
       _activePid = streams.pid;
       _authenticationGenerationAtSpawn = _successfulAuthenticationGeneration;
       _healthySince = null;
-      _throwIfStartCancelled();
-
-      await _logTracker.attach(stdout: streams.stdout, stderr: streams.stderr);
-      _throwIfStartCancelled();
-      streams.stdin.writeln(_controlChannelServer.secret);
-      await streams.stdin.flush();
-      _throwIfStartCancelled();
-
-      if (_activePid != streams.pid || !_repository.isRunning) {
+      final BridgeProcessExit? pendingStartupExit = _pendingStartupExit;
+      _pendingStartupExit = null;
+      if (pendingStartupExit?.pid == streams.pid) {
+        _beginExitCleanup(exit: pendingStartupExit);
         throw BridgeProcessExitedDuringStartException(pid: streams.pid);
       }
+      _throwIfStartCannotContinue(pid: streams.pid);
+
+      await _logTracker.attach(stdout: streams.stdout, stderr: streams.stderr);
+      _throwIfStartCannotContinue(pid: streams.pid);
+      streams.stdin.writeln(_controlChannelServer.secret);
+      await streams.stdin.flush();
+      _throwIfStartCannotContinue(pid: streams.pid);
+
       _publish(BridgeProcessRunning(pid: streams.pid));
     } on _BridgeProcessStartCancelled {
       await _cleanUpFailedStart(
@@ -225,8 +232,16 @@ class BridgeProcessService.forTesting({
         controlStartAttempted: controlStartAttempted,
         childCreated: childCreated,
       );
-      // The repository exit stream owns the resulting retry/stop policy and
-      // state. Publishing startup rollback state here would overwrite it.
+      _pendingStartupExit = null;
+      if (!_startupExitPolicyClaimed) {
+        _scheduleCrashRetry(
+          exitCode: null,
+          generation: _lifecycleGeneration,
+          source: _BridgeCrashSource.automaticStart,
+        );
+      }
+      // A claimed repository exit already owns its deliberate/crash policy;
+      // otherwise the startup fallback above prevents desired On from stalling.
       rethrow;
     } on Object {
       await _cleanUpFailedStart(
@@ -252,6 +267,13 @@ class BridgeProcessService.forTesting({
   void _throwIfStartCancelled() {
     if (_desiredState == BridgeProcessDesiredState.off || _disposed) {
       throw const _BridgeProcessStartCancelled();
+    }
+  }
+
+  void _throwIfStartCannotContinue({required int pid}) {
+    _throwIfStartCancelled();
+    if (_activePid != pid || !_repository.isRunning) {
+      throw BridgeProcessExitedDuringStartException(pid: pid);
     }
   }
 
@@ -318,6 +340,9 @@ class BridgeProcessService.forTesting({
 
   void _onExit(BridgeProcessExit exit) {
     if (_activePid != exit.pid) {
+      if (_activePid == null && state is BridgeProcessStarting) {
+        _pendingStartupExit = exit;
+      }
       return;
     }
     _beginExitCleanup(exit: exit);
@@ -336,6 +361,9 @@ class BridgeProcessService.forTesting({
   }
 
   void _beginExitCleanup({required BridgeProcessExit? exit}) {
+    if (state is BridgeProcessStarting) {
+      _startupExitPolicyClaimed = true;
+    }
     _activePid = null;
     final bool stableRun = _wasStableRun();
     final int authenticationGenerationAtSpawn = _authenticationGenerationAtSpawn;
@@ -577,7 +605,11 @@ class BridgeProcessService.forTesting({
   }
 
   void _onHelperConnectionChanged({required bool connected}) {
-    if (connected && _activePid != null) {
+    if (!connected) {
+      _healthySince = null;
+      return;
+    }
+    if (_activePid != null) {
       _healthySince ??= _now();
     }
   }

@@ -309,6 +309,31 @@ void main() {
       expect(service.state, same(retryState));
     });
 
+    test("an exit emitted before spawn returns is claimed by exactly one retry policy", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.onSpawnBeforeReturn = () {
+        repository.onSpawnBeforeReturn = null;
+        repository.emitExit(exitCode: 9, expected: false);
+      };
+      final Future<BridgeProcessState> retryScheduled = service.states.firstWhere(
+        (state) => state is BridgeProcessCrashRetryScheduled,
+      );
+
+      repository.emitExit(exitCode: 86, expected: false);
+      final BridgeProcessState retryState = await retryScheduled;
+
+      expect(repository.spawnCalls, 2);
+      expect(
+        retryState,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", 9)
+            .having((state) => state.crashCount, "crashCount", 1),
+      );
+      await pumpEventQueue();
+      expect(service.state, same(retryState));
+    });
+
     test("exit 87 waits for a successful sign-in before restarting desired On", () async {
       authSession.state = _authenticatedState;
       await service.start();
@@ -496,6 +521,41 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
+    test("a disconnected interval does not reset the crash budget", () async {
+      await rebuildService(
+        crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 20,
+      );
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      final Future<BridgeProcessState> respawned = service.states
+          .skip(1)
+          .firstWhere((state) => state is BridgeProcessRunning);
+      repository.emitExit(exitCode: 20, expected: false);
+      await respawned;
+
+      statusTracker.markHelperConnected();
+      await pumpEventQueue(times: 2);
+      now = now.add(const Duration(minutes: 4));
+      statusTracker.markHelperDisconnected();
+      await pumpEventQueue(times: 2);
+      statusTracker.markHelperConnected();
+      await pumpEventQueue(times: 2);
+      now = now.add(const Duration(minutes: 2));
+      repository.emitExit(exitCode: 21, expected: false);
+      await pumpEventQueue();
+
+      expect(
+        service.state,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.crashCount, "crashCount", 2)
+            .having((state) => state.delay, "delay", const Duration(hours: 1)),
+      );
+      expect(repository.spawnCalls, 2);
+    });
+
     test("manual Start cancels a pending retry without a delayed second helper", () async {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
@@ -640,6 +700,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   List<String>? arguments;
   Object? spawnError;
   Object? stopError;
+  void Function()? onSpawnBeforeReturn;
   bool _isRunning = false;
   int? _activePid;
 
@@ -668,6 +729,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
     }
     _isRunning = true;
     _activePid = streams.pid;
+    onSpawnBeforeReturn?.call();
     return streams;
   }
 
