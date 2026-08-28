@@ -14,6 +14,7 @@ void main() {
     late _ProcessStreamsFixture streams;
     late _FakeBridgeProcessRepository repository;
     late _FakeBridgeProcessLogTracker logTracker;
+    late BridgeStatusTracker statusTracker;
     late _FakeControlChannelServer controlServer;
     late _FakeAuthSession authSession;
     late _FakeBridgeExecutablePathResolver executablePathResolver;
@@ -25,6 +26,7 @@ void main() {
       streams = _ProcessStreamsFixture(pid: 42);
       repository = _FakeBridgeProcessRepository(streams: streams.value);
       logTracker = _FakeBridgeProcessLogTracker();
+      statusTracker = BridgeStatusTracker();
       controlServer = _FakeControlChannelServer();
       authSession = _FakeAuthSession(initialState: const AuthState.unauthenticated());
       executablePathResolver = _FakeBridgeExecutablePathResolver(path: "/repo/bridge");
@@ -33,6 +35,7 @@ void main() {
       service = BridgeProcessService.forTesting(
         repository: repository,
         logTracker: logTracker,
+        statusTracker: statusTracker,
         controlChannelServer: controlServer,
         authSession: authSession,
         executablePathResolver: executablePathResolver,
@@ -57,6 +60,7 @@ void main() {
       service = BridgeProcessService.forTesting(
         repository: repository,
         logTracker: logTracker,
+        statusTracker: statusTracker,
         controlChannelServer: controlServer,
         authSession: authSession,
         executablePathResolver: executablePathResolver,
@@ -76,7 +80,7 @@ void main() {
       await service.dispose();
       await repository.disposeFake();
       await authSession.disposeFake();
-      await controlServer.disposeFake();
+      statusTracker.dispose();
     });
 
     test("signed-out start enters login-required without starting infrastructure", () async {
@@ -260,6 +264,27 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
       await pumpEventQueue();
       expect(repository.spawnCalls, 2);
+    });
+
+    test("exit 86 during startup queues its respawn after the start slot clears", () async {
+      authSession.state = _authenticatedState;
+      logTracker.onAttach = () {
+        logTracker.onAttach = null;
+        repository.emitExit(exitCode: 86, expected: false);
+      };
+      final Future<BridgeProcessState> restarted = service.states.firstWhere(
+        (state) => state is BridgeProcessRunning,
+      );
+
+      await expectLater(
+        service.start(),
+        throwsA(isA<BridgeProcessExitedDuringStartException>()),
+      );
+      await restarted;
+
+      expect(repository.spawnCalls, 2);
+      expect(controlServer.startCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
     });
 
     test("an automatically restarted child that exits during startup consumes one crash entry", () async {
@@ -461,7 +486,7 @@ void main() {
       await respawned;
       expect(repository.spawnCalls, 2);
 
-      controlServer.emitHelperConnected();
+      statusTracker.markHelperConnected();
       await pumpEventQueue(times: 2);
       now = now.add(const Duration(minutes: 6));
       repository.emitExit(exitCode: 21, expected: false);
@@ -527,6 +552,7 @@ void main() {
     final BridgeProcessService service = BridgeProcessService.forTesting(
       repository: repository,
       logTracker: logTracker,
+      statusTracker: statusTracker,
       controlChannelServer: server,
       authSession: authSession,
       executablePathResolver: _FakeBridgeExecutablePathResolver(path: "/repo/bridge"),
@@ -700,16 +726,12 @@ class _FakeBridgeProcessLogTracker() implements BridgeProcessLogTracker {
 }
 
 class _FakeControlChannelServer() implements ControlChannelServer {
-  final BehaviorSubject<bool> _helperConnections = BehaviorSubject<bool>.seeded(false);
   int startCalls = 0;
   int stopCalls = 0;
   bool isRunning = false;
   Object? startError;
   Object? stopError;
   Completer<void>? stopGate;
-
-  @override
-  ValueStream<bool> get helperConnectionStream => _helperConnections.stream;
 
   @override
   Uri get url => Uri.parse("ws://127.0.0.1:${41000 + startCalls}");
@@ -731,9 +753,6 @@ class _FakeControlChannelServer() implements ControlChannelServer {
   Future<void> stop() async {
     stopCalls++;
     isRunning = false;
-    if (_helperConnections.value) {
-      _helperConnections.add(false);
-    }
     final Completer<void>? gate = stopGate;
     if (gate != null) {
       await gate.future;
@@ -743,12 +762,6 @@ class _FakeControlChannelServer() implements ControlChannelServer {
       throw failure;
     }
   }
-
-  void emitHelperConnected() {
-    _helperConnections.add(true);
-  }
-
-  Future<void> disposeFake() => _helperConnections.close();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

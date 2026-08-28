@@ -4,15 +4,15 @@ import "package:test/test.dart";
 
 void main() {
   group("ControlCommandService", () {
-    late _FakeControlChannelServer server;
+    late _FakeControlChannelApi api;
     late BridgePromptTracker promptTracker;
     late ControlCommandService service;
 
     setUp(() {
-      server = _FakeControlChannelServer();
+      api = _FakeControlChannelApi();
       promptTracker = BridgePromptTracker();
       service = ControlCommandService(
-        server: server,
+        repository: ControlCommandRepository(api: api),
         promptTracker: promptTracker,
       );
     });
@@ -24,10 +24,9 @@ void main() {
 
       service.answerPrompt(id: _prompt.id, accepted: true);
 
-      expect(server.sentFrames, hasLength(1));
       expect(
-        ControlMessage.fromJson(jsonDecodeMap(server.sentFrames.single)),
-        const ControlMessage.promptResponse(id: "replace-1", accepted: true),
+        api.sentMessages,
+        <ControlMessage>[const ControlMessage.promptResponse(id: "replace-1", accepted: true)],
       );
       expect(promptTracker.prompts, isEmpty);
     });
@@ -35,7 +34,7 @@ void main() {
     test("retains the prompt when the connected helper cannot accept the frame", () {
       promptTracker.addPrompt(prompt: _prompt);
       const ControlHelperNotConnectedException sendError = ControlHelperNotConnectedException();
-      server.sendError = sendError;
+      api.sendError = sendError;
 
       expect(
         () => service.answerPrompt(id: _prompt.id, accepted: false),
@@ -57,7 +56,7 @@ void main() {
         ),
       );
 
-      expect(server.sentFrames, isEmpty);
+      expect(api.sentMessages, isEmpty);
     });
   });
 }
@@ -68,19 +67,16 @@ const ControlPromptRequest _prompt = ControlPromptRequest(
   message: "Replace the running bridge?",
 );
 
-class _FakeControlChannelServer() implements ControlChannelServer {
-  final List<String> sentFrames = <String>[];
+class _FakeControlChannelApi() implements ControlChannelApi {
+  final List<ControlMessage> sentMessages = <ControlMessage>[];
   Object? sendError;
 
   @override
-  void send(String text) {
+  void send({required ControlMessage message}) {
     final Object? failure = sendError;
     if (failure != null) {
       throw failure;
     }
-    sentFrames.add(text);
+    sentMessages.add(message);
   }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

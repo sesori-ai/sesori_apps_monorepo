@@ -15,6 +15,7 @@ import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
     as _i570;
+import 'package:sesori_desktop_core/src/api/control_channel_api.dart' as _i639;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -25,6 +26,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/repositories/bridge_process_repository.dart'
     as _i209;
+import 'package:sesori_desktop_core/src/repositories/control_command_repository.dart'
+    as _i171;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
 import 'package:sesori_desktop_core/src/services/control_command_service.dart'
@@ -71,6 +74,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i639.ControlChannelApi>(
+      () => _i639.ControlChannelApi(server: gh<_i464.ControlChannelServer>()),
+    );
     gh.lazySingleton<_i209.BridgeProcessRepository>(
       () => _i209.BridgeProcessRepository(
         processApi: gh<_i874.BridgeProcessApi>(),
@@ -78,11 +84,8 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i175.ControlCommandService>(
-      () => _i175.ControlCommandService(
-        server: gh<_i464.ControlChannelServer>(),
-        promptTracker: gh<_i686.BridgePromptTracker>(),
-      ),
+    gh.lazySingleton<_i171.ControlCommandRepository>(
+      () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
     gh.lazySingleton<_i866.BridgeProcessLogTracker>(
       () => _i866.BridgeProcessLogTracker(
@@ -90,10 +93,17 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i175.ControlCommandService>(
+      () => _i175.ControlCommandService(
+        repository: gh<_i171.ControlCommandRepository>(),
+        promptTracker: gh<_i686.BridgePromptTracker>(),
+      ),
+    );
     gh.lazySingleton<_i765.BridgeProcessService>(
       () => _i765.BridgeProcessService(
         repository: gh<_i209.BridgeProcessRepository>(),
         logTracker: gh<_i866.BridgeProcessLogTracker>(),
+        statusTracker: gh<_i227.BridgeStatusTracker>(),
         controlChannelServer: gh<_i464.ControlChannelServer>(),
         authSession: gh<_i948.AuthSession>(),
         executablePathResolver: gh<_i961.BridgeExecutablePathResolver>(),

@@ -1,9 +1,6 @@
-import "dart:convert";
-
 import "package:injectable/injectable.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/control_channel_server.dart";
+import "../repositories/control_command_repository.dart";
 import "../trackers/bridge_prompt_tracker.dart";
 
 /// The named prompt no longer belongs to the connected helper.
@@ -19,7 +16,7 @@ final class const ControlPromptNotPendingException({required final String id}) i
 /// pending prompt after the frame was accepted by the live control socket.
 @lazySingleton
 class ControlCommandService({
-  required final ControlChannelServer _server,
+  required final ControlCommandRepository _repository,
   required final BridgePromptTracker _promptTracker,
 }) {
   void answerPrompt({required String id, required bool accepted}) {
@@ -27,11 +24,7 @@ class ControlCommandService({
       throw ControlPromptNotPendingException(id: id);
     }
 
-    final ControlMessage response = ControlMessage.promptResponse(
-      id: id,
-      accepted: accepted,
-    );
-    _server.send(jsonEncode(response.toJson()));
+    _repository.answerPrompt(id: id, accepted: accepted);
     _promptTracker.removePrompt(id: id);
   }
 }

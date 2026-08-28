@@ -9,6 +9,7 @@ import "../foundation/control_channel_server.dart";
 import "../foundation/platform/bridge_executable_path_resolver.dart";
 import "../repositories/bridge_process_repository.dart";
 import "../trackers/bridge_process_log_tracker.dart";
+import "../trackers/bridge_status_tracker.dart";
 import "bridge_process_state.dart";
 
 /// Reports a lifecycle warning without coupling tests to the global logger.
@@ -30,6 +31,7 @@ typedef BridgeProcessWarningReporter = void Function({
 class BridgeProcessService.forTesting({
   required final BridgeProcessRepository _repository,
   required final BridgeProcessLogTracker _logTracker,
+  required final BridgeStatusTracker _statusTracker,
   required final ControlChannelServer _controlChannelServer,
   required final AuthSession _authSession,
   required final BridgeExecutablePathResolver _executablePathResolver,
@@ -42,12 +44,14 @@ class BridgeProcessService.forTesting({
   new({
     required BridgeProcessRepository repository,
     required BridgeProcessLogTracker logTracker,
+    required BridgeStatusTracker statusTracker,
     required ControlChannelServer controlChannelServer,
     required AuthSession authSession,
     required BridgeExecutablePathResolver executablePathResolver,
   }) : this.forTesting(
          repository: repository,
          logTracker: logTracker,
+         statusTracker: statusTracker,
          controlChannelServer: controlChannelServer,
          authSession: authSession,
          executablePathResolver: executablePathResolver,
@@ -75,9 +79,10 @@ class BridgeProcessService.forTesting({
     _authSubscription = _authSession.authStateStream.listen(
       (state) => _onAuthStateChanged(state: state),
     );
-    _helperConnectionSubscription = _controlChannelServer.helperConnectionStream.listen(
-      (connected) => _onHelperConnectionChanged(connected: connected),
-    );
+    _helperStatusSubscription = _statusTracker.statusStream
+        .map((status) => status.helperOnline)
+        .distinct()
+        .listen((connected) => _onHelperConnectionChanged(connected: connected));
   }
 
   static const List<Duration> defaultCrashBackoffDelays = <Duration>[
@@ -95,7 +100,7 @@ class BridgeProcessService.forTesting({
   );
   late final StreamSubscription<BridgeProcessExit> _exitSubscription;
   late final StreamSubscription<AuthState> _authSubscription;
-  late final StreamSubscription<bool> _helperConnectionSubscription;
+  late final StreamSubscription<bool> _helperStatusSubscription;
 
   Future<void>? _startFuture;
   Future<void>? _stopFuture;
@@ -144,23 +149,15 @@ class BridgeProcessService.forTesting({
     if (existing != null) {
       return existing;
     }
-    final Future<void> operation = _start();
-    _startFuture = operation;
-    unawaited(_clearStartWhenComplete(operation: operation));
-    return operation;
-  }
-
-  Future<void> _clearStartWhenComplete({required Future<void> operation}) async {
-    try {
-      await operation;
-    } on Object {
-      // The original future retains the error for its caller. This observer
-      // only releases the serialized-operation slot.
-    } finally {
+    final Future<void> rawOperation = _start();
+    late final Future<void> operation;
+    operation = rawOperation.whenComplete(() {
       if (identical(_startFuture, operation)) {
         _startFuture = null;
       }
-    }
+    });
+    _startFuture = operation;
+    return operation;
   }
 
   Future<void> _start() async {
@@ -422,7 +419,7 @@ class BridgeProcessService.forTesting({
         _publish(const BridgeProcessStopped());
         return;
       case BridgeSupervisedExitCode.restart:
-        _restartAutomatically(
+        _restartAutomaticallyAfterCurrentStart(
           generation: generation,
           context: "Bridge restart after supervised restart exit",
         );
@@ -432,7 +429,7 @@ class BridgeProcessService.forTesting({
         _publish(const BridgeProcessLoginRequired());
         if (_authSession.currentState is AuthAuthenticated &&
             _successfulAuthenticationGeneration > authenticationGenerationAtSpawn) {
-          _restartAutomatically(
+          _restartAutomaticallyAfterCurrentStart(
             generation: generation,
             context: "Bridge start after authentication completed while the prior helper was exiting",
           );
@@ -494,6 +491,35 @@ class BridgeProcessService.forTesting({
     });
   }
 
+  void _restartAutomaticallyAfterCurrentStart({required int generation, required String context}) {
+    final Future<void>? currentStart = _startFuture;
+    if (currentStart == null) {
+      _restartAutomatically(generation: generation, context: context);
+      return;
+    }
+    unawaited(
+      _restartWhenCurrentStartCompletes(
+        currentStart: currentStart,
+        generation: generation,
+        context: context,
+      ),
+    );
+  }
+
+  Future<void> _restartWhenCurrentStartCompletes({
+    required Future<void> currentStart,
+    required int generation,
+    required String context,
+  }) async {
+    try {
+      await currentStart;
+    } on Object {
+      // The start's caller retains its outcome. Restart intent is independent
+      // and must wait until that serialized-operation slot has been released.
+    }
+    _restartAutomatically(generation: generation, context: context);
+  }
+
   void _restartAutomatically({required int generation, required String context}) {
     if (_disposed || generation != _lifecycleGeneration || _desiredState == BridgeProcessDesiredState.off) {
       return;
@@ -544,7 +570,7 @@ class BridgeProcessService.forTesting({
       return;
     }
     _crashCount = 0;
-    _restartAutomatically(
+    _restartAutomaticallyAfterCurrentStart(
       generation: _lifecycleGeneration,
       context: "Bridge start after successful authentication",
     );
@@ -647,7 +673,7 @@ class BridgeProcessService.forTesting({
         );
       }
       await _authSubscription.cancel();
-      await _helperConnectionSubscription.cancel();
+      await _helperStatusSubscription.cancel();
       await _exitSubscription.cancel();
       await _states.close();
     }
