@@ -31,7 +31,6 @@ import "repositories/acp_session_config_repository.dart";
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
-/// [captureSessionConfig], [applyTurnSelection], [mapPromptFailure],
 /// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
 /// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
 /// agent exposes a richer model catalog than the neutral process default.
@@ -102,6 +101,8 @@ abstract class AcpPlugin({
   /// subscriber so it is not double-handled.
   final StreamController<void> _connected = StreamController<void>.broadcast();
   Stream<void> get onConnected => _connected.stream;
+  final StreamController<String?> _authenticationFailures = StreamController<String?>.broadcast();
+  Stream<String?> get onAuthenticationFailure => _authenticationFailures.stream;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
 
   Stream<PluginWorkState> get workState => _workState.stream;
@@ -254,6 +255,13 @@ abstract class AcpPlugin({
     required bool fromNewSession,
   }) {}
 
+  Future<void> validateTurnSelection({
+    required String operation,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) async {}
+
   /// Applies the requested [model], [variant], and [agent] for a turn on
   /// [sessionId] before the prompt is dispatched. [configRepository] writes
   /// standard `session/set_config_option` on the connection the turn runs on;
@@ -291,6 +299,8 @@ abstract class AcpPlugin({
   void onConnectionReset() {}
 
   // --- Protected accessors for subclasses ---
+
+  String? get authenticationFailureActionHint => _authenticationFailure?.actionHint;
 
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
@@ -364,6 +374,7 @@ abstract class AcpPlugin({
         _commandListener = null;
         if (error is PluginAuthenticationRequiredException) {
           _authenticationFailure = error;
+          if (!_authenticationFailures.isClosed) _authenticationFailures.add(authenticationFailureActionHint);
         }
         _workState.set(PluginWorkState.unknown);
         await client.dispose();
@@ -757,6 +768,7 @@ abstract class AcpPlugin({
     // A session/new response is the authoritative source of the backend's
     // new-session default model/mode.
     captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
+    await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -862,6 +874,7 @@ abstract class AcpPlugin({
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
+    await validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
@@ -908,14 +921,14 @@ abstract class AcpPlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
+    await _connectedClient();
+    await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
     final backendCommand = commandForDispatch(command: command);
     final body = arguments.isEmpty ? "/$backendCommand" : "/$backendCommand $arguments";
     final visibleArguments = userVisibleArguments?.trim();
     final visibleBody = visibleArguments == null || visibleArguments.isEmpty
         ? "/$command"
         : "/$command $userVisibleArguments";
-    // Acceptance gate — see [sendPrompt].
-    await _connectedClient();
     // Another matching send may have been admitted while connection awaited.
     if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
@@ -1826,6 +1839,11 @@ abstract class AcpPlugin({
       await _connected.close();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close connected stream", e, st);
+    }
+    try {
+      await _authenticationFailures.close();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close authentication-failure stream", e, st);
     }
     try {
       await _workState.close();

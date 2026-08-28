@@ -953,6 +953,7 @@ final class PiSessionService({
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
+    var forceTeardown = false;
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
@@ -961,15 +962,30 @@ final class PiSessionService({
           case PiSessionAbortAcknowledged():
             break;
           case PiSessionAbortProcessExited(:final innerError, :final innerStackTrace):
+            forceTeardown = true;
             if (!processExitIsExpected) {
               Log.w("[pi] abort command failed for session id=$sessionId", innerError, innerStackTrace);
             }
         }
       }
+    } on TimeoutException catch (error, stack) {
+      forceTeardown = true;
+      if (!processExitIsExpected) {
+        Log.w(
+          "[pi] abort acknowledgement timed out; forcing process replacement for session id=$sessionId",
+          error,
+          stack,
+        );
+      }
     } on Object catch (error, stack) {
+      forceTeardown = true;
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
-      await _processes.teardown(sessionId: sessionId);
+      if (forceTeardown) {
+        await _processes.teardown(sessionId: sessionId, gracefulTimeout: Duration.zero);
+      } else {
+        await _processes.teardown(sessionId: sessionId);
+      }
     }
     _emit(
       BridgeSseSessionStatus(

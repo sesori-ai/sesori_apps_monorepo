@@ -103,7 +103,10 @@ defaults and queued client sends coherent.
   session is busy, and a successful command with no agent run crosses `get_state`
   before returning the lane idle.
   Abort rejects queued work and replaces the process so hidden steering or
-  follow-up input cannot leak into the next turn.
+  follow-up input cannot leak into the next turn. Its control acknowledgement
+  has a short bound: if Pi waits for queued continuation idleness instead of
+  answering, the bridge force-replaces the resident rather than holding later
+  sends in the session lane for the general history/control timeout.
 - Pi accepts only bounded, valid inline GIF, JPEG, PNG, and WebP data. Paths,
   URLs, non-image data, malformed base64, and oversized images fail visibly
   before admission and are never fetched, stringified, or silently omitted.
@@ -304,6 +307,8 @@ replay, and abort after output has started.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane, or a Cursor/Hermes follow-up waits for
   the active turn to finish naturally instead of cancelling it before dispatch.
+  A Pi abort waits for the general history/control timeout, lets hidden steering
+  resume after Stop, or leaves later sends stuck in their sending state.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A normalized user message fails to advance the existing activity marker, or

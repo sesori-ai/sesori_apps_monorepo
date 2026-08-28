@@ -275,6 +275,7 @@ void main() {
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
       historyRpcTimeout: const Duration(seconds: 2),
+      abortRpcTimeout: const Duration(seconds: 1),
       promptRpcTimeout: const Duration(minutes: 30),
     );
     addTearDown(repository.dispose);
@@ -1710,6 +1711,49 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
+  test("abort force-replaces Pi when its acknowledgement waits on hidden steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..abortRpcTimeout = const Duration(milliseconds: 10);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-active",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active")],
+      userVisibleText: "active",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-steering",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steering")],
+      userVisibleText: "steering",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+
+    final warnings = await _captureWarnings(() async {
+      final abort = service.abort(sessionId: "session");
+      await waitForCommand(process: process, type: "abort");
+      await abort;
+    });
+
+    expect(warnings, contains("abort acknowledgement timed out; forcing process replacement"));
+    expect(process.killed, isTrue);
+    expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+  });
+
   test("shutdown interruption accepts process exit before abort response", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -2301,6 +2345,7 @@ final class _Fixture({
   final List<FakePiProcess> _processes = List.of(processes);
   Duration? idleTimeout = const Duration(minutes: 5);
   Duration historyRpcTimeout = const Duration(seconds: 2);
+  Duration abortRpcTimeout = const Duration(seconds: 1);
   Duration promptRpcTimeout = const Duration(seconds: 2);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
@@ -2322,6 +2367,7 @@ final class _Fixture({
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
     promptRpcTimeout: promptRpcTimeout,
   );
 
