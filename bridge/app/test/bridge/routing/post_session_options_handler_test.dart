@@ -175,6 +175,7 @@ const _optionsResponse = SessionOptionsResponse(
   agents: Agents(agents: []),
   providers: ProviderListResponse(items: [], connectedOnly: true),
   commands: CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
 );
 
 final _requestBody = jsonEncode(const PluginProjectIdRequest(projectId: "project", pluginId: "plugin").toJson());

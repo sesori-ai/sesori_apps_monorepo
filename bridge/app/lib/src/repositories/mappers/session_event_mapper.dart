@@ -30,7 +30,7 @@ class const SessionEventMapper() {
       BridgeSseMessagePartRemoved(:final sessionID) ||
       BridgeSseQueuedPromptsUpdated(:final sessionID) ||
       BridgeSseTodoUpdated(:final sessionID) => {sessionID},
-      BridgeSseSessionError(:final sessionID) => {?sessionID},
+      BridgeSseSessionError(:final sessionID) || BridgeSseTuiToastShow(:final sessionID) => {?sessionID},
       BridgeSseMessageUpdated(:final info) => {Message.fromJson(info).sessionID},
       BridgeSseMessagePartUpdated(:final part) => {part.sessionID},
       BridgeSsePermissionAsked(:final sessionID, :final displaySessionId) ||
@@ -64,7 +64,6 @@ class const SessionEventMapper() {
       BridgeSseInstallationUpdateAvailable() ||
       BridgeSseWorkspaceReady() ||
       BridgeSseWorkspaceFailed() ||
-      BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
       BridgeSseWorktreeFailed() => const <String>{},
       BridgeSseSessionCreated() ||
@@ -271,6 +270,18 @@ class const SessionEventMapper() {
         final sessionId? => BridgeSseTodoUpdated(sessionID: sessionId),
         null => null,
       },
+      BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) => switch (sessionID) {
+        final backendId? => switch (mapped(backendId)) {
+          final sessionId? => BridgeSseTuiToastShow(
+            sessionID: sessionId,
+            title: title,
+            message: message,
+            variant: variant,
+          ),
+          null => null,
+        },
+        null => event,
+      },
       BridgeSseServerConnected() ||
       BridgeSseServerHeartbeat() ||
       BridgeSseServerInstanceDisposed() ||
@@ -294,7 +305,6 @@ class const SessionEventMapper() {
       BridgeSseInstallationUpdateAvailable() ||
       BridgeSseWorkspaceReady() ||
       BridgeSseWorkspaceFailed() ||
-      BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
       BridgeSseWorktreeFailed() => event,
     };

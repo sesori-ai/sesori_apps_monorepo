@@ -27,7 +27,8 @@ reaches the backend so the turn continues.
   rejects pending cards on process/session cleanup, indexes imported children
   under their top-most display root and owning worktree project, and does not
   persist process-local dialog promises. Decorative extension UI is ignored;
-  bounded `notify` messages use the existing toast event.
+  bounded `notify` messages use the existing toast event attributed to their
+  owning session, so another session or an unrelated route does not present them.
 - DeepSeek standard ACP permissions use the request's explicit session ID when
   present and retain the ACP active-turn fallback when an agent omits it. They
   preserve the exact tool call ID and expose only the scopes the adapter offers;

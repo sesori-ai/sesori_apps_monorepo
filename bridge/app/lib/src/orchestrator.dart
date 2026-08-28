@@ -14,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
+import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
@@ -57,6 +58,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
@@ -221,6 +223,9 @@ class Orchestrator({
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
+    final newSessionDefaultsRepository = NewSessionDefaultsRepository(
+      dao: NewSessionDefaultsDao(database: _database),
+    );
     final sessionOptionsRepository = SessionOptionsRepository(
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
@@ -229,6 +234,7 @@ class Orchestrator({
     );
     final sessionOptionsService = SessionOptionsService(
       repository: sessionOptionsRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       pluginScopes: pluginComposition.sessionOptionsScopeById,
       clock: _clock,
       retention: const Duration(days: 30),
@@ -383,7 +389,9 @@ class Orchestrator({
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionOptionsService: sessionOptionsService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,

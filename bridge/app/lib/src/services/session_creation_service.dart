@@ -1,33 +1,63 @@
 import "dart:async";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginOperationException, PluginStaleOptionsException;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
+import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_options_service.dart";
 import "session_prompt_service.dart";
+import "stale_session_prompt_options_exception.dart";
 import "worktree_service.dart";
 
 class SessionCreationService({
   required final SessionMetadataRepository _sessionMetadataRepository,
   required final WorktreeService _worktreeService,
   required final SessionRepository _sessionRepository,
+  required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final SessionOptionsService _sessionOptionsService,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
   Future<void>? _drainFuture;
 
   Future<Session> createSession({required CreateSessionRequest request}) async {
+    try {
+      return await _createSession(request: request);
+    } on PluginStaleOptionsException catch (error, stackTrace) {
+      try {
+        await _sessionOptionsService.invalidateRejectedSelection(
+          pluginId: request.pluginId,
+          projectId: request.projectId,
+        );
+      } on Object catch (invalidationError, invalidationStackTrace) {
+        Log.w("Failed to invalidate stale options after session creation", invalidationError, invalidationStackTrace);
+      }
+      throw StaleSessionPromptOptionsException(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
+  Future<Session> _createSession({required CreateSessionRequest request}) async {
     // Validate the opaque project handle before any plugin/git side effect.
     // The stored path is authoritative; unknown ids are not directories.
     final projectDirectory = await _sessionRepository.resolveProjectDirectory(projectId: request.projectId);
     final normalizedCommand = request.command?.normalize();
-    final agentModel = request.model;
+    final requestedModel = request.model;
+    final promptDefaults = SessionPromptDefaults(
+      agent: request.agent,
+      model: requestedModel == null
+          ? null
+          : AgentModel(
+              providerID: requestedModel.providerID,
+              modelID: requestedModel.modelID,
+              variant: request.variant?.id,
+            ),
+    );
     final userTexts = _extractTexts(parts: request.parts);
     final firstText = userTexts.firstOrNull;
     final userVisibleText = userTexts.isEmpty ? null : userTexts.join("\n\n");
@@ -52,7 +82,7 @@ class SessionCreationService({
         command: normalizedCommand,
       ),
       userVisibleText: normalizedCommand == null ? userVisibleText : null,
-      variant: request.variant,
+      variant: normalizedCommand == null || normalizedCommand.isEmpty ? request.variant : null,
       agent: normalizedCommand == null || normalizedCommand.isEmpty ? request.agent : null,
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
       isDedicated: worktreeState.isDedicated,
@@ -60,14 +90,8 @@ class SessionCreationService({
       branchName: worktreeState.branchName,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
-      lastAgent: request.agent,
-      lastAgentModel: agentModel != null
-          ? AgentModel(
-              providerID: agentModel.providerID,
-              modelID: agentModel.modelID,
-              variant: request.variant?.id,
-            )
-          : null,
+      lastAgent: promptDefaults.agent,
+      lastAgentModel: promptDefaults.model,
     );
     await _maybeSendCommand(
       session: created,
@@ -80,6 +104,13 @@ class SessionCreationService({
       variant: request.variant,
       agent: request.agent,
       model: request.model,
+    );
+    unawaited(
+      _recordNewSessionDefaults(
+        sessionId: created.id,
+        pluginId: request.pluginId,
+        defaults: promptDefaults,
+      ),
     );
     _startLateMetadata(session: created, firstText: firstText);
     return created;
@@ -158,25 +189,31 @@ class SessionCreationService({
     if (command == null) {
       return;
     }
+    await _sessionRepository.sendCommand(
+      sessionId: session.id,
+      promptId: SessionPromptService.generatePromptId(),
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+      variant: variant,
+      agent: agent,
+      model: model,
+    );
+  }
+
+  Future<void> _recordNewSessionDefaults({
+    required String sessionId,
+    required String pluginId,
+    required SessionPromptDefaults defaults,
+  }) async {
     try {
-      await _sessionRepository.sendCommand(
-        sessionId: session.id,
-        promptId: SessionPromptService.generatePromptId(),
-        command: command,
-        arguments: arguments,
-        userVisibleArguments: userVisibleArguments,
-        variant: variant,
-        agent: agent,
-        model: model,
-      );
-    } on PluginStaleOptionsException catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        PluginOperationException(
-          SessionOperation.createSession.name,
-          statusCode: 400,
-          message: error.message,
-          cause: error,
-        ),
+      await _newSessionDefaultsRepository.write(pluginId: pluginId, defaults: defaults);
+    } on Object catch (error, stackTrace) {
+      // The backend session is already durable. Failing the request here would
+      // invite a duplicate retry for a preference write that can safely degrade.
+      Log.w(
+        "Failed to remember new-session defaults for plugin $pluginId after creating session $sessionId",
+        error,
         stackTrace,
       );
     }

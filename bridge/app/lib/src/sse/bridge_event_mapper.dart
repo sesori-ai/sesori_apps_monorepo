@@ -172,11 +172,13 @@ class BridgeEventMapper({
         ),
         BridgeSseWorkspaceReady(:final name) => SesoriSseEvent.workspaceReady(name: name),
         BridgeSseWorkspaceFailed(:final message) => SesoriSseEvent.workspaceFailed(message: message),
-        BridgeSseTuiToastShow(:final title, :final message, :final variant) => SesoriSseEvent.tuiToastShow(
-          title: title,
-          message: message,
-          variant: variant,
-        ),
+        BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) =>
+          SesoriSseEvent.tuiToastShow(
+            sessionID: sessionID,
+            title: title,
+            message: message,
+            variant: variant,
+          ),
         BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
         BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
       };

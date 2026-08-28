@@ -516,6 +516,7 @@ void delegateSessionOptionsRepository({
             providers: providerData.items,
             providersConnectedOnly: providerData.connectedOnly,
             commands: commandData.items,
+            lastUsedPromptDefaults: null,
           ),
         ),
       (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),

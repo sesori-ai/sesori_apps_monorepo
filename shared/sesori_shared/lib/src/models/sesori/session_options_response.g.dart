@@ -15,6 +15,11 @@ _SessionOptionsResponse _$SessionOptionsResponseFromJson(Map json) =>
       commands: CommandListResponse.fromJson(
         Map<String, dynamic>.from(json['commands'] as Map),
       ),
+      lastUsedPromptDefaults: json['lastUsedPromptDefaults'] == null
+          ? null
+          : SessionPromptDefaults.fromJson(
+              Map<String, dynamic>.from(json['lastUsedPromptDefaults'] as Map),
+            ),
       stale: json['stale'] as bool? ?? false,
     );
 
@@ -24,5 +29,6 @@ Map<String, dynamic> _$SessionOptionsResponseToJson(
   'agents': instance.agents.toJson(),
   'providers': instance.providers.toJson(),
   'commands': instance.commands.toJson(),
+  'lastUsedPromptDefaults': ?instance.lastUsedPromptDefaults?.toJson(),
   'stale': instance.stale,
 };

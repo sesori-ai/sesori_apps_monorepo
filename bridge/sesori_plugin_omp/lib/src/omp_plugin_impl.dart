@@ -196,7 +196,14 @@ class OmpPlugin._({
     required Object error,
   }) {
     if (!_isMissingModel(error)) return const [];
-    return const [_missingModelToast];
+    return [
+      BridgeSseTuiToastShow(
+        sessionID: sessionId,
+        title: "Oh My Pi needs a model",
+        message: "Open OMP locally, run /login, then retry.",
+        variant: "warning",
+      ),
+    ];
   }
 
   @override
@@ -215,6 +222,7 @@ class OmpPlugin._({
   }
 
   static const BridgeSseTuiToastShow _missingModelToast = BridgeSseTuiToastShow(
+    sessionID: null,
     title: "Oh My Pi needs a model",
     message: "Open OMP locally, run /login, then retry.",
     variant: "warning",

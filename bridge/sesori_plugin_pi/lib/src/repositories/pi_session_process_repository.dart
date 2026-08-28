@@ -110,6 +110,7 @@ final class PiSessionProcessRepository({
   required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
   required final Duration _historyRpcTimeout,
+  required final Duration _abortRpcTimeout,
   required final Duration _promptRpcTimeout,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
@@ -421,7 +422,7 @@ final class PiSessionProcessRepository({
       await _requiredResident(connection).client.send(
         command: PiRpcCommand.abort,
         arguments: const {},
-        timeout: _historyRpcTimeout,
+        timeout: _abortRpcTimeout,
       );
       return const PiSessionAbortAcknowledged();
     } on PiRpcProcessExitException catch (error, stackTrace) {

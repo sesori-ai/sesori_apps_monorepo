@@ -303,6 +303,10 @@ void main() {
       agents: Agents(agents: <AgentInfo>[]),
       providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
       commands: CommandListResponse(items: <CommandInfo>[]),
+      lastUsedPromptDefaults: SessionPromptDefaults(
+        agent: "review",
+        model: AgentModel(providerID: "provider-1", modelID: "model-1", variant: "high"),
+      ),
     );
     when(
       () => api.loadSessionOptions(
@@ -323,7 +327,12 @@ void main() {
       isA<SessionOptionsRepositoryAvailable>()
           .having((value) => value.catalog.agents, "agents", response.agents.agents)
           .having((value) => value.catalog.providers, "providers", response.providers.items)
-          .having((value) => value.catalog.commands, "commands", response.commands.items),
+          .having((value) => value.catalog.commands, "commands", response.commands.items)
+          .having(
+            (value) => value.catalog.lastUsedPromptDefaults,
+            "last used prompt defaults",
+            response.lastUsedPromptDefaults,
+          ),
     );
   });
 

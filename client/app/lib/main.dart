@@ -351,7 +351,10 @@ class const _SesoriAppShell() extends StatelessWidget {
               getIt<RegisteredBridgesService>(),
             ),
             child: BlocProvider(
-              create: (_) => SseToastCubit(getIt<ConnectionService>()),
+              create: (_) => SseToastCubit(
+                connectionService: getIt<ConnectionService>(),
+                routeSource: getIt<RouteSource>(),
+              ),
               child: _SseToastListener(child: child ?? const SizedBox.shrink()),
             ),
           ),
@@ -361,9 +364,9 @@ class const _SesoriAppShell() extends StatelessWidget {
   }
 }
 
-/// Renders backend toast states through the design-system popup alert
-/// presenter, so guidance such as a local `/login` hint reaches the user on
-/// any screen, including startup routes with no scaffold.
+/// Renders accepted backend toast states through the design-system popup alert
+/// presenter on the root overlay, including global guidance on routes with no
+/// scaffold.
 class const _SseToastListener({required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

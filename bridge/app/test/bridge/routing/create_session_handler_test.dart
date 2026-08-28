@@ -1,22 +1,26 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -62,9 +66,11 @@ void main() {
     late FakeSessionMetadataRepository metadataRepository;
     late _FakeWorktreeService worktreeService;
     late SessionRepository sessionRepository;
+    late NewSessionDefaultsRepository defaultsRepository;
     late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late SessionCreationService sessionCreationService;
+    late FakeSessionOptionsService sessionOptionsService;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -73,7 +79,11 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
       plugin = _OpenCodeFakeBridgePlugin();
       metadataRepository = FakeSessionMetadataRepository();
+      sessionOptionsService = FakeSessionOptionsService();
       worktreeService = _FakeWorktreeService(database: db);
+      defaultsRepository = NewSessionDefaultsRepository(
+        dao: NewSessionDefaultsDao(database: db),
+      );
       sessionRepository = singlePluginSessionRepository(
         plugin: plugin,
         sessionDao: db.sessionDao,
@@ -91,7 +101,9 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
     });
@@ -449,8 +461,10 @@ void main() {
       expect(prompt, contains("Do NOT create another worktree or working directory"));
     });
 
-    test("plugin failure is propagated and no session row is inserted", () async {
-      final failingPlugin = _ThrowingCreateSessionPlugin();
+    test("stale plugin selection invalidates options and no session row is inserted", () async {
+      final failingPlugin = _ThrowingCreateSessionPlugin(
+        error: const PluginStaleOptionsException("createSession"),
+      );
       final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
@@ -468,7 +482,9 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: localRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
       worktreeService.prepareResult = WorktreeSuccess(
@@ -492,8 +508,11 @@ void main() {
             command: null,
           ),
         ),
-        throwsA(isA<StateError>()),
+        throwsA(isA<StaleSessionPromptOptionsException>()),
       );
+      expect(sessionOptionsService.explicitInvalidations, [
+        (pluginId: legacyMissingPluginId, projectId: "/repo"),
+      ]);
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
@@ -824,7 +843,7 @@ void main() {
       expect(plugin.lastCreateSessionModel, isNull);
       expect(plugin.lastCreateSessionParts, isEmpty);
       expect(plugin.lastCreateSessionUserVisibleText, isNull);
-      expect(plugin.lastCreateSessionVariant, equals("low"));
+      expect(plugin.lastCreateSessionVariant, isNull);
       expect(plugin.lastSendCommandSessionId, equals("cmd-session-1"));
       expect(plugin.lastSendCommand, equals("review"));
       expect(plugin.lastSendCommandArguments, equals("Review this code"));
@@ -977,7 +996,9 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: orderedRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
 
@@ -1160,7 +1181,9 @@ void main() {
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: throwingRepository,
+        newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
 
@@ -1250,7 +1273,7 @@ class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {
   String get id => "opencode";
 }
 
-class _ThrowingCreateSessionPlugin() extends _OpenCodeFakeBridgePlugin {
+class _ThrowingCreateSessionPlugin({required final Object error}) extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -1261,7 +1284,7 @@ class _ThrowingCreateSessionPlugin() extends _OpenCodeFakeBridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
-    throw StateError("createSession failed");
+    throw error;
   }
 }
 

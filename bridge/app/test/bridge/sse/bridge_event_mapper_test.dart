@@ -125,6 +125,27 @@ void main() {
       expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
     });
 
+    test("maps toast session attribution to the wire event", () {
+      final result = mapEvent(
+        const BridgeSseTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
+
+      expect(
+        result,
+        const SesoriTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
+    });
+
     test("maps session.created with provided enriched payload", () {
       final result = mapEvent(
         const BridgeSseSessionCreated(

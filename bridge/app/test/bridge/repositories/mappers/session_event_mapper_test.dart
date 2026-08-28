@@ -170,6 +170,16 @@ void main() {
           event: const BridgeSseTodoUpdated(sessionID: "backend-session"),
           expectedBackendIds: {"backend-session"},
         ),
+        (
+          name: "toast shown",
+          event: const BridgeSseTuiToastShow(
+            sessionID: "backend-session",
+            title: "Pi",
+            message: "Done",
+            variant: "success",
+          ),
+          expectedBackendIds: {"backend-session"},
+        ),
       ];
 
       for (final testCase in cases) {
@@ -219,6 +229,12 @@ void main() {
 
     test("preserves nullable session references and non-session events", () {
       const error = BridgeSseSessionError(sessionID: null);
+      const toast = BridgeSseTuiToastShow(
+        sessionID: null,
+        title: "Notice",
+        message: null,
+        variant: "info",
+      );
       const connected = BridgeSseServerConnected();
       const commandCatalogUpdated = BridgeSseCommandCatalogUpdated();
       const optionsChanged = BridgeSseSessionOptionsChanged(sessionID: "backend-session");
@@ -227,6 +243,8 @@ void main() {
       final mappedError = mapper.map(event: error, sessionIdsByBackendId: const {});
       expect(mappedError, isA<BridgeSseSessionError>());
       expect((mappedError! as BridgeSseSessionError).sessionID, isNull);
+      expect(mapper.backendSessionIds(event: toast), isEmpty);
+      expect(mapper.map(event: toast, sessionIdsByBackendId: const {}), same(toast));
       expect(mapper.map(event: connected, sessionIdsByBackendId: const {}), same(connected));
       expect(mapper.backendSessionIds(event: commandCatalogUpdated), isEmpty);
       expect(

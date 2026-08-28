@@ -6,6 +6,7 @@ final class SessionOptionsCatalog({
     required List<ProviderInfo> providers,
     required final bool providersConnectedOnly,
     required List<CommandInfo> commands,
+    required final SessionPromptDefaults? lastUsedPromptDefaults,
   }) {
 
   final List<AgentInfo> agents = List.unmodifiable(agents);

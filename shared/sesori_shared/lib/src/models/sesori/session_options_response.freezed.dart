@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionOptionsResponse {
 
- Agents get agents; ProviderListResponse get providers; CommandListResponse get commands;/// Whether the bridge served a cached snapshot older than its freshness
+ Agents get agents; ProviderListResponse get providers; CommandListResponse get commands; SessionPromptDefaults? get lastUsedPromptDefaults;/// Whether the bridge served a cached snapshot older than its freshness
 /// window, making it worth a background refresh. Freshly discovered options
 /// are never stale.
  bool get stale;
@@ -32,16 +32,16 @@ $SessionOptionsResponseCopyWith<SessionOptionsResponse> get copyWith => _$Sessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.stale, stale) || other.stale == stale));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.lastUsedPromptDefaults, lastUsedPromptDefaults) || other.lastUsedPromptDefaults == lastUsedPromptDefaults)&&(identical(other.stale, stale) || other.stale == stale));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agents,providers,commands,stale);
+int get hashCode => Object.hash(runtimeType,agents,providers,commands,lastUsedPromptDefaults,stale);
 
 @override
 String toString() {
-  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, stale: $stale)';
+  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, lastUsedPromptDefaults: $lastUsedPromptDefaults, stale: $stale)';
 }
 
 
@@ -52,11 +52,11 @@ abstract mixin class $SessionOptionsResponseCopyWith<$Res>  {
   factory $SessionOptionsResponseCopyWith(SessionOptionsResponse value, $Res Function(SessionOptionsResponse) _then) = _$SessionOptionsResponseCopyWithImpl;
 @useResult
 $Res call({
- Agents agents, ProviderListResponse providers, CommandListResponse commands, bool stale
+ Agents agents, ProviderListResponse providers, CommandListResponse commands, SessionPromptDefaults? lastUsedPromptDefaults, bool stale
 });
 
 
-$AgentsCopyWith<$Res> get agents;$ProviderListResponseCopyWith<$Res> get providers;$CommandListResponseCopyWith<$Res> get commands;
+$AgentsCopyWith<$Res> get agents;$ProviderListResponseCopyWith<$Res> get providers;$CommandListResponseCopyWith<$Res> get commands;$SessionPromptDefaultsCopyWith<$Res>? get lastUsedPromptDefaults;
 
 }
 /// @nodoc
@@ -69,12 +69,13 @@ class _$SessionOptionsResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionOptionsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? stale = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? lastUsedPromptDefaults = freezed,Object? stale = null,}) {
   return _then(SessionOptionsResponse(
 agents: null == agents ? _self.agents : agents // ignore: cast_nullable_to_non_nullable
 as Agents,providers: null == providers ? _self.providers : providers // ignore: cast_nullable_to_non_nullable
 as ProviderListResponse,commands: null == commands ? _self.commands : commands // ignore: cast_nullable_to_non_nullable
-as CommandListResponse,stale: null == stale ? _self.stale : stale // ignore: cast_nullable_to_non_nullable
+as CommandListResponse,lastUsedPromptDefaults: freezed == lastUsedPromptDefaults ? _self.lastUsedPromptDefaults : lastUsedPromptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,stale: null == stale ? _self.stale : stale // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -105,6 +106,18 @@ $CommandListResponseCopyWith<$Res> get commands {
   return $CommandListResponseCopyWith<$Res>(_self.commands, (value) {
     return _then(_self.copyWith(commands: value));
   });
+}/// Create a copy of SessionOptionsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get lastUsedPromptDefaults {
+    if (_self.lastUsedPromptDefaults == null) {
+    return null;
+  }
+
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.lastUsedPromptDefaults!, (value) {
+    return _then(_self.copyWith(lastUsedPromptDefaults: value));
+  });
 }
 }
 
@@ -114,12 +127,13 @@ $CommandListResponseCopyWith<$Res> get commands {
 @JsonSerializable()
 
 class _SessionOptionsResponse implements SessionOptionsResponse {
-  const _SessionOptionsResponse({required this.agents, required this.providers, required this.commands, this.stale = false});
+  const _SessionOptionsResponse({required this.agents, required this.providers, required this.commands, required this.lastUsedPromptDefaults, this.stale = false});
   factory _SessionOptionsResponse.fromJson(Map<String, dynamic> json) => _$SessionOptionsResponseFromJson(json);
 
 @override final  Agents agents;
 @override final  ProviderListResponse providers;
 @override final  CommandListResponse commands;
+@override final  SessionPromptDefaults? lastUsedPromptDefaults;
 /// Whether the bridge served a cached snapshot older than its freshness
 /// window, making it worth a background refresh. Freshly discovered options
 /// are never stale.
@@ -138,16 +152,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.stale, stale) || other.stale == stale));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsResponse&&(identical(other.agents, agents) || other.agents == agents)&&(identical(other.providers, providers) || other.providers == providers)&&(identical(other.commands, commands) || other.commands == commands)&&(identical(other.lastUsedPromptDefaults, lastUsedPromptDefaults) || other.lastUsedPromptDefaults == lastUsedPromptDefaults)&&(identical(other.stale, stale) || other.stale == stale));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agents,providers,commands,stale);
+int get hashCode => Object.hash(runtimeType,agents,providers,commands,lastUsedPromptDefaults,stale);
 
 @override
 String toString() {
-  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, stale: $stale)';
+  return 'SessionOptionsResponse(agents: $agents, providers: $providers, commands: $commands, lastUsedPromptDefaults: $lastUsedPromptDefaults, stale: $stale)';
 }
 
 
@@ -158,11 +172,11 @@ abstract mixin class _$SessionOptionsResponseCopyWith<$Res> implements $SessionO
   factory _$SessionOptionsResponseCopyWith(_SessionOptionsResponse value, $Res Function(_SessionOptionsResponse) _then) = __$SessionOptionsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- Agents agents, ProviderListResponse providers, CommandListResponse commands, bool stale
+ Agents agents, ProviderListResponse providers, CommandListResponse commands, SessionPromptDefaults? lastUsedPromptDefaults, bool stale
 });
 
 
-@override $AgentsCopyWith<$Res> get agents;@override $ProviderListResponseCopyWith<$Res> get providers;@override $CommandListResponseCopyWith<$Res> get commands;
+@override $AgentsCopyWith<$Res> get agents;@override $ProviderListResponseCopyWith<$Res> get providers;@override $CommandListResponseCopyWith<$Res> get commands;@override $SessionPromptDefaultsCopyWith<$Res>? get lastUsedPromptDefaults;
 
 }
 /// @nodoc
@@ -175,12 +189,13 @@ class __$SessionOptionsResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionOptionsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? stale = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? agents = null,Object? providers = null,Object? commands = null,Object? lastUsedPromptDefaults = freezed,Object? stale = null,}) {
   return _then(_SessionOptionsResponse(
 agents: null == agents ? _self.agents : agents // ignore: cast_nullable_to_non_nullable
 as Agents,providers: null == providers ? _self.providers : providers // ignore: cast_nullable_to_non_nullable
 as ProviderListResponse,commands: null == commands ? _self.commands : commands // ignore: cast_nullable_to_non_nullable
-as CommandListResponse,stale: null == stale ? _self.stale : stale // ignore: cast_nullable_to_non_nullable
+as CommandListResponse,lastUsedPromptDefaults: freezed == lastUsedPromptDefaults ? _self.lastUsedPromptDefaults : lastUsedPromptDefaults // ignore: cast_nullable_to_non_nullable
+as SessionPromptDefaults?,stale: null == stale ? _self.stale : stale // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -211,6 +226,18 @@ $CommandListResponseCopyWith<$Res> get commands {
   
   return $CommandListResponseCopyWith<$Res>(_self.commands, (value) {
     return _then(_self.copyWith(commands: value));
+  });
+}/// Create a copy of SessionOptionsResponse
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SessionPromptDefaultsCopyWith<$Res>? get lastUsedPromptDefaults {
+    if (_self.lastUsedPromptDefaults == null) {
+    return null;
+  }
+
+  return $SessionPromptDefaultsCopyWith<$Res>(_self.lastUsedPromptDefaults!, (value) {
+    return _then(_self.copyWith(lastUsedPromptDefaults: value));
   });
 }
 }

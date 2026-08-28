@@ -183,8 +183,14 @@ class const BridgeSseWorkspaceReady({final String? name}) extends BridgeSseEvent
 
 class const BridgeSseWorkspaceFailed({final String? message}) extends BridgeSseEvent;
 
-class const BridgeSseTuiToastShow({final String? title, final String? message, final String? variant})
-    extends BridgeSseEvent;
+/// Transient backend guidance. [sessionID] is the backend session identity
+/// before bridge-core remapping; null means genuinely global or unattributed.
+class const BridgeSseTuiToastShow({
+  required final String? sessionID,
+  required final String? title,
+  required final String? message,
+  required final String? variant,
+}) extends BridgeSseEvent;
 
 class const BridgeSseWorktreeReady() extends BridgeSseEvent;
 
