@@ -342,6 +342,68 @@ void main() {
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
   });
 
+  test("retry retains its interaction snapshot after project context becomes available", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    final projectResponse = Completer<ApiResponse<Project>>();
+    when(
+      () => projectRepository.getProject(projectId: "project-1"),
+    ).thenAnswer((_) => projectResponse.future);
+    var attempts = 0;
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
+      ),
+    ).thenAnswer(
+      (_) async => switch (attempts++) {
+        0 => const VoiceTranscriptionOutcome.networkFailure(),
+        1 => const VoiceTranscriptionOutcome.success(transcript: "retried"),
+        _ => const VoiceTranscriptionOutcome.success(transcript: "next interaction"),
+      },
+    );
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
+
+    await service.start(session: scopedSession);
+    await expectLater(
+      service.stopAndTranscribe(session: scopedSession),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    projectResponse.complete(
+      ApiResponse.success(
+        Project(
+          id: "project-1",
+          name: "Project",
+          path: "/project",
+          time: null,
+          voiceGlossaryKey: glossaryKey,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(await service.retry(session: scopedSession), "retried");
+    await service.start(session: scopedSession);
+    expect(
+      await service.stopAndTranscribe(session: scopedSession),
+      "next interaction",
+    );
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, null, glossaryKey]);
+    verify(captureSession.start).called(2);
+    verify(captureSession.stop).called(2);
+  });
+
   test("cancellation during capture release cannot strand a retained artifact", () async {
     final releaseCompleter = Completer<void>();
     when(captureSession.releaseOperation).thenAnswer((_) => releaseCompleter.future);
