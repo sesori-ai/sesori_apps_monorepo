@@ -7,6 +7,7 @@
 enum Harness() {
   opencode,
   codex,
+  copilot,
   cursor,
   claude,
   hermes,

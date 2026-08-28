@@ -35,6 +35,11 @@ void main() {
       darkAsset: "assets/svgs/brands/codex_dark.svg",
     ),
     (
+      pluginId: Harness.copilot.name,
+      lightAsset: "assets/svgs/brands/copilot_light.svg",
+      darkAsset: "assets/svgs/brands/copilot_dark.svg",
+    ),
+    (
       pluginId: Harness.cursor.name,
       lightAsset: "assets/svgs/brands/cursor_light.svg",
       darkAsset: "assets/svgs/brands/cursor_dark.svg",
@@ -101,6 +106,7 @@ void main() {
   test("names each harness it has a mark for, and speaks an unknown id as-is", () {
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
+    expect(PregoBrandLogo.displayNameFor(Harness.copilot.name), "GitHub Copilot");
     expect(PregoBrandLogo.displayNameFor(Harness.cursor.name), "Cursor");
     expect(PregoBrandLogo.displayNameFor(Harness.claude.name), "Claude Code");
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
@@ -118,6 +124,16 @@ void main() {
     expect(dark, contains('<circle cx="12" cy="12" r="12" fill="#FFFFFF"/>'));
     expect(dark, contains('transform="translate(3 3) scale(0.75)"'));
     expect(light, isNot(contains("<circle")));
+  });
+
+  test("Copilot artwork keeps the same Primer icon with theme contrast", () {
+    final light = File("assets/svgs/brands/copilot_light.svg").readAsStringSync();
+    final dark = File("assets/svgs/brands/copilot_dark.svg").readAsStringSync();
+
+    expect(_pathElements(dark), _pathElements(light));
+    expect(light, contains('fill="#000000"'));
+    expect(dark, contains('fill="#FFFFFF"'));
+    expect(light, contains("primer.style/octicons/icon/copilot-24"));
   });
 
   test("DeepSeek artwork keeps its brand-blue fill in both themes", () {

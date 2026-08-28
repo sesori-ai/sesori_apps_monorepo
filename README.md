@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://github.com/github/copilot-cli" target="_blank" rel="noopener">GitHub Copilot CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -143,6 +143,7 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 |---|---|
 | [OpenCode](https://opencode.ai) | Deep native integration with a bridge-managed runtime. |
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Native integration over Codex's local protocol. |
+| [GitHub Copilot CLI](https://github.com/github/copilot-cli) | ACP-based integration with managed installation of official CLI releases. |
 | [Cursor](https://cursor.com) | ACP-based integration. |
 | [Claude Code](https://claude.com) | Native stream-json integration. |
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ACP-based integration with Nous Research's coding agent. |
@@ -151,6 +152,24 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) | ACP-based integration through Sesori's managed adapter. |
 
 Every integration ships enabled by default — pick your assistant when you start a session, and run several at once on the same Bridge.
+
+<details>
+<summary><strong>GitHub Copilot CLI notes</strong></summary>
+
+- **Install:** the Bridge can install the pinned official CLI release, use a
+  compatible `copilot` from your PATH, or use an explicit
+  `--copilot-bin <path>`.
+- **Login and providers:** authenticate locally with `copilot login`, a
+  supported GitHub token environment variable, or Copilot BYOK configuration.
+  Sesori never sends credentials to phone clients.
+- **License and access:** managed installation downloads an unmodified upstream
+  binary under the [GitHub Copilot CLI License](https://github.com/github/copilot-cli/blob/main/LICENSE.md).
+  It does not include Copilot service access; an eligible account and
+  organization policy are still required.
+- **Questions:** Copilot CLI does not currently forward `ask_user` interactions
+  over ACP, so Sesori does not claim question support for this harness.
+
+</details>
 
 <details>
 <summary><strong>DeepSeek Harness notes</strong></summary>

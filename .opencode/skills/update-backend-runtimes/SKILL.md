@@ -1,6 +1,6 @@
 ---
 name: update-backend-runtimes
-description: Update the target OpenCode, Codex, Cursor, DeepSeek, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, managed runtimes, or release checksums while preserving compatibility minimums.
+description: Update the target OpenCode, Codex, GitHub Copilot, Cursor, DeepSeek, Claude Code, Hermes Agent, Pi, and OMP CLI versions used by the Sesori bridge. Use when asked to update, bump, or refresh coding harness targets, managed runtimes, or release checksums while preserving compatibility minimums.
 ---
 
 # Update Plugin Harness Targets
@@ -22,6 +22,11 @@ Dart/Flutter dependency update workflow.
   `bridge/sesori_plugin_codex/lib/src/runtime/codex_runtime_manifest.dart`
 - Codex manifest tests:
   `bridge/sesori_plugin_codex/test/runtime/codex_runtime_manifest_test.dart`
+- GitHub Copilot managed target, PATH minimum, and per-platform checksums:
+  `bridge/sesori_plugin_copilot/lib/src/runtime/copilot_runtime_manifest.dart`
+- GitHub Copilot manifest and lifecycle tests:
+  `bridge/sesori_plugin_copilot/test/copilot_runtime_manifest_test.dart`
+  `bridge/sesori_plugin_copilot/test/copilot_plugin_descriptor_test.dart`
 - Claude Code direct-CLI target and minimum:
   `bridge/sesori_plugin_claude/lib/src/runtime/claude_plugin_descriptor.dart`
 - Claude Code descriptor tests:
@@ -60,8 +65,9 @@ Read `bridge/AGENTS.md` before editing. Never hand-edit generated files.
 
 Before release discovery, inspect `knownPlugins` in `plugin_registry.dart` and
 confirm every concrete descriptor has a section in this skill. The current
-closed set is OpenCode, Codex, Cursor, DeepSeek, Claude Code, Hermes Agent, Pi,
-and Oh My Pi. Shared interface, runtime, and ACP packages are not harnesses. If the
+closed set is OpenCode, Codex, GitHub Copilot, Cursor, DeepSeek, Claude Code,
+Hermes Agent, Pi, and Oh My Pi. Shared interface, runtime, and ACP packages are
+not harnesses. If the
 registry has gained another harness, extend this skill for it as part of the
 same change instead of silently skipping it.
 
@@ -71,6 +77,7 @@ Every harness must expose an independent compatibility minimum and target:
 | --- | --- | --- |
 | OpenCode | `OpenCodeRuntimeManifest.minPathVersion` | `OpenCodeRuntimeManifest.targetVersion` |
 | Codex | `CodexRuntimeManifest.minPathVersion` | `CodexRuntimeManifest.targetVersion` |
+| GitHub Copilot | `CopilotRuntimeManifest.minPathVersion` | `CopilotRuntimeManifest.targetVersion` |
 | Claude Code | `ClaudePluginDescriptor.minVersion` | `ClaudePluginDescriptor.targetVersion` |
 | Cursor | `CursorRuntimeManifest.minPathVersion` | `CursorRuntimeManifest.targetVersion` |
 | DeepSeek | `DeepSeekRuntimeManifest.minPathVersion` | `DeepSeekRuntimeManifest.targetVersion` |
@@ -89,6 +96,9 @@ surface was validated; they do not gate otherwise-compatible local installs.
   release exists.
 - Update OpenCode's `targetVersion` to the latest stable `anomalyco/opencode` GitHub release.
 - Update Codex's `targetVersion` to the latest stable `openai/codex` GitHub release.
+- Update GitHub Copilot's `targetVersion` to the latest stable
+  `github/copilot-cli` release after its official six-archive metadata and ACP
+  v1 handshake pass the checks below.
 - Update Claude Code's direct-CLI `targetVersion` to the latest stable
   `anthropics/claude-code` release after the candidate stream-json surface
   probe passes.
@@ -145,6 +155,31 @@ Codex release tags use `rust-vX.Y.Z`; store only `X.Y.Z` in the manifest. Requir
 - `codex-x86_64-pc-windows-msvc.exe.zip`
 
 Confirm asset filenames have not changed before editing. Do not guess mappings for renamed or missing assets.
+
+### GitHub Copilot
+
+```bash
+gh api repos/github/copilot-cli/releases/latest --jq '{tag: .tag_name, prerelease: .prerelease, assets: [.assets[] | select(.name == "copilot-darwin-arm64.tar.gz" or .name == "copilot-darwin-x64.tar.gz" or .name == "copilot-linux-arm64.tar.gz" or .name == "copilot-linux-x64.tar.gz" or .name == "copilot-win32-arm64.zip" or .name == "copilot-win32-x64.zip") | {name, digest}]}'
+npm view @github/copilot version
+```
+
+Require the stable GitHub `vX.Y.Z` tag and `@github/copilot` version to agree.
+Require exactly these six assets with non-null GitHub `sha256:` digests, and
+strip that prefix when writing the manifest:
+
+- `copilot-darwin-arm64.tar.gz`
+- `copilot-darwin-x64.tar.gz`
+- `copilot-linux-arm64.tar.gz`
+- `copilot-linux-x64.tar.gz`
+- `copilot-win32-arm64.zip`
+- `copilot-win32-x64.zip`
+
+Before changing the pin, run the official current-host package with an isolated
+`COPILOT_HOME`. Verify its branded `GitHub Copilot CLI X.Y.Z.` version, then
+launch `--no-auto-update --acp` and confirm ACP v1 `initialize` plus the
+`copilot-login` authentication method without prompting or reading the user's
+normal profile. Preserve the PATH minimum unless a separate capability requires
+raising it.
 
 ### Claude Code
 
@@ -277,17 +312,18 @@ Before changing the pin, run the official candidate in an isolated temporary cwd
 
 1. Update OpenCode's target version and all six matching SHA-256 values.
 2. Update Codex's target version, release-version documentation, and all six matching SHA-256 values.
-3. Update Claude Code's direct-CLI target and descriptor test fixtures after the candidate probe passes.
-4. Update `CursorRuntimeManifest.targetVersion` to the official current build and refresh all four computed SHA-256 values.
-5. Update `DeepSeekRuntimeManifest.targetVersion` only after all six release
+3. Update GitHub Copilot's target version and all six matching SHA-256 values after the candidate ACP probe passes.
+4. Update Claude Code's direct-CLI target and descriptor test fixtures after the candidate probe passes.
+5. Update `CursorRuntimeManifest.targetVersion` to the official current build and refresh all four computed SHA-256 values.
+6. Update `DeepSeekRuntimeManifest.targetVersion` only after all six release
    digests, the aggregate manifest, and the isolated packaged ACP probe agree.
-6. Update Hermes Agent's direct-CLI target and descriptor test fixtures after the tagged-source ACP probe passes.
-7. Update `PiRuntimeManifest.targetVersion` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
-8. Update `OmpRuntimeManifest.targetVersion` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
-9. Verify every minimum is unchanged from the base branch. A target-only update must not modify a minimum-version line or an outdated-version test boundary.
-10. Update hard-coded version URLs, version assertions, and recent-target fixtures in all manifest/availability tests.
-11. Search the affected plugin packages for the replaced target versions. Update only references that describe the current target; preserve minimum-version fixtures, historical comments, and protocol-shape observations tied to older versions.
-12. Update the setup/lifecycle regression document only for a separately requested compatibility-floor change, then run `dart format` on changed Dart files.
+7. Update Hermes Agent's direct-CLI target and descriptor test fixtures after the tagged-source ACP probe passes.
+8. Update `PiRuntimeManifest.targetVersion` only after the isolated JSONL RPC probe passes; refresh all six SHA-256 values and preserve complete package-directory placement.
+9. Update `OmpRuntimeManifest.targetVersion` only after the isolated ACP probe passes; refresh all seven SHA-256 values and preserve glibc/musl and unsupported Windows arm64 mapping.
+10. Verify every minimum is unchanged from the base branch. A target-only update must not modify a minimum-version line or an outdated-version test boundary.
+11. Update hard-coded version URLs, version assertions, and recent-target fixtures in all manifest/availability tests.
+12. Search the affected plugin packages for the replaced target versions. Update only references that describe the current target; preserve minimum-version fixtures, historical comments, and protocol-shape observations tied to older versions.
+13. Update the setup/lifecycle regression document only for a separately requested compatibility-floor change, then run `dart format` on changed Dart files.
 
 Use `apply_patch` for manual edits.
 
@@ -298,6 +334,7 @@ Run the plugin suites independently; they may run in parallel:
 ```bash
 (cd bridge/sesori_plugin_opencode && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_codex && dart test && dart analyze --fatal-infos)
+(cd bridge/sesori_plugin_copilot && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_claude && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_cursor && dart test && dart analyze --fatal-infos)
 (cd bridge/sesori_plugin_deepseek && dart test && dart analyze --fatal-infos)
@@ -323,6 +360,7 @@ Before finishing, report:
 - old and new target versions plus the unchanged minimum for every registered harness
 - confirmation that no compatibility floor changed
 - whether all twelve GitHub asset digests were refreshed
+- GitHub Copilot's stable GitHub/npm target, unchanged PATH floor, six verified archive digests, and isolated ACP handshake result
 - Claude Code's stable GitHub/npm target, matching Agent SDK version, unchanged direct-CLI floor, and stream-json surface probe result
 - Cursor's installer-advertised build, and whether its four managed-runtime digests were recomputed
 - DeepSeek's adapter release, six verified package-archive digests, reported
