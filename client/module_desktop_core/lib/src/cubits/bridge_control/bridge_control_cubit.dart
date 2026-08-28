@@ -106,10 +106,13 @@ class BridgeControlCubit._create({
     _activity = BridgeControlActivity.toggling;
     _rebuildMenu();
     try {
-      switch (_processService.desiredState) {
-        case BridgeProcessDesiredState.off:
-          await _processService.start();
+      switch (_toggleTarget(
+        processState: _processService.state,
+        desiredState: _processService.desiredState,
+      )) {
         case BridgeProcessDesiredState.on:
+          await _processService.start();
+        case BridgeProcessDesiredState.off:
           await _processService.stop();
       }
     } on Object catch (error, stackTrace) {
@@ -180,6 +183,10 @@ class BridgeControlCubit._create({
     required BridgeControlStatus status,
     required BridgeControlActivity activity,
   }) {
+    final BridgeProcessDesiredState toggleTarget = _toggleTarget(
+      processState: processState,
+      desiredState: desiredState,
+    );
     return SystemTrayMenu(
       entries: <SystemTrayMenuEntry>[
         SystemTrayTextItem(
@@ -189,7 +196,7 @@ class BridgeControlCubit._create({
         const SystemTraySeparator(),
         SystemTrayCommandItem(
           command: SystemTrayCommand.toggleBridge,
-          label: desiredState == BridgeProcessDesiredState.on ? "Turn Bridge Off" : "Turn Bridge On",
+          label: toggleTarget == BridgeProcessDesiredState.off ? "Turn Bridge Off" : "Turn Bridge On",
           enabled: !activity.locksCommands,
         ),
         const SystemTraySeparator(),
@@ -200,6 +207,19 @@ class BridgeControlCubit._create({
         ),
       ],
     );
+  }
+
+  static BridgeProcessDesiredState _toggleTarget({
+    required BridgeProcessState processState,
+    required BridgeProcessDesiredState desiredState,
+  }) {
+    if (processState is BridgeProcessStopped && desiredState == BridgeProcessDesiredState.on) {
+      return BridgeProcessDesiredState.on;
+    }
+    if (processState is BridgeProcessRunning && desiredState == BridgeProcessDesiredState.off) {
+      return BridgeProcessDesiredState.off;
+    }
+    return desiredState == BridgeProcessDesiredState.on ? BridgeProcessDesiredState.off : BridgeProcessDesiredState.on;
   }
 
   static String _statusLabel({required BridgeProcessState processState, required BridgeControlStatus status}) {

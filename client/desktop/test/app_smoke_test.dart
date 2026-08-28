@@ -30,8 +30,9 @@ void main() {
     // swap in an in-memory fake so the gate's local-session check completes.
     getIt.unregister<SecureStorage>();
     getIt.registerLazySingleton<SecureStorage>(_InMemorySecureStorage.new);
+    final _UnavailableSystemTray systemTray = _UnavailableSystemTray();
     getIt.unregister<SystemTray>();
-    getIt.registerLazySingleton<SystemTray>(_UnavailableSystemTray.new);
+    getIt.registerLazySingleton<SystemTray>(() => systemTray);
     getIt.unregister<DesktopApplicationTerminator>();
     getIt.registerLazySingleton<DesktopApplicationTerminator>(_FakeApplicationTerminator.new);
 
@@ -41,15 +42,21 @@ void main() {
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
+    expect(systemTray.initializeCalls, 1);
   });
 }
 
 class _UnavailableSystemTray() implements SystemTray {
+  int initializeCalls = 0;
+
   @override
   Stream<SystemTrayCommand> get commands => const Stream<SystemTrayCommand>.empty();
 
   @override
-  Future<SystemTrayAvailability> initialize({required SystemTrayMenu menu}) async => SystemTrayAvailability.unavailable;
+  Future<SystemTrayAvailability> initialize({required SystemTrayMenu menu}) async {
+    initializeCalls++;
+    return SystemTrayAvailability.unavailable;
+  }
 
   @override
   Future<void> setMenu({required SystemTrayMenu menu}) async {}

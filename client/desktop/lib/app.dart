@@ -17,6 +17,7 @@ class const SesoriDesktopApp({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<BridgeControlCubit>(
+      lazy: false,
       create: (_) {
         final BridgeControlCubit cubit = BridgeControlCubit(
           processService: getIt(),

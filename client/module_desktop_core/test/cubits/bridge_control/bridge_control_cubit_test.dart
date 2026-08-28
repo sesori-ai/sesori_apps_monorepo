@@ -94,6 +94,46 @@ void main() {
       expect(processService.desiredState, BridgeProcessDesiredState.off);
     });
 
+    test("a failed start leaves the next toggle targeted at retrying start", () async {
+      processService.startError = StateError("spawn failed");
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+
+      expect(processService.startCalls, 1);
+      expect(processService.desiredState, BridgeProcessDesiredState.on);
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
+
+      processService.startError = null;
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+      expect(processService.startCalls, 2);
+      expect(processService.stopCalls, 0);
+    });
+
+    test("a failed stop leaves the next toggle targeted at retrying stop", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopError = StateError("stop failed");
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+
+      expect(processService.stopCalls, 1);
+      expect(processService.desiredState, BridgeProcessDesiredState.off);
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
+
+      processService.stopError = null;
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+      expect(processService.stopCalls, 2);
+      expect(processService.startCalls, 0);
+    });
+
     test("Quit terminates only after expected bridge stop completes", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
@@ -148,6 +188,7 @@ class _FakeBridgeProcessService() implements BridgeProcessService {
   BridgeProcessDesiredState _desiredState = BridgeProcessDesiredState.off;
   int startCalls = 0;
   int stopCalls = 0;
+  Object? startError;
   Completer<void>? stopGate;
   Object? stopError;
 
@@ -164,6 +205,11 @@ class _FakeBridgeProcessService() implements BridgeProcessService {
   Future<void> start() async {
     startCalls++;
     _desiredState = BridgeProcessDesiredState.on;
+    final Object? failure = startError;
+    if (failure != null) {
+      _states.add(const BridgeProcessStopped());
+      Error.throwWithStackTrace(failure, StackTrace.current);
+    }
     _states.add(const BridgeProcessRunning(pid: 42));
   }
 
