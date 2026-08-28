@@ -102,7 +102,7 @@ change in this plan is step 5 (status semantics + dead-protocol removal).
 | C7 | Tokens supplied over the channel drive relay re-auth only on auth-identity change (JWT userId), not on same-user rotation. Token flow is pull-on-demand (incl. forced refresh after 401); there is no push path. |
 | C8 | GUI persists a readable `bridgeId` copy from the `registered` event and keeps a server-side unregister fallback for logout with a dead/absent helper. Desktop logout is device-local: targeted bridge delete + local token clear; never account-wide token invalidation or `/auth/revoke`. |
 | C9 | Cross-machine relay displacement keys on close code 4007 (reason-string fallback), long takeover backoff, `takenOver` status push; Take over = plain respawn. Single-slot relay semantics are current reality; Stage C multi-bridge stays outside this plan. |
-| C10 | `SystemTray`/`WindowHost`/`LaunchAtLogin` are dumb Layer-0 adapters in `module_desktop_core` with shell implementations; Layer-4 cubits drive them. If the OS tray is unavailable (stock GNOME), fall back to windowed mode and never boot hidden. |
+| C10 | `SystemTray`/`WindowHost`/`LaunchAtLogin` are dumb Layer-0 adapters in `module_desktop_core` with shell implementations; Layer-4 cubits drive them. Tray availability on Linux requires **positive evidence** (a StatusNotifier host present), not merely successful init — stock GNOME initializes AppIndicators it never shows. Without that evidence: windowed mode, and never boot hidden. |
 | C11 | Desktop uninstall/reset (distribution plan) may touch only desktop-owned state; `token.json` and the managed runtime roots are shared with the standalone CLI. Desktop-namespaced GUI state from day one. |
 | C12 | `module_desktop_core` layering: `foundation` → `api` → `repositories`/`trackers` → `services` → `control`/`cubits`; dispatchers write down into trackers; cubits read trackers; no same-layer service deps (Layer-4 orchestrators compose services). Cubits are shell-constructed, not DI-registered. |
 | C13 | Desktop mirrors `sesori_bridge_foundation` primitives (process executor, download/checksum/archive) as patterns; it never imports bridge-workspace code (each side opens browsers/URLs through its own adapter). |
@@ -164,9 +164,12 @@ process API (spawn/kill/exit stream/stdout+stderr streams; non-positive-PID
 guard), Layer 2 `BridgeProcessRepository` — the **single Layer-2 boundary over
 the process API**: spawn, graceful-signal/kill, exit stream, raw stdio
 hand-off, the expected-exit marker, and the atomic expected-stop operation
-(mark + graceful signal together, with a bounded grace deadline and a kill
+(mark + graceful stop together, with a bounded grace deadline and a kill
 fallback that preserves the marker — a helper that hangs in teardown can
-never block Off/Quit or leave an orphan). The grace deadline strictly exceeds
+never block Off/Quit or leave an orphan). The graceful half is the
+control-channel `shutdown` command (step 5) — Windows has no catchable
+SIGTERM, so a signal cannot be the primary mechanism; a POSIX signal remains
+the secondary path when the channel is down. The grace deadline strictly exceeds
 the bridge's own bounded shutdown (phase budgets + backstop slack + emergency
 disposal cap) so the fallback never preempts the helper's plugin disposal,
 and the kill terminates the helper's process tree/group, not just its PID —
@@ -239,6 +242,11 @@ rule leaves `ControlPluginHealthState.unavailable` unreachable (the mapper
 emits only healthy/degraded; `unknown` stays the init/forward-parse fallback),
 so that variant and its client/test branches are deleted too. The dev harness
 itself survives until step 12 — step 5 only updates its affected branches.
+One **addition** alongside the deletions: `ControlMessage.shutdown`
+(GUI→helper supervision command; the bridge dispatcher routes it to the
+graceful exit-0 path — `unregister_and_exit` minus the unregister), because
+Windows offers no catchable SIGTERM and the expected-stop's graceful half
+must work on every OS.
 Also bridge-side: **verify with a test — no new mechanism** — that the
 existing shutdown-coordinator backstop covers the supervised restart path:
 exit 86 is latched at handoff, the coordinator arms at shutdown-request, and
@@ -253,8 +261,9 @@ halves live in this repo.
 adapter (dumb: renders a menu model, emits clicks); Layer-4
 `BridgeControlCubit` consumes `BridgeProcessService` + trackers, builds the
 menu (status line, session count, On/Off, Open, Quit), and drives the tray.
-Tray-init failure → windowed fallback (C10); Quit = expected-stop then exit,
-no orphan.
+Tray unavailable → windowed fallback (C10 — on Linux availability means
+positive StatusNotifier-host evidence, since init succeeds invisibly on stock
+GNOME); Quit = expected-stop then exit, no orphan.
 
 **Step 7 — ⚙️ Window.** `WindowHost` Layer-0 interface + `window_manager`
 adapter; close hides, quit matches tray semantics. Prego theme adoption in the
@@ -283,13 +292,9 @@ crash give-up with recent log lines), open-logs affordance. Creates
 
 ### M3 — Daily-driver hardening (desktop-only except steps 10–11, which touch mobile-shared auth/core seams)
 
-**Step 8 — ⚙️ Autostart + hidden boot.** `LaunchAtLogin` adapter +
-registration with `--hidden`; hidden launch → tray-only, but hidden boot
-requires a live tray (C10) — tray-init failure shows the window. Toggling
-autostart off genuinely removes the login item; repeated launches don't
-accumulate duplicates.
-
-**Step 9 — ⚙️ Single instance + last-state.** Layer-1
+**Step 8 — ⚙️ Single instance + last-state.** Ordered **before** autostart:
+a login-started hidden process plus a manual open must never yield two GUIs
+contending for one helper. Layer-1
 `DesktopInstanceStorage` (persisted on/off & last-state under desktop-owned
 app data) and Layer-1 `DesktopInstanceApi` (instance lock + the **activation
 channel**: the lock owner listens on a local socket/pipe; a second launch
@@ -301,13 +306,24 @@ focuses the first; stale-lock recovery after a GUI crash. Layer-4
 `DesktopStartupOrchestrator` composes instance + process services to restore a
 last-on bridge behind the auth gate (no same-layer service deps).
 
+**Step 9 — ⚙️ Autostart + hidden boot.** `LaunchAtLogin` adapter +
+registration with `--hidden`; hidden launch → tray-only, but hidden boot
+requires an available tray per C10's positive-evidence rule — otherwise the
+window shows. Toggling
+autostart off genuinely removes the login item; repeated launches don't
+accumulate duplicates (single-instance from step 8 already guards the
+process level).
+
 **Step 10 — 🚧 `module_auth` logout/rejection hardening (approved refactor
-R1).** A logout generation enforced **atomically around persistence**, not
-just checked before it: token persistence goes through a single seam that
-rechecks the generation after the awaited storage writes and clears them on
-mismatch (or serializes persistence with logout) — a pre-check alone leaves a
-window across `saveTokens()`'s two awaited writes. Kills the
-restore-after-logout re-save race. Also `/auth/refresh` 4xx-rejection
+R1).** A logout generation enforced **atomically around every flow result**,
+not just checked before token writes: the generation is captured at flow
+start and rechecked before each persist **and** each state emission of the
+restore/refresh result — token writes (recheck after `saveTokens()`'s awaited
+writes, clear on mismatch), the `/auth/me` user save, and the
+`AuthAuthenticated` emission (the no-refresh restore path persists a user and
+emits authenticated without ever touching token persistence, so a token-only
+fence misses it). Alternatively serialize the full restore with logout. Kills
+the restore-after-logout re-save race in all its variants. Also `/auth/refresh` 4xx-rejection
 distinguished from transport failure (a definitive rejection clears the
 persisted tokens/user **before** emitting `unauthenticated`, so a relaunch
 cannot restore the revoked account — covered by a relaunch test; offline
@@ -367,7 +383,11 @@ real GUI + this suite supersede it).
 remains a distribution-plan decision — and the route/notification seams as
 the resolved object graph actually requires); resolve `ConnectionService`; window shows truthful relay-client
 connection state alongside supervision status (control channel and relay
-client coexist; no second reconnect driver).
+client coexist; no second reconnect driver). The desktop root also provides
+the shared connection UI wiring the shared screens assume — a
+`ConnectionOverlayCubit` (and the `ConnectionBanner` host) above the desktop
+router, mirroring mobile's root wiring — so the first shared screen in step
+15 cannot throw on a missing provider.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
