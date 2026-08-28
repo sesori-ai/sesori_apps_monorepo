@@ -193,6 +193,28 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
+    test("rollback-generated expected exit still enters automatic startup retry", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      logTracker.attachError = StateError("pipe attach failed");
+      repository.emitExpectedExitOnStop = true;
+      final Future<BridgeProcessState> retryScheduled = service.states.firstWhere(
+        (state) => state is BridgeProcessCrashRetryScheduled,
+      );
+
+      repository.emitExit(exitCode: 86, expected: false);
+      final BridgeProcessState retryState = await retryScheduled;
+
+      expect(repository.spawnCalls, 2);
+      expect(
+        retryState,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", isNull)
+            .having((state) => state.crashCount, "crashCount", 1),
+      );
+      expect(service.desiredState, BridgeProcessDesiredState.on);
+    });
+
     test("exit during startup is surfaced and rolled back", () async {
       authSession.state = _authenticatedState;
       logTracker.onAttach = () {
@@ -430,7 +452,7 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
-    test("clean and repository-expected exits never respawn", () async {
+    test("clean exit never respawns", () async {
       authSession.state = _authenticatedState;
       await service.start();
 
@@ -440,13 +462,29 @@ void main() {
       expect(service.state, isA<BridgeProcessStopped>());
       expect(service.desiredState, BridgeProcessDesiredState.off);
       expect(repository.spawnCalls, 1);
+    });
 
+    test("Start supersedes the expected marker retained by a failed Off", () async {
+      authSession.state = _authenticatedState;
       await service.start();
-      repository.emitExit(exitCode: 35, expected: true);
-      await pumpEventQueue();
+      repository.stopError = StateError("process remained alive");
+      await expectLater(service.stop(), throwsA(isA<StateError>()));
 
-      expect(service.state, isA<BridgeProcessStopped>());
-      expect(repository.spawnCalls, 2);
+      repository.stopError = null;
+      await service.start();
+      final Future<BridgeProcessState> retryScheduled = service.states.firstWhere(
+        (state) => state is BridgeProcessCrashRetryScheduled,
+      );
+      repository.emitExit(exitCode: 35, expected: true);
+      final BridgeProcessState retryState = await retryScheduled;
+
+      expect(
+        retryState,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", 35)
+            .having((state) => state.crashCount, "crashCount", 1),
+      );
+      expect(service.desiredState, BridgeProcessDesiredState.on);
     });
 
     test("rapid crashes exhaust the bounded budget and surface only recent log lines", () async {
@@ -706,6 +744,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   List<String>? arguments;
   Object? spawnError;
   Object? stopError;
+  bool emitExpectedExitOnStop = false;
   void Function()? onSpawnBeforeReturn;
   bool _isRunning = false;
   int? _activePid;
@@ -745,6 +784,10 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
     final Object? failure = stopError;
     if (failure != null) {
       throw failure;
+    }
+    if (emitExpectedExitOnStop) {
+      emitExit(exitCode: 0, expected: true);
+      return;
     }
     _isRunning = false;
     _activePid = null;

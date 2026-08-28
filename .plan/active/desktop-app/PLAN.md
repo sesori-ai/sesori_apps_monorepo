@@ -241,8 +241,8 @@ dispatcher, and the dispatcher stays inbound-only. The expected-stop
 repository's atomic stop operation (step 2), keeping that operation in one
 owner. Includes hidden-boot render
 policy: contention during a silent autostart surfaces as state, never a modal.
-*Overage: ~1.7k changed lines after review-driven lifecycle-race,
-per-helper prompt-ownership, and shared exit-contract hardening.*
+*Overage: ~1.8k changed lines after review-driven lifecycle-race,
+expected-exit ownership, prompt-ownership, and shared-contract hardening.*
 
 ### M2 — Control surface
 

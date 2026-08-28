@@ -116,7 +116,7 @@ class BridgeProcessService.forTesting({
   int? _activePid;
   DateTime? _healthySince;
   bool _stableRuntimeReached = false;
-  bool _startupExitPolicyClaimed = false;
+  _BridgeStartupExitClaim _startupExitClaim = _BridgeStartupExitClaim.none;
   bool _disposed = false;
   BridgeProcessDesiredState _desiredState = BridgeProcessDesiredState.off;
 
@@ -189,7 +189,7 @@ class BridgeProcessService.forTesting({
     }
 
     _pendingStartupExit = null;
-    _startupExitPolicyClaimed = false;
+    _startupExitClaim = _BridgeStartupExitClaim.none;
     _publish(const BridgeProcessStarting());
     bool controlStartAttempted = false;
     bool childCreated = false;
@@ -241,7 +241,7 @@ class BridgeProcessService.forTesting({
         childCreated: childCreated,
       );
       _pendingStartupExit = null;
-      if (!_startupExitPolicyClaimed) {
+      if (!_startupExitClaim.ownsRecovery) {
         _scheduleCrashRetry(
           exitCode: null,
           generation: _lifecycleGeneration,
@@ -257,7 +257,7 @@ class BridgeProcessService.forTesting({
         childCreated: childCreated,
       );
       final int? pid = spawnedPid;
-      if (_startupExitPolicyClaimed && pid != null) {
+      if (_startupExitClaim.ownsRecovery && pid != null) {
         throw BridgeProcessExitedDuringStartException(
           pid: pid,
           innerCause: AsyncError(error, stackTrace),
@@ -380,7 +380,9 @@ class BridgeProcessService.forTesting({
 
   void _beginExitCleanup({required BridgeProcessExit? exit}) {
     if (state is BridgeProcessStarting) {
-      _startupExitPolicyClaimed = true;
+      _startupExitClaim = exit?.expected ?? false
+          ? _BridgeStartupExitClaim.expected
+          : _BridgeStartupExitClaim.unexpected;
     }
     _activePid = null;
     final bool stableRun = _wasStableRun();
@@ -443,7 +445,8 @@ class BridgeProcessService.forTesting({
     if (stableRun) {
       _crashCount = 0;
     }
-    if (_desiredState == BridgeProcessDesiredState.off || (exit?.expected ?? false)) {
+    if (_desiredState == BridgeProcessDesiredState.off ||
+        ((exit?.expected ?? false) && _startupExitClaim == _BridgeStartupExitClaim.expected)) {
       _publish(const BridgeProcessStopped());
       return;
     }
@@ -460,6 +463,13 @@ class BridgeProcessService.forTesting({
 
     switch (BridgeSupervisedExitCode.fromCode(code: exitCode)) {
       case BridgeSupervisedExitCode.cleanStop:
+        if (exit?.expected ?? false) {
+          _restartAutomaticallyAfterCurrentStart(
+            generation: generation,
+            context: "Bridge restart after a superseded expected stop",
+          );
+          return;
+        }
         _desiredState = BridgeProcessDesiredState.off;
         _crashCount = 0;
         _publish(const BridgeProcessStopped());
@@ -743,6 +753,12 @@ class BridgeProcessService.forTesting({
 }
 
 final class const _BridgeProcessStartCancelled() implements Exception;
+
+enum _BridgeStartupExitClaim({required final bool ownsRecovery}) {
+  none(ownsRecovery: false),
+  expected(ownsRecovery: false),
+  unexpected(ownsRecovery: true);
+}
 
 enum _BridgeCrashSource({required final String retryContext}) {
   processExit(retryContext: "Bridge restart after unexpected exit"),
