@@ -1587,8 +1587,6 @@ abstract class AcpPlugin({
       // Replayed messages must carry the same `agent` the live mapper stamps,
       // or a reloaded session reports a different agent than the live one did.
       agentId: eventMapper.pluginId,
-      modelId: eventMapper.modelForSession(sessionId: sessionId),
-      providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
           ? AcpEventMapper.initialUserMessageId(sessionId)
           : null,
@@ -1597,7 +1595,12 @@ abstract class AcpPlugin({
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
-    )..variant = replayVariantForSession(sessionId: sessionId);
+    );
+    List<PluginMessageWithParts> buildReplay() => collector.buildWithAssistantSelection(
+      modelId: eventMapper.modelForSession(sessionId: sessionId),
+      providerId: eventMapper.providerForSession(sessionId: sessionId),
+      variant: replayVariantForSession(sessionId: sessionId),
+    );
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;
     List<BridgeSseEvent>? deferredCommandRefresh;
@@ -1667,7 +1670,7 @@ abstract class AcpPlugin({
           // the process-global tracker, so consumers still need the refresh
           // nudge — same flush as the success path below.
           flushDeferredCommandRefresh();
-          return collector.build();
+          return buildReplay();
         }
         // Any other RPC error is a genuine load failure — wrapped typed below.
         rethrow;
@@ -1682,10 +1685,7 @@ abstract class AcpPlugin({
       // is captured in full, bounded so a chatty agent can't hang the request.
       await _drainReplay(() => received);
       flushDeferredCommandRefresh();
-      collector.modelId = eventMapper.modelForSession(sessionId: sessionId);
-      collector.providerId = eventMapper.providerForSession(sessionId: sessionId);
-      collector.variant = replayVariantForSession(sessionId: sessionId);
-      return collector.build();
+      return buildReplay();
     } on PluginAuthenticationRequiredException {
       flushDeferredCommandRefresh();
       rethrow;

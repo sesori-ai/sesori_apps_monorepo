@@ -83,9 +83,10 @@
 - [x] Cover identity validation, two sessions, accepted-send timing, cancellation, reasoning/tools, permissions, close,
   reconnect, disposal, stale prevalidation, loaded-effort replay, and selection failure; retain history suppression.
 - [x] Keep replay initialize validation pure and validate effort-only tuples after a stored session becomes resident.
+- [x] Materialize replay with one complete selection tuple; expose no externally mutable collector selection fields.
 - [x] Remove redundant Grok cleanup/command overrides; the shared tracker and command path remain authoritative.
-- [x] Run 270 ACP tests, 42 Grok tests, six affected-package analyzers, Dart LSP diagnostics, and whitespace checks.
-- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,068 lines).
+- [x] Run 270 ACP, 42 Grok, and 41 DeepSeek tests plus affected-package analyzers, LSP, and whitespace checks.
+- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,135 lines).
 - [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
 - [x] Complete the post-rebase general correctness review; final verdict approved.
 - [x] Publish Step 4 as PR #1169 after #1160's merge and start its PR monitor.
