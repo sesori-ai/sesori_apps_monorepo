@@ -97,3 +97,4 @@ export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
 export "src/voice/project_glossary_key.dart";
+export "src/voice/project_glossary_scope.dart";

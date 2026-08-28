@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProjectGlossaryWordsRequest {
 
-@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey get projectKey; String? get bridgeId; List<String> get words;
+ ProjectGlossaryScope get scope; List<String> get words;
 /// Create a copy of ProjectGlossaryWordsRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $ProjectGlossaryWordsRequestCopyWith<ProjectGlossaryWordsRequest> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsRequest&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&const DeepCollectionEquality().equals(other.words, words));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsRequest&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.words, words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectKey,bridgeId,const DeepCollectionEquality().hash(words));
+int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(words));
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsRequest(projectKey: $projectKey, bridgeId: $bridgeId, words: $words)';
+  return 'ProjectGlossaryWordsRequest(scope: $scope, words: $words)';
 }
 
 
@@ -49,11 +49,11 @@ abstract mixin class $ProjectGlossaryWordsRequestCopyWith<$Res>  {
   factory $ProjectGlossaryWordsRequestCopyWith(ProjectGlossaryWordsRequest value, $Res Function(ProjectGlossaryWordsRequest) _then) = _$ProjectGlossaryWordsRequestCopyWithImpl;
 @useResult
 $Res call({
-@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey projectKey, String? bridgeId, List<String> words
+ ProjectGlossaryScope scope, List<String> words
 });
 
 
-
+$ProjectGlossaryScopeCopyWith<$Res> get scope;
 
 }
 /// @nodoc
@@ -66,15 +66,23 @@ class _$ProjectGlossaryWordsRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProjectGlossaryWordsRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectKey = null,Object? bridgeId = freezed,Object? words = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? scope = null,Object? words = null,}) {
   return _then(ProjectGlossaryWordsRequest(
-projectKey: null == projectKey ? _self.projectKey : projectKey // ignore: cast_nullable_to_non_nullable
-as ProjectGlossaryKey,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,words: null == words ? _self.words : words // ignore: cast_nullable_to_non_nullable
+scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as ProjectGlossaryScope,words: null == words ? _self.words : words // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
-
+/// Create a copy of ProjectGlossaryWordsRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ProjectGlossaryScopeCopyWith<$Res> get scope {
+  
+  return $ProjectGlossaryScopeCopyWith<$Res>(_self.scope, (value) {
+    return _then(_self.copyWith(scope: value));
+  });
+}
 }
 
 
@@ -83,11 +91,10 @@ as List<String>,
 @JsonSerializable()
 
 class _ProjectGlossaryWordsRequest implements ProjectGlossaryWordsRequest {
-  const _ProjectGlossaryWordsRequest({@ProjectGlossaryKeyJsonConverter() required this.projectKey, required this.bridgeId, required  List<String> words}): _words = words;
+  const _ProjectGlossaryWordsRequest({required this.scope, required  List<String> words}): _words = words;
   factory _ProjectGlossaryWordsRequest.fromJson(Map<String, dynamic> json) => _$ProjectGlossaryWordsRequestFromJson(json);
 
-@override@ProjectGlossaryKeyJsonConverter() final  ProjectGlossaryKey projectKey;
-@override final  String? bridgeId;
+@override final  ProjectGlossaryScope scope;
  final  List<String> _words;
 @override List<String> get words {
   if (_words is EqualUnmodifiableListView) return _words;
@@ -109,16 +116,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsRequest&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&const DeepCollectionEquality().equals(other._words, _words));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsRequest&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other._words, _words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectKey,bridgeId,const DeepCollectionEquality().hash(_words));
+int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_words));
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsRequest(projectKey: $projectKey, bridgeId: $bridgeId, words: $words)';
+  return 'ProjectGlossaryWordsRequest(scope: $scope, words: $words)';
 }
 
 
@@ -129,11 +136,11 @@ abstract mixin class _$ProjectGlossaryWordsRequestCopyWith<$Res> implements $Pro
   factory _$ProjectGlossaryWordsRequestCopyWith(_ProjectGlossaryWordsRequest value, $Res Function(_ProjectGlossaryWordsRequest) _then) = __$ProjectGlossaryWordsRequestCopyWithImpl;
 @override @useResult
 $Res call({
-@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey projectKey, String? bridgeId, List<String> words
+ ProjectGlossaryScope scope, List<String> words
 });
 
 
-
+@override $ProjectGlossaryScopeCopyWith<$Res> get scope;
 
 }
 /// @nodoc
@@ -146,16 +153,24 @@ class __$ProjectGlossaryWordsRequestCopyWithImpl<$Res>
 
 /// Create a copy of ProjectGlossaryWordsRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectKey = null,Object? bridgeId = freezed,Object? words = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? scope = null,Object? words = null,}) {
   return _then(_ProjectGlossaryWordsRequest(
-projectKey: null == projectKey ? _self.projectKey : projectKey // ignore: cast_nullable_to_non_nullable
-as ProjectGlossaryKey,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,words: null == words ? _self._words : words // ignore: cast_nullable_to_non_nullable
+scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as ProjectGlossaryScope,words: null == words ? _self._words : words // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
 
-
+/// Create a copy of ProjectGlossaryWordsRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ProjectGlossaryScopeCopyWith<$Res> get scope {
+  
+  return $ProjectGlossaryScopeCopyWith<$Res>(_self.scope, (value) {
+    return _then(_self.copyWith(scope: value));
+  });
+}
 }
 
 // dart format on

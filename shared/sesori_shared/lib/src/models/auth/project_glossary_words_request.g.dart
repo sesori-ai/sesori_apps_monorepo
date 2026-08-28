@@ -8,19 +8,15 @@ part of 'project_glossary_words_request.dart';
 
 _ProjectGlossaryWordsRequest _$ProjectGlossaryWordsRequestFromJson(Map json) =>
     _ProjectGlossaryWordsRequest(
-      projectKey: const ProjectGlossaryKeyJsonConverter().fromJson(
-        json['projectKey'] as String,
+      scope: ProjectGlossaryScope.fromJson(
+        Map<String, dynamic>.from(json['scope'] as Map),
       ),
-      bridgeId: json['bridgeId'] as String?,
       words: (json['words'] as List<dynamic>).map((e) => e as String).toList(),
     );
 
 Map<String, dynamic> _$ProjectGlossaryWordsRequestToJson(
   _ProjectGlossaryWordsRequest instance,
 ) => <String, dynamic>{
-  'projectKey': const ProjectGlossaryKeyJsonConverter().toJson(
-    instance.projectKey,
-  ),
-  'bridgeId': ?instance.bridgeId,
+  'scope': instance.scope.toJson(),
   'words': instance.words,
 };
