@@ -9,20 +9,20 @@ import "singular/singular_static_adapter.dart";
 @lazySingleton
 class SingularAttributionStartup({required final SingularStaticAdapter _singular}) {
   bool _isStarted = false;
+  SingularConfig? _pendingCrawlGateConfig;
   SingularConfig? _deferredStartConfig;
 
-  void start({
+  /// Prepares SDK configuration without starting Singular. The asynchronous
+  /// crawl-gate decision can then complete after the first frame.
+  void prepare({
     required bool isSupportedPlatform,
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
-    required bool deferUntilInteractiveAuthentication,
     required String sdkKey,
     required String sdkSecret,
   }) {
-    if (!isSupportedPlatform || ineligibilityReason != null) {
-      return;
-    }
+    if (!isSupportedPlatform || ineligibilityReason != null) return;
 
-    final config = SingularConfig(sdkKey, sdkSecret)
+    _pendingCrawlGateConfig = SingularConfig(sdkKey, sdkSecret)
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular
       // can still perform privacy-preserving install attribution without IDFA/GAID.
       ..limitAdvertisingIdentifiers = true
@@ -31,31 +31,45 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
       ..limitDataSharing = true
       ..skAdNetworkEnabled = true
       ..enableLogging = false;
+  }
 
-    if (deferUntilInteractiveAuthentication) {
+  void applyCrawlGate({required AnalyticsStoreCrawlGate crawlGate}) {
+    if (_isStarted) return;
+    final config = _pendingCrawlGateConfig;
+    if (config == null) return;
+
+    if (crawlGate == AnalyticsStoreCrawlGate.suspend) {
+      _pendingCrawlGateConfig = null;
       _deferredStartConfig = config;
       logi("Singular attribution deferred until interactive authentication");
       return;
     }
 
-    try {
-      _singular.start(config: config);
-      _isStarted = true;
+    if (_start(config: config)) {
+      _pendingCrawlGateConfig = null;
       logi("Singular attribution started");
-    } on Object catch (error, stackTrace) {
-      logw("Failed to start Singular attribution", error, stackTrace);
     }
   }
 
   bool activateAfterInteractiveAuthentication() {
     if (_isStarted) return true;
-    final deferredStartConfig = _deferredStartConfig;
-    if (deferredStartConfig == null) return false;
+    final config = _deferredStartConfig ?? _pendingCrawlGateConfig;
+    if (config == null || !_start(config: config)) return false;
 
-    _singular.start(config: deferredStartConfig);
-    _isStarted = true;
+    _pendingCrawlGateConfig = null;
     _deferredStartConfig = null;
     logi("Singular attribution started after interactive authentication");
     return true;
+  }
+
+  bool _start({required SingularConfig config}) {
+    try {
+      _singular.start(config: config);
+      _isStarted = true;
+      return true;
+    } on Object catch (error, stackTrace) {
+      logw("Failed to start Singular attribution", error, stackTrace);
+      return false;
+    }
   }
 }

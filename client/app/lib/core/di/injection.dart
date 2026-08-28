@@ -15,10 +15,10 @@ final getIt = GetIt.instance;
 //   3. configureCoreDependencies(…)  — Core deps (ConnectionService, VoiceApi, etc.)
 //
 // Core registrations are lazy. Resolve only the crawl-gate service after phase
-// 3, then register the resulting analytics capability before any capability
-// consumer is instantiated.
+// 3, prepare the analytics runtime without awaiting its remote crawl-gate
+// decision, then register the capability before any consumer is instantiated.
 @InjectableInit()
-Future<AnalyticsStoreCrawlGate> configureDependencies({
+Future<AnalyticsRuntimeBootstrap> configureDependencies({
   required bool firebaseEnabled,
   required Future<AnalyticsRuntimeBootstrap> Function({
     required AnalyticsCrawlGateService crawlGateService,
@@ -36,5 +36,5 @@ Future<AnalyticsStoreCrawlGate> configureDependencies({
   );
   getIt.registerSingleton<AnalyticsRuntimeCapability>(bootstrap.capability);
   getIt<MessageThumbnailCacheService>();
-  return bootstrap.crawlGate;
+  return bootstrap;
 }

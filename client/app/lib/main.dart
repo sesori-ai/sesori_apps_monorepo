@@ -73,7 +73,7 @@ void main() async {
   await bootstrapSesoriApp(
     shouldInitializeFirebase: shouldInitializeFirebase,
     configureDependenciesFn: () async {
-      final crawlGate = await configureDependencies(
+      final analyticsBootstrap = await configureDependencies(
         firebaseEnabled: shouldInitializeFirebase,
         createAnalyticsRuntimeBootstrap: ({required crawlGateService}) => _createAnalyticsRuntimeBootstrap(
           shouldInitializeFirebase: shouldInitializeFirebase,
@@ -84,9 +84,10 @@ void main() async {
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
-      return crawlGate;
+      return analyticsBootstrap;
     },
-    startSingularAttributionFn: _startSingularAttribution,
+    prepareSingularAttributionFn: _prepareSingularAttribution,
+    applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
@@ -105,8 +106,9 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
-  required Future<AnalyticsStoreCrawlGate> Function() configureDependenciesFn,
-  required Future<void> Function({required AnalyticsStoreCrawlGate crawlGate}) startSingularAttributionFn,
+  required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
+  required void Function() prepareSingularAttributionFn,
+  required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
@@ -115,12 +117,8 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  final crawlGate = await configureDependenciesFn();
-  try {
-    await startSingularAttributionFn(crawlGate: crawlGate);
-  } on Object catch (error, stackTrace) {
-    logw("Error bootstrapping Singular attribution", error, stackTrace);
-  }
+  final analyticsBootstrap = await configureDependenciesFn();
+  prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
   await startAnalyticsRouteListenerFn();
@@ -164,6 +162,24 @@ Future<void> bootstrapSesoriApp({
       ),
     ),
   );
+
+  unawaited(
+    _completeAnalyticsStartup(
+      crawlGate: analyticsBootstrap.crawlGate,
+      applySingularCrawlGateFn: applySingularCrawlGateFn,
+    ),
+  );
+}
+
+Future<void> _completeAnalyticsStartup({
+  required Future<AnalyticsStoreCrawlGate> crawlGate,
+  required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
+}) async {
+  try {
+    applySingularCrawlGateFn(crawlGate: await crawlGate);
+  } on Object catch (error, stackTrace) {
+    logw("Error completing analytics startup", error, stackTrace);
+  }
 }
 
 Future<AnalyticsRuntimeBootstrap> _createAnalyticsRuntimeBootstrap({
@@ -172,38 +188,63 @@ Future<AnalyticsRuntimeBootstrap> _createAnalyticsRuntimeBootstrap({
   required AnalyticsCrawlGateService crawlGateService,
 }) async {
   if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
-    return const AnalyticsRuntimeBootstrap(
-      capability: AnalyticsRuntimeCapability.disabled(
+    return AnalyticsRuntimeBootstrap(
+      capability: const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       ),
-      crawlGate: AnalyticsStoreCrawlGate.allow,
+      crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
     );
   }
 
   final ineligibilityReason = _measurementIneligibilityReason();
-  final crawlGate = await crawlGateService.resolve(
-    eligibility: ineligibilityReason == null && defaultTargetPlatform == TargetPlatform.android
-        ? AnalyticsCrawlGateEligibility.eligibleRelease
-        : AnalyticsCrawlGateEligibility.ineligible,
-  );
-  final capability = await getIt<FirebaseAnalyticsStartup>().configure(
-    ineligibilityReason: ineligibilityReason,
-    suspendForStoreCrawl: crawlGate == AnalyticsStoreCrawlGate.suspend,
-  );
+  final analyticsStartup = getIt<FirebaseAnalyticsStartup>();
+  final capability = await analyticsStartup.prepare(ineligibilityReason: ineligibilityReason);
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
+    return AnalyticsRuntimeBootstrap(
+      capability: capability,
+      crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+    );
   }
-  return AnalyticsRuntimeBootstrap(capability: capability, crawlGate: crawlGate);
+
+  return AnalyticsRuntimeBootstrap(
+    capability: capability,
+    crawlGate: _resolveAndApplyAnalyticsCrawlGate(
+      analyticsStartup: analyticsStartup,
+      crawlGateService: crawlGateService,
+      eligibility: defaultTargetPlatform == TargetPlatform.android
+          ? AnalyticsCrawlGateEligibility.eligibleRelease
+          : AnalyticsCrawlGateEligibility.ineligible,
+    ),
+  );
 }
 
-Future<void> _startSingularAttribution({required AnalyticsStoreCrawlGate crawlGate}) async {
-  getIt<SingularAttributionStartup>().start(
+Future<AnalyticsStoreCrawlGate> _resolveAndApplyAnalyticsCrawlGate({
+  required FirebaseAnalyticsStartup analyticsStartup,
+  required AnalyticsCrawlGateService crawlGateService,
+  required AnalyticsCrawlGateEligibility eligibility,
+}) async {
+  var crawlGate = AnalyticsStoreCrawlGate.allow;
+  try {
+    crawlGate = await crawlGateService.resolve(eligibility: eligibility);
+  } on Object catch (error, stackTrace) {
+    logw("Failed to resolve the analytics store-crawl gate; allowing analytics", error, stackTrace);
+  }
+  await analyticsStartup.applyCrawlGate(crawlGate: crawlGate);
+  return crawlGate;
+}
+
+void _prepareSingularAttribution() {
+  getIt<SingularAttributionStartup>().prepare(
     isSupportedPlatform: _supportsSingular,
     ineligibilityReason: _measurementIneligibilityReason(),
-    deferUntilInteractiveAuthentication: crawlGate == AnalyticsStoreCrawlGate.suspend,
     sdkKey: _singularSdkKeyDefine,
     sdkSecret: _singularSdkSecretDefine,
   );
+}
+
+void _applySingularCrawlGate({required AnalyticsStoreCrawlGate crawlGate}) {
+  getIt<SingularAttributionStartup>().applyCrawlGate(crawlGate: crawlGate);
 }
 
 /// Why this process must never report analytics, or null when it may.

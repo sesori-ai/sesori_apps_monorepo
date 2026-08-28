@@ -23,11 +23,11 @@ void main() {
 
     await configureDependencies(
       firebaseEnabled: false,
-      createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => const AnalyticsRuntimeBootstrap(
-        capability: AnalyticsRuntimeCapability.disabled(
+      createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => AnalyticsRuntimeBootstrap(
+        capability: const AnalyticsRuntimeCapability.disabled(
           reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
         ),
-        crawlGate: AnalyticsStoreCrawlGate.allow,
+        crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
       ),
     );
     getIt.unregister<FlutterSecureStorage>();

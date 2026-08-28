@@ -4,29 +4,31 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../di/firebase_register_module.dart";
 
+enum _FirebaseAnalyticsStartupState() {
+  notPrepared,
+  disabled,
+  waitingForCrawlGate,
+  suspendedForStoreCrawl,
+  active
+}
+
 @firebaseEnabledEnvironment
 @lazySingleton
 class FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
-  bool _isSuspendedForStoreCrawl = false;
+  _FirebaseAnalyticsStartupState _state = _FirebaseAnalyticsStartupState.notPrepared;
 
-  /// Configures the Firebase analytics SDK for this process and reports the
-  /// resulting runtime capability. [ineligibilityReason] states why this
-  /// process must never report, or is null when it may.
-  ///
-  /// [suspendForStoreCrawl] keeps the SDK's own collection off for an eligible
-  /// process that may be a Play pre-launch crawl. The Sesori runtime stays
-  /// operational — its events are simply discarded by the suspended SDK — and
-  /// [activateAfterInteractiveAuthentication] lifts the suspension once a
-  /// person proves they are using this process.
-  Future<AnalyticsRuntimeCapability> configure({
+  /// Keeps native collection off while preparing the process capability. The
+  /// remote crawl-gate decision is applied separately so it cannot delay the
+  /// first frame.
+  Future<AnalyticsRuntimeCapability> prepare({
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
-    required bool suspendForStoreCrawl,
   }) async {
     try {
       // Native configuration starts fresh installs off. Enforce that decision
       // for every process before any custom analytics source starts.
       await _analytics.setAnalyticsCollectionEnabled(false);
     } on Object catch (error, stackTrace) {
+      _state = _FirebaseAnalyticsStartupState.disabled;
       logw("Failed to suspend Firebase analytics collection during startup", error, stackTrace);
       return const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
@@ -34,31 +36,42 @@ class FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
     }
 
     if (ineligibilityReason case final reason?) {
+      _state = _FirebaseAnalyticsStartupState.disabled;
       return AnalyticsRuntimeCapability.disabled(reason: reason);
     }
 
-    if (suspendForStoreCrawl) {
-      _isSuspendedForStoreCrawl = true;
-      logi("Firebase analytics collection suspended for a possible store crawl");
-      return const AnalyticsRuntimeCapability.enabled();
-    }
-
-    return await _enableCollection();
+    _state = _FirebaseAnalyticsStartupState.waitingForCrawlGate;
+    return const AnalyticsRuntimeCapability.enabled();
   }
 
-  /// Lifts the store-crawl suspension for the rest of this process; a no-op
-  /// when nothing is suspended. Best-effort: a failure keeps the SDK
-  /// suspended, which discards subsequent events instead of blocking callers.
+  /// Enables collection or leaves it suspended after the asynchronous store
+  /// crawl decision. Interactive authentication may activate collection first;
+  /// in that case the later gate result cannot suspend the proven-human process.
+  Future<void> applyCrawlGate({required AnalyticsStoreCrawlGate crawlGate}) async {
+    if (_state != _FirebaseAnalyticsStartupState.waitingForCrawlGate) return;
+    if (crawlGate == AnalyticsStoreCrawlGate.suspend) {
+      _state = _FirebaseAnalyticsStartupState.suspendedForStoreCrawl;
+      logi("Firebase analytics collection suspended for a possible store crawl");
+      return;
+    }
+
+    await _activateCollection();
+  }
+
+  /// Lifts a pending or resolved store-crawl suspension for the rest of this
+  /// process. Best-effort: a failure keeps the SDK suspended, which discards
+  /// subsequent events instead of blocking callers.
   Future<void> activateAfterInteractiveAuthentication() async {
-    if (!_isSuspendedForStoreCrawl) return;
-    final capability = await _enableCollection();
-    if (capability.isEnabled) {
-      _isSuspendedForStoreCrawl = false;
+    if (_state != _FirebaseAnalyticsStartupState.waitingForCrawlGate &&
+        _state != _FirebaseAnalyticsStartupState.suspendedForStoreCrawl) {
+      return;
+    }
+    if (await _activateCollection()) {
       logi("Firebase analytics collection enabled after interactive authentication");
     }
   }
 
-  Future<AnalyticsRuntimeCapability> _enableCollection() async {
+  Future<bool> _activateCollection() async {
     try {
       await _analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
@@ -70,12 +83,11 @@ class FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
         functionalityStorageConsentGranted: true,
       );
       await _analytics.setAnalyticsCollectionEnabled(true);
-      return const AnalyticsRuntimeCapability.enabled();
+      _state = _FirebaseAnalyticsStartupState.active;
+      return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to enable Firebase analytics collection", error, stackTrace);
-      return const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-      );
+      return false;
     }
   }
 }

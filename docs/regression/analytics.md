@@ -37,17 +37,20 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
   process. Debug/profile runs emit neither automatic nor Sesori-defined analytics events. An unauthenticated Android
   release build newer than the production-submission cutoff keeps the SDK's own collection suspended as a possible
   Play pre-launch crawl; a build at or below the cutoff, or any device with a locally valid session, reports. A missing,
-  invalid, throttled, or failed cutoff fetch fails open so control-plane failure cannot suppress real users. The Sesori
-  runtime stays operational during suspension: pre-authentication events are accepted but discarded by the suspended
-  SDK, and a server-confirmed interactive authentication lifts the suspension before the one-time login outcome events
-  are logged. Logged-in testing builds therefore report intentionally. Crawls of a production-submitted build and
+  invalid, throttled, or failed cutoff fetch fails open so control-plane failure cannot suppress real users. The remote
+  decision is not awaited by first-frame startup: native collection stays off while it resolves, and SDK collection is
+  enabled or left suspended afterward. The Sesori runtime stays operational during suspension: pre-authentication
+  events are accepted but discarded by the suspended SDK, and a server-confirmed interactive authentication lifts a
+  pending or resolved suspension before the one-time login outcome events are logged. Logged-in testing builds
+  therefore report intentionally. Crawls of a production-submitted build and
   crawls admitted by fail-open behavior can still register; the L5 pre-launch check measures that residue.
 - Singular starts only on Android/iOS, in the same eligible release-build population, with required credentials
-  injected outside Git. An unauthenticated Android build newer than the production-submission cutoff arms startup but
-  defers it until a successful interactive authentication reports its first conversion event; a crawler that never
-  authenticates remains off. Startup and event reporting are best-effort and must not block the app. The configuration
-  limits
-  advertising identifiers and partner data sharing, removes Android advertising-ID permissions, and sets no custom
+  injected outside Git. SDK configuration is prepared without starting Singular, then an unauthenticated Android build
+  newer than the production-submission cutoff defers startup until successful interactive authentication reports its
+  first conversion event; a crawler that never authenticates remains off. Authentication may start Singular while the
+  remote decision is still pending. Startup and event reporting are best-effort and must not block the app. The
+  configuration limits advertising identifiers and partner data sharing, removes Android advertising-ID permissions,
+  and sets no custom
   user ID, custom events, deep-link handler, or uninstall token. The Basic Usage Analytics preference does not claim
   to control this separate attribution scope.
 - A successful interactive authentication always reports Firebase's `login_attempt_completed`. A server-confirmed
@@ -66,7 +69,7 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
 | L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration plus standard-event mapping with fake adapters. |
-| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; and Singular registration-before-login only for server-confirmed account creation. |
+| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; first-frame and notification startup proceeding while the crawl gate is unresolved; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; interactive authentication lifting a pending or resolved gate for both SDKs; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; and Singular registration-before-login only for server-confirmed account creation. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
 | L5 Full | Release build against the real analytics properties and Firebase Remote Config: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, an ahead-of-production Play pre-launch report producing no Firebase or Singular rows while the cutoff fetch succeeds, the production submission workflow publishing its exact build cutoff, Singular install/session attribution and standard login/registration events observed without an advertising ID, custom user identity, or event attributes, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
 
@@ -94,7 +97,8 @@ account against a real property.
   server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen.
-- Automatic screen reporting is observed, a failure blocks a product outcome, or copy overclaims.
+- A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
+  observed; an analytics failure blocks a product outcome; or copy overclaims.
 - Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an
   unauthenticated Android build is newer than a successfully fetched production-submission cutoff; requests an
   advertising-ID permission, sets a custom user identity, sends custom events,

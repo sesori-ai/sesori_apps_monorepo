@@ -20,14 +20,20 @@ void main() {
     startup = SingularAttributionStartup(singular: singular);
   });
 
-  test("starts an eligible supported build with privacy-minimized configuration", () {
-    startup.start(
+  void prepareEligibleStartup() {
+    startup.prepare(
       isSupportedPlatform: true,
       ineligibilityReason: null,
-      deferUntilInteractiveAuthentication: false,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
+  }
+
+  test("starts an eligible supported build after the crawl gate allows it", () {
+    prepareEligibleStartup();
+
+    expect(startedConfigs, isEmpty);
+    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
 
     expect(startedConfigs, hasLength(1));
     expect(
@@ -46,28 +52,20 @@ void main() {
   });
 
   test("does not start on unsupported platforms or ineligible builds", () {
-    startup.start(
+    startup.prepare(
       isSupportedPlatform: false,
       ineligibilityReason: null,
-      deferUntilInteractiveAuthentication: false,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
-    startup.start(
+    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
+    startup.prepare(
       isSupportedPlatform: true,
       ineligibilityReason: AnalyticsRuntimeDisabledReason.debugOrProfile,
-      deferUntilInteractiveAuthentication: false,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
-    // An ineligible process never defers: eligibility outranks the crawl gate.
-    startup.start(
-      isSupportedPlatform: true,
-      ineligibilityReason: AnalyticsRuntimeDisabledReason.debugOrProfile,
-      deferUntilInteractiveAuthentication: true,
-      sdkKey: "test-sdk-key",
-      sdkSecret: "test-sdk-secret",
-    );
+    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
 
     expect(startup.activateAfterInteractiveAuthentication(), isFalse);
     expect(startedConfigs, isEmpty);
@@ -75,18 +73,24 @@ void main() {
   });
 
   test("defers a crawl-gated startup until interactive authentication reports an event", () {
-    startup.start(
-      isSupportedPlatform: true,
-      ineligibilityReason: null,
-      deferUntilInteractiveAuthentication: true,
-      sdkKey: "test-sdk-key",
-      sdkSecret: "test-sdk-secret",
-    );
+    prepareEligibleStartup();
+    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
 
     expect(startedConfigs, isEmpty);
 
     expect(startup.activateAfterInteractiveAuthentication(), isTrue);
     singular.event(eventName: Events.sngLogin);
+
+    expect(startedConfigs, hasLength(1));
+    expect(eventNames, [Events.sngLogin]);
+  });
+
+  test("interactive authentication can start Singular while the gate is pending", () {
+    prepareEligibleStartup();
+
+    expect(startup.activateAfterInteractiveAuthentication(), isTrue);
+    singular.event(eventName: Events.sngLogin);
+    startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
 
     expect(startedConfigs, hasLength(1));
     expect(eventNames, [Events.sngLogin]);
@@ -99,16 +103,12 @@ void main() {
         event: (_) {},
       ),
     );
+    prepareEligibleStartup();
 
     expect(
-      () => startup.start(
-        isSupportedPlatform: true,
-        ineligibilityReason: null,
-        deferUntilInteractiveAuthentication: false,
-        sdkKey: "test-sdk-key",
-        sdkSecret: "test-sdk-secret",
-      ),
+      () => startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow),
       returnsNormally,
     );
+    expect(startup.activateAfterInteractiveAuthentication(), isFalse);
   });
 }
