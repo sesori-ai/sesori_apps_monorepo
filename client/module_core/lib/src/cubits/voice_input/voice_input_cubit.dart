@@ -9,6 +9,7 @@ import "voice_input_state.dart";
 class VoiceInputCubit({required final VoiceTranscriptionService _service}) extends Cubit<VoiceInputState> {
   late final VoiceTranscriptionSession _session = _service.createSession();
   late final StreamSubscription<void> _maxDurationSubscription;
+  late final StreamSubscription<VoiceTranscriptionPreview> _previewSubscription;
 
   this : super(const VoiceInputState.idle()) {
     _maxDurationSubscription = _service.maxDurationReachedStream(session: _session).listen((_) {
@@ -16,19 +17,20 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
         unawaited(stopAndTranscribe(limitReached: true));
       }
     });
+    _previewSubscription = _service.previewStream(session: _session).listen(_handlePreview);
     unawaited(_service.prewarm(session: _session));
   }
 
   Stream<double> get amplitudeStream => _service.amplitudeStream(session: _session);
 
-  Future<void> startRecording() async {
+  Future<void> startRecording({required String projectId}) async {
     if (state is! VoiceInputIdle) return;
     emit(const VoiceInputState.starting());
 
     try {
-      await _service.start(session: _session);
+      await _service.start(session: _session, projectId: projectId);
       if (isClosed || state is! VoiceInputStarting) return;
-      emit(const VoiceInputState.recording());
+      emit(VoiceInputState.recording(preview: _service.currentPreview(session: _session)));
     } on VoiceTranscriptionError catch (error, stackTrace) {
       if (error is! MicrophonePermissionDeniedError) {
         loge("Failed to start recording", error, stackTrace);
@@ -44,7 +46,12 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
 
   Future<void> stopAndTranscribe({required bool limitReached}) async {
     if (state is! VoiceInputRecording) return;
-    emit(VoiceInputState.transcribing(limitReached: limitReached));
+    emit(
+      VoiceInputState.transcribing(
+        limitReached: limitReached,
+        preview: _service.currentPreview(session: _session),
+      ),
+    );
 
     try {
       final transcript = await _service.stopAndTranscribe(session: _session);
@@ -53,6 +60,15 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
     } on TranscriptionCancelledError {
       if (isClosed || state is! VoiceInputTranscribing) return;
       emit(const VoiceInputState.idle());
+    } on VoiceRealtimePartialTranscriptionError catch (error, stackTrace) {
+      _logTranscriptionFailure(error: error.failure, stackTrace: stackTrace);
+      if (isClosed || state is! VoiceInputTranscribing) return;
+      emit(
+        VoiceInputState.realtimePartialFailed(
+          confirmedText: error.confirmedText,
+          error: error.failure,
+        ),
+      );
     } on VoiceTranscriptionError catch (error, stackTrace) {
       _logTranscriptionFailure(error: error, stackTrace: stackTrace);
       if (isClosed || state is! VoiceInputTranscribing) return;
@@ -112,7 +128,8 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
       VoiceInputTranscribing() ||
       VoiceInputCompleted() ||
       VoiceInputStartFailed() ||
-      VoiceInputTranscriptionFailed() => null,
+      VoiceInputTranscriptionFailed() ||
+      VoiceInputRealtimePartialFailed() => null,
       VoiceInputIdle() ||
       VoiceInputRetryPending() ||
       VoiceInputRetryCancelling() ||
@@ -137,6 +154,14 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
     }
   }
 
+  Future<void> composerIdentityChanged() async {
+    if (state is VoiceInputRetryPending || state is VoiceInputRetrying) {
+      await discard();
+    } else {
+      await cancel();
+    }
+  }
+
   Future<void> discard() async {
     if (state is VoiceInputRetrying) await cancel();
     if (state is! VoiceInputRetryPending) return;
@@ -151,7 +176,10 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
   }
 
   void acknowledgeOutcome() {
-    if (state is VoiceInputCompleted || state is VoiceInputStartFailed || state is VoiceInputTranscriptionFailed) {
+    if (state is VoiceInputCompleted ||
+        state is VoiceInputStartFailed ||
+        state is VoiceInputTranscriptionFailed ||
+        state is VoiceInputRealtimePartialFailed) {
       emit(const VoiceInputState.idle());
     }
   }
@@ -161,6 +189,28 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
       emit(VoiceInputState.retryPending(error: error));
     } else {
       emit(VoiceInputState.transcriptionFailed(error: error));
+    }
+  }
+
+  void _handlePreview(VoiceTranscriptionPreview preview) {
+    if (isClosed) return;
+    switch (state) {
+      case VoiceInputRecording():
+        emit(VoiceInputState.recording(preview: preview));
+      case VoiceInputTranscribing(:final limitReached):
+        emit(VoiceInputState.transcribing(limitReached: limitReached, preview: preview));
+      case VoiceInputIdle() ||
+          VoiceInputStarting() ||
+          VoiceInputRetryPending() ||
+          VoiceInputRetrying() ||
+          VoiceInputRetryCancelling() ||
+          VoiceInputDiscarding() ||
+          VoiceInputCompleted() ||
+          VoiceInputStartFailed() ||
+          VoiceInputTranscriptionFailed() ||
+          VoiceInputRealtimePartialFailed() ||
+          VoiceInputCancelling():
+        return;
     }
   }
 
@@ -177,6 +227,7 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
   Future<void> close() async {
     _service.invalidate(session: _session);
     await _maxDurationSubscription.cancel();
+    await _previewSubscription.cancel();
     await _service.close(session: _session);
     return await super.close();
   }

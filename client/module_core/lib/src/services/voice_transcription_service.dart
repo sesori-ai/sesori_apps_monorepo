@@ -1,13 +1,19 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 
+import "../capabilities/voice/project_glossary_key.dart";
 import "../logging/logging.dart";
+import "../models/voice_capabilities.dart";
+import "../models/voice_realtime.dart";
 import "../platform/voice_capture.dart";
 import "../repositories/voice_repository.dart";
 
 const maxRecordingDuration = Duration(minutes: 15);
 const _recorderPrewarmTimeout = Duration(seconds: 2);
+const _realtimeReadyTimeout = Duration(seconds: 10);
+const _realtimeFinishTimeout = Duration(seconds: 10);
 
 @lazySingleton
 class VoiceTranscriptionService({
@@ -23,6 +29,11 @@ class VoiceTranscriptionService({
 
   Stream<void> maxDurationReachedStream({required VoiceTranscriptionSession session}) =>
       session._maxDurationReachedController.stream;
+
+  VoiceTranscriptionPreview currentPreview({required VoiceTranscriptionSession session}) => session._preview;
+
+  Stream<VoiceTranscriptionPreview> previewStream({required VoiceTranscriptionSession session}) =>
+      session._previewController.stream;
 
   Future<void> prewarm({required VoiceTranscriptionSession session}) {
     if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) {
@@ -48,55 +59,258 @@ class VoiceTranscriptionService({
     }
   }
 
-  Future<void> start({required VoiceTranscriptionSession session}) {
+  Future<void> start({required VoiceTranscriptionSession session, required String projectId}) {
     if (session._state is! _VoiceSessionIdle) {
       logw("Voice recording operation already in progress");
       return Future<void>.value();
     }
 
-    final operation = _start(session: session);
+    final operation = _start(session: session, projectId: projectId);
     session._startFuture = operation;
     return operation.whenComplete(() {
       if (identical(session._startFuture, operation)) session._startFuture = null;
     });
   }
 
-  Future<void> _start({required VoiceTranscriptionSession session}) async {
+  Future<void> _start({required VoiceTranscriptionSession session, required String projectId}) async {
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
+    session._projectKey = null;
+    _setPreview(
+      session: session,
+      preview: const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+    );
 
     try {
       final prewarmFuture = session._prewarmFuture;
       if (prewarmFuture != null) await prewarmFuture.timeout(_recorderPrewarmTimeout);
-      if (!_ownsGeneration(session: session, generation: generation)) {
-        throw VoiceTranscriptionError.cancelled();
-      }
+      _ensureGeneration(session: session, generation: generation);
 
-      await session._captureSession.start();
-      if (!_ownsGeneration(session: session, generation: generation)) {
-        await session._captureSession.cancel();
-        throw VoiceTranscriptionError.cancelled();
-      }
+      final discovery = await _repository.discoverCapabilities();
+      _ensureGeneration(session: session, generation: generation);
+      final mode = _selectStartMode(result: discovery, projectId: projectId);
+      session._projectKey = mode.projectKey;
 
-      session._state = const _VoiceSessionRecording();
-      _startMaxDurationTimer(session: session);
+      switch (mode) {
+        case _AsyncVoiceStartMode():
+          await _startAsync(session: session, generation: generation);
+        case _RealtimeVoiceStartMode(:final projectKey):
+          try {
+            await _startRealtime(session: session, projectKey: projectKey, generation: generation);
+          } on _RealtimePreAudioFallback {
+            await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
+            _ensureGeneration(session: session, generation: generation);
+            await _startAsync(session: session, generation: generation);
+          } on VoiceCaptureRealtimeUnsupported {
+            await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
+            _ensureGeneration(session: session, generation: generation);
+            await _startAsync(session: session, generation: generation);
+          }
+      }
     } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
       throw VoiceTranscriptionError.microphonePermissionDenied(innerError: error);
     } on VoiceCaptureError catch (error) {
+      await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       _restoreIdleAfterFailure(session: session, generation: generation);
       throw VoiceTranscriptionError.recordingFailed(innerError: error);
     } on VoiceTranscriptionError {
+      await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
+      _restoreIdleAfterFailure(session: session, generation: generation);
       rethrow;
     } catch (error, stackTrace) {
       loge("Failed to start voice recording", error, stackTrace);
+      await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       _restoreIdleAfterFailure(session: session, generation: generation);
       throw VoiceTranscriptionError.recordingFailed(innerError: error);
     }
   }
 
+  _VoiceStartMode _selectStartMode({
+    required VoiceCapabilitiesDiscoveryOutcome result,
+    required String projectId,
+  }) => switch (result) {
+    VoiceCapabilitiesAsyncFallback() => const _AsyncVoiceStartMode(projectKey: null),
+    VoiceCapabilitiesContractFailure(:final reason) => throw VoiceTranscriptionError.contractFailure(
+      reason: reason,
+      innerError: FormatException(reason),
+    ),
+    VoiceCapabilitiesAvailable(:final capabilities) => () {
+      final projectKey = deriveProjectGlossaryKey(projectId: projectId);
+      if (capabilities.canUseRealtimeProtocol1) {
+        return _RealtimeVoiceStartMode(projectKey: projectKey);
+      }
+      return _AsyncVoiceStartMode(projectKey: projectKey);
+    }(),
+  };
+
+  Future<void> _startAsync({required VoiceTranscriptionSession session, required int generation}) async {
+    await session._captureSession.start();
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      await session._captureSession.cancel();
+      throw VoiceTranscriptionError.cancelled();
+    }
+    session._state = const _VoiceSessionAsyncRecording();
+    _startMaxDurationTimer(session: session);
+  }
+
+  Future<void> _startRealtime({
+    required VoiceTranscriptionSession session,
+    required String projectKey,
+    required int generation,
+  }) async {
+    session._realtimeCaptureStarting = true;
+    final capture = await session._captureSession.startRealtime();
+    _ensureGeneration(session: session, generation: generation);
+    final setupFailure = Completer<Exception>();
+    void failSetup(Object error) {
+      if (setupFailure.isCompleted) return;
+      setupFailure.complete(error is Exception ? error : VoiceCaptureError.failed(innerError: error));
+    }
+
+    final setupFrameSubscription = capture.frames.listen(
+      (_) {},
+      onError: (Object error, StackTrace _) => failSetup(error),
+      onDone: () => failSetup(VoiceCaptureError.failed(innerError: null)),
+    );
+    final setupFormatSubscription = capture.formatChanges.listen(
+      (format) {
+        if (format.sampleRate != capture.format.sampleRate) {
+          failSetup(VoiceCaptureError.realtimeUnsupported(innerError: null));
+        }
+      },
+      onError: (Object error, StackTrace _) => failSetup(error),
+    );
+    final openFuture = _repository.openRealtime(
+      audio: VoiceRealtimeAudioFormat(sampleRate: capture.format.sampleRate),
+      projectKey: projectKey,
+    );
+    late final VoiceRealtimeOpenOutcome open;
+    try {
+      open = await Future.any<VoiceRealtimeOpenOutcome>([
+        openFuture,
+        setupFailure.future.then((cause) => throw _RealtimePreAudioFallback(cause: cause)),
+      ]);
+    } on _RealtimePreAudioFallback {
+      await _closeLateRealtimeOpen(openFuture);
+      rethrow;
+    } finally {
+      await setupFrameSubscription.cancel();
+      await setupFormatSubscription.cancel();
+    }
+    _ensureGeneration(session: session, generation: generation);
+
+    final VoiceRealtimeConnection realtimeSession;
+    switch (open) {
+      case VoiceRealtimeOpened(:final connection):
+        realtimeSession = connection;
+      case VoiceRealtimeOpenAsyncFallback(:final cause):
+        throw _RealtimePreAudioFallback(cause: cause);
+      case VoiceRealtimeOpenNotAuthenticated():
+        throw VoiceTranscriptionError.notAuthenticated();
+      case VoiceRealtimeOpenContractFailure(:final reason, :final cause):
+        throw VoiceTranscriptionError.contractFailure(reason: reason, innerError: cause);
+      case VoiceRealtimeOpenUnexpectedFailure(:final error):
+        throw VoiceTranscriptionError.recordingFailed(innerError: error);
+    }
+
+    final interaction = _RealtimeVoiceInteraction(
+      generation: generation,
+      capture: capture,
+      session: realtimeSession,
+    );
+    session._realtime = interaction;
+    session._realtimeCaptureStarting = false;
+    interaction.frameSubscription = capture.frames.listen(
+      (frame) => _handleRealtimeFrame(session: session, interaction: interaction, frame: frame),
+      onError: (Object error, StackTrace stackTrace) {
+        _handleRealtimeCaptureFailure(
+          session: session,
+          interaction: interaction,
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
+    interaction.formatSubscription = capture.formatChanges.listen(
+      (format) => _handleRealtimeFormatChange(
+        session: session,
+        interaction: interaction,
+        format: format,
+      ),
+      onError: (Object error, StackTrace stackTrace) {
+        _handleRealtimeCaptureFailure(
+          session: session,
+          interaction: interaction,
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
+    interaction.eventSubscription = realtimeSession.events.listen(
+      (event) => _handleRealtimeEvent(session: session, interaction: interaction, event: event),
+      onError: (Object error, StackTrace stackTrace) {
+        _handleRealtimeDomainFailure(
+          session: session,
+          interaction: interaction,
+          failure: VoiceRealtimeInterruptedFailure(innerError: error),
+          allowPreAudioFallback: true,
+        );
+      },
+      onDone: () {
+        if (interaction.terminalEvent == null && interaction.terminalFailure == null) {
+          _handleRealtimeDomainFailure(
+            session: session,
+            interaction: interaction,
+            failure: const VoiceRealtimeInterruptedFailure(innerError: null),
+            allowPreAudioFallback: true,
+          );
+        }
+      },
+    );
+
+    try {
+      await Future.any<void>([
+        interaction.ready.future.timeout(_realtimeReadyTimeout),
+        interaction.startFailure.future.then((error) => throw error),
+      ]);
+    } on TimeoutException catch (error) {
+      throw _RealtimePreAudioFallback(cause: error);
+    } on RealtimeInterruptedVoiceError catch (error) {
+      throw _RealtimePreAudioFallback(cause: error);
+    }
+    _ensureGeneration(session: session, generation: generation);
+    if (interaction.fallbackRequested) {
+      throw _RealtimePreAudioFallback(cause: interaction.fallbackCause ?? Exception("Realtime setup failed"));
+    }
+    if (interaction.terminalEvent != null) {
+      session._state = const _VoiceSessionRealtimeRecording();
+      return;
+    }
+    final terminalFailureBeforeResume = interaction.terminalFailure;
+    if (terminalFailureBeforeResume != null) throw terminalFailureBeforeResume;
+    await session._captureSession.resumeRealtime();
+    _ensureGeneration(session: session, generation: generation);
+    if (interaction.fallbackRequested) {
+      throw _RealtimePreAudioFallback(cause: interaction.fallbackCause ?? Exception("Realtime setup failed"));
+    }
+    if (interaction.terminalEvent != null) {
+      session._state = const _VoiceSessionRealtimeRecording();
+      return;
+    }
+    final terminalFailureAfterResume = interaction.terminalFailure;
+    if (terminalFailureAfterResume != null) throw terminalFailureAfterResume;
+    interaction.forwardFrames = true;
+    session._state = const _VoiceSessionRealtimeRecording();
+    _startMaxDurationTimer(session: session);
+  }
+
   Future<String> stopAndTranscribe({required VoiceTranscriptionSession session}) async {
-    if (session._state is! _VoiceSessionRecording) {
+    final state = session._state;
+    if (state is _VoiceSessionRealtimeRecording) {
+      return await _stopRealtimeAndTranscribe(session: session);
+    }
+    if (state is! _VoiceSessionAsyncRecording) {
       throw VoiceTranscriptionError.notRecording();
     }
 
@@ -131,6 +345,301 @@ class VoiceTranscriptionService({
       generation: generation,
       releaseCaptureOperation: true,
     );
+  }
+
+  Future<void> _closeLateRealtimeOpen(Future<VoiceRealtimeOpenOutcome> openFuture) async {
+    try {
+      final outcome = await openFuture;
+      if (outcome case VoiceRealtimeOpened(:final connection)) await connection.cancel();
+    } on Object catch (error, stackTrace) {
+      logw("Late realtime voice open failed after local fallback", error, stackTrace);
+    }
+  }
+
+  void _handleRealtimeFrame({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required Uint8List frame,
+  }) {
+    if (!interaction.forwardFrames || !_ownsGeneration(session: session, generation: interaction.generation)) return;
+    try {
+      interaction.session.sendAudio(frame);
+      interaction.sentAudio = true;
+    } on VoiceRealtimeConnectionException catch (error) {
+      _handleRealtimeDomainFailure(
+        session: session,
+        interaction: interaction,
+        failure: error.failure,
+        allowPreAudioFallback: true,
+      );
+    } on Object catch (error) {
+      _handleRealtimeDomainFailure(
+        session: session,
+        interaction: interaction,
+        failure: VoiceRealtimeInterruptedFailure(innerError: error),
+        allowPreAudioFallback: true,
+      );
+    }
+  }
+
+  void _handleRealtimeFormatChange({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required VoiceRealtimeCaptureFormat format,
+  }) {
+    if (format.sampleRate == interaction.capture.format.sampleRate) return;
+    final error = VoiceTranscriptionError.realtimeContract(
+      reason: "Realtime recorder format changed after setup",
+      innerError: StateError("Realtime recorder sample rate changed"),
+    );
+    if (!interaction.sentAudio) {
+      _requestRealtimeFallback(session: session, interaction: interaction, cause: error);
+    } else {
+      _completeRealtimeFailure(session: session, interaction: interaction, error: error);
+    }
+  }
+
+  void _handleRealtimeCaptureFailure({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    final typed = error is VoiceCaptureError ? error : VoiceCaptureError.failed(innerError: error);
+    if (!interaction.sentAudio) {
+      _requestRealtimeFallback(session: session, interaction: interaction, cause: typed);
+      return;
+    }
+    _completeRealtimeFailure(
+      session: session,
+      interaction: interaction,
+      error: VoiceTranscriptionError.realtimeContract(
+        reason: "Realtime capture failed after audio started",
+        innerError: typed,
+      ),
+    );
+  }
+
+  void _handleRealtimeDomainFailure({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required VoiceRealtimeFailure failure,
+    required bool allowPreAudioFallback,
+  }) {
+    final typed = _mapRealtimeFailure(failure);
+    if (allowPreAudioFallback && failure is VoiceRealtimeInterruptedFailure && !interaction.sentAudio) {
+      _requestRealtimeFallback(session: session, interaction: interaction, cause: typed);
+      return;
+    }
+    _completeRealtimeFailure(session: session, interaction: interaction, error: typed);
+  }
+
+  VoiceTranscriptionError _mapRealtimeFailure(VoiceRealtimeFailure failure) => switch (failure) {
+    VoiceRealtimeQuotaFailure(:final innerError) => VoiceTranscriptionError.realtimeQuota(
+      innerError: innerError,
+    ),
+    VoiceRealtimeTemporaryUnavailableFailure(:final innerError) => VoiceTranscriptionError.realtimeTemporaryUnavailable(
+      innerError: innerError,
+    ),
+    VoiceRealtimeInterruptedFailure(:final innerError) => VoiceTranscriptionError.realtimeInterrupted(
+      innerError: innerError,
+    ),
+    VoiceRealtimeContractFailure(:final innerError) => VoiceTranscriptionError.realtimeContract(
+      reason: "Realtime voice contract failure",
+      innerError: innerError ?? const FormatException("Realtime voice contract failure"),
+    ),
+  };
+
+  void _handleRealtimeEvent({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required VoiceRealtimeConnectionEvent event,
+  }) {
+    if (!_ownsGeneration(session: session, generation: interaction.generation)) return;
+    switch (event) {
+      case VoiceRealtimeReady():
+        if (!interaction.ready.isCompleted) interaction.ready.complete();
+      case VoiceRealtimeTranscript(:final confirmedDelta, :final provisional):
+        interaction.confirmedText += confirmedDelta;
+        interaction.provisionalText = provisional;
+        _setPreview(
+          session: session,
+          preview: VoiceTranscriptionPreview(
+            confirmedText: interaction.confirmedText,
+            provisionalText: interaction.provisionalText,
+          ),
+        );
+      case VoiceRealtimeCompleted():
+        interaction.terminalEvent = event;
+        if (!interaction.ready.isCompleted && !interaction.startFailure.isCompleted) {
+          interaction.startFailure.complete(
+            VoiceTranscriptionError.contractFailure(
+              reason: "Realtime session completed before ready",
+              innerError: StateError("Realtime complete before ready"),
+            ),
+          );
+        }
+        unawaited(_stopRealtimeCaptureAfterTerminal(session: session, interaction: interaction));
+      case VoiceRealtimeFailed(:final failure):
+        _handleRealtimeDomainFailure(
+          session: session,
+          interaction: interaction,
+          failure: failure,
+          allowPreAudioFallback: false,
+        );
+    }
+  }
+
+  void _requestRealtimeFallback({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required Exception cause,
+  }) {
+    if (interaction.fallbackRequested || interaction.terminalFailure != null || interaction.terminalEvent != null) {
+      return;
+    }
+    interaction.fallbackRequested = true;
+    interaction.fallbackCause = cause;
+    interaction.forwardFrames = false;
+    if (session._state is _VoiceSessionStarting) {
+      if (!interaction.startFailure.isCompleted) {
+        interaction.startFailure.complete(VoiceTranscriptionError.realtimeInterrupted(innerError: cause));
+      }
+      return;
+    }
+    if (session._state is _VoiceSessionRealtimeRecording) {
+      interaction.fallbackTransition ??= _transitionRealtimeToAsync(
+        session: session,
+        interaction: interaction,
+      );
+    }
+  }
+
+  Future<void> _transitionRealtimeToAsync({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+  }) async {
+    final generation = interaction.generation;
+    try {
+      await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
+      _ensureGeneration(session: session, generation: generation);
+      await _startAsync(session: session, generation: generation);
+    } on TranscriptionCancelledError {
+      return;
+    } on Object catch (error, stackTrace) {
+      loge("Failed to fall back from realtime voice capture", error, stackTrace);
+      interaction.terminalFailure = error is VoiceTranscriptionError
+          ? error
+          : VoiceTranscriptionError.recordingFailed(innerError: error);
+      session._realtime = interaction;
+      if (_ownsGeneration(session: session, generation: generation)) {
+        session._state = const _VoiceSessionRealtimeRecording();
+      }
+    }
+  }
+
+  void _completeRealtimeFailure({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+    required VoiceTranscriptionError error,
+  }) {
+    if (interaction.terminalFailure != null || interaction.terminalEvent != null) return;
+    interaction.terminalFailure = error;
+    interaction.forwardFrames = false;
+    if (!interaction.ready.isCompleted && !interaction.startFailure.isCompleted) {
+      interaction.startFailure.complete(error);
+    }
+    unawaited(_stopRealtimeCaptureAfterTerminal(session: session, interaction: interaction));
+  }
+
+  Future<void> _stopRealtimeCaptureAfterTerminal({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+  }) {
+    if (interaction.captureStopped) return Future<void>.value();
+    final existing = interaction.captureStopFuture;
+    if (existing != null) return existing;
+    final operation = _runStopRealtimeCaptureAfterTerminal(session: session, interaction: interaction);
+    interaction.captureStopFuture = operation;
+    return operation;
+  }
+
+  Future<void> _runStopRealtimeCaptureAfterTerminal({
+    required VoiceTranscriptionSession session,
+    required _RealtimeVoiceInteraction interaction,
+  }) async {
+    interaction.forwardFrames = false;
+    _cancelMaxDurationTimer(session: session);
+    try {
+      await session._captureSession.stopRealtime();
+    } on VoiceCaptureError catch (error, stackTrace) {
+      interaction.captureFailure = VoiceTranscriptionError.recordingFailed(innerError: error);
+      logw("Failed to stop realtime capture after terminal event", error, stackTrace);
+    } finally {
+      interaction.captureStopped = true;
+      await session._captureSession.releaseOperation();
+    }
+  }
+
+  Future<String> _stopRealtimeAndTranscribe({required VoiceTranscriptionSession session}) async {
+    final interaction = session._realtime;
+    if (interaction == null) throw VoiceTranscriptionError.notRecording();
+    final generation = interaction.generation;
+    _cancelMaxDurationTimer(session: session);
+    session._state = const _VoiceSessionRealtimeFinishing();
+    interaction.forwardFrames = false;
+
+    try {
+      await _stopRealtimeCaptureAfterTerminal(session: session, interaction: interaction);
+
+      final terminalFailure = interaction.terminalFailure ?? interaction.captureFailure;
+      if (terminalFailure != null) {
+        throw VoiceRealtimePartialTranscriptionError(
+          confirmedText: interaction.confirmedText,
+          failure: terminalFailure,
+        );
+      }
+      final terminalEvent = interaction.terminalEvent;
+      if (terminalEvent is VoiceRealtimeCompleted) return interaction.confirmedText;
+
+      try {
+        final terminal = await interaction.session.finish().timeout(_realtimeFinishTimeout);
+        if (terminal case VoiceRealtimeTerminalFailed(:final failure)) {
+          throw VoiceRealtimePartialTranscriptionError(
+            confirmedText: interaction.confirmedText,
+            failure: _mapRealtimeFailure(failure),
+          );
+        }
+        return interaction.confirmedText;
+      } on VoiceRealtimePartialTranscriptionError {
+        rethrow;
+      } on TimeoutException catch (error) {
+        throw VoiceRealtimePartialTranscriptionError(
+          confirmedText: interaction.confirmedText,
+          failure: VoiceTranscriptionError.realtimeTemporaryUnavailable(innerError: error),
+        );
+      } on VoiceRealtimeConnectionException catch (error) {
+        throw VoiceRealtimePartialTranscriptionError(
+          confirmedText: interaction.confirmedText,
+          failure: _mapRealtimeFailure(error.failure),
+        );
+      } on Object catch (error) {
+        throw VoiceRealtimePartialTranscriptionError(
+          confirmedText: interaction.confirmedText,
+          failure: VoiceTranscriptionError.realtimeInterrupted(innerError: error),
+        );
+      }
+    } finally {
+      await _disposeRealtimeInteraction(session: session, sendCancel: false, stopCapture: false);
+      await session._captureSession.releaseOperation();
+      if (_ownsGeneration(session: session, generation: generation)) {
+        session._state = const _VoiceSessionIdle();
+      }
+      _setPreview(
+        session: session,
+        preview: const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+      );
+    }
   }
 
   Future<String> retry({required VoiceTranscriptionSession session}) async {
@@ -178,6 +687,7 @@ class VoiceTranscriptionService({
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
+        projectKey: session._projectKey,
       );
       if (!_ownsGeneration(session: session, generation: generation)) {
         throw VoiceTranscriptionError.cancelled();
@@ -243,8 +753,14 @@ class VoiceTranscriptionService({
     _cancelMaxDurationTimer(session: session);
 
     switch (state) {
-      case _VoiceSessionStarting() || _VoiceSessionRecording():
+      case _VoiceSessionStarting():
+        final realtimeStarting = session._realtime != null || session._realtimeCaptureStarting;
+        await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
+        if (!realtimeStarting) await session._captureSession.cancel();
+      case _VoiceSessionAsyncRecording():
         await session._captureSession.cancel();
+      case _VoiceSessionRealtimeRecording() || _VoiceSessionRealtimeFinishing():
+        await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       case _VoiceSessionStopping():
         final stopFuture = session._stopFuture;
         VoiceRecordingArtifact? artifact;
@@ -272,6 +788,10 @@ class VoiceTranscriptionService({
     }
     if (_ownsGeneration(session: session, generation: generation)) {
       session._state = const _VoiceSessionIdle();
+      _setPreview(
+        session: session,
+        preview: const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+      );
     }
   }
 
@@ -296,7 +816,9 @@ class VoiceTranscriptionService({
       _VoiceSessionRetryPending(:final artifact) => _VoiceSessionClosingWithArtifact(artifact: artifact),
       _VoiceSessionIdle() ||
       _VoiceSessionStarting() ||
-      _VoiceSessionRecording() ||
+      _VoiceSessionAsyncRecording() ||
+      _VoiceSessionRealtimeRecording() ||
+      _VoiceSessionRealtimeFinishing() ||
       _VoiceSessionStopping() => const _VoiceSessionClosingWithoutArtifact(),
       _VoiceSessionClosing() || _VoiceSessionDisposed() => throw StateError("Voice session already closing"),
     };
@@ -351,12 +873,15 @@ class VoiceTranscriptionService({
       _VoiceSessionClosingWithoutArtifact() || _VoiceSessionDisposed() => null,
       _VoiceSessionIdle() ||
       _VoiceSessionStarting() ||
-      _VoiceSessionRecording() ||
+      _VoiceSessionAsyncRecording() ||
+      _VoiceSessionRealtimeRecording() ||
+      _VoiceSessionRealtimeFinishing() ||
       _VoiceSessionStopping() ||
       _VoiceSessionInitialTranscribing() ||
       _VoiceSessionRetryTranscribing() ||
       _VoiceSessionRetryPending() => null,
     };
+    await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
     if (retainedArtifact != null) {
       await session._captureSession.deleteArtifact(artifact: retainedArtifact);
     }
@@ -367,7 +892,66 @@ class VoiceTranscriptionService({
       logw("Failed to close voice capture session", error, stackTrace);
     }
     await session._maxDurationReachedController.close();
+    await session._previewController.close();
     session._state = const _VoiceSessionDisposed();
+  }
+
+  Future<void> _disposeRealtimeInteraction({
+    required VoiceTranscriptionSession session,
+    required bool sendCancel,
+    required bool stopCapture,
+  }) async {
+    final interaction = session._realtime;
+    if (interaction == null) {
+      if (stopCapture && session._realtimeCaptureStarting) {
+        session._realtimeCaptureStarting = false;
+        await session._captureSession.cancel();
+      }
+      return;
+    }
+    if (identical(session._realtime, interaction)) session._realtime = null;
+    session._realtimeCaptureStarting = false;
+    interaction.forwardFrames = false;
+    if (!interaction.ready.isCompleted && !interaction.startFailure.isCompleted) {
+      interaction.startFailure.complete(VoiceTranscriptionError.cancelled());
+    }
+    await interaction.cancelSubscriptions();
+    try {
+      if (sendCancel) {
+        await interaction.session.cancel();
+      } else {
+        await interaction.session.close();
+      }
+    } on Exception catch (error, stackTrace) {
+      logw("Failed to close realtime voice connection", error, stackTrace);
+    }
+    if (stopCapture) {
+      final terminalStop = interaction.captureStopFuture;
+      if (terminalStop != null) {
+        await terminalStop;
+      } else if (!interaction.captureStopped) {
+        await session._captureSession.cancel();
+        interaction.captureStopped = true;
+      }
+      await session._captureSession.releaseOperation();
+    }
+  }
+
+  static void _setPreview({
+    required VoiceTranscriptionSession session,
+    required VoiceTranscriptionPreview preview,
+  }) {
+    session._preview = preview;
+    if (!session._previewController.isClosed) session._previewController.add(preview);
+  }
+
+  static void _ensureGeneration({
+    required VoiceTranscriptionSession session,
+    required int generation,
+  }) {
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      throw VoiceTranscriptionError.cancelled();
+    }
   }
 
   static bool _ownsGeneration({
@@ -384,13 +968,18 @@ class VoiceTranscriptionService({
   }) {
     if (_ownsGeneration(session: session, generation: generation)) {
       session._state = const _VoiceSessionIdle();
+      _setPreview(
+        session: session,
+        preview: const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+      );
     }
   }
 
   static void _startMaxDurationTimer({required VoiceTranscriptionSession session}) {
     _cancelMaxDurationTimer(session: session);
     session._maxDurationTimer = Timer(maxRecordingDuration, () {
-      if (session._state is _VoiceSessionRecording && !session._maxDurationReachedController.isClosed) {
+      if ((session._state is _VoiceSessionAsyncRecording || session._state is _VoiceSessionRealtimeRecording) &&
+          !session._maxDurationReachedController.isClosed) {
         session._maxDurationReachedController.add(null);
       }
     });
@@ -404,8 +993,14 @@ class VoiceTranscriptionService({
 
 class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSession}) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();
+  final StreamController<VoiceTranscriptionPreview> _previewController =
+      StreamController<VoiceTranscriptionPreview>.broadcast();
 
   _VoiceSessionState _state = const _VoiceSessionIdle();
+  VoiceTranscriptionPreview _preview = const VoiceTranscriptionPreview(confirmedText: "", provisionalText: "");
+  String? _projectKey;
+  _RealtimeVoiceInteraction? _realtime;
+  bool _realtimeCaptureStarting = false;
   Future<void>? _prewarmFuture;
   Future<void>? _startFuture;
   Future<VoiceRecordingArtifact>? _stopFuture;
@@ -414,13 +1009,69 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   int _generation = 0;
 }
 
+final class const VoiceTranscriptionPreview({
+  required final String confirmedText,
+  required final String provisionalText,
+});
+
+sealed class const _VoiceStartMode() {
+  String? get projectKey;
+}
+
+final class const _AsyncVoiceStartMode({
+  @override required final String? projectKey,
+}) extends _VoiceStartMode;
+
+final class const _RealtimeVoiceStartMode({
+  @override required final String projectKey,
+}) extends _VoiceStartMode;
+
+final class _RealtimeVoiceInteraction({
+  required final int generation,
+  required final VoiceRealtimeCapture capture,
+  required final VoiceRealtimeConnection session,
+}) {
+  final Completer<void> ready = Completer<void>();
+  final Completer<VoiceTranscriptionError> startFailure = Completer<VoiceTranscriptionError>();
+  StreamSubscription<Uint8List>? frameSubscription;
+  StreamSubscription<VoiceRealtimeCaptureFormat>? formatSubscription;
+  StreamSubscription<VoiceRealtimeConnectionEvent>? eventSubscription;
+  Future<void>? captureStopFuture;
+  Future<void>? fallbackTransition;
+  VoiceRealtimeConnectionEvent? terminalEvent;
+  VoiceTranscriptionError? terminalFailure;
+  VoiceTranscriptionError? captureFailure;
+  Exception? fallbackCause;
+  String confirmedText = "";
+  String provisionalText = "";
+  bool forwardFrames = false;
+  bool sentAudio = false;
+  bool fallbackRequested = false;
+  bool captureStopped = false;
+
+  Future<void> cancelSubscriptions() async {
+    await frameSubscription?.cancel();
+    frameSubscription = null;
+    await formatSubscription?.cancel();
+    formatSubscription = null;
+    await eventSubscription?.cancel();
+    eventSubscription = null;
+  }
+}
+
+final class const _RealtimePreAudioFallback({required final Exception cause}) implements Exception;
+
 sealed class const _VoiceSessionState();
 
 final class const _VoiceSessionIdle() extends _VoiceSessionState;
 
 final class const _VoiceSessionStarting() extends _VoiceSessionState;
 
-final class const _VoiceSessionRecording() extends _VoiceSessionState;
+final class const _VoiceSessionAsyncRecording() extends _VoiceSessionState;
+
+final class const _VoiceSessionRealtimeRecording() extends _VoiceSessionState;
+
+final class const _VoiceSessionRealtimeFinishing() extends _VoiceSessionState;
 
 final class const _VoiceSessionStopping() extends _VoiceSessionState;
 
@@ -462,6 +1113,16 @@ sealed class const VoiceTranscriptionError._(final String message) implements Ex
   factory missingRecording() = MissingRecordingArtifactError._;
 
   factory cancelled() = TranscriptionCancelledError._;
+
+  factory contractFailure({required String reason, required Object innerError}) = ContractVoiceError._;
+
+  factory realtimeContract({required String reason, required Object innerError}) = ContractVoiceError._;
+
+  factory realtimeQuota({required Object? innerError}) = RealtimeQuotaVoiceError._;
+
+  factory realtimeTemporaryUnavailable({required Object? innerError}) = RealtimeTemporaryUnavailableVoiceError._;
+
+  factory realtimeInterrupted({required Object? innerError}) = RealtimeInterruptedVoiceError._;
 
   @override
   String toString() => "VoiceTranscriptionError: $message";
@@ -506,4 +1167,29 @@ final class const MissingRecordingArtifactError._() extends VoiceTranscriptionEr
 
 final class const TranscriptionCancelledError._() extends VoiceTranscriptionError {
   this : super._("Transcription cancelled");
+}
+
+final class const ContractVoiceError._({required final String reason, required final Object innerError})
+    extends VoiceTranscriptionError {
+  this : super._("Voice contract failure: $reason");
+}
+
+final class const RealtimeQuotaVoiceError._({required final Object? innerError}) extends VoiceTranscriptionError {
+  this : super._("Realtime voice quota exhausted");
+}
+
+final class const RealtimeTemporaryUnavailableVoiceError._({required final Object? innerError})
+    extends VoiceTranscriptionError {
+  this : super._("Realtime voice temporarily unavailable");
+}
+
+final class const RealtimeInterruptedVoiceError._({required final Object? innerError}) extends VoiceTranscriptionError {
+  this : super._("Realtime voice interrupted");
+}
+
+final class const VoiceRealtimePartialTranscriptionError({
+  required final String confirmedText,
+  required final VoiceTranscriptionError failure,
+}) extends VoiceTranscriptionError {
+  this : super._("Realtime transcription ended after confirmed partial text");
 }

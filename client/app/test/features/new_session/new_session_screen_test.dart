@@ -554,7 +554,12 @@ void main() {
   });
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
-    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(
+      () => voiceTranscriptionService.start(
+        session: voiceSession,
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(

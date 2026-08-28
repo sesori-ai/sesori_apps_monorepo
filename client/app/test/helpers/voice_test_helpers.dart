@@ -14,8 +14,17 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   when(service.createSession).thenReturn(session);
   when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationStream);
   when(() => service.amplitudeStream(session: session)).thenAnswer((_) => amplitudeStream);
+  when(() => service.currentPreview(session: session)).thenReturn(
+    const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
+  );
+  when(() => service.previewStream(session: session)).thenAnswer((_) => const Stream.empty());
   when(() => service.prewarm(session: session)).thenAnswer((_) async {});
-  when(() => service.start(session: session)).thenAnswer((_) async {});
+  when(
+    () => service.start(
+      session: session,
+      projectId: any(named: "projectId"),
+    ),
+  ).thenAnswer((_) async {});
   when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => "");
   when(() => service.retry(session: session)).thenAnswer((_) async => "");
   when(() => service.cancel(session: session)).thenAnswer((_) async {});

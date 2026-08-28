@@ -1,0 +1,160 @@
+{
+  "valid": {
+    "startNullProject16000": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1 }
+    },
+    "start24000": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 24000, "channels": 1 }
+    },
+    "start44100WithProject": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 1 }
+    },
+    "start48000": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 48000, "channels": 1 }
+    },
+    "finish": { "type": "finish" },
+    "cancel": { "type": "cancel" },
+    "ready": {
+      "type": "ready",
+      "protocolVersion": 1,
+      "maxSessionSeconds": 900,
+      "dailySecondsRemaining": 420
+    },
+    "transcriptConfirmed": {
+      "type": "transcript",
+      "confirmedDelta": "confirmed text",
+      "provisional": ""
+    },
+    "transcriptProvisional": {
+      "type": "transcript",
+      "confirmedDelta": "",
+      "provisional": "draft"
+    },
+    "completeFinished": { "type": "complete", "reason": "finished", "dailySecondsRemaining": 419 },
+    "completeSessionLimit": { "type": "complete", "reason": "session_limit", "dailySecondsRemaining": 0 },
+    "completeQuotaLimit": { "type": "complete", "reason": "quota_limit", "dailySecondsRemaining": 0 },
+    "errorInvalidMessage": { "type": "error", "code": "invalid_message", "retryable": false },
+    "errorUnsupportedProtocol": { "type": "error", "code": "unsupported_protocol", "retryable": false },
+    "errorQuotaExhausted": { "type": "error", "code": "quota_exhausted", "retryable": false },
+    "errorInvalidAudio": { "type": "error", "code": "invalid_audio", "retryable": false },
+    "errorProviderRejected": { "type": "error", "code": "provider_rejected", "retryable": false },
+    "errorAudioTimeout": { "type": "error", "code": "audio_timeout", "retryable": true },
+    "errorProviderTimeout": { "type": "error", "code": "provider_timeout", "retryable": true },
+    "errorInternalError": { "type": "error", "code": "internal_error", "retryable": true },
+    "errorStartTimeout": { "type": "error", "code": "start_timeout", "retryable": true },
+    "errorProviderCapacity": { "type": "error", "code": "provider_capacity", "retryable": true },
+    "errorProviderUnavailable": { "type": "error", "code": "provider_unavailable", "retryable": true },
+    "errorSlowClient": { "type": "error", "code": "slow_client", "retryable": true },
+    "errorServiceRestarting": { "type": "error", "code": "service_restarting", "retryable": true }
+  },
+  "invalid": {
+    "startWithAuthField": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "auth": "x",
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1 }
+    },
+    "startOmittedProject": {
+      "type": "start",
+      "protocolVersion": 1,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1 }
+    },
+    "unknownFieldStart": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 1 },
+      "region": "x"
+    },
+    "unsupportedProtocol": {
+      "type": "start",
+      "protocolVersion": 2,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 1 }
+    },
+    "badSampleRate": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 22050, "channels": 1 }
+    },
+    "badEncoding": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "wav", "sampleRate": 44100, "channels": 1 }
+    },
+    "badChannels": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": null,
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 2 }
+    },
+    "badProjectKey": {
+      "type": "start",
+      "protocolVersion": 1,
+      "projectKey": "__INVALID_GLOSSARY_KEY_SENTINEL__",
+      "audio": { "encoding": "pcm_s16le", "sampleRate": 44100, "channels": 1 }
+    },
+    "unknownControl": { "type": "pause" },
+    "finishUnknownField": { "type": "finish", "now": true },
+    "cancelUnknownField": { "type": "cancel", "reason": "x" },
+    "readyWrongDurationName": {
+      "type": "ready",
+      "protocolVersion": 1,
+      "maxAudioDurationMs": 900000,
+      "dailySecondsRemaining": 420
+    },
+    "readyFractionalRemaining": {
+      "type": "ready",
+      "protocolVersion": 1,
+      "maxSessionSeconds": 900,
+      "dailySecondsRemaining": 1.5
+    },
+    "readyTooLong": {
+      "type": "ready",
+      "protocolVersion": 1,
+      "maxSessionSeconds": 901,
+      "dailySecondsRemaining": 0
+    },
+    "transcriptEmpty": { "type": "transcript", "confirmedDelta": "", "provisional": "" },
+    "transcriptTooLong": { "type": "transcript", "confirmedDelta": "__TEXT_32769__", "provisional": "" },
+    "transcriptWithAudio": {
+      "type": "transcript",
+      "confirmedDelta": "x",
+      "provisional": "",
+      "totalAudioMs": 1
+    },
+    "completeWithText": {
+      "type": "complete",
+      "reason": "finished",
+      "dailySecondsRemaining": 0,
+      "text": "x"
+    },
+    "completeBadReason": { "type": "complete", "reason": "audio_timeout", "dailySecondsRemaining": 0 },
+    "errorWrongRetryable": { "type": "error", "code": "invalid_message", "retryable": true },
+    "errorUnknownCode": { "type": "error", "code": "rate_limited", "retryable": true },
+    "errorWithMessage": { "type": "error", "code": "internal_error", "retryable": true, "message": "x" },
+    "oldFinishedEvent": {
+      "type": "finished",
+      "reason": "quota_exhausted",
+      "text": "complete text",
+      "audioDurationMs": 420000,
+      "dailySecondsRemaining": 0
+    },
+    "oldCancelledEvent": { "type": "cancelled", "audioDurationMs": 1, "dailySecondsRemaining": 0 }
+  }
+}

@@ -15,8 +15,18 @@ transcription endpoint are external.
   incomplete recording.
 - Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
   interaction cannot reset or append text into a newer one.
-- While recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
+- Before capture, the client discovers the server-owned voice capability. Missing, unavailable, or timed-out discovery
+  preserves released async behavior; an advertised incompatible contract fails visibly rather than silently downgrading.
+  Only an opaque project glossary key derived from the project ID can leave the device.
+- While async recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
+- Protocol-1 realtime capture starts paused as PCM16 mono, opens the authenticated Sesori WebSocket, waits for `ready`,
+  revalidates the effective native sample rate, then resumes and forwards naturally paced frames. Frames before `ready`
+  are discarded rather than queued. A transport or supported-format failure before the first sent frame may restart as
+  a fresh async recording; after the first sent frame there is no file fallback.
+- Realtime confirmed text appends and provisional text replaces in the interaction-local preview without mutating the
+  draft. Finish commits one final voice span. A post-audio failure commits only non-empty confirmed text, drops
+  provisional text, shows the typed provider-neutral error, and never exposes async Retry/Discard.
 - Initial cancel stops the recorder, releases the wake lock, attempts audio-file deletion, and invalidates any
   in-flight transcription so a late response cannot land in a newer interaction. Cancelling a manual retry returns
   to the saved-recording state without deleting its artifact.
@@ -43,9 +53,9 @@ transcription endpoint are external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin, fake recorder and HTTP client: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation. |
-| L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
-| L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
+| L2 Routine | Automated, mobile client, no plugin, fake recorder and HTTP/WebSocket clients: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, capability fallback/contract failure, opaque project context, paused-ready-resume ordering, pre-ready frame discard, realtime preview replacement, confirmed-partial failure with no async Retry, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation. |
+| L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, async or realtime transcript inserted and editable, realtime confirmed/provisional preview, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
+| L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, realtime pre-audio async fallback, post-audio confirmed-partial/no-Retry behavior, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
 
 ## Exploration Guidance
@@ -63,6 +73,9 @@ interruptions such as a call.
   exposes Retry; a manual retry invokes the recorder; a retry cancellation deletes the saved recording; send-time
   abandonment duplicates a submission or lets a retry finish into the cleared composer; cleanup is not attempted on
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
+- Realtime audio is forwarded before `ready`, a raw project ID leaves the device, provisional text mutates the draft,
+  a post-audio failure offers full-recording Retry, confirmed partial text is lost, or a late event lands in a newer
+  composer interaction.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
 - Any audio, transcript, or prompt content reaches logs or analytics.
@@ -79,6 +92,8 @@ interruptions such as a call.
   unowned audio file on disk.
 - Manual Retry has no exactly-once guarantee. If the provider completed work but the response was lost, resubmitting the
   same artifact can repeat provider processing and quota usage.
+- Realtime capture intentionally has no full-recording spool or post-audio async fallback. Process death or transport
+  failure can preserve only confirmed text already delivered to the app; provisional text and unsent speech are lost.
 
 ## Sources
 

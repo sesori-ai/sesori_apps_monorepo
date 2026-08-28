@@ -1249,6 +1249,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceTranscribing => 'Transcribing...';
 
   @override
+  String get voiceStopRecording => 'Stop recording';
+
+  @override
+  String get voiceRecording => 'Recording...';
+
+  @override
   String get voiceRecordingSaved => 'Recording saved';
 
   @override
@@ -1269,6 +1275,18 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceErrorSavedRecordingMissing =>
       'The saved recording is no longer available. Record again or type instead.';
+
+  @override
+  String get voiceErrorRealtimeQuota => 'Voice input quota reached. Try again later.';
+
+  @override
+  String get voiceErrorRealtimeTemporaryUnavailable => 'Voice input is temporarily unavailable. Try again in a moment.';
+
+  @override
+  String get voiceErrorRealtimeInterrupted => 'Voice connection was interrupted. Try again.';
+
+  @override
+  String get voiceErrorContract => 'Voice input needs an app update. Update Sesori and try again.';
 
   @override
   String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';

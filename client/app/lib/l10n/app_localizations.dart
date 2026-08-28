@@ -2371,6 +2371,18 @@ abstract class AppLocalizations {
   /// **'Transcribing...'**
   String get voiceTranscribing;
 
+  /// No description provided for @voiceStopRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop recording'**
+  String get voiceStopRecording;
+
+  /// No description provided for @voiceRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording...'**
+  String get voiceRecording;
+
   /// Persistent composer status shown after a retryable async transcription failure.
   ///
   /// In en, this message translates to:
@@ -2412,6 +2424,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The saved recording is no longer available. Record again or type instead.'**
   String get voiceErrorSavedRecordingMissing;
+
+  /// No description provided for @voiceErrorRealtimeQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input quota reached. Try again later.'**
+  String get voiceErrorRealtimeQuota;
+
+  /// No description provided for @voiceErrorRealtimeTemporaryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input is temporarily unavailable. Try again in a moment.'**
+  String get voiceErrorRealtimeTemporaryUnavailable;
+
+  /// No description provided for @voiceErrorRealtimeInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice connection was interrupted. Try again.'**
+  String get voiceErrorRealtimeInterrupted;
+
+  /// No description provided for @voiceErrorContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input needs an app update. Update Sesori and try again.'**
+  String get voiceErrorContract;
 
   /// No description provided for @voiceErrorNetwork.
   ///

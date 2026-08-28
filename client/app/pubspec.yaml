@@ -69,6 +69,7 @@ dependencies:
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1
   record: ^7.1.1
+  web_socket_channel: ^3.0.3
   path: any
   path_provider: ^2.1.6
   re_highlight: ^0.0.3

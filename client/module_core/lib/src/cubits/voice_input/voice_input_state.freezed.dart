@@ -111,42 +111,77 @@ String toString() {
 
 
 class VoiceInputRecording implements VoiceInputState {
-  const VoiceInputRecording();
+  const VoiceInputRecording({required this.preview});
   
 
+ final  VoiceTranscriptionPreview preview;
 
-
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VoiceInputRecordingCopyWith<VoiceInputRecording> get copyWith => _$VoiceInputRecordingCopyWithImpl<VoiceInputRecording>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRecording);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRecording&&(identical(other.preview, preview) || other.preview == preview));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,preview);
 
 @override
 String toString() {
-  return 'VoiceInputState.recording()';
+  return 'VoiceInputState.recording(preview: $preview)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $VoiceInputRecordingCopyWith<$Res> implements $VoiceInputStateCopyWith<$Res> {
+  factory $VoiceInputRecordingCopyWith(VoiceInputRecording value, $Res Function(VoiceInputRecording) _then) = _$VoiceInputRecordingCopyWithImpl;
+@useResult
+$Res call({
+ VoiceTranscriptionPreview preview
+});
 
 
+
+
+}
+/// @nodoc
+class _$VoiceInputRecordingCopyWithImpl<$Res>
+    implements $VoiceInputRecordingCopyWith<$Res> {
+  _$VoiceInputRecordingCopyWithImpl(this._self, this._then);
+
+  final VoiceInputRecording _self;
+  final $Res Function(VoiceInputRecording) _then;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? preview = null,}) {
+  return _then(VoiceInputRecording(
+preview: null == preview ? _self.preview : preview // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionPreview,
+  ));
+}
+
+
+}
 
 /// @nodoc
 
 
 class VoiceInputTranscribing implements VoiceInputState {
-  const VoiceInputTranscribing({required this.limitReached});
+  const VoiceInputTranscribing({required this.limitReached, required this.preview});
   
 
  final  bool limitReached;
+ final  VoiceTranscriptionPreview preview;
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
@@ -158,16 +193,16 @@ $VoiceInputTranscribingCopyWith<VoiceInputTranscribing> get copyWith => _$VoiceI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscribing&&(identical(other.limitReached, limitReached) || other.limitReached == limitReached));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscribing&&(identical(other.limitReached, limitReached) || other.limitReached == limitReached)&&(identical(other.preview, preview) || other.preview == preview));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,limitReached);
+int get hashCode => Object.hash(runtimeType,limitReached,preview);
 
 @override
 String toString() {
-  return 'VoiceInputState.transcribing(limitReached: $limitReached)';
+  return 'VoiceInputState.transcribing(limitReached: $limitReached, preview: $preview)';
 }
 
 
@@ -178,7 +213,7 @@ abstract mixin class $VoiceInputTranscribingCopyWith<$Res> implements $VoiceInpu
   factory $VoiceInputTranscribingCopyWith(VoiceInputTranscribing value, $Res Function(VoiceInputTranscribing) _then) = _$VoiceInputTranscribingCopyWithImpl;
 @useResult
 $Res call({
- bool limitReached
+ bool limitReached, VoiceTranscriptionPreview preview
 });
 
 
@@ -195,10 +230,11 @@ class _$VoiceInputTranscribingCopyWithImpl<$Res>
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? limitReached = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? limitReached = null,Object? preview = null,}) {
   return _then(VoiceInputTranscribing(
 limitReached: null == limitReached ? _self.limitReached : limitReached // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,preview: null == preview ? _self.preview : preview // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionPreview,
   ));
 }
 
@@ -626,6 +662,74 @@ class _$VoiceInputTranscriptionFailedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
   return _then(VoiceInputTranscriptionFailed(
 error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionError,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class VoiceInputRealtimePartialFailed implements VoiceInputState {
+  const VoiceInputRealtimePartialFailed({required this.confirmedText, required this.error});
+  
+
+ final  String confirmedText;
+ final  VoiceTranscriptionError error;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VoiceInputRealtimePartialFailedCopyWith<VoiceInputRealtimePartialFailed> get copyWith => _$VoiceInputRealtimePartialFailedCopyWithImpl<VoiceInputRealtimePartialFailed>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRealtimePartialFailed&&(identical(other.confirmedText, confirmedText) || other.confirmedText == confirmedText)&&(identical(other.error, error) || other.error == error));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,confirmedText,error);
+
+@override
+String toString() {
+  return 'VoiceInputState.realtimePartialFailed(confirmedText: $confirmedText, error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $VoiceInputRealtimePartialFailedCopyWith<$Res> implements $VoiceInputStateCopyWith<$Res> {
+  factory $VoiceInputRealtimePartialFailedCopyWith(VoiceInputRealtimePartialFailed value, $Res Function(VoiceInputRealtimePartialFailed) _then) = _$VoiceInputRealtimePartialFailedCopyWithImpl;
+@useResult
+$Res call({
+ String confirmedText, VoiceTranscriptionError error
+});
+
+
+
+
+}
+/// @nodoc
+class _$VoiceInputRealtimePartialFailedCopyWithImpl<$Res>
+    implements $VoiceInputRealtimePartialFailedCopyWith<$Res> {
+  _$VoiceInputRealtimePartialFailedCopyWithImpl(this._self, this._then);
+
+  final VoiceInputRealtimePartialFailed _self;
+  final $Res Function(VoiceInputRealtimePartialFailed) _then;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? confirmedText = null,Object? error = null,}) {
+  return _then(VoiceInputRealtimePartialFailed(
+confirmedText: null == confirmedText ? _self.confirmedText : confirmedText // ignore: cast_nullable_to_non_nullable
+as String,error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as VoiceTranscriptionError,
   ));
 }

@@ -103,6 +103,7 @@ typedef PromptSubmitCallback = void Function({
 
 class const PromptInput({
   super.key,
+  required final String projectId,
   required final bool isBusy,
 
   /// Whether the session already has (or has queued) messages. Drives the
@@ -333,7 +334,23 @@ class _PromptInputState() extends State<PromptInput> {
     VoiceInputCompleted() ||
     VoiceInputStartFailed() ||
     VoiceInputTranscriptionFailed() ||
+    VoiceInputRealtimePartialFailed() ||
     VoiceInputCancelling() => _VoicePresentation.idle,
+  };
+
+  VoiceTranscriptionPreview get _voicePreview => switch (_renderedVoiceState) {
+    VoiceInputRecording(:final preview) || VoiceInputTranscribing(:final preview) => preview,
+    VoiceInputIdle() ||
+    VoiceInputStarting() ||
+    VoiceInputRetryPending() ||
+    VoiceInputRetrying() ||
+    VoiceInputRetryCancelling() ||
+    VoiceInputDiscarding() ||
+    VoiceInputCompleted() ||
+    VoiceInputStartFailed() ||
+    VoiceInputTranscriptionFailed() ||
+    VoiceInputRealtimePartialFailed() ||
+    VoiceInputCancelling() => const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
   };
 
   bool get _hasSendableContent {
@@ -433,6 +450,10 @@ class _PromptInputState() extends State<PromptInput> {
       _pasteGeneration++;
     }
     if (draftChanged || restorationRequested) {
+      if (draftChanged) {
+        _resetVoicePresentation();
+        unawaited(_voiceCubit.composerIdentityChanged());
+      }
       // A draft identity change means this state moved to another composer. A
       // restoration key change means a fast failed send reused this composer.
       // Both replace authored content exactly once.
@@ -742,7 +763,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<bool> _startRecording() async {
-    await _voiceCubit.startRecording();
+    await _voiceCubit.startRecording(projectId: widget.projectId);
     return _voiceCubit.state is VoiceInputRecording;
   }
 
@@ -777,6 +798,9 @@ class _PromptInputState() extends State<PromptInput> {
         _voiceCubit.acknowledgeOutcome();
       case VoiceInputTranscriptionFailed(:final error):
         _handleVoiceTranscriptionFailure(error: error);
+        _voiceCubit.acknowledgeOutcome();
+      case VoiceInputRealtimePartialFailed(:final confirmedText, :final error):
+        _handleRealtimePartialFailure(confirmedText: confirmedText, error: error);
         _voiceCubit.acknowledgeOutcome();
     }
   }
@@ -816,15 +840,39 @@ class _PromptInputState() extends State<PromptInput> {
     _resetVoicePresentation();
   }
 
-  void _handleVoiceStartFailure({required VoiceTranscriptionError error}) {
-    if (error is MicrophonePermissionDeniedError) {
-      _showComposerNotice(context.loc.voiceErrorPermission);
-    } else {
-      _showComposerNotice(
-        context.loc.voiceErrorRecording,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      );
+  void _handleRealtimePartialFailure({
+    required String confirmedText,
+    required VoiceTranscriptionError error,
+  }) {
+    final trimmed = confirmedText.trim();
+    if (trimmed.isNotEmpty) {
+      final nextDraft = _draftCalculator.appendVoiceTranscript(draft: _draft, transcript: confirmedText);
+      _applyDraft(draft: nextDraft, notify: true);
+      _scrollToDraftEndAfterLayout();
+      if (!_isVoiceFirst) _focusComposerField();
     }
+    _handleVoiceTranscriptionFailure(error: error);
+  }
+
+  void _handleVoiceStartFailure({required VoiceTranscriptionError error}) {
+    final message = switch (error) {
+      MicrophonePermissionDeniedError() => context.loc.voiceErrorPermission,
+      NotAuthenticatedVoiceError() => context.loc.voiceErrorNotAuthenticated,
+      NetworkVoiceError() => context.loc.voiceErrorNetwork,
+      RealtimeQuotaVoiceError() => context.loc.voiceErrorRealtimeQuota,
+      RealtimeTemporaryUnavailableVoiceError() => context.loc.voiceErrorRealtimeTemporaryUnavailable,
+      RealtimeInterruptedVoiceError() => context.loc.voiceErrorRealtimeInterrupted,
+      ContractVoiceError() => context.loc.voiceErrorContract,
+      RecordingFailedError() ||
+      NotRecordingError() ||
+      RetryableServerVoiceError() ||
+      ServerVoiceError() ||
+      EmptyTranscriptError() ||
+      MissingRecordingArtifactError() ||
+      TranscriptionCancelledError() ||
+      VoiceRealtimePartialTranscriptionError() => context.loc.voiceErrorRecording,
+    };
+    _showComposerNotice(message, variant: PregoPopupAlertsNotificationsVariant.error);
     _resetVoicePresentation();
   }
 
@@ -833,12 +881,17 @@ class _PromptInputState() extends State<PromptInput> {
       NotAuthenticatedVoiceError() => context.loc.voiceErrorNotAuthenticated,
       MissingRecordingArtifactError() => context.loc.voiceErrorSavedRecordingMissing,
       NetworkVoiceError() || RetryableServerVoiceError() => context.loc.voiceRecordingSaved,
+      RealtimeQuotaVoiceError() => context.loc.voiceErrorRealtimeQuota,
+      RealtimeTemporaryUnavailableVoiceError() => context.loc.voiceErrorRealtimeTemporaryUnavailable,
+      RealtimeInterruptedVoiceError() => context.loc.voiceErrorRealtimeInterrupted,
+      ContractVoiceError() => context.loc.voiceErrorContract,
       MicrophonePermissionDeniedError() ||
       RecordingFailedError() ||
       NotRecordingError() ||
       ServerVoiceError() ||
       EmptyTranscriptError() ||
-      TranscriptionCancelledError() => context.loc.voiceErrorTranscription,
+      TranscriptionCancelledError() ||
+      VoiceRealtimePartialTranscriptionError() => context.loc.voiceErrorTranscription,
     };
     _showComposerNotice(message, variant: PregoPopupAlertsNotificationsVariant.error);
     _resetVoicePresentation();
@@ -1861,17 +1914,61 @@ class _PromptInputState() extends State<PromptInput> {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoicePresentation.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),
-        child: Center(child: _buildWaveform(context)),
+        child: Center(
+          child: _buildVoiceRealtimeSlot(context: context, fallback: _buildWaveform(context)),
+        ),
       ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("voice-slot-transcribing"),
-        child: Center(child: _buildTranscribingShimmer(context)),
+        child: Center(
+          child: _buildVoiceRealtimeSlot(context: context, fallback: _buildTranscribingShimmer(context)),
+        ),
       ),
     };
 
     return SizedBox(
       height: height,
       child: AnimatedSwitcher(duration: _morphDuration, child: child),
+    );
+  }
+
+  Widget _buildVoiceRealtimeSlot({required BuildContext context, required Widget fallback}) {
+    final preview = _voicePreview;
+    final hasPreview = preview.confirmedText.isNotEmpty || preview.provisionalText.isNotEmpty;
+    return AnimatedSwitcher(
+      duration: _morphDuration,
+      child: KeyedSubtree(
+        key: ValueKey(hasPreview ? "voice-preview" : "voice-fallback"),
+        child: hasPreview ? _buildVoicePreview(context, preview: preview) : fallback,
+      ),
+    );
+  }
+
+  Widget _buildVoicePreview(BuildContext context, {required VoiceTranscriptionPreview preview}) {
+    final prego = context.prego;
+    final stablePreviewText = preview.confirmedText.trim();
+    return Semantics(
+      liveRegion: stablePreviewText.isNotEmpty,
+      label: stablePreviewText,
+      child: ExcludeSemantics(
+        child: RichText(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: preview.confirmedText,
+                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+              ),
+              TextSpan(
+                text: preview.provisionalText,
+                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

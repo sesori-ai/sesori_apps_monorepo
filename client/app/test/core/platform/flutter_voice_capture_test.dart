@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -52,7 +53,12 @@ void main() {
     when(() => recorder.hasPermission(request: false)).thenAnswer((_) async => true);
     when(recorder.hasPermission).thenAnswer((_) async => true);
     when(() => recorder.start(any(), path: any(named: "path"))).thenAnswer((_) async {});
+    when(() => recorder.startStream(any())).thenAnswer((_) async => const Stream<Uint8List>.empty());
+    when(() => recorder.setOnConfigChanged(any())).thenAnswer((_) async {});
+    when(recorder.pause).thenAnswer((_) async {});
+    when(recorder.resume).thenAnswer((_) async {});
     when(recorder.stop).thenAnswer((_) async => recordingPath);
+    when(recorder.cancel).thenAnswer((_) async {});
     when(() => recorder.onAmplitudeChanged(any())).thenAnswer((_) => amplitudeController.stream);
     when(recorder.dispose).thenAnswer((_) async {});
     when(() => fileProvider.createRecordingPath()).thenAnswer((_) async => recordingPath);
@@ -189,6 +195,80 @@ void main() {
     prewarmCompleter.complete();
     await Future.wait([prewarm, sharedPrewarm]);
 
+    await session.start();
+    verify(() => recorder.start(any(), path: recordingPath)).called(1);
+    await session.cancel();
+    await session.close();
+  });
+
+  test("realtime capture starts paused, reports effective format, resumes, and stops without an artifact", () async {
+    final nativeFrames = StreamController<Uint8List>.broadcast();
+    addTearDown(nativeFrames.close);
+    void Function(RecordConfig)? configChanged;
+    when(() => recorder.startStream(any())).thenAnswer((_) async => nativeFrames.stream);
+    when(() => recorder.setOnConfigChanged(any())).thenAnswer((invocation) async {
+      configChanged = invocation.positionalArguments.single as void Function(RecordConfig)?;
+    });
+    when(() => recorder.setOnConfigChanged(null)).thenAnswer((_) async {
+      configChanged = null;
+    });
+    final session = capture.createSession();
+
+    final realtime = await session.startRealtime();
+    verifyInOrder([
+      recorder.hasPermission,
+      () => recorder.setOnConfigChanged(any()),
+      () => recorder.startStream(audioFormat.realtimeRecorder.requestedRecordConfig),
+      recorder.pause,
+    ]);
+    expect(realtime.format.sampleRate, 16000);
+
+    final receivedFrames = <Uint8List>[];
+    final frameSubscription = realtime.frames.listen(receivedFrames.add);
+    addTearDown(frameSubscription.cancel);
+    nativeFrames.add(Uint8List.fromList([1, 0]));
+    await Future<void>.delayed(Duration.zero);
+    expect(receivedFrames.single, Uint8List.fromList([1, 0]));
+
+    final changedFormat = realtime.formatChanges.first;
+    configChanged?.call(
+      const RecordConfig(
+        encoder: AudioEncoder.pcm16bits,
+        sampleRate: 24000,
+        numChannels: 1,
+      ),
+    );
+    expect((await changedFormat).sampleRate, 24000);
+
+    await session.resumeRealtime();
+    verify(recorder.resume).called(1);
+    verify(wakeLockService.acquire).called(1);
+    await session.stopRealtime();
+    await session.releaseOperation();
+
+    verify(recorder.stop).called(1);
+    verify(wakeLockLease.release).called(1);
+    expect(configChanged, isNull);
+    await session.close();
+  });
+
+  test("cancellation while realtime resume is pending cannot resurrect native capture", () async {
+    final nativeFrames = StreamController<Uint8List>.broadcast();
+    final resumeCompleter = Completer<void>();
+    addTearDown(nativeFrames.close);
+    when(() => recorder.startStream(any())).thenAnswer((_) async => nativeFrames.stream);
+    when(recorder.resume).thenAnswer((_) => resumeCompleter.future);
+    final session = capture.createSession();
+    await session.startRealtime();
+
+    final resuming = session.resumeRealtime();
+    await Future<void>.delayed(Duration.zero);
+    await session.cancel();
+    resumeCompleter.complete();
+    await expectLater(resuming, throwsA(isA<VoiceCaptureFailed>()));
+
+    verifyNever(wakeLockService.acquire);
+    verify(recorder.cancel).called(2);
     await session.start();
     verify(() => recorder.start(any(), path: recordingPath)).called(1);
     await session.cancel();

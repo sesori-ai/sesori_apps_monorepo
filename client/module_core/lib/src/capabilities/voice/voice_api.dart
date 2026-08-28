@@ -6,18 +6,36 @@ import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
+import "../../api/models/voice_capabilities_api_model.dart";
 import "../../logging/logging.dart";
+import "project_glossary_key.dart";
 import "voice_transcription_failure_metadata.dart";
 
 /// Timeout for the transcription upload request.
-const _uploadTimeout = Duration(seconds: 30);
+const _uploadTimeout = Duration(seconds: 120);
+const _capabilitiesTimeout = Duration(seconds: 5);
 
 /// API layer for voice endpoints on the auth server.
 ///
 /// Uses [AuthenticatedHttpApiClient] which handles token injection, proactive refresh,
 /// and 401 retry automatically — this class never touches tokens directly.
 @lazySingleton
-class VoiceApi(final AuthenticatedHttpApiClient _client) {
+class VoiceApi(final AuthenticatedHttpApiClient _client, final HttpApiClient _publicClient) {
+  Future<ApiResponse<VoiceCapabilitiesApiModel>> discoverCapabilities() async {
+    try {
+      return await _publicClient
+          .get(
+            Uri.parse("$authBaseUrl/voice/capabilities"),
+            fromJson: VoiceCapabilitiesApiModel.parse,
+          )
+          .timeout(_capabilitiesTimeout);
+    } on TimeoutException catch (error) {
+      return ApiResponse.error(ApiError.dartHttpClient(error));
+    } on FormatException catch (error) {
+      return ApiResponse.error(ApiError.jsonParsing(error.message));
+    }
+  }
+
   /// Uploads an audio file for transcription.
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
@@ -25,26 +43,31 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   Future<VoiceTranscriptionApiResult> transcribe({
     required String audioFilePath,
     required String mimeType,
+    required String? projectKey,
   }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
+    final fields = _transcriptionFields(projectKey: projectKey);
 
     try {
       // `await` is required here so async errors thrown inside the returned
       // Future (TimeoutException, SocketException, HandshakeException) are
       // caught by the handlers below. Without the await, the Future's failure
       // escapes this try/catch and propagates to the caller unwrapped.
-      final response = await _client.postMultipart(
-        uri,
-        fromJson: _parseTranscript,
-        createFiles: () async => [
-          await http.MultipartFile.fromPath(
-            "audio",
-            audioFilePath,
-            contentType: http.MediaType.parse(mimeType),
-          ),
-        ],
-        timeout: _uploadTimeout,
-      );
+      final response = await _client
+          .postMultipart(
+            uri,
+            fromJson: _parseTranscript,
+            fields: fields,
+            createFiles: () async => [
+              await http.MultipartFile.fromPath(
+                "audio",
+                audioFilePath,
+                contentType: http.MediaType.parse(mimeType),
+              ),
+            ],
+            timeout: _uploadTimeout,
+          )
+          .timeout(_uploadTimeout);
       return switch (response) {
         SuccessResponse(:final data) => VoiceTranscriptionApiResult.success(transcript: data),
         ErrorResponse(:final error) => VoiceTranscriptionApiResult.failure(
@@ -71,6 +94,14 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
         retryable: null,
       );
     }
+  }
+
+  static Map<String, String>? _transcriptionFields({required String? projectKey}) {
+    if (projectKey == null) return null;
+    if (!isValidProjectGlossaryKey(value: projectKey)) {
+      throw ArgumentError.value(projectKey, "projectKey", "Expected opaque project glossary key");
+    }
+    return {"projectKey": projectKey};
   }
 
   static bool? _parseRetryable({required ApiError error}) {

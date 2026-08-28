@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:injectable/injectable.dart";
@@ -14,6 +15,10 @@ import "../../capabilities/voice/wake_lock_service.dart";
 const _amplitudeInterval = Duration(milliseconds: 100);
 const _sharedPrewarmWaitTimeout = Duration(seconds: 2);
 const double _amplitudeFloor = -60;
+
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
+// ignore: use_primary_constructors
+enum _VoiceNativeCaptureMode { idle, async, realtimePaused, realtime }
 
 @LazySingleton(as: VoiceCapture)
 class FlutterVoiceCapture({
@@ -111,10 +116,15 @@ final class _FlutterVoiceCaptureSession({
   final StreamController<double> _amplitudeController = StreamController<double>.broadcast();
 
   StreamSubscription<Amplitude>? _amplitudeSubscription;
+  StreamSubscription<Uint8List>? _realtimeFrameSubscription;
+  StreamController<Uint8List>? _realtimeFrameController;
+  StreamController<VoiceRealtimeCaptureFormat>? _realtimeFormatController;
   WakeLockLease? _wakeLockLease;
   _VoiceCaptureActivityLease? _activityLease;
+  RecordConfig? _latestRealtimeConfig;
   String? _currentPath;
-  bool _isRecording = false;
+  _VoiceNativeCaptureMode _mode = _VoiceNativeCaptureMode.idle;
+  bool _realtimeConfigCallbackSet = false;
   bool _isClosed = false;
 
   @override
@@ -122,7 +132,7 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<void> start() async {
-    if (_isClosed || _isRecording) throw VoiceCaptureError.failed(innerError: null);
+    if (_isClosed || _mode != _VoiceNativeCaptureMode.idle) throw VoiceCaptureError.failed(innerError: null);
 
     final activityLease = await _owner._acquireActivity();
     try {
@@ -135,14 +145,7 @@ final class _FlutterVoiceCaptureSession({
   }
 
   Future<void> _startNative() async {
-    bool hasPermission;
-    try {
-      hasPermission = await _recorder.hasPermission();
-    } catch (error, stackTrace) {
-      loge("Failed to check microphone permission", error, stackTrace);
-      throw VoiceCaptureError.permissionDenied(innerError: error);
-    }
-    if (!hasPermission) throw VoiceCaptureError.permissionDenied(innerError: null);
+    await _requirePermission();
 
     late final String path;
     try {
@@ -171,12 +174,12 @@ final class _FlutterVoiceCaptureSession({
 
     try {
       await _recorder.start(config, path: path);
-      _isRecording = true;
+      _mode = _VoiceNativeCaptureMode.async;
       _startAmplitudeMonitoring();
       _wakeLockLease = _wakeLockService.acquire();
     } catch (error, stackTrace) {
       loge("Failed to start recording", error, stackTrace);
-      if (_isRecording) {
+      if (_mode != _VoiceNativeCaptureMode.idle) {
         try {
           await _recorder.stop();
         } catch (rollbackError, rollbackStackTrace) {
@@ -184,7 +187,7 @@ final class _FlutterVoiceCaptureSession({
         }
       }
       _stopAmplitudeMonitoring();
-      _isRecording = false;
+      _mode = _VoiceNativeCaptureMode.idle;
       await releaseOperation();
       await _deletePath(path: path);
       _currentPath = null;
@@ -193,8 +196,77 @@ final class _FlutterVoiceCaptureSession({
   }
 
   @override
+  Future<VoiceRealtimeCapture> startRealtime() async {
+    if (_isClosed || _mode != _VoiceNativeCaptureMode.idle) {
+      throw VoiceCaptureError.failed(innerError: null);
+    }
+
+    final activityLease = await _owner._acquireActivity();
+    try {
+      await _requirePermission();
+      final realtimeConfig = _audioFormat.realtimeRecorder;
+      _latestRealtimeConfig = realtimeConfig.requestedRecordConfig;
+      final frameController = StreamController<Uint8List>.broadcast();
+      final formatController = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+      _realtimeFrameController = frameController;
+      _realtimeFormatController = formatController;
+
+      await _recorder.setOnConfigChanged(_handleRealtimeConfigChanged);
+      _realtimeConfigCallbackSet = true;
+      final nativeFrames = await _recorder.startStream(realtimeConfig.requestedRecordConfig);
+      _mode = _VoiceNativeCaptureMode.realtimePaused;
+      _realtimeFrameSubscription = nativeFrames.listen(
+        frameController.add,
+        onError: frameController.addError,
+      );
+      await _recorder.pause();
+      _activityLease = activityLease;
+
+      return VoiceRealtimeCapture(
+        format: _validateRealtimeFormat(),
+        frames: frameController.stream,
+        formatChanges: formatController.stream,
+      );
+    } on VoiceCaptureError {
+      await _rollbackRealtimeStart();
+      activityLease.release();
+      rethrow;
+    } catch (error, stackTrace) {
+      loge("Failed to start realtime voice capture", error, stackTrace);
+      await _rollbackRealtimeStart();
+      activityLease.release();
+      throw VoiceCaptureError.failed(innerError: error);
+    }
+  }
+
+  @override
+  Future<void> resumeRealtime() async {
+    if (_mode != _VoiceNativeCaptureMode.realtimePaused) {
+      throw VoiceCaptureError.failed(innerError: null);
+    }
+    try {
+      await _recorder.resume();
+      if (_mode != _VoiceNativeCaptureMode.realtimePaused) {
+        try {
+          await _recorder.cancel();
+        } catch (error, stackTrace) {
+          logw("Failed to cancel stale realtime resume", error, stackTrace);
+        }
+        throw VoiceCaptureError.failed(innerError: StateError("Realtime capture was cancelled while resuming"));
+      }
+      _mode = _VoiceNativeCaptureMode.realtime;
+      _startAmplitudeMonitoring();
+      _wakeLockLease = _wakeLockService.acquire();
+    } catch (error, stackTrace) {
+      loge("Failed to resume realtime voice capture", error, stackTrace);
+      await cancel();
+      throw VoiceCaptureError.failed(innerError: error);
+    }
+  }
+
+  @override
   Future<VoiceRecordingArtifact> stop() async {
-    if (!_isRecording) throw VoiceCaptureError.failed(innerError: null);
+    if (_mode != _VoiceNativeCaptureMode.async) throw VoiceCaptureError.failed(innerError: null);
 
     String? path;
     try {
@@ -204,7 +276,7 @@ final class _FlutterVoiceCaptureSession({
       throw VoiceCaptureError.failed(innerError: error);
     } finally {
       _stopAmplitudeMonitoring();
-      _isRecording = false;
+      _mode = _VoiceNativeCaptureMode.idle;
     }
 
     if (path == null || path.isEmpty) throw VoiceCaptureError.failed(innerError: null);
@@ -228,16 +300,41 @@ final class _FlutterVoiceCaptureSession({
   }
 
   @override
+  Future<void> stopRealtime() async {
+    if (_mode != _VoiceNativeCaptureMode.realtime && _mode != _VoiceNativeCaptureMode.realtimePaused) {
+      throw VoiceCaptureError.failed(innerError: null);
+    }
+    try {
+      await _recorder.stop();
+    } catch (error, stackTrace) {
+      loge("Failed to stop realtime voice capture", error, stackTrace);
+      throw VoiceCaptureError.failed(innerError: error);
+    } finally {
+      _stopAmplitudeMonitoring();
+      _mode = _VoiceNativeCaptureMode.idle;
+      await _closeRealtimeStreams();
+    }
+  }
+
+  @override
   Future<void> cancel() async {
     _stopAmplitudeMonitoring();
-    if (_isRecording) {
+    final mode = _mode;
+    _mode = _VoiceNativeCaptureMode.idle;
+    if (mode != _VoiceNativeCaptureMode.idle) {
       try {
-        await _recorder.stop();
+        if (mode == _VoiceNativeCaptureMode.async) {
+          await _recorder.stop();
+        } else {
+          await _recorder.cancel();
+        }
       } catch (error, stackTrace) {
         loge("Failed to stop recorder during cancel", error, stackTrace);
       }
     }
-    _isRecording = false;
+    if (mode == _VoiceNativeCaptureMode.realtime || mode == _VoiceNativeCaptureMode.realtimePaused) {
+      await _closeRealtimeStreams();
+    }
     await releaseOperation();
 
     final path = _currentPath;
@@ -284,6 +381,72 @@ final class _FlutterVoiceCaptureSession({
       logw("Failed to dispose AudioRecorder", error, stackTrace);
     }
     _isClosed = true;
+  }
+
+  Future<void> _requirePermission() async {
+    bool hasPermission;
+    try {
+      hasPermission = await _recorder.hasPermission();
+    } catch (error, stackTrace) {
+      loge("Failed to check microphone permission", error, stackTrace);
+      throw VoiceCaptureError.permissionDenied(innerError: error);
+    }
+    if (!hasPermission) throw VoiceCaptureError.permissionDenied(innerError: null);
+  }
+
+  VoiceRealtimeCaptureFormat _validateRealtimeFormat() {
+    try {
+      final format = _audioFormat.realtimeRecorder.validateEffectiveRecordConfig(
+        latestRecordConfig: _latestRealtimeConfig,
+      );
+      return VoiceRealtimeCaptureFormat(sampleRate: format.sampleRate);
+      // ignore: avoid_catching_errors, record reports effective native format mismatch as UnsupportedError
+    } on UnsupportedError catch (error) {
+      throw VoiceCaptureError.realtimeUnsupported(innerError: error);
+    }
+  }
+
+  void _handleRealtimeConfigChanged(RecordConfig config) {
+    _latestRealtimeConfig = config;
+    final controller = _realtimeFormatController;
+    if (controller == null || controller.isClosed) return;
+    try {
+      controller.add(_validateRealtimeFormat());
+    } on VoiceCaptureError catch (error, stackTrace) {
+      controller.addError(error, stackTrace);
+    }
+  }
+
+  Future<void> _rollbackRealtimeStart() async {
+    final mode = _mode;
+    _mode = _VoiceNativeCaptureMode.idle;
+    if (mode == _VoiceNativeCaptureMode.realtime || mode == _VoiceNativeCaptureMode.realtimePaused) {
+      try {
+        await _recorder.cancel();
+      } catch (error, stackTrace) {
+        logw("Failed to cancel incomplete realtime voice capture", error, stackTrace);
+      }
+    }
+    await _closeRealtimeStreams();
+    await releaseOperation();
+  }
+
+  Future<void> _closeRealtimeStreams() async {
+    if (_realtimeConfigCallbackSet) {
+      try {
+        await _recorder.setOnConfigChanged(null);
+      } catch (error, stackTrace) {
+        logw("Failed to clear realtime recorder config callback", error, stackTrace);
+      }
+      _realtimeConfigCallbackSet = false;
+    }
+    await _realtimeFrameSubscription?.cancel();
+    _realtimeFrameSubscription = null;
+    await _realtimeFrameController?.close();
+    _realtimeFrameController = null;
+    await _realtimeFormatController?.close();
+    _realtimeFormatController = null;
+    _latestRealtimeConfig = null;
   }
 
   void _startAmplitudeMonitoring() {

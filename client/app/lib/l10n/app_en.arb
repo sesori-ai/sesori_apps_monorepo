@@ -735,6 +735,8 @@
     "description": "Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording."
   },
   "voiceTranscribing": "Transcribing...",
+  "voiceStopRecording": "Stop recording",
+  "voiceRecording": "Recording...",
   "voiceRecordingSaved": "Recording saved",
   "@voiceRecordingSaved": {
     "description": "Persistent composer status shown after a retryable async transcription failure."
@@ -745,6 +747,10 @@
   "voiceErrorRecording": "Recording failed. Please try again.",
   "voiceErrorTranscription": "Transcription failed. Record again or type instead.",
   "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
+  "voiceErrorRealtimeQuota": "Voice input quota reached. Try again later.",
+  "voiceErrorRealtimeTemporaryUnavailable": "Voice input is temporarily unavailable. Try again in a moment.",
+  "voiceErrorRealtimeInterrupted": "Voice connection was interrupted. Try again.",
+  "voiceErrorContract": "Voice input needs an app update. Update Sesori and try again.",
   "voiceErrorNetwork": "Could not reach the server. Check your connection.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",

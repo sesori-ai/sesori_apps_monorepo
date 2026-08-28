@@ -31,6 +31,7 @@ import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i957;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
+import 'package:sesori_dart_core/src/api/realtime_voice_api.dart' as _i394;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
@@ -53,6 +54,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attachment_thumbnail_st
     as _i894;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
     as _i14;
+import 'package:sesori_dart_core/src/foundation/platform/realtime_websocket_connector.dart'
+    as _i120;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
@@ -172,7 +175,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => const _i895.DefaultModelSelector(),
     );
     gh.lazySingleton<_i176.VoiceApi>(
-      () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
+      () => _i176.VoiceApi(
+        gh<_i442.AuthenticatedHttpApiClient>(),
+        gh<_i442.HttpApiClient>(),
+      ),
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -194,12 +200,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
-    );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
         storage: gh<_i64.ComposerDraftStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i394.RealtimeVoiceApi>(
+      () => _i394.RealtimeVoiceApi(
+        connector: gh<_i120.RealtimeWebSocketConnector>(),
+        tokenProvider: gh<_i442.AuthTokenProvider>(),
       ),
     );
     gh.lazySingleton<_i209.AppearanceStore>(
@@ -219,6 +228,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
+    );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        realtimeApi: gh<_i394.RealtimeVoiceApi>(),
+      ),
     );
     gh.lazySingleton<_i957.PluginPreferenceApi>(
       () => _i957.PluginPreferenceApi(storage: gh<_i442.SecureStorage>()),
