@@ -108,6 +108,7 @@ class VoiceTranscriptionService({
       try {
         final stopFuture = session._captureSession.stop();
         session._stopFuture = stopFuture;
+        session._state = const _VoiceSessionStopping();
         try {
           artifact = await stopFuture;
         } finally {
@@ -175,6 +176,20 @@ class VoiceTranscriptionService({
     switch (state) {
       case _VoiceSessionStarting() || _VoiceSessionRecording():
         await session._captureSession.cancel();
+      case _VoiceSessionStopping():
+        final stopFuture = session._stopFuture;
+        VoiceRecordingArtifact? artifact;
+        if (stopFuture != null) {
+          try {
+            artifact = await stopFuture;
+          } on VoiceCaptureError {
+            // The stop operation owns native failure cleanup after the future settles.
+          }
+        }
+        await session._captureSession.releaseOperation();
+        if (artifact != null) {
+          await session._captureSession.deleteArtifact(artifact: artifact);
+        }
       case _VoiceSessionTranscribing(:final artifact):
         await session._captureSession.releaseOperation();
         await session._captureSession.deleteArtifact(artifact: artifact);
@@ -299,6 +314,8 @@ final class const _VoiceSessionIdle() extends _VoiceSessionState;
 final class const _VoiceSessionStarting() extends _VoiceSessionState;
 
 final class const _VoiceSessionRecording() extends _VoiceSessionState;
+
+final class const _VoiceSessionStopping() extends _VoiceSessionState;
 
 final class const _VoiceSessionTranscribing({required final VoiceRecordingArtifact artifact})
     extends _VoiceSessionState;

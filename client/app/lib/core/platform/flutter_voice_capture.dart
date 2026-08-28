@@ -173,6 +173,16 @@ final class _FlutterVoiceCaptureSession({
       _wakeLockLease = _wakeLockService.acquire();
     } catch (error, stackTrace) {
       loge("Failed to start recording", error, stackTrace);
+      if (_isRecording) {
+        try {
+          await _recorder.stop();
+        } catch (rollbackError, rollbackStackTrace) {
+          loge("Failed to stop recorder after incomplete startup", rollbackError, rollbackStackTrace);
+        }
+      }
+      _stopAmplitudeMonitoring();
+      _isRecording = false;
+      await releaseOperation();
       await _deletePath(path: path);
       _currentPath = null;
       throw VoiceCaptureError.failed(innerError: error);

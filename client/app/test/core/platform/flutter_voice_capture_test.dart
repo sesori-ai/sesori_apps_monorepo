@@ -216,6 +216,30 @@ void main() {
     await session.close();
   });
 
+  test("rolls back native recording when post-start amplitude setup fails", () async {
+    final amplitudeError = StateError("native amplitude stream unavailable");
+    when(() => recorder.onAmplitudeChanged(any())).thenThrow(amplitudeError);
+    final session = capture.createSession();
+
+    await expectLater(
+      session.start(),
+      throwsA(
+        isA<VoiceCaptureFailed>().having(
+          (error) => error.innerError,
+          "innerError",
+          same(amplitudeError),
+        ),
+      ),
+    );
+
+    verify(recorder.stop).called(1);
+    when(() => recorder.onAmplitudeChanged(any())).thenAnswer((_) => amplitudeController.stream);
+    await session.start();
+    verify(() => recorder.start(any(), path: recordingPath)).called(2);
+    await session.cancel();
+    await session.close();
+  });
+
   test("cancel stops recording, releases wake lock, and removes the current file", () async {
     await File(recordingPath).writeAsBytes([1, 2, 3]);
     final session = capture.createSession();

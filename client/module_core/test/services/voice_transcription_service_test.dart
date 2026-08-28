@@ -155,6 +155,29 @@ void main() {
     }
   });
 
+  test("cancellation waits for an in-flight recorder stop instead of stopping twice", () async {
+    final stopCompleter = Completer<VoiceRecordingArtifact>();
+    when(captureSession.stop).thenAnswer((_) => stopCompleter.future);
+
+    await service.start(session: session);
+    final transcription = service.stopAndTranscribe(session: session);
+    final transcriptionExpectation = expectLater(
+      transcription,
+      throwsA(isA<TranscriptionCancelledError>()),
+    );
+    await Future<void>.delayed(Duration.zero);
+    final cancelling = service.cancel(session: session);
+    await Future<void>.delayed(Duration.zero);
+
+    verifyNever(captureSession.cancel);
+    stopCompleter.complete(artifact);
+    await cancelling;
+    await transcriptionExpectation;
+
+    verify(captureSession.stop).called(1);
+    verifyNever(captureSession.cancel);
+  });
+
   test("cancellation fences an in-flight upload and deletes its artifact", () async {
     final response = Completer<VoiceTranscriptionOutcome>();
     when(
