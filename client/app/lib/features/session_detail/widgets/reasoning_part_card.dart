@@ -197,7 +197,9 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
     final firstLine = _extractFirstLine(markdown);
     if (firstLine.isEmpty) return markdown.trim();
 
-    final document = md.Document();
+    // The AST is rendered directly into a Text widget rather than serialized
+    // to HTML, so decode Markdown character references instead of re-escaping them.
+    final document = md.Document(encodeHtml: false);
     final nodes = document.parse(firstLine);
 
     for (final node in nodes) {
