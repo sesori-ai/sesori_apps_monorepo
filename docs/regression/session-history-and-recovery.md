@@ -32,7 +32,8 @@ reconnect or restart.
   uses the public protocol and never reads Copilot credential or history files.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
-  first. Among the remaining rows, replay replaces a live row only when it has
+  first and anchor neighboring order by identity even when replay revises their
+  payload. Among the remaining rows, replay replaces a live row only when it has
   the same normalized message and nearest-distinct visible-message context,
   up to the remaining replay multiplicity. When either side contains repeated
   occurrences in one context, equal creation times align them even at equal
@@ -132,6 +133,8 @@ image parts converge by their own rules.
   collapses equal content from a different ordered context or beyond replay's
   multiplicity, or keeps showing a message the backend removed — a rolled-back
   turn reappearing above the edited one that replaced it.
+- Replay reconciliation logs malformed persisted prompt, transcript, or tool
+  content instead of a privacy-safe decode failure with message/session context.
 - A released database row or audit file is rejected because a known message-part
   payload omitted variant-specific data, or a decoded known variant still carries
   null variant data.

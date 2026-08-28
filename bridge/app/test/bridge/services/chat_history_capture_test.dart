@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_reconcile_service.dart";
 import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -482,6 +483,31 @@ void main() {
       );
     });
 
+    test("exact identity anchors tolerate replayed payload updates", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "anchor", text: "final anchor", createdAt: 50, promptId: null),
+          _messageWithText(id: "replay", text: "same content", createdAt: 100, promptId: null),
+          _messageWithText(id: "end", text: "final end", createdAt: 150, promptId: null),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      for (final message in [
+        _messageWithText(id: "anchor", text: "draft anchor", createdAt: 50, promptId: "anchor-live"),
+        _messageWithText(id: "live", text: "same content", createdAt: 100, promptId: "prompt-live"),
+        _messageWithText(id: "end", text: "draft end", createdAt: 150, promptId: "end-live"),
+      ]) {
+        await _captureMessageWithParts(history: history, message: message);
+      }
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["anchor", "replay", "end"],
+      );
+    });
+
     test("semantic replay context ignores reasoning omitted by replay", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -761,6 +787,26 @@ void main() {
       );
     });
 
+    test("semantic reconciliation does not log malformed transcript content", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithText(id: "replay", text: "replayed", createdAt: 200, promptId: null)],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(id: "live", text: "live", createdAt: 100, promptId: "prompt-live"),
+      );
+      await history.database.customStatement(
+        "UPDATE history_parts SET part_json = 'secret_payload_fragment' "
+        "WHERE session_id = 'ses_a' AND message_id = 'live'",
+      );
+
+      final warning = await _captureWarningLog(() => history.service.backfillSession(sessionId: "ses_a"));
+
+      expect(warning, contains("Unable to normalize stored history for replay comparison"));
+      expect(warning, isNot(contains("secret_payload_fragment")));
+    });
+
     test("a re-import restores retained messages to timestamp order", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -978,6 +1024,18 @@ void main() {
       expect(await history.repository.getSyncState(sessionId: "ses_orphan"), isNull);
     });
   });
+}
+
+Future<String> _captureWarningLog(Future<void> Function() action) async {
+  final output = BufferingStdout();
+  final previousLevel = Log.level;
+  try {
+    Log.level = LogLevel.warning;
+    await IOOverrides.runZoned(action, stderr: () => output);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return output.text;
 }
 
 Future<List<MessageWithParts>> _storedMessages({

@@ -11,6 +11,11 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "models/stored_session.dart";
 
+final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
+  @override
+  String toString() => "Unable to normalize stored history for replay comparison";
+}
+
 /// Raised when an audit file was written by a newer bridge than this one.
 class ChatHistoryArchiveVersionException({
   required final String sessionId,
@@ -367,7 +372,8 @@ class ChatHistoryRepository({
   /// same nearest-distinct visible-message context drops retained duplicates up
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
-  /// first, stale rows due for removal do not shape semantic context, and a
+  /// first and anchor neighboring context by ID even when their payload changes;
+  /// stale rows due for removal do not shape semantic context, and a
   /// repeated run matches only occurrences with equal creation times. Conflicting
   /// known times also keep singleton rows distinct, while internal parts hidden
   /// from clients do not affect visible equivalence. The imported row remains
@@ -459,8 +465,20 @@ class ChatHistoryRepository({
       );
     }
 
-    final importedSemanticContexts = _semanticContextFingerprints(fingerprints: importedSemanticFingerprints);
-    final storedSemanticContexts = _semanticContextFingerprints(fingerprints: storedSemanticFingerprints);
+    final importedSemanticContexts = _semanticContextFingerprints(
+      fingerprints: importedSemanticFingerprints,
+      anchorOverrides: [
+        for (final message in messages)
+          storedIds.contains(message.info.id) ? _exactIdentityAnchor(messageId: message.info.id) : null,
+      ],
+    );
+    final storedSemanticContexts = _semanticContextFingerprints(
+      fingerprints: storedSemanticFingerprints,
+      anchorOverrides: [
+        for (final row in storedContextRows)
+          importedIds.contains(row.messageId) ? _exactIdentityAnchor(messageId: row.messageId) : null,
+      ],
+    );
     final importedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < importedSemanticContexts.length; index++) {
       if (storedIds.contains(messages[index].info.id)) continue;
@@ -784,7 +802,7 @@ class ChatHistoryRepository({
     } on Object catch (error, stackTrace) {
       Log.w(
         "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
-        error,
+        error is FormatException ? _HistoryReplayComparisonError(innerError: error) : error,
         stackTrace,
       );
       return null;
@@ -796,12 +814,17 @@ class ChatHistoryRepository({
     return base64UrlEncode(digest);
   }
 
-  List<String?> _semanticContextFingerprints({required List<_SemanticMessageFingerprints?> fingerprints}) {
+  String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
+
+  List<String?> _semanticContextFingerprints({
+    required List<_SemanticMessageFingerprints?> fingerprints,
+    required List<String?> anchorOverrides,
+  }) {
     final previousDistinct = List<String?>.filled(fingerprints.length, null);
     String? currentRun;
     String? beforeRun;
     for (var index = 0; index < fingerprints.length; index++) {
-      final fingerprint = fingerprints[index]?.context;
+      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
       if (fingerprint == null) continue;
       if (fingerprint != currentRun) {
         beforeRun = currentRun;
@@ -814,7 +837,7 @@ class ChatHistoryRepository({
     currentRun = null;
     String? afterRun;
     for (var index = fingerprints.length - 1; index >= 0; index--) {
-      final fingerprint = fingerprints[index]?.context;
+      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
       if (fingerprint == null) continue;
       if (fingerprint != currentRun) {
         afterRun = currentRun;
