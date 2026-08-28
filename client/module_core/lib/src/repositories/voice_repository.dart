@@ -52,14 +52,14 @@ class VoiceRepository({
       return VoiceRealtimeOpenOutcome.opened(connection: _ApiVoiceRealtimeConnection(session: session));
     } on RealtimeVoiceOpenAuthenticationException catch (error) {
       return VoiceRealtimeOpenOutcome.notAuthenticated(cause: error);
-    } on RealtimeVoiceOpenHandshakeNotFoundException catch (error) {
-      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error);
-    } on RealtimeVoiceOpenHandshakeRateLimitedException catch (error) {
-      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error);
-    } on RealtimeVoiceOpenTimeoutException catch (error) {
-      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error);
-    } on RealtimeVoiceOpenTransportException catch (error) {
-      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error);
+    } on RealtimeVoiceOpenHandshakeNotFoundException catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
+    } on RealtimeVoiceOpenHandshakeRateLimitedException catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
+    } on RealtimeVoiceOpenTimeoutException catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
+    } on RealtimeVoiceOpenTransportException catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
     } on RealtimeVoiceProtocolException catch (error) {
       return VoiceRealtimeOpenOutcome.contractFailure(reason: error.message, cause: error);
     } on Object catch (error) {
@@ -225,7 +225,8 @@ final class _ApiVoiceRealtimeConnection({required final RealtimeVoiceSession _se
 sealed class const VoiceRealtimeOpenOutcome() {
   const factory opened({required VoiceRealtimeConnection connection}) = VoiceRealtimeOpened;
 
-  const factory asyncFallback({required Exception cause}) = VoiceRealtimeOpenAsyncFallback;
+  const factory asyncFallback({required Exception cause, required StackTrace innerStackTrace}) =
+      VoiceRealtimeOpenAsyncFallback;
 
   const factory notAuthenticated({required Exception cause}) = VoiceRealtimeOpenNotAuthenticated;
 
@@ -237,7 +238,10 @@ sealed class const VoiceRealtimeOpenOutcome() {
 final class const VoiceRealtimeOpened({required final VoiceRealtimeConnection connection})
     extends VoiceRealtimeOpenOutcome;
 
-final class const VoiceRealtimeOpenAsyncFallback({required final Exception cause}) extends VoiceRealtimeOpenOutcome;
+final class const VoiceRealtimeOpenAsyncFallback({
+  required final Exception cause,
+  required final StackTrace innerStackTrace,
+}) extends VoiceRealtimeOpenOutcome;
 
 final class const VoiceRealtimeOpenNotAuthenticated({required final Exception cause}) extends VoiceRealtimeOpenOutcome;
 

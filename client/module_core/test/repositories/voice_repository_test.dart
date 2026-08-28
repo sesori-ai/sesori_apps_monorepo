@@ -117,6 +117,29 @@ void main() {
     }
   });
 
+  test("preserves the originating realtime open fallback stack", () async {
+    const error = RealtimeVoiceOpenTransportException(cause: null, httpStatus: null);
+    final origin = StackTrace.fromString("realtime open transport origin");
+    when(
+      () => realtimeApi.start(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) => Future<RealtimeVoiceSession>.error(error, origin));
+
+    final outcome = await repository.openRealtime(
+      audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
+      projectKey: projectKey,
+    );
+
+    expect(
+      outcome,
+      isA<VoiceRealtimeOpenAsyncFallback>()
+          .having((result) => result.cause, "cause", same(error))
+          .having((result) => result.innerStackTrace, "innerStackTrace", same(origin)),
+    );
+  });
+
   test("preserves every server completion reason in repository events", () async {
     const cases = {
       RealtimeCompleteReason.finished: VoiceRealtimeCompletionReason.finished,

@@ -31,8 +31,9 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   opens the authenticated Sesori WebSocket, force-refreshes once and retries when the upgrade rejects a locally fresh
   token, waits for `ready`, revalidates the effective native sample rate, then resumes and forwards naturally paced
   frames. Frames before `ready` are discarded rather than queued. A transport, supported-format, or unexpected native
-  frame-stream completion before the first sent frame may restart as a fresh async recording; after the first sent frame
-  there is no file fallback.
+  frame-stream completion before the first sent frame may restart as a fresh async recording; capture cleanup and async
+  start do not wait for a late socket handshake, while that late connection is still closed independently. Recovered
+  fallback causes remain visible in privacy-safe local logs. After the first sent frame there is no file fallback.
 - Realtime confirmed text appends and provisional text replaces in the interaction-local preview without mutating the
   draft. Finish commits one final voice span. Server `session_limit` and `quota_limit` completion auto-stop through the
   same Cubit seam; if completion arrives during startup, the recording transition is observable before the stop is
@@ -73,7 +74,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP/WebSocket clients, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, pending-capability immediate async fallback, capability contract failure, available/pending/invalid opaque project context, one forced-refresh handshake retry, paused-ready-resume ordering, pre-ready frame discard, unexpected native frame-stream completion, terminal-during-startup gesture ownership, realtime preview replacement, confirmed-partial failure with no async Retry, originating transport-stack retention, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP/WebSocket clients, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, pending-capability immediate async fallback, capability contract failure, available/pending/invalid opaque project context, one forced-refresh handshake retry, paused-ready-resume ordering, pre-ready frame discard, non-blocking late-open cleanup, pre-audio interrupted-event fallback, recovered-cause logging, unexpected native frame-stream completion, terminal-during-startup gesture ownership, realtime preview replacement, confirmed-partial failure with no async Retry, originating transport-stack retention, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, async or realtime transcript inserted and editable, realtime confirmed/provisional preview, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, realtime pre-audio async fallback, post-audio confirmed-partial/no-Retry behavior, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -93,11 +94,12 @@ interruptions such as a call.
   exposes Retry; a manual retry invokes the recorder; a retry cancellation deletes the saved recording; send-time
   abandonment duplicates a submission or lets a retry finish into the cleared composer; cleanup is not attempted on
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
-- Capability discovery delays active capture, realtime audio is forwarded before `ready`, a raw project ID or client-
-  derived mismatched glossary key leaves the device, native frame-stream completion leaves the composer recording,
-  provisional text mutates the draft, a terminal event during startup loses gesture ownership or its limit notice, an
-  empty completion silently succeeds, a post-audio failure offers full-recording Retry, confirmed partial text is lost,
-  or a late finish lands in a newer composer interaction.
+- Capability discovery delays active capture, a pre-audio fallback waits for a late socket or loses its diagnostic
+  cause, realtime audio is forwarded before `ready`, a raw project ID or client-derived mismatched glossary key leaves
+  the device, native frame-stream completion leaves the composer recording, provisional text mutates the draft, a
+  terminal event during startup loses gesture ownership or its limit notice, an empty completion silently succeeds, a
+  post-audio failure offers full-recording Retry, confirmed partial text is lost, or a late finish lands in a newer
+  composer interaction.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository

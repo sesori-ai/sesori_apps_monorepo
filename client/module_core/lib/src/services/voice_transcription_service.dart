@@ -184,11 +184,17 @@ class VoiceTranscriptionService({
         case _RealtimeVoiceStartMode(:final projectKey):
           try {
             await _startRealtime(session: session, projectKey: projectKey, generation: generation);
-          } on _RealtimePreAudioFallback {
+          } on _RealtimePreAudioFallback catch (fallback) {
+            logw(
+              "Realtime voice failed before audio; continuing with async capture",
+              fallback.cause,
+              fallback.innerStackTrace,
+            );
             await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
             _ensureGeneration(session: session, generation: generation);
             await _startAsync(session: session, generation: generation);
-          } on VoiceCaptureRealtimeUnsupported {
+          } on VoiceCaptureRealtimeUnsupported catch (error, stackTrace) {
+            logw("Realtime capture is unsupported; continuing with async capture", error, stackTrace);
             await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
             _ensureGeneration(session: session, generation: generation);
             await _startAsync(session: session, generation: generation);
@@ -250,24 +256,35 @@ class VoiceTranscriptionService({
     session._realtimeCaptureStartFuture = captureStartFuture;
     final capture = await captureStartFuture;
     _ensureGeneration(session: session, generation: generation);
-    final setupFailure = Completer<Exception>();
-    void failSetup(Object error) {
+    final setupFailure = Completer<_RealtimePreAudioFallback>();
+    void failSetup({required Object error, required StackTrace stackTrace}) {
       if (setupFailure.isCompleted) return;
-      setupFailure.complete(error is Exception ? error : VoiceCaptureError.failed(innerError: error));
+      setupFailure.complete(
+        _RealtimePreAudioFallback(
+          cause: error is Exception ? error : VoiceCaptureError.failed(innerError: error),
+          innerStackTrace: stackTrace,
+        ),
+      );
     }
 
     final setupFrameSubscription = capture.frames.listen(
       (_) {},
-      onError: (Object error, StackTrace _) => failSetup(error),
-      onDone: () => failSetup(VoiceCaptureError.failed(innerError: null)),
+      onError: (Object error, StackTrace stackTrace) => failSetup(error: error, stackTrace: stackTrace),
+      onDone: () => failSetup(
+        error: VoiceCaptureError.failed(innerError: null),
+        stackTrace: StackTrace.current,
+      ),
     );
     final setupFormatSubscription = capture.formatChanges.listen(
       (format) {
         if (format.sampleRate != capture.format.sampleRate) {
-          failSetup(VoiceCaptureError.realtimeUnsupported(innerError: null));
+          failSetup(
+            error: VoiceCaptureError.realtimeUnsupported(innerError: null),
+            stackTrace: StackTrace.current,
+          );
         }
       },
-      onError: (Object error, StackTrace _) => failSetup(error),
+      onError: (Object error, StackTrace stackTrace) => failSetup(error: error, stackTrace: stackTrace),
     );
     final openFuture = _repository.openRealtime(
       audio: VoiceRealtimeAudioFormat(sampleRate: capture.format.sampleRate),
@@ -277,10 +294,10 @@ class VoiceTranscriptionService({
     try {
       open = await Future.any<VoiceRealtimeOpenOutcome>([
         openFuture,
-        setupFailure.future.then((cause) => throw _RealtimePreAudioFallback(cause: cause)),
+        setupFailure.future.then((failure) => throw failure),
       ]);
     } on _RealtimePreAudioFallback {
-      await _closeLateRealtimeOpen(openFuture);
+      unawaited(_closeLateRealtimeOpen(openFuture));
       rethrow;
     } finally {
       await setupFrameSubscription.cancel();
@@ -301,8 +318,8 @@ class VoiceTranscriptionService({
     switch (open) {
       case VoiceRealtimeOpened(:final connection):
         realtimeSession = connection;
-      case VoiceRealtimeOpenAsyncFallback(:final cause):
-        throw _RealtimePreAudioFallback(cause: cause);
+      case VoiceRealtimeOpenAsyncFallback(:final cause, :final innerStackTrace):
+        throw _RealtimePreAudioFallback(cause: cause, innerStackTrace: innerStackTrace);
       case VoiceRealtimeOpenNotAuthenticated():
         throw VoiceTranscriptionError.notAuthenticated();
       case VoiceRealtimeOpenContractFailure(:final reason, :final cause):
@@ -383,14 +400,20 @@ class VoiceTranscriptionService({
         interaction.ready.future.timeout(_realtimeReadyTimeout),
         interaction.startFailure.future.then((error) => throw error),
       ]);
-    } on TimeoutException catch (error) {
-      throw _RealtimePreAudioFallback(cause: error);
-    } on RealtimeInterruptedVoiceError catch (error) {
-      throw _RealtimePreAudioFallback(cause: error);
+    } on TimeoutException catch (error, stackTrace) {
+      throw _RealtimePreAudioFallback(cause: error, innerStackTrace: stackTrace);
+    } on RealtimeInterruptedVoiceError catch (error, stackTrace) {
+      throw _RealtimePreAudioFallback(
+        cause: error,
+        innerStackTrace: error.innerStackTrace ?? stackTrace,
+      );
     }
     _ensureGeneration(session: session, generation: generation);
     if (interaction.fallbackRequested) {
-      throw _RealtimePreAudioFallback(cause: interaction.fallbackCause ?? Exception("Realtime setup failed"));
+      throw _RealtimePreAudioFallback(
+        cause: interaction.fallbackCause ?? Exception("Realtime setup failed"),
+        innerStackTrace: interaction.fallbackStackTrace ?? StackTrace.current,
+      );
     }
     if (interaction.terminalEvent != null) {
       session._state = const _VoiceSessionRealtimeRecording();
@@ -401,7 +424,10 @@ class VoiceTranscriptionService({
     await session._captureSession.resumeRealtime();
     _ensureGeneration(session: session, generation: generation);
     if (interaction.fallbackRequested) {
-      throw _RealtimePreAudioFallback(cause: interaction.fallbackCause ?? Exception("Realtime setup failed"));
+      throw _RealtimePreAudioFallback(
+        cause: interaction.fallbackCause ?? Exception("Realtime setup failed"),
+        innerStackTrace: interaction.fallbackStackTrace ?? StackTrace.current,
+      );
     }
     if (interaction.terminalEvent != null) {
       session._state = const _VoiceSessionRealtimeRecording();
@@ -504,13 +530,19 @@ class VoiceTranscriptionService({
     required VoiceRealtimeCaptureFormat format,
   }) {
     if (format.sampleRate == interaction.capture.format.sampleRate) return;
+    final stackTrace = StackTrace.current;
     final error = VoiceTranscriptionError.realtimeContract(
       reason: "Realtime recorder format changed after setup",
       innerError: StateError("Realtime recorder sample rate changed"),
-      innerStackTrace: StackTrace.current,
+      innerStackTrace: stackTrace,
     );
     if (!interaction.sentAudio) {
-      _requestRealtimeFallback(session: session, interaction: interaction, cause: error);
+      _requestRealtimeFallback(
+        session: session,
+        interaction: interaction,
+        cause: error,
+        innerStackTrace: stackTrace,
+      );
     } else {
       _completeRealtimeFailure(session: session, interaction: interaction, error: error);
     }
@@ -524,7 +556,12 @@ class VoiceTranscriptionService({
   }) {
     final typed = error is VoiceCaptureError ? error : VoiceCaptureError.failed(innerError: error);
     if (!interaction.sentAudio) {
-      _requestRealtimeFallback(session: session, interaction: interaction, cause: typed);
+      _requestRealtimeFallback(
+        session: session,
+        interaction: interaction,
+        cause: typed,
+        innerStackTrace: stackTrace,
+      );
       return;
     }
     _completeRealtimeFailure(
@@ -550,7 +587,12 @@ class VoiceTranscriptionService({
   }) {
     final typed = _mapRealtimeFailure(failure);
     if (allowPreAudioFallback && failure is VoiceRealtimeInterruptedFailure && !interaction.sentAudio) {
-      _requestRealtimeFallback(session: session, interaction: interaction, cause: typed);
+      _requestRealtimeFallback(
+        session: session,
+        interaction: interaction,
+        cause: typed,
+        innerStackTrace: failure.innerStackTrace ?? StackTrace.current,
+      );
       return;
     }
     _completeRealtimeFailure(session: session, interaction: interaction, error: typed);
@@ -621,7 +663,7 @@ class VoiceTranscriptionService({
           session: session,
           interaction: interaction,
           failure: failure,
-          allowPreAudioFallback: false,
+          allowPreAudioFallback: true,
         );
     }
   }
@@ -630,25 +672,32 @@ class VoiceTranscriptionService({
     required VoiceTranscriptionSession session,
     required _RealtimeVoiceInteraction interaction,
     required Exception cause,
+    required StackTrace innerStackTrace,
   }) {
     if (interaction.fallbackRequested || interaction.terminalFailure != null || interaction.terminalEvent != null) {
       return;
     }
     interaction.fallbackRequested = true;
     interaction.fallbackCause = cause;
+    interaction.fallbackStackTrace = innerStackTrace;
     interaction.forwardFrames = false;
     if (session._state is _VoiceSessionStarting) {
       if (!interaction.startFailure.isCompleted) {
         interaction.startFailure.complete(
           VoiceTranscriptionError.realtimeInterrupted(
             innerError: cause,
-            innerStackTrace: cause is RealtimeInterruptedVoiceError ? cause.innerStackTrace : null,
+            innerStackTrace: innerStackTrace,
           ),
         );
       }
       return;
     }
     if (session._state is _VoiceSessionRealtimeRecording && interaction.fallbackTransition == null) {
+      logw(
+        "Realtime voice failed before audio; continuing with async capture",
+        cause,
+        innerStackTrace,
+      );
       final transition = _transitionRealtimeToAsync(
         session: session,
         interaction: interaction,
@@ -1235,6 +1284,7 @@ final class _RealtimeVoiceInteraction({
   VoiceTranscriptionError? terminalFailure;
   VoiceTranscriptionError? captureFailure;
   Exception? fallbackCause;
+  StackTrace? fallbackStackTrace;
   String confirmedText = "";
   String provisionalText = "";
   bool forwardFrames = false;
@@ -1252,7 +1302,10 @@ final class _RealtimeVoiceInteraction({
   }
 }
 
-final class const _RealtimePreAudioFallback({required final Exception cause}) implements Exception;
+final class const _RealtimePreAudioFallback({
+  required final Exception cause,
+  required final StackTrace innerStackTrace,
+}) implements Exception;
 
 sealed class const _VoiceSessionState();
 

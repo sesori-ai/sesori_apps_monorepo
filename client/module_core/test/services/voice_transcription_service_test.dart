@@ -272,6 +272,9 @@ void main() {
     const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
     final frames = StreamController<Uint8List>.broadcast();
     final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final fallbackCause = Exception("offline");
+    final fallbackStackTrace = StackTrace.fromString("realtime open origin");
+    final logLines = <String>[];
     addTearDown(frames.close);
     addTearDown(formats.close);
     when(repository.discoverCapabilities).thenAnswer(
@@ -290,18 +293,29 @@ void main() {
         projectKey: any(named: "projectKey"),
       ),
     ).thenAnswer(
-      (_) async => VoiceRealtimeOpenOutcome.asyncFallback(cause: Exception("offline")),
+      (_) async => VoiceRealtimeOpenOutcome.asyncFallback(
+        cause: fallbackCause,
+        innerStackTrace: fallbackStackTrace,
+      ),
     );
 
-    await service.start(session: session);
+    await runZoned(
+      () => service.start(session: session),
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+    );
     expect(await service.stopAndTranscribe(session: session), "hello");
+    expect(
+      logLines,
+      contains("Realtime voice failed before audio; continuing with async capture: Exception: offline"),
+    );
+    expect(logLines, contains("realtime open origin"));
 
     verify(captureSession.startRealtime).called(1);
     verify(captureSession.cancel).called(1);
     verify(captureSession.start).called(1);
   });
 
-  test("pre-open native failure closes the late realtime session before async capture", () async {
+  test("pre-open native failure starts async before closing the late realtime session", () async {
     const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
     final frames = StreamController<Uint8List>.broadcast();
     final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
@@ -329,17 +343,19 @@ void main() {
 
     final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
-    frames.addError(VoiceCaptureError.failed(innerError: Exception("native stream failed")));
-    await Future<void>.delayed(Duration.zero);
-    verifyNever(captureSession.start);
+    frames.addError(
+      VoiceCaptureError.failed(innerError: Exception("native stream failed")),
+      StackTrace.fromString("native setup origin"),
+    );
+    await starting.timeout(const Duration(seconds: 1));
+
+    verify(captureSession.cancel).called(1);
+    verify(captureSession.start).called(1);
+    verifyNever(connection.cancel);
 
     openCompleter.complete(VoiceRealtimeOpenOutcome.opened(connection: connection));
-    await starting;
-    verifyInOrder([
-      connection.cancel,
-      captureSession.cancel,
-      captureSession.start,
-    ]);
+    await untilCalled(connection.cancel);
+    verify(connection.cancel).called(1);
   });
 
   test("realtime capture drops pre-ready frames, previews updates, and finishes without async upload", () async {
@@ -401,6 +417,56 @@ void main() {
         projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     );
+  });
+
+  test("interrupted event before the first audio frame falls back to async capture", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final frames = StreamController<Uint8List>.broadcast();
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final events = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+    final connection = MockVoiceRealtimeConnection();
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    addTearDown(events.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer(
+      (_) async => VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    when(captureSession.resumeRealtime).thenAnswer((_) async {});
+    when(() => connection.events).thenAnswer((_) => events.stream);
+    when(connection.cancel).thenAnswer((_) async {});
+    when(connection.close).thenAnswer((_) async {});
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
+
+    final starting = service.start(session: session);
+    await Future<void>.delayed(Duration.zero);
+    events.add(const VoiceRealtimeReady());
+    await starting;
+    events.add(
+      VoiceRealtimeFailed(
+        failure: VoiceRealtimeInterruptedFailure(
+          innerError: Exception("socket closed before audio"),
+          innerStackTrace: StackTrace.fromString("pre-audio event origin"),
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(await service.stopAndTranscribe(session: session), "hello");
+    verify(connection.cancel).called(1);
+    verify(captureSession.cancel).called(1);
+    verify(captureSession.start).called(1);
   });
 
   test("empty realtime completion is terminal before release and after finish", () async {
