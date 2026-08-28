@@ -32,8 +32,10 @@ void main() {
     late SessionMutationDispatcher mutationDispatcher;
     late NewSessionDefaultsRepository defaultsRepository;
     late SessionCreationService service;
+    ({String pluginId, String projectId})? invalidated;
 
     setUp(() async {
+      invalidated = null;
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       defaultsRepository = NewSessionDefaultsRepository(
@@ -71,7 +73,9 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        invalidateRejectedSelection: ({required String pluginId, required String projectId}) async {
+          invalidated = (pluginId: pluginId, projectId: projectId);
+        },
       );
     });
 
@@ -327,6 +331,7 @@ void main() {
       );
       expect(metadataRepository.generateCalls, isZero);
       expect(await defaultsRepository.read(pluginId: "fake"), isNull);
+      expect(invalidated, (pluginId: "fake", projectId: "/repo"));
     });
 
     test("stores the created root and remembers its complete plugin-scoped selection", () async {

@@ -67,6 +67,29 @@ void main() {
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
 
+    Map<String, dynamic> catalogResult({required String model, required List<String> reasoningLevels}) => {
+      "sessionId": "catalog-session",
+      "configOptions": [
+        {
+          "id": "model",
+          "category": "model",
+          "currentValue": model,
+          "options": [
+            {"value": "gpt-5.4"},
+            {"value": "claude-sonnet-4.5"},
+          ],
+        },
+        {
+          "id": "reasoning_effort",
+          "category": "thought_level",
+          "currentValue": reasoningLevels.first,
+          "options": [
+            for (final level in reasoningLevels) {"value": level},
+          ],
+        },
+      ],
+    };
+
     Future<Map<String, dynamic>> waitForFrame({
       required FakeAcpProcess process,
       required String method,
@@ -191,6 +214,45 @@ void main() {
         ),
         throwsA(isA<PluginStaleOptionsException>()),
       );
+    });
+
+    test("refreshes the selected model's reasoning before validation", () async {
+      final connecting = plugin.ensureConnected();
+      await completeHandshake(process: fake);
+      await connecting;
+      final validating = plugin.validateTurnSelection(
+        operation: "sendPrompt",
+        model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: null,
+      );
+      final process = catalogFakes.first;
+      await completeHandshake(process: process);
+      final newSession = await waitForFrame(process: process, method: "session/new");
+      process.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "catalog-session",
+          "update": {"sessionUpdate": "available_commands_update", "availableCommands": <Object>[]},
+        },
+      });
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": newSession["id"],
+        "result": catalogResult(model: "gpt-5.4", reasoningLevels: const ["low", "high"]),
+      });
+      final selectModel = await waitForFrame(process: process, method: "session/set_config_option");
+      expect((selectModel["params"] as Map)["value"], "claude-sonnet-4.5");
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": selectModel["id"],
+        "result": catalogResult(model: "claude-sonnet-4.5", reasoningLevels: const ["low"]),
+      });
+      final closeSession = await waitForFrame(process: process, method: "session/close");
+      process.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
+
+      await expectLater(validating, throwsA(isA<PluginStaleOptionsException>()));
     });
 
     test("retains local Copilot login guidance after authentication failure", () async {

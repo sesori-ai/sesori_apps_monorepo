@@ -106,8 +106,18 @@ class CopilotPlugin._({
     required String? agent,
   }) async {
     if (model == null && variant == null && agent == null) return;
+    final reasoningModelId = model?.providerID == CopilotPluginIdentity.id ? model?.modelID : null;
     if (!_copilotSessionOptionsService.hasSnapshot) {
-      await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.refresh);
+      await _requireOptions(
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+        reasoningModelId: reasoningModelId,
+      );
+    }
+    if (variant != null && !_copilotSessionOptionsService.hasReasoningForModel(modelId: reasoningModelId)) {
+      await _requireOptions(
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+        reasoningModelId: reasoningModelId,
+      );
     }
     _copilotSessionOptionsService.validateTurnSelection(
       operation: operation,
@@ -136,23 +146,23 @@ class CopilotPlugin._({
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => _discoverOptions(discoveryMode: discoveryMode);
+  }) => _discoverOptions(discoveryMode: discoveryMode, reasoningModelId: null);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse, reasoningModelId: null);
     return _copilotSessionOptionsService.agents;
   }
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse, reasoningModelId: null);
     return _copilotSessionOptionsService.providers;
   }
 
   @override
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
-    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    await _requireOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse, reasoningModelId: null);
     return _copilotSessionOptionsService.commands;
   }
 
@@ -161,10 +171,17 @@ class CopilotPlugin._({
 
   Future<PluginSessionOptionsDiscoveryResult> _discoverOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => _copilotSessionOptionsService.getSessionOptions(discoveryMode: discoveryMode);
+    required String? reasoningModelId,
+  }) => _copilotSessionOptionsService.getSessionOptions(
+    discoveryMode: discoveryMode,
+    reasoningModelId: reasoningModelId,
+  );
 
-  Future<void> _requireOptions({required PluginSessionOptionsDiscoveryMode discoveryMode}) async {
-    final result = await _discoverOptions(discoveryMode: discoveryMode);
+  Future<void> _requireOptions({
+    required PluginSessionOptionsDiscoveryMode discoveryMode,
+    required String? reasoningModelId,
+  }) async {
+    final result = await _discoverOptions(discoveryMode: discoveryMode, reasoningModelId: reasoningModelId);
     if (result is PluginSessionOptionsDiscoveryFailed) {
       final failure = _copilotSessionOptionsService.lastDiscoveryFailure;
       if (failure == null) {

@@ -39,6 +39,13 @@ class CopilotCatalogRepository({required final CopilotCatalogProbeApi _api}) {
   Future<AcpNewSessionResult> createSession({required String cwd, required Duration timeout}) =>
       _api.newSession(cwd: cwd, timeout: timeout);
 
+  Future<AcpNewSessionResult?> setConfigOption({
+    required String sessionId,
+    required String configId,
+    required String value,
+    required Duration timeout,
+  }) => _api.setConfigOption(sessionId: sessionId, configId: configId, value: value, timeout: timeout);
+
   Future<void> closeSession({required String sessionId, required Duration timeout}) =>
       _api.closeSession(sessionId: sessionId, timeout: timeout);
 

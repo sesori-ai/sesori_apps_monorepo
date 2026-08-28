@@ -26,8 +26,12 @@ class CopilotSessionOptionsService({
   bool get hasSnapshot => _snapshot != null;
   ({PluginOperationException error, StackTrace stack})? get lastDiscoveryFailure => _lastDiscoveryFailure;
 
+  bool hasReasoningForModel({required String? modelId}) =>
+      _reasoningByModel.containsKey(modelId ?? _snapshot?.currentModelValue);
+
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
+    required String? reasoningModelId,
   }) {
     if (discoveryMode == PluginSessionOptionsDiscoveryMode.reuse && _snapshot != null) {
       return Future.value(PluginSessionOptionsDiscoveryResult.observed(options: _options()));
@@ -35,15 +39,16 @@ class CopilotSessionOptionsService({
     final pending = _inFlight;
     if (pending != null) return pending;
     late final Future<PluginSessionOptionsDiscoveryResult> operation;
-    operation = _discover().whenComplete(() {
+    operation = _discover(reasoningModelId: reasoningModelId).whenComplete(() {
       if (identical(_inFlight, operation)) _inFlight = null;
     });
     _inFlight = operation;
     return operation;
   }
 
-  Future<PluginSessionOptionsDiscoveryResult> _discover() async {
+  Future<PluginSessionOptionsDiscoveryResult> _discover({required String? reasoningModelId}) async {
     _lastDiscoveryFailure = null;
+    _reasoningByModel.clear();
     final stopwatch = Stopwatch()..start();
     final expectedCommandRevision = _commandTracker.revision;
     String? sessionId;
@@ -56,6 +61,20 @@ class CopilotSessionOptionsService({
       );
       sessionId = result.sessionId;
       captureSessionConfig(result, sessionId: null, fromNewSession: true);
+      final snapshot = _snapshot;
+      final modelConfigId = snapshot?.modelConfigId;
+      if (reasoningModelId != null &&
+          reasoningModelId != snapshot?.currentModelValue &&
+          modelConfigId != null &&
+          (snapshot?.models.any((model) => model.value == reasoningModelId) ?? false)) {
+        final selected = await _repository.setConfigOption(
+          sessionId: result.sessionId,
+          configId: modelConfigId,
+          value: reasoningModelId,
+          timeout: _remaining(stopwatch: stopwatch),
+        );
+        if (selected != null) captureSessionConfig(selected, sessionId: null, fromNewSession: false);
+      }
       try {
         await _repository.waitForCommandSnapshot(timeout: _remaining(stopwatch: stopwatch));
       } on TimeoutException {
@@ -211,6 +230,7 @@ class CopilotSessionOptionsService({
     _snapshot = null;
     _defaultModelValue = null;
     _defaultModeValue = null;
+    _reasoningByModel.clear();
     _configurationTracker.clear();
     _lastDiscoveryFailure = null;
   }
