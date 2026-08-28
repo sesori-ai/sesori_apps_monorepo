@@ -38,7 +38,7 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
     } catch (error, stackTrace) {
       loge("Failed to start recording", error, stackTrace);
       if (isClosed || state is! VoiceInputStarting) return;
-      emit(VoiceInputState.startFailed(error: VoiceTranscriptionError.recordingFailed()));
+      emit(VoiceInputState.startFailed(error: VoiceTranscriptionError.recordingFailed(innerError: error)));
     }
   }
 
@@ -62,7 +62,11 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
     } catch (error, stackTrace) {
       loge("Transcription failed", error, stackTrace);
       if (isClosed || state is! VoiceInputTranscribing) return;
-      emit(VoiceInputState.transcriptionFailed(error: VoiceTranscriptionError.recordingFailed()));
+      emit(
+        VoiceInputState.transcriptionFailed(
+          error: VoiceTranscriptionError.recordingFailed(innerError: error),
+        ),
+      );
     }
   }
 

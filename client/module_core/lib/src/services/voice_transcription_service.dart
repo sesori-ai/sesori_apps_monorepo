@@ -80,18 +80,18 @@ class VoiceTranscriptionService({
 
       session._state = const _VoiceSessionRecording();
       _startMaxDurationTimer(session: session);
-    } on VoiceCapturePermissionDenied {
+    } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.microphonePermissionDenied();
-    } on VoiceCaptureError {
+      throw VoiceTranscriptionError.microphonePermissionDenied(innerError: error);
+    } on VoiceCaptureError catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.recordingFailed();
+      throw VoiceTranscriptionError.recordingFailed(innerError: error);
     } on VoiceTranscriptionError {
       rethrow;
     } catch (error, stackTrace) {
       loge("Failed to start voice recording", error, stackTrace);
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.recordingFailed();
+      throw VoiceTranscriptionError.recordingFailed(innerError: error);
     }
   }
 
@@ -106,10 +106,16 @@ class VoiceTranscriptionService({
 
     try {
       try {
-        artifact = await session._captureSession.stop();
-      } on VoiceCaptureError {
+        final stopFuture = session._captureSession.stop();
+        session._stopFuture = stopFuture;
+        try {
+          artifact = await stopFuture;
+        } finally {
+          if (identical(session._stopFuture, stopFuture)) session._stopFuture = null;
+        }
+      } on VoiceCaptureError catch (error) {
         await session._captureSession.cancel();
-        throw VoiceTranscriptionError.recordingFailed();
+        throw VoiceTranscriptionError.recordingFailed(innerError: error);
       }
 
       if (!_ownsGeneration(session: session, generation: generation)) {
@@ -202,6 +208,15 @@ class VoiceTranscriptionService({
       }
     }
 
+    final stopFuture = session._stopFuture;
+    if (stopFuture != null) {
+      try {
+        await stopFuture;
+      } catch (error, stackTrace) {
+        logw("Voice recording stop settled with an error during disposal", error, stackTrace);
+      }
+    }
+
     try {
       await session._captureSession.close();
     } catch (error, stackTrace) {
@@ -249,6 +264,7 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   _VoiceSessionState _state = const _VoiceSessionIdle();
   Future<void>? _prewarmFuture;
   Future<void>? _startFuture;
+  Future<VoiceRecordingArtifact>? _stopFuture;
   Timer? _maxDurationTimer;
   int _generation = 0;
 }
@@ -269,9 +285,9 @@ final class const _VoiceSessionClosing() extends _VoiceSessionState;
 final class const _VoiceSessionDisposed() extends _VoiceSessionState;
 
 sealed class const VoiceTranscriptionError._(final String message) implements Exception {
-  factory microphonePermissionDenied() = MicrophonePermissionDeniedError._;
+  factory microphonePermissionDenied({required Object innerError}) = MicrophonePermissionDeniedError._;
 
-  factory recordingFailed() = RecordingFailedError._;
+  factory recordingFailed({required Object innerError}) = RecordingFailedError._;
 
   factory notRecording() = NotRecordingError._;
 
@@ -289,11 +305,12 @@ sealed class const VoiceTranscriptionError._(final String message) implements Ex
   String toString() => "VoiceTranscriptionError: $message";
 }
 
-final class const MicrophonePermissionDeniedError._() extends VoiceTranscriptionError {
+final class const MicrophonePermissionDeniedError._({required final Object innerError})
+    extends VoiceTranscriptionError {
   this : super._("Microphone permission denied");
 }
 
-final class const RecordingFailedError._() extends VoiceTranscriptionError {
+final class const RecordingFailedError._({required final Object innerError}) extends VoiceTranscriptionError {
   this : super._("Recording failed");
 }
 

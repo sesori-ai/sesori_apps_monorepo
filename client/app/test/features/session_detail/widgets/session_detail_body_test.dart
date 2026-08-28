@@ -95,9 +95,6 @@ Widget _buildApp({
       BlocProvider<ChatInputModeCubit>(
         create: (_) => chatInputModeCubit ?? StubChatInputModeCubit(initialState: chatInputMode),
       ),
-      BlocProvider<VoiceInputCubit>(
-        create: (_) => VoiceInputCubit(service: GetIt.instance<VoiceTranscriptionService>()),
-      ),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -719,6 +716,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+  });
+
+  testWidgets("archiving a loaded session disposes its composer-owned voice lifecycle", (tester) async {
+    final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: loaded);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byType(PromptInput), findsOneWidget);
+
+    states.add(loaded.copyWith(isArchived: true));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+
+    expect(find.byType(PromptInput), findsNothing);
+    verify(() => voiceTranscriptionService.invalidate(session: voiceSession)).called(1);
+    verify(() => voiceTranscriptionService.close(session: voiceSession)).called(1);
   });
 
   testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {

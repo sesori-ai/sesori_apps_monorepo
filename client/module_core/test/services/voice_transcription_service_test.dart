@@ -104,17 +104,29 @@ void main() {
     verify(captureSession.start).called(1);
   });
 
-  test("maps platform permission and capture failures", () async {
-    when(captureSession.start).thenThrow(VoiceCaptureError.permissionDenied());
+  test("maps platform failures without discarding their typed causes", () async {
+    final permissionCause = StateError("native permission check failed");
+    final permissionError = VoiceCaptureError.permissionDenied(innerError: permissionCause);
+    when(captureSession.start).thenThrow(permissionError);
     await expectLater(
       service.start(session: session),
-      throwsA(isA<MicrophonePermissionDeniedError>()),
+      throwsA(
+        isA<MicrophonePermissionDeniedError>().having((error) => error.innerError, "innerError", same(permissionError)),
+      ),
     );
 
-    when(captureSession.start).thenThrow(VoiceCaptureError.failed());
+    final captureCause = StateError("native recorder failed");
+    final captureError = VoiceCaptureError.failed(innerError: captureCause);
+    when(captureSession.start).thenThrow(captureError);
     await expectLater(
       service.start(session: session),
-      throwsA(isA<RecordingFailedError>()),
+      throwsA(
+        isA<RecordingFailedError>().having(
+          (error) => error.innerError,
+          "innerError",
+          same(captureError),
+        ),
+      ),
     );
   });
 
@@ -180,6 +192,26 @@ void main() {
       async.elapse(maxRecordingDuration);
       expect(reached, 1);
     });
+  });
+
+  test("close waits for an active native stop before disposing capture", () async {
+    final stopCompleter = Completer<VoiceRecordingArtifact>();
+    when(captureSession.stop).thenAnswer((_) => stopCompleter.future);
+
+    await service.start(session: session);
+    final transcription = service.stopAndTranscribe(session: session);
+    await Future<void>.delayed(Duration.zero);
+    service.invalidate(session: session);
+    final closing = service.close(session: session);
+    await Future<void>.delayed(Duration.zero);
+
+    verifyNever(captureSession.close);
+    stopCompleter.complete(artifact);
+    await expectLater(transcription, throwsA(isA<TranscriptionCancelledError>()));
+    await closing;
+
+    verify(captureSession.stop).called(1);
+    verify(captureSession.close).called(1);
   });
 
   test("close synchronously fences startup before disposing native state", () async {

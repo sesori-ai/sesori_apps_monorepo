@@ -73,23 +73,23 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<void> start() async {
-    if (_isClosed || _isRecording) throw VoiceCaptureError.failed();
+    if (_isClosed || _isRecording) throw VoiceCaptureError.failed(innerError: null);
 
     bool hasPermission;
     try {
       hasPermission = await _recorder.hasPermission();
     } catch (error, stackTrace) {
       loge("Failed to check microphone permission", error, stackTrace);
-      throw VoiceCaptureError.permissionDenied();
+      throw VoiceCaptureError.permissionDenied(innerError: error);
     }
-    if (!hasPermission) throw VoiceCaptureError.permissionDenied();
+    if (!hasPermission) throw VoiceCaptureError.permissionDenied(innerError: null);
 
     late final String path;
     try {
       path = await _fileProvider.createRecordingPath();
     } catch (error, stackTrace) {
       loge("Failed to create voice recording path", error, stackTrace);
-      throw VoiceCaptureError.failed();
+      throw VoiceCaptureError.failed(innerError: error);
     }
     _currentPath = path;
 
@@ -118,26 +118,26 @@ final class _FlutterVoiceCaptureSession({
       loge("Failed to start recording", error, stackTrace);
       await _deletePath(path: path);
       _currentPath = null;
-      throw VoiceCaptureError.failed();
+      throw VoiceCaptureError.failed(innerError: error);
     }
   }
 
   @override
   Future<VoiceRecordingArtifact> stop() async {
-    if (!_isRecording) throw VoiceCaptureError.failed();
+    if (!_isRecording) throw VoiceCaptureError.failed(innerError: null);
 
     String? path;
     try {
       path = await _recorder.stop();
     } catch (error, stackTrace) {
       loge("Failed to stop recorder", error, stackTrace);
-      throw VoiceCaptureError.failed();
+      throw VoiceCaptureError.failed(innerError: error);
     } finally {
       _stopAmplitudeMonitoring();
       _isRecording = false;
     }
 
-    if (path == null || path.isEmpty) throw VoiceCaptureError.failed();
+    if (path == null || path.isEmpty) throw VoiceCaptureError.failed(innerError: null);
     _currentPath = path;
 
     try {
@@ -145,13 +145,13 @@ final class _FlutterVoiceCaptureSession({
       logt("[voice] recorded file: $fileSize bytes");
       if (fileSize == 0) {
         loge("Recording produced a 0-byte file");
-        throw VoiceCaptureError.failed();
+        throw VoiceCaptureError.failed(innerError: null);
       }
     } on VoiceCaptureError {
       rethrow;
     } catch (error, stackTrace) {
       loge("Failed to inspect recorded audio", error, stackTrace);
-      throw VoiceCaptureError.failed();
+      throw VoiceCaptureError.failed(innerError: error);
     }
 
     return VoiceRecordingArtifact(path: path, mimeType: _audioFormat.mimeType);

@@ -37,10 +37,6 @@ class const SessionDetailScreen({
             failureReporter: getIt<FailureReporter>(),
           ),
         ),
-        if (!readOnly)
-          BlocProvider(
-            create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
-          ),
       ],
       child: _SessionActivityAnalyticsOwner(
         child: SessionDetailBody(

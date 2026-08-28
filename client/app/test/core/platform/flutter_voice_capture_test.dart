@@ -131,6 +131,25 @@ void main() {
     await session.close();
   });
 
+  test("preserves the native recorder failure in the typed capture error", () async {
+    final nativeError = StateError("native recorder start failed");
+    when(() => recorder.start(any(), path: any(named: "path"))).thenThrow(nativeError);
+    final session = capture.createSession();
+
+    await expectLater(
+      session.start(),
+      throwsA(
+        isA<VoiceCaptureFailed>().having(
+          (error) => error.innerError,
+          "innerError",
+          same(nativeError),
+        ),
+      ),
+    );
+
+    await session.close();
+  });
+
   test("cancel stops recording, releases wake lock, and removes the current file", () async {
     await File(recordingPath).writeAsBytes([1, 2, 3]);
     final session = capture.createSession();

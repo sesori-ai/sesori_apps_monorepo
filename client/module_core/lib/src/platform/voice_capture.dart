@@ -25,19 +25,22 @@ final class const VoiceRecordingArtifact({
   required final String mimeType,
 });
 
-sealed class const VoiceCaptureError._(final String message) implements Exception {
-  factory permissionDenied() = VoiceCapturePermissionDenied._;
+sealed class const VoiceCaptureError._(
+  final String message, {
+  required final Object? innerError,
+}) implements Exception {
+  factory permissionDenied({required Object? innerError}) = VoiceCapturePermissionDenied._;
 
-  factory failed() = VoiceCaptureFailed._;
+  factory failed({required Object? innerError}) = VoiceCaptureFailed._;
 
   @override
   String toString() => "VoiceCaptureError: $message";
 }
 
-final class const VoiceCapturePermissionDenied._() extends VoiceCaptureError {
+final class const VoiceCapturePermissionDenied._({required super.innerError}) extends VoiceCaptureError {
   this : super._("Microphone permission denied");
 }
 
-final class const VoiceCaptureFailed._() extends VoiceCaptureError {
+final class const VoiceCaptureFailed._({required super.innerError}) extends VoiceCaptureError {
   this : super._("Voice capture failed");
 }

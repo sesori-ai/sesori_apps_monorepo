@@ -57,7 +57,11 @@ void main() {
   blocTest<VoiceInputCubit, VoiceInputState>(
     "maps a permission failure into start-specific state",
     setUp: () {
-      when(() => service.start(session: session)).thenThrow(VoiceTranscriptionError.microphonePermissionDenied());
+      when(() => service.start(session: session)).thenThrow(
+        VoiceTranscriptionError.microphonePermissionDenied(
+          innerError: VoiceCaptureError.permissionDenied(innerError: null),
+        ),
+      );
     },
     build: () => VoiceInputCubit(service: service),
     act: (cubit) => cubit.startRecording(),

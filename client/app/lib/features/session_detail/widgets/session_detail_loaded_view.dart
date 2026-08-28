@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
 import "../../../core/widgets/composer_surface_style.dart";
@@ -100,7 +101,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     // indicator / banners — come from PregoTopBarInsetBuilder so they clear
     // the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
-    return Stack(
+    final content = Stack(
       children: [
         Column(
           children: [
@@ -278,6 +279,11 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             ),
           ),
       ],
+    );
+    if (widget.readOnly) return content;
+    return BlocProvider(
+      create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
+      child: content,
     );
   }
 }
