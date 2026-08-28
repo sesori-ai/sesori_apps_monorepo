@@ -172,8 +172,9 @@ child — keeps a last-N ring buffer as snapshot/stream) over Layer 1
 app data; on POSIX the log directory is 0700 and files 0600, preserved across
 rotation/replacement — helper output carries paths/identifiers/errors,
 mirroring the bridge's data-directory hardening; a storage write failure is
-caught+logged by the tracker and never stops the drain). Pure Dart, fully
-unit-tested.
+caught and logged **rate-limited** by the tracker — a persistently unwritable
+disk must not turn every helper line into a warning — and never stops the
+drain). Pure Dart, fully unit-tested.
 
 **Step 3 — 🚧 `BridgeProcessService` (Layer 3): the channel comes alive.**
 Collaborators (all lower-layer): `BridgeProcessRepository` (all process
@@ -182,8 +183,11 @@ operations), `BridgeProcessLogTracker` (attach), `ControlChannelServer`
 for authenticated-spawn gating (signed-out start → login-required state, no
 spawn). Starts the control server per spawn (fresh secret/port), spawns the
 bridge through the repository with `--control-url` + secret via stdin,
-attaches the log tracker, observes the repository's exit stream. Clean stop =
-the repository's atomic expected-stop. The shell bootstrap resolves and starts
+attaches the log tracker, observes the repository's exit stream. Spawn is
+transactional: any failure after the server starts (missing helper path,
+attach/monitor error) stops the control server, expected-stops any created
+child, resets service state, and surfaces the original error before a retry
+is allowed. Clean stop = the repository's atomic expected-stop. The shell bootstrap resolves and starts
 the delivered `ControlMessageDispatcher` (the single long-lived inbound
 subscription to `ControlChannelServer.events`) before any spawn — without it
 the helper's first `token_request` goes unread. Bridge
@@ -192,15 +196,18 @@ repo-sensible default); bundled-layout resolution is distribution-plan scope.
 First real GUI↔helper handshake since the prior plan's wire verification.
 
 **Step 4 — 🚧 Exit-code state machine + prompt answers.** In
-`BridgeProcessService`: 86→immediate respawn; 87→stop with login-required;
+`BridgeProcessService`: 86→immediate respawn; 87→stop with login-required —
+and a successful sign-in restarts a helper whose desired state was On (a
+manual Off stays off), covered by the state-machine tests;
 88→stop with "another bridge is running" + Take-over; 0/expected→stop;
 other→bounded backoff → give-up surfacing recent log lines. The crash budget
 resets after a stable healthy runtime, and any manual lifecycle action cancels
 a pending retry timer (no delayed second helper) — both covered by
 state-machine tests. The GUI needs no restart-hang fallback of its own: it
-cannot observe phone-triggered restart intent before exit 86, so the known
-teardown-hang gap is closed bridge-side by the step-5 restart watchdog and
-exit 86 stays the single restart contract. Adds **`ControlCommandService`** (Layer 3): the
+cannot observe phone-triggered restart intent before exit 86, and the bridge
+already guarantees the sentinel (the 86 latch at handoff plus the shutdown
+coordinator's budgeted backstop with emergency plugin disposal — verified for
+the restart path in step 5); exit 86 stays the single restart contract. Adds **`ControlCommandService`** (Layer 3): the
 single owner of GUI→helper sends (`prompt_response` here;
 `unregister_and_exit` in step 11) over `ControlChannelServer`, clearing
 answered prompts from `BridgePromptTracker` — cubits never touch the Layer-4
@@ -224,10 +231,13 @@ rule leaves `ControlPluginHealthState.unavailable` unreachable (the mapper
 emits only healthy/degraded; `unknown` stays the init/forward-parse fallback),
 so that variant and its client/test branches are deleted too. The dev harness
 itself survives until step 12 — step 5 only updates its affected branches.
-Also bridge-side: arm a **teardown watchdog when a supervised restart is
-requested** — a hard deadline that force-exits 86 if session teardown hangs,
-so the exit sentinel is guaranteed and the GUI never needs a restart-intent
-signal (closes the documented teardown-hang gap at its root). No compatibility
+Also bridge-side: **verify with a test — no new mechanism** — that the
+existing shutdown-coordinator backstop covers the supervised restart path:
+exit 86 is latched at handoff, the coordinator arms at shutdown-request, and
+its budgeted backstop performs emergency plugin disposal then force-exits
+with the latched code even when teardown hangs (this superseded the old
+plan's teardown-hang risk; a second watchdog would race the coordinator and
+skip disposal). No compatibility
 shims: the control channel has never shipped in a public release and both
 halves live in this repo.
 
@@ -270,13 +280,13 @@ autostart off genuinely removes the login item; repeated launches don't
 accumulate duplicates.
 
 **Step 9 — ⚙️ Single instance + last-state.** Layer-1
-`DesktopInstanceStorage` (instance lock + persisted on/off & last-state under
-desktop-owned app data) beneath `DesktopInstanceRepository` (Layer 2, maps and
-aggregates) under `DesktopInstanceService` (Layer 3). The Layer-1 boundary
-also carries the **activation channel** (the lock owner listens on a local
-socket/pipe; a second launch signals it and exits), surfaced through the
-repository/service as a focus-request stream the window owner consumes —
-lock + prefs alone cannot make the first instance focus. Second launch
+`DesktopInstanceStorage` (persisted on/off & last-state under desktop-owned
+app data) and Layer-1 `DesktopInstanceApi` (instance lock + the **activation
+channel**: the lock owner listens on a local socket/pipe; a second launch
+signals it and exits — lock + prefs alone cannot make the first instance
+focus), both beneath `DesktopInstanceRepository` (Layer 2, aggregates the two
+boundaries) under `DesktopInstanceService` (Layer 3), which surfaces a
+focus-request stream the window owner consumes. Second launch
 focuses the first; stale-lock recovery after a GUI crash. Layer-4
 `DesktopStartupOrchestrator` composes instance + process services to restore a
 last-on bridge behind the auth gate (no same-layer service deps).
@@ -284,8 +294,10 @@ last-on bridge behind the auth gate (no same-layer service deps).
 **Step 10 — 🚧 `module_auth` logout/rejection hardening (approved refactor
 R1).** A logout generation checked before any async persist/emit (kills the
 restore-after-logout re-save race), and `/auth/refresh` 4xx-rejection
-distinguished from transport failure (revoked sessions emit `unauthenticated`
-reactively; offline stays silent). Remove `AuthGateCubit`'s documented
+distinguished from transport failure (a definitive rejection clears the
+persisted tokens/user **before** emitting `unauthenticated`, so a relaunch
+cannot restore the revoked account — covered by a relaunch test; offline
+stays silent). Remove `AuthGateCubit`'s documented
 unconditional post-fence re-clear workaround. Mobile-shared: mobile login /
 refresh / logout regression is this step's test focus. Ordered **before** the
 logout orchestrator so step 11 can call `logoutCurrentDevice()` directly
