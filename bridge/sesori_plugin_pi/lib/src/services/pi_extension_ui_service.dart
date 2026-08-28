@@ -76,7 +76,6 @@ final class PiExtensionUiService({
         return;
       case PiExtensionDecorationRequest():
       case PiUnknownExtensionUiRequest():
-        Log.d("[pi] ignored unsupported extension UI decoration");
         return;
       case final PiExtensionDialogRequest dialog:
         final elapsed = Stopwatch()..start();
