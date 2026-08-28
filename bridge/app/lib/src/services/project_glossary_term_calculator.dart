@@ -10,24 +10,32 @@ class const ProjectGlossaryTermCalculator() {
   static const int maximumTerms = 50;
 
   static final RegExp _metadataTokenPattern = RegExp(
-    "(?:[CFcf]#|[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*)",
+    r"(?:[Cc]\+\+|[CFcf]#|[A-Za-z][A-Za-z0-9]*(?:[.+#-][A-Za-z0-9]+)*)",
   );
   static final RegExp _metadataSecretSpanPattern = RegExp(
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
+  );
+  static final RegExp _credentialTripleDoubleAssignmentPattern = RegExp(
+    r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*'''
+    r'''"""[\s\S]*?(?:"""|$)''',
+    caseSensitive: false,
+  );
+  static final RegExp _credentialTripleSingleAssignmentPattern = RegExp(
+    r"""["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*"""
+    r"""'''[\s\S]*?(?:'''|$)""",
+    caseSensitive: false,
   );
   static final RegExp _credentialAssignmentPattern = RegExp(
     r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*'''
     r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
   );
-  static const String _credentialXmlNamePattern =
-      r"(?:[A-Za-z_][A-Za-z0-9]*[.:\-_])*(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)"
-      r"(?:[.:\-_][A-Za-z0-9_-]+)*";
-  static final RegExp _credentialXmlElementPattern = RegExp(
-    "<$_credentialXmlNamePattern(?=\\s|/?>)[^>]*"
-    "(?:/>|>[\\s\\S]*?</$_credentialXmlNamePattern\\s*>)",
-    caseSensitive: false,
+  static final RegExp _xmlOpeningElementPattern = RegExp(
+    r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
   );
+  static final RegExp _xmlNameAcronymBoundaryPattern = RegExp("([A-Z]+)([A-Z][a-z])");
+  static final RegExp _xmlNameCamelBoundaryPattern = RegExp("([a-z0-9])([A-Z])");
+  static final RegExp _xmlNameSeparatorPattern = RegExp(r"[.:\-_]+");
   static final RegExp _authorizationCredentialPattern = RegExp(
     r'''["']?authorization["']?\s*[:=]\s*(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
@@ -57,6 +65,16 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _credentialDelimiterPattern = RegExp("[/=_+.]");
 
   static const Set<String> _shortSymbolicTerms = {"c#", "f#"};
+  static const Set<String> _credentialNameComponents = {
+    "apikey",
+    "authorization",
+    "credential",
+    "passwd",
+    "password",
+    "pwd",
+    "secret",
+    "token",
+  };
 
   static const Set<String> _credentialPrefixes = {
     "aiza",
@@ -204,9 +222,56 @@ when with web widget widgets will windows window workspace www
     }
   }
 
-  String _filterCredentialSpans(String value) => value
-      .replaceAll(_credentialXmlElementPattern, " ")
+  String _filterXmlCredentialElements(String value) {
+    final filtered = StringBuffer();
+    var cursor = 0;
+    for (final opening in _xmlOpeningElementPattern.allMatches(value)) {
+      if (opening.start < cursor) continue;
+      final name = opening.group(1)!;
+      if (!_isCredentialXmlName(name)) continue;
+
+      filtered.write(value.substring(cursor, opening.start));
+      if (opening.group(2) == "/") {
+        cursor = opening.end;
+        continue;
+      }
+
+      final closing = RegExp(
+        "</${RegExp.escape(name)}\\s*>",
+        caseSensitive: false,
+      ).firstMatch(value.substring(opening.end));
+      cursor = closing == null ? value.length : opening.end + closing.end;
+    }
+    if (cursor == 0) return value;
+    filtered.write(value.substring(cursor));
+    return filtered.toString();
+  }
+
+  bool _isCredentialXmlName(String name) {
+    final components = name
+        .replaceAllMapped(
+          _xmlNameAcronymBoundaryPattern,
+          (match) => "${match.group(1)}.${match.group(2)}",
+        )
+        .replaceAllMapped(
+          _xmlNameCamelBoundaryPattern,
+          (match) => "${match.group(1)}.${match.group(2)}",
+        )
+        .toLowerCase()
+        .split(_xmlNameSeparatorPattern);
+    for (var index = 0; index < components.length; index++) {
+      if (_credentialNameComponents.contains(components[index])) return true;
+      final isApiKey =
+          components[index] == "api" && index + 1 < components.length && components[index + 1] == "key";
+      if (isApiKey) return true;
+    }
+    return false;
+  }
+
+  String _filterCredentialSpans(String value) => _filterXmlCredentialElements(value)
       .replaceAll(_authorizationCredentialPattern, " ")
+      .replaceAll(_credentialTripleDoubleAssignmentPattern, " ")
+      .replaceAll(_credentialTripleSingleAssignmentPattern, " ")
       .replaceAll(_credentialAssignmentPattern, " ")
       .replaceAll(_bearerCredentialPattern, " ")
       .replaceAll(_credentialLabeledSpanPattern, " ")

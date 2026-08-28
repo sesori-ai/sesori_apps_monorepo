@@ -1,3 +1,4 @@
+import "dart:convert" show Utf8Decoder;
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -605,7 +606,7 @@ class GitCliApi({
     final currentPath = StringBuffer();
     final stderrFuture = process.stderr.transform(const SystemEncoding().decoder).join();
 
-    await for (final chunk in process.stdout.transform(const SystemEncoding().decoder)) {
+    await for (final chunk in process.stdout.transform(const Utf8Decoder(allowMalformed: true))) {
       if (paths.length == maximumPaths) continue;
 
       var start = 0;

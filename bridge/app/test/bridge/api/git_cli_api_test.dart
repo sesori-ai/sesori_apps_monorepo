@@ -259,6 +259,23 @@ void main() {
     expect(runner.environment, const {"LC_ALL": "C"});
   });
 
+  test("tolerates malformed UTF-8 bytes in tracked filenames", () async {
+    final process = _FakeStreamingProcess(
+      stdoutChunks: [
+        [...utf8.encode("good.dart\u0000bad_"), 0xff, ...utf8.encode(".dart\u0000")],
+      ],
+    );
+    final api = GitCliApi(
+      processRunner: _RecordingProcessRunner(),
+      streamingProcessRunner: _FakeStreamingProcessRunner(process),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+
+    final paths = await api.listTrackedFiles(projectPath: "/project", maximumPaths: 10);
+
+    expect(paths, ["good.dart", "bad_\uFFFD.dart"]);
+  });
+
   test("checks Git failure after reaching the tracked-file limit", () async {
     final runner = _FakeStreamingProcessRunner(
       _FakeStreamingProcess(

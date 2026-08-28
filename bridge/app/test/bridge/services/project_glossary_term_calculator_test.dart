@@ -45,6 +45,8 @@ void main() {
           "AcmeCompiler uses AKIAIOSFODNN7EXAMPLE, q7Vn2Lp9Rk4Tz8Mw6Hx3, and $secretAccessKey.",
           "password=SuperSecretProductionPassword token=aBcDeFgHiJkLmNoPqRsTuVwXyZ",
           '''password = "Correct Horse Battery Staple"''',
+          'password = """Topaz Riverstone\nSilverPine"""',
+          "token = '''Amber Willow'''",
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -53,6 +55,8 @@ void main() {
           "<api-key>Azure Falcon Battery</api-key>",
           "<db.password>DottedSecretValue</db.password>",
           "<mvn:server.password>Quartz Meadow Cedar</mvn:server.password>",
+          "<dbPassword>CamelSecretValue</dbPassword>",
+          "<clientApiKey>Magnolia Garden</clientApiKey>",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -70,6 +74,11 @@ void main() {
       "Horse",
       "Battery",
       "Staple",
+      "Topaz",
+      "Riverstone",
+      "SilverPine",
+      "Amber",
+      "Willow",
       "abcdefghijklmnopqrstuvwxyz",
       "BasicCredentialValue123",
       "aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -86,6 +95,9 @@ void main() {
       "Quartz",
       "Meadow",
       "Cedar",
+      "CamelSecretValue",
+      "Magnolia",
+      "Garden",
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
@@ -97,11 +109,11 @@ void main() {
         projectName: "AcmeCompiler",
         repositoryName: null,
         trackedPaths: const ["src/C#/Compiler.cs", "src/F#/Parser.fs"],
-        metadataDocuments: const ["AcmeCompiler supports C# and F#."],
+        metadataDocuments: const ["AcmeCompiler supports C#, F#, and C++."],
       ),
     );
 
-    expect(terms, containsAll(["C#", "F#"]));
+    expect(terms, containsAll(["C#", "F#", "C++"]));
   });
 
   test("requires repeated metadata evidence for ordinary lowercase prose", () {
