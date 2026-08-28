@@ -34,7 +34,13 @@ class SessionListService({
     required Map<String, SessionActivityInfo> activityBySessionId,
     required Map<String, SessionListItemState> listStateBySessionId,
   }) {
-    final visible = showArchived ? sessions : sessions.where((session) => session.time?.archived == null);
+    final projected = sessions.map(
+      (session) => _mergeLiveListState(
+        session: session,
+        listState: listStateBySessionId[session.id],
+      ),
+    );
+    final visible = showArchived ? projected : projected.where((session) => session.time?.archived == null);
     final running = <Session>[];
     final remaining = <Session>[];
     for (final session in visible) {
@@ -89,6 +95,31 @@ class SessionListService({
 
   List<Session> removeSession({required Iterable<Session> sessions, required String sessionId}) {
     return _sortSessions(sessions.where((session) => session.id != sessionId));
+  }
+
+  /// Projects a live user-activity marker into the row's displayed recency.
+  ///
+  /// REST session rows already fold this marker into `time.updated`, but a
+  /// newer marker can arrive over SSE after the fetch. Keeping the live
+  /// projection here ensures the row does not reorder on fresh activity while
+  /// continuing to display its stale REST timestamp.
+  Session _mergeLiveListState({
+    required Session session,
+    required SessionListItemState? listState,
+  }) {
+    final lastUserActivityAt = latestUserActivityAt(
+      first: session.lastUserActivityAt,
+      second: listState?.lastUserActivityAt,
+    );
+    final time = session.time;
+    if (time == null || lastUserActivityAt == null || lastUserActivityAt <= time.updated) {
+      if (lastUserActivityAt == session.lastUserActivityAt) return session;
+      return session.copyWith(lastUserActivityAt: lastUserActivityAt);
+    }
+    return session.copyWith(
+      time: time.copyWith(updated: lastUserActivityAt),
+      lastUserActivityAt: lastUserActivityAt,
+    );
   }
 
   List<Session> _sortSessions(Iterable<Session> sessions) {
