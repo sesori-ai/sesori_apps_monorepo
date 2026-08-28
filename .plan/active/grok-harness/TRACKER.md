@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-3/9 merged; Step 4/9 in PR
-- **Current branch:** `grok-harness-step-4-core`
-- **Base:** `origin/main` after merged PR #1160
+- **Status:** Steps 1-3/9 merged; Step 4/9 in PR; Step 5/9 implemented locally
+- **Current branch:** `grok-harness-step-5-lifecycle`
+- **Base:** `grok-harness-step-4-core` (PR #1169)
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
 - **Open PR:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
-- **Current step:** `grok-harness-step-4-core`; monitor CI and review, then advance the local Step 5 successor
+- **Local successor:** `grok-harness-step-5-lifecycle`; descriptor/setup implementation under verification
 
 ## Fixed Series
 
@@ -26,7 +26,7 @@
    - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
      analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
-   - **State:** not started.
+   - **State:** implemented locally; held until #1169 merges.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
    - **State:** not started.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
@@ -90,6 +90,19 @@
 - [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
 - [x] Complete the post-rebase general correctness review; final verdict approved.
 - [x] Publish Step 4 as PR #1169 after #1160's merge and start its PR monitor.
+
+## Step 5 Checklist
+
+- [x] Add `--grok-bin`, the frozen 1.0.5 floor/target, and explicit-before-PATH selection.
+- [x] Classify missing, malformed, outdated, current, and bounded-output version probes without reading credentials.
+- [x] Revalidate the selected runtime in `ensureRuntime`; never install, update, or fall back from an explicit path.
+- [x] Compose one host-process-backed `GrokPlugin`/`AcpBridgePlugin` with bounded eager connection.
+- [x] Surface local `grok login`/headless-credential guidance while isolating auth/start/crash degradation to Grok.
+- [x] Cover setup, provisioning, abort, auth rejection, crash/reconnect, reported version, and owned shutdown.
+- [x] Pass 52 Grok tests, fatal-info analysis, LSP diagnostics, whitespace, and authored line-width checks.
+- [x] Keep the measured Step 5 change below the 1,500-line soft cap (currently 844 lines).
+- [x] Run architecture implementation review over Step 5 against Step 4; approved with no findings.
+- [x] Commit the completed successor locally; do not publish before #1169 merges.
 
 ## Decisions And Evidence
 
