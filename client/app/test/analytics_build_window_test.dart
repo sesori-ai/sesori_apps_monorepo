@@ -12,9 +12,16 @@ void main() {
     );
   });
 
-  test("the window closes two hours after compilation", () {
+  test("a launch a day after compilation is still inside the window", () {
     expect(
-      isWithinBuildWindow(buildEpochSeconds: buildEpochSeconds, now: buildTime.add(const Duration(hours: 2))),
+      isWithinBuildWindow(buildEpochSeconds: buildEpochSeconds, now: buildTime.add(const Duration(hours: 24))),
+      isTrue,
+    );
+  });
+
+  test("the window closes 48 hours after compilation", () {
+    expect(
+      isWithinBuildWindow(buildEpochSeconds: buildEpochSeconds, now: buildTime.add(const Duration(hours: 48))),
       isFalse,
     );
   });

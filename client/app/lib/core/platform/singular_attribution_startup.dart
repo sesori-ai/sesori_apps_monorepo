@@ -14,12 +14,11 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   void start({
     required bool isSupportedPlatform,
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
+    required bool deferUntilInteractiveAuthentication,
     required String sdkKey,
     required String sdkSecret,
   }) {
-    if (!isSupportedPlatform ||
-        ineligibilityReason != null &&
-            ineligibilityReason != AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
+    if (!isSupportedPlatform || ineligibilityReason != null) {
       return;
     }
 
@@ -33,7 +32,7 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
       ..skAdNetworkEnabled = true
       ..enableLogging = false;
 
-    if (ineligibilityReason == AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
+    if (deferUntilInteractiveAuthentication) {
       _deferredStartConfig = config;
       logi("Singular attribution deferred until interactive authentication");
       return;

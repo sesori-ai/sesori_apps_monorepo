@@ -13,4 +13,8 @@ class AnalyticsApi({required final AnalyticsClient _client}) {
   Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) {
     return _client.logInstallationEvent(event: event);
   }
+
+  Future<void> activateAfterInteractiveAuthentication() {
+    return _client.activateAfterInteractiveAuthentication();
+  }
 }

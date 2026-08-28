@@ -8,4 +8,7 @@ class NoOpAnalyticsClient() implements AnalyticsClient {
 
   @override
   Future<void> logInstallationEvent({required InstallationAnalyticsEvent event}) async {}
+
+  @override
+  Future<void> activateAfterInteractiveAuthentication() async {}
 }

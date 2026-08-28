@@ -8,11 +8,19 @@ import "package:test/test.dart";
 class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
   final events = <InstallationAnalyticsEvent>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  int activationCalls = 0;
+  int eventsSeenAtActivation = -1;
 
   @override
   Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
     events.add(event);
     return result;
+  }
+
+  @override
+  Future<void> activateAfterInteractiveAuthentication() async {
+    activationCalls += 1;
+    eventsSeenAtActivation = events.length;
   }
 }
 
@@ -23,6 +31,22 @@ class _DeferredAnalyticsRepository() extends Mock implements AnalyticsRepository
   Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) {
     return completion.future;
   }
+
+  @override
+  Future<void> activateAfterInteractiveAuthentication() async {}
+}
+
+class _StalledActivationAnalyticsRepository() extends Mock implements AnalyticsRepository {
+  final events = <InstallationAnalyticsEvent>[];
+
+  @override
+  Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) async {
+    events.add(event);
+    return AnalyticsDeliveryResult.acceptedBySdk;
+  }
+
+  @override
+  Future<void> activateAfterInteractiveAuthentication() => Completer<void>().future;
 }
 
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
@@ -193,6 +217,31 @@ void main() {
       const InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.apple),
     ]);
     expect(attributionRepository.events, [AttributionEvent.accountLogin]);
+    // Interactive authentication lifts the store-crawl suspension before any
+    // one-time outcome event is logged.
+    expect(repository.activationCalls, 1);
+    expect(repository.eventsSeenAtActivation, 0);
+  });
+
+  test("a stalled activation does not delay attribution", () async {
+    final repository = _StalledActivationAnalyticsRepository();
+    final attributionRepository = _RecordingAttributionRepository();
+    final service = InstallationAnalyticsService(
+      capability: const AnalyticsRuntimeCapability.enabled(),
+      repository: repository,
+      attributionRepository: attributionRepository,
+    );
+
+    unawaited(
+      service.loginAttemptCompleted(
+        provider: AuthProvider.github,
+        accountStatus: AccountStatus.existing,
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(attributionRepository.events, [AttributionEvent.accountLogin]);
+    expect(repository.events, isEmpty);
   });
 
   test("disabled installation analytics does not gate attribution", () async {
@@ -200,7 +249,7 @@ void main() {
     final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+        reason: AnalyticsRuntimeDisabledReason.debugOrProfile,
       ),
       repository: repository,
       attributionRepository: attributionRepository,

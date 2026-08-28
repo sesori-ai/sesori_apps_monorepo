@@ -28,7 +28,10 @@ void main() {
   });
 
   test("enables a new release install only after suspension and consent", () async {
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(capability, isA<AnalyticsRuntimeEnabled>());
     verifyInOrder([
@@ -50,9 +53,12 @@ void main() {
   test("keeps collection off for ineligible processes", () async {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
     ]) {
-      final capability = await startup.configure(ineligibilityReason: reason);
+      final capability = await startup.configure(
+        ineligibilityReason: reason,
+        suspendForStoreCrawl: false,
+      );
 
       expect(
         capability,
@@ -64,12 +70,57 @@ void main() {
     verifyNoMoreInteractions(analytics);
   });
 
+  test("a store-crawl suspension keeps the SDK off with an operational runtime", () async {
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: true,
+    );
+
+    expect(capability, isA<AnalyticsRuntimeEnabled>());
+    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("interactive authentication lifts the store-crawl suspension once", () async {
+    await startup.configure(ineligibilityReason: null, suspendForStoreCrawl: true);
+
+    await startup.activateAfterInteractiveAuthentication();
+    await startup.activateAfterInteractiveAuthentication();
+
+    verifyInOrder([
+      () => analytics.setAnalyticsCollectionEnabled(false),
+      () => analytics.setConsent(
+        adPersonalizationSignalsConsentGranted: false,
+        adStorageConsentGranted: false,
+        adUserDataConsentGranted: false,
+        personalizationStorageConsentGranted: false,
+        securityStorageConsentGranted: false,
+        analyticsStorageConsentGranted: true,
+        functionalityStorageConsentGranted: true,
+      ),
+      () => analytics.setAnalyticsCollectionEnabled(true),
+    ]);
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("activation without a suspension is a no-op", () async {
+    await startup.configure(ineligibilityReason: null, suspendForStoreCrawl: false);
+    clearInteractions(analytics);
+
+    await startup.activateAfterInteractiveAuthentication();
+
+    verifyZeroInteractions(analytics);
+  });
+
   test("fails closed when collection cannot be suspended", () async {
     when(
       () => analytics.setAnalyticsCollectionEnabled(false),
     ).thenAnswer((_) async => throw StateError("suspend failed"));
 
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(
       capability,
@@ -88,7 +139,10 @@ void main() {
       () => analytics.setAnalyticsCollectionEnabled(true),
     ).thenAnswer((_) async => throw StateError("enable failed"));
 
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(
       capability,

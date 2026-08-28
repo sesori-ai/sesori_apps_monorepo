@@ -15,6 +15,7 @@ void main() {
       ..start(
         isSupportedPlatform: true,
         ineligibilityReason: null,
+        deferUntilInteractiveAuthentication: false,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",
       );
@@ -51,7 +52,8 @@ void main() {
     final startup = SingularAttributionStartup(singular: singular)
       ..start(
         isSupportedPlatform: true,
-        ineligibilityReason: AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+        ineligibilityReason: null,
+        deferUntilInteractiveAuthentication: true,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",
       );

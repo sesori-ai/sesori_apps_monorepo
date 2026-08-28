@@ -96,10 +96,18 @@ Desktop initializes four phases:
 # From client/: resolve the complete workspace.
 dart pub get
 
-# Run a product shell.
+# Run the mobile shell.
 (cd app && flutter run)
+
+# Build the development bridge bundle, then run the desktop shell.
+(cd ../bridge/app && make build-host)
 (cd desktop && flutter run -d macos)
 ```
+
+Desktop development resolves that host bundle by default. Set
+`SESORI_DESKTOP_BRIDGE_PATH` to an absolute path (or a path relative to
+`client/desktop`) to launch a different development bridge. Packaged builds
+will use the distribution plan's bundled-layout resolver instead.
 
 The exact Flutter version is pinned in the repository root `.tool-versions`.
 

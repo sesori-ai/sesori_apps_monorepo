@@ -24,6 +24,7 @@ void main() {
     startup.start(
       isSupportedPlatform: true,
       ineligibilityReason: null,
+      deferUntilInteractiveAuthentication: false,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
@@ -48,12 +49,22 @@ void main() {
     startup.start(
       isSupportedPlatform: false,
       ineligibilityReason: null,
+      deferUntilInteractiveAuthentication: false,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
     startup.start(
       isSupportedPlatform: true,
       ineligibilityReason: AnalyticsRuntimeDisabledReason.debugOrProfile,
+      deferUntilInteractiveAuthentication: false,
+      sdkKey: "test-sdk-key",
+      sdkSecret: "test-sdk-secret",
+    );
+    // An ineligible process never defers: eligibility outranks the crawl gate.
+    startup.start(
+      isSupportedPlatform: true,
+      ineligibilityReason: AnalyticsRuntimeDisabledReason.debugOrProfile,
+      deferUntilInteractiveAuthentication: true,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
@@ -66,7 +77,8 @@ void main() {
   test("defers a crawl-gated startup until interactive authentication reports an event", () {
     startup.start(
       isSupportedPlatform: true,
-      ineligibilityReason: AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+      ineligibilityReason: null,
+      deferUntilInteractiveAuthentication: true,
       sdkKey: "test-sdk-key",
       sdkSecret: "test-sdk-secret",
     );
@@ -92,6 +104,7 @@ void main() {
       () => startup.start(
         isSupportedPlatform: true,
         ineligibilityReason: null,
+        deferUntilInteractiveAuthentication: false,
         sdkKey: "test-sdk-key",
         sdkSecret: "test-sdk-secret",
       ),

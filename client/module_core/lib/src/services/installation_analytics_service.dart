@@ -31,19 +31,34 @@ class InstallationAnalyticsService({
     required AccountStatus accountStatus,
   }) async {
     final analyticsProvider = _analyticsProvider(provider: provider);
+    // Attribution is an independent sink; only the Firebase outcome events
+    // wait for the store-crawl suspension to lift.
+    final results = await Future.wait([
+      _activateThenLogOutcomes(provider: analyticsProvider, accountStatus: accountStatus),
+      _logAttribution(accountStatus: accountStatus),
+    ]);
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
+
+  /// A server-confirmed interactive authentication is the proof-of-human that
+  /// lifts the store-crawl suspension, so activate before logging the one-time
+  /// outcome events.
+  Future<AnalyticsDeliveryResult> _activateThenLogOutcomes({
+    required AnalyticsLoginProvider provider,
+    required AccountStatus accountStatus,
+  }) async {
+    await _repository.activateAfterInteractiveAuthentication();
     final accountOutcomeEvent = switch (accountStatus) {
-      AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: analyticsProvider),
-      AccountStatus.existing => InstallationAnalyticsEvent.accountLogin(method: analyticsProvider),
+      AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: provider),
+      AccountStatus.existing => InstallationAnalyticsEvent.accountLogin(method: provider),
       AccountStatus.unknown => null,
     };
     final results = await Future.wait([
-      _log(
-        event: InstallationAnalyticsEvent.loginAttemptCompleted(
-          provider: analyticsProvider,
-        ),
-      ),
+      _log(event: InstallationAnalyticsEvent.loginAttemptCompleted(provider: provider)),
       if (accountOutcomeEvent != null) _log(event: accountOutcomeEvent),
-      _logAttribution(accountStatus: accountStatus),
     ]);
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
