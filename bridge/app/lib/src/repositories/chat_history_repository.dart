@@ -728,17 +728,16 @@ class ChatHistoryRepository({
             fields: const {"id", "sessionID", "messageID"},
           ),
       ];
+      // Some backends omit live reasoning from replay. It remains part of the
+      // message's own identity, but not the visible neighbor anchor used to
+      // correlate an otherwise equivalent adjacent prompt or response.
+      final contextParts = [
+        for (var index = 0; index < parts.length; index++)
+          if (parts[index] is! MessagePartReasoning) canonicalParts[index],
+      ];
       return (
         content: _jsonFingerprint(value: {"info": info, "parts": canonicalParts}),
-        context: _jsonFingerprint(
-          value: {
-            "info": info,
-            "parts": [
-              for (var index = 0; index < parts.length; index++)
-                if (parts[index] is! MessagePartReasoning) canonicalParts[index],
-            ],
-          },
-        ),
+        context: _jsonFingerprint(value: {"info": info, "parts": contextParts}),
       );
     } on Object catch (error, stackTrace) {
       Log.w(
