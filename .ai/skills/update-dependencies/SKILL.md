@@ -122,16 +122,6 @@ flutter --version
 ```
 
 If `flutter --version` still reports the old version after `asdf set`, run `asdf reshim flutter` (or open a new shell) and re-run `flutter --version`.
-
-Two recurring environment traps on this machine (both hit 2026-08-28):
-
-- **The shell profile puts a pinned `~/.asdf/installs/flutter/<old>-stable/bin` on `PATH` ahead of `~/.asdf/shims`**, so `which flutter` keeps resolving the old SDK no matter what `asdf set` writes. `asdf current flutter` will correctly report the new version while `flutter --version` reports the old one. Prefix every `flutter`/`dart` command in this workflow with `export PATH="$HOME/.asdf/shims:$PATH"` (the Makefile targets included) and verify with `which flutter` before trusting any version output.
-- **`asdf install flutter latest` reports "already installed" for a half-extracted install.** If the version dir contains only `flutter_macos_*.zip`, or `flutter --version` fails with `fatal: not a git repository`, the extraction was interrupted. `asdf uninstall` alone is not enough — the plugin's `mv`-based install then fails with "Directory not empty". Fully remove both dirs and reinstall:
-
-  ```bash
-  rm -rf ~/.asdf/installs/flutter/<version> ~/.asdf/downloads/flutter/<version>
-  asdf install flutter <version>
-  ```
 </step>
 
 <step name="1.2">Check and update environment constraints in all pubspec.yaml files **except `shared/no_slop_linter/pubspec.yaml`** (manually managed).
