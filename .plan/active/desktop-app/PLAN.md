@@ -194,7 +194,10 @@ First real GUI↔helper handshake since the prior plan's wire verification.
 **Step 4 — 🚧 Exit-code state machine + prompt answers.** In
 `BridgeProcessService`: 86→immediate respawn; 87→stop with login-required;
 88→stop with "another bridge is running" + Take-over; 0/expected→stop;
-other→bounded backoff → give-up surfacing recent log lines. A helper asked to
+other→bounded backoff → give-up surfacing recent log lines. The crash budget
+resets after a stable healthy runtime, and any manual lifecycle action cancels
+a pending retry timer (no delayed second helper) — both covered by
+state-machine tests. A helper asked to
 restart that never exits is killed+respawned after a grace window (covers the
 known teardown-hang gap). Adds **`ControlCommandService`** (Layer 3): the
 single owner of GUI→helper sends (`prompt_response` here;
@@ -215,7 +218,10 @@ sent `ControlMessage.restart`, and `ControlMessage.tokenUpdate` (its only
 sender is the dev harness step 12 deletes; token flow is pull-on-demand per
 C7) — including the bridge receiver paths
 (`ControlChannelTokenService.handleTokenUpdate`, dispatcher route), client
-dispatcher branches, and the dev harness, all in the same PR. No compatibility
+dispatcher branches, and the dev harness, all in the same PR. The new health
+rule leaves `ControlPluginHealthState.unavailable` unreachable (the mapper
+emits only healthy/degraded; `unknown` stays the init/forward-parse fallback),
+so that variant and its client/test branches are deleted too. No compatibility
 shims: the control channel has never shipped in a public release and both
 halves live in this repo.
 
@@ -350,10 +356,14 @@ churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
 heavy part).** Relocate voice lifecycle behind `module_core` service seams and
-media picking behind a platform seam (recording stays a mobile shell adapter;
-desktop supplies no-op/desktop equivalents); keyboard-visibility becomes a
-mobile-injected concern; then move the composer (attachments, pickers, queued
-prompts). Voice on mobile must be regression-clean. *Overage: move churn.*
+media picking behind a platform seam (recording stays a mobile shell
+adapter). The desktop shell declares **explicit capability values, never
+silent no-ops**: voice unsupported → text-first composer with voice entry
+hidden (the `voiceFirst` default must not apply), and attachments use a real
+desktop file picker (or the affordance is hidden until one exists) — no
+visible control may be dead. Keyboard-visibility becomes a mobile-injected
+concern; then move the composer (attachments, pickers, queued prompts). Voice
+on mobile must be regression-clean. *Overage: move churn.*
 
 **Step 19 — ⚙️ Diffs + new-session slice.** Decouple and move
 `session_diffs` + `new_session` (worktree options included).
