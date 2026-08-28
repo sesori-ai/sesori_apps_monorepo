@@ -3,6 +3,7 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../copilot_binary.dart";
 import "../copilot_identity.dart";
 import "../models/copilot_session_options.dart";
 import "../repositories/copilot_catalog_repository.dart";
@@ -20,7 +21,7 @@ class CopilotSessionOptionsService({
   String? _defaultModelValue;
   String? _defaultModeValue;
   final _reasoningByModel = <String, ({String? configId, List<CopilotCatalogOption> options})>{};
-  Future<PluginSessionOptionsDiscoveryResult>? _inFlight;
+  ({String? reasoningModelId, Future<PluginSessionOptionsDiscoveryResult> operation})? _inFlight;
   ({PluginOperationException error, StackTrace stack})? _lastDiscoveryFailure;
 
   bool get hasSnapshot => _snapshot != null;
@@ -37,18 +38,27 @@ class CopilotSessionOptionsService({
       return Future.value(PluginSessionOptionsDiscoveryResult.observed(options: _options()));
     }
     final pending = _inFlight;
-    if (pending != null) return pending;
+    if (pending != null) {
+      if (pending.reasoningModelId == reasoningModelId) return pending.operation;
+      return pending.operation.then(
+        (_) => getSessionOptions(discoveryMode: discoveryMode, reasoningModelId: reasoningModelId),
+      );
+    }
     late final Future<PluginSessionOptionsDiscoveryResult> operation;
     operation = _discover(reasoningModelId: reasoningModelId).whenComplete(() {
-      if (identical(_inFlight, operation)) _inFlight = null;
+      if (identical(_inFlight?.operation, operation)) _inFlight = null;
     });
-    _inFlight = operation;
+    _inFlight = (reasoningModelId: reasoningModelId, operation: operation);
     return operation;
   }
 
   Future<PluginSessionOptionsDiscoveryResult> _discover({required String? reasoningModelId}) async {
     _lastDiscoveryFailure = null;
-    _reasoningByModel.clear();
+    if (reasoningModelId == null) {
+      _reasoningByModel.clear();
+    } else {
+      _reasoningByModel.remove(reasoningModelId);
+    }
     final stopwatch = Stopwatch()..start();
     final expectedCommandRevision = _commandTracker.revision;
     String? sessionId;
@@ -85,6 +95,16 @@ class CopilotSessionOptionsService({
         if (!_repository.hasCommandSnapshot) _commandTracker.clear();
       }
       observed = true;
+    } on PluginAuthenticationRequiredException catch (error, stack) {
+      Error.throwWithStackTrace(
+        PluginAuthenticationRequiredException(
+          error.operation,
+          actionHint: CopilotBinary.loginActionHint,
+          message: error.message,
+          cause: error,
+        ),
+        stack,
+      );
     } on Object catch (error, stack) {
       _lastDiscoveryFailure = (
         error: PluginOperationException(

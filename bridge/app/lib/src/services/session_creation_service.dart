@@ -9,6 +9,7 @@ import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
+import "session_options_service.dart";
 import "session_prompt_service.dart";
 import "stale_session_prompt_options_exception.dart";
 import "worktree_service.dart";
@@ -19,8 +20,7 @@ class SessionCreationService({
   required final SessionRepository _sessionRepository,
   required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
-  required final Future<void> Function({required String pluginId, required String projectId})
-  _invalidateRejectedSelection,
+  required final SessionOptionsService _sessionOptionsService,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
@@ -31,7 +31,10 @@ class SessionCreationService({
       return await _createSession(request: request);
     } on PluginStaleOptionsException catch (error, stackTrace) {
       try {
-        await _invalidateRejectedSelection(pluginId: request.pluginId, projectId: request.projectId);
+        await _sessionOptionsService.invalidateRejectedSelection(
+          pluginId: request.pluginId,
+          projectId: request.projectId,
+        );
       } on Object catch (invalidationError, invalidationStackTrace) {
         Log.w("Failed to invalidate stale options after session creation", invalidationError, invalidationStackTrace);
       }

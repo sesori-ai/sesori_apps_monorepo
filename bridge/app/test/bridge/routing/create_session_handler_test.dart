@@ -20,6 +20,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -69,6 +70,7 @@ void main() {
     late SessionOperationDispatcher sessionOperationDispatcher;
     late SessionMutationDispatcher sessionMutationDispatcher;
     late SessionCreationService sessionCreationService;
+    late FakeSessionOptionsService sessionOptionsService;
     late CreateSessionHandler handler;
     late AppDatabase db;
 
@@ -77,6 +79,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", "/tmp"]);
       plugin = _OpenCodeFakeBridgePlugin();
       metadataRepository = FakeSessionMetadataRepository();
+      sessionOptionsService = FakeSessionOptionsService();
       worktreeService = _FakeWorktreeService(database: db);
       defaultsRepository = NewSessionDefaultsRepository(
         dao: NewSessionDefaultsDao(database: db),
@@ -100,7 +103,7 @@ void main() {
         sessionRepository: sessionRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
       handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
     });
@@ -475,16 +478,13 @@ void main() {
         sessionOperationDispatcher: localOperationDispatcher,
         worktreeService: worktreeService,
       );
-      ({String pluginId, String projectId})? invalidated;
       final localCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: localRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
-        invalidateRejectedSelection: ({required String pluginId, required String projectId}) async {
-          invalidated = (pluginId: pluginId, projectId: projectId);
-        },
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
       worktreeService.prepareResult = WorktreeSuccess(
@@ -510,7 +510,9 @@ void main() {
         ),
         throwsA(isA<StaleSessionPromptOptionsException>()),
       );
-      expect(invalidated, (pluginId: legacyMissingPluginId, projectId: "/repo"));
+      expect(sessionOptionsService.explicitInvalidations, [
+        (pluginId: legacyMissingPluginId, projectId: "/repo"),
+      ]);
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
@@ -996,7 +998,7 @@ void main() {
         sessionRepository: orderedRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
 
@@ -1181,7 +1183,7 @@ void main() {
         sessionRepository: throwingRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
       final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
 
@@ -1209,8 +1211,6 @@ void main() {
     });
   });
 }
-
-Future<void> _ignore({required String pluginId, required String projectId}) async {}
 
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   String? lastPrepareProjectId;

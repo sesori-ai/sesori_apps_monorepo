@@ -10,6 +10,7 @@ abstract final class CopilotBinary() {
 
   /// Copilot's standard ACP authentication method for its local login state.
   static const String acpAuthMethodId = "copilot-login";
+  static const String loginActionHint = "Run `copilot login` on the bridge machine, then retry GitHub Copilot.";
 
   static AcpLaunchSpec launchSpec({
     required String binary,

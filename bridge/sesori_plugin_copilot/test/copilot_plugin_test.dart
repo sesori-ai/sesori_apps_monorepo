@@ -77,6 +77,7 @@ void main() {
           "options": [
             {"value": "gpt-5.4"},
             {"value": "claude-sonnet-4.5"},
+            {"value": "gemini-3-pro"},
           ],
         },
         {
@@ -171,6 +172,37 @@ void main() {
       process.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
     }
 
+    Future<void> completeReasoningDiscovery({
+      required FakeAcpProcess process,
+      required String selectedModel,
+      required List<String> reasoningLevels,
+    }) async {
+      await completeHandshake(process: process);
+      final newSession = await waitForFrame(process: process, method: "session/new");
+      process.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "catalog-session",
+          "update": {"sessionUpdate": "available_commands_update", "availableCommands": <Object>[]},
+        },
+      });
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": newSession["id"],
+        "result": catalogResult(model: "gpt-5.4", reasoningLevels: const ["low", "high"]),
+      });
+      final selectModel = await waitForFrame(process: process, method: "session/set_config_option");
+      expect((selectModel["params"] as Map)["value"], selectedModel);
+      process.emit({
+        "jsonrpc": "2.0",
+        "id": selectModel["id"],
+        "result": catalogResult(model: selectedModel, reasoningLevels: reasoningLevels),
+      });
+      final closeSession = await waitForFrame(process: process, method: "session/close");
+      process.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
+    }
+
     test("completes Copilot's standard ACP handshake", () async {
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(process: fake, method: "initialize");
@@ -216,43 +248,34 @@ void main() {
       );
     });
 
-    test("refreshes the selected model's reasoning before validation", () async {
+    test("serializes reasoning refreshes for different selected models", () async {
       final connecting = plugin.ensureConnected();
       await completeHandshake(process: fake);
       await connecting;
-      final validating = plugin.validateTurnSelection(
+      final claude = plugin.validateTurnSelection(
         operation: "sendPrompt",
         model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
         variant: const PluginSessionVariant(id: "high"),
         agent: null,
       );
-      final process = catalogFakes.first;
-      await completeHandshake(process: process);
-      final newSession = await waitForFrame(process: process, method: "session/new");
-      process.emit({
-        "jsonrpc": "2.0",
-        "method": "session/update",
-        "params": {
-          "sessionId": "catalog-session",
-          "update": {"sessionUpdate": "available_commands_update", "availableCommands": <Object>[]},
-        },
-      });
-      process.emit({
-        "jsonrpc": "2.0",
-        "id": newSession["id"],
-        "result": catalogResult(model: "gpt-5.4", reasoningLevels: const ["low", "high"]),
-      });
-      final selectModel = await waitForFrame(process: process, method: "session/set_config_option");
-      expect((selectModel["params"] as Map)["value"], "claude-sonnet-4.5");
-      process.emit({
-        "jsonrpc": "2.0",
-        "id": selectModel["id"],
-        "result": catalogResult(model: "claude-sonnet-4.5", reasoningLevels: const ["low"]),
-      });
-      final closeSession = await waitForFrame(process: process, method: "session/close");
-      process.emit({"jsonrpc": "2.0", "id": closeSession["id"], "result": <String, dynamic>{}});
-
-      await expectLater(validating, throwsA(isA<PluginStaleOptionsException>()));
+      final gemini = plugin.validateTurnSelection(
+        operation: "sendPrompt",
+        model: (providerID: "copilot", modelID: "gemini-3-pro"),
+        variant: const PluginSessionVariant(id: "high"),
+        agent: null,
+      );
+      await completeReasoningDiscovery(
+        process: catalogFakes.first,
+        selectedModel: "claude-sonnet-4.5",
+        reasoningLevels: const ["low", "high"],
+      );
+      await claude;
+      await completeReasoningDiscovery(
+        process: catalogFakes.last,
+        selectedModel: "gemini-3-pro",
+        reasoningLevels: const ["low"],
+      );
+      await expectLater(gemini, throwsA(isA<PluginStaleOptionsException>()));
     });
 
     test("retains local Copilot login guidance after authentication failure", () async {
@@ -263,7 +286,7 @@ void main() {
       expect(plugin.authenticationFailureActionHint, contains("copilot login"));
     });
 
-    test("legacy option getters surface isolated discovery failures", () async {
+    test("catalog authentication failures remain typed", () async {
       final connecting = plugin.ensureConnected();
       await completeHandshake(process: fake);
       await connecting;
@@ -272,10 +295,10 @@ void main() {
       await expectLater(
         agents,
         throwsA(
-          isA<PluginOperationException>().having(
-            (error) => error.cause,
-            "cause",
-            isA<PluginAuthenticationRequiredException>(),
+          isA<PluginAuthenticationRequiredException>().having(
+            (error) => error.actionHint,
+            "action hint",
+            contains("copilot login"),
           ),
         ),
       );

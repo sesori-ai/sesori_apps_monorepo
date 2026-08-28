@@ -80,9 +80,8 @@ class CopilotPlugin._({
   String? get authMethodId => CopilotBinary.acpAuthMethodId;
 
   @override
-  String? get authenticationFailureActionHint => super.authenticationFailureActionHint == null
-      ? null
-      : "Run `copilot login` on the bridge machine, then retry GitHub Copilot.";
+  String? get authenticationFailureActionHint =>
+      super.authenticationFailureActionHint == null ? null : CopilotBinary.loginActionHint;
 
   @override
   bool get cancelsActiveTurnForQueuedInput => true;

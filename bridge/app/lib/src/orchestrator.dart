@@ -391,7 +391,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
-      invalidateRejectedSelection: sessionOptionsService.invalidateRejectedSelection,
+      sessionOptionsService: sessionOptionsService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,

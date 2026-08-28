@@ -19,6 +19,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
@@ -32,10 +33,9 @@ void main() {
     late SessionMutationDispatcher mutationDispatcher;
     late NewSessionDefaultsRepository defaultsRepository;
     late SessionCreationService service;
-    ({String pluginId, String projectId})? invalidated;
+    late FakeSessionOptionsService sessionOptionsService;
 
     setUp(() async {
-      invalidated = null;
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       defaultsRepository = NewSessionDefaultsRepository(
@@ -43,6 +43,7 @@ void main() {
       );
       plugin = _FakePlugin();
       metadataRepository = _FakeSessionMetadataRepository();
+      sessionOptionsService = FakeSessionOptionsService();
       worktreeService = _FakeWorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: db.projectsDao,
@@ -73,9 +74,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
-        invalidateRejectedSelection: ({required String pluginId, required String projectId}) async {
-          invalidated = (pluginId: pluginId, projectId: projectId);
-        },
+        sessionOptionsService: sessionOptionsService,
       );
     });
 
@@ -141,7 +140,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
 
       final creation = localService.createSession(
@@ -274,7 +273,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
 
       final creation = localService.createSession(
@@ -331,7 +330,7 @@ void main() {
       );
       expect(metadataRepository.generateCalls, isZero);
       expect(await defaultsRepository.read(pluginId: "fake"), isNull);
-      expect(invalidated, (pluginId: "fake", projectId: "/repo"));
+      expect(sessionOptionsService.explicitInvalidations, [(pluginId: "fake", projectId: "/repo")]);
     });
 
     test("stores the created root and remembers its complete plugin-scoped selection", () async {
@@ -391,7 +390,7 @@ void main() {
         ),
         newSessionDefaultsRepository: gatedDefaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -435,7 +434,7 @@ void main() {
         ),
         newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
         sessionMutationDispatcher: mutationDispatcher,
-        invalidateRejectedSelection: _ignore,
+        sessionOptionsService: sessionOptionsService,
       );
       late Session created;
 
@@ -701,8 +700,6 @@ void main() {
     });
   });
 }
-
-Future<void> _ignore({required String pluginId, required String projectId}) async {}
 
 class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   int generateCalls = 0;
