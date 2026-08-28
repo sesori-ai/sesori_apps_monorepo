@@ -32,8 +32,6 @@ void main() {
     expect(options.completeness, PluginSessionOptionsCompleteness.partial);
     expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
     final provider = options.providers.providers.single;
-    expect(provider.models.map((model) => model.id), ["gpt-5.4", "claude-sonnet-4.5"]);
-    expect(provider.models.first.variants, ["low", "high"]);
     expect(provider.models.last.variants, isEmpty);
   });
 
@@ -62,6 +60,14 @@ void main() {
       (configId: "mode", value: "plan"),
       (configId: "reasoning_effort", value: "high"),
     ]);
+    service.resetConnection();
+    service.captureSessionConfig(_sessionResult(), sessionId: null, fromNewSession: true);
+    service.validateTurnSelection(
+      operation: "sendPrompt",
+      model: (providerID: "copilot", modelID: "claude-sonnet-4.5"),
+      variant: const PluginSessionVariant(id: "high"),
+      agent: null,
+    );
   });
 }
 

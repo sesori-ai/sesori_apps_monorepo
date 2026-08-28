@@ -31,7 +31,6 @@ import "repositories/acp_session_config_repository.dart";
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
-/// [captureSessionConfig], [validateTurnSelection], [applyTurnSelection], [mapPromptFailure],
 /// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
 /// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
 /// agent exposes a richer model catalog than the neutral process default.
@@ -256,7 +255,6 @@ abstract class AcpPlugin({
     required bool fromNewSession,
   }) {}
 
-  /// Rejects a stale selection before a prompt or command is accepted.
   Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,

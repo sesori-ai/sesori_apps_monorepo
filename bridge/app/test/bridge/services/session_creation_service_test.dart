@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -70,6 +71,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
+        invalidateRejectedSelection: _ignore,
       );
     });
 
@@ -135,6 +137,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
+        invalidateRejectedSelection: _ignore,
       );
 
       final creation = localService.createSession(
@@ -267,6 +270,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
+        invalidateRejectedSelection: _ignore,
       );
 
       final creation = localService.createSession(
@@ -294,7 +298,7 @@ void main() {
       await runtime.dispose();
     });
 
-    test("maps stale command selections during creation to a generic bad request", () async {
+    test("maps stale command selections during creation to a typed rejection", () async {
       plugin.sendCommandError = const PluginStaleOptionsException(
         "sendCommand",
         message: "unsupported command model",
@@ -314,9 +318,11 @@ void main() {
           ),
         ),
         throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "status", 400)
-              .having((error) => error.cause, "cause", isA<PluginStaleOptionsException>()),
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginStaleOptionsException>(),
+          ),
         ),
       );
       expect(metadataRepository.generateCalls, isZero);
@@ -380,6 +386,7 @@ void main() {
         ),
         newSessionDefaultsRepository: gatedDefaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
+        invalidateRejectedSelection: _ignore,
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -423,6 +430,7 @@ void main() {
         ),
         newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
         sessionMutationDispatcher: mutationDispatcher,
+        invalidateRejectedSelection: _ignore,
       );
       late Session created;
 
@@ -688,6 +696,8 @@ void main() {
     });
   });
 }
+
+Future<void> _ignore({required String pluginId, required String projectId}) async {}
 
 class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   int generateCalls = 0;

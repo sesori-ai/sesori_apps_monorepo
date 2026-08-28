@@ -211,7 +211,6 @@ class CopilotSessionOptionsService({
     _snapshot = null;
     _defaultModelValue = null;
     _defaultModeValue = null;
-    _reasoningByModel.clear();
     _configurationTracker.clear();
     _lastDiscoveryFailure = null;
   }

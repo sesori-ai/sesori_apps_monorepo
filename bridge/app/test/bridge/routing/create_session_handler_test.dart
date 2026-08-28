@@ -100,11 +100,9 @@ void main() {
         sessionRepository: sessionRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
-      );
-      handler = CreateSessionHandler(
-        sessionCreationService: sessionCreationService,
         invalidateRejectedSelection: _ignore,
       );
+      handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
     });
 
     tearDown(() async {
@@ -477,20 +475,18 @@ void main() {
         sessionOperationDispatcher: localOperationDispatcher,
         worktreeService: worktreeService,
       );
+      ({String pluginId, String projectId})? invalidated;
       final localCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
         worktreeService: worktreeService,
         sessionRepository: localRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
-      );
-      ({String pluginId, String projectId})? invalidated;
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: localCreationService,
         invalidateRejectedSelection: ({required String pluginId, required String projectId}) async {
           invalidated = (pluginId: pluginId, projectId: projectId);
         },
       );
+      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
@@ -1000,11 +996,9 @@ void main() {
         sessionRepository: orderedRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
-      );
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: orderedCreationService,
         invalidateRejectedSelection: _ignore,
       );
+      final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
 
       await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1187,11 +1181,9 @@ void main() {
         sessionRepository: throwingRepository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
-      );
-      final localHandler = CreateSessionHandler(
-        sessionCreationService: localCreationService,
         invalidateRejectedSelection: _ignore,
       );
+      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
 
       final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),
