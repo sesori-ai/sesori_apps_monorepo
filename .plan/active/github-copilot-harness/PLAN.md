@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `github-copilot-harness`
-- **Status:** active; Steps 1-5/7 merged (#1154, #1155, #1158, #1159, #1161), Step 6/7 implemented and verified locally
+- **Status:** active; Steps 1-6/7 merged (#1154, #1155, #1158, #1159,
+  #1161, #1163); Step 7 verification failed and retirement is blocked
 - **Plan date:** 2026-08-27
 - **Implementation base:** current `origin/main`
 - **Delivery:** seven PRs with the fixed titles below
@@ -190,6 +191,28 @@ Step 7 records Copilot version, bridge/app build, bridge host, client platform,
 account type without identifiers, chosen model/mode, privacy-safe evidence,
 cleanup, and Pass/Partial/Fail/Blocked for each row. Prompts, transcripts, paths,
 tokens, session ids, account ids, and raw logs stay out of the repository.
+
+## Step 7 Verification Result
+
+Execution on 2026-08-28 found one release-blocking product failure. After a
+clean bridge restart, the first cold history read expanded two Copilot
+transcripts from 33 and 17 messages to 63 and 29. Privacy-safe semantic hashes
+identified 30 and 11 extra duplicate messages respectively; the imported replay
+identities did not converge with the earlier live identities. This fails both
+`session-history-and-recovery.md` and the replay portion of
+`tools-and-file-changes.md`.
+
+The same run passed managed installation, live turns, commands, two concurrent
+sessions, queued-prompt cancellation, abort, Once/Reject/Always permissions,
+pending-permission abort cleanup, accepted image input, client diffs,
+plugin-local crash/reconnect, clean shutdown, and local deletion. Several
+required matrix variants were unavailable rather than failed: alternate bridge
+host, older client/bridge pair, unauthenticated normal Copilot profile,
+multi-page live catalog, a model/account image rejection, and direct observation
+of retained private Copilot history. No reduction has been accepted. Keep this
+plan active and do not move it to `.plan/completed/` until the duplicate replay
+is fixed and the required matrix passes or the owner explicitly accepts the
+remaining unavailable variants.
 
 ## Risks And Test Focus
 
