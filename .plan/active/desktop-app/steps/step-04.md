@@ -7,8 +7,8 @@ Date: 2026-08-28.
 - Expanded Layer-3 `BridgeProcessService` with an independent desired-state
   enum and typed lifecycle states for login-required, contention, scheduled
   crash retry, and crash give-up.
-- Centralized the supervised exit vocabulary and mapped clean/expected exits to
-  stop, restart (86) to one immediate respawn, auth-required (87) to a
+- Centralized the supervised exit vocabulary in `sesori_shared` and mapped
+  clean/expected exits to stop, restart (86) to one immediate respawn, auth-required (87) to a
   no-thrash login-required state, and bridge contention (88) to a state that
   presentation can render without forcing a modal during hidden startup.
 - Kept desired On across auth-required and subscribed to `AuthSession`; a later
@@ -59,5 +59,6 @@ and the two Layer-3 services do not depend on each other.
 - `client/desktop`: `flutter test` — 22 tests passed; four-phase DI resolves
   both Layer-3 services.
 - Regenerated desktop-core Injectable output with `build_runner`.
-- Change size after review fixes: 1,520 changed lines including new files, a
-  20-line review-driven overage beyond the 1,500-line soft cap.
+- Shared/bridge contract analyzers are clean; 2 mapping and 26 runtime/coordinator tests passed.
+- Change size after review fixes: 1,657 changed lines including new files, a
+  157-line review-driven overage beyond the 1,500-line soft cap.

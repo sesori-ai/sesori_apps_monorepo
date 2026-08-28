@@ -218,8 +218,9 @@ binary resolution for dev builds (explicit configured path with a
 repo-sensible default); bundled-layout resolution is distribution-plan scope.
 First real GUI↔helper handshake since the prior plan's wire verification.
 
-**Step 4 — 🚧 Exit-code state machine + prompt answers.** In
-`BridgeProcessService`: 86→immediate respawn; 87→stop with login-required —
+**Step 4 — 🚧 Exit-code state machine + prompt answers.** Shared
+`BridgeSupervisedExitCode` drives both products: 86→immediate respawn;
+87→stop with login-required —
 and a successful sign-in restarts a helper whose desired state was On (a
 manual Off stays off), covered by the state-machine tests;
 88→stop with "another bridge is running" + Take-over; 0/expected→stop;
@@ -240,8 +241,8 @@ dispatcher, and the dispatcher stays inbound-only. The expected-stop
 repository's atomic stop operation (step 2), keeping that operation in one
 owner. Includes hidden-boot render
 policy: contention during a silent autostart surfaces as state, never a modal.
-*Overage: ~1.5k changed lines after review-driven lifecycle-race and per-helper
-prompt-ownership hardening.*
+*Overage: ~1.7k changed lines after review-driven lifecycle-race,
+per-helper prompt-ownership, and shared exit-contract hardening.*
 
 ### M2 — Control surface
 

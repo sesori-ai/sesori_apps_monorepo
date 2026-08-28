@@ -4,7 +4,7 @@ library;
 
 // The signed-in account carried by AuthGateState (move + re-export pattern,
 // so shell consumers don't need a direct sesori_shared import for it).
-export "package:sesori_shared/sesori_shared.dart" show AuthUser;
+export "package:sesori_shared/sesori_shared.dart" show AuthUser, BridgeSupervisedExitCode;
 
 export "src/api/bridge_process_api.dart";
 export "src/api/bridge_process_log_storage.dart";

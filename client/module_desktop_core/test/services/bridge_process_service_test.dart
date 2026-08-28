@@ -122,18 +122,18 @@ void main() {
       expect(service.state, isA<BridgeProcessStopped>());
     });
 
-    test("an unexpected child exit tears down the channel and schedules a bounded retry", () async {
+    test("control-channel loss tears down the channel and schedules a bounded retry", () async {
       authSession.state = _authenticatedState;
       await service.start();
 
-      repository.emitExit(exitCode: 7, expected: false);
+      repository.emitExit(exitCode: 1, expected: false);
       await pumpEventQueue();
 
       expect(controlServer.stopCalls, 1);
       expect(
         service.state,
         isA<BridgeProcessCrashRetryScheduled>()
-            .having((state) => state.exitCode, "exitCode", 7)
+            .having((state) => state.exitCode, "exitCode", 1)
             .having((state) => state.crashCount, "crashCount", 1)
             .having((state) => state.delay, "delay", const Duration(hours: 1)),
       );

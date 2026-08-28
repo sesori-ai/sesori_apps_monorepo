@@ -5,23 +5,6 @@ import "../trackers/bridge_process_log_tracker.dart";
 // ignore: use_primary_constructors
 enum BridgeProcessDesiredState { off, on }
 
-/// Deliberate child exit codes shared by the supervised bridge contract.
-enum BridgeSupervisedExitCode({required final int code}) {
-  cleanStop(code: 0),
-  restart(code: 86),
-  authRequired(code: 87),
-  bridgeContention(code: 88);
-
-  static BridgeSupervisedExitCode? fromCode({required int code}) {
-    for (final BridgeSupervisedExitCode value in values) {
-      if (value.code == code) {
-        return value;
-      }
-    }
-    return null;
-  }
-}
-
 /// Lifecycle state published by `BridgeProcessService`.
 sealed class const BridgeProcessState();
 

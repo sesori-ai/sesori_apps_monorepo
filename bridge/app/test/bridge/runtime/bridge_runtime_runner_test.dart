@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_runner.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
@@ -30,15 +31,15 @@ void main() {
     test("uses auth-required when no lifecycle outcome exists", () {
       expect(
         BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: null),
-        SupervisedExitCode.authRequired,
+        BridgeSupervisedExitCode.authRequired,
       );
     });
 
     test("preserves a lifecycle outcome selected before token cancellation", () {
-      for (final SupervisedExitCode requestedExit in <SupervisedExitCode>[
-        SupervisedExitCode.cleanStop,
-        SupervisedExitCode.controlChannelLost,
-        SupervisedExitCode.restart,
+      for (final BridgeSupervisedExitCode requestedExit in <BridgeSupervisedExitCode>[
+        BridgeSupervisedExitCode.cleanStop,
+        BridgeSupervisedExitCode.controlChannelLost,
+        BridgeSupervisedExitCode.restart,
       ]) {
         expect(
           BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: requestedExit),

@@ -89,6 +89,7 @@ export "src/models/sesori/success_empty_response.dart";
 export "src/models/sesori/update_session_archive_request.dart";
 export "src/models/sesori/yolo_settings.dart";
 export "src/notifications/session_notification_id.dart";
+export "src/protocol/bridge_supervised_exit_code.dart";
 export "src/protocol/close_codes.dart";
 export "src/protocol/constants.dart";
 export "src/protocol/control_message.dart";

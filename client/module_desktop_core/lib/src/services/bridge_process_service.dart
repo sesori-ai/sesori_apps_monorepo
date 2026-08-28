@@ -4,6 +4,7 @@ import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 
 import "../foundation/control_channel_server.dart";
 import "../foundation/platform/bridge_executable_path_resolver.dart";
@@ -467,7 +468,7 @@ class BridgeProcessService.forTesting({
         _crashCount = 0;
         _publish(const BridgeProcessContention());
         return;
-      case null:
+      case BridgeSupervisedExitCode.controlChannelLost || null:
         _scheduleCrashRetry(
           exitCode: exitCode,
           generation: generation,
