@@ -1,7 +1,6 @@
 import "dart:convert";
 import "dart:typed_data";
 
-import "package:crypto/crypto.dart" show sha256;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -367,8 +366,9 @@ class ChatHistoryRepository({
   /// assigned to the same visible messages. Normalized semantic matching in the
   /// same nearest-distinct visible-message context drops retained duplicates up
   /// to the imported multiplicity while preserving truly live-only rows and
-  /// additional identical messages. The imported row remains authoritative for
-  /// replay metadata.
+  /// additional identical messages. Exact identities consume replay capacity
+  /// first, and stale rows due for removal do not shape semantic context. The
+  /// imported row remains authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -385,6 +385,7 @@ class ChatHistoryRepository({
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
+    final storedIds = {for (final row in storedRows) row.messageId};
     final storedPartRows = await _chatHistoryDao.getParts(sessionId: sessionId);
     final storedPartJsonByMessage = <String, List<String>>{};
     for (final row in storedPartRows) {
@@ -438,8 +439,12 @@ class ChatHistoryRepository({
       );
     }
 
+    final storedContextRows = [
+      for (final row in storedRows)
+        if (importedIds.contains(row.messageId) || lastImportedAt == null || row.updatedAt > lastImportedAt) row,
+    ];
     final storedSemanticFingerprints = <_SemanticMessageFingerprints?>[];
-    for (final row in storedRows) {
+    for (final row in storedContextRows) {
       storedSemanticFingerprints.add(
         await _semanticMessageFingerprints(
           sessionId: sessionId,
@@ -454,15 +459,17 @@ class ChatHistoryRepository({
     final importedSemanticContexts = _semanticContextFingerprints(fingerprints: importedSemanticFingerprints);
     final storedSemanticContexts = _semanticContextFingerprints(fingerprints: storedSemanticFingerprints);
     final importedSemanticCounts = <String, int>{};
-    for (final fingerprint in importedSemanticContexts) {
+    for (var index = 0; index < importedSemanticContexts.length; index++) {
+      if (storedIds.contains(messages[index].info.id)) continue;
+      final fingerprint = importedSemanticContexts[index];
       if (fingerprint != null) importedSemanticCounts[fingerprint] = (importedSemanticCounts[fingerprint] ?? 0) + 1;
     }
 
     final storedSemanticOccurrences = <String, int>{};
     final semanticallyImportedStoredIds = <String>{};
-    for (var index = 0; index < storedRows.length; index++) {
-      final row = storedRows[index];
-      if (importedIds.contains(row.messageId) || (lastImportedAt != null && row.updatedAt <= lastImportedAt)) continue;
+    for (var index = 0; index < storedContextRows.length; index++) {
+      final row = storedContextRows[index];
+      if (importedIds.contains(row.messageId)) continue;
       final fingerprint = storedSemanticContexts[index];
       if (fingerprint == null) continue;
       final occurrence = (storedSemanticOccurrences[fingerprint] ?? 0) + 1;
@@ -735,10 +742,11 @@ class ChatHistoryRepository({
         for (var index = 0; index < parts.length; index++)
           if (parts[index] is! MessagePartReasoning) canonicalParts[index],
       ];
-      return (
-        content: _jsonFingerprint(value: {"info": info, "parts": canonicalParts}),
-        context: _jsonFingerprint(value: {"info": info, "parts": contextParts}),
-      );
+      final content = await _jsonFingerprint(value: {"info": info, "parts": canonicalParts});
+      final context = contextParts.length == canonicalParts.length
+          ? content
+          : await _jsonFingerprint(value: {"info": info, "parts": contextParts});
+      return (content: content, context: context);
     } on Object catch (error, stackTrace) {
       Log.w(
         "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
@@ -749,7 +757,10 @@ class ChatHistoryRepository({
     }
   }
 
-  String _jsonFingerprint({required Object value}) => sha256.convert(utf8.encode(jsonEncode(value))).toString();
+  Future<String> _jsonFingerprint({required Object value}) async {
+    final digest = await calculateSha256(message: utf8.encode(jsonEncode(value)));
+    return base64UrlEncode(digest);
+  }
 
   List<String?> _semanticContextFingerprints({required List<_SemanticMessageFingerprints?> fingerprints}) {
     final previousDistinct = List<String?>.filled(fingerprints.length, null);

@@ -552,7 +552,7 @@ void main() {
       );
     });
 
-    test("semantic replay matching counts only rows eligible for retention", () async {
+    test("exact identity matches consume replay capacity before semantic matching", () async {
       final repository = _FakeSessionRepository(
         transcript: [_messageWithText(id: "replay", text: "repeated", createdAt: 100, promptId: null)],
       );
@@ -564,17 +564,47 @@ void main() {
         await _captureMessageWithParts(history: history, message: message);
       }
       await history.service.backfillSession(sessionId: "ses_a");
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay", "live-2"],
+      );
+
       await Future<void>.delayed(const Duration(milliseconds: 2));
       await _captureMessageWithParts(
         history: history,
         message: _messageWithText(id: "live-fresh", text: "repeated", createdAt: 300, promptId: "prompt-3"),
+      );
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay", "live-fresh"],
+      );
+    });
+
+    test("stale rows do not shape semantic replay context", () async {
+      final transcript = [
+        _messageWithText(id: "anchor", text: "anchor", createdAt: 100, promptId: null),
+        _messageWithText(id: "removed", text: "removed", createdAt: 200, promptId: null),
+      ];
+      final repository = _FakeSessionRepository(transcript: transcript);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      transcript
+        ..removeWhere((message) => message.info.id == "removed")
+        ..add(_messageWithText(id: "replay-result", text: "same result", createdAt: 300, promptId: null));
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(id: "live-result", text: "same result", createdAt: 300, promptId: "prompt-live"),
       );
 
       await history.service.backfillSession(sessionId: "ses_a");
 
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
-        const ["replay"],
+        const ["anchor", "replay-result"],
       );
     });
 

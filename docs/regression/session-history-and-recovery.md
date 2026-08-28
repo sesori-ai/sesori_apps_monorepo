@@ -31,18 +31,20 @@ reconnect or restart.
   before the next prompt without duplicating replay into the live stream. Sesori
   uses the public protocol and never reads Copilot credential or history files.
 - Messages visible live but absent from the backend's replay remain visible
-  after a stale re-read unless replay contains the same normalized message in
-  the same nearest-distinct visible-message context under a different identity. In that
-  case, replay replaces the live row up to replay's multiplicity; equal content
-  in another ordered context and additional repeated occurrences remain. The
-  comparison ignores identity, time, and agent/model attribution, normalizes
-  spilled attachments, and keeps replay metadata authoritative. Other retained
-  rows rejoin at their recorded creation time while preserving relative order,
-  so a catalog re-import cannot move old rows to the newest edge. A message a
-  backend replay once contained is the opposite case: its later absence is a
-  removal, so a re-read drops it. That is how a session rolled back outside
-  Sesori — an edited message in the backend's own client, with no removal events
-  reaching this bridge — stops showing the messages it replaced.
+  after a stale re-read. Exact identities satisfy their replay occurrences
+  first. Among the remaining rows, replay replaces a live row only when it has
+  the same normalized message and nearest-distinct visible-message context,
+  up to the remaining replay multiplicity. Equal content in another ordered
+  context and additional repeated occurrences remain, while stored rows already
+  stale at this import do not shape the comparison context. The comparison
+  ignores identity, time, and agent/model attribution, normalizes spilled
+  attachments, and keeps replay metadata authoritative. Other retained rows
+  rejoin at their recorded creation time while preserving relative order, so a
+  catalog re-import cannot move old rows to the newest edge. A message a backend
+  replay once contained is the opposite case: its later absence is a removal,
+  so a re-read drops it. That is how a session rolled back outside Sesori — an
+  edited message in the backend's own client, with no removal events reaching
+  this bridge — stops showing the messages it replaced.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
