@@ -44,16 +44,30 @@ Approved 2026-08-28. The reviewer applied B-Client, B-Bridge, and B-Shared and
 found no issues: dependency direction, lifecycle ownership, DI phase ordering,
 and class cohesion all match the plan.
 
+## Post-merge review follow-up
+
+A late automated review arrived after the step PR merged. Its five findings are
+addressed in a focused follow-up before step 3: the regression contract now
+covers supervised shutdown and diagnostics; partial helper lines are bounded
+before UTF-8 decoding; bootstrap token cancellation preserves a prior clean
+stop; transient application-support lookup failures can retry; and POSIX force
+stop now targets a helper-established process group instead of a process-table
+snapshot. The focused architecture plan and implementation reviews approved
+all B-Client/B-Bridge boundaries with no findings.
+
 ## Verification
 
 - `client/module_desktop_core`: `dart analyze --fatal-infos` — clean.
-- `client/module_desktop_core`: `dart test` — 75 tests passed.
+- `client/module_desktop_core`: `dart test` — 77 tests passed.
 - `shared/sesori_shared`: `dart analyze --fatal-infos` — clean.
 - `shared/sesori_shared`: `dart test test/protocol/control_message_test.dart` —
   18 tests passed.
 - `bridge/app`: `dart analyze --fatal-infos` — clean.
 - `bridge/app`: dispatcher + token-service focused tests — 28 tests passed.
-- `client/desktop`: `dart analyze --fatal-infos` and `flutter test` — passed.
+- Follow-up bridge process-group + runtime-decision tests — 14 tests passed;
+  host-native CLI build succeeded and a supervised launch reached the expected
+  refused control connection without a process-group FFI failure.
+- `client/desktop`: `dart analyze --fatal-infos` and `flutter test` — 18 tests passed.
 - Dart LSP: 0 diagnostics across 21 affected production files.
 - Regenerated shared Freezed/JSON and desktop Injectable outputs with
   `build_runner`.

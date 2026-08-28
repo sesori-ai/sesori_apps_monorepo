@@ -22,6 +22,7 @@ import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dar
 import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
@@ -207,6 +208,7 @@ class RunCommand() extends cli.Command<void> {
     final exitCode = await BridgeRuntimeRunner.run(
       options: options,
       pluginConfigs: pluginConfigs,
+      processGroupIsolation: ProcessGroupIsolation(),
     );
     await sleepPreventionService.dispose();
     exit(exitCode);

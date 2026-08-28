@@ -26,6 +26,28 @@ void main() {
     });
   });
 
+  group("BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit", () {
+    test("uses auth-required when no lifecycle outcome exists", () {
+      expect(
+        BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: null),
+        SupervisedExitCode.authRequired,
+      );
+    });
+
+    test("preserves a lifecycle outcome selected before token cancellation", () {
+      for (final SupervisedExitCode requestedExit in <SupervisedExitCode>[
+        SupervisedExitCode.cleanStop,
+        SupervisedExitCode.controlChannelLost,
+        SupervisedExitCode.restart,
+      ]) {
+        expect(
+          BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: requestedExit),
+          requestedExit,
+        );
+      }
+    });
+  });
+
   group("BridgeRuntimeRunner.shouldRunAppOnboarding", () {
     test("runs for an interactive standalone start even without a plugin", () {
       expect(

@@ -78,13 +78,12 @@ void main() {
       verify(() => fixture.process.kill(ProcessSignal.sigkill)).called(1);
     });
 
-    test("POSIX process-tree kill signals descendants deepest-first, then the helper", () async {
+    test("POSIX process-tree kill targets the dedicated helper process group", () async {
       final List<(int, ProcessSignal)> signals = <(int, ProcessSignal)>[];
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
         startProcess: _unusedStarter,
-        runCommand: ({required String executable, required List<String> arguments}) async =>
-            ProcessResult(1, 0, "100 1\n101 100\n102 101\n103 100\n", ""),
+        runCommand: _unusedCommandRunner,
         sendSignal: ({required int pid, required ProcessSignal signal}) {
           signals.add((pid, signal));
           return true;
@@ -93,14 +92,24 @@ void main() {
 
       await api.killProcessTree(pid: 100);
 
-      expect(
-        signals,
-        equals(<(int, ProcessSignal)>[
-          (102, ProcessSignal.sigkill),
-          (101, ProcessSignal.sigkill),
-          (103, ProcessSignal.sigkill),
-          (100, ProcessSignal.sigkill),
-        ]),
+      expect(signals, equals(<(int, ProcessSignal)>[(-100, ProcessSignal.sigkill)]));
+    });
+
+    test("POSIX process-tree kill reports rejected group delivery", () async {
+      final BridgeProcessApi api = BridgeProcessApi.forTesting(
+        isWindows: false,
+        startProcess: _unusedStarter,
+        runCommand: _unusedCommandRunner,
+        sendSignal: ({required int pid, required ProcessSignal signal}) => false,
+      );
+
+      await expectLater(
+        api.killProcessTree(pid: 100),
+        throwsA(
+          isA<BridgeProcessTreeKillException>()
+              .having((error) => error.pid, "pid", 100)
+              .having((error) => error.details, "details", contains("process group 100")),
+        ),
       );
     });
 

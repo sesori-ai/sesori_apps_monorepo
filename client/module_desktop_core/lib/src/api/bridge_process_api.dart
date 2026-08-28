@@ -116,13 +116,18 @@ class BridgeProcessApi.forTesting({
   }
 
   /// Force-kills the helper and every descendant process it owns.
+  ///
+  /// A supervised POSIX helper makes itself the leader of a dedicated process
+  /// group before starting backends, so one verified group signal covers
+  /// descendants created at any point during teardown. Windows uses its native
+  /// `taskkill /T /F` tree operation.
   Future<void> killProcessTree({required int pid}) async {
     _requirePositivePid(pid: pid);
     if (_isWindows) {
       await _killWindowsProcessTree(pid: pid);
       return;
     }
-    await _killPosixProcessTree(pid: pid);
+    _killPosixProcessTree(pid: pid);
   }
 
   Future<void> _killWindowsProcessTree({required int pid}) async {
@@ -139,46 +144,14 @@ class BridgeProcessApi.forTesting({
     }
   }
 
-  Future<void> _killPosixProcessTree({required int pid}) async {
-    final ProcessResult result = await _runCommand(
-      executable: "ps",
-      arguments: const ["-axo", "pid=,ppid="],
-    );
-    if (result.exitCode != 0) {
-      final String stderr = result.stderr.toString().trim();
+  void _killPosixProcessTree({required int pid}) {
+    final bool delivered = _sendSignal(pid: -pid, signal: ProcessSignal.sigkill);
+    if (!delivered) {
       throw BridgeProcessTreeKillException(
         pid: pid,
-        details: stderr.isEmpty ? "ps exited ${result.exitCode}" : stderr,
+        details: "SIGKILL could not be delivered to process group $pid",
       );
     }
-
-    final Map<int, List<int>> childrenByParent = <int, List<int>>{};
-    for (final String line in result.stdout.toString().split("\n")) {
-      final List<String> fields = line.trim().split(RegExp(r"\s+"));
-      if (fields.length < 2) {
-        continue;
-      }
-      final int? childPid = int.tryParse(fields[0]);
-      final int? parentPid = int.tryParse(fields[1]);
-      if (childPid == null || parentPid == null || childPid <= 0) {
-        continue;
-      }
-      childrenByParent.putIfAbsent(parentPid, () => <int>[]).add(childPid);
-    }
-
-    final List<int> descendants = <int>[];
-    void collectDescendants({required int parentPid}) {
-      for (final int childPid in childrenByParent[parentPid] ?? const <int>[]) {
-        collectDescendants(parentPid: childPid);
-        descendants.add(childPid);
-      }
-    }
-
-    collectDescendants(parentPid: pid);
-    for (final int descendantPid in descendants) {
-      _sendSignal(pid: descendantPid, signal: ProcessSignal.sigkill);
-    }
-    _sendSignal(pid: pid, signal: ProcessSignal.sigkill);
   }
 
   static void _requirePositivePid({required int pid}) {

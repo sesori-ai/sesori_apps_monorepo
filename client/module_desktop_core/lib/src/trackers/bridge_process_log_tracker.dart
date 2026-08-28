@@ -33,8 +33,9 @@ typedef BridgeProcessLogWarningReporter = void Function({
 /// Layer-2 owner of the supervised helper's stdout/stderr drain and recent-log
 /// state.
 ///
-/// Both pipes are continuously decoded with malformed-byte tolerance, so a
-/// chatty or imperfect helper can never block on a full OS pipe. Every line is
+/// Both pipes are continuously split under a byte cap and decoded with
+/// malformed-byte tolerance, so a chatty or imperfect helper can never block
+/// on a full OS pipe or grow one unterminated line without bound. Every line is
 /// retained in a last-N in-memory ring and independently offered to rotating
 /// Layer-1 storage; storage failures are rate-limited in local logs and never
 /// cancel either drain subscription.
@@ -42,6 +43,7 @@ typedef BridgeProcessLogWarningReporter = void Function({
 class BridgeProcessLogTracker.forTesting({
   required final BridgeProcessLogStorage _storage,
   required final int _maxEntries,
+  required final int _maxLineBytes,
   required final int _maxPendingPersistenceEntries,
   required final Duration _storageWarningInterval,
   required final DateTime Function() _now,
@@ -51,6 +53,7 @@ class BridgeProcessLogTracker.forTesting({
     : this.forTesting(
         storage: storage,
         maxEntries: defaultMaxEntries,
+        maxLineBytes: defaultMaxLineBytes,
         maxPendingPersistenceEntries: defaultMaxPendingPersistenceEntries,
         storageWarningInterval: defaultStorageWarningInterval,
         now: DateTime.now,
@@ -60,9 +63,11 @@ class BridgeProcessLogTracker.forTesting({
   @visibleForTesting
   this
     : assert(_maxEntries > 0, "maxEntries must be positive"),
+      assert(_maxLineBytes > 0, "maxLineBytes must be positive"),
       assert(_maxPendingPersistenceEntries > 0, "maxPendingPersistenceEntries must be positive");
 
   static const int defaultMaxEntries = 200;
+  static const int defaultMaxLineBytes = 64 * 1024;
   static const int defaultMaxPendingPersistenceEntries = 200;
   static const Duration defaultStorageWarningInterval = Duration(minutes: 1);
 
@@ -95,9 +100,8 @@ class BridgeProcessLogTracker.forTesting({
   StreamSubscription<String> _subscribe({
     required Stream<List<int>> stream,
     required BridgeProcessLogSource source,
-  }) => const Utf8Decoder(allowMalformed: true)
-      .bind(stream)
-      .transform(const LineSplitter())
+  }) => stream
+      .transform(_boundedLineTransformer())
       .listen(
         (line) => _record(source: source, message: line),
         onError: (Object error, StackTrace stackTrace) => _reportWarning(
@@ -107,6 +111,53 @@ class BridgeProcessLogTracker.forTesting({
         ),
         cancelOnError: false,
       );
+
+  /// Splits raw child bytes before UTF-8 decoding so even a stream that never
+  /// emits a newline retains at most [_maxLineBytes]. Oversized lines keep
+  /// their leading diagnostic context and carry an explicit truncation marker.
+  StreamTransformer<List<int>, String> _boundedLineTransformer() {
+    const int carriageReturn = 0x0D;
+    const int lineFeed = 0x0A;
+    final List<int> lineBytes = <int>[];
+    bool lineTruncated = false;
+    bool previousDelimiterWasCarriageReturn = false;
+
+    void emitLine(EventSink<String> sink) {
+      final String line = const Utf8Decoder(allowMalformed: true).convert(lineBytes);
+      sink.add(lineTruncated ? "$line [truncated after $_maxLineBytes bytes]" : line);
+      lineBytes.clear();
+      lineTruncated = false;
+    }
+
+    return StreamTransformer<List<int>, String>.fromHandlers(
+      handleData: (chunk, sink) {
+        for (final int byte in chunk) {
+          if (previousDelimiterWasCarriageReturn) {
+            previousDelimiterWasCarriageReturn = false;
+            if (byte == lineFeed) {
+              continue;
+            }
+          }
+          if (byte == carriageReturn || byte == lineFeed) {
+            emitLine(sink);
+            previousDelimiterWasCarriageReturn = byte == carriageReturn;
+            continue;
+          }
+          if (lineBytes.length < _maxLineBytes) {
+            lineBytes.add(byte);
+          } else {
+            lineTruncated = true;
+          }
+        }
+      },
+      handleDone: (sink) {
+        if (lineBytes.isNotEmpty || lineTruncated) {
+          emitLine(sink);
+        }
+        sink.close();
+      },
+    );
+  }
 
   void _record({required BridgeProcessLogSource source, required String message}) {
     final BridgeProcessLogEntry entry = BridgeProcessLogEntry(

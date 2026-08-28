@@ -20,6 +20,7 @@ void main() {
       tracker = BridgeProcessLogTracker.forTesting(
         storage: storage,
         maxEntries: 2,
+        maxLineBytes: 8,
         maxPendingPersistenceEntries: 3,
         storageWarningInterval: const Duration(minutes: 1),
         now: () => now,
@@ -74,6 +75,25 @@ void main() {
       await pumpEventQueue();
 
       expect(tracker.snapshot.map((entry) => entry.message), containsAll(<String>["�", "after"]));
+      expect(storage.logicalLines, hasLength(2));
+    });
+
+    test("bounds a newline-free line before decoding and continues draining", () async {
+      await tracker.attach(stdout: stdout.stream, stderr: stderr.stream);
+
+      stdout
+        ..add(utf8.encode("12345678"))
+        ..add(utf8.encode("90"));
+      await pumpEventQueue();
+      expect(tracker.snapshot, isEmpty);
+
+      stdout.add(utf8.encode("\nafter\n"));
+      await pumpEventQueue();
+
+      expect(
+        tracker.snapshot.map((entry) => entry.message),
+        ["12345678 [truncated after 8 bytes]", "after"],
+      );
       expect(storage.logicalLines, hasLength(2));
     });
 

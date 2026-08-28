@@ -58,6 +58,7 @@ import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
+import "../foundation/process_group_isolation.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
@@ -178,6 +179,7 @@ class const BridgeRuntimeRunner._() {
   static Future<int> run({
     required BridgeCliOptions options,
     required Map<String, PluginConfig> pluginConfigs,
+    required ProcessGroupIsolation processGroupIsolation,
   }) async {
     final startAbortController = StartAbortController();
     PluginRuntime? pluginRuntime;
@@ -362,6 +364,12 @@ class const BridgeRuntimeRunner._() {
     );
 
     try {
+      if (options.isSupervised) {
+        // The desktop force-stop path targets this group atomically, including
+        // backend processes forked after any earlier process-table observation.
+        processGroupIsolation.isolateCurrentProcess();
+      }
+
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -537,14 +545,26 @@ class const BridgeRuntimeRunner._() {
         try {
           authAccessToken = await supervisedTokenService.getAccessToken();
         } on ControlTokenUnavailableException catch (error, stackTrace) {
+          final bool exitAlreadyRequested = requestedSupervisedExit != null;
+          final SupervisedExitCode tokenUnavailableExit = resolveSupervisedTokenUnavailableExit(
+            requestedExit: requestedSupervisedExit,
+          );
+          if (exitAlreadyRequested) {
+            // A concurrent GUI shutdown disposes the token request. Preserve
+            // the outcome selected before teardown instead of emitting a false
+            // login-needed prompt or replacing clean stop 0 with auth-required.
+            Log.d("Supervised token request ended during ${tokenUnavailableExit.name} shutdown");
+            return tokenUnavailableExit.code;
+          }
+
           // The GUI cannot supply a token (signed out / mid-login / down). Exit
           // with the auth-required sentinel so the GUI prompts for login instead
           // of backoff-respawning a helper that can never start. The prompt is
           // advisory (best-effort); the exit code is the authoritative signal.
           Log.e("Cannot start supervised — no access token from the desktop app", error, stackTrace);
           controlPromptService?.announceLoginNeeded();
-          requestedSupervisedExit = SupervisedExitCode.authRequired;
-          return SupervisedExitCode.authRequired.code;
+          requestedSupervisedExit = tokenUnavailableExit;
+          return tokenUnavailableExit.code;
         }
         accessTokenProvider = supervisedTokenService;
         tokenRefresher = supervisedTokenService;
@@ -1004,6 +1024,11 @@ class const BridgeRuntimeRunner._() {
       }
     }
   }
+
+  @visibleForTesting
+  static SupervisedExitCode resolveSupervisedTokenUnavailableExit({
+    required SupervisedExitCode? requestedExit,
+  }) => requestedExit ?? SupervisedExitCode.authRequired;
 
   @visibleForTesting
   static bool shouldRunAppOnboarding({
