@@ -34,9 +34,11 @@ reconnect or restart.
   after a stale re-read. Exact identities satisfy their replay occurrences
   first. Among the remaining rows, replay replaces a live row only when it has
   the same normalized message and nearest-distinct visible-message context,
-  up to the remaining replay multiplicity. Equal content in another ordered
-  context and additional repeated occurrences remain, while stored rows already
-  stale at this import do not shape the comparison context. The comparison
+  up to the remaining replay multiplicity. When replay covers only part of a
+  repeated run, equal creation times align its occurrences; ambiguous rows with
+  absent or different times remain. Equal content in another ordered context
+  and additional repeated occurrences remain, while stored rows already stale
+  at this import do not shape the comparison context. The comparison
   ignores identity, time, and agent/model attribution, normalizes spilled
   attachments, and keeps replay metadata authoritative. Other retained rows
   rejoin at their recorded creation time while preserving relative order, so a

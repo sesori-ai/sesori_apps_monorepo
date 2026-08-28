@@ -30,7 +30,7 @@ typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 
 /// Identity of one stored part inside its session.
 typedef StoredPartRef = ({String messageId, String partId});
-typedef _SemanticMessageFingerprints = ({String content, String context});
+typedef _SemanticMessageFingerprints = ({String content, String context, int? createdAt});
 
 /// How fresh a session's stored transcript is.
 ///
@@ -367,8 +367,9 @@ class ChatHistoryRepository({
   /// same nearest-distinct visible-message context drops retained duplicates up
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
-  /// first, and stale rows due for removal do not shape semantic context. The
-  /// imported row remains authoritative for replay metadata.
+  /// first, stale rows due for removal do not shape semantic context, and a
+  /// partial repeated run matches only occurrences with equal creation times.
+  /// The imported row remains authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -458,24 +459,51 @@ class ChatHistoryRepository({
 
     final importedSemanticContexts = _semanticContextFingerprints(fingerprints: importedSemanticFingerprints);
     final storedSemanticContexts = _semanticContextFingerprints(fingerprints: storedSemanticFingerprints);
-    final importedSemanticCounts = <String, int>{};
+    final importedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < importedSemanticContexts.length; index++) {
       if (storedIds.contains(messages[index].info.id)) continue;
       final fingerprint = importedSemanticContexts[index];
-      if (fingerprint != null) importedSemanticCounts[fingerprint] = (importedSemanticCounts[fingerprint] ?? 0) + 1;
+      if (fingerprint != null) importedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
 
-    final storedSemanticOccurrences = <String, int>{};
-    final semanticallyImportedStoredIds = <String>{};
+    final storedIndexesByContext = <String, List<int>>{};
     for (var index = 0; index < storedContextRows.length; index++) {
       final row = storedContextRows[index];
       if (importedIds.contains(row.messageId)) continue;
       final fingerprint = storedSemanticContexts[index];
-      if (fingerprint == null) continue;
-      final occurrence = (storedSemanticOccurrences[fingerprint] ?? 0) + 1;
-      storedSemanticOccurrences[fingerprint] = occurrence;
-      if (occurrence <= (importedSemanticCounts[fingerprint] ?? 0)) {
-        semanticallyImportedStoredIds.add(row.messageId);
+      if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
+    }
+
+    final semanticallyImportedStoredIds = <String>{};
+    for (final entry in storedIndexesByContext.entries) {
+      final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
+      final storedIndexes = entry.value;
+      if (importedIndexes.length >= storedIndexes.length) {
+        semanticallyImportedStoredIds.addAll({
+          for (final index in storedIndexes) storedContextRows[index].messageId,
+        });
+        continue;
+      }
+
+      // A partial repeated run is ambiguous by content and order alone. Match
+      // only equal creation times; null or differing times stay retained rather
+      // than risking deletion of a separate live-only occurrence.
+      final storedIndexesByCreatedAt = <int, List<int>>{};
+      for (final index in storedIndexes) {
+        final createdAt = storedSemanticFingerprints[index]?.createdAt;
+        if (createdAt != null) storedIndexesByCreatedAt.putIfAbsent(createdAt, () => []).add(index);
+      }
+      final importedCountsByCreatedAt = <int, int>{};
+      for (final index in importedIndexes) {
+        final createdAt = importedSemanticFingerprints[index]?.createdAt;
+        if (createdAt != null) importedCountsByCreatedAt[createdAt] = (importedCountsByCreatedAt[createdAt] ?? 0) + 1;
+      }
+      for (final entry in importedCountsByCreatedAt.entries) {
+        final matchingStoredIndexes = storedIndexesByCreatedAt[entry.key] ?? const [];
+        final matchCount = entry.value < matchingStoredIndexes.length ? entry.value : matchingStoredIndexes.length;
+        for (var index = 0; index < matchCount; index++) {
+          semanticallyImportedStoredIds.add(storedContextRows[matchingStoredIndexes[index]].messageId);
+        }
       }
     }
 
@@ -719,8 +747,9 @@ class ChatHistoryRepository({
     required List<String> partJsons,
   }) async {
     try {
+      final message = Message.fromJson(jsonDecodeMap(infoJson));
       final info = _withoutFields(
-        source: Message.fromJson(jsonDecodeMap(infoJson)).toJson(),
+        source: message.toJson(),
         fields: const {"id", "sessionID", "promptId", "time", "agent", "modelID", "providerID"},
       );
       final parts = await _rehydrateParts(
@@ -746,7 +775,7 @@ class ChatHistoryRepository({
       final context = contextParts.length == canonicalParts.length
           ? content
           : await _jsonFingerprint(value: {"info": info, "parts": contextParts});
-      return (content: content, context: context);
+      return (content: content, context: context, createdAt: message.time?.created);
     } on Object catch (error, stackTrace) {
       Log.w(
         "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
