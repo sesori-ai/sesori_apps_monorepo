@@ -68,10 +68,11 @@ class const GitRemoteOriginParser() {
   }
 
   String _canonicalizeGenericUri({required Uri uri}) {
-    final defaultPort = _defaultPorts[uri.scheme];
+    final scheme = uri.scheme == "git+ssh" ? "ssh" : uri.scheme;
+    final defaultPort = _defaultPorts[scheme];
     final port = uri.hasPort && uri.port != defaultPort ? uri.port : null;
     return Uri(
-      scheme: uri.scheme,
+      scheme: scheme,
       userInfo: _username(userInfo: uri.userInfo),
       host: uri.host,
       port: port,

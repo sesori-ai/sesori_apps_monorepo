@@ -34,6 +34,13 @@ void main() {
     expect(origins, hasLength(4));
   });
 
+  test("canonicalizes Git SSH scheme aliases", () {
+    expect(
+      parser.parse(remoteUrl: "ssh://git@code.internal/repo.git"),
+      parser.parse(remoteUrl: "git+ssh://git@code.internal/repo.git"),
+    );
+  });
+
   test("normalizes explicit default ports within one protocol", () {
     expect(
       parser.parse(remoteUrl: "https://code.internal:443/repo.git"),
