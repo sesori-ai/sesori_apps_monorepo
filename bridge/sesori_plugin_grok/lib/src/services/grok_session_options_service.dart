@@ -22,6 +22,7 @@ class GrokSessionOptionsService({
   static const Duration _selectionTimeout = Duration(seconds: 30);
 
   String? _processDefaultReasoningEffort;
+  final Map<String, String> _sessionReasoningEfforts = {};
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
@@ -68,11 +69,18 @@ class GrokSessionOptionsService({
     if (catalog == null) return;
     _replaceCatalog(catalog: catalog, updateProcessDefaults: fromNewSession);
     if (sessionId != null) {
+      final currentModel = catalog.currentModel;
       _configurationTracker.setSessionOverride(
         sessionId: sessionId,
-        modelId: catalog.currentModel?.id,
-        providerId: catalog.currentModel == null ? null : _pluginId,
+        modelId: currentModel?.id,
+        providerId: currentModel == null ? null : _pluginId,
       );
+      final reasoningEffort = currentModel?.currentReasoningEffort;
+      if (reasoningEffort == null) {
+        _sessionReasoningEfforts.remove(sessionId);
+      } else {
+        _sessionReasoningEfforts[sessionId] = reasoningEffort;
+      }
     }
   }
 
@@ -124,9 +132,17 @@ class GrokSessionOptionsService({
     );
   }
 
-  void forgetSession({required String sessionId}) => _configurationTracker.forgetSession(sessionId: sessionId);
+  String? reasoningEffortForSession({required String sessionId}) => _sessionReasoningEfforts[sessionId];
 
-  void resetConnection() => _configurationTracker.clear();
+  void forgetSession({required String sessionId}) {
+    _configurationTracker.forgetSession(sessionId: sessionId);
+    _sessionReasoningEfforts.remove(sessionId);
+  }
+
+  void resetConnection() {
+    _configurationTracker.clear();
+    _sessionReasoningEfforts.clear();
+  }
 
   Future<void> _ensureCatalog() async {
     if (_catalogTracker.snapshot != null) return;

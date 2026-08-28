@@ -76,7 +76,16 @@ void main() {
       "opaque/provider:model-beta",
     );
     expect((await fixture.service.listAgents()).single.model?.variant, "high");
+    expect(fixture.service.reasoningEffortForSession(sessionId: "loaded-session"), isNull);
 
+    loadedModelState["currentModelId"] = "synthetic:model-alpha";
+    fixture.service.captureSessionConfig(
+      result: AcpNewSessionResult.fromJson({"sessionId": "reasoning-session", "models": loadedModelState}),
+      sessionId: "reasoning-session",
+      fromNewSession: false,
+    );
+    expect(fixture.service.reasoningEffortForSession(sessionId: "reasoning-session"), "low");
+    expect((await fixture.service.listAgents()).single.model?.variant, "high");
     fixture.service.captureSessionConfig(
       result: AcpNewSessionResult.fromJson(_jsonFixture(name: "session.json")),
       sessionId: "new-session",

@@ -169,8 +169,6 @@ mixin _$GrokModelMetadataDto {
 @pragma('vm:prefer-inline')
 $GrokModelMetadataDtoCopyWith<GrokModelMetadataDto> get copyWith => _$GrokModelMetadataDtoCopyWithImpl<GrokModelMetadataDto>(this as GrokModelMetadataDto, _$identity);
 
-  /// Serializes this GrokModelMetadataDto to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -226,7 +224,7 @@ as String?,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _GrokModelMetadataDto implements GrokModelMetadataDto {
   const _GrokModelMetadataDto({required this.supportsReasoningEffort,  List<GrokReasoningEffortOptionDto> reasoningEfforts = const <GrokReasoningEffortOptionDto>[], required this.reasoningEffort}): _reasoningEfforts = reasoningEfforts;
@@ -248,10 +246,7 @@ class _GrokModelMetadataDto implements GrokModelMetadataDto {
 @pragma('vm:prefer-inline')
 _$GrokModelMetadataDtoCopyWith<_GrokModelMetadataDto> get copyWith => __$GrokModelMetadataDtoCopyWithImpl<_GrokModelMetadataDto>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$GrokModelMetadataDtoToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
@@ -315,8 +310,6 @@ mixin _$GrokModelInfoDto {
 @pragma('vm:prefer-inline')
 $GrokModelInfoDtoCopyWith<GrokModelInfoDto> get copyWith => _$GrokModelInfoDtoCopyWithImpl<GrokModelInfoDto>(this as GrokModelInfoDto, _$identity);
 
-  /// Serializes this GrokModelInfoDto to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -385,7 +378,7 @@ $GrokModelMetadataDtoCopyWith<$Res>? get metadata {
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _GrokModelInfoDto implements GrokModelInfoDto {
   const _GrokModelInfoDto({required this.modelId, required this.name, required this.description, @JsonKey(name: "_meta") required this.metadata});
@@ -402,10 +395,7 @@ class _GrokModelInfoDto implements GrokModelInfoDto {
 @pragma('vm:prefer-inline')
 _$GrokModelInfoDtoCopyWith<_GrokModelInfoDto> get copyWith => __$GrokModelInfoDtoCopyWithImpl<_GrokModelInfoDto>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$GrokModelInfoDtoToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {
@@ -482,8 +472,6 @@ mixin _$GrokSessionModelStateDto {
 @pragma('vm:prefer-inline')
 $GrokSessionModelStateDtoCopyWith<GrokSessionModelStateDto> get copyWith => _$GrokSessionModelStateDtoCopyWithImpl<GrokSessionModelStateDto>(this as GrokSessionModelStateDto, _$identity);
 
-  /// Serializes this GrokSessionModelStateDto to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -538,7 +526,7 @@ as String?,
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
 class _GrokSessionModelStateDto implements GrokSessionModelStateDto {
   const _GrokSessionModelStateDto({ List<GrokModelInfoDto> availableModels = const <GrokModelInfoDto>[], required this.currentModelId}): _availableModels = availableModels;
@@ -559,10 +547,7 @@ class _GrokSessionModelStateDto implements GrokSessionModelStateDto {
 @pragma('vm:prefer-inline')
 _$GrokSessionModelStateDtoCopyWith<_GrokSessionModelStateDto> get copyWith => __$GrokSessionModelStateDtoCopyWithImpl<_GrokSessionModelStateDto>(this, _$identity);
 
-@override
-Map<String, dynamic> toJson() {
-  return _$GrokSessionModelStateDtoToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {

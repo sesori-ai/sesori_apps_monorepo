@@ -41,14 +41,6 @@ _GrokModelMetadataDto _$GrokModelMetadataDtoFromJson(Map json) =>
       reasoningEffort: json['reasoningEffort'] as String?,
     );
 
-Map<String, dynamic> _$GrokModelMetadataDtoToJson(
-  _GrokModelMetadataDto instance,
-) => <String, dynamic>{
-  'supportsReasoningEffort': ?instance.supportsReasoningEffort,
-  'reasoningEfforts': instance.reasoningEfforts.map((e) => e.toJson()).toList(),
-  'reasoningEffort': ?instance.reasoningEffort,
-};
-
 _GrokModelInfoDto _$GrokModelInfoDtoFromJson(Map json) => _GrokModelInfoDto(
   modelId: json['modelId'] as String?,
   name: json['name'] as String?,
@@ -59,14 +51,6 @@ _GrokModelInfoDto _$GrokModelInfoDtoFromJson(Map json) => _GrokModelInfoDto(
           Map<String, dynamic>.from(json['_meta'] as Map),
         ),
 );
-
-Map<String, dynamic> _$GrokModelInfoDtoToJson(_GrokModelInfoDto instance) =>
-    <String, dynamic>{
-      'modelId': ?instance.modelId,
-      'name': ?instance.name,
-      'description': ?instance.description,
-      '_meta': ?instance.metadata?.toJson(),
-    };
 
 _GrokSessionModelStateDto _$GrokSessionModelStateDtoFromJson(Map json) =>
     _GrokSessionModelStateDto(
@@ -81,13 +65,6 @@ _GrokSessionModelStateDto _$GrokSessionModelStateDtoFromJson(Map json) =>
           const <GrokModelInfoDto>[],
       currentModelId: json['currentModelId'] as String?,
     );
-
-Map<String, dynamic> _$GrokSessionModelStateDtoToJson(
-  _GrokSessionModelStateDto instance,
-) => <String, dynamic>{
-  'availableModels': instance.availableModels.map((e) => e.toJson()).toList(),
-  'currentModelId': ?instance.currentModelId,
-};
 
 _GrokInitializeMetadataDto _$GrokInitializeMetadataDtoFromJson(Map json) =>
     _GrokInitializeMetadataDto(

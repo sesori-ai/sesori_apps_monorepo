@@ -73,8 +73,8 @@
 - [x] Add exact `session/set_model` model/optional-effort writes with typed cause-preserving failures.
 - [x] Keep `GrokCatalogTracker` as the sole last-good catalog owner across initialize, new/load, and refresh capture.
 - [x] Expose one primary agent/provider with opaque model IDs and exact canonical effort strings.
-- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention, load-default isolation, stale options,
-  effort-only fallback, selection variants, and failed writes.
+- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention,
+  load-default/effort isolation, stale options, effort-only fallback, selection variants, and failed writes.
 - [x] Run 19 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
 - [x] Keep the measured Step 3 change below the 1,500-line soft cap (currently 1,305 lines before tracker updates).
 - [x] Run architecture implementation review over the Step 3 branch against the Step 2 branch; approved.

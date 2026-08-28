@@ -18,7 +18,7 @@ sealed class GrokReasoningEffortOptionDto with _$GrokReasoningEffortOptionDto {
 }
 
 /// Grok-owned metadata attached to one ACP model entry.
-@freezed
+@Freezed(fromJson: true, toJson: false)
 sealed class GrokModelMetadataDto with _$GrokModelMetadataDto {
   const factory({
     required bool? supportsReasoningEffort,
@@ -26,11 +26,30 @@ sealed class GrokModelMetadataDto with _$GrokModelMetadataDto {
     required String? reasoningEffort,
   }) = _GrokModelMetadataDto;
 
-  factory fromJson(Map<String, dynamic> json) => _$GrokModelMetadataDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) {
+    final sanitized = {...json};
+    final reasoningEfforts = json["reasoningEfforts"];
+    if (reasoningEfforts is! List) {
+      sanitized.remove("reasoningEfforts");
+    } else {
+      sanitized["reasoningEfforts"] = reasoningEfforts
+          .where(
+            (entry) =>
+                entry is Map &&
+                (entry["id"] == null || entry["id"] is String) &&
+                (entry["value"] == null || entry["value"] is String) &&
+                (entry["label"] == null || entry["label"] is String) &&
+                (entry["description"] == null || entry["description"] is String) &&
+                (entry["default"] == null || entry["default"] is bool),
+          )
+          .toList(growable: false);
+    }
+    return _$GrokModelMetadataDtoFromJson(sanitized);
+  }
 }
 
 /// One model advertised by Grok's legacy ACP model-state surface.
-@freezed
+@Freezed(toJson: false)
 sealed class GrokModelInfoDto with _$GrokModelInfoDto {
   const factory({
     required String? modelId,
@@ -43,7 +62,7 @@ sealed class GrokModelInfoDto with _$GrokModelInfoDto {
 }
 
 /// Current model plus the models available to a Grok ACP session.
-@freezed
+@Freezed(toJson: false)
 sealed class GrokSessionModelStateDto with _$GrokSessionModelStateDto {
   const factory({
     @Default(<GrokModelInfoDto>[]) List<GrokModelInfoDto> availableModels,

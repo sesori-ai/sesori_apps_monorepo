@@ -39,6 +39,8 @@ void main() {
               "supportsReasoningEffort": true,
               "reasoningEffort": "unknown",
               "reasoningEfforts": [
+                7,
+                {"value": 7, "default": true},
                 {"value": null, "default": true},
                 {"value": "medium", "default": true},
               ],
