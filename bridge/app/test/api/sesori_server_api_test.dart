@@ -87,6 +87,181 @@ void main() {
     });
   });
 
+  group("SesoriServerApi project glossary", () {
+    final projectKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    );
+
+    test("gets project words with an opaque key and bearer token", () async {
+      late http.Request request;
+      final tokenRefresher = FakeTokenRefresher(token: "secret-token");
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test/",
+        client: MockClient((incoming) async {
+          request = incoming;
+          return http.Response('{"words":["Sesori","XChaCha20"]}', 200);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: tokenRefresher,
+      );
+
+      final response = await api.getProjectGlossary(
+        projectKey: projectKey,
+        abortSignal: AbortSignal(),
+      );
+
+      expect(response.words, ["Sesori", "XChaCha20"]);
+      expect(request.method, "GET");
+      expect(
+        request.url,
+        Uri.parse("https://auth.example.test/voice/glossary?projectKey=${projectKey.value}"),
+      );
+      expect(request.headers["Authorization"], "Bearer secret-token");
+      expect(tokenRefresher.forceRefreshValues, [false]);
+    });
+
+    test("posts an exact repository scope and returns inserted words", () async {
+      late http.Request request;
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((incoming) async {
+          request = incoming;
+          return http.Response('{"added":["Sesori"]}', 200);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "secret-token"),
+      );
+
+      final response = await api.addProjectGlossaryWords(
+        request: ProjectGlossaryWordsRequest(
+          scope: ProjectGlossaryScope.repository(projectKey: projectKey),
+          words: const ["Sesori", "XChaCha20"],
+        ),
+        abortSignal: AbortSignal(),
+      );
+
+      expect(response.added, ["Sesori"]);
+      expect(request.method, "POST");
+      expect(request.url, Uri.parse("https://auth.example.test/voice/glossary"));
+      expect(request.headers["Authorization"], "Bearer secret-token");
+      expect(request.headers["Content-Type"], startsWith("application/json"));
+      expect(jsonDecode(request.body), {
+        "scope": {"type": "repository", "projectKey": projectKey.value},
+        "words": ["Sesori", "XChaCha20"],
+      });
+    });
+
+    test("deletes an exact bridge-local scope and returns the removal count", () async {
+      late http.Request request;
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((incoming) async {
+          request = incoming;
+          return http.Response('{"removed":2}', 200);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "secret-token"),
+      );
+
+      final response = await api.removeProjectGlossaryWords(
+        request: ProjectGlossaryWordsRequest(
+          scope: ProjectGlossaryScope.bridgeLocal(projectKey: projectKey, bridgeId: "bridge-1"),
+          words: const ["Sesori", "XChaCha20"],
+        ),
+        abortSignal: AbortSignal(),
+      );
+
+      expect(response.removed, 2);
+      expect(request.method, "DELETE");
+      expect(request.url, Uri.parse("https://auth.example.test/voice/glossary"));
+      expect(request.headers["Authorization"], "Bearer secret-token");
+      expect(request.headers["Content-Type"], startsWith("application/json"));
+      expect(jsonDecode(request.body), {
+        "scope": {
+          "type": "bridge_local",
+          "projectKey": projectKey.value,
+          "bridgeId": "bridge-1",
+        },
+        "words": ["Sesori", "XChaCha20"],
+      });
+    });
+
+    test("force-refreshes once after a glossary 401", () async {
+      final requests = <http.Request>[];
+      final tokenRefresher = FakeTokenRefresher(token: "stale", refreshedToken: "fresh");
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((request) async {
+          requests.add(request);
+          return request.headers["Authorization"] == "Bearer stale"
+              ? http.Response("unauthorized", 401)
+              : http.Response('{"words":[]}', 200);
+        }),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: tokenRefresher,
+      );
+
+      await api.getProjectGlossary(projectKey: projectKey, abortSignal: AbortSignal());
+
+      expect(requests, hasLength(2));
+      expect(requests.last.headers["Authorization"], "Bearer fresh");
+      expect(tokenRefresher.forceRefreshValues, [false, true]);
+    });
+
+    test("rejects non-success statuses and preserves malformed response causes", () async {
+      final statusApi = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((_) async => http.Response("failure", 503)),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
+      );
+      final malformedApi = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: MockClient((_) async => http.Response('{"words":"invalid"}', 200)),
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
+      );
+
+      await expectLater(
+        statusApi.getProjectGlossary(projectKey: projectKey, abortSignal: AbortSignal()),
+        throwsA(
+          isA<SesoriServerApiException>()
+              .having((error) => error.method, "method", "GET")
+              .having((error) => error.statusCode, "statusCode", 503),
+        ),
+      );
+      await expectLater(
+        malformedApi.getProjectGlossary(projectKey: projectKey, abortSignal: AbortSignal()),
+        throwsA(
+          isA<SesoriServerApiResponseException>()
+              .having((error) => error.innerError, "innerError", isA<TypeError>())
+              .having((error) => error.innerStackTrace, "innerStackTrace", isNot(StackTrace.empty)),
+        ),
+      );
+    });
+
+    test("aborts an in-flight glossary request during shutdown", () async {
+      final client = _AbortAwareClient();
+      final abortSignal = AbortSignal();
+      final api = SesoriServerApi(
+        authBackendUrl: "https://auth.example.test",
+        client: client,
+        requestDeadline: const Duration(seconds: 1),
+        tokenRefresher: FakeTokenRefresher(token: "token"),
+      );
+
+      final response = api.getProjectGlossary(
+        projectKey: projectKey,
+        abortSignal: abortSignal,
+      );
+      await client.sendStarted.future;
+      abortSignal.abort();
+
+      await expectLater(response, throwsA(isA<http.RequestAbortedException>()));
+      expect(client.abortObserved, isTrue);
+    });
+  });
+
   group("SesoriServerApi session metadata", () {
     test("acquires token and posts typed request while decoding title and branch", () async {
       late http.Request request;
