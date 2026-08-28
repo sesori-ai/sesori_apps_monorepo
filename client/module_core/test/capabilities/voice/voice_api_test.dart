@@ -6,6 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 import "package:test/test.dart";
 
 void main() {
@@ -28,15 +29,18 @@ void main() {
       return audioFile.path;
     }
 
-    test("success: sends multipart request and returns transcript", () async {
+    test("success: sends multipart request with optional opaque context", () async {
       final audioPath = await createAudioPath();
+      final glossaryKey = ProjectGlossaryKey.parse(
+        value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+      );
 
       when(
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
@@ -44,7 +48,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: glossaryKey,
       );
 
       expect(
@@ -60,8 +64,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           captureAny(),
           fromJson: captureAny(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: captureAny(named: "createFiles"),
+          fields: captureAny(named: "fields"),
           timeout: captureAny(named: "timeout"),
         ),
       ).captured;
@@ -79,7 +83,38 @@ void main() {
       expect(multipartFile.field, "audio");
       expect(multipartFile.filename, "clip.m4a");
 
-      expect(captured[3], const Duration(seconds: 120));
+      expect(captured[3], {"projectKey": glossaryKey.value});
+      expect(captured[4], const Duration(seconds: 120));
+    });
+
+    test("omits multipart project context when no key is available", () async {
+      final audioPath = await createAudioPath();
+      when(
+        () => mockAuthenticatedHttpApiClient.postMultipart<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success("transcribed text"));
+
+      await voiceApi.transcribe(
+        audioFilePath: audioPath,
+        mimeType: "audio/mp4",
+        projectGlossaryKey: null,
+      );
+
+      final fields = verify(
+        () => mockAuthenticatedHttpApiClient.postMultipart<String>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          createFiles: any(named: "createFiles"),
+          fields: captureAny(named: "fields"),
+          timeout: any(named: "timeout"),
+        ),
+      ).captured.single;
+      expect(fields, isNull);
     });
 
     test("API error: parses authoritative retryability from the failure body", () async {
@@ -92,8 +127,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(apiError));
@@ -101,7 +136,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(
@@ -126,7 +161,6 @@ void main() {
           () => mockAuthenticatedHttpApiClient.postMultipart<String>(
             any(),
             fromJson: any(named: "fromJson"),
-            fields: any(named: "fields"),
             createFiles: any(named: "createFiles"),
             timeout: any(named: "timeout"),
           ),
@@ -139,7 +173,7 @@ void main() {
         final result = await voiceApi.transcribe(
           audioFilePath: audioPath,
           mimeType: "audio/mp4",
-          projectKey: null,
+          projectGlossaryKey: null,
         );
 
         expect(
@@ -163,8 +197,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
@@ -174,7 +208,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(
@@ -193,8 +227,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
@@ -204,7 +238,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(
@@ -223,8 +257,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("not json")));
@@ -232,7 +266,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(
@@ -249,8 +283,8 @@ void main() {
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
           fromJson: any(named: "fromJson"),
-          fields: any(named: "fields"),
           createFiles: any(named: "createFiles"),
+          fields: any(named: "fields"),
           timeout: any(named: "timeout"),
         ),
       ).thenAnswer(
@@ -260,7 +294,7 @@ void main() {
       final result = await voiceApi.transcribe(
         audioFilePath: audioPath,
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(

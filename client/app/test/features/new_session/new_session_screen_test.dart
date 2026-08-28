@@ -412,6 +412,7 @@ void main() {
           path: "/project-one",
           time: null,
           supportsDedicatedWorktrees: true,
+          voiceGlossaryKey: null,
         ),
       ),
     );
@@ -496,6 +497,7 @@ void main() {
           path: "/project-one",
           time: null,
           supportsDedicatedWorktrees: false,
+          voiceGlossaryKey: null,
         ),
       ),
     );
@@ -517,6 +519,7 @@ void main() {
                 path: "/project-one",
                 time: null,
                 supportsDedicatedWorktrees: true,
+                voiceGlossaryKey: null,
               ),
             );
     });
@@ -555,10 +558,7 @@ void main() {
 
   testWidgets("old bridge guidance keeps Create available and Refresh uses legacy routes", (tester) async {
     when(
-      () => voiceTranscriptionService.start(
-        session: voiceSession,
-        projectId: any(named: "projectId"),
-      ),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
     when(pluginRepository.listPlugins).thenAnswer(
@@ -1168,6 +1168,7 @@ void main() {
           path: "/plain-folder",
           time: null,
           supportsDedicatedWorktrees: false,
+          voiceGlossaryKey: null,
         ),
       ),
     );

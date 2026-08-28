@@ -60,7 +60,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.success(transcript: "hello"));
     service = VoiceTranscriptionService(
@@ -68,7 +68,7 @@ void main() {
       projectRepository: projectRepository,
       capture: capture,
     );
-    session = service.createSession();
+    session = service.createSession(projectId: null);
   });
 
   test("creates one distinct platform session for each composer", () {
@@ -77,15 +77,15 @@ void main() {
     var created = 0;
     when(capture.createSession).thenAnswer((_) => created++ == 0 ? firstCapture : secondCapture);
 
-    final first = service.createSession();
-    final second = service.createSession();
+    final first = service.createSession(projectId: null);
+    final second = service.createSession(projectId: null);
 
     expect(identical(first, second), isFalse);
     expect(created, 2);
   });
 
   test("owns capture, repository mapping, cleanup, and lifecycle transitions", () async {
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final transcript = await service.stopAndTranscribe(session: session);
 
     expect(transcript, "hello");
@@ -95,13 +95,13 @@ void main() {
       () => repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: null,
+        projectGlossaryKey: null,
       ),
     ).called(1);
     verify(captureSession.releaseOperation).called(1);
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     verify(captureSession.start).called(1);
   });
 
@@ -110,18 +110,20 @@ void main() {
     when(repository.discoverCapabilities).thenAnswer(
       (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
     );
+    final scopedSession = service.createSession(projectId: "project-123");
+    await untilCalled(() => projectRepository.resolveVoiceGlossaryKey(projectId: "project-123"));
+    await Future<void>.delayed(Duration.zero);
 
-    await service.start(session: session, projectId: "project-123");
-    expect(await service.stopAndTranscribe(session: session), "hello");
+    await service.start(session: scopedSession);
+    expect(await service.stopAndTranscribe(session: scopedSession), "hello");
 
     verify(
       () => repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: projectKey,
+        projectGlossaryKey: projectKey,
       ),
     ).called(1);
-    verify(() => projectRepository.resolveVoiceGlossaryKey(projectId: "project-123")).called(1);
     verifyNever(captureSession.startRealtime);
   });
 
@@ -133,17 +135,123 @@ void main() {
     when(
       () => projectRepository.resolveVoiceGlossaryKey(projectId: any(named: "projectId")),
     ).thenAnswer((_) async => null);
+    final olderBridgeSession = service.createSession(projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
 
-    await service.start(session: session, projectId: "project-123");
-    expect(await service.stopAndTranscribe(session: session), "hello");
+    await service.start(session: olderBridgeSession);
+    expect(await service.stopAndTranscribe(session: olderBridgeSession), "hello");
 
     verify(
       () => repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: null,
+        projectGlossaryKey: null,
       ),
     ).called(1);
+  });
+
+  test("pending project context keeps the active interaction unscoped", () async {
+    final projectKeyLoad = Completer<ProjectGlossaryKey?>();
+    when(
+      () => projectRepository.resolveVoiceGlossaryKey(projectId: "project-1"),
+    ).thenAnswer((_) => projectKeyLoad.future);
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.resolveVoiceGlossaryKey(projectId: "project-1"));
+
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+    projectKeyLoad.complete(projectKey);
+    await Future<void>.delayed(Duration.zero);
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, projectKey]);
+  });
+
+  test("refreshes missing project context for a later interaction without delaying capture", () async {
+    final refreshRequested = Completer<void>();
+    final refreshedKey = Completer<ProjectGlossaryKey?>();
+    var requestCount = 0;
+    when(
+      () => projectRepository.resolveVoiceGlossaryKey(projectId: "project-1"),
+    ).thenAnswer((_) {
+      requestCount++;
+      if (requestCount == 1) return Future<ProjectGlossaryKey?>.value();
+      refreshRequested.complete();
+      return refreshedKey.future;
+    });
+    final scopedSession = service.createSession(projectId: "project-1");
+    await Future<void>.delayed(Duration.zero);
+
+    await service.start(session: scopedSession);
+    await refreshRequested.future;
+    await service.stopAndTranscribe(session: scopedSession);
+    refreshedKey.complete(projectKey);
+    await Future<void>.delayed(Duration.zero);
+
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, projectKey]);
+    expect(requestCount, 2);
+  });
+
+  test("retry retains its project-context snapshot after context becomes available", () async {
+    final projectKeyLoad = Completer<ProjectGlossaryKey?>();
+    when(
+      () => projectRepository.resolveVoiceGlossaryKey(projectId: "project-1"),
+    ).thenAnswer((_) => projectKeyLoad.future);
+    var attempts = 0;
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
+      ),
+    ).thenAnswer(
+      (_) async => switch (attempts++) {
+        0 => const VoiceTranscriptionOutcome.networkFailure(),
+        1 => const VoiceTranscriptionOutcome.success(transcript: "retried"),
+        _ => const VoiceTranscriptionOutcome.success(transcript: "next interaction"),
+      },
+    );
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.resolveVoiceGlossaryKey(projectId: "project-1"));
+
+    await service.start(session: scopedSession);
+    await expectLater(
+      service.stopAndTranscribe(session: scopedSession),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    projectKeyLoad.complete(projectKey);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(await service.retry(session: scopedSession), "retried");
+    await service.start(session: scopedSession);
+    expect(await service.stopAndTranscribe(session: scopedSession), "next interaction");
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, null, projectKey]);
   });
 
   test("pending capability discovery starts the released async capture without waiting", () async {
@@ -151,7 +259,7 @@ void main() {
     when(repository.discoverCapabilities).thenAnswer((_) => discovery.future);
 
     try {
-      await service.start(session: session, projectId: "project-123").timeout(const Duration(seconds: 1));
+      await service.start(session: session).timeout(const Duration(seconds: 1));
     } finally {
       if (!discovery.isCompleted) discovery.complete(const VoiceCapabilitiesAsyncFallback());
     }
@@ -185,7 +293,7 @@ void main() {
       (_) async => VoiceRealtimeOpenOutcome.asyncFallback(cause: Exception("offline")),
     );
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     expect(await service.stopAndTranscribe(session: session), "hello");
 
     verify(captureSession.startRealtime).called(1);
@@ -219,7 +327,7 @@ void main() {
     ).thenAnswer((_) => openCompleter.future);
     when(connection.cancel).thenAnswer((_) async {});
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     frames.addError(VoiceCaptureError.failed(innerError: Exception("native stream failed")));
     await Future<void>.delayed(Duration.zero);
@@ -269,7 +377,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     frames.add(Uint8List.fromList([0, 0]));
     await Future<void>.delayed(Duration.zero);
@@ -290,7 +398,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     );
   });
@@ -329,9 +437,9 @@ void main() {
           projectKey: any(named: "projectKey"),
         ),
       ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
-      final candidateSession = service.createSession();
+      final candidateSession = service.createSession(projectId: "project-123");
 
-      final starting = service.start(session: candidateSession, projectId: "project-123");
+      final starting = service.start(session: candidateSession);
       await Future<void>.delayed(Duration.zero);
       events.add(const VoiceRealtimeReady());
       await starting;
@@ -380,7 +488,7 @@ void main() {
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
     final terminalReached = service.realtimeTerminalStream(session: session).first;
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
     await Future<void>.delayed(Duration.zero);
@@ -407,7 +515,7 @@ void main() {
     );
     when(captureSession.startRealtime).thenAnswer((_) => captureStart.future);
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     final cancelledStart = expectLater(starting, throwsA(isA<TranscriptionCancelledError>()));
     await Future<void>.delayed(Duration.zero);
     var cancellationSettled = false;
@@ -461,7 +569,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
     expect(setupCancellationStarted, isTrue);
@@ -503,7 +611,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     final cancelledStart = expectLater(starting, throwsA(isA<TranscriptionCancelledError>()));
     await Future<void>.delayed(Duration.zero);
     await service.cancel(session: session);
@@ -545,7 +653,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
     await starting;
@@ -594,7 +702,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
     await starting;
@@ -624,7 +732,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     );
   });
@@ -661,7 +769,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
     await starting;
@@ -736,7 +844,7 @@ void main() {
       ),
     );
 
-    final firstStart = service.start(session: session, projectId: "project-123");
+    final firstStart = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     firstEvents.add(const VoiceRealtimeReady());
     await firstStart;
@@ -746,7 +854,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await service.cancel(session: session);
 
-    final secondStart = service.start(session: session, projectId: "project-123");
+    final secondStart = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     secondEvents.add(const VoiceRealtimeReady());
     await secondStart;
@@ -783,7 +891,7 @@ void main() {
     when(capture.prewarm).thenAnswer((_) => completer.future);
 
     unawaited(service.prewarm(session: session));
-    final start = service.start(session: session, projectId: "project-123");
+    final start = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     verifyNever(captureSession.start);
 
@@ -797,7 +905,7 @@ void main() {
     final permissionError = VoiceCaptureError.permissionDenied(innerError: permissionCause);
     when(captureSession.start).thenThrow(permissionError);
     await expectLater(
-      service.start(session: session, projectId: "project-123"),
+      service.start(session: session),
       throwsA(
         isA<MicrophonePermissionDeniedError>().having((error) => error.innerError, "innerError", same(permissionError)),
       ),
@@ -807,7 +915,7 @@ void main() {
     final captureError = VoiceCaptureError.failed(innerError: captureCause);
     when(captureSession.start).thenThrow(captureError);
     await expectLater(
-      service.start(session: session, projectId: "project-123"),
+      service.start(session: session),
       throwsA(
         isA<RecordingFailedError>().having(
           (error) => error.innerError,
@@ -833,12 +941,12 @@ void main() {
         () => repository.transcribe(
           audioFilePath: any(named: "audioFilePath"),
           mimeType: any(named: "mimeType"),
-          projectKey: any(named: "projectKey"),
+          projectGlossaryKey: any(named: "projectGlossaryKey"),
         ),
       ).thenAnswer((_) async => outcome);
-      final candidateSession = service.createSession();
+      final candidateSession = service.createSession(projectId: "project-123");
 
-      await service.start(session: candidateSession, projectId: "project-123");
+      await service.start(session: candidateSession);
       await expectLater(
         service.stopAndTranscribe(session: candidateSession),
         throwsA(predicate<Object>((error) => error.runtimeType == errorType)),
@@ -854,7 +962,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer(
       (_) async => attempts++ == 0
@@ -862,7 +970,7 @@ void main() {
           : const VoiceTranscriptionOutcome.success(transcript: "retried"),
     );
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     await expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<NetworkVoiceError>()),
@@ -876,7 +984,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: null,
+        projectGlossaryKey: null,
       ),
     ).called(2);
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
@@ -889,11 +997,11 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final transcription = expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<NetworkVoiceError>()),
@@ -909,7 +1017,7 @@ void main() {
     await transcription;
 
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     verify(captureSession.start).called(2);
   });
 
@@ -920,7 +1028,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) {
       attempts++;
@@ -933,7 +1041,7 @@ void main() {
       return Future.value(const VoiceTranscriptionOutcome.success(transcript: "eventual"));
     });
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     await expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<RetryableServerVoiceError>()),
@@ -957,11 +1065,11 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     await expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<NetworkVoiceError>()),
@@ -969,7 +1077,7 @@ void main() {
     await service.discard(session: session);
 
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     verify(captureSession.start).called(2);
   });
 
@@ -978,12 +1086,12 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
     when(() => captureSession.artifactExists(artifact: artifact)).thenAnswer((_) async => false);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     await expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<NetworkVoiceError>()),
@@ -994,7 +1102,7 @@ void main() {
     );
 
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     verify(captureSession.start).called(2);
   });
 
@@ -1003,11 +1111,11 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     await expectLater(
       service.stopAndTranscribe(session: session),
       throwsA(isA<NetworkVoiceError>()),
@@ -1023,7 +1131,7 @@ void main() {
     final stopCompleter = Completer<VoiceRecordingArtifact>();
     when(captureSession.stop).thenAnswer((_) => stopCompleter.future);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final transcription = service.stopAndTranscribe(session: session);
     final transcriptionExpectation = expectLater(
       transcription,
@@ -1048,15 +1156,15 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) => response.future);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final transcription = service.stopAndTranscribe(session: session);
     await Future<void>.delayed(Duration.zero);
     await service.cancel(session: session);
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     response.complete(const VoiceTranscriptionOutcome.success(transcript: "stale"));
 
     await expectLater(transcription, throwsA(isA<TranscriptionCancelledError>()));
@@ -1069,7 +1177,7 @@ void main() {
     fakeAsync((async) {
       var reached = 0;
       service.maxDurationReachedStream(session: session).listen((_) => reached++);
-      unawaited(service.start(session: session, projectId: "project-123"));
+      unawaited(service.start(session: session));
       async.flushMicrotasks();
 
       async.elapse(maxRecordingDuration);
@@ -1086,7 +1194,7 @@ void main() {
     final stopCompleter = Completer<VoiceRecordingArtifact>();
     when(captureSession.stop).thenAnswer((_) => stopCompleter.future);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final transcription = service.stopAndTranscribe(session: session);
     await Future<void>.delayed(Duration.zero);
     service.invalidate(session: session);
@@ -1106,7 +1214,7 @@ void main() {
     final cancelCompleter = Completer<void>();
     when(captureSession.cancel).thenAnswer((_) => cancelCompleter.future);
 
-    await service.start(session: session, projectId: "project-123");
+    await service.start(session: session);
     final cancelling = service.cancel(session: session);
     await Future<void>.delayed(Duration.zero);
     service.invalidate(session: session);
@@ -1126,7 +1234,7 @@ void main() {
     final startCompleter = Completer<void>();
     when(captureSession.start).thenAnswer((_) => startCompleter.future);
 
-    final starting = service.start(session: session, projectId: "project-123");
+    final starting = service.start(session: session);
     await Future<void>.delayed(Duration.zero);
     service.invalidate(session: session);
     final closing = service.close(session: session);

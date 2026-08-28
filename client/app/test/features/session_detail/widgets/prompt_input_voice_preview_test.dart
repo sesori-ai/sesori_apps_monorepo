@@ -58,7 +58,6 @@ void main() {
     draftChanges = [];
     completedCount = 0;
 
-    when(voiceTranscriptionService.createSession).thenReturn(voiceSession);
     when(() => voiceTranscriptionService.currentPreview(session: voiceSession)).thenReturn(_emptyPreview);
     when(() => voiceTranscriptionService.previewStream(session: voiceSession))
         .thenAnswer((_) => previewController.stream);
@@ -97,7 +96,9 @@ void main() {
     return MultiBlocProvider(
       providers: [
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
-        BlocProvider<VoiceInputCubit>(create: (_) => VoiceInputCubit(service: voiceTranscriptionService)),
+        BlocProvider<VoiceInputCubit>(
+          create: (_) => VoiceInputCubit(service: voiceTranscriptionService, session: voiceSession),
+        ),
       ],
       child: MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -145,7 +146,7 @@ void main() {
   testWidgets("starts recording with project context and previews without draft mutation", (tester) async {
     final stopCompleter = Completer<String>();
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => stopCompleter.future);
@@ -155,7 +156,7 @@ void main() {
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 250));
-    verify(() => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1")).called(1);
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
 
     previewController.add(const VoiceTranscriptionPreview(confirmedText: "stable ", provisionalText: "dra"));
     await tester.pump();
@@ -185,7 +186,7 @@ void main() {
       () => voiceTranscriptionService.realtimeTerminalStream(session: voiceSession),
     ).thenAnswer((_) => terminalController.stream);
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) => startCompleter.future);
     when(
       () => voiceTranscriptionService.stopAndTranscribe(session: voiceSession),
@@ -216,7 +217,7 @@ void main() {
   testWidgets("preview live region announces only stable confirmed text", (tester) async {
     final stopCompleter = Completer<String>();
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => stopCompleter.future);
@@ -250,7 +251,7 @@ void main() {
     final stopCompleter = Completer<String>();
     var headerBuilds = 0;
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => stopCompleter.future);
@@ -282,7 +283,7 @@ void main() {
 
   testWidgets("partial realtime failure commits confirmed text once without success analytics", (tester) async {
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
       VoiceRealtimePartialTranscriptionError(
@@ -370,7 +371,7 @@ void main() {
       draftChanges.clear();
       completedCount = 0;
       when(
-        () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+        () => voiceTranscriptionService.start(session: voiceSession),
       ).thenAnswer((_) async {});
       when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
         VoiceRealtimePartialTranscriptionError(
@@ -433,7 +434,7 @@ void main() {
     for (final scenario in scenarios) {
       draftChanges.clear();
       when(
-        () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+        () => voiceTranscriptionService.start(session: voiceSession),
       ).thenThrow(scenario.failure);
       when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
 
@@ -457,7 +458,7 @@ void main() {
   testWidgets("cancelled interaction ignores stale preview and terminal events", (tester) async {
     final stopCompleter = Completer<String>();
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => stopCompleter.future);
@@ -486,7 +487,7 @@ void main() {
   testWidgets("draft identity reuse cancels start in flight and ignores stale preview", (tester) async {
     final startCompleter = Completer<void>();
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) async => "stale terminal");
@@ -515,7 +516,7 @@ void main() {
   testWidgets("draft identity reuse orphans in-flight terminal transcript", (tester) async {
     final stopCompleter = Completer<String>();
     when(
-      () => voiceTranscriptionService.start(session: voiceSession, projectId: "project-1"),
+      () => voiceTranscriptionService.start(session: voiceSession),
     ).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
         .thenAnswer((_) => stopCompleter.future);

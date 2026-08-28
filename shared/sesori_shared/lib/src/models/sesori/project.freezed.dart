@@ -410,7 +410,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true, @ProjectGlossaryKeyJsonConverter() this.voiceGlossaryKey = null});
+  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true, @ProjectGlossaryKeyJsonConverter() required this.voiceGlossaryKey});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
@@ -420,7 +420,7 @@ class _Project implements Project {
 @override@JsonKey() final  bool hasUnseenChanges;
 @override@JsonKey() final  bool directoryMissing;
 @override@JsonKey() final  bool supportsDedicatedWorktrees;
-@override@JsonKey()@ProjectGlossaryKeyJsonConverter() final  ProjectGlossaryKey? voiceGlossaryKey;
+@override@ProjectGlossaryKeyJsonConverter() final  ProjectGlossaryKey? voiceGlossaryKey;
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.

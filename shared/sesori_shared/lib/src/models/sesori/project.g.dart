@@ -46,12 +46,10 @@ _Project _$ProjectFromJson(Map json) => _Project(
   directoryMissing: json['directoryMissing'] as bool? ?? false,
   supportsDedicatedWorktrees:
       json['supportsDedicatedWorktrees'] as bool? ?? true,
-  voiceGlossaryKey:
-      _$JsonConverterFromJson<String, ProjectGlossaryKey>(
-        json['voiceGlossaryKey'],
-        const ProjectGlossaryKeyJsonConverter().fromJson,
-      ) ??
-      null,
+  voiceGlossaryKey: _$JsonConverterFromJson<String, ProjectGlossaryKey>(
+    json['voiceGlossaryKey'],
+    const ProjectGlossaryKeyJsonConverter().fromJson,
+  ),
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{

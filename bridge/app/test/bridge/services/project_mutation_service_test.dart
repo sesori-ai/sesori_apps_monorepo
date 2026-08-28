@@ -219,6 +219,7 @@ class _ProjectActivityService({required final List<String> events, required fina
       path: path,
       time: null,
       supportsDedicatedWorktrees: false,
+      voiceGlossaryKey: null,
     );
   }
 

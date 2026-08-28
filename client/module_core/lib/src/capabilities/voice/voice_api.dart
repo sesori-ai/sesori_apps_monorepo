@@ -26,10 +26,10 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   Future<VoiceTranscriptionApiResult> transcribe({
     required String audioFilePath,
     required String mimeType,
-    required ProjectGlossaryKey? projectKey,
+    required ProjectGlossaryKey? projectGlossaryKey,
   }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
-    final fields = _transcriptionFields(projectKey: projectKey);
+    final fields = _transcriptionFields(projectGlossaryKey: projectGlossaryKey);
 
     try {
       // `await` is required here so async errors thrown inside the returned
@@ -79,9 +79,11 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
     }
   }
 
-  static Map<String, String>? _transcriptionFields({required ProjectGlossaryKey? projectKey}) {
-    if (projectKey == null) return null;
-    return {"projectKey": projectKey.value};
+  static Map<String, String>? _transcriptionFields({
+    required ProjectGlossaryKey? projectGlossaryKey,
+  }) {
+    if (projectGlossaryKey == null) return null;
+    return {"projectKey": projectGlossaryKey.value};
   }
 
   static bool? _parseRetryable({required ApiError error}) {

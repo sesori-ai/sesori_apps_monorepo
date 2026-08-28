@@ -49,10 +49,13 @@ class ProjectRepository({
   Future<ProjectGlossaryKey?> resolveVoiceGlossaryKey({required String projectId}) async {
     try {
       final response = await _api.getProject(projectId: projectId);
-      return switch (response) {
-        SuccessResponse(:final data) => data.voiceGlossaryKey,
-        ErrorResponse() => null,
-      };
+      switch (response) {
+        case SuccessResponse(:final data):
+          return data.voiceGlossaryKey;
+        case ErrorResponse(:final error):
+          logw("Could not load optional project voice context; continuing unscoped", error);
+          return null;
+      }
     } on Object catch (error, stackTrace) {
       logw("Failed to load the bridge-derived voice glossary key", error, stackTrace);
       return null;

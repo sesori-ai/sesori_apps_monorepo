@@ -140,7 +140,7 @@ void main() {
           .transcribe(
             audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
             mimeType: "application/json",
-            projectKey: null,
+            projectGlossaryKey: null,
           )
           .then((value) => result = value);
 
@@ -159,7 +159,7 @@ void main() {
     await api.transcribe(
       audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
       mimeType: "application/json",
-      projectKey: projectKey,
+      projectGlossaryKey: projectKey,
     );
 
     expect(authClient.timeout, const Duration(seconds: 120));
@@ -171,7 +171,7 @@ void main() {
     await api.transcribe(
       audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
       mimeType: "application/json",
-      projectKey: null,
+      projectGlossaryKey: null,
     );
     expect(authClient.fields.single, isNull);
   });

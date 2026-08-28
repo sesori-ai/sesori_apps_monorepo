@@ -763,7 +763,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<bool> _startRecording() async {
-    await _voiceCubit.startRecording(projectId: widget.projectId);
+    await _voiceCubit.startRecording();
     return _voiceCubit.state is VoiceInputRecording;
   }
 

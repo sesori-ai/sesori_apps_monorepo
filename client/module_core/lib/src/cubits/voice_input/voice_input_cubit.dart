@@ -6,8 +6,10 @@ import "../../logging/logging.dart";
 import "../../services/voice_transcription_service.dart";
 import "voice_input_state.dart";
 
-class VoiceInputCubit({required final VoiceTranscriptionService _service}) extends Cubit<VoiceInputState> {
-  late final VoiceTranscriptionSession _session = _service.createSession();
+class VoiceInputCubit({
+  required final VoiceTranscriptionService _service,
+  required final VoiceTranscriptionSession _session,
+}) extends Cubit<VoiceInputState> {
   late final StreamSubscription<void> _maxDurationSubscription;
   late final StreamSubscription<VoiceRealtimeTerminalCause> _realtimeTerminalSubscription;
   late final StreamSubscription<VoiceTranscriptionPreview> _previewSubscription;
@@ -34,14 +36,14 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
 
   Stream<double> get amplitudeStream => _service.amplitudeStream(session: _session);
 
-  Future<void> startRecording({required String projectId}) async {
+  Future<void> startRecording() async {
     if (state is! VoiceInputIdle) return;
     _limitReachedDuringStart = false;
     _realtimeTerminalDuringStart = null;
     emit(const VoiceInputState.starting());
 
     try {
-      await _service.start(session: _session, projectId: projectId);
+      await _service.start(session: _session);
       if (isClosed || state is! VoiceInputStarting) return;
       emit(VoiceInputState.recording(preview: _service.currentPreview(session: _session)));
       final terminalCause = _realtimeTerminalDuringStart;

@@ -188,12 +188,12 @@ void main() {
     );
   });
 
-  test("maps success and forwards the typed artifact facts", () async {
+  test("maps success and forwards typed artifact and glossary context", () async {
     when(
       () => api.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
-        projectKey: any(named: "projectKey"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer(
       (_) async => const VoiceTranscriptionApiResult.success(transcript: "hello"),
@@ -202,7 +202,7 @@ void main() {
     final outcome = await repository.transcribe(
       audioFilePath: "/tmp/voice.m4a",
       mimeType: "audio/mp4",
-      projectKey: null,
+      projectGlossaryKey: projectKey,
     );
 
     expect(
@@ -213,7 +213,7 @@ void main() {
       () => api.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: projectKey,
       ),
     ).called(1);
   });
@@ -249,14 +249,14 @@ void main() {
         () => api.transcribe(
           audioFilePath: any(named: "audioFilePath"),
           mimeType: any(named: "mimeType"),
-          projectKey: any(named: "projectKey"),
+          projectGlossaryKey: any(named: "projectGlossaryKey"),
         ),
       ).thenAnswer((_) async => candidate.result);
 
       final outcome = await repository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(outcome.runtimeType, candidate.outcomeType);
@@ -278,7 +278,7 @@ void main() {
         () => api.transcribe(
           audioFilePath: any(named: "audioFilePath"),
           mimeType: any(named: "mimeType"),
-          projectKey: any(named: "projectKey"),
+          projectGlossaryKey: any(named: "projectGlossaryKey"),
         ),
       ).thenAnswer(
         (_) async => VoiceTranscriptionApiResult.failure(error: error, retryable: null),
@@ -287,7 +287,7 @@ void main() {
       final outcome = await repository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
         mimeType: "audio/mp4",
-        projectKey: null,
+        projectGlossaryKey: null,
       );
 
       expect(outcome.runtimeType, outcomeType);

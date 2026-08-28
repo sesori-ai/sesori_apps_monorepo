@@ -12,7 +12,9 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   Stream<double> amplitudeStream = const Stream<double>.empty(),
 }) {
   final session = MockVoiceTranscriptionSession();
-  when(service.createSession).thenReturn(session);
+  when(
+    () => service.createSession(projectId: any(named: "projectId")),
+  ).thenReturn(session);
   when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationStream);
   when(() => service.realtimeTerminalStream(session: session)).thenAnswer((_) => realtimeTerminalStream);
   when(() => service.amplitudeStream(session: session)).thenAnswer((_) => amplitudeStream);
@@ -21,12 +23,7 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   );
   when(() => service.previewStream(session: session)).thenAnswer((_) => const Stream.empty());
   when(() => service.prewarm(session: session)).thenAnswer((_) async {});
-  when(
-    () => service.start(
-      session: session,
-      projectId: any(named: "projectId"),
-    ),
-  ).thenAnswer((_) async {});
+  when(() => service.start(session: session)).thenAnswer((_) async {});
   when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => "");
   when(() => service.retry(session: session)).thenAnswer((_) async => "");
   when(() => service.cancel(session: session)).thenAnswer((_) async {});

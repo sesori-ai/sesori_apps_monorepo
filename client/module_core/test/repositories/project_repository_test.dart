@@ -18,7 +18,7 @@ void main() {
       filesystemApi: filesystemApi,
       sessionApi: MockSessionApi(),
     );
-    const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+    const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null, voiceGlossaryKey: null);
     const projectSummary = ProjectSummary(id: "project-1", name: "Project 1", path: "/project-1", time: null);
     const projects = Projects(data: [projectSummary]);
     const suggestions = FilesystemSuggestions(data: [], path: null);
@@ -118,7 +118,13 @@ void main() {
         filesystemApi: MockFilesystemApi(),
         sessionApi: MockSessionApi(),
       );
-      const project = Project(id: "project-1", name: "Project 1", path: r"C:\projects\project-1", time: null);
+      const project = Project(
+        id: "project-1",
+        name: "Project 1",
+        path: r"C:\projects\project-1",
+        time: null,
+        voiceGlossaryKey: null,
+      );
       when(
         () => api.createProject(path: r"C:\projects\project-1"),
       ).thenAnswer((_) async => ApiResponse.success(project));

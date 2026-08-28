@@ -22,9 +22,14 @@ class VoiceTranscriptionService({
   required final ProjectRepository _projectRepository,
   required final VoiceCapture _capture,
 }) {
-  VoiceTranscriptionSession createSession() => VoiceTranscriptionSession._(
-    captureSession: _capture.createSession(),
-  );
+  VoiceTranscriptionSession createSession({required String? projectId}) {
+    final session = VoiceTranscriptionSession._(
+      captureSession: _capture.createSession(),
+      projectId: projectId == null || projectId.trim().isEmpty ? null : projectId,
+    );
+    _refreshProjectGlossaryKey(session: session);
+    return session;
+  }
 
   Stream<double> amplitudeStream({required VoiceTranscriptionSession session}) =>
       session._captureSession.amplitudeStream;
@@ -85,12 +90,46 @@ class VoiceTranscriptionService({
   Future<void> _loadCapabilities({required VoiceTranscriptionSession session}) async {
     try {
       final outcome = await _repository.discoverCapabilities();
-      if (session._state is! _VoiceSessionDisposed) session._capabilitiesOutcome = outcome;
+      if (session._state is! _VoiceSessionClosing && session._state is! _VoiceSessionDisposed) {
+        session._capabilitiesOutcome = outcome;
+      }
     } on Object catch (error, stackTrace) {
       logw("Failed to pre-discover realtime voice capability", error, stackTrace);
-      if (session._state is! _VoiceSessionDisposed) {
+      if (session._state is! _VoiceSessionClosing && session._state is! _VoiceSessionDisposed) {
         session._capabilitiesOutcome = const VoiceCapabilitiesAsyncFallback();
       }
+    }
+  }
+
+  void _refreshProjectGlossaryKey({required VoiceTranscriptionSession session}) {
+    final projectId = session._projectId;
+    if (projectId == null ||
+        session._availableProjectGlossaryKey != null ||
+        session._projectGlossaryKeyLoad != null ||
+        session._state is _VoiceSessionClosing ||
+        session._state is _VoiceSessionDisposed) {
+      return;
+    }
+
+    late final Future<void> trackedFuture;
+    trackedFuture = _loadProjectGlossaryKey(session: session, projectId: projectId).whenComplete(() {
+      if (identical(session._projectGlossaryKeyLoad, trackedFuture)) {
+        session._projectGlossaryKeyLoad = null;
+      }
+    });
+    session._projectGlossaryKeyLoad = trackedFuture;
+  }
+
+  Future<void> _loadProjectGlossaryKey({
+    required VoiceTranscriptionSession session,
+    required String projectId,
+  }) async {
+    try {
+      final projectGlossaryKey = await _projectRepository.resolveVoiceGlossaryKey(projectId: projectId);
+      if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) return;
+      session._availableProjectGlossaryKey = projectGlossaryKey;
+    } on Object catch (error, stackTrace) {
+      logw("Could not load optional project voice context; continuing unscoped", error, stackTrace);
     }
   }
 
@@ -104,23 +143,24 @@ class VoiceTranscriptionService({
     return session._capabilitiesOutcome ?? const VoiceCapabilitiesAsyncFallback();
   }
 
-  Future<void> start({required VoiceTranscriptionSession session, required String projectId}) {
+  Future<void> start({required VoiceTranscriptionSession session}) {
     if (session._state is! _VoiceSessionIdle) {
       logw("Voice recording operation already in progress");
       return Future<void>.value();
     }
 
-    final operation = _start(session: session, projectId: projectId);
+    final operation = _start(session: session);
     session._startFuture = operation;
     return operation.whenComplete(() {
       if (identical(session._startFuture, operation)) session._startFuture = null;
     });
   }
 
-  Future<void> _start({required VoiceTranscriptionSession session, required String projectId}) async {
+  Future<void> _start({required VoiceTranscriptionSession session}) async {
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
-    session._projectKey = null;
+    session._interactionProjectGlossaryKey = session._availableProjectGlossaryKey;
+    _refreshProjectGlossaryKey(session: session);
     _setPreview(
       session: session,
       preview: const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),
@@ -133,13 +173,10 @@ class VoiceTranscriptionService({
 
       final discovery = await _capabilitiesForStart(session: session);
       _ensureGeneration(session: session, generation: generation);
-      final projectKey = switch (discovery) {
-        VoiceCapabilitiesAvailable() => await _projectRepository.resolveVoiceGlossaryKey(projectId: projectId),
-        VoiceCapabilitiesAsyncFallback() || VoiceCapabilitiesContractFailure() => null,
-      };
-      _ensureGeneration(session: session, generation: generation);
-      final mode = _selectStartMode(result: discovery, projectKey: projectKey);
-      session._projectKey = mode.projectKey;
+      final mode = _selectStartMode(
+        result: discovery,
+        projectKey: session._interactionProjectGlossaryKey,
+      );
 
       switch (mode) {
         case _AsyncVoiceStartMode():
@@ -180,7 +217,7 @@ class VoiceTranscriptionService({
     required VoiceCapabilitiesDiscoveryOutcome result,
     required ProjectGlossaryKey? projectKey,
   }) => switch (result) {
-    VoiceCapabilitiesAsyncFallback() => const _AsyncVoiceStartMode(projectKey: null),
+    VoiceCapabilitiesAsyncFallback() => _AsyncVoiceStartMode(projectKey: projectKey),
     VoiceCapabilitiesContractFailure(:final reason) => throw VoiceTranscriptionError.contractFailure(
       reason: reason,
       innerError: FormatException(reason),
@@ -817,7 +854,7 @@ class VoiceTranscriptionService({
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: session._projectKey,
+        projectGlossaryKey: session._interactionProjectGlossaryKey,
       );
       if (!_ownsGeneration(session: session, generation: generation)) {
         throw VoiceTranscriptionError.cancelled();
@@ -1135,7 +1172,10 @@ class VoiceTranscriptionService({
   }
 }
 
-class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSession}) {
+class VoiceTranscriptionSession._({
+  required final VoiceCaptureSession _captureSession,
+  required final String? _projectId,
+}) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();
   final StreamController<VoiceRealtimeTerminalCause> _realtimeTerminalController =
       StreamController<VoiceRealtimeTerminalCause>.broadcast();
@@ -1144,7 +1184,9 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
 
   _VoiceSessionState _state = const _VoiceSessionIdle();
   VoiceTranscriptionPreview _preview = const VoiceTranscriptionPreview(confirmedText: "", provisionalText: "");
-  ProjectGlossaryKey? _projectKey;
+  ProjectGlossaryKey? _availableProjectGlossaryKey;
+  ProjectGlossaryKey? _interactionProjectGlossaryKey;
+  Future<void>? _projectGlossaryKeyLoad;
   _RealtimeVoiceInteraction? _realtime;
   Future<VoiceRealtimeCapture>? _realtimeCaptureStartFuture;
   VoiceCapabilitiesDiscoveryOutcome? _capabilitiesOutcome;

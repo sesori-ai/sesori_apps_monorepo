@@ -15,12 +15,16 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   incomplete recording.
 - Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
   interaction cannot reset or append text into a newer one.
+- Each composer requests current-project context in the background, refreshes missing context for later interactions,
+  and snapshots only a validated, bridge-issued opaque glossary key when an interaction starts. Missing, pending,
+  invalid, unsupported, or failed context remains unscoped without delaying capture. Retry preserves the original
+  snapshot, and raw project identity never reaches auth.
 - Capability discovery begins during composer prewarm. A completed result selects the advertised mode, but discovery
   still pending when the hold starts selects released async capture immediately instead of delaying the user's speech;
   the result may inform a later interaction. Missing, unavailable, or timed-out discovery also preserves async behavior,
   while an observed incompatible contract fails visibly rather than silently downgrading. The bridge derives the exact
   opaque repository or bridge-local glossary key and returns it through the typed current-project contract; older
-  bridges omit it and voice continues without glossary context. Raw project IDs never reach auth.
+  bridges omit it and voice continues without glossary context.
 - While async recording the composer shows live amplitude, holds a stable layout, keeps the screen awake, and offers
   drag-to-cancel; recording reaches a maximum duration and signals auto-stop instead of running indefinitely.
 - Protocol-1 realtime capture starts paused as PCM16 mono with the same iOS haptics/system-sounds policy as async,
@@ -34,8 +38,8 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   same Cubit seam; if completion arrives during startup, the recording transition is observable before the stop is
   queued so the active gesture and limit notice remain owned. An empty confirmed completion is terminal rather than a
   false success. A post-audio socket or recorder failure immediately leaves recording through the same Cubit seam,
-  commits only non-empty confirmed text,
-  drops provisional text, shows the typed provider-neutral error, and never exposes async Retry/Discard.
+  commits only non-empty confirmed text, drops provisional text, shows the typed provider-neutral error, and never
+  exposes async Retry/Discard.
 - Initial cancel stops the recorder, releases the wake lock, attempts audio-file deletion, and invalidates any
   in-flight transcription so a late response cannot land in a newer interaction. Cancelling a manual retry returns
   to the saved-recording state without deleting its artifact.
@@ -54,13 +58,13 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   as voice-assisted input.
 - Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
   or analytics.
-- A current-project load resolves the bridge-owned opaque scope for the typed response, then starts best-effort
-  glossary population; a project entering the active-view set also starts population. Population itself stays behind
-  one serialized background coordinator and never delays recording or transcription.
-- Glossary population derives an exact opaque repository or bridge-local scope, scans bounded local Git/filesystem
-  evidence, filters credential-shaped content before tokenization, and reconciles at most 50 deterministic terms.
-  Only the opaque scope and filtered terms leave the bridge. Scope, scan, or publication failure leaves voice input
-  available without an updated glossary.
+- A current-project load returns any cached bridge-owned opaque scope, then starts best-effort glossary population; a
+  project entering the active-view set also starts population. Both triggers delegate to one serialized coordinator
+  that coalesces concurrent work for the same project and never delays the route response, recording, or transcription.
+- Glossary population derives an exact opaque repository or bridge-local scope, caches the validated key for later
+  current-project responses, scans bounded local Git/filesystem evidence, filters credential-shaped content before
+  tokenization, and reconciles at most 50 deterministic terms. Only the opaque scope and filtered terms leave the
+  bridge. Scope, scan, or publication failure leaves voice input available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
@@ -69,7 +73,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP/WebSocket clients, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, pending-capability immediate async fallback, capability contract failure, bridge-derived opaque project context, one forced-refresh handshake retry, paused-ready-resume ordering, pre-ready frame discard, unexpected native frame-stream completion, terminal-during-startup gesture ownership, realtime preview replacement, confirmed-partial failure with no async Retry, originating transport-stack retention, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP/WebSocket clients, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, pending-capability immediate async fallback, capability contract failure, available/pending/invalid opaque project context, one forced-refresh handshake retry, paused-ready-resume ordering, pre-ready frame discard, unexpected native frame-stream completion, terminal-during-startup gesture ownership, realtime preview replacement, confirmed-partial failure with no async Retry, originating transport-stack retention, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, async or realtime transcript inserted and editable, realtime confirmed/provisional preview, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, realtime pre-audio async fallback, post-audio confirmed-partial/no-Retry behavior, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -96,9 +100,9 @@ interruptions such as a call.
   or a late finish lands in a newer composer interaction.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
-- Any audio, transcript, or prompt content reaches logs or analytics; raw project paths, repository origins, filenames,
-  or metadata source text reach auth transport; glossary failure blocks recording or transcription; or concurrent
-  triggers run overlapping local scans.
+- Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository
+  origins, filenames, or metadata source text reach auth voice transport; glossary failure blocks recording or
+  transcription; or concurrent triggers run overlapping local scans.
 
 ## Known Limitations
 

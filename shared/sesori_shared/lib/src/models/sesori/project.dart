@@ -36,7 +36,6 @@ sealed class ProjectSummary with _$ProjectSummary {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class Project with _$Project {
-  // ignore: no_slop_linter/prefer_required_named_parameters, voiceGlossaryKey defaults to null for older bridge payloads.
   const factory({
     required String id,
     required String? name,
@@ -67,12 +66,22 @@ sealed class Project with _$Project {
     // behavior the bridge can actually provide.
     // COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
     @Default(true) bool supportsDedicatedWorktrees,
-    // COMPATIBILITY 2026-08-28 (v1.8.2): Older bridges omit the bridge-derived voice glossary key.
-    // Keep null as graceful no-glossary behavior until those bridges are unsupported, then require the field.
-    @Default(null) @ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey? voiceGlossaryKey,
+    // COMPATIBILITY 2026-08-28 (v1.8.2): Published older bridges omit the nullable glossary key.
+    // Remove omission-specific coverage when every supported bridge sends this field.
+    @ProjectGlossaryKeyJsonConverter() required ProjectGlossaryKey? voiceGlossaryKey,
   }) = _Project;
 
-  factory fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
+  // Invalid optional glossary context must not make the project or voice input unavailable.
+  factory fromJson(Map<String, dynamic> json) {
+    final rawGlossaryKey = json["voiceGlossaryKey"];
+    final glossaryKey = rawGlossaryKey is String
+        ? ProjectGlossaryKey.tryParse(value: rawGlossaryKey)
+        : null;
+    return _$ProjectFromJson({
+      ...json,
+      "voiceGlossaryKey": glossaryKey?.value,
+    });
+  }
 }
 
 @Freezed(fromJson: true, toJson: true)

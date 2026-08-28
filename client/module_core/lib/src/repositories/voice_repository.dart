@@ -70,12 +70,12 @@ class VoiceRepository({
   Future<VoiceTranscriptionOutcome> transcribe({
     required String audioFilePath,
     required String mimeType,
-    required ProjectGlossaryKey? projectKey,
+    required ProjectGlossaryKey? projectGlossaryKey,
   }) async {
     final response = await _api.transcribe(
       audioFilePath: audioFilePath,
       mimeType: mimeType,
-      projectKey: projectKey,
+      projectGlossaryKey: projectGlossaryKey,
     );
     return switch (response) {
       VoiceTranscriptionApiSuccess(:final transcript) => VoiceTranscriptionOutcome.success(
