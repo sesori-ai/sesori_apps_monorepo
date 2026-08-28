@@ -11,5 +11,7 @@ void main() {
     expect(getIt.isRegistered<BridgeProcessRepository>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogTracker>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessService>(), isTrue);
+    expect(getIt.isRegistered<ControlCommandService>(), isTrue);
   });
 }

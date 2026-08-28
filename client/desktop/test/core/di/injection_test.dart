@@ -33,7 +33,9 @@ void main() {
     expect(getIt.isRegistered<BridgeExecutablePathResolver>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessService>(), isTrue);
+    expect(getIt.isRegistered<ControlCommandService>(), isTrue);
     expect(getIt<BridgeProcessService>().state, isA<BridgeProcessStopped>());
+    expect(getIt<ControlCommandService>(), isA<ControlCommandService>());
   });
 
   test("desktop bootstrap leaves the mobile thumbnail cache unbound and unresolved", () {

@@ -27,6 +27,8 @@ import 'package:sesori_desktop_core/src/repositories/bridge_process_repository.d
     as _i209;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
+import 'package:sesori_desktop_core/src/services/control_command_service.dart'
+    as _i175;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
     as _i866;
 import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
@@ -75,6 +77,12 @@ extension GetItInjectableX on _i174.GetIt {
         controlChannelServer: gh<_i464.ControlChannelServer>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i175.ControlCommandService>(
+      () => _i175.ControlCommandService(
+        server: gh<_i464.ControlChannelServer>(),
+        promptTracker: gh<_i686.BridgePromptTracker>(),
+      ),
     );
     gh.lazySingleton<_i866.BridgeProcessLogTracker>(
       () => _i866.BridgeProcessLogTracker(

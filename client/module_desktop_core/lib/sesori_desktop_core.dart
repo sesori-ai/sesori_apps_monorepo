@@ -17,6 +17,8 @@ export "src/foundation/platform/bridge_executable_path_resolver.dart";
 export "src/foundation/platform/desktop_application_support_directory.dart";
 export "src/repositories/bridge_process_repository.dart";
 export "src/services/bridge_process_service.dart";
+export "src/services/bridge_process_state.dart";
+export "src/services/control_command_service.dart";
 export "src/trackers/bridge_control_status.dart";
 export "src/trackers/bridge_process_log_tracker.dart";
 export "src/trackers/bridge_prompt_tracker.dart";

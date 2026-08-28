@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,6 +17,7 @@ void main() {
     late _FakeControlChannelServer controlServer;
     late _FakeAuthSession authSession;
     late _FakeBridgeExecutablePathResolver executablePathResolver;
+    late DateTime now;
     late List<String> warnings;
     late BridgeProcessService service;
 
@@ -26,6 +28,7 @@ void main() {
       controlServer = _FakeControlChannelServer();
       authSession = _FakeAuthSession(initialState: const AuthState.unauthenticated());
       executablePathResolver = _FakeBridgeExecutablePathResolver(path: "/repo/bridge");
+      now = DateTime.utc(2026, 8, 28);
       warnings = <String>[];
       service = BridgeProcessService.forTesting(
         repository: repository,
@@ -33,17 +36,47 @@ void main() {
         controlChannelServer: controlServer,
         authSession: authSession,
         executablePathResolver: executablePathResolver,
+        crashBackoffDelays: const <Duration>[Duration(hours: 1)],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 20,
+        now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
           warnings.add(message);
         },
       );
     });
 
+    Future<void> rebuildService({
+      required List<Duration> crashBackoffDelays,
+      required Duration stableRuntime,
+      required int recentLogCount,
+    }) async {
+      await service.dispose();
+      repository.stopCalls = 0;
+      controlServer.stopCalls = 0;
+      service = BridgeProcessService.forTesting(
+        repository: repository,
+        logTracker: logTracker,
+        controlChannelServer: controlServer,
+        authSession: authSession,
+        executablePathResolver: executablePathResolver,
+        crashBackoffDelays: crashBackoffDelays,
+        stableRuntime: stableRuntime,
+        recentLogCount: recentLogCount,
+        now: () => now,
+        reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
+          warnings.add(message);
+        },
+      );
+    }
+
     tearDown(() async {
       repository.stopError = null;
       controlServer.stopError = null;
       await service.dispose();
       await repository.disposeFake();
+      await authSession.disposeFake();
+      await controlServer.disposeFake();
     });
 
     test("signed-out start enters login-required without starting infrastructure", () async {
@@ -85,7 +118,7 @@ void main() {
       expect(service.state, isA<BridgeProcessStopped>());
     });
 
-    test("an observed child exit tears down the per-spawn channel", () async {
+    test("an unexpected child exit tears down the channel and schedules a bounded retry", () async {
       authSession.state = _authenticatedState;
       await service.start();
 
@@ -93,7 +126,13 @@ void main() {
       await pumpEventQueue();
 
       expect(controlServer.stopCalls, 1);
-      expect(service.state, isA<BridgeProcessStopped>());
+      expect(
+        service.state,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", 7)
+            .having((state) => state.crashCount, "crashCount", 1)
+            .having((state) => state.delay, "delay", const Duration(hours: 1)),
+      );
     });
 
     test("control bind failure is cleaned up and permits retry", () async {
@@ -183,6 +222,204 @@ void main() {
       expect(warnings, hasLength(2));
       expect(service.state, isA<BridgeProcessStopping>());
     });
+
+    test("exit 86 immediately respawns exactly once", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      repository.emitExit(exitCode: 86, expected: false);
+      await pumpEventQueue();
+
+      expect(repository.spawnCalls, 2);
+      expect(controlServer.startCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+      await pumpEventQueue();
+      expect(repository.spawnCalls, 2);
+    });
+
+    test("exit 87 waits for a successful sign-in before restarting desired On", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      repository.emitExit(exitCode: 87, expected: false);
+      await pumpEventQueue();
+
+      expect(service.state, isA<BridgeProcessLoginRequired>());
+      expect(service.desiredState, BridgeProcessDesiredState.on);
+      expect(repository.spawnCalls, 1);
+
+      authSession.state = const AuthState.unauthenticated();
+      authSession.state = _authenticatedState;
+      await pumpEventQueue();
+
+      expect(repository.spawnCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("manual Off while login is required prevents a later sign-in restart", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.emitExit(exitCode: 87, expected: false);
+      await pumpEventQueue();
+
+      await service.stop();
+      authSession.state = const AuthState.unauthenticated();
+      authSession.state = _authenticatedState;
+      await pumpEventQueue();
+
+      expect(service.desiredState, BridgeProcessDesiredState.off);
+      expect(service.state, isA<BridgeProcessStopped>());
+      expect(repository.spawnCalls, 1);
+    });
+
+    test("exit 88 surfaces contention and an explicit start performs a plain respawn", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      repository.emitExit(exitCode: 88, expected: false);
+      await pumpEventQueue();
+
+      expect(service.state, isA<BridgeProcessContention>());
+      expect(repository.spawnCalls, 1);
+
+      await service.start();
+
+      expect(repository.spawnCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("clean and repository-expected exits never respawn", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      repository.emitExit(exitCode: 0, expected: false);
+      await pumpEventQueue();
+
+      expect(service.state, isA<BridgeProcessStopped>());
+      expect(service.desiredState, BridgeProcessDesiredState.off);
+      expect(repository.spawnCalls, 1);
+
+      await service.start();
+      repository.emitExit(exitCode: 35, expected: true);
+      await pumpEventQueue();
+
+      expect(service.state, isA<BridgeProcessStopped>());
+      expect(repository.spawnCalls, 2);
+    });
+
+    test("rapid crashes exhaust the bounded budget and surface only recent log lines", () async {
+      await rebuildService(
+        crashBackoffDelays: const <Duration>[Duration.zero, Duration.zero],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 2,
+      );
+      authSession.state = _authenticatedState;
+      logTracker.entries = <BridgeProcessLogEntry>[
+        BridgeProcessLogEntry(
+          timestamp: now,
+          source: BridgeProcessLogSource.stdout,
+          message: "old",
+        ),
+        BridgeProcessLogEntry(
+          timestamp: now,
+          source: BridgeProcessLogSource.stderr,
+          message: "recent-1",
+        ),
+        BridgeProcessLogEntry(
+          timestamp: now,
+          source: BridgeProcessLogSource.stdout,
+          message: "recent-2",
+        ),
+      ];
+      await service.start();
+
+      repository.emitExit(exitCode: 11, expected: false);
+      await pumpEventQueue();
+      expect(repository.spawnCalls, 2);
+      repository.emitExit(exitCode: 12, expected: false);
+      await pumpEventQueue();
+      expect(repository.spawnCalls, 3);
+      repository.emitExit(exitCode: 13, expected: false);
+      await pumpEventQueue();
+
+      expect(
+        service.state,
+        isA<BridgeProcessCrashGiveUp>()
+            .having((state) => state.exitCode, "exitCode", 13)
+            .having((state) => state.crashCount, "crashCount", 3)
+            .having(
+              (state) => state.recentLogs.map((entry) => entry.message),
+              "recent logs",
+              <String>["recent-1", "recent-2"],
+            ),
+      );
+      await pumpEventQueue();
+      expect(repository.spawnCalls, 3);
+    });
+
+    test("a stable control-connected runtime resets the crash budget", () async {
+      await rebuildService(
+        crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 20,
+      );
+      authSession.state = _authenticatedState;
+      await service.start();
+
+      final Future<BridgeProcessState> respawned = service.states
+          .skip(1)
+          .firstWhere((state) => state is BridgeProcessRunning);
+      repository.emitExit(exitCode: 20, expected: false);
+      await respawned;
+      expect(repository.spawnCalls, 2);
+
+      controlServer.emitHelperConnected();
+      await pumpEventQueue(times: 2);
+      now = now.add(const Duration(minutes: 6));
+      repository.emitExit(exitCode: 21, expected: false);
+      await pumpEventQueue();
+
+      expect(repository.spawnCalls, 3);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("manual Start cancels a pending retry without a delayed second helper", () async {
+      await rebuildService(
+        crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 20,
+      );
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.emitExit(exitCode: 30, expected: false);
+      await pumpEventQueue(times: 2);
+      expect(service.state, isA<BridgeProcessCrashRetryScheduled>());
+
+      await service.start();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(repository.spawnCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("manual Off cancels a pending retry", () async {
+      await rebuildService(
+        crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
+        stableRuntime: const Duration(minutes: 5),
+        recentLogCount: 20,
+      );
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.emitExit(exitCode: 31, expected: false);
+      await pumpEventQueue(times: 2);
+      expect(service.state, isA<BridgeProcessCrashRetryScheduled>());
+
+      await service.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(repository.spawnCalls, 1);
+      expect(service.state, isA<BridgeProcessStopped>());
+    });
   });
 
   test("dispatcher started before spawn completes a real authenticated token handshake", () async {
@@ -198,12 +435,17 @@ void main() {
       statusTracker: statusTracker,
       promptTracker: promptTracker,
     );
+    final _FakeAuthSession authSession = _FakeAuthSession(initialState: _authenticatedState);
     final BridgeProcessService service = BridgeProcessService.forTesting(
       repository: repository,
       logTracker: logTracker,
       controlChannelServer: server,
-      authSession: _FakeAuthSession(initialState: _authenticatedState),
+      authSession: authSession,
       executablePathResolver: _FakeBridgeExecutablePathResolver(path: "/repo/bridge"),
+      crashBackoffDelays: const <Duration>[Duration(hours: 1)],
+      stableRuntime: const Duration(minutes: 5),
+      recentLogCount: 20,
+      now: DateTime.now,
       reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {},
     );
     WebSocket? socket;
@@ -215,6 +457,7 @@ void main() {
       statusTracker.dispose();
       promptTracker.dispose();
       await repository.disposeFake();
+      await authSession.disposeFake();
     });
 
     dispatcher.start();
@@ -343,10 +586,14 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
 
 class _FakeBridgeProcessLogTracker() implements BridgeProcessLogTracker {
   int attachCalls = 0;
+  List<BridgeProcessLogEntry> entries = <BridgeProcessLogEntry>[];
   Stream<List<int>>? attachedStdout;
   Stream<List<int>>? attachedStderr;
   Object? attachError;
   void Function()? onAttach;
+
+  @override
+  List<BridgeProcessLogEntry> get snapshot => List<BridgeProcessLogEntry>.unmodifiable(entries);
 
   @override
   Future<void> attach({required Stream<List<int>> stdout, required Stream<List<int>> stderr}) async {
@@ -365,11 +612,15 @@ class _FakeBridgeProcessLogTracker() implements BridgeProcessLogTracker {
 }
 
 class _FakeControlChannelServer() implements ControlChannelServer {
+  final BehaviorSubject<bool> _helperConnections = BehaviorSubject<bool>.seeded(false);
   int startCalls = 0;
   int stopCalls = 0;
   bool isRunning = false;
   Object? startError;
   Object? stopError;
+
+  @override
+  ValueStream<bool> get helperConnectionStream => _helperConnections.stream;
 
   @override
   Uri get url => Uri.parse("ws://127.0.0.1:${41000 + startCalls}");
@@ -391,21 +642,43 @@ class _FakeControlChannelServer() implements ControlChannelServer {
   Future<void> stop() async {
     stopCalls++;
     isRunning = false;
+    if (_helperConnections.value) {
+      _helperConnections.add(false);
+    }
     final Object? failure = stopError;
     if (failure != null) {
       throw failure;
     }
   }
 
+  void emitHelperConnected() {
+    _helperConnections.add(true);
+  }
+
+  Future<void> disposeFake() => _helperConnections.close();
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeAuthSession({required AuthState initialState}) implements AuthSession {
-  AuthState state = initialState;
+  late final BehaviorSubject<AuthState> _states;
+
+  this {
+    _states = BehaviorSubject<AuthState>.seeded(initialState);
+  }
+
+  AuthState get state => _states.value;
+
+  set state(AuthState value) => _states.add(value);
+
+  @override
+  ValueStream<AuthState> get authStateStream => _states.stream;
 
   @override
   AuthState get currentState => state;
+
+  Future<void> disposeFake() => _states.close();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

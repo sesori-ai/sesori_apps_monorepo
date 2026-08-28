@@ -57,6 +57,15 @@ explicit restart, and the connection states the app presents.
   restores retryable state, and rethrows the original failure.
 - The desktop's single inbound control dispatcher subscribes during shell
   bootstrap, before any helper spawn, so the first token request is answered.
+- Desktop exit policy treats 86 as one immediate restart, 87 as login-required
+  until a later successful sign-in when desired On, 88 as machine contention,
+  and clean or expected exits as stopped. Other exits retry after 1, 2, 4, 8,
+  and 16 seconds, then give up with the latest 20 helper log lines. Five minutes
+  of control-connected runtime resets that crash budget; every manual Start or
+  Off cancels a pending timer before acting.
+- Conversational GUI prompt answers are sent only for a prompt still owned by
+  the connected helper and clear that prompt only after the frame is accepted
+  by the live control socket. Expected shutdown remains repository-owned.
 
 ## Regression Levels
 
@@ -65,7 +74,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -98,6 +107,12 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - A signed-out desktop spawning a helper, the control dispatcher starting after
   the helper, the control secret appearing in argv, a first token request going
   unread, or a failed spawn leaving its server or child alive and blocking retry.
+- Exit 86 spawning twice, exit 87 retrying before auth changes, exit 88 entering
+  crash backoff, an expected/clean exit respawning, an unbounded crash loop,
+  stable runtime failing to reset the budget, or a cancelled retry later
+  spawning a second helper after manual Start or Off.
+- A stale prompt answer reaching a newer helper, a failed prompt send removing
+  the pending prompt, or conversational sends bypassing the command service.
 
 ## Known Limitations
 
