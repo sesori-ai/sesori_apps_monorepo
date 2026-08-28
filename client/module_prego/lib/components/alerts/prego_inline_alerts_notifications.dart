@@ -1,9 +1,14 @@
+import "dart:ui" as ui;
+
 import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
+import "../../interactions/prego_tappable.dart";
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 import "../loaders/prego_activity_indicator.dart";
+import "../loaders/prego_ai_loader.dart";
 
 /// Visual type for [PregoInlineAlertsNotifications] — the Figma component's
 /// `Type` property.
@@ -27,9 +32,8 @@ enum PregoInlineAlertsNotificationsType() {
   /// red accent glow.
   error,
 
-  /// In-progress — a spinner replaces the leading icon, the primary action
-  /// renders in the inverted ("primary alt") style, and the accent glow is
-  /// neutral (as for [info]).
+  /// In-progress — the coordinated Figma deep-scan presentation: rotating AI
+  /// sparkle, masked skeleton rows, and a travelling scan beam.
   loading,
 }
 
@@ -51,7 +55,7 @@ class const PregoInlineAlertsNotificationsAction({
 /// `pregoInlineAletsNotifications` component (sic).
 ///
 /// Anatomy (left → right, top → bottom):
-/// - a leading status icon (or a spinner for
+/// - a leading status icon (or the coordinated sparkle for
 ///   [PregoInlineAlertsNotificationsType.loading]),
 /// - a bold [title],
 /// - an optional [secondaryAction] (a tertiary, label-only button),
@@ -88,7 +92,7 @@ class const PregoInlineAlertsNotifications({
   final String? supportingText,
     /// Overrides the leading icon. When `null`, the [type]'s default icon is
   /// used. Ignored for [PregoInlineAlertsNotificationsType.loading], which
-  /// always shows a spinner.
+  /// always shows the designed rotating sparkle.
   final IconData? icon,
     /// Optional primary (solid, accent-coloured) action button. When `null`, no
   /// primary button is rendered.
@@ -99,6 +103,9 @@ class const PregoInlineAlertsNotifications({
     /// Called when the close button is tapped. When `null`, the close button is
   /// not rendered.
   final VoidCallback? onClose,
+    /// Accessible label for the icon-only close button. The loading treatment
+  /// falls back to the platform-localized close label when this is `null`.
+  final String? closeSemanticLabel,
     /// Optional custom widget rendered in the content column, below the
   /// [supportingText]. Use for richer content (links, inline controls, etc.).
   final Widget? additionalContent,
@@ -115,6 +122,14 @@ class const PregoInlineAlertsNotifications({
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return _PregoLoadingInlineAlert(
+        title: title,
+        supportingText: supportingText,
+        onClose: onClose,
+        closeSemanticLabel: closeSemanticLabel,
+      );
+    }
     return Builder(builder: _buildCard);
   }
 
@@ -364,6 +379,415 @@ class const PregoInlineAlertsNotifications({
     PregoInlineAlertsNotificationsType.warning => colors.fgWarningSecondary,
     PregoInlineAlertsNotificationsType.error => colors.fgErrorSecondary,
   };
+}
+
+/// Figma's coordinated loading alert, kept private so the public component's
+/// closed [PregoInlineAlertsNotificationsType] API remains the only entrypoint.
+class const _PregoLoadingInlineAlert({
+  required final String title,
+  required final String? supportingText,
+  required final VoidCallback? onClose,
+  required final String? closeSemanticLabel,
+}) extends StatefulWidget {
+  @override
+  State<_PregoLoadingInlineAlert> createState() => _PregoLoadingInlineAlertState();
+}
+
+class _PregoLoadingInlineAlertState() extends State<_PregoLoadingInlineAlert>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
+  /// Figma coordinates both moving pieces on one ten-second looping timeline.
+  static const Duration _period = Duration(seconds: 10);
+
+  late final AnimationController _timeline = AnimationController(vsync: this, duration: _period);
+  // Figma's outlined sparkle rotates linearly through five full turns across
+  // the entire ten-second timeline (one turn every two seconds).
+  late final Animation<double> _loaderTurns = Tween(begin: 0.0, end: 5.0).animate(_timeline);
+  late final Animation<double> _beamX = TweenSequence([
+    TweenSequenceItem(
+      tween: Tween(begin: -18.0, end: 128.181).chain(
+        CurveTween(curve: const Cubic(0.45, 0, 0.55, 1)),
+      ),
+      weight: 25,
+    ),
+    TweenSequenceItem(tween: ConstantTween(128.181), weight: 75),
+  ]).animate(_timeline);
+
+  @override
+  bool get motionEnabled => true;
+
+  @override
+  void startMotion() {
+    if (!_timeline.isAnimating) _timeline.repeat();
+  }
+
+  @override
+  void stopMotion() {
+    if (_timeline.isAnimating) _timeline.stop();
+    // Reduced motion uses the intentional first frame, not an arbitrary point
+    // at which the platform preference happened to change.
+    _timeline.value = 0;
+  }
+
+  @override
+  void dispose() {
+    _timeline.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    final close = widget.onClose;
+    final clipShape = _deepScanCardShape(context);
+    final outlineShape = _deepScanCardShape(
+      context,
+      side: BorderSide(color: colors.borderPrimary),
+    );
+    // The updated Figma graphic uses the theme-aware brand-gradient endpoint:
+    // white in dark mode and Blue/400 (#4D94FF) in light mode.
+    final beamColor = colors.brandGradientTop;
+    // The light beam needs less visual weight against a white card than the
+    // original dark Figma beam: 0.48 is a 20% reduction from its 0.60 alpha.
+    final beamOpacity = colors.brightness == Brightness.dark ? 0.6 : 0.48;
+
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+        child: SizedBox(
+          height: 69,
+          child: Container(
+            key: const ValueKey("prego-deep-scan-card"),
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              color: colors.bgSurface5,
+              shape: clipShape,
+            ),
+            foregroundDecoration: ShapeDecoration(shape: outlineShape),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PositionedDirectional(
+                  // The 104px mask starts 14px above the 69px viewport in
+                  // Figma; the first row itself starts at y=2 inside it.
+                  top: -14,
+                  end: 21,
+                  width: _LoadingScanPanel.width,
+                  height: _LoadingScanPanel.height,
+                  child: RepaintBoundary(
+                    key: const ValueKey("prego-deep-scan-panel"),
+                    child: _LoadingScanPanel(
+                      beamX: _beamX,
+                      skeletonFillColor: colors.bgSurface6,
+                      skeletonShadowColor: colors.shadowXs,
+                      skeletonInnerBorderColor: colors.skeuomorphicInnerBorder,
+                      skeletonBottomShadowColor: colors.skeuomorphicShadow,
+                      beamColor: beamColor,
+                      beamOpacity: beamOpacity,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
+                  child: Row(
+                    children: [
+                      RotationTransition(
+                        key: const ValueKey("prego-deep-scan-loader"),
+                        turns: _loaderTurns,
+                        child: PregoAiLoader(
+                          size: 20,
+                          animate: false,
+                          fillMode: .outline,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: PregoSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+                            ),
+                            const SizedBox(height: PregoSpacing.xxs),
+                            Text(
+                              widget.supportingText ?? "",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (close != null) ...[
+                        const SizedBox(width: PregoSpacing.lg),
+                        _LoadingCloseButton(
+                          semanticLabel: widget.closeSemanticLabel,
+                          onPressed: close,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The shared Deep Scan silhouette: a 24px radius everywhere, with Flutter's
+/// native Apple-style continuous curve on iOS. [RoundedSuperellipseBorder] is
+/// the native approximation of Figma's 60% corner smoothing; Android keeps the
+/// same radius with Material's circular corner geometry.
+ShapeBorder _deepScanCardShape(
+  BuildContext context, {
+  BorderSide side = BorderSide.none,
+}) {
+  const radius = BorderRadius.all(Radius.circular(PregoRadius.x4l));
+  return Theme.of(context).platform == TargetPlatform.iOS
+      ? RoundedSuperellipseBorder(borderRadius: radius, side: side)
+      : RoundedRectangleBorder(borderRadius: radius, side: side);
+}
+
+/// The masked skeleton rows and travelling beam on the alert's trailing side.
+class const _LoadingScanPanel({
+  required final Animation<double> beamX,
+  required final Color skeletonFillColor,
+  required final Color skeletonShadowColor,
+  required final Color skeletonInnerBorderColor,
+  required final Color skeletonBottomShadowColor,
+  required final Color beamColor,
+  required final double beamOpacity,
+}) extends StatelessWidget {
+  static const double width = 142;
+  static const double height = 104;
+  static const double _beamWidth = 12.6;
+  static const double _beamHeight = 127.6;
+  static const double _beamOriginX = 18;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) => ui.Gradient.linear(
+          Offset(7, bounds.center.dy),
+          Offset(99, bounds.center.dy),
+          const [Colors.transparent, Colors.white, Colors.transparent],
+          const [0, 0.25, 1],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
+          children: [
+            CustomPaint(
+              painter: _LoadingSkeletonPainter(
+                fillColor: skeletonFillColor,
+                shadowColor: skeletonShadowColor,
+                innerBorderColor: skeletonInnerBorderColor,
+                bottomShadowColor: skeletonBottomShadowColor,
+              ),
+            ),
+            Positioned(
+              left: _beamOriginX,
+              top: (height - _beamHeight) / 2,
+              width: _beamWidth,
+              height: _beamHeight,
+              child: AnimatedBuilder(
+                animation: beamX,
+                child: CustomPaint(
+                  painter: _LoadingBeamPainter(
+                    color: beamColor,
+                    opacity: beamOpacity,
+                  ),
+                ),
+                builder: (context, child) => Transform.translate(
+                  key: const ValueKey("prego-deep-scan-beam"),
+                  offset: Offset(beamX.value, 0),
+                  child: child,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingSkeletonPainter({
+  required final Color fillColor,
+  required final Color shadowColor,
+  required final Color innerBorderColor,
+  required final Color bottomShadowColor,
+}) extends CustomPainter {
+  static const _bars = <(Offset, double)>[
+    (Offset(29, 2), 0.3),
+    (Offset(45, 27), 0.6),
+    (Offset(45, 52), 0.6),
+    (Offset(29, 77), 0.3),
+  ];
+
+  static const Size _barSize = Size(122, 21);
+  static const Radius _barRadius = Radius.circular(5.918);
+  static const double _effectScale = 0.74;
+  static const double _bottomShadowHeight = 1.479;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final (origin, opacity) in _bars) {
+      final rect = origin & _barSize;
+      final rrect = RRect.fromRectAndRadius(rect, _barRadius);
+
+      // Figma applies the row opacity after compositing its fill and effects.
+      // A layer preserves that group-opacity behavior instead of multiplying
+      // each overlapping stroke independently.
+      canvas.saveLayer(
+        rect.inflate(4),
+        Paint()..color = Colors.white.withValues(alpha: opacity),
+      );
+
+      final shadow = BoxShadow(
+        color: shadowColor,
+        offset: const Offset(0, _effectScale),
+        blurRadius: _bottomShadowHeight,
+      );
+      canvas.drawRRect(rrect.shift(shadow.offset), shadow.toPaint());
+      canvas.drawRRect(rrect, Paint()..color = fillColor);
+
+      // Figma: inset 0 -1.479px 0, clipped to the rounded row.
+      canvas.save();
+      canvas.clipRRect(rrect);
+      canvas.drawRect(
+        Rect.fromLTWH(
+          rect.left,
+          rect.bottom - _bottomShadowHeight,
+          rect.width,
+          _bottomShadowHeight,
+        ),
+        Paint()..color = bottomShadowColor,
+      );
+      canvas.restore();
+
+      // Figma: inset 0 0 0 0.74px, painted above the bottom inset shadow.
+      canvas.drawRRect(
+        rrect.deflate(_effectScale / 2),
+        Paint()
+          ..color = innerBorderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _effectScale,
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LoadingSkeletonPainter oldDelegate) {
+    return fillColor != oldDelegate.fillColor ||
+        shadowColor != oldDelegate.shadowColor ||
+        innerBorderColor != oldDelegate.innerBorderColor ||
+        bottomShadowColor != oldDelegate.bottomShadowColor;
+  }
+}
+
+class const _LoadingBeamPainter({required final Color color, required final double opacity})
+    extends CustomPainter {
+  static const double _strokeWidth = 6;
+  static const double _blurSigma = 1.65;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final start = Offset(size.width / 2, 3.3);
+    final end = Offset(size.width / 2, size.height - 3.3);
+    final paintedColor = color.withValues(alpha: color.a * opacity);
+
+    canvas.drawLine(
+      start,
+      end,
+      Paint()
+        ..color = paintedColor
+        ..strokeWidth = _strokeWidth
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, _blurSigma),
+    );
+    canvas.drawLine(
+      start,
+      end,
+      Paint()
+        ..color = paintedColor
+        ..strokeWidth = _strokeWidth,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LoadingBeamPainter oldDelegate) {
+    return color != oldDelegate.color || opacity != oldDelegate.opacity;
+  }
+}
+
+class const _LoadingCloseButton({
+  required final String? semanticLabel,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    final radius = BorderRadius.circular(PregoRadius.full);
+    final label = semanticLabel ?? MaterialLocalizations.of(context).closeButtonTooltip;
+
+    return Semantics(
+      button: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: SizedBox.square(
+          dimension: 36,
+          child: PregoTappable(
+            onTap: onPressed,
+            borderRadius: radius,
+            overlayInset: 1,
+            overlayColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
+              if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
+              return null;
+            }),
+            containerBuilder: (child) => DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.bgSurface4,
+                border: Border.all(color: colors.borderSecondary),
+                borderRadius: radius,
+                boxShadow: [
+                  BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: radius,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    child,
+                    PregoSkeuomorphicOverlay(
+                      innerBorderColor: colors.skeuomorphicInnerBorder,
+                      bottomShadowColor: colors.skeuomorphicShadow,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            child: Center(
+              child: Icon(TablerRegular.x, size: 20, color: colors.textSecondary),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Re-themes [child] with the opposite-brightness [PregoDesignSystem].

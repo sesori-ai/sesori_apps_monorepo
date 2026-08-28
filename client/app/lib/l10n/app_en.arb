@@ -1122,11 +1122,11 @@
       }
     }
   },
-  "catalogScanPartlyFailedTitle": "Scan finished",
+  "catalogScanPartlyFailedTitle": "Scanning finished",
   "@catalogScanPartlyFailedTitle": {
     "description": "Title of the scan row when some harnesses scanned successfully and others did not."
   },
-  "catalogScanPartlyFailedDetail": "{failed} of {total} harnesses could not be scanned",
+  "catalogScanPartlyFailedDetail": "{failed} of {total} harnesses could not be found",
   "@catalogScanPartlyFailedDetail": {
     "description": "Supporting line on a partly failed scan row. Both harnesses counts are at least one, so the total is always plural.",
     "placeholders": {
@@ -1142,7 +1142,7 @@
   "@catalogScanFailedTitle": {
     "description": "Title of the scan row when no harness could be scanned."
   },
-  "catalogScanFailedDetail": "Check the bridge log for details",
+  "catalogScanFailedDetail": "Check bridge logs",
   "@catalogScanFailedDetail": {
     "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
   },

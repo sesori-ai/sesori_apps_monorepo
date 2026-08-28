@@ -1,10 +1,13 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:material_ui/material_ui.dart" as material;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/catalog_scan_row.dart";
+import "package:sesori_mobile/features/project_list/widgets/project_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "package:widgetbook/widgetbook.dart";
 
@@ -13,6 +16,8 @@ void main() {
 }
 
 const _playbookHeader = "Sesori mobile component playbook";
+const _nativeInitialRoute =
+    "/?path=mobile/deep-scan-row/in-action-%C2%B7-pull-to-scan&preview&theme={name:Prego%20dark}";
 
 final _lightTheme = _buildPregoTheme(designSystem: PregoDesignSystem.light);
 final _darkTheme = _buildPregoTheme(designSystem: PregoDesignSystem.dark);
@@ -35,6 +40,10 @@ class const CatalogScanRowPlaybook({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Widgetbook.material(
+      // A native simulator has no URL fragment to select a use case, so open
+      // directly into the real interaction. Web URLs override this route and
+      // retain the full matrix, state picker, addons, and knobs.
+      initialRoute: _nativeInitialRoute,
       appBuilder: _buildLocalizedPregoApp,
       addons: [
         _buildPregoThemeAddon(),
@@ -79,8 +88,9 @@ ThemeAddon<material.ThemeData> _buildPregoThemeAddon() => ThemeAddon<material.Th
 WidgetbookComponent buildCatalogScanRowComponent() => WidgetbookComponent(
   name: "Deep scan row",
   useCases: [
+    WidgetbookUseCase(name: "In action · Pull to scan", builder: _buildInAction),
     WidgetbookUseCase(name: "All states and variants", builder: _buildStateMatrix),
-    WidgetbookUseCase(name: "Playground", builder: _buildPlayground),
+    WidgetbookUseCase(name: "State picker", builder: _buildPlayground),
     ...catalogScanRowScenarios.map(
       (scenario) => WidgetbookUseCase(
         name: scenario.name,
@@ -91,6 +101,30 @@ WidgetbookComponent buildCatalogScanRowComponent() => WidgetbookComponent(
     ),
   ],
 );
+
+Widget _buildInAction(BuildContext context) {
+  final selection = context.knobs.object.dropdown(
+    label: "Example mode",
+    options: catalogScanDemoSelections,
+    initialOption: catalogScanDemoSelections.first,
+    labelBuilder: (value) => value.label,
+  );
+  final reducedMotion = context.knobs.boolean(label: "Reduce motion");
+
+  return _PlaybookSurface(
+    alignment: Alignment.topCenter,
+    child: LayoutBuilder(
+      builder: (context, constraints) => SizedBox(
+        width: math.min(520, constraints.maxWidth),
+        height: constraints.maxHeight,
+        child: MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: reducedMotion),
+          child: CatalogScanRowInActionExample(selection: selection),
+        ),
+      ),
+    ),
+  );
+}
 
 Widget _buildStateMatrix(BuildContext context) {
   final reducedMotion = context.knobs.boolean(label: "Reduce motion");
@@ -184,6 +218,17 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     action: CatalogScanRowAction.cancel,
   ),
   CatalogScanRowScenario(
+    id: "running-singular",
+    name: "Running / One session",
+    description: "The singular live-count branch is visible while Codex scans.",
+    scan: CatalogRescanState.running(
+      activePluginName: "Codex",
+      sessionsSeen: 1,
+      pluginIds: {"codex", "opencode"},
+    ),
+    action: CatalogScanRowAction.cancel,
+  ),
+  CatalogScanRowScenario(
     id: "running-large-count",
     name: "Running / Large count",
     description: "A long-running scan with a representative three-digit count.",
@@ -193,6 +238,16 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
       pluginIds: {"claude-code", "codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
+  ),
+  CatalogScanRowScenario(
+    id: "success-delta-singular",
+    name: "Success delta / One session + project",
+    description: "Both localized delta clauses use their singular branch.",
+    scan: CatalogRescanState.succeeded(
+      harnessCount: 2,
+      counts: CatalogRescanCounts.delta(newProjects: 1, newSessions: 1),
+    ),
+    action: CatalogScanRowAction.dismiss,
   ),
   CatalogScanRowScenario(
     id: "success-delta-sessions",
@@ -231,6 +286,16 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.succeeded(
       harnessCount: 2,
       counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 0),
+    ),
+    action: CatalogScanRowAction.dismiss,
+  ),
+  CatalogScanRowScenario(
+    id: "success-totals-singular",
+    name: "Success totals / One session + project",
+    description: "Both localized total-count clauses use their singular branch.",
+    scan: CatalogRescanState.succeeded(
+      harnessCount: 2,
+      counts: CatalogRescanCounts.totals(projects: 1, sessions: 1),
     ),
     action: CatalogScanRowAction.dismiss,
   ),
@@ -303,6 +368,279 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     action: CatalogScanRowAction.dismiss,
   ),
 ];
+
+/// What the action example should do.
+///
+/// The gesture branch owns a changing scan, while a static preview carries one
+/// curated scenario. Keeping those as separate variants means the Widgetbook
+/// knob cannot accidentally request both behaviours at once.
+sealed class const CatalogScanDemoSelection() {
+  String get label;
+}
+
+final class const CatalogScanGestureDemo() extends CatalogScanDemoSelection {
+  @override
+  String get label => "Gesture demo · automatic success";
+}
+
+final class const CatalogScanStaticPreview({required final CatalogScanRowScenario scenario})
+    extends CatalogScanDemoSelection {
+  @override
+  String get label => "Preview · ${scenario.name}";
+}
+
+final catalogScanDemoSelections = <CatalogScanDemoSelection>[
+  const CatalogScanGestureDemo(),
+  for (final scenario in catalogScanRowScenarios) CatalogScanStaticPreview(scenario: scenario),
+];
+
+final _exampleProjects = [
+  (
+    project: _exampleProject(
+      id: "landing",
+      name: "Landing",
+      path: "/Users/developer/Documents/Landing",
+      age: const Duration(hours: 4),
+    ),
+    activeSessions: 0,
+    unseen: false,
+  ),
+  (
+    project: _exampleProject(
+      id: "sesori-mobile",
+      name: "sesori_apps_monorepo",
+      path: "/Users/developer/Documents/sesori_apps_monorepo",
+      age: const Duration(days: 1),
+    ),
+    activeSessions: 1,
+    unseen: false,
+  ),
+  (
+    project: _exampleProject(
+      id: "silvia",
+      name: "SilviaMonorepo",
+      path: "/Users/developer/Documents/SilviaMonorepo",
+      age: const Duration(days: 7),
+      unseen: true,
+    ),
+    activeSessions: 0,
+    unseen: true,
+  ),
+  (
+    project: _exampleProject(
+      id: "bridge",
+      name: "Bridge",
+      path: "/Users/developer/Projects/sesori/bridge",
+      age: const Duration(days: 8),
+    ),
+    activeSessions: 0,
+    unseen: false,
+  ),
+  (
+    project: _exampleProject(
+      id: "design-catalog",
+      name: "Design catalog",
+      path: "/Users/developer/Projects/sesori/design_catalog",
+      age: const Duration(days: 12),
+    ),
+    activeSessions: 0,
+    unseen: false,
+  ),
+  (
+    project: _exampleProject(
+      id: "desktop",
+      name: "Desktop",
+      path: "/Users/developer/Projects/sesori/desktop",
+      age: const Duration(days: 16),
+    ),
+    activeSessions: 0,
+    unseen: false,
+  ),
+];
+
+ProjectSummary _exampleProject({
+  required String id,
+  required String name,
+  required String path,
+  required Duration age,
+  bool unseen = false,
+}) {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  return ProjectSummary(
+    id: id,
+    name: name,
+    path: path,
+    time: ProjectTime(
+      created: now - const Duration(days: 120).inMilliseconds,
+      updated: now - age.inMilliseconds,
+    ),
+    hasUnseenChanges: unseen,
+  );
+}
+
+/// A production-faithful Projects surface around [CatalogScanRow].
+///
+/// This intentionally uses the same Prego navigation scaffold, project tiles,
+/// refresh control, and scan-row placement as the real screen. Pull normally
+/// to refresh the projects; keep pulling after the caption appears to cross the
+/// real deep-refresh threshold and start the timed scan sequence. Widgetbook's
+/// Example mode knob freezes the row in any curated state without adding a
+/// forced-state API to production code.
+class const CatalogScanRowInActionExample({
+  super.key,
+  required final CatalogScanDemoSelection selection,
+}) extends StatefulWidget {
+  @override
+  State<CatalogScanRowInActionExample> createState() => _CatalogScanRowInActionExampleState();
+}
+
+class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInActionExample> {
+  final _timers = <Timer>[];
+  late CatalogRescanState _scan = _scanFor(widget.selection);
+
+  @override
+  void didUpdateWidget(CatalogScanRowInActionExample oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selection == widget.selection) return;
+    _cancelTimers();
+    _scan = _scanFor(widget.selection);
+  }
+
+  @override
+  void dispose() {
+    _cancelTimers();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selection = widget.selection;
+    return PregoGlassScaffold(
+      key: const Key("catalog-scan-in-action-screen"),
+      title: "Projects",
+      titleMode: PregoTopNavigationTitleMode.backLeading,
+      leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
+      automaticallyImplyLeading: false,
+      subtitle: const PregoNavSubtitle(
+        text: "MacBook-Pro",
+        icon: TablerRegular.device_laptop,
+        status: PregoNavStatus.online,
+      ),
+      actions: [
+        PregoButtonsIconGlass(
+          icon: VESPRSolid.gear,
+          semanticLabel: "Settings",
+          onPressed: () {},
+        ),
+      ],
+      floatingActionButton: PregoButtonsIconGlass(
+        icon: TablerRegular.folder_plus,
+        size: PregoButtonsIconGlassSize.xl,
+        iconSize: 22,
+        semanticLabel: "Add project",
+        onPressed: () {},
+      ),
+      onRefresh: _refreshProjects,
+      deepRefresh: switch (selection) {
+        CatalogScanGestureDemo() => CatalogScanRow.deepRefresh(context: context, onStart: _startScan),
+        CatalogScanStaticPreview() => null,
+      },
+      slivers: [
+        SliverToBoxAdapter(
+          child: CatalogScanRow(scan: _scan, onCancel: _cancelScan, onDismiss: _dismissScan),
+        ),
+        SliverList.list(
+          children: [
+            for (final example in _exampleProjects)
+              ExcludeSemantics(
+                child: IgnorePointer(
+                  child: ProjectTile(
+                    project: example.project,
+                    activeSessions: example.activeSessions,
+                    unseen: example.unseen,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
+      ],
+    );
+  }
+
+  Future<void> _refreshProjects() => Future<void>.delayed(const Duration(milliseconds: 650));
+
+  void _startScan() {
+    if (widget.selection is! CatalogScanGestureDemo) return;
+    _cancelTimers();
+    setState(() {
+      _scan = const CatalogRescanState.starting(pluginIds: {"claude-code", "codex", "opencode"});
+    });
+    _schedule(
+      const Duration(milliseconds: 650),
+      const CatalogRescanState.running(
+        activePluginName: "Codex",
+        sessionsSeen: 0,
+        pluginIds: {"claude-code", "codex", "opencode"},
+      ),
+    );
+    _schedule(
+      const Duration(milliseconds: 1400),
+      const CatalogRescanState.running(
+        activePluginName: "Codex",
+        sessionsSeen: 3,
+        pluginIds: {"claude-code", "codex", "opencode"},
+      ),
+    );
+    _schedule(
+      const Duration(milliseconds: 2200),
+      const CatalogRescanState.running(
+        activePluginName: "OpenCode",
+        sessionsSeen: 8,
+        pluginIds: {"claude-code", "codex", "opencode"},
+      ),
+    );
+    _schedule(
+      const Duration(milliseconds: 3100),
+      const CatalogRescanState.succeeded(
+        harnessCount: 3,
+        counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
+      ),
+    );
+  }
+
+  void _schedule(Duration delay, CatalogRescanState scan) {
+    _timers.add(
+      Timer(delay, () {
+        if (!mounted || widget.selection is! CatalogScanGestureDemo) return;
+        setState(() => _scan = scan);
+      }),
+    );
+  }
+
+  void _cancelScan() {
+    if (widget.selection is! CatalogScanGestureDemo) return;
+    _cancelTimers();
+    setState(() => _scan = const CatalogRescanState.idle());
+  }
+
+  void _dismissScan() {
+    if (widget.selection is! CatalogScanGestureDemo) return;
+    setState(() => _scan = const CatalogRescanState.idle());
+  }
+
+  void _cancelTimers() {
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    _timers.clear();
+  }
+}
+
+CatalogRescanState _scanFor(CatalogScanDemoSelection selection) => switch (selection) {
+  CatalogScanGestureDemo() => const CatalogRescanState.idle(),
+  CatalogScanStaticPreview(:final scenario) => scenario.scan,
+};
 
 class const _ScenarioFrame({
   required final CatalogScanRowScenario scenario,

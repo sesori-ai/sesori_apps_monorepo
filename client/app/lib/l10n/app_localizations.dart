@@ -3352,13 +3352,13 @@ abstract class AppLocalizations {
   /// Title of the scan row when some harnesses scanned successfully and others did not.
   ///
   /// In en, this message translates to:
-  /// **'Scan finished'**
+  /// **'Scanning finished'**
   String get catalogScanPartlyFailedTitle;
 
   /// Supporting line on a partly failed scan row. Both harnesses counts are at least one, so the total is always plural.
   ///
   /// In en, this message translates to:
-  /// **'{failed} of {total} harnesses could not be scanned'**
+  /// **'{failed} of {total} harnesses could not be found'**
   String catalogScanPartlyFailedDetail(int failed, int total);
 
   /// Title of the scan row when no harness could be scanned.
@@ -3370,7 +3370,7 @@ abstract class AppLocalizations {
   /// Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it.
   ///
   /// In en, this message translates to:
-  /// **'Check the bridge log for details'**
+  /// **'Check bridge logs'**
   String get catalogScanFailedDetail;
 
   /// Title of the scan row when the connected bridge is too old to scan harness catalogs on request.

@@ -1,6 +1,8 @@
+import "dart:ui" as ui;
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
@@ -8,17 +10,20 @@ import "../extensions/build_context_x.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);
+const Curve _revealEaseOut = Cubic(0.23, 1, 0.32, 1);
+// A compact optical entrance: close enough to full size that text stays stable,
+// with just enough blur to connect the card to the pull without looking glassy.
+const double _entranceScaleFrom = 0.97;
+const double _entranceBlurSigma = 2;
 
 /// The catalog scan reported as one quiet row above a list.
 ///
-/// Deliberately not an inline alert: that component paints the inverted
-/// foreground and is built to interrupt, which is wrong for something a pull
-/// starts and that clears itself. This is a tinted card in the state's own
-/// colour family, weighted to sit above the list rather than on top of it.
+/// Live scans use the coordinated PREGO loading alert designed for this flow;
+/// terminal outcomes keep their severity-tinted report cards.
 ///
-/// Its height never changes with the state. The supporting line always occupies
-/// a row, so a scan that starts before it can name a harness does not shove the
-/// list down again the moment the first progress event lands.
+/// Its height never changes while the scan is live. The supporting line always
+/// occupies a row, so a scan that starts before it can name a harness does not
+/// shove the list down again when the first progress event lands.
 class const CatalogScanRow({
   super.key,
 
@@ -46,7 +51,8 @@ class const CatalogScanRow({
   State<CatalogScanRow> createState() => _CatalogScanRowState();
 }
 
-class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProviderStateMixin {
+class _CatalogScanRowState() extends State<CatalogScanRow>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _reveal = AnimationController(
     vsync: this,
     duration: _revealDuration,
@@ -56,8 +62,19 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
   );
   late final CurvedAnimation _curve = CurvedAnimation(
     parent: _reveal,
-    curve: Curves.easeOutCubic,
-    reverseCurve: Curves.easeInCubic,
+    curve: _revealEaseOut,
+    // The flipped strong ease-out makes the visible exit snap first and settle
+    // softly while the controller itself runs backwards.
+    reverseCurve: const FlippedCurve(_revealEaseOut),
+  );
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: _revealDuration,
+    value: _hasContent ? 1 : 0,
+  );
+  late final CurvedAnimation _entranceCurve = CurvedAnimation(
+    parent: _entrance,
+    curve: _revealEaseOut,
   );
 
   /// The last content worth showing, kept while the row folds away.
@@ -74,6 +91,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Drops the retained card once it has finished folding away. Without this
     // its labels and its live action button stay mounted at zero height, where
     // a keyboard or screen reader can still reach an invisible control.
@@ -81,16 +99,51 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncReducedMotionPreference();
+  }
+
+  @override
   void didUpdateWidget(CatalogScanRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Read per change rather than once: the OS preference can be turned on
-    // while this row is on screen.
-    _reveal.duration = context.isReducedMotion ? Duration.zero : _revealDuration;
+    final reducedMotion = _syncReducedMotionPreference();
+    final hadContent = oldWidget._scan is! CatalogRescanIdle;
     if (_hasContent) {
       _reveal.forward();
+      if (!hadContent) {
+        if (reducedMotion) {
+          _entrance.value = 1;
+        } else {
+          _entrance.forward(from: 0);
+        }
+      }
     } else {
       _reveal.reverse();
     }
+  }
+
+  /// Keeps the finite entrance in step with both platform accessibility APIs.
+  ///
+  /// Android's "Remove animations" reaches [MediaQuery], while iOS Reduce
+  /// Motion is a separate dispatcher feature. The shared PREGO helper reads
+  /// both; the observer below also settles an entrance if the preference is
+  /// enabled during its short run.
+  bool _syncReducedMotionPreference() {
+    final reducedMotion = prefersReducedMotion(context);
+    _reveal.duration = reducedMotion ? Duration.zero : _revealDuration;
+    if (reducedMotion) {
+      if (_reveal.isAnimating) _reveal.value = _hasContent ? 1 : 0;
+      if (_entrance.isAnimating) _entrance.value = 1;
+    }
+    return reducedMotion;
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() {
+    super.didChangeAccessibilityFeatures();
+    if (!mounted) return;
+    _syncReducedMotionPreference();
   }
 
   void _onRevealStatus(AnimationStatus status) {
@@ -100,7 +153,10 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _reveal.removeStatusListener(_onRevealStatus);
+    _entranceCurve.dispose();
+    _entrance.dispose();
     _curve.dispose();
     _reveal.dispose();
     super.dispose();
@@ -120,23 +176,53 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
       alignment: AlignmentDirectional.topStart,
       child: FadeTransition(
         opacity: _curve,
-        child: Padding(
-          padding: EdgeInsetsDirectional.fromSTEB(
-            context.prego.spacing.lg,
-            context.prego.spacing.md,
-            context.prego.spacing.lg,
-            context.prego.spacing.sm,
-          ),
-          // Announced when it appears without moving focus, the same treatment
-          // the connection banner uses: a scan started by a pull finishes with
-          // no other signal that it is done. Every state announces except the
-          // running one, whose session count changes with each enumerated
-          // session and would otherwise interrupt a screen reader hundreds of
-          // times during one scan.
+        // Announced when it appears without moving focus, the same treatment
+        // the connection banner uses: a scan started by a pull finishes with
+        // no other signal that it is done. Every state announces except the
+        // running one, whose session count changes with each enumerated
+        // session and would otherwise interrupt a screen reader hundreds of
+        // times during one scan.
+        child: AnimatedBuilder(
+          animation: _entrance,
+          builder: (context, child) {
+            final progress = _entranceCurve.value;
+            final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
+            final blurSigma = _entranceBlurSigma * (1 - progress);
+            final filteredChild = blurSigma <= 0
+                ? child
+                : ImageFiltered(
+                    key: const ValueKey("catalog-scan-row-entrance-blur"),
+                    imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                    child: child,
+                  );
+            return Transform.scale(
+              key: const ValueKey("catalog-scan-row-entrance"),
+              alignment: Alignment.topCenter,
+              scale: scale,
+              child: filteredChild,
+            );
+          },
+          // AnimatedBuilder retains this subtree while only the composited
+          // entrance transform and its short-lived image filter change.
           child: Semantics(
             container: true,
+            // Keep the icon-only cancel action as a separately focusable node;
+            // otherwise this live-region container merges its localized label
+            // into the changing status announcement.
+            explicitChildNodes: true,
             liveRegion: widget._scan is! CatalogRescanRunning,
-            child: _ScanCard(content: shown),
+            child: shown.tone == _ScanTone.working
+                ? PregoInlineAlertsNotifications(
+                    type: PregoInlineAlertsNotificationsType.loading,
+                    title: shown.title,
+                    supportingText: shown.detail,
+                    onClose: shown.onAction,
+                    closeSemanticLabel: shown.actionLabel,
+                  )
+                : Padding(
+                    padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+                    child: _ScanCard(content: shown),
+                  ),
           ),
         ),
       ),
@@ -263,79 +349,213 @@ class const _RowContent({
   required final VoidCallback onAction,
 });
 
-/// The tinted card itself: leading mark, two fixed lines, one action.
+/// The Figma result card: leading mark, two fixed lines, one tinted action.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
-  /// Leading glyph and spinner size. Smaller than an alert's, because this row
-  /// reports rather than interrupts.
-  static const double _markSize = 18;
+  static const double _height = 69;
+  static const double _markSize = 22;
+  // Figma's radial is 483.76px wide for a 69px vertical radius.
+  static const double _glowScaleX = 7.011014492753623;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final (background, foreground) = switch (content.tone) {
-      _ScanTone.working => (colors.bgSecondary, colors.fgBrandPrimary),
-      _ScanTone.done => (colors.bgSuccessPrimary, colors.fgSuccessPrimary),
-      _ScanTone.attention => (colors.bgWarningPrimary, colors.fgWarningPrimary),
-      _ScanTone.problem => (colors.bgErrorPrimary, colors.fgErrorPrimary),
+    final clipShape = _deepScanCardShape(context);
+    final outlineShape = _deepScanCardShape(
+      context,
+      side: BorderSide(color: colors.borderPrimary),
+    );
+    final (accent, markColor, actionColor) = switch (content.tone) {
+      // The working tone is rendered by PREGO's loading alert above. Keeping
+      // this branch exhaustive makes the terminal card's token mapping honest.
+      _ScanTone.working => (colors.bgBrandSolid, colors.fgBrandPrimary, colors.textBrandSecondary),
+      _ScanTone.done => (
+        colors.bgSuccessSecondary,
+        colors.textSuccessPrimary,
+        colors.textSuccessPrimary,
+      ),
+      _ScanTone.attention => (
+        colors.bgWarningSecondary,
+        colors.fgWarningSecondary,
+        colors.textWarningPrimary,
+      ),
+      _ScanTone.problem => (
+        colors.bgErrorSolid,
+        colors.fgErrorPrimary,
+        colors.textErrorPrimary,
+      ),
     };
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(PregoRadius.lg),
-        border: Border.all(color: colors.borderSecondary),
-      ),
-      child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(
-          PregoSpacing.lg,
-          PregoSpacing.lg,
-          PregoSpacing.md,
-          PregoSpacing.lg,
+    return SizedBox(
+      height: _height,
+      child: Container(
+        key: const ValueKey("catalog-scan-terminal-card"),
+        clipBehavior: Clip.antiAlias,
+        decoration: ShapeDecoration(
+          color: colors.bgSurface5,
+          shape: clipShape,
         ),
-        child: Row(
-          children: [
-            SizedBox.square(
-              dimension: _markSize,
-              child: switch (content.icon) {
-                final icon? => Icon(icon, size: _markSize, color: foreground),
-                null => PregoActivityIndicator(color: foreground),
-              },
+        foregroundDecoration: ShapeDecoration(shape: outlineShape),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1,
+              transform: const _TerminalGlowTransform(_glowScaleX),
+              colors: [
+                accent.withValues(alpha: 0),
+                accent.withValues(alpha: 0),
+                accent.withValues(alpha: 0.2),
+              ],
+              stops: const [0, 0.6, 1],
             ),
-            const SizedBox(width: PregoSpacing.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    content.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+          ),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: PregoSpacing.xl,
+              vertical: PregoSpacing.lg,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox.square(
+                  key: const ValueKey("catalog-scan-terminal-icon"),
+                  dimension: _markSize,
+                  child: switch (content.icon) {
+                    final icon? => Icon(icon, size: _markSize, color: markColor),
+                    null => PregoActivityIndicator(color: markColor),
+                  },
+                ),
+                const SizedBox(width: PregoSpacing.sm),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.only(top: 1),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                content.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+                              ),
+                              const SizedBox(height: PregoSpacing.xxs),
+                              Text(
+                                content.detail,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: PregoSpacing.xs),
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+                        child: _ScanDismissButton(
+                          label: content.actionLabel,
+                          color: actionColor,
+                          onPressed: content.onAction,
+                        ),
+                      ),
+                    ],
                   ),
-                  // Always rendered, never conditional: the detail arrives one
-                  // event after the row does, and a line appearing under it
-                  // would move the whole list a second time.
-                  Text(
-                    content.detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textXs.regular.copyWith(color: colors.textTertiary),
-                  ),
-                ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Deep Scan cards use one 24px silhouette in every terminal state. iOS gets
+/// Flutter's native continuous superellipse, which is the platform equivalent
+/// of Figma's roughly 60% corner smoothing; Android keeps the same radius with
+/// standard circular corners.
+ShapeBorder _deepScanCardShape(
+  BuildContext context, {
+  BorderSide side = BorderSide.none,
+}) {
+  const radius = BorderRadius.all(Radius.circular(PregoRadius.x4l));
+  return Theme.of(context).platform == TargetPlatform.iOS
+      ? RoundedSuperellipseBorder(borderRadius: radius, side: side)
+      : RoundedRectangleBorder(borderRadius: radius, side: side);
+}
+
+/// The label-only 76×36 action from the terminal Figma variants.
+class const _ScanDismissButton({
+  required final String label,
+  required final Color color,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    final radius = BorderRadius.circular(PregoRadius.full);
+
+    return Semantics(
+      button: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: SizedBox(
+          key: const ValueKey("catalog-scan-dismiss-action"),
+          width: 76,
+          height: 36,
+          child: PregoTappable(
+            onTap: onPressed,
+            borderRadius: radius,
+            overlayColor: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
+              if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
+              return null;
+            }),
+            containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
+            child: Center(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: prego.textTheme.textSm.medium.copyWith(color: color),
               ),
             ),
-            const SizedBox(width: PregoSpacing.sm),
-            PregoButtonsSolid(
-              label: content.actionLabel,
-              hierarchy: PregoButtonsSolidHierarchy.tertiary,
-              size: PregoButtonsSolidSize.sm,
-              onPressed: content.onAction,
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Stretches Flutter's circular radial into Figma's wide, top-centred ellipse.
+class const _TerminalGlowTransform(final double scaleX) extends GradientTransform {
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final centerX = bounds.center.dx;
+    return Matrix4(
+      scaleX,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      centerX * (1 - scaleX),
+      0,
+      0,
+      1,
     );
   }
 }

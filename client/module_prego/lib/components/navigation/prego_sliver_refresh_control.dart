@@ -10,6 +10,9 @@ import "../../module_prego.dart";
 /// second stage. Far enough that an ordinary refresh never reaches it by
 /// accident, close enough to be discoverable once the caption appears.
 const double _deepPullFactor = 1.8;
+const Duration _captionMotionDuration = Duration(milliseconds: 180);
+const Duration _captionReducedMotionDuration = Duration(milliseconds: 200);
+const Curve _captionEaseOut = Cubic(0.23, 1, 0.32, 1);
 
 /// A second stage for a pull-to-refresh, opted into with its captions.
 ///
@@ -195,8 +198,6 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
       },
     );
   }
-
-
 }
 
 /// The stock indicator with the stage-two invitation beneath it.
@@ -208,47 +209,135 @@ class _PregoSliverRefreshControlState() extends State<PregoSliverRefreshControl>
 class const _CaptionedIndicator({
   required final Widget indicator,
   required final String? _caption,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<_CaptionedIndicator> createState() => _CaptionedIndicatorState();
+}
+
+class _CaptionedIndicatorState()
+    extends State<_CaptionedIndicator>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  late final AnimationController _visibility = AnimationController(
+    vsync: this,
+    duration: _captionMotionDuration,
+    value: widget._caption == null ? 0 : 1,
+    // Android's system setting otherwise compresses the controller duration.
+    // Reduced motion deliberately retains a gentle opacity transition here.
+    animationBehavior: AnimationBehavior.preserve,
+  );
+  late String? _shownCaption = widget._caption;
+  bool _reducedMotion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncReducedMotionPreference();
+  }
+
+  @override
+  void didUpdateWidget(_CaptionedIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final caption = widget._caption;
+    if (caption != null) _shownCaption = caption;
+    if (oldWidget._caption == null && caption != null) {
+      _animateVisibilityTo(1);
+    } else if (oldWidget._caption != null && caption == null) {
+      _animateVisibilityTo(0);
+    }
+  }
+
+  void _syncReducedMotionPreference() {
+    final reducedMotion = prefersReducedMotion(context);
+    if (reducedMotion == _reducedMotion) return;
+    _reducedMotion = reducedMotion;
+    if (_visibility.isAnimating) {
+      _animateVisibilityTo(widget._caption == null ? 0 : 1);
+    }
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() {
+    super.didChangeAccessibilityFeatures();
+    if (!mounted) return;
+    setState(_syncReducedMotionPreference);
+  }
+
+  void _animateVisibilityTo(double target) {
+    final distance = (target - _visibility.value).abs();
+    if (distance == 0) return;
+    final fullDuration = _reducedMotion ? _captionReducedMotionDuration : _captionMotionDuration;
+    _visibility
+        .animateTo(
+          target,
+          // Keep reversal responsive near the threshold: travelling half the
+          // remaining opacity range takes half the full transition time.
+          duration: fullDuration * distance,
+          curve: _captionEaseOut,
+        )
+        .whenCompleteOrCancel(() {
+          if (!mounted || target != 0 || widget._caption != null || _visibility.value != 0) {
+            return;
+          }
+          setState(() => _shownCaption = null);
+        });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _visibility.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final caption = _caption;
+    final caption = _shownCaption;
     return Stack(
       alignment: Alignment.center,
       children: [
-        indicator,
-        Positioned(
-          bottom: prego.spacing.md,
-          // Faded in and out against an empty box rather than switched between
-          // captions, so the invitation arrives as the pull reaches the trigger
-          // instead of appearing fully formed. Backing off below the trigger
-          // fades it away again.
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.94, end: 1).animate(animation),
-                child: child,
+        widget.indicator,
+        if (caption != null)
+          Positioned(
+            bottom: prego.spacing.md,
+            // The controller retargets from its current value when the pull
+            // reverses across the trigger. Reduced motion retains this fade but
+            // removes the scale, preserving feedback without spatial movement.
+            child: ExcludeSemantics(
+              key: const ValueKey("prego-deep-refresh-caption-semantics"),
+              excluding: widget._caption == null,
+              child: AnimatedBuilder(
+                animation: _visibility,
+                builder: (context, child) {
+                  final visibility = _visibility.value;
+                  return Opacity(
+                    key: const ValueKey("prego-deep-refresh-caption-opacity"),
+                    opacity: visibility,
+                    child: Transform.scale(
+                      key: const ValueKey("prego-deep-refresh-caption-scale"),
+                      scale: _reducedMotion ? 1 : 0.94 + 0.06 * visibility,
+                      alignment: Alignment.bottomCenter,
+                      child: child,
+                    ),
+                  );
+                },
+                child: _CaptionLabel(caption: caption),
               ),
             ),
-            child: caption == null
-                ? const SizedBox.shrink()
-                : _CaptionLabel(key: const ValueKey("invite"), caption: caption),
           ),
-        ),
       ],
     );
   }
 }
 
 /// The quiet, text-only invitation to keep pulling.
-class const _CaptionLabel({
-  super.key,
-  required final String caption,
-}) extends StatelessWidget {
+class const _CaptionLabel({required final String caption}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
