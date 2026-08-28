@@ -327,9 +327,6 @@ class _DevControlHost({
       final token = message.accessToken == null ? "null" : "<redacted>";
       return "ControlMessage.tokenResponse(id: ${message.id}, accessToken: $token)";
     }
-    if (message is ControlTokenUpdate) {
-      return "ControlMessage.tokenUpdate(accessToken: <redacted>)";
-    }
     return message.toString();
   }
 
@@ -343,14 +340,11 @@ class _DevControlHost({
       // The remaining variants are informational (already printed above) or are
       // GUI->helper messages the harness would not normally receive back.
       case ControlTokenResponse():
-      case ControlTokenUpdate():
       case ControlStatus():
       case ControlPromptResponse():
-      case ControlRestart():
       case ControlShutdown():
       case ControlUnregisterAndExit():
       case ControlRegistered():
-      case ControlProvisionProgressMessage():
         break;
     }
   }
@@ -372,9 +366,6 @@ class _DevControlHost({
     switch (command) {
       case "":
         break;
-      case "t":
-      case "token":
-        _pushTokenUpdate();
       case "u":
       case "unregister":
         _send(const ControlMessage.unregisterAndExit());
@@ -397,15 +388,6 @@ class _DevControlHost({
       default:
         stderr.writeln("unknown command '$command' — type '?' for help");
     }
-  }
-
-  void _pushTokenUpdate() {
-    final token = _denyToken ? null : _token;
-    if (token == null) {
-      stderr.writeln("no token to push (denyToken=$_denyToken, hasToken=${_token != null})");
-      return;
-    }
-    _send(ControlMessage.tokenUpdate(accessToken: token));
   }
 
   void _answerPrompt({required bool accepted, required String? id}) {
@@ -487,7 +469,7 @@ class _DevControlHost({
 
   void _printCommands() {
     stdout.writeln(
-      "commands: t=push token_update  u=unregister_and_exit  y/n [id]=answer prompt  "
+      "commands: u=unregister_and_exit  y/n [id]=answer prompt  "
       "x=toggle token-deny  q=simulate GUI-gone (grace exit)  ?=help",
     );
   }

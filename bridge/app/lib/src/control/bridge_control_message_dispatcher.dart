@@ -16,11 +16,8 @@ import "../services/control_unregister_service.dart";
 /// paths — this class sends nothing.
 ///
 /// An undecodable frame (malformed, or a forward-compat message type a newer
-/// GUI added) is logged and skipped so it can never stall the channel. Variants
-/// this bridge does not consume inbound are ignored: `restart` is helper→GUI
-/// only and is never an inbound command (the GUI restarts the helper by
-/// kill+respawn, not by message), and helper→GUI variants echoed back have no
-/// inbound meaning.
+/// GUI added) is logged and skipped so it can never stall the channel.
+/// Helper→GUI variants echoed back have no inbound meaning and are ignored.
 class BridgeControlMessageDispatcher({
   required final ControlChannelClient _client,
   required final ControlChannelTokenService _tokenService,
@@ -57,8 +54,6 @@ class BridgeControlMessageDispatcher({
     switch (message) {
       case ControlTokenResponse(:final id, :final accessToken):
         _tokenService.handleTokenResponse(id: id, accessToken: accessToken);
-      case ControlTokenUpdate(:final accessToken):
-        _tokenService.handleTokenUpdate(accessToken: accessToken);
       case ControlPromptResponse(:final id, :final accepted):
         _promptService.handlePromptResponse(id: id, accepted: accepted);
       case ControlShutdown():
@@ -72,12 +67,8 @@ class BridgeControlMessageDispatcher({
       case ControlTokenRequest():
       case ControlStatus():
       case ControlPromptRequest():
-      case ControlRestart():
       case ControlRegistered():
-      case ControlProvisionProgressMessage():
-        // Not consumed inbound: helper→GUI variants have no inbound meaning and
-        // `restart` is never an inbound command (the GUI restarts the helper by
-        // kill+respawn, not by message).
+        // Helper→GUI variants have no inbound meaning here.
         Log.d("[control][dispatcher] ignoring inbound ${message.runtimeType}");
     }
   }

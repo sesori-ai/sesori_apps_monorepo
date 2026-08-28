@@ -149,17 +149,13 @@ void main() {
     expect(statusTracker.status.bridgeId, "after-garbage");
   });
 
-  test("GUI-direction and advisory variants are ignored without crashing", () async {
+  test("GUI-direction variants are ignored without crashing", () async {
     final WebSocket helper = await connectHelper();
 
-    sendFromHelper(helper, const ControlMessage.restart());
-    sendFromHelper(helper, const ControlMessage.tokenUpdate(accessToken: "x"));
+    sendFromHelper(helper, const ControlMessage.tokenResponse(id: "unexpected", accessToken: "x"));
+    sendFromHelper(helper, const ControlMessage.promptResponse(id: "unexpected", accepted: true));
     sendFromHelper(helper, const ControlMessage.shutdown());
     sendFromHelper(helper, const ControlMessage.unregisterAndExit());
-    sendFromHelper(
-      helper,
-      const ControlMessage.provisionProgress(progress: ControlProvisionProgress.resolving()),
-    );
     sendFromHelper(helper, const ControlMessage.registered(bridgeId: "still-alive"));
     await statusTracker.statusStream.firstWhere((status) => status.bridgeId != null);
 

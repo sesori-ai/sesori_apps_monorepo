@@ -1067,7 +1067,7 @@ class OrchestratorSession._({
         .addTo(_subscriptions);
     // Live re-auth: when the token provider emits a token whose auth IDENTITY
     // differs from the one the relay socket is actually authenticated with
-    // (supervised mode: the GUI pushed a token_update after an account switch;
+    // (supervised mode: a later GUI token pull observes an account switch;
     // standalone: a re-login as another user picked up by the next refresh),
     // drop the relay so the reconnect loop below re-authenticates on the fresh
     // token — the same path a relay-side disconnect drives, so both triggers
@@ -1076,7 +1076,7 @@ class OrchestratorSession._({
     // Identity-gated on purpose: the relay validates the JWT once at connect
     // and never re-checks it for the lifetime of the socket, so a routine
     // same-user token rotation (TokenService refreshing near expiry during
-    // metadata generation or push sends, or the GUI pushing a routine refresh)
+    // metadata generation or push sends, or a routine GUI token pull)
     // keeps the open socket fully valid. Dropping it would disconnect every
     // phone mid-flight for nothing — see [_requiresRelayReauth].
     _accessTokenProvider.tokenStream
@@ -1275,7 +1275,7 @@ class OrchestratorSession._({
         // Don't reconnect without a usable token: in supervised mode a
         // signed-out / mid-login GUI yields no token, and reconnecting would
         // re-authenticate the relay from a stale cached token. Back off and
-        // retry — a later refresh (or a token_update push) recovers.
+        // retry — a later successful refresh pull recovers.
         if (!await _refreshAccessToken()) {
           Log.w("No access token available — deferring reconnect (retrying in $backoff)");
           backoff = _nextBackoff(backoff, takenOver: takenOver);

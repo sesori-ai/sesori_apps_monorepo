@@ -50,7 +50,6 @@ import "../auth/token_refresher.dart";
 import "../auth/token_service.dart";
 import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
-import "../control/control_provision_notifier.dart";
 import "../control/control_status_notifier.dart";
 import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
@@ -331,9 +330,6 @@ class const BridgeRuntimeRunner._() {
       // Kept in scope past this block: the ControlStatusNotifier (built later,
       // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
-      // Kept in scope for the plugin starter: tees runtime-provisioning progress
-      // onto the control channel so the GUI can render first-run progress.
-      ControlProvisionNotifier? controlProvisionNotifier;
       // Built early in supervised mode so the dispatcher can route the logout
       // `unregister_and_exit` command; reused as THE registration service later.
       // Standalone builds it after the interactive auth flow yields its token
@@ -395,10 +391,6 @@ class const BridgeRuntimeRunner._() {
         );
         controlMessageDispatcher.start();
         shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
-        // Provision-progress tee: the runner's provisioning loop feeds each
-        // event here, and the notifier maps + best-effort pushes it to the GUI.
-        // It observes no stream and owns no subscription, so nothing to dispose.
-        controlProvisionNotifier = ControlProvisionNotifier(client: controlChannelClient);
       }
 
       final BridgeReplacePrompt replacePrompt = controlPromptService ?? terminalPromptRepository;
@@ -699,7 +691,6 @@ class const BridgeRuntimeRunner._() {
             );
             final rendered = formatter.format(progress.event);
             if (rendered != null) io.stderr.write(rendered);
-            controlProvisionNotifier?.handleProvisionProgress(event: progress.event);
           })
           .addTo(subscriptions);
       await generationFactory.enforceBridgeOwnership();

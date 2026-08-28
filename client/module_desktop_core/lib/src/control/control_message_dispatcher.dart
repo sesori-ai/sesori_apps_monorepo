@@ -72,19 +72,7 @@ class ControlMessageDispatcher({
         _statusTracker.handleRegistered(bridgeId: bridgeId);
       case ControlPromptRequest():
         _promptTracker.addPrompt(prompt: message);
-      case ControlProvisionProgressMessage():
-        // Provisioning progress feeds the first-run UI slice; until that
-        // lands, dropping a progress frame only skips a UI update.
-        logd("Ignoring provision progress (no consumer yet)");
-      case ControlRestart():
-        // Advisory heads-up only — the exit-code sentinel is authoritative
-        // for the supervisor's respawn decision.
-        logd("Helper announced an intentional restart");
-      case ControlTokenResponse() ||
-          ControlTokenUpdate() ||
-          ControlPromptResponse() ||
-          ControlShutdown() ||
-          ControlUnregisterAndExit():
+      case ControlTokenResponse() || ControlPromptResponse() || ControlShutdown() || ControlUnregisterAndExit():
         // GUI→helper-direction variants are never inbound commands.
         logd("Ignoring a GUI-direction control message arriving inbound");
     }

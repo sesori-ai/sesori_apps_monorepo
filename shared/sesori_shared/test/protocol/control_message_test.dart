@@ -6,7 +6,6 @@ void main() {
     final variants = <String, ControlMessage>{
       "token_request": const ControlMessage.tokenRequest(id: "req-1", forceRefresh: true),
       "token_response": const ControlMessage.tokenResponse(id: "req-1", accessToken: "jwt"),
-      "token_update": const ControlMessage.tokenUpdate(accessToken: "jwt"),
       "status": const ControlMessage.status(
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.degraded,
@@ -18,13 +17,9 @@ void main() {
         message: "Another bridge is running",
       ),
       "prompt_response": const ControlMessage.promptResponse(id: "p-1", accepted: true),
-      "restart": const ControlMessage.restart(),
       "shutdown": const ControlMessage.shutdown(),
       "unregister_and_exit": const ControlMessage.unregisterAndExit(),
       "registered": const ControlMessage.registered(bridgeId: "br_abc12345"),
-      "provision_progress": const ControlMessage.provisionProgress(
-        progress: ControlProvisionProgress.downloading(receivedBytes: 10, totalBytes: 100),
-      ),
     };
 
     variants.forEach((type, original) {
@@ -65,18 +60,6 @@ void main() {
       expect(ControlMessage.fromJson(json), equals(original));
     });
 
-    test("status nests the provision-progress discriminator independently", () {
-      const original = ControlMessage.provisionProgress(
-        progress: ControlProvisionProgress.ready(binaryPath: "/bin/opencode"),
-      );
-
-      final json = original.toJson();
-
-      expect(json["type"], equals("provision_progress"));
-      expect(json["progress"], equals({"type": "ready", "binaryPath": "/bin/opencode"}));
-      expect(ControlMessage.fromJson(json), equals(original));
-    });
-
     group("forward-compatibility", () {
       test("relay enum falls back to unknown for an unrecognized value", () {
         final parsed = ControlMessage.fromJson({
@@ -89,6 +72,16 @@ void main() {
         expect(status.relay, equals(ControlRelayConnectionState.unknown));
         expect(status.plugin, equals(ControlPluginHealthState.healthy));
         expect(status.activeSessionCount, equals(0));
+      });
+
+      test("plugin-health enum falls back to unknown for an unrecognized value", () {
+        final parsed = ControlMessage.fromJson({
+          "type": "status",
+          "relay": "connected",
+          "plugin": "future_health",
+        });
+
+        expect((parsed as ControlStatus).plugin, equals(ControlPluginHealthState.unknown));
       });
 
       test("prompt-kind enum falls back to unknown for an unrecognized value", () {

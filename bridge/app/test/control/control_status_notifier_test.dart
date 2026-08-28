@@ -57,10 +57,12 @@ void main() {
       expect(status.activeSessionCount, 0);
     });
 
-    test("plugin lifecycle states map to the wire health enum", () async {
+    test("only degraded or failed eligible plugins map to degraded health", () async {
       emitPluginState(PluginLifecycleState.ready);
       emitPluginState(PluginLifecycleState.degraded);
+      emitPluginState(PluginLifecycleState.ready);
       emitPluginState(PluginLifecycleState.failed);
+      emitPluginState(PluginLifecycleState.unavailable);
       await pump();
 
       expect(
@@ -68,18 +70,45 @@ void main() {
         equals([
           ControlPluginHealthState.healthy,
           ControlPluginHealthState.degraded,
-          ControlPluginHealthState.unavailable,
+          ControlPluginHealthState.healthy,
+          ControlPluginHealthState.degraded,
+          ControlPluginHealthState.healthy,
         ]),
       );
     });
 
-    test("an intentionally empty plugin set is unavailable rather than vacuously healthy", () async {
+    test("zero eligible plugins is healthy", () async {
       pluginMetadata.add(const <PluginMetadata>[]);
       await pump();
 
       expect(
         client.sentMessages.whereType<ControlStatus>().single.plugin,
-        ControlPluginHealthState.unavailable,
+        ControlPluginHealthState.healthy,
+      );
+    });
+
+    test("one degraded eligible plugin degrades an otherwise healthy set", () async {
+      pluginMetadata.add([
+        const PluginMetadata(
+          id: "ready",
+          displayName: "Ready",
+          isDefault: true,
+          state: PluginLifecycleState.ready,
+          actionHint: null,
+        ),
+        const PluginMetadata(
+          id: "degraded",
+          displayName: "Degraded",
+          isDefault: false,
+          state: PluginLifecycleState.degraded,
+          actionHint: null,
+        ),
+      ]);
+      await pump();
+
+      expect(
+        client.sentMessages.whereType<ControlStatus>().single.plugin,
+        ControlPluginHealthState.degraded,
       );
     });
 

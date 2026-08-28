@@ -43,17 +43,7 @@ void main() {
       await pumpEventQueue();
 
       expect(tokenService.responses, equals([("t-1", "tok"), ("t-2", null)]));
-      expect(tokenService.updates, isEmpty);
       expect(promptService.responses, isEmpty);
-    });
-
-    test("routes token_update to the token service delegate", () async {
-      dispatcher.start();
-      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "pushed")));
-      await pumpEventQueue();
-
-      expect(tokenService.updates, equals(["pushed"]));
-      expect(tokenService.responses, isEmpty);
     });
 
     test("routes prompt_response to the prompt service delegate", () async {
@@ -88,17 +78,25 @@ void main() {
     test("an undecodable frame is skipped and later frames are still routed", () async {
       dispatcher.start();
       client.emit("not valid json");
-      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "after-garbage")));
+      client.emit(_encode(const ControlMessage.tokenResponse(id: "after-garbage", accessToken: "token")));
       await pumpEventQueue();
 
-      expect(tokenService.updates, equals(["after-garbage"]));
+      expect(tokenService.responses, equals([("after-garbage", "token")]));
     });
 
-    test("variants with no inbound meaning are ignored — restart is never an inbound command", () async {
+    test("helper-to-GUI variants have no inbound meaning and are ignored", () async {
       dispatcher.start();
-      client.emit(_encode(const ControlMessage.restart()));
       client.emit(_encode(const ControlMessage.registered(bridgeId: "b-1")));
       client.emit(_encode(const ControlMessage.tokenRequest(id: "t-1")));
+      client.emit(
+        _encode(
+          const ControlMessage.promptRequest(
+            id: "p-1",
+            kind: ControlPromptKind.replaceBridge,
+            message: null,
+          ),
+        ),
+      );
       client.emit(
         _encode(
           const ControlMessage.status(
@@ -110,7 +108,6 @@ void main() {
       await pumpEventQueue();
 
       expect(tokenService.responses, isEmpty);
-      expect(tokenService.updates, isEmpty);
       expect(promptService.responses, isEmpty);
       expect(unregisterService.calls, isZero);
     });
@@ -142,10 +139,10 @@ void main() {
     test("frames after dispose are not routed", () async {
       dispatcher.start();
       await dispatcher.dispose();
-      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "late")));
+      client.emit(_encode(const ControlMessage.tokenResponse(id: "late", accessToken: "token")));
       await pumpEventQueue();
 
-      expect(tokenService.updates, isEmpty);
+      expect(tokenService.responses, isEmpty);
     });
   });
 }
@@ -191,13 +188,9 @@ class _FakeControlChannelClient() implements ControlChannelClient {
 
 class _RecordingTokenService() implements ControlChannelTokenService {
   final List<(String, String?)> responses = <(String, String?)>[];
-  final List<String> updates = <String>[];
 
   @override
   void handleTokenResponse({required String id, required String? accessToken}) => responses.add((id, accessToken));
-
-  @override
-  void handleTokenUpdate({required String accessToken}) => updates.add(accessToken);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

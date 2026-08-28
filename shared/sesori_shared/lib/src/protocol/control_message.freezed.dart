@@ -24,10 +24,6 @@ ControlMessage _$ControlMessageFromJson(
           return ControlTokenResponse.fromJson(
             json
           );
-                case 'token_update':
-          return ControlTokenUpdate.fromJson(
-            json
-          );
                 case 'status':
           return ControlStatus.fromJson(
             json
@@ -40,10 +36,6 @@ ControlMessage _$ControlMessageFromJson(
           return ControlPromptResponse.fromJson(
             json
           );
-                case 'restart':
-          return ControlRestart.fromJson(
-            json
-          );
                 case 'shutdown':
           return ControlShutdown.fromJson(
             json
@@ -54,10 +46,6 @@ ControlMessage _$ControlMessageFromJson(
           );
                 case 'registered':
           return ControlRegistered.fromJson(
-            json
-          );
-                case 'provision_progress':
-          return ControlProvisionProgressMessage.fromJson(
             json
           );
         
@@ -249,79 +237,6 @@ class _$ControlTokenResponseCopyWithImpl<$Res>
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,accessToken: freezed == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
 as String?,
-  ));
-}
-
-
-}
-
-/// @nodoc
-@JsonSerializable()
-
-class ControlTokenUpdate implements ControlMessage {
-  const ControlTokenUpdate({required this.accessToken,  String? $type}): $type = $type ?? 'token_update';
-  factory ControlTokenUpdate.fromJson(Map<String, dynamic> json) => _$ControlTokenUpdateFromJson(json);
-
- final  String accessToken;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of ControlMessage
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$ControlTokenUpdateCopyWith<ControlTokenUpdate> get copyWith => _$ControlTokenUpdateCopyWithImpl<ControlTokenUpdate>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$ControlTokenUpdateToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenUpdate&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,accessToken);
-
-@override
-String toString() {
-  return 'ControlMessage.tokenUpdate(accessToken: $accessToken)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $ControlTokenUpdateCopyWith<$Res> implements $ControlMessageCopyWith<$Res> {
-  factory $ControlTokenUpdateCopyWith(ControlTokenUpdate value, $Res Function(ControlTokenUpdate) _then) = _$ControlTokenUpdateCopyWithImpl;
-@useResult
-$Res call({
- String accessToken
-});
-
-
-
-
-}
-/// @nodoc
-class _$ControlTokenUpdateCopyWithImpl<$Res>
-    implements $ControlTokenUpdateCopyWith<$Res> {
-  _$ControlTokenUpdateCopyWithImpl(this._self, this._then);
-
-  final ControlTokenUpdate _self;
-  final $Res Function(ControlTokenUpdate) _then;
-
-/// Create a copy of ControlMessage
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? accessToken = null,}) {
-  return _then(ControlTokenUpdate(
-accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
-as String,
   ));
 }
 
@@ -560,45 +475,6 @@ as bool,
 /// @nodoc
 @JsonSerializable()
 
-class ControlRestart implements ControlMessage {
-  const ControlRestart({ String? $type}): $type = $type ?? 'restart';
-  factory ControlRestart.fromJson(Map<String, dynamic> json) => _$ControlRestartFromJson(json);
-
-
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-
-@override
-Map<String, dynamic> toJson() {
-  return _$ControlRestartToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlRestart);
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'ControlMessage.restart()';
-}
-
-
-}
-
-
-
-
-/// @nodoc
-@JsonSerializable()
-
 class ControlShutdown implements ControlMessage {
   const ControlShutdown({ String? $type}): $type = $type ?? 'shutdown';
   factory ControlShutdown.fromJson(Map<String, dynamic> json) => _$ControlShutdownFromJson(json);
@@ -745,88 +621,6 @@ as String,
 }
 
 
-}
-
-/// @nodoc
-@JsonSerializable()
-
-class ControlProvisionProgressMessage implements ControlMessage {
-  const ControlProvisionProgressMessage({required this.progress,  String? $type}): $type = $type ?? 'provision_progress';
-  factory ControlProvisionProgressMessage.fromJson(Map<String, dynamic> json) => _$ControlProvisionProgressMessageFromJson(json);
-
- final  ControlProvisionProgress progress;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of ControlMessage
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$ControlProvisionProgressMessageCopyWith<ControlProvisionProgressMessage> get copyWith => _$ControlProvisionProgressMessageCopyWithImpl<ControlProvisionProgressMessage>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$ControlProvisionProgressMessageToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlProvisionProgressMessage&&(identical(other.progress, progress) || other.progress == progress));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,progress);
-
-@override
-String toString() {
-  return 'ControlMessage.provisionProgress(progress: $progress)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $ControlProvisionProgressMessageCopyWith<$Res> implements $ControlMessageCopyWith<$Res> {
-  factory $ControlProvisionProgressMessageCopyWith(ControlProvisionProgressMessage value, $Res Function(ControlProvisionProgressMessage) _then) = _$ControlProvisionProgressMessageCopyWithImpl;
-@useResult
-$Res call({
- ControlProvisionProgress progress
-});
-
-
-$ControlProvisionProgressCopyWith<$Res> get progress;
-
-}
-/// @nodoc
-class _$ControlProvisionProgressMessageCopyWithImpl<$Res>
-    implements $ControlProvisionProgressMessageCopyWith<$Res> {
-  _$ControlProvisionProgressMessageCopyWithImpl(this._self, this._then);
-
-  final ControlProvisionProgressMessage _self;
-  final $Res Function(ControlProvisionProgressMessage) _then;
-
-/// Create a copy of ControlMessage
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? progress = null,}) {
-  return _then(ControlProvisionProgressMessage(
-progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
-as ControlProvisionProgress,
-  ));
-}
-
-/// Create a copy of ControlMessage
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ControlProvisionProgressCopyWith<$Res> get progress {
-  
-  return $ControlProvisionProgressCopyWith<$Res>(_self.progress, (value) {
-    return _then(_self.copyWith(progress: value));
-  });
-}
 }
 
 // dart format on

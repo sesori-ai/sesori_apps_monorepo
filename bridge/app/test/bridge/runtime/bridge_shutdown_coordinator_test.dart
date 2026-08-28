@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/runtime/bridge_shutdown_coordinator.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, LogLevel, PluginStartAbortedException, StartAbortController, StartAbortSignal;
+import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 import "package:test/test.dart";
 
 void main() {
@@ -350,6 +351,31 @@ void main() {
 
         async.elapse(const Duration(seconds: 1));
         expect(exitCalls, [0]);
+      });
+    });
+
+    test("a supervised restart backstop preserves exit 86 and disposes plugins before exit", () {
+      fakeAsync((async) {
+        final operations = <String>[];
+        BridgeSupervisedExitCode? requestedExit;
+        final coordinator = BridgeShutdownCoordinator(
+          startAbortSignal: StartAbortSignal.never,
+          backstopExitCode: () => requestedExit?.code ?? 0,
+          emergencyDisposal: () async {
+            operations.add("emergency-plugin-disposal");
+          },
+          exitProcess: (code) => operations.add("exit:$code"),
+        );
+        coordinator.add(disposable: () => Completer<void>().future);
+
+        // Mirrors the runtime restart handoff: latch the sentinel before the
+        // shutdown request arms the coordinator backstop.
+        requestedExit = BridgeSupervisedExitCode.restart;
+        unawaited(coordinator.shutdown());
+        async.elapse(const Duration(seconds: 11));
+        async.flushMicrotasks();
+
+        expect(operations, <String>["emergency-plugin-disposal", "exit:86"]);
       });
     });
 

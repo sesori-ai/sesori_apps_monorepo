@@ -36,9 +36,14 @@ explicit restart, and the connection states the app presents.
   treated as healthy. Resumed connections retain the last validated health state.
 - The configured sleep policy applies at standalone startup and releases its wake lock on
   shutdown; unsupported lid-close prevention and wake-lock failures warn without aborting.
-- In supervised mode, the authenticated local control channel can supply tokens, report
-  status and provisioning, resolve prompts, unregister, and request sentinel restarts;
-  loss of its owner exits after the grace period without orphaning backend processes.
+- In supervised mode, the authenticated local control channel answers helper token
+  pulls, reports aggregate status, resolves prompts, unregisters, and accepts clean
+  shutdown; loss of its owner exits after the grace period without orphaning backend
+  processes. Restart intent is authoritative only through the child exit sentinel.
+- Aggregate plugin health is degraded iff any eligible plugin is degraded or failed;
+  dormant, not-installed, and zero-eligible snapshots are healthy because eligibility
+  is independent from runtime residency. The wire emits healthy/degraded while unknown
+  remains the forward-parse fallback.
 - A GUI `shutdown` performs the same ordered graceful teardown as standalone stop,
   exits 0 without unregistering, and cannot be reclassified as auth-required when
   teardown cancels an in-flight bootstrap token request.
@@ -74,7 +79,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, aggregate status, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -106,7 +111,10 @@ the bridge starts, how many clients are present, and whether restart is explicit
   application-support lookup failure permanently disabling persisted diagnostics.
 - A signed-out desktop spawning a helper, the control dispatcher starting after
   the helper, the control secret appearing in argv, a first token request going
-  unread, or a failed spawn leaving its server or child alive and blocking retry.
+  unread, an unsolicited token write bypassing pull correlation, or a failed spawn
+  leaving its server or child alive and blocking retry.
+- A dormant, not-installed, or zero-eligible plugin snapshot degrading aggregate
+  health; or one eligible degraded/failed plugin still reporting healthy.
 - Exit 86 spawning twice, exit 87 retrying before auth changes, exit 88 entering
   crash backoff, an expected/clean exit respawning, an unbounded crash loop,
   stable runtime failing to reset the budget, or a cancelled retry later

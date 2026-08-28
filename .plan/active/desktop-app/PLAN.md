@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 4/22 (exit-code state machine + prompt answers)
+- **Status:** Active — step 5/22 (status semantics + dead control-protocol removal)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -246,7 +246,7 @@ expected-exit ownership, prompt-ownership, and shared-contract hardening.*
 
 ### M2 — Control surface
 
-**Step 5 — 🌿 Status semantics for the setup-aware world + dead-protocol
+**Step 5 — ⚙️ Status semantics for the setup-aware world + dead-protocol
 removal.** Bridge: `ControlStatusNotifier` maps plugin health as *degraded iff
 any eligible plugin reports degraded/failed; healthy otherwise* — dormant,
 not-installed, and zero-eligible states are healthy (eligibility is not
@@ -272,7 +272,9 @@ with the latched code even when teardown hangs (this superseded the old
 plan's teardown-hang risk; a second watchdog would race the coordinator and
 skip disposal). No compatibility
 shims: the control channel has never shipped in a public release and both
-halves live in this repo.
+halves live in this repo. *Overage: ~1.8k changed lines, predominantly deletion
+of generated and dead protocol/notifier artifacts across the shared, bridge,
+and desktop packages.*
 
 **Step 6 — ⚙️ Tray.** `SystemTray` Layer-0 interface + `tray_manager` shell
 adapter (dumb: renders a menu model, emits clicks); Layer-4
