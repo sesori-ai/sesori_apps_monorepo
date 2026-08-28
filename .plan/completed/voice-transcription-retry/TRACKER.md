@@ -3,22 +3,20 @@
 ## Current State
 
 - **Plan slug:** `voice-transcription-retry`
-- **Apps base:** `origin/main` at `746e222c42`
+- **Apps async retry checkpoint:** Step 4 merged as `1a6007228f`; Step 5 branch synced through apps `main` `cf9b33d275`
 - **Auth Step 2:** PR [#77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8`
-- **Current branch:** `plan/voice-transcription-retry/s04-retain-retry-async-recordings`
-- **Series state:** Steps 1–2 merged; Step 3 apps PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open and monitored; Step 4 implemented locally
-- **Current step:** 3/5 ownership migration in review, with 4/5 retained retry one step ahead locally
-- **Next action:** monitor Step 3 and complete Step 4 architecture review before its merge-forward/publication
-- **External merge barrier:** realtime apps PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), current head `b3083b7ad3`, must rebase onto merged Step 4 before it may merge
+- **Current branch:** `plan/voice-transcription-retry/s05-verify-and-retire`
+- **Series state:** Complete — Steps 1–4 merged, the user-approved Step 5 simulator/provider matrix passed, and the plan is retired
+- **Current step:** 5/5 completed
+- **Next action:** publish and monitor the documentation-only Step 5 retirement PR
 
 ## Locked Product Decisions
 
 - [x] Retain the completed temporary artifact only after a local transport failure or server-declared retryable **async** failure.
 - [x] Retry is manual and reuses the exact artifact/MIME without restarting the recorder.
 - [x] A server/model rejection that cannot benefit from identical audio shows no Retry.
-- [x] Full-recording retry is intentionally async-only because realtime dual capture/compression is disproportionately complex.
-- [x] Realtime pre-audio failure may fall back to async; post-audio failure keeps confirmed partial text and has no full-recording Retry.
-- [x] Add no dual capture, native encoder, PCM spool/replay, second recorder, enlarged upload route, or server audio storage.
+- [x] File-based async capture and upload are the only transcription mode in this plan.
+- [x] Add no streaming capture, parallel recorder, native encoder, spool/replay, enlarged upload route, or server audio storage.
 - [x] The auth server owns retryability for HTTP responses; the app does not infer provider behavior from status or error strings.
 - [x] Preserve released server endpoint, status, and `error` values; add only an authoritative boolean.
 - [x] Treat omitted/malformed retryability from an older server as terminal; definite local connection failures remain retryable.
@@ -43,7 +41,6 @@
 - [x] Auth adapters classify detailed provider-neutral reasons, including terminal provider quota versus transient capacity.
 - [x] Auth composition injects `legacyOpenAiV1` or `detailedV1` public-error policy into `VoiceService`.
 - [x] `VoiceService`, not adapters or the client, applies status/error compatibility and retryability.
-- [x] PR #918 cannot merge before Steps 3–4; it must rebase and adopt the same ownership rather than retaining a second app service.
 
 ## Complexity Guardrails
 
@@ -51,7 +48,7 @@
 - [x] No persistence, database schema, queue, retry timer, connectivity listener, request registry, or dedupe cache.
 - [x] No raw provider error, audio, transcript, prompt, or path in server responses or analytics.
 - [x] No provider-specific client branch.
-- [x] No realtime recording retry in this series.
+- [x] No streaming recording or replay path in this series.
 - [x] Client architecture migration and retry behavior stay in separate PRs.
 - [x] Never merge retention without a reachable retry/discard owner.
 - [x] User approved one cohesive Step 3 after the candidate measured roughly 3,300 touched lines including about 977 causal legacy deletions; the final 2,800-4,200 budget includes architecture/PR-review lifecycle fixes without introducing a temporary duplicate lifecycle or compatibility wrapper.
@@ -63,20 +60,18 @@
 | [x] | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) merged as `bd7ad4bc` |
 | [x] | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | [PR #77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8` |
 | [x] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-4,200 | [PR #1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) merged as `41f9ac9d`; 4,176 changed lines, architecture approved, eleven review findings addressed |
-| [ ] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-2,200 | [PR #1172](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1172) open at 2,032 changed lines; three review findings addressed and focused verification passing |
-| [ ] | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Blocked on Step 4 and #918 rebase checkpoint |
+| [x] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-2,200 | [PR #1172](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1172) merged as exact checkpoint `1a6007228f`; 2,032 changed lines |
+| [x] | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 100-260 | Async matrix passed and recorded in `VERIFICATION.md`; retirement PR pending publication |
 
 ## Step 1 Checklist
 
 - [x] Inspect current voice API, service, composer state, localization, tests, and regression contract.
 - [x] Inspect current auth route, provider adapters, failure mapping, tests, and compatibility markers.
-- [x] Inspect relevant Git history and active realtime PLAN/TRACKER.
-- [x] Verify PR #918 is open at `b3083b7ad3`, overlaps voice ownership, and currently conflicts with `main`.
+- [x] Inspect relevant Git history for the async voice implementation and released endpoint contract.
 - [x] Record exact retry/artifact/error matrix and old-server fallback.
 - [x] Record detailed auth reason plus composition-owned compatibility policies.
 - [x] Record separate platform capability plus HTTP API → Repository → Service → Cubit → Composer ownership and composer-scoped cleanup.
-- [x] Record the user's async-only retry decision and realtime behavior distinction.
-- [x] Record server-first rollout, #918 merge barrier, privacy, analytics, cleanup, and duplicate-work risk.
+- [x] Record the async-only product scope, server-first rollout, privacy, analytics, cleanup, and duplicate-work risk.
 - [x] Define fixed five-step titles, repositories, changed-line targets, and L4 matrix.
 - [x] Run `architecture-plan-review` through a sub-agent.
 - [x] Apply all four blocking architecture-plan findings directly; do not re-review routine corrections.
@@ -94,7 +89,7 @@
 - [x] Preserve every released async status/error value while adding fixed booleans, including false on the voice daily-quota response.
 - [x] Test every reason, daily quota, unexpected error, connected cancellation, authenticated validation/upload failures, and route rate limiting.
 - [x] Keep raw provider details private and existing Retry-After semantics intact.
-- [x] Update auth README plus realtime PLAN/TRACKER with async-only decision and #918 barrier.
+- [x] Update auth README with the authoritative async retryability contract and compatibility policy.
 - [x] Pass focused auth verification and architecture implementation review.
 
 ## Step 3 Checklist
@@ -117,52 +112,43 @@
 - [x] Preserve cancellation generations, wake lock, amplitude, max duration, draft spans, focus, and one completion event.
 - [x] Prove voice-first/text-first behavior, old-server omission fallback, and manual-retry cancellation returning to retry-pending with the artifact retained.
 - [x] Update `docs/regression/voice-input.md` in the same production PR; remove stale every-exit-deletes behavior.
-- [x] Add no realtime dual-capture/retry behavior or unshipped realtime claims.
+- [x] Add no streaming capture or recording-replay behavior.
 - [x] Route valid send-time abandonment through Cubit → Service discard while refused submissions retain audio; document duplicate-work/quota risk.
 - [x] Complete the second/final architecture implementation review; approved with no findings after first-pass corrections.
 
-## PR #918 Rebase Checkpoint
-
-- [ ] Rebase #918 onto exact merged Step 4 SHA and record new base/head in auth realtime tracker.
-- [ ] Resolve VoiceApi/DI/platform-session/repository/service/Cubit/PromptInput/test/doc overlaps.
-- [ ] Preserve async retained retry and old-server fallback tests.
-- [ ] Preserve post-audio realtime confirmed-partial/no-full-retry behavior.
-- [ ] Prove realtime failure never falsely shows the async Retry control.
-- [ ] Return #918 to mergeable, CI-green, reviewed state before it may merge.
-
 ## Step 5 Checklist
 
-- [ ] Pass automated API/repository/service/platform/widget coverage.
-- [ ] Pass one release-target physical mobile platform in voice-first and text-first async modes.
-- [ ] Exercise local network loss then successful retry without re-recording.
-- [ ] Exercise explicit async server retryable and unusable-audio non-retryable outcomes.
-- [ ] Exercise older-server omission and released-app/new-server fixture compatibility.
-- [ ] Verify initial-cancel/discard/disposal cleanup, manual-retry cancel retention, and privacy-safe logs/analytics.
-- [ ] If realtime is in the build, prove post-audio failure has no false retained-file Retry claim.
-- [ ] Record mode/provider/platform/auth-build matrix and privacy-safe evidence.
-- [ ] Move plan to completed only when all required L4 rows pass or the user records an explicit reduction.
+- [x] Pass automated API/repository/service/platform/widget coverage.
+- [x] Pass voice-first and text-first async modes on the user-approved owned iOS simulator substitution; do not claim physical coverage.
+- [x] Exercise local network loss then successful retry without re-recording.
+- [x] Exercise explicit async server retryable and unusable-audio non-retryable outcomes.
+- [x] Exercise older-server omission and released-app/new-server fixture compatibility.
+- [x] Verify cancel/discard/disposal/background cleanup, manual-retry cancel retention, permission revocation, and privacy-safe logs/analytics.
+- [x] Record mode/provider/platform/auth-build matrix and privacy-safe evidence in `VERIFICATION.md`.
+- [x] Move the plan to completed after every required async matrix row passes.
 
 ## Plan Review
 
 - **Reviewer:** `architecture-plan-review` sub-agent
 - **Reviewed scope:** initial complete `.plan/active/voice-transcription-retry/`
 - **Verdict:** rejected after pre-review gate passed
-- **Blocking findings:** singleton/composer ownership mismatch; missing OpenAI retryability-versus-HTTP compatibility owner; stale/unreconciled realtime PR #918 baseline; app-shell Service directly calling Layer-1 API without Repository
-- **Initial corrections applied:** composer-scoped factory service with synchronous disposal fence; Foundation/API/Repository/Service layering; composition-injected auth public-error policies and complete reason table; verified #918 head/overlap plus hard rebase-before-merge checkpoint; async-only realtime scope decision
+- **Blocking findings:** singleton/composer ownership mismatch; missing OpenAI retryability-versus-HTTP compatibility owner; app-shell Service directly calling Layer-1 API without Repository
+- **Initial corrections applied:** composer-scoped factory service with synchronous disposal fence; Foundation/API/Repository/Service layering; composition-injected auth public-error policies and complete reason table
 - **PR review round 1:** accepted module_core Cubit ownership, lazy-singleton service plus per-composer session, provider-quota classification, and same-PR async regression documentation; declined a pass-through capture API/repository because scoped platform rules explicitly permit direct interface consumption, then clarified the two dependency paths
 - **PR review round 2:** made the lazy service substantively own every operation/transition with the session reduced to state only; split initial cancellation from manual-retry cancellation so Retry cancellation preserves the artifact
 - **Re-review:** architecture-plan review not rerun; repository policy says apply valid findings directly without routine approval re-review
 
 ## Verification Log
 
-- **Step 1 architecture review:** initial draft rejected; all four findings applied as recorded above
-- **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only decision, #918 barrier, quota classification, substantive service/Cubit ownership, retry-cancel retention, same-PR regression update, and both review rounds agree; whitespace check passed
+- **Step 1 architecture review:** initial draft rejected; all relevant findings applied as recorded above
+- **Step 1 documentation validation:** plan/tracker titles, five-step denominator, repositories, targets, async-only scope, quota classification, substantive service/Cubit ownership, retry-cancel retention, same-PR regression update, and both review rounds agree; whitespace check passed
 - **Step 1 changed lines:** 625 documentation-only additions (`PLAN.md` 460, `TRACKER.md` 165), within the 500-700 target
 - **Step 1 commits:** `620cb5c6c` (plan), tracker records, `c55a0846b` (review round 1), and `830ba2e8d` (review round 2)
 - **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), merged as `bd7ad4bc374d959309154d2a30697d698ec56970`
 - **Step 2 server verification:** PR #77 merged as `459d2663c8`; format/lint/build/circular-dependency checks pass, focused provider/policy suites pass, full Node suite passed 941 with one skipped before the route-level review follow-up, route/service follow-up passes 51/51, and architecture implementation review approved with no findings
 - **Step 3 ownership migration:** PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) merged as `41f9ac9dcb`, 4,176 changed lines; synchronized with apps `origin/main` at `746e222c42`; codegen and module_core/app strict analysis pass, along with 26 focused core tests, 17 platform/path tests, 86 composer tests, and 59 new-session/routing tests; architecture approved, then eleven PR review findings were addressed across typed causes, stop/cancel/disposal serialization, in-flight stop cancellation, post-start rollback, both conditional composer lifetimes, adapter-owned and time-bounded native prewarm/activity coordination, and concurrent path uniqueness
-- **Step 4 client retry verification:** PR [#1172](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1172) is open at 2,032 changed lines; module_core/app strict analysis, generated DTO/state/localization output, 39 focused API/repository/service/Cubit tests, 17 platform/path tests, 94 composer tests, and 58 affected new-session/routing tests pass; first architecture review rejected send-time abandonment/docs, both findings were fixed, the second/final review approved, and three PR findings were addressed across send serialization, active-retry abandonment, and capture-release lifecycle alignment
-- **Step 4 regression reconciliation:** pending with implementation
-- **Step 5 L4 evidence:** pending
-- **Final disposition:** active
+- **Step 4 client retry verification:** PR [#1172](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1172) merged as `1a6007228f` at 2,032 changed lines; module_core/app strict analysis, generated DTO/state/localization output, 39 focused API/repository/service/Cubit tests, 17 platform/path tests, 94 composer tests, and 58 affected new-session/routing tests pass; first architecture review rejected send-time abandonment/docs, both findings were fixed, the second/final review approved, and three PR findings were addressed across send serialization, active-retry abandonment, and capture-release lifecycle alignment
+- **Step 4 regression reconciliation:** merged with the async implementation and remains authoritative on apps `main`
+- **Step 5 L4 evidence:** `VERIFICATION.md`; all rows in the user-approved simulator matrix passed, including production HTTP 200/non-empty live-provider transcription
+- **Step 5 environment cleanup:** auth URL restored, temporary stubs/Flutter/bridge stopped, microphone permission restored, owned simulator shut down
+- **Final disposition:** completed from merged async behavior after every required matrix row passed; no row remains partial, blocked, failed, or unexecuted

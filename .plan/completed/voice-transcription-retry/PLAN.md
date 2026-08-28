@@ -3,14 +3,13 @@
 ## Status
 
 - **Plan slug:** `voice-transcription-retry`
-- **Status:** Active — Step 3/5 in review; Step 4/5 retained retry implemented locally
+- **Status:** Completed — Steps 1–4 merged and the accepted Step 5 async simulator/provider matrix passed
 - **Plan date:** 2026-08-27
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Server repository:** `sesori-ai/sesori_auth_server`
-- **Implementation base:** apps `origin/main` at `746e222c42`; auth Step 2 merged as `459d2663c8`
-- **Current branch:** `plan/voice-transcription-retry/s04-retain-retry-async-recordings`
+- **Implementation base:** apps async retry Step 4 merged as `1a6007228f`; auth Step 2 merged as `459d2663c8`
+- **Current branch:** `plan/voice-transcription-retry/s05-verify-and-retire`
 - **Delivery:** one plan PR, one additive auth-contract PR, one client ownership/layering PR, one async-retry-plus-regression-doc PR, and one verification/retirement PR
-- **External merge barrier:** apps realtime voice PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), head `b3083b7ad3`, must rebase onto the merged async-retry implementation before it may merge
 
 This plan and `TRACKER.md` are the implementation authority. Current code and released behavior remain authoritative if either document becomes stale.
 
@@ -25,24 +24,16 @@ A transient upload or async transcription-service failure must not destroy a com
 
 A provider/model rejection, unusable audio, authentication failure, quota rejection, or other non-retryable response must not show Retry. It explains that transcription failed and lets the user record again or type instead. Retrying is always manual; this work adds no automatic resend loop.
 
-## Product Scope Decision: Async Only
+## Product Scope: Async Only
 
-On 2026-08-27 the user explicitly accepted that full-recording retry does not need to extend to realtime mode if doing so increases complexity drastically. It does.
-
-The pending realtime implementation streams raw PCM after `ready` and does not retain a compressed file. Supporting full replay after audio starts would require teeing every PCM frame to disk, producing an async-compatible compressed artifact on iOS and Android, handling disk/socket backpressure and cancellation, and proving the 15-minute limit. Raw WAV is insufficient: mono PCM16 is about 28.8 MB at 16 kHz and about 79.4 MB at 44.1 kHz for 15 minutes, while `POST /voice/transcribe` caps audio at 25 MB.
-
-Therefore:
-
-- this plan guarantees retry only for file-based async transcription, including the async fallback path retained by realtime PR #918;
-- realtime failures before audio starts may continue falling back to async as #918 already plans;
-- once realtime audio has been sent, its accepted behavior remains confirmed-partial-text recovery plus a typed error, without a full-recording Retry action; and
-- no dual capture, native AAC/FLAC encoder, PCM spool/replay, second recorder, larger upload route, or new server storage is added.
-
-The regression contract must state this mode distinction honestly.
+This plan covers the file-based async transcription flow shipped on apps `main`. A completed compressed recording may
+remain composer-owned for manual Retry after a transient local or server-authoritative failure. Streaming capture,
+parallel recording, replay spools, automatic resend, server-side audio storage, and larger upload routes are outside
+this plan.
 
 ## Current Behavior And Evidence
 
-### Current apps `main`
+### Apps baseline before Steps 3–4
 
 - `client/app/lib/capabilities/voice/voice_transcription_service.dart` records to a temporary file, calls `VoiceApi.transcribe`, and unconditionally deletes the file in `stopAndTranscribe`'s `finally` block.
 - That class is a DI lazy singleton even though `PromptInput` is the user-visible owner of a recording interaction. `PromptInput.dispose` can request cancellation but does not dispose the application-owned service.
@@ -51,31 +42,16 @@ The regression contract must state this mode distinction honestly.
 - `client/module_core/lib/src/capabilities/voice/voice_api.dart` returns generic `ApiResponse<String>`. A non-2xx response retains status and raw JSON only inside `NonSuccessCodeError`; voice code does not parse the server's existing `retryable` field.
 - The popup design system supports actions, but a popup can time out or be dismissed. It is not a durable owner for audio. The retry choice belongs in the composer interaction itself.
 
-### Auth server
+### Auth baseline before Step 2
 
 - `POST /voice/transcribe` already maps provider-neutral `TranscriptionFailureReason` values.
 - Soniox transient errors carry additive `retryable: true`; provider configuration rejection carries `retryable: false`; explicit invalid audio currently returns `400 bad_request` without the flag.
 - The OpenAI compatibility path intentionally returns `500 internal_server_error` for every provider failure so released apps keep their historical status/error contract. `OpenAIClient` currently collapses all non-cancellation failures to `Internal`, which loses the information needed for an authoritative retryability boolean.
 - Existing apps ignore unknown JSON members. Adding `retryable` while preserving endpoint, authentication, status, and existing `error` values is backward compatible.
 
-### Active realtime overlap
-
-Auth realtime `TRACKER.md` names S03 as active. Apps PR #918 is open at `b3083b7ad3` on branch `plan/real-time-transcription/s03-w01-p01-stream-mobile-voice`; its recorded CI is green, but GitHub currently reports it conflicting with `main`.
-
-It changes the same `VoiceApi`, capture lifecycle, DI, `PromptInput`, tests, localization, and `docs/regression/voice-input.md`. It cannot remain a second authoritative implementation.
-
-The merge order is locked:
-
-1. this plan's client ownership and async-retry Steps 3–4 merge first;
-2. PR #918 rebases onto that merged SHA and adapts its realtime/async orchestration to the new platform capability plus HTTP API → Repository → Service → Cubit ownership;
-3. #918 preserves async retained-file retry and its tests while keeping post-audio realtime partial-text/no-full-retry semantics; and
-4. only then may #918 merge.
-
-Step 2 updates both the auth realtime `PLAN.md` and `TRACKER.md` with this decision and barrier. Updating prose without reconciling the open apps branch is insufficient; the branch rebase is a required checkpoint before this plan's final verification and retirement step.
-
 ### Regression documentation
 
-`docs/regression/voice-input.md` already lists transcription failure/retry at L4, but its required behavior says every exit path deletes the file and no owner retains residual audio. Step 4 updates the async contract in the same PR that changes production behavior, so no merged state leaves this source of truth stale. PR #918 updates its own realtime mode-specific contract when that unpublished branch rebases and eventually lands.
+`docs/regression/voice-input.md` already lists transcription failure/retry at L4, but its baseline required behavior said every exit path deletes the file and no owner retains residual audio. Step 4 updated the async contract in the same PR that changed production behavior, so no merged state left this source of truth stale.
 
 ## Locked Architecture
 
@@ -159,9 +135,8 @@ The concrete app implementation lives under `client/app/lib/core/platform/` and 
 - `AudioRecorder` permission/start/stop/cancel/dispose;
 - recording path creation and best-effort deletion;
 - recording format/MIME facts;
-- amplitude and native prewarm;
-- wake-lock acquisition/release; and
-- when PR #918 rebases, PCM stream/config callbacks and native realtime teardown.
+- amplitude and native prewarm; and
+- wake-lock acquisition/release.
 
 It does not call auth APIs, parse server failures, choose retryability, or own composer policy.
 
@@ -173,7 +148,7 @@ The platform capability itself is stateless. Each opened `VoiceCaptureSession` o
 
 #### Layer 2 repository
 
-Add `VoiceRepository` under `client/module_core/lib/src/repositories/`. It depends on `VoiceApi` (and, after #918 rebases, `RealtimeVoiceApi`) and maps API/transport DTOs into provider-neutral domain outcomes:
+Add `VoiceRepository` under `client/module_core/lib/src/repositories/`. It depends on `VoiceApi` and maps API/transport DTOs into provider-neutral domain outcomes:
 
 - transcript success;
 - local transport failure;
@@ -269,18 +244,6 @@ This plan accepts that bounded ambiguity rather than adding an idempotency key, 
 
 Deploy the server contract first, then the client ownership and retry PRs. Mixed-version pairs remain safe throughout rollout and rollback.
 
-### Realtime PR #918
-
-PR #918 is an unpublished candidate, so it creates no compatibility obligation. It must rebase after Step 4 and update every in-repository consumer in lockstep rather than adding a shim.
-
-Its accepted post-rebase behavior is:
-
-- async mode/fallback uses the repository/service retained-file contract;
-- pre-audio realtime failure may select async;
-- post-audio realtime failure preserves confirmed partial text and shows its existing typed failure, without a full-recording Retry;
-- realtime success/cancel/cleanup remains unchanged; and
-- no provider-specific client logic is introduced.
-
 ### Client/bridge protocol
 
 No bridge route, relay message, plugin interface, shared crypto contract, or database schema participates. The bridge and coding backend plugins are outside the matrix.
@@ -302,7 +265,7 @@ No bridge route, relay message, plugin interface, shared crypto contract, or dat
 
 ### Deliberately not added
 
-- no realtime dual capture, compressed stream spool, replay, or fallback after audio starts;
+- no streaming capture, parallel recorder, compressed spool, or replay;
 - no persistent audio metadata or restart recovery;
 - no queue, automatic retry/backoff, timer, network listener, or connectivity subscription;
 - no request ID, idempotency database, transcript cache, or server-side audio retention;
@@ -320,7 +283,6 @@ The architecture move is causally required by the new lifecycle: retry policy an
 - Remove obsolete voice error variants/mappers only when the repository outcomes make them unused; internal Dart contracts update in lockstep.
 - Update stale localization that tells users only to check the connection without saying the recording is saved.
 - Keep recorder prewarm, amplitude, wake lock, max duration, generation fencing, draft voice spans, completion analytics, and best-effort deletion logging.
-- When #918 rebases, delete superseded app-service realtime orchestration rather than keeping two owners.
 
 No database field, route, transport field, cache, setting, or job becomes obsolete.
 
@@ -329,23 +291,23 @@ No database field, route, transport field, cache, setting, or job becomes obsole
 | Step | Repository | Exact PR title | Changed-line target | Outcome |
 |---|---|---|---:|---|
 | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | Publish this reviewed/corrected plan and tracker only |
-| 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | Add authoritative booleans, quota classification, and explicit public compatibility policy; update realtime plan/tracker |
+| 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | Add authoritative booleans, quota classification, and explicit public compatibility policy |
 | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-4,200 | Add platform/session boundary, HTTP API/repository layering, lazy service, VoiceInputCubit, DI/codegen, and behavior-preserving tests |
-| 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-2,200 | Add retained-artifact lifecycle, Retry/discard UI, localization/codegen, regression contract, and focused tests |
-| 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Run/record required L4 async matrix and retire only after it passes |
+| 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-2,200 | Merged through PR #1172 as exact checkpoint `1a6007228f` |
+| 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 100-260 | Async simulator/provider matrix passed, `VERIFICATION.md` is published, and the plan is retired |
 
 Other implementation PRs retain the 1,500-line soft cap. On 2026-08-27, the code-informed Step 3 candidate measured roughly 3,300 touched lines including about 977 deletions of the legacy service and its tests. The user explicitly approved keeping that ownership migration in one cohesive PR; splitting it would require a temporary duplicate lifecycle or compatibility wrapper that the architecture intentionally removes. The final Step 3 budget is 2,800–4,200 lines, including the architecture review's session-safe wake-lock lease plus PR-review fixes for typed native causes, stop/cancel/disposal serialization, in-flight stop cancellation, post-start rollback, composer-scoped ownership on both conditional composer surfaces, coordinated native prewarm, and collision-resistant concurrent recording paths.
 
 Step 4 is a cohesive 1,400–2,200-line exception to the normal implementation soft cap because its typed DTO/state and localization generators contribute committed output, while retained lifecycle, reachable Retry/Discard ownership, focused coverage, and the regression contract must land together. Splitting would temporarily retain audio without a complete user decision path or publish UI against an unauthoritative failure contract.
 
-The existing PR #918 is an external merge-barrier action owned by the realtime plan, not a sixth PR in this series. Between Steps 4 and 5 it must rebase onto the merged Step 4 SHA, adopt the new platform/service/session/Cubit ownership, preserve async retry tests, update its own mode-specific regression contract and auth-hosted PLAN/TRACKER checkpoint, and return to mergeable CI-green state.
+Step 5's documentation-only 100–260-line budget includes the verification artifact, plan move, and removal of superseded cross-plan material so the completed source stays aligned with async behavior merged on `main`.
 
 ## Step 1/5 — Publish The Plan
 
 ### Scope
 
 - Add `PLAN.md` and `TRACKER.md` under `.plan/active/voice-transcription-retry/`.
-- Record current app/server behavior, exact failure matrix, async-only scope, architecture ownership, #918 barrier, compatibility fallback, complexity budget, cleanup assessment, and L4 retirement boundary.
+- Record current app/server behavior, exact failure matrix, async-only scope, architecture ownership, compatibility fallback, complexity budget, cleanup assessment, and L4 retirement boundary.
 - Record the architecture plan-review rejection and corrections honestly; do not claim the corrected draft was approved because repository rules prohibit routine re-review of applied findings.
 
 ### Verification
@@ -363,7 +325,7 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 - Preserve Soniox statuses/error values while distinguishing terminal provider quota/unusable audio from transient capacity and availability.
 - Add `retryable: false` to the voice daily-quota response without changing its `429 quota_exceeded`/`service` contract.
 - Keep cancellation, request validation, provider cleanup, privacy, and existing Retry-After semantics intact.
-- Update auth README/tests plus realtime `PLAN.md` and `TRACKER.md` with the async-only product decision, #918 head/overlap, and merge barrier.
+- Update auth README/tests with the authoritative async retryability contract and compatibility policy.
 
 ### Verification
 
@@ -400,7 +362,7 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 - Add retry-pending composer presentation plus localized Retry, discard, saved-recording, terminal-rejection, and missing-artifact copy.
 - Preserve editable draft, voice-span attribution, focus behavior, cancellation, max duration, and one completion analytics outcome.
 - Update `docs/regression/voice-input.md` in this same PR with authoritative async outcomes, artifact deletion points, Retry/discard, old-server fallback, duplicate-work risk, scope limits, L2/L4 coverage, and failure signals.
-- Do not add realtime capture/retry behavior or document unpublished realtime behavior as current production support.
+- Do not add streaming capture or recording-replay behavior.
 
 ### Verification
 
@@ -410,18 +372,6 @@ The existing PR #918 is an external merge-barrier action owned by the realtime p
 - Regression text matches the behavior in the same diff and removes the stale every-exit-deletes claim.
 - Codegen/localization generation, strict analysis, focused/downstream tests, architecture implementation review, and `git diff --check`.
 
-## Realtime PR #918 Rebase Checkpoint
-
-Before Step 5:
-
-- Rebase #918 onto the exact merged Step 4 SHA and record that base/head in auth realtime `TRACKER.md`.
-- Resolve its overlaps in `VoiceApi`, DI, platform capture/session, service/repository/Cubit, `PromptInput`, localization, tests, and voice regression docs.
-- Preserve async retained retry and old-server fallback tests.
-- Keep post-audio realtime confirmed-partial/no-full-retry behavior, prove it does not expose the async Retry control, and update the regression document with that mode-specific contract in #918 itself.
-- Return #918 to mergeable, CI-green, reviewed state before it may merge.
-
-If #918 is closed, superseded, or materially redesigned instead, update this plan and the realtime plan before Step 5; do not silently ignore the barrier.
-
 ## Step 5/5 — Verify And Retire
 
 ### Highest required level
@@ -430,11 +380,14 @@ If #918 is closed, superseded, or materially redesigned instead, update this pla
 
 ### Required matrix
 
-- **Client:** one release-target physical mobile platform, voice-first and text-first layouts.
+The user explicitly substituted the owned iOS simulator for the original physical-device row. Record that accepted
+reduction without claiming physical microphone, audio-session, haptics, or hardware wake coverage.
+
+- **Client:** owned iOS simulator, voice-first and text-first layouts.
 - **Auth:** current server contract plus an older-server fixture with omitted `retryable`.
 - **Providers:** automated classification for every configured async provider adapter; one live configured production provider through staging/external verification.
 - **Failures:** offline/connection loss, explicit retryable async server failure, explicit unusable-audio/non-retryable response, authentication/quota rejection, cancel during retry back to retry-pending, and deletion/disposal cleanup.
-- **Mode:** force/confirm async capability for the retained-file journey. If realtime code has merged, separately confirm post-audio failure does not falsely display the async Retry action.
+- **Mode:** file-based async capture and upload only.
 - **Plugins/bridge:** none.
 
 ### Acceptance
@@ -443,8 +396,7 @@ If #918 is closed, superseded, or materially redesigned instead, update this pla
 2. A server-declared non-retryable audio failure shows no Retry and directs re-recording or typing.
 3. A current app against omitted metadata never guesses retryability; a current server remains compatible with released-app fixtures.
 4. Success, terminal failure, initial cancellation, explicit discard, and disposal attempt deletion; retryable failure and cancellation of a manual retry retain the artifact.
-5. Realtime post-audio failure, when present in the tested build, preserves its documented partial-text behavior and never claims a retained full recording.
-6. No audio/transcript content reaches logs or analytics, and completion analytics fires once after eventual async success.
+5. No audio/transcript content reaches logs or analytics, and completion analytics fires once after eventual async success.
 
 Record Pass/Partial/Fail/Blocked with mode, platform, auth build, provider scope, and privacy-safe evidence. Any required row that is partial, blocked, failed, or unexecuted keeps the plan active unless the user explicitly accepts a reduced matrix in this plan. Move `.plan/active/voice-transcription-retry/` to `.plan/completed/voice-transcription-retry/` only after acceptance.
 
@@ -454,9 +406,7 @@ Record Pass/Partial/Fail/Blocked with mode, platform, auth build, provider scope
 - The retained artifact is memory-owned and composer-local. Process death, route exit, OS temporary-file eviction, or explicit discard loses retry capability.
 - Best-effort deletion can leave local residue if the filesystem refuses removal; no background sweeper is added.
 - An older server cannot distinguish provider failures. New clients treat its HTTP failures as terminal rather than risking a false Retry.
-- Realtime audio sent after `ready` has no full-recording retry. Confirmed partial text is the accepted recovery, per the explicit user decision.
-- PR #918 is already large and conflicting. Its rebase may expose changed file estimates; that work remains owned by the realtime plan and cannot bypass this plan's async contract.
 
 ## Expected Result
 
-After an async connection or server-declared transient failure, the composer visibly keeps the completed compressed recording and lets the user resend that exact artifact. A server/model rejection that cannot benefit from resubmission deletes it, offers no Retry, and directs the user to re-record or type. Realtime remains intentionally simpler: pre-audio fallback is allowed, while post-audio failure keeps confirmed partial text without retaining the full recording. Existing apps and servers continue to interoperate, the HTTP path follows API → Repository → Service → Cubit → Composer while recording stays behind its platform capability, and no bridge/plugin/database contract changes.
+After an async connection or server-declared transient failure, the composer visibly keeps the completed compressed recording and lets the user resend that exact artifact. A server/model rejection that cannot benefit from resubmission deletes it, offers no Retry, and directs the user to re-record or type. Existing apps and servers continue to interoperate, the HTTP path follows API → Repository → Service → Cubit → Composer while recording stays behind its platform capability, and no bridge/plugin/database contract changes.
