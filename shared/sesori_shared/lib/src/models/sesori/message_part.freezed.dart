@@ -394,7 +394,7 @@ $ToolStateCopyWith<$Res> get state {
 @JsonSerializable()
 
 class MessagePartSubtask extends MessagePart {
-  const MessagePartSubtask({required this.id, required this.sessionID, required this.messageID, this.prompt = "", this.description = "", this.agent = "", this.taskState, this.childSessionID,  String? $type}): $type = $type ?? 'subtask',super._();
+  const MessagePartSubtask({required this.id, required this.sessionID, required this.messageID, this.prompt = "", this.description = "", this.agent = "", required this.taskState, required this.childSessionID,  String? $type}): $type = $type ?? 'subtask',super._();
   factory MessagePartSubtask.fromJson(Map<String, dynamic> json) => _$MessagePartSubtaskFromJson(json);
 
 @override final  String id;

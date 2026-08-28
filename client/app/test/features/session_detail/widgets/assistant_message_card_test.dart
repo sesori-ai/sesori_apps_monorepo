@@ -207,7 +207,13 @@ void main() {
         message: _assistantMessage(
           parts: const [
             MessagePart.tool(id: "tool", sessionID: "session-1", messageID: "assistant-1"),
-            MessagePart.subtask(id: "subtask", sessionID: "session-1", messageID: "assistant-1"),
+            MessagePart.subtask(
+              id: "subtask",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              taskState: null,
+              childSessionID: null,
+            ),
             MessagePart.agent(id: "agent", sessionID: "session-1", messageID: "assistant-1"),
             MessagePart.retry(id: "retry", sessionID: "session-1", messageID: "assistant-1"),
           ],

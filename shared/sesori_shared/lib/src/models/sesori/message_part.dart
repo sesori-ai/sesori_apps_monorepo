@@ -153,12 +153,12 @@ sealed class const MessagePart._() with _$MessagePart {
 
     /// The subtask's own lifecycle, authoritative for its inline status. Null
     /// when the backend reports none, leaving consumers to infer it.
-    ToolState? taskState,
+    required ToolState? taskState,
 
     /// The session hosting this subtask's work, when the backend exposes one
     /// and the bridge could resolve it. Null leaves consumers to their own
     /// association, so a part is never withheld for an unresolved reference.
-    String? childSessionID,
+    required String? childSessionID,
   }) = MessagePartSubtask;
 
   @FreezedUnionValue("step-start")

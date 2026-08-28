@@ -92,6 +92,8 @@ void main() {
           prompt: "delegate this",
           description: "",
           agent: "",
+          taskState: null,
+          childSessionID: null,
         ),
       );
     });
