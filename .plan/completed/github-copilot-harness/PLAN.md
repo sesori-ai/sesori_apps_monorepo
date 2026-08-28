@@ -215,15 +215,42 @@ permissions, pending-permission abort cleanup, accepted image input, client
 diffs, plugin-local crash/reconnect, clean shutdown, and local deletion. The
 owner directed retirement after fixing the sole release blocker and rerunning
 only affected coverage, thereby accepting the remaining unexecuted requirements
-as non-blocking Partial coverage. Those reductions are: alternate bridge host;
-older client/bridge pair; account type; unauthenticated normal Copilot profile;
-malformed branded version output; live catalog cancellation and first-page
-failure; multi-page live catalog failure; a greater-than-50-message client
-pagination, continuation, and cold-reopen flow; a model/account image rejection;
-a read-only tool with a negative file-change observation; light-theme client
-branding; client archive/list/detail; deletion without worktree cleanup;
-visible cleanup refusal; branch retention; and direct observation of retained
-private Copilot history. No product failure remains.
+as non-blocking Partial coverage. The accepted reductions are:
+
+- **Runtime installation:** malformed branded version output.
+- **Setup and lifecycle:** alternate bridge host, unauthenticated normal profile,
+  environment-token/BYOK authentication, rendered selected-version and
+  setup/runtime/work facts, capability-appropriate controls, default badge,
+  idle-timeout default/persisted override, and per-harness catalog scan
+  progress/result announcement.
+- **Projects and sessions:** live catalog cancellation, first-page and later-page
+  failure, healthy multi-page exhaustion with automatic list adoption, child
+  resolution, list/unseen rendering, and phone/wide-pane deeper-pull scan fan-out.
+- **Creation and options:** account type, healthy live no-mode catalog,
+  create-route launch/duplicate/Back behavior, durable route replacement,
+  generated title/branch updates, stale-cache refresh presentation, and
+  picker/loading/no-harness states.
+- **Turns:** live stale-selection refresh/warning/single retry with queued-prompt
+  preservation, composer and sending-to-queued transient presentation, and
+  shared-output-bound normalization.
+- **History and recovery:** a greater-than-50-message client pagination,
+  continuation, and cold-reopen flow.
+- **Questions and permissions:** child attribution, archived-session refusal,
+  suppressed completion notifications while permission remains pending, and
+  safe cancellation when no exact Once or Reject ACP option exists.
+- **Attachments and images:** model/account rejection; live/reloaded image
+  presentation; generated/tool-output images, ordering, and viewer actions; and
+  current-route failure restoration/background-failure non-restoration.
+- **Tools and file changes:** read-only negative file-change and genuinely failing
+  tool cases, bounded output, exactly-one mutation signaling, consistent
+  title/status/error presentation, and tool/subtask/agent rendering.
+- **Archiving and deletion:** client archive/list/detail, deletion without
+  worktree cleanup, visible cleanup refusal, branch retention, a tombstone
+  challenged by a still-listed row, and private retained-history inspection.
+- **Compatibility and branding:** older client/bridge pair and light-theme
+  client branding.
+
+No product failure remains.
 
 ## Risks And Test Focus
 
