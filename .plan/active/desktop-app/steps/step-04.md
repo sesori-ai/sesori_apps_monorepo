@@ -59,5 +59,5 @@ and the two Layer-3 services do not depend on each other.
 - `client/desktop`: `flutter test` — 22 tests passed; four-phase DI resolves
   both Layer-3 services.
 - Regenerated desktop-core Injectable output with `build_runner`.
-- Change size after review fixes: 1,497 changed lines including new files,
-  under the 1,500-line soft cap.
+- Change size after review fixes: 1,520 changed lines including new files, a
+  20-line review-driven overage beyond the 1,500-line soft cap.

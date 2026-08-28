@@ -1,4 +1,5 @@
 import "package:injectable/injectable.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/control_command_repository.dart";
 import "../trackers/bridge_prompt_tracker.dart";
@@ -19,12 +20,17 @@ class ControlCommandService({
   required final ControlCommandRepository _repository,
   required final BridgePromptTracker _promptTracker,
 }) {
-  void answerPrompt({required String id, required bool accepted}) {
-    if (!_promptTracker.prompts.any((prompt) => prompt.id == id)) {
-      throw ControlPromptNotPendingException(id: id);
+  /// Answers the exact pending prompt instance read from [BridgePromptTracker].
+  ///
+  /// Wire ids restart with each helper process. Identity therefore acts as the
+  /// local ownership token that prevents an old UI callback from approving a
+  /// replacement helper's same-id prompt.
+  void answerPrompt({required ControlPromptRequest prompt, required bool accepted}) {
+    if (!_promptTracker.prompts.any((pending) => identical(pending, prompt))) {
+      throw ControlPromptNotPendingException(id: prompt.id);
     }
 
-    _repository.answerPrompt(id: id, accepted: accepted);
-    _promptTracker.removePrompt(id: id);
+    _repository.answerPrompt(id: prompt.id, accepted: accepted);
+    _promptTracker.removePrompt(id: prompt.id);
   }
 }

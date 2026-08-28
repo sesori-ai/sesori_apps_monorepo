@@ -22,7 +22,7 @@ void main() {
     test("sends a typed prompt response and clears the answered prompt", () {
       promptTracker.addPrompt(prompt: _prompt);
 
-      service.answerPrompt(id: _prompt.id, accepted: true);
+      service.answerPrompt(prompt: _prompt, accepted: true);
 
       expect(
         api.sentMessages,
@@ -37,26 +37,36 @@ void main() {
       api.sendError = sendError;
 
       expect(
-        () => service.answerPrompt(id: _prompt.id, accepted: false),
+        () => service.answerPrompt(prompt: _prompt, accepted: false),
         throwsA(same(sendError)),
       );
 
       expect(promptTracker.prompts, <ControlPromptRequest>[_prompt]);
     });
 
-    test("rejects a stale prompt id before sending to a newer helper", () {
+    test("rejects a stale prompt instance when a replacement reuses its id", () {
+      promptTracker.addPrompt(prompt: _prompt);
+      promptTracker.clear();
+      final ControlPromptRequest replacement = ControlPromptRequest(
+        id: _prompt.id,
+        kind: _prompt.kind,
+        message: _prompt.message,
+      );
+      promptTracker.addPrompt(prompt: replacement);
+
       expect(
-        () => service.answerPrompt(id: "stale", accepted: true),
+        () => service.answerPrompt(prompt: _prompt, accepted: true),
         throwsA(
           isA<ControlPromptNotPendingException>().having(
             (error) => error.id,
             "id",
-            "stale",
+            _prompt.id,
           ),
         ),
       );
 
       expect(api.sentMessages, isEmpty);
+      expect(promptTracker.prompts, <ControlPromptRequest>[replacement]);
     });
   });
 }

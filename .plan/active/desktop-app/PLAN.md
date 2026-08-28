@@ -232,13 +232,16 @@ already guarantees the sentinel (the 86 latch at handoff plus the shutdown
 coordinator's budgeted backstop with emergency plugin disposal — verified for
 the restart path in step 5); exit 86 stays the single restart contract. Adds **`ControlCommandService`** (Layer 3): the
 owner of **conversational** GUI→helper sends (`prompt_response` here;
-`unregister_and_exit` in step 11) over `ControlChannelServer`, clearing
-answered prompts from `BridgePromptTracker` — cubits never touch the Layer-4
+`unregister_and_exit` in step 11). It validates the exact tracked prompt
+instance, then sends through the Layer-2 command repository and Layer-1 control
+API before clearing `BridgePromptTracker` — cubits never touch the Layer-4
 dispatcher, and the dispatcher stays inbound-only. The expected-stop
 `shutdown` frame is deliberately NOT here: it belongs to the process
 repository's atomic stop operation (step 2), keeping that operation in one
 owner. Includes hidden-boot render
 policy: contention during a silent autostart surfaces as state, never a modal.
+*Overage: ~1.5k changed lines after review-driven lifecycle-race and per-helper
+prompt-ownership hardening.*
 
 ### M2 — Control surface
 
