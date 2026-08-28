@@ -143,6 +143,30 @@ void main() {
     ],
   );
 
+  test("start failures log their originating recording stack", () async {
+    final innerError = StateError("initial realtime frame failed");
+    final origin = StackTrace.fromString("unexpected realtime open origin");
+    final logLines = <String>[];
+    when(
+      () => service.start(session: session),
+    ).thenThrow(
+      VoiceTranscriptionError.recordingFailed(
+        innerError: innerError,
+        innerStackTrace: origin,
+      ),
+    );
+    final cubit = VoiceInputCubit(service: service, session: session);
+    addTearDown(cubit.close);
+
+    await runZoned(
+      cubit.startRecording,
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logLines.add(line)),
+    );
+
+    expect(cubit.state, isA<VoiceInputStartFailed>());
+    expect(logLines, contains("unexpected realtime open origin"));
+  });
+
   blocTest<VoiceInputCubit, VoiceInputState>(
     "maps a local transport failure into persistent retry-pending state",
     setUp: () {

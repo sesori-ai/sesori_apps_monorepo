@@ -140,6 +140,29 @@ void main() {
     );
   });
 
+  test("preserves the originating unexpected realtime open stack", () async {
+    final error = StateError("initial realtime frame failed");
+    final origin = StackTrace.fromString("unexpected realtime open origin");
+    when(
+      () => realtimeApi.start(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) => Future<RealtimeVoiceSession>.error(error, origin));
+
+    final outcome = await repository.openRealtime(
+      audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
+      projectKey: projectKey,
+    );
+
+    expect(
+      outcome,
+      isA<VoiceRealtimeOpenUnexpectedFailure>()
+          .having((result) => result.error, "error", same(error))
+          .having((result) => result.innerStackTrace, "innerStackTrace", same(origin)),
+    );
+  });
+
   test("preserves every server completion reason in repository events", () async {
     const cases = {
       RealtimeCompleteReason.finished: VoiceRealtimeCompletionReason.finished,

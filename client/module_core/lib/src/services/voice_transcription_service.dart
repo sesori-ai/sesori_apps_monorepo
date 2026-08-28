@@ -203,19 +203,18 @@ class VoiceTranscriptionService({
     } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
       throw VoiceTranscriptionError.microphonePermissionDenied(innerError: error);
-    } on VoiceCaptureError catch (error) {
+    } on VoiceCaptureError catch (error, stackTrace) {
       await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.recordingFailed(innerError: error);
+      throw VoiceTranscriptionError.recordingFailed(innerError: error, innerStackTrace: stackTrace);
     } on VoiceTranscriptionError {
       await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       _restoreIdleAfterFailure(session: session, generation: generation);
       rethrow;
     } catch (error, stackTrace) {
-      loge("Failed to start voice recording", error, stackTrace);
       await _disposeRealtimeInteraction(session: session, sendCancel: true, stopCapture: true);
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.recordingFailed(innerError: error);
+      throw VoiceTranscriptionError.recordingFailed(innerError: error, innerStackTrace: stackTrace);
     }
   }
 
@@ -322,14 +321,17 @@ class VoiceTranscriptionService({
         throw _RealtimePreAudioFallback(cause: cause, innerStackTrace: innerStackTrace);
       case VoiceRealtimeOpenNotAuthenticated():
         throw VoiceTranscriptionError.notAuthenticated();
-      case VoiceRealtimeOpenContractFailure(:final reason, :final cause):
+      case VoiceRealtimeOpenContractFailure(:final reason, :final cause, :final innerStackTrace):
         throw VoiceTranscriptionError.contractFailure(
           reason: reason,
           innerError: cause,
-          innerStackTrace: null,
+          innerStackTrace: innerStackTrace,
         );
-      case VoiceRealtimeOpenUnexpectedFailure(:final error):
-        throw VoiceTranscriptionError.recordingFailed(innerError: error);
+      case VoiceRealtimeOpenUnexpectedFailure(:final error, :final innerStackTrace):
+        throw VoiceTranscriptionError.recordingFailed(
+          innerError: error,
+          innerStackTrace: innerStackTrace,
+        );
     }
 
     final interaction = _RealtimeVoiceInteraction(
@@ -466,10 +468,10 @@ class VoiceTranscriptionService({
       } finally {
         if (identical(session._stopFuture, stopFuture)) session._stopFuture = null;
       }
-    } on VoiceCaptureError catch (error) {
+    } on VoiceCaptureError catch (error, stackTrace) {
       await session._captureSession.cancel();
       _restoreIdleAfterFailure(session: session, generation: generation);
-      throw VoiceTranscriptionError.recordingFailed(innerError: error);
+      throw VoiceTranscriptionError.recordingFailed(innerError: error, innerStackTrace: stackTrace);
     }
 
     if (!_ownsGeneration(session: session, generation: generation)) {
@@ -573,8 +575,10 @@ class VoiceTranscriptionService({
           innerError: typed,
           innerStackTrace: stackTrace,
         ),
-        VoiceCapturePermissionDenied() ||
-        VoiceCaptureFailed() => VoiceTranscriptionError.recordingFailed(innerError: typed),
+        VoiceCapturePermissionDenied() || VoiceCaptureFailed() => VoiceTranscriptionError.recordingFailed(
+          innerError: typed,
+          innerStackTrace: stackTrace,
+        ),
       },
     );
   }
@@ -719,14 +723,22 @@ class VoiceTranscriptionService({
     } on TranscriptionCancelledError {
       return;
     } on Object catch (error, stackTrace) {
-      loge("Failed to fall back from realtime voice capture", error, stackTrace);
-      interaction.terminalFailure = error is VoiceTranscriptionError
-          ? error
-          : VoiceTranscriptionError.recordingFailed(innerError: error);
+      if (!_ownsGeneration(session: session, generation: generation)) return;
+      final failure = switch (error) {
+        VoiceTranscriptionError() => error,
+        VoiceCapturePermissionDenied() => VoiceTranscriptionError.microphonePermissionDenied(innerError: error),
+        VoiceCaptureError() => VoiceTranscriptionError.recordingFailed(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
+        _ => VoiceTranscriptionError.recordingFailed(
+          innerError: error,
+          innerStackTrace: stackTrace,
+        ),
+      };
       session._realtime = interaction;
-      if (_ownsGeneration(session: session, generation: generation)) {
-        session._state = const _VoiceSessionRealtimeRecording();
-      }
+      session._state = const _VoiceSessionRealtimeRecording();
+      _completeRealtimeFailure(session: session, interaction: interaction, error: failure);
     }
   }
 
@@ -768,7 +780,10 @@ class VoiceTranscriptionService({
     try {
       await session._captureSession.stopRealtime();
     } on VoiceCaptureError catch (error, stackTrace) {
-      interaction.captureFailure = VoiceTranscriptionError.recordingFailed(innerError: error);
+      interaction.captureFailure = VoiceTranscriptionError.recordingFailed(
+        innerError: error,
+        innerStackTrace: stackTrace,
+      );
       logw("Failed to stop realtime capture after terminal event", error, stackTrace);
     } finally {
       interaction.captureStopped = true;
@@ -923,7 +938,7 @@ class VoiceTranscriptionService({
           retainedFailure = VoiceTranscriptionError.networkError();
           throw retainedFailure;
         case VoiceTranscriptionUnexpectedFailure():
-          throw VoiceTranscriptionError.recordingFailed(innerError: outcome);
+          throw VoiceTranscriptionError.recordingFailed(innerError: outcome, innerStackTrace: null);
         case VoiceTranscriptionEmptyTranscript():
           throw VoiceTranscriptionError.emptyTranscript();
       }
@@ -1344,7 +1359,7 @@ final class const _VoiceSessionDisposed() extends _VoiceSessionState;
 sealed class const VoiceTranscriptionError._(final String message) implements Exception {
   factory microphonePermissionDenied({required Object innerError}) = MicrophonePermissionDeniedError._;
 
-  factory recordingFailed({required Object innerError}) = RecordingFailedError._;
+  factory recordingFailed({required Object innerError, required StackTrace? innerStackTrace}) = RecordingFailedError._;
 
   factory notRecording() = NotRecordingError._;
 
@@ -1398,7 +1413,10 @@ final class const MicrophonePermissionDeniedError._({required final Object inner
   this : super._("Microphone permission denied");
 }
 
-final class const RecordingFailedError._({required final Object innerError}) extends VoiceTranscriptionError {
+final class const RecordingFailedError._({
+  required final Object innerError,
+  required final StackTrace? innerStackTrace,
+}) extends VoiceTranscriptionError {
   this : super._("Recording failed");
 }
 

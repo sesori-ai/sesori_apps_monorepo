@@ -60,14 +60,25 @@ class VoiceInputCubit({
       }
     } on VoiceTranscriptionError catch (error, stackTrace) {
       if (error is! MicrophonePermissionDeniedError) {
-        loge("Failed to start recording", error, stackTrace);
+        loge(
+          "Failed to start recording",
+          error,
+          _originatingStackTrace(error: error) ?? stackTrace,
+        );
       }
       if (isClosed || state is! VoiceInputStarting) return;
       emit(VoiceInputState.startFailed(error: error));
     } catch (error, stackTrace) {
       loge("Failed to start recording", error, stackTrace);
       if (isClosed || state is! VoiceInputStarting) return;
-      emit(VoiceInputState.startFailed(error: VoiceTranscriptionError.recordingFailed(innerError: error)));
+      emit(
+        VoiceInputState.startFailed(
+          error: VoiceTranscriptionError.recordingFailed(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
+        ),
+      );
     }
   }
 
@@ -107,7 +118,10 @@ class VoiceInputCubit({
       if (!_ownsStopOperation(operation) || state is! VoiceInputTranscribing) return;
       emit(
         VoiceInputState.transcriptionFailed(
-          error: VoiceTranscriptionError.recordingFailed(innerError: error),
+          error: VoiceTranscriptionError.recordingFailed(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
         ),
       );
     }
@@ -134,7 +148,10 @@ class VoiceInputCubit({
       if (isClosed || state is! VoiceInputRetrying) return;
       emit(
         VoiceInputState.transcriptionFailed(
-          error: VoiceTranscriptionError.recordingFailed(innerError: error),
+          error: VoiceTranscriptionError.recordingFailed(
+            innerError: error,
+            innerStackTrace: stackTrace,
+          ),
         ),
       );
     }
@@ -255,29 +272,30 @@ class VoiceInputCubit({
     }
   }
 
+  static StackTrace? _originatingStackTrace({required VoiceTranscriptionError error}) => switch (error) {
+    ContractVoiceError(:final innerStackTrace) ||
+    RecordingFailedError(:final innerStackTrace) ||
+    RealtimeQuotaVoiceError(:final innerStackTrace) ||
+    RealtimeTemporaryUnavailableVoiceError(:final innerStackTrace) ||
+    RealtimeInterruptedVoiceError(:final innerStackTrace) => innerStackTrace,
+    MicrophonePermissionDeniedError() ||
+    NotRecordingError() ||
+    NotAuthenticatedVoiceError() ||
+    RetryableServerVoiceError() ||
+    ServerVoiceError() ||
+    EmptyTranscriptError() ||
+    NetworkVoiceError() ||
+    MissingRecordingArtifactError() ||
+    TranscriptionCancelledError() ||
+    VoiceRealtimePartialTranscriptionError() => null,
+  };
+
   static void _logTranscriptionFailure({
     required VoiceTranscriptionError error,
     required StackTrace stackTrace,
   }) {
     if (error is! NotAuthenticatedVoiceError && error is! NetworkVoiceError) {
-      final originatingStackTrace = switch (error) {
-        ContractVoiceError(:final innerStackTrace) ||
-        RealtimeQuotaVoiceError(:final innerStackTrace) ||
-        RealtimeTemporaryUnavailableVoiceError(:final innerStackTrace) ||
-        RealtimeInterruptedVoiceError(:final innerStackTrace) => innerStackTrace,
-        MicrophonePermissionDeniedError() ||
-        RecordingFailedError() ||
-        NotRecordingError() ||
-        NotAuthenticatedVoiceError() ||
-        RetryableServerVoiceError() ||
-        ServerVoiceError() ||
-        EmptyTranscriptError() ||
-        NetworkVoiceError() ||
-        MissingRecordingArtifactError() ||
-        TranscriptionCancelledError() ||
-        VoiceRealtimePartialTranscriptionError() => null,
-      };
-      loge("Transcription failed", error, originatingStackTrace ?? stackTrace);
+      loge("Transcription failed", error, _originatingStackTrace(error: error) ?? stackTrace);
     }
   }
 

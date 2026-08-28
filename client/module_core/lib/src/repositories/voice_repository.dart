@@ -60,10 +60,14 @@ class VoiceRepository({
       return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
     } on RealtimeVoiceOpenTransportException catch (error, stackTrace) {
       return VoiceRealtimeOpenOutcome.asyncFallback(cause: error, innerStackTrace: stackTrace);
-    } on RealtimeVoiceProtocolException catch (error) {
-      return VoiceRealtimeOpenOutcome.contractFailure(reason: error.message, cause: error);
-    } on Object catch (error) {
-      return VoiceRealtimeOpenOutcome.unexpectedFailure(error: error);
+    } on RealtimeVoiceProtocolException catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.contractFailure(
+        reason: error.message,
+        cause: error,
+        innerStackTrace: stackTrace,
+      );
+    } on Object catch (error, stackTrace) {
+      return VoiceRealtimeOpenOutcome.unexpectedFailure(error: error, innerStackTrace: stackTrace);
     }
   }
 
@@ -230,9 +234,14 @@ sealed class const VoiceRealtimeOpenOutcome() {
 
   const factory notAuthenticated({required Exception cause}) = VoiceRealtimeOpenNotAuthenticated;
 
-  const factory contractFailure({required String reason, required Exception cause}) = VoiceRealtimeOpenContractFailure;
+  const factory contractFailure({
+    required String reason,
+    required Exception cause,
+    required StackTrace innerStackTrace,
+  }) = VoiceRealtimeOpenContractFailure;
 
-  const factory unexpectedFailure({required Object error}) = VoiceRealtimeOpenUnexpectedFailure;
+  const factory unexpectedFailure({required Object error, required StackTrace innerStackTrace}) =
+      VoiceRealtimeOpenUnexpectedFailure;
 }
 
 final class const VoiceRealtimeOpened({required final VoiceRealtimeConnection connection})
@@ -245,10 +254,16 @@ final class const VoiceRealtimeOpenAsyncFallback({
 
 final class const VoiceRealtimeOpenNotAuthenticated({required final Exception cause}) extends VoiceRealtimeOpenOutcome;
 
-final class const VoiceRealtimeOpenContractFailure({required final String reason, required final Exception cause})
-    extends VoiceRealtimeOpenOutcome;
+final class const VoiceRealtimeOpenContractFailure({
+  required final String reason,
+  required final Exception cause,
+  required final StackTrace innerStackTrace,
+}) extends VoiceRealtimeOpenOutcome;
 
-final class const VoiceRealtimeOpenUnexpectedFailure({required final Object error}) extends VoiceRealtimeOpenOutcome;
+final class const VoiceRealtimeOpenUnexpectedFailure({
+  required final Object error,
+  required final StackTrace innerStackTrace,
+}) extends VoiceRealtimeOpenOutcome;
 
 sealed class const VoiceTranscriptionOutcome() {
   const factory success({required String transcript}) = VoiceTranscriptionSuccess;

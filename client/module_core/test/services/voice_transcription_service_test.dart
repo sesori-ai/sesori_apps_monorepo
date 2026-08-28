@@ -315,6 +315,47 @@ void main() {
     verify(captureSession.start).called(1);
   });
 
+  test("unexpected realtime open failure retains its originating stack", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final frames = StreamController<Uint8List>.broadcast();
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final error = StateError("initial realtime frame failed");
+    final origin = StackTrace.fromString("unexpected realtime open origin");
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer(
+      (_) async => VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer(
+      (_) async => VoiceRealtimeOpenOutcome.unexpectedFailure(
+        error: error,
+        innerStackTrace: origin,
+      ),
+    );
+
+    await expectLater(
+      service.start(session: session),
+      throwsA(
+        isA<RecordingFailedError>()
+            .having((failure) => failure.innerError, "innerError", same(error))
+            .having((failure) => failure.innerStackTrace, "innerStackTrace", same(origin)),
+      ),
+    );
+    verify(captureSession.cancel).called(1);
+  });
+
   test("pre-open native failure starts async before closing the late realtime session", () async {
     const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
     final frames = StreamController<Uint8List>.broadcast();
@@ -467,6 +508,75 @@ void main() {
     verify(connection.cancel).called(1);
     verify(captureSession.cancel).called(1);
     verify(captureSession.start).called(1);
+  });
+
+  test("failed async restart after pre-audio fallback publishes terminal failure", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final frames = StreamController<Uint8List>.broadcast();
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final events = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+    final connection = MockVoiceRealtimeConnection();
+    final restartError = VoiceCaptureError.failed(innerError: StateError("async recorder restart failed"));
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    addTearDown(events.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer(
+      (_) async => VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    when(captureSession.resumeRealtime).thenAnswer((_) async {});
+    when(captureSession.start).thenThrow(restartError);
+    when(() => connection.events).thenAnswer((_) => events.stream);
+    when(connection.cancel).thenAnswer((_) async {});
+    when(connection.close).thenAnswer((_) async {});
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
+
+    final starting = service.start(session: session);
+    await Future<void>.delayed(Duration.zero);
+    events.add(const VoiceRealtimeReady());
+    await starting;
+    final terminal = service.realtimeTerminalStream(session: session).first;
+    events.add(
+      const VoiceRealtimeFailed(
+        failure: VoiceRealtimeInterruptedFailure(innerError: null, innerStackTrace: null),
+      ),
+    );
+
+    expect(await terminal, VoiceRealtimeTerminalCause.failed);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(
+        isA<VoiceRealtimePartialTranscriptionError>()
+            .having((failure) => failure.confirmedText, "confirmedText", isEmpty)
+            .having(
+              (failure) => failure.failure,
+              "failure",
+              isA<RecordingFailedError>().having(
+                (recordingFailure) => recordingFailure.innerError,
+                "innerError",
+                same(restartError),
+              ),
+            ),
+      ),
+    );
+    verifyNever(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
+      ),
+    );
   });
 
   test("empty realtime completion is terminal before release and after finish", () async {
