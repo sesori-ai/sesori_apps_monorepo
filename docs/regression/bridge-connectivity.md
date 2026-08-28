@@ -39,6 +39,17 @@ explicit restart, and the connection states the app presents.
 - In supervised mode, the authenticated local control channel can supply tokens, report
   status and provisioning, resolve prompts, unregister, and request sentinel restarts;
   loss of its owner exits after the grace period without orphaning backend processes.
+- A GUI `shutdown` performs the same ordered graceful teardown as standalone stop,
+  exits 0 without unregistering, and cannot be reclassified as auth-required when
+  teardown cancels an in-flight bootstrap token request.
+- The supervised bridge leads a dedicated POSIX process group before starting
+  sleep prevention or any other long-lived child; force-stop signals that
+  complete live group atomically. Windows uses
+  `taskkill /T /F` for the equivalent descendant-tree guarantee.
+- Desktop supervision continuously drains both helper pipes with malformed-UTF-8
+  tolerance, bounds partial lines and pending persistence, retains the latest 200
+  entries, and rotates owner-only local logs. Storage failures and queue overflow
+  remain observable without stopping either pipe drain.
 
 ## Regression Levels
 
@@ -47,7 +58,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, owner loss, and orphan cleanup. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -70,6 +81,13 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns.
+- GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
+  auth-required sentinel because teardown cancelled the bootstrap token request.
+- A forced stop leaving a backend alive, targeting only one process-table snapshot,
+  or reporting success after process-group/tree termination was rejected.
+- Helper output blocking a child pipe, an unterminated line or persistence backlog
+  growing without bound, log files losing owner-only permissions, or one transient
+  application-support lookup failure permanently disabling persisted diagnostics.
 
 ## Known Limitations
 

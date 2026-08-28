@@ -2022,7 +2022,7 @@ void main() {
       expect((cubit.state as SessionListLoaded).unseenBySessionId, equals({"s1": true, "s2": false}));
     });
 
-    test("live tracker marker reorders sessions that are already running", () async {
+    test("live tracker marker reorders running sessions and advances displayed recency", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
         () => mockProjectRepository.listSessions(
@@ -2063,7 +2063,10 @@ void main() {
       });
       await Future<void>.delayed(Duration.zero);
 
-      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["older", "newer"]);
+      final loaded = cubit.state as SessionListLoaded;
+      expect(loaded.sessions.map((session) => session.id), ["older", "newer"]);
+      expect(loaded.sessions.first.time?.updated, 30);
+      expect(loaded.sessions.first.lastUserActivityAt, 30);
     });
 
     test("live marker received during REST fetch wins over the stale seed", () async {

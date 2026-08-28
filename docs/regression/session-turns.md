@@ -136,12 +136,18 @@ defaults and queued client sends coherent.
   parts. Its complete model/mode/reasoning selection is validated before
   prompt acceptance and applied before dispatch. Different Copilot sessions can
   run independently; prompts within one session remain serialized.
+- Grok uses standard ACP normalization for text, reasoning, tools, statuses,
+  commands, cancellation, and permission-mediated work. Initial prompts are
+  text-only because its initialize result does not advertise image capability.
+  The exact model/reasoning tuple is validated and applied before dispatch;
+  stale or rejected selection fails visibly without prompting. Different Grok
+  sessions run independently while one session remains serialized.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
   never sends overlapping prompt requests. It does define `session/cancel`:
-  Cursor, Hermes, and Copilot therefore implement active-turn follow-ups as
-  stop-and-send, immediately cancelling the active turn and dispatching the queued input after
+  Cursor, Hermes, Copilot, and Grok therefore implement active-turn follow-ups
+  as stop-and-send, immediately cancelling the active turn and dispatching the queued input after
   cancellation settles. Further already-queued inputs retain FIFO order. Their
   synthetic user transcript message is published only after its frame flushes
   successfully to the agent's stdin. A prompt rejected after that dispatch
@@ -248,8 +254,8 @@ defaults and queued client sends coherent.
 |---|---|
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
-| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. A Pi custom message renders as labelled automation rather than agent output. |
-| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions run concurrently while each preserves its own ordering and selection. |
+| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, busy stop-and-send, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
+| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
 ## Exploration Guidance
@@ -262,7 +268,9 @@ reopening while an entry is visible, turn length, and client count. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history
 replay, and abort after output has started. For Copilot, include prose, an
 advertised command, tool use, a selected-option change, a queued follow-up
-cancellation, abort, and two independent sessions.
+cancellation, abort, and two independent sessions. For Grok, include text,
+reasoning and tool updates, default and changed model/effort, stale selection,
+provider failure, early and late abort, busy stop-and-send, and two sessions.
 
 ## Failure Signals
 
@@ -312,12 +320,15 @@ cancellation, abort, and two independent sessions.
   instead of updated when compaction ends, or survives an abort or process
   exit.
 - An abort, permission reply, or question reply stalls behind a send to a
-  busy session on the same session lane, or a Cursor/Hermes follow-up waits for
-  the active turn to finish naturally instead of cancelling it before dispatch.
+  busy session on the same session lane, or a Cursor/Hermes/Grok follow-up waits
+  for the active turn to finish naturally instead of cancelling it before dispatch.
   A Pi abort waits for the general history/control timeout, lets hidden steering
   resume after Stop, or leaves later sends stuck in their sending state.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
+- A Grok turn dispatches before exact model/effort selection settles, accepts a
+  stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
+  loses text, reasoning, tool, status, or terminal failure output.
 - A normalized user message fails to advance the existing activity marker, or
   assistant/tool/title-only updates replace an established marker and move the
   running session as if they were user activity.
@@ -350,6 +361,8 @@ cancellation, abort, and two independent sessions.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
+- Grok does not advertise ACP image prompt capability in the supported release;
+  image attachments are not Grok turn coverage.
 - Copilot reasoning is model/account dependent; absence is not a failure unless
   the selected advertised configuration is known to emit reasoning. Standard
   ACP plan updates currently produce only an internal todo invalidation that the
@@ -369,6 +382,7 @@ cancellation, abort, and two independent sessions.
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - Copilot: `bridge/sesori_plugin_copilot/` and the shared ACP plugin implementation
+- Grok: `bridge/sesori_plugin_grok/` and the shared ACP plugin implementation
 - Client: `client/module_core/lib/src/cubits/session_detail/`,
   `client/app/lib/features/session_detail/`
 - Plans (discovery only): `.plan/completed/relay-request-concurrency`,

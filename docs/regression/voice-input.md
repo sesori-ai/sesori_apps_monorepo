@@ -4,8 +4,8 @@
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
 for transcription, and inserts the text into the prompt field for review before sending. A voice-first or text-first
-preference decides which control leads. No bridge route or backend plugin participates; the device microphone and
-transcription endpoint are external.
+preference decides which control leads. The device microphone and transcription endpoint are external. The bridge
+independently prepares optional project-scoped vocabulary from bounded local evidence; no backend plugin participates.
 
 ## Required Behavior
 
@@ -45,6 +45,13 @@ transcription endpoint are external.
   as voice-assisted input.
 - Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
   or analytics.
+- A successful current-project load or a project entering the active-view set starts best-effort bridge glossary
+  population. Both triggers delegate to one serialized coordinator and never delay the route response, recording, or
+  transcription.
+- Glossary population derives an exact opaque repository or bridge-local scope, scans bounded local Git/filesystem
+  evidence, filters credential-shaped content before tokenization, and reconciles at most 50 deterministic terms.
+  Only the opaque scope and filtered terms leave the bridge. Scope, scan, or publication failure leaves voice input
+  available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
 
@@ -53,7 +60,7 @@ transcription endpoint are external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin, fake recorder and HTTP/WebSocket clients: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, capability fallback/contract failure, opaque project context, paused-ready-resume ordering, pre-ready frame discard, realtime preview replacement, confirmed-partial failure with no async Retry, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP/WebSocket clients, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, capability fallback/contract failure, opaque project context, paused-ready-resume ordering, pre-ready frame discard, realtime preview replacement, confirmed-partial failure with no async Retry, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, async or realtime transcript inserted and editable, realtime confirmed/provisional preview, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, realtime pre-audio async fallback, post-audio confirmed-partial/no-Retry behavior, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -78,7 +85,9 @@ interruptions such as a call.
   composer interaction.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
-- Any audio, transcript, or prompt content reaches logs or analytics.
+- Any audio, transcript, or prompt content reaches logs or analytics; raw project paths, repository origins, filenames,
+  or metadata source text reach auth transport; glossary failure blocks recording or transcription; or concurrent
+  triggers run overlapping local scans.
 
 ## Known Limitations
 
@@ -97,7 +106,9 @@ interruptions such as a call.
 
 ## Sources
 
-`client/app/test/capabilities/voice/`, `client/app/test/features/session_detail/widgets/`, and
-`client/module_core/test/{capabilities,cubits,repositories,services}/`; production code under
-`client/app/lib/core/platform/`, `client/app/lib/features/session_detail/widgets/`, and
-`client/module_core/lib/src/{capabilities,cubits,platform,repositories,services}/`.
+`client/app/test/capabilities/voice/`, `client/app/test/features/session_detail/widgets/`,
+`client/module_core/test/{capabilities,cubits,repositories,services}/`, and bridge glossary tests under
+`bridge/app/test/{bridge,listeners}/`; production code under `client/app/lib/core/platform/`,
+`client/app/lib/features/session_detail/widgets/`,
+`client/module_core/lib/src/{capabilities,cubits,platform,repositories,services}/`, and
+`bridge/app/lib/src/{listeners,repositories,services}/`.

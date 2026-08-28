@@ -49,6 +49,12 @@ reaches the backend so the turn continues.
   custom answer variants, plan-review fixed choices, and supplemental free-form
   detail. Abort, process exit, and disposal cancel pending requests and reject
   late replies.
+- Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
+  Standard ACP permissions preserve the exact session, tool call, and offered
+  option IDs; Once, Reject, and every scope the request actually advertises stay
+  phone-mediated unless an existing explicit bridge auto-approval rule applies.
+  Abort, process exit, and disposal cancel pending Grok requests rather than
+  broadening or silently approving them.
 - A sessionless backend request is attributed to the most recently dispatched
   active turn, falling back to the last dispatched turn at its settlement
   boundary. A backend requiring exact form correlation must serialize prompts
@@ -88,7 +94,7 @@ reaches the backend so the turn continues.
 |---|---|
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
 | L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
@@ -102,7 +108,10 @@ different combination than the previous recorded run. For Copilot, provoke a
 real tool permission, exercise Once and Reject plus Always when surfaced, include
 an upstream option set lacking `allow_once` or reject to confirm safe
 cancellation, abort with a request pending, and confirm the management/session
-capability surfaces do not claim questions.
+capability surfaces do not claim questions. For Grok, provoke permissions from
+an ordinary text turn, exercise Once and Reject plus every scope actually
+advertised, vary two sessions and tool calls, abort with a request pending, and
+repeat after process restart without enabling approval-bypass launch flags.
 
 ## Failure Signals
 
@@ -140,6 +149,9 @@ capability surfaces do not claim questions.
 - An archived session accepts a reply.
 - Copilot offers a question surface or waits for a Sesori answer to an upstream
   `ask_user` interaction that the CLI did not forward over ACP.
+- A Grok request is silently approved by launch policy, loses its session or tool
+  correlation, maps to an unoffered scope, survives abort/process cleanup, or
+  one session's answer resolves another session's request.
 
 ## Known Limitations
 
@@ -151,6 +163,9 @@ capability surfaces do not claim questions.
   is not a failure.
 - GitHub Copilot CLI currently does not forward `ask_user` over ACP
   (`github/copilot-cli#2109`); only its standard permission requests are in scope.
+- Grok permission scopes are tool/account dependent. A scope not advertised by
+  the live request is absent capability, not failed coverage; Once and Reject
+  remain required.
 - The shared client models only whether Always is available. Once and Reject stay
   visible even when an unusual ACP request omits their exact option; choosing one
   then cancels safely rather than selecting a broader or different scope.
@@ -164,7 +179,7 @@ capability surfaces do not claim questions.
 - Bridge pending-interaction and archived-validator services; per-plugin
   approval registries; shared pending permission/question and reply models.
 - Client permission and question surfaces and their auto-dismiss behavior.
-- `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart` and the shared
-  ACP approval registry.
+- `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
+  `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
 - Owning tests for pending interaction, reply routes, and pending state without
   a started backend.

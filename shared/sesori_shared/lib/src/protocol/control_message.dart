@@ -69,6 +69,11 @@ sealed class ControlMessage with _$ControlMessage {
   @FreezedUnionValue("restart")
   const factory restart() = ControlRestart;
 
+  /// GUI → helper: gracefully stop the supervised bridge and exit 0 without
+  /// unregistering it. This is the normal desktop On → Off lifecycle command.
+  @FreezedUnionValue("shutdown")
+  const factory shutdown() = ControlShutdown;
+
   /// GUI → helper: unregister this bridge with the current token, then exit 0
   /// (logout ordering).
   @FreezedUnionValue("unregister_and_exit")

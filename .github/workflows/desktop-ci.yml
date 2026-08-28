@@ -1,6 +1,6 @@
 name: Desktop CI
 
-# Desktop PR CI (docs/desktop/phase-2-desktop-shell.md, PR 2.1).
+# Desktop PR CI (see .plan/active/desktop-app/PLAN.md).
 #
 # Deliberately NO workflow-level `paths:` filter: this workflow is meant to be
 # a required check, and GitHub leaves a skipped-required workflow "pending"

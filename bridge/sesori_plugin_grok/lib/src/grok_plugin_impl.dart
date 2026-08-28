@@ -79,6 +79,11 @@ class GrokPlugin._({
   Set<String> get authMethodAllowlist => GrokAcpApi.headlessAuthMethodIds;
 
   @override
+  String? get authenticationFailureActionHint => super.authenticationFailureActionHint == null
+      ? null
+      : "Run `grok login` or configure a headless Grok credential locally, then retry.";
+
+  @override
   bool get cancelsActiveTurnForQueuedInput => true;
 
   @override

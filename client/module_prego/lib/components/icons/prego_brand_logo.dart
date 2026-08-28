@@ -57,6 +57,8 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
       final id when id == Harness.omp.name => "assets/svgs/brands/omp.svg",
       final id when id == Harness.deepseek.name => "assets/svgs/brands/deepseek.svg",
+      final id when id == Harness.grok.name =>
+        isDark ? "assets/svgs/brands/grok_dark.svg" : "assets/svgs/brands/grok_light.svg",
       _ => null,
     };
   }
@@ -77,6 +79,7 @@ class const PregoBrandLogo({
     final id when id == Harness.pi.name => "Pi",
     final id when id == Harness.omp.name => "Oh My Pi",
     final id when id == Harness.deepseek.name => "DeepSeek",
+    final id when id == Harness.grok.name => "Grok Build",
     _ => pluginId,
   };
 }

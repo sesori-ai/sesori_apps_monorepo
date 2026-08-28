@@ -15,8 +15,9 @@ product, the design catalog, and the shared client modules they consume.
 | `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
 | `module_prego/` | Shared Flutter design system: theme, fonts, icons, and components. |
 
-`module_app_ui` is planned for Phase 4. It will hold shared Flutter screens and
-widgets without owning product-shell DI or desktop process supervision.
+`module_app_ui` is planned by `.plan/active/desktop-app/PLAN.md` (cockpit
+steps). It will hold shared Flutter screens and widgets without owning
+product-shell DI or desktop process supervision.
 
 ## Dependency Direction
 
@@ -24,16 +25,16 @@ widgets without owning product-shell DI or desktop process supervision.
 graph TD
   mobile[client/app] --> core[client/module_core]
   mobile --> prego[client/module_prego]
-  mobile -. "Phase 4" .-> app_ui[client/module_app_ui planned]
+  mobile -. "planned" .-> app_ui[client/module_app_ui planned]
 
   desktop[client/desktop] --> core
   desktop --> desktop_core[client/module_desktop_core]
   desktop --> prego
-  desktop -. "Phase 4" .-> app_ui
+  desktop -. "planned" .-> app_ui
 
   catalog[client/design_catalog] --> prego
 
-  app_ui -. "Phase 4" .-> core
+  app_ui -. "planned" .-> core
   desktop_core --> core
   desktop_core --> shared[shared/sesori_shared]
   core --> auth[client/module_auth]

@@ -230,6 +230,10 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   List<String> listEntryNames(String path) => throw UnimplementedError();
 
   @override
+  Future<List<String>> listEntryNamesBounded({required String path, required int maximumEntries}) =>
+      throw UnimplementedError();
+
+  @override
   String? readFileIfExists(String path) => null;
 
   @override

@@ -63,7 +63,8 @@ plugins.
 
 - *Door to keep open:* the bridge must always be runnable headless; the desktop
   GUI supervises the *same* daemon and is never the only way to run it (this is
-  what makes managed VMs possible). The active plan is `docs/desktop/PLAN.md`.
+  what makes managed VMs possible). The active plan is
+  `.plan/active/desktop-app/PLAN.md`.
 
 ### 3. The plugin interface is a platform contract
 
@@ -177,7 +178,8 @@ line here as intent, not commitment.
 ## Related docs
 
 - `ROADMAP.md` — dependency-ordered implementation suggestion.
-- `docs/desktop/PLAN.md` — the active desktop-app workstream (pillar 2).
+- `.plan/active/desktop-app/PLAN.md` — the active desktop-app workstream
+  (pillar 2).
 - `.plan/active/setup-aware-plugin-lifecycle/PLAN.md` — setup-aware automatic
   selection, transient activation, hot lifecycle control, and mobile management.
 - `AGENTS.md` — the *how* (layer architecture). This doc is the *where*.

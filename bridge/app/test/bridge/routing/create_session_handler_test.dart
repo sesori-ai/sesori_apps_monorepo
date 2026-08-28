@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dar
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
 import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -1233,6 +1234,7 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),

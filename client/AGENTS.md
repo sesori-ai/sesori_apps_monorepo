@@ -34,9 +34,10 @@ client/desktop ───────────→ module_core → module_auth 
      └→ module_prego
 ```
 
-`module_app_ui` does not exist yet — it is planned for Phase 4 (see
-`client/README.md`) to hold shared Flutter screens. When it lands, both product
-shells depend on it and it sits above `module_core`.
+`module_app_ui` does not exist yet — it is planned by
+`.plan/active/desktop-app/PLAN.md` (cockpit steps) to hold shared Flutter
+screens. When it lands, both product shells depend on it and it sits above
+`module_core`.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the

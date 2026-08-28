@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -180,7 +181,11 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     const unseenCalculator = SessionUnseenCalculator();
     // Never invoked by the benchmarked listing paths; wired only to satisfy
     // the repository constructor.
-    final gitCliApi = GitCliApi(processRunner: ProcessRunner(), gitPathExists: ({required String gitPath}) => false);
+    final gitCliApi = GitCliApi(
+      processRunner: ProcessRunner(),
+      streamingProcessRunner: const StreamingProcessRunner(),
+      gitPathExists: ({required String gitPath}) => false,
+    );
 
     final projectRepository = ProjectRepository(
       gitCliApi: gitCliApi,

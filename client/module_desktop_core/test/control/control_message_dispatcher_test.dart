@@ -154,6 +154,7 @@ void main() {
 
     sendFromHelper(helper, const ControlMessage.restart());
     sendFromHelper(helper, const ControlMessage.tokenUpdate(accessToken: "x"));
+    sendFromHelper(helper, const ControlMessage.shutdown());
     sendFromHelper(helper, const ControlMessage.unregisterAndExit());
     sendFromHelper(
       helper,

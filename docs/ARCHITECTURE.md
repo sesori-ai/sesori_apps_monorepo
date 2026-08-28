@@ -15,6 +15,9 @@ sesori_apps_monorepo/
 │   sesori_plugin_codex/        # Codex backend plugin
 │   sesori_plugin_acp/          # Agent Client Protocol backend plugin
 │   sesori_plugin_cursor/       # Cursor ACP backend plugin
+│   sesori_plugin_copilot/      # GitHub Copilot ACP backend plugin
+│   sesori_plugin_grok/         # Grok Build ACP backend plugin
+│   sesori_plugin_deepseek/     # DeepSeek ACP backend plugin
 │   sesori_plugin_omp/          # Oh My Pi ACP backend plugin
 │   sesori_plugin_claude/       # Claude Code backend plugin
 │   sesori_plugin_hermes/       # Hermes ACP backend plugin
@@ -44,6 +47,9 @@ graph TD
   bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
   bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
   bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
+  bridge_app --> sesori_plugin_copilot[bridge/sesori_plugin_copilot]
+  bridge_app --> sesori_plugin_grok[bridge/sesori_plugin_grok]
+  bridge_app --> sesori_plugin_deepseek[bridge/sesori_plugin_deepseek]
   bridge_app --> sesori_plugin_omp[bridge/sesori_plugin_omp]
   bridge_app --> sesori_plugin_claude[bridge/sesori_plugin_claude]
   bridge_app --> sesori_plugin_hermes[bridge/sesori_plugin_hermes]
@@ -68,6 +74,17 @@ graph TD
   sesori_plugin_cursor --> sesori_plugin_acp
   sesori_plugin_cursor --> sesori_plugin_runtime
   sesori_plugin_cursor --> sesori_shared
+  sesori_plugin_copilot --> sesori_plugin_interface
+  sesori_plugin_copilot --> sesori_bridge_foundation
+  sesori_plugin_copilot --> sesori_plugin_acp
+  sesori_plugin_copilot --> sesori_plugin_runtime
+  sesori_plugin_grok --> sesori_plugin_interface
+  sesori_plugin_grok --> sesori_bridge_foundation
+  sesori_plugin_grok --> sesori_plugin_acp
+  sesori_plugin_deepseek --> sesori_plugin_interface
+  sesori_plugin_deepseek --> sesori_bridge_foundation
+  sesori_plugin_deepseek --> sesori_plugin_acp
+  sesori_plugin_deepseek --> sesori_plugin_runtime
   sesori_plugin_omp --> sesori_plugin_interface
   sesori_plugin_omp --> sesori_bridge_foundation
   sesori_plugin_omp --> sesori_plugin_runtime

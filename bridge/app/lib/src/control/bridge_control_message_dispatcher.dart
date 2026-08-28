@@ -26,6 +26,7 @@ class BridgeControlMessageDispatcher({
   required final ControlChannelTokenService _tokenService,
   required final ControlPromptService _promptService,
   required final ControlUnregisterService _unregisterService,
+  required final Future<void> Function() _shutdown,
 }) {
   StreamSubscription<String>? _subscription;
 
@@ -60,6 +61,10 @@ class BridgeControlMessageDispatcher({
         _tokenService.handleTokenUpdate(accessToken: accessToken);
       case ControlPromptResponse(:final id, :final accepted):
         _promptService.handlePromptResponse(id: id, accepted: accepted);
+      case ControlShutdown():
+        // The composition root owns graceful teardown + exit. Fire-and-forget:
+        // a successful command terminates this process.
+        unawaited(_shutdown());
       case ControlUnregisterAndExit():
         // Unregisters then terminates the process; fire-and-forget because the
         // flow ends in a graceful shutdown + exit and owns its own errors.

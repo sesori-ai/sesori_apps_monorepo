@@ -2,13 +2,19 @@ import "dart:io" show ProcessResult;
 
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 
 /// Test fake for [GitCliApi], for tests that wire a repository but never
 /// exercise git: every git command fails (non-zero exit), so derived reads
 /// resolve to their "absent" results — [getRemoteUrl] returns `null` unless a
 /// fixed [remoteUrl] is supplied.
 class FakeGitCliApi({final String? _remoteUrl}) extends GitCliApi {
-  this : super(processRunner: _FailingProcessRunner(), gitPathExists: _noGitPath);
+  this
+    : super(
+        processRunner: _FailingProcessRunner(),
+        streamingProcessRunner: const StreamingProcessRunner(),
+        gitPathExists: _noGitPath,
+      );
 
   static bool _noGitPath({required String gitPath}) => false;
 

@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `github-copilot-harness`
-- **Status:** active; Steps 1-5/7 merged (#1154, #1155, #1158, #1159, #1161), Step 6/7 implemented and verified locally
+- **Status:** completed; Steps 1-6/7 merged (#1154, #1155, #1158, #1159,
+  #1161, #1163); the replay blocker was fixed in #1171 and Step 7 passed in #1176
 - **Plan date:** 2026-08-27
 - **Implementation base:** current `origin/main`
 - **Delivery:** seven PRs with the fixed titles below
@@ -190,6 +191,70 @@ Step 7 records Copilot version, bridge/app build, bridge host, client platform,
 account type without identifiers, chosen model/mode, privacy-safe evidence,
 cleanup, and Pass/Partial/Fail/Blocked for each row. Prompts, transcripts, paths,
 tokens, session ids, account ids, and raw logs stay out of the repository.
+
+## Step 7 Verification Result
+
+Execution on 2026-08-28 initially found one release-blocking product failure.
+After a clean bridge restart, the first cold history read expanded two Copilot
+transcripts from 33 and 17 messages to 63 and 29. Privacy-safe semantic hashes
+identified 30 and 11 extra duplicate messages respectively. The generic bridge
+history fix merged in #1171; it reconciles identity-drift replay against live
+rows while preserving real repeated and live-only content.
+
+The targeted post-fix rerun used merged `origin/main` at `be45cf8bb4`. The bridge
+app analyzer, 90 focused history/attachment/pagination/live-delivery/tool tests,
+and 11 ACP replay tests passed. A fresh live Copilot tool turn stored three
+messages and one terminal tool before restart; the first cold read after a clean
+bridge restart returned the same three-message semantic multiset with zero
+extra duplicates. Its one-file `+1/-0` diff remained available. This closes the
+`session-history-and-recovery.md` and `tools-and-file-changes.md` failures.
+
+The original run also passed managed installation, live turns, commands, two
+concurrent sessions, queued-prompt cancellation, abort, Once/Reject/Always
+permissions, pending-permission abort cleanup, accepted image input, client
+diffs, plugin-local crash/reconnect, clean shutdown, and local deletion. The
+owner directed retirement after fixing the sole release blocker and rerunning
+only affected coverage, thereby accepting all 11 matrix rows at Partial,
+including required scenarios not evidenced below. Known reductions include:
+
+- **Runtime installation:** malformed branded version output.
+- **Setup and lifecycle:** alternate bridge host, unauthenticated normal profile,
+  environment-token/BYOK authentication, rendered selected-version and
+  setup/runtime/work facts, capability-appropriate controls, default badge,
+  idle-timeout default/persisted override, and per-harness catalog scan
+  progress/result announcement.
+- **Projects and sessions:** live catalog cancellation, first-page and later-page
+  failure, healthy multi-page exhaustion with automatic list adoption, child
+  resolution, bridge-derived project creation/count, list/unseen rendering,
+  phone/wide-pane deeper-pull scan fan-out, and iOS/Android system-back-edge,
+  unreserved-edge, and Android button-navigation row actions.
+- **Creation and options:** account type, healthy live no-mode catalog,
+  create-route launch/duplicate/Back behavior, durable route replacement,
+  generated title/branch updates, stale-cache refresh presentation,
+  picker/loading/no-harness states, and slash-command dispatch without bridge
+  context presentation.
+- **Turns:** live stale-selection refresh/warning/single retry with queued-prompt
+  preservation, composer and sending-to-queued transient presentation, and
+  shared-output-bound normalization.
+- **History and recovery:** a greater-than-50-message client pagination,
+  continuation, and cold-reopen flow plus live upstream-only message backfill.
+- **Questions and permissions:** child attribution, archived-session refusal,
+  suppressed completion notifications while permission remains pending, and
+  safe cancellation when no exact Once or Reject ACP option exists.
+- **Attachments and images:** model/account rejection; live/reloaded image
+  presentation; generated/tool-output images, ordering, and viewer actions; and
+  current-route failure restoration/background-failure non-restoration.
+- **Tools and file changes:** read-only negative file-change and genuinely failing
+  tool cases, bounded output, exactly-one mutation signaling, consistent
+  title/status/error presentation, tool/subtask/agent rendering, and replayed
+  tool-call identity convergence.
+- **Archiving and deletion:** client archive/list/detail, deletion without
+  worktree cleanup, visible cleanup refusal, branch retention, a tombstone
+  challenged by a still-listed row, and private retained-history inspection.
+- **Compatibility and branding:** older client/bridge pair and light-theme
+  client branding.
+
+No product failure remains.
 
 ## Risks And Test Focus
 

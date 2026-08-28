@@ -3,9 +3,13 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("configureDesktopCoreDependencies completes on a fresh container", () {
+  test("configureDesktopCoreDependencies registers supervision primitives on a fresh container", () {
     final GetIt getIt = GetIt.asNewInstance();
 
     expect(() => configureDesktopCoreDependencies(getIt), returnsNormally);
+    expect(getIt.isRegistered<BridgeProcessApi>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessRepository>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessLogTracker>(), isTrue);
   });
 }

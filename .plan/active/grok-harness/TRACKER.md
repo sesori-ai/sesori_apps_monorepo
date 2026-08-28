@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-3/9 merged; Step 4/9 in PR
-- **Current branch:** `grok-harness-step-4-core`
-- **Base:** `origin/main` after merged PR #1160
+- **Status:** Steps 1-7/9 merged; Step 8/9 in PR #1181
+- **Current branch:** `grok-harness-step-8-regression`
+- **Base:** `origin/main` after merged PR #1179
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
-- **Open PR:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
-- **Current step:** `grok-harness-step-4-core`; monitor CI and review, then advance the local Step 5 successor
+- **Merged predecessor:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
+- **Open PR:** #1181 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1181>
+- **Local successor:** Step 9 starts after this tracker update is published
 
 ## Fixed Series
 
@@ -22,17 +22,17 @@
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** merged in #1160.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
-   - **State:** in PR #1169.
+   - **State:** merged in #1169.
    - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
      analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
-   - **State:** not started.
+   - **State:** merged in #1175.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
-   - **State:** not started.
+   - **State:** merged in #1177.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
-   - **State:** not started.
+   - **State:** merged in #1179.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
-   - **State:** not started.
+   - **State:** in PR #1181.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
    - **State:** not started.
 
@@ -90,6 +90,67 @@
 - [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
 - [x] Complete the post-rebase general correctness review; final verdict approved.
 - [x] Publish Step 4 as PR #1169 after #1160's merge and start its PR monitor.
+
+## Step 5 Checklist
+
+- [x] Add `--grok-bin`, the frozen 1.0.5 floor/target, and explicit-before-PATH selection.
+- [x] Classify missing, malformed, outdated, current, and bounded-output version probes without reading credentials.
+- [x] Revalidate the selected runtime in `ensureRuntime`; never install, update, or fall back from an explicit path.
+- [x] Compose one host-process-backed `GrokPlugin`/`AcpBridgePlugin` with bounded eager connection.
+- [x] Surface local `grok login`/headless-credential guidance while isolating auth/start/crash degradation to Grok.
+- [x] Cover setup, provisioning, abort, auth rejection, crash/reconnect, reported version, and owned shutdown.
+- [x] Pass 52 Grok tests, fatal-info analysis, LSP diagnostics, whitespace, and authored line-width checks.
+- [x] Keep the measured Step 5 change below the 1,500-line soft cap (currently 845 lines).
+- [x] Run architecture implementation review over Step 5 against Step 4; approved with no findings.
+- [x] Commit the completed successor locally; do not publish before #1169 merges.
+- [x] Rebase onto merged #1169, reverify, publish PR #1175, and start its monitor.
+
+## Step 6 Checklist
+
+- [x] Add the Grok package dependency and register `GrokPluginDescriptor` only at the app composition point.
+- [x] Add `Harness.grok`; keep plugin IDs string-based on transport and preserve unknown-client fallbacks.
+- [x] Keep OpenCode preferred while making Grok eligible by default and startable only on demand after setup.
+- [x] Cover the exact built-in registry and namespaced `--grok-bin` CLI option.
+- [x] Update app composition/runtime inventories and reconcile missing Copilot, DeepSeek, and Grok architecture edges.
+- [x] Record activation-specific Grok setup/auth/lifecycle regression behavior; Step 8 retains full reconciliation.
+- [x] Add no analytics event; generic plugin lifecycle outcomes remain authoritative.
+- [x] Pass app fatal-info analysis, 7 focused app tests, shared analysis, 392 shared tests, pub resolution, and LSP.
+- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 172 lines).
+- [x] Run architecture implementation review over Step 6 against Step 5; approved with no findings.
+- [x] Commit the completed successor locally; do not publish before #1175 merges.
+- [x] Rebase onto merged #1175, reverify, publish PR #1177, and start its monitor.
+
+## Step 7 Checklist
+
+- [x] Source both theme marks byte-for-byte from xAI's official asset package and record archive/file hashes.
+- [x] Reject scripts, external references, and metadata; preserve the supplied black/white artwork without alteration.
+- [x] Map `Harness.grok` to theme-appropriate marks and the `Grok Build` name while retaining generic fallback.
+- [x] Cover light/dark mapping, display name, exact geometry, theme contrast, safety, and unknown IDs.
+- [x] Document the supported harness, 1.0.5 floor, official install, explicit path, local auth, ask mode, text-only
+  prompts, model/reasoning selection, import, and retained upstream rows after local deletion.
+- [x] Add no analytics event; existing generic plugin lifecycle outcomes remain sufficient.
+- [x] Pass client pub resolution, 245 Prego tests, fatal-info analysis for Prego/mobile/desktop, LSP, and SVG checks.
+- [x] Keep the measured Step 7 change below the 1,500-line soft cap (currently 116 lines).
+- [x] Skip architecture review because this is localized presentation, static assets, tests, and documentation only.
+- [x] Commit the completed successor locally; do not publish before #1177 merges.
+- [x] Rebase onto merged #1177 and repeat focused verification.
+- [x] Publish Step 7 as PR #1179 and start its monitor.
+
+## Step 8 Checklist
+
+- [x] Reconcile all eight affected regression contracts named by the plan.
+- [x] Record Grok setup, branding, import, exact options, turns, replay, permissions, tools, archive, and deletion.
+- [x] Extend each affected level matrix through the complete authoritative Grok boundary without duplicating behavior.
+- [x] Add Grok-specific exploration, material failure signals, honest limitations, and owning source paths.
+- [x] Keep `attachments-and-images.md` unchanged because Grok advertises no image capability.
+- [x] Keep `plugin-runtime-installation.md` unchanged because Grok has no managed install.
+- [x] Add no production code, transport/persistence shape, analytics, or unrelated historical-gap changes.
+- [x] Validate headings, tables, source paths, plan coverage, line width, and Git whitespace.
+- [x] Keep the measured Step 8 change below the 1,500-line soft cap (currently 226 lines).
+- [x] Skip architecture review because this step changes regression documentation only.
+- [x] Commit the completed successor locally; do not publish before #1179 merges.
+- [x] Rebase onto merged #1179 and repeat focused documentation validation.
+- [x] Publish Step 8 as PR #1181 and start its monitor.
 
 ## Decisions And Evidence
 
