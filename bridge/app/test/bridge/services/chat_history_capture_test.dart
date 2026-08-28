@@ -409,7 +409,7 @@ void main() {
         message: _messageWithText(
           id: "live",
           text: "same content",
-          createdAt: 100,
+          createdAt: 200,
           promptId: "prompt-live",
         ),
       );
@@ -454,6 +454,31 @@ void main() {
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
         const ["live-prompt", "live-response", "replay-prompt", "replay-response"],
+      );
+    });
+
+    test("semantic replay matching preserves singleton content with conflicting creation times", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "anchor", text: "anchor", createdAt: 50, promptId: null),
+          _messageWithText(id: "replay", text: "same content", createdAt: 200, promptId: null),
+          _messageWithText(id: "end", text: "end", createdAt: 300, promptId: null),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      for (final message in [
+        _messageWithText(id: "anchor", text: "anchor", createdAt: 50, promptId: "anchor-live"),
+        _messageWithText(id: "live", text: "same content", createdAt: 100, promptId: "prompt-live"),
+        _messageWithText(id: "end", text: "end", createdAt: 300, promptId: "end-live"),
+      ]) {
+        await _captureMessageWithParts(history: history, message: message);
+      }
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["anchor", "live", "replay", "end"],
       );
     });
 
@@ -515,7 +540,7 @@ void main() {
             modelID: null,
             providerID: null,
             sender: MessageSender.agent,
-            time: MessageTime(created: 100, completed: 101),
+            time: MessageTime(created: 200, completed: 201),
           ),
           parts: [_part(id: "live-part", messageId: "live", text: "same response")],
         ),
@@ -697,8 +722,34 @@ void main() {
       await _captureMessageWithParts(
         history: history,
         message: MessageWithParts(
-          info: _messageAt(id: "live", createdAt: 100),
+          info: _messageAt(id: "live", createdAt: 200),
           parts: [_part(id: "live-part", messageId: "live", text: "", attachment: attachment)],
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay"],
+      );
+    });
+
+    test("semantic replay matching ignores persisted parts hidden from transcripts", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [_messageWithText(id: "replay", text: "visible", createdAt: 100, promptId: null)],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: MessageWithParts(
+          info: _messageAt(id: "live", createdAt: 100),
+          parts: [
+            const MessagePart.snapshot(id: "snapshot", sessionID: "ses_a", messageID: "live"),
+            _part(id: "text", messageId: "live", text: "visible"),
+            const MessagePart.patch(id: "patch", sessionID: "ses_a", messageID: "live"),
+            const MessagePart.compaction(id: "compaction", sessionID: "ses_a", messageID: "live"),
+          ],
         ),
       );
 

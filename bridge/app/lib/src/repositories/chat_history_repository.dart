@@ -368,8 +368,10 @@ class ChatHistoryRepository({
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
   /// first, stale rows due for removal do not shape semantic context, and a
-  /// repeated run matches only occurrences with equal creation times.
-  /// The imported row remains authoritative for replay metadata.
+  /// repeated run matches only occurrences with equal creation times. Conflicting
+  /// known times also keep singleton rows distinct, while internal parts hidden
+  /// from clients do not affect visible equivalence. The imported row remains
+  /// authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -479,7 +481,11 @@ class ChatHistoryRepository({
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
       if (importedIndexes.length == 1 && storedIndexes.length == 1) {
-        semanticallyImportedStoredIds.add(storedContextRows[storedIndexes.single].messageId);
+        final importedCreatedAt = importedSemanticFingerprints[importedIndexes.single]?.createdAt;
+        final storedCreatedAt = storedSemanticFingerprints[storedIndexes.single]?.createdAt;
+        if (importedCreatedAt == null || storedCreatedAt == null || importedCreatedAt == storedCreatedAt) {
+          semanticallyImportedStoredIds.add(storedContextRows[storedIndexes.single].messageId);
+        }
         continue;
       }
 
@@ -756,20 +762,20 @@ class ChatHistoryRepository({
         partJsons: partJsons,
         attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: _semanticMatchBridgeId),
       );
-      final canonicalParts = [
-        for (final part in parts)
-          _withoutFields(
-            source: part.toJson(),
-            fields: const {"id", "sessionID", "messageID"},
-          ),
-      ];
-      // Some backends omit live reasoning from replay. It remains part of the
-      // message's own identity, but not the visible neighbor anchor used to
-      // correlate an otherwise equivalent adjacent prompt or response.
-      final contextParts = [
-        for (var index = 0; index < parts.length; index++)
-          if (parts[index] is! MessagePartReasoning) canonicalParts[index],
-      ];
+      final canonicalParts = <Map<String, dynamic>>[];
+      final contextParts = <Map<String, dynamic>>[];
+      for (final part in parts) {
+        if (!_isTranscriptVisiblePart(part: part)) continue;
+        final canonicalPart = _withoutFields(
+          source: part.toJson(),
+          fields: const {"id", "sessionID", "messageID"},
+        );
+        canonicalParts.add(canonicalPart);
+        // Some backends omit live reasoning from replay. It remains part of the
+        // message's own identity, but not the visible neighbor anchor used to
+        // correlate an otherwise equivalent adjacent prompt or response.
+        if (part is! MessagePartReasoning) contextParts.add(canonicalPart);
+      }
       final content = await _jsonFingerprint(value: {"info": info, "parts": canonicalParts});
       final context = contextParts.length == canonicalParts.length
           ? content
@@ -825,6 +831,9 @@ class ChatHistoryRepository({
           null,
     ];
   }
+
+  bool _isTranscriptVisiblePart({required MessagePart part}) =>
+      part is! MessagePartSnapshot && part is! MessagePartPatch && part is! MessagePartCompaction;
 
   Map<String, dynamic> _withoutFields({
     required Map<String, dynamic> source,

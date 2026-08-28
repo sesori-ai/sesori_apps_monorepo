@@ -36,12 +36,14 @@ reconnect or restart.
   the same normalized message and nearest-distinct visible-message context,
   up to the remaining replay multiplicity. When either side contains repeated
   occurrences in one context, equal creation times align them even at equal
-  cardinality; ambiguous rows with absent or different times remain. Equal
-  content in another ordered context
-  and additional repeated occurrences remain, while stored rows already stale
-  at this import do not shape the comparison context. The comparison
-  ignores identity, time, and agent/model attribution, normalizes spilled
-  attachments, and keeps replay metadata authoritative. Other retained rows
+  cardinality; ambiguous rows with absent or different times remain. Conflicting
+  known creation times also keep a singleton pair distinct. Equal content in
+  another ordered context and additional repeated occurrences remain, while
+  stored rows already stale at this import do not shape the comparison context.
+  The content fingerprint ignores identity, time, agent/model attribution, and
+  internal parts hidden from transcripts; alignment still uses available
+  creation times as above, normalizes spilled attachments, and keeps replay
+  metadata authoritative. Other retained rows
   rejoin at their recorded creation time while preserving relative order, so a
   catalog re-import cannot move old rows to the newest edge. A message a backend
   replay once contained is the opposite case: its later absence is a removal,
