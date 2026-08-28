@@ -49,6 +49,8 @@ import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source
     as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
+import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
+    as _i950;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
@@ -188,6 +190,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i901.NoOpAnalyticsClient(),
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i950.FirebaseAnalyticsStartup>(
+      () => _i950.FirebaseAnalyticsStartup(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+      ),
+      registerFor: {_firebaseEnabled},
+    );
     gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
       () => _i963.FlutterAttachmentThumbnailStorage(
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
@@ -195,6 +203,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i326.FirebaseAnalyticsClient(
+        analytics: gh<_i398.FirebaseAnalytics>(),
+        capability: gh<_i948.AnalyticsRuntimeCapability>(),
+        startup: gh<_i950.FirebaseAnalyticsStartup>(),
+      ),
       registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.PushMessagingSource>(
@@ -219,13 +235,6 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
         temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
       ),
-    );
-    gh.lazySingleton<_i948.AnalyticsClient>(
-      () => _i326.FirebaseAnalyticsClient(
-        analytics: gh<_i398.FirebaseAnalytics>(),
-        capability: gh<_i948.AnalyticsRuntimeCapability>(),
-      ),
-      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i274.FlutterImageClipboard(

@@ -30,13 +30,14 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
 - Firebase Analytics collection defaults off at native startup and is enabled only after consent in an eligible release
   process. Debug/profile runs emit neither automatic nor Sesori-defined analytics events. The release lanes stamp each
-  binary with its build time; for 48 hours after that stamp an unauthenticated Android launch is treated as a Play
-  pre-launch crawl and stays off, while a device with a locally valid session reports at any time. An interactive
-  login inside the window lifts the SDK suspension for the rest of that process so the session and user are counted,
-  but the process-wide runtime capability stays disabled, so Sesori-defined events resume only at the next launch.
-  The window is a heuristic on Play's crawl scheduling, so a late crawl can still register as an install, and a build
-  promoted to production inside its window hides unauthenticated first launches for the remainder; the L5 pre-launch
-  check measures the crawl residue.
+  binary with its build time; for 48 hours after that stamp an unauthenticated Android launch keeps the SDK's own
+  collection suspended as a possible Play pre-launch crawl, while a device with a locally valid session reports at any
+  time. The Sesori runtime stays operational during the suspension: pre-authentication events are accepted but
+  discarded by the suspended SDK, and a server-confirmed interactive authentication lifts the suspension before the
+  one-time login outcome events are logged, so `login_attempt_completed` and the account outcome still report from
+  inside the window. The window is a heuristic on Play's crawl scheduling, so a late crawl can still register as an
+  install, and a build promoted to production inside its window discards pre-authentication events of unauthenticated
+  launches for the remainder; the L5 pre-launch check measures the crawl residue.
 - Singular starts only on Android/iOS, in the same eligible release-build population, with required credentials
   injected outside Git. An unauthenticated Android launch inside the Play crawl window arms startup but defers it until
   a successful interactive authentication reports its first conversion event; a crawler that never authenticates
@@ -79,8 +80,8 @@ account against a real property.
   status, omits the status-appropriate event, adds parameters beyond pinned `method` and shared schema, marks recurring
   `login` as a GA4 key event, or treats installation-level `sign_up` as the canonical account-registration count.
 - An account-linked event is emitted while unknown, disabled, unauthenticated, or in a debug or profile build.
-- Any automatic or Sesori-defined event is emitted by a debug/profile process, or by an unauthenticated release
-  process inside its build window.
+- Any automatic or Sesori-defined event reaches Firebase from a debug/profile process, or from a release process
+  inside its build window before a server-confirmed interactive authentication.
 - Disable is delayed, reported saved while sync failed, or lost across restart or logout; enable activates before
   server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or

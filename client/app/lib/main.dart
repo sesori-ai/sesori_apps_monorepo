@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:ui" as ui;
 
 import "package:cupertino_ui/cupertino_ui.dart";
-import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
@@ -175,15 +174,12 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
       reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
     );
   }
-  final startup = FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance);
-  final capability = await startup.configure(
-    ineligibilityReason: await _measurementIneligibilityReason(authSession: authSession),
+  final capability = await getIt<FirebaseAnalyticsStartup>().configure(
+    ineligibilityReason: _measurementIneligibilityReason(),
+    suspendForStoreCrawl: await _isUnauthenticatedInsideCrawlWindow(authSession: authSession),
   );
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
-    if (reason == AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
-      startup.enableOnceAuthenticated(authStates: authSession.authStateStream);
-    }
   }
   return capability;
 }
@@ -191,7 +187,9 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
 Future<void> _startSingularAttribution() async {
   getIt<SingularAttributionStartup>().start(
     isSupportedPlatform: _supportsSingular,
-    ineligibilityReason: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()),
+    ineligibilityReason: _measurementIneligibilityReason(),
+    deferUntilInteractiveAuthentication:
+        await _isUnauthenticatedInsideCrawlWindow(authSession: getIt<AuthSession>()),
     sdkKey: _singularSdkKeyDefine,
     sdkSecret: _singularSdkSecretDefine,
   );
@@ -219,22 +217,23 @@ bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}
   return !now.isBefore(buildTime) && now.isBefore(buildTime.add(_buildWindow));
 }
 
-/// Why this process must not report analytics, or null when it may.
+/// Why this process must never report analytics, or null when it may.
+AnalyticsRuntimeDisabledReason? _measurementIneligibilityReason() =>
+    kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile;
+
+/// Whether this process may be a Play pre-launch crawl and must keep the
+/// measurement SDKs suspended until a person proves otherwise.
 ///
 /// Play's pre-launch report is the only store process that launches the app
 /// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
 /// never sign in, so an unauthenticated launch inside the build window is
-/// treated as one. A signed-in device keeps reporting at any time, and an
-/// interactive login inside the window lifts the SDK suspension for the rest
-/// of the process.
-Future<AnalyticsRuntimeDisabledReason?> _measurementIneligibilityReason({required AuthSession authSession}) async {
-  if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
-  if (defaultTargetPlatform == TargetPlatform.android &&
+/// treated as one. A signed-in device reports at any time, and a
+/// server-confirmed interactive login lifts the suspension for the rest of
+/// the process.
+Future<bool> _isUnauthenticatedInsideCrawlWindow({required AuthSession authSession}) async {
+  return defaultTargetPlatform == TargetPlatform.android &&
       isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
-      !await authSession.hasLocallyValidSession()) {
-    return AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated;
-  }
-  return null;
+      !await authSession.hasLocallyValidSession();
 }
 
 Future<void> startNotificationStartup({

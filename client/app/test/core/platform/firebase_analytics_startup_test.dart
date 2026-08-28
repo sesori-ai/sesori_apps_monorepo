@@ -1,11 +1,8 @@
-import "dart:async";
-
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/firebase_analytics_startup.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 class MockFirebaseAnalytics() extends Mock implements FirebaseAnalytics;
 
@@ -31,7 +28,10 @@ void main() {
   });
 
   test("enables a new release install only after suspension and consent", () async {
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(capability, isA<AnalyticsRuntimeEnabled>());
     verifyInOrder([
@@ -53,9 +53,12 @@ void main() {
   test("keeps collection off for ineligible processes", () async {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
     ]) {
-      final capability = await startup.configure(ineligibilityReason: reason);
+      final capability = await startup.configure(
+        ineligibilityReason: reason,
+        suspendForStoreCrawl: false,
+      );
 
       expect(
         capability,
@@ -67,28 +70,25 @@ void main() {
     verifyNoMoreInteractions(analytics);
   });
 
-  test("authentication inside the build window lifts the suspension", () async {
-    final authStates = StreamController<AuthState>();
-    addTearDown(authStates.close);
-
+  test("a store-crawl suspension keeps the SDK off with an operational runtime", () async {
     final capability = await startup.configure(
-      ineligibilityReason: AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+      ineligibilityReason: null,
+      suspendForStoreCrawl: true,
     );
-    expect(capability, isA<AnalyticsRuntimeDisabled>());
-    startup.enableOnceAuthenticated(authStates: authStates.stream);
 
-    authStates.add(const AuthState.authenticating());
-    await pumpEventQueue();
+    expect(capability, isA<AnalyticsRuntimeEnabled>());
     verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
     verifyNoMoreInteractions(analytics);
+  });
 
-    authStates.add(
-      const AuthState.authenticated(
-        user: AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: null),
-      ),
-    );
-    await pumpEventQueue();
+  test("interactive authentication lifts the store-crawl suspension once", () async {
+    await startup.configure(ineligibilityReason: null, suspendForStoreCrawl: true);
+
+    await startup.activateAfterInteractiveAuthentication();
+    await startup.activateAfterInteractiveAuthentication();
+
     verifyInOrder([
+      () => analytics.setAnalyticsCollectionEnabled(false),
       () => analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
         adStorageConsentGranted: false,
@@ -103,12 +103,24 @@ void main() {
     verifyNoMoreInteractions(analytics);
   });
 
+  test("activation without a suspension is a no-op", () async {
+    await startup.configure(ineligibilityReason: null, suspendForStoreCrawl: false);
+    clearInteractions(analytics);
+
+    await startup.activateAfterInteractiveAuthentication();
+
+    verifyZeroInteractions(analytics);
+  });
+
   test("fails closed when collection cannot be suspended", () async {
     when(
       () => analytics.setAnalyticsCollectionEnabled(false),
     ).thenAnswer((_) async => throw StateError("suspend failed"));
 
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(
       capability,
@@ -127,7 +139,10 @@ void main() {
       () => analytics.setAnalyticsCollectionEnabled(true),
     ).thenAnswer((_) async => throw StateError("enable failed"));
 
-    final capability = await startup.configure(ineligibilityReason: null);
+    final capability = await startup.configure(
+      ineligibilityReason: null,
+      suspendForStoreCrawl: false,
+    );
 
     expect(
       capability,

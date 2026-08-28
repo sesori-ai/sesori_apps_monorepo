@@ -30,6 +30,10 @@ class InstallationAnalyticsService({
     required AuthProvider provider,
     required AccountStatus accountStatus,
   }) async {
+    // A server-confirmed interactive authentication is the proof-of-human that
+    // lifts the store-crawl suspension, so activate before logging the
+    // one-time outcome events.
+    await _repository.activateAfterInteractiveAuthentication();
     final analyticsProvider = _analyticsProvider(provider: provider);
     final accountOutcomeEvent = switch (accountStatus) {
       AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: analyticsProvider),

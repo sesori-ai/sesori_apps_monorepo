@@ -1,14 +1,26 @@
-import "dart:async";
-
 import "package:firebase_analytics/firebase_analytics.dart";
+import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
+import "../di/firebase_register_module.dart";
+
+@firebaseEnabledEnvironment
+@lazySingleton
+class FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytics}) {
+  bool _isSuspendedForStoreCrawl = false;
+
   /// Configures the Firebase analytics SDK for this process and reports the
   /// resulting runtime capability. [ineligibilityReason] states why this
-  /// process must not report, or is null when it may.
+  /// process must never report, or is null when it may.
+  ///
+  /// [suspendForStoreCrawl] keeps the SDK's own collection off for an eligible
+  /// process that may be a Play pre-launch crawl. The Sesori runtime stays
+  /// operational — its events are simply discarded by the suspended SDK — and
+  /// [activateAfterInteractiveAuthentication] lifts the suspension once a
+  /// person proves they are using this process.
   Future<AnalyticsRuntimeCapability> configure({
     required AnalyticsRuntimeDisabledReason? ineligibilityReason,
+    required bool suspendForStoreCrawl,
   }) async {
     try {
       // Native configuration starts fresh installs off. Enforce that decision
@@ -25,23 +37,25 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
       return AnalyticsRuntimeCapability.disabled(reason: reason);
     }
 
+    if (suspendForStoreCrawl) {
+      _isSuspendedForStoreCrawl = true;
+      logi("Firebase analytics collection suspended for a possible store crawl");
+      return const AnalyticsRuntimeCapability.enabled();
+    }
+
     return await _enableCollection();
   }
 
-  /// Lifts the build-window suspension once [authStates] reports a signed-in
-  /// user, proving this process is a person rather than a store crawl. Only the
-  /// SDK's own measurement resumes; the process-wide runtime capability was
-  /// already published as disabled, so Sesori-defined events stay off until the
-  /// next launch.
-  void enableOnceAuthenticated({required Stream<AuthState> authStates}) {
-    unawaited(
-      authStates.firstWhere((state) => state is AuthAuthenticated).then((_) async {
-        final capability = await _enableCollection();
-        if (capability.isEnabled) {
-          logi("Firebase analytics collection enabled after authentication inside the build window");
-        }
-      }),
-    );
+  /// Lifts the store-crawl suspension for the rest of this process; a no-op
+  /// when nothing is suspended. Best-effort: a failure keeps the SDK
+  /// suspended, which discards subsequent events instead of blocking callers.
+  Future<void> activateAfterInteractiveAuthentication() async {
+    if (!_isSuspendedForStoreCrawl) return;
+    final capability = await _enableCollection();
+    if (capability.isEnabled) {
+      _isSuspendedForStoreCrawl = false;
+      logi("Firebase analytics collection enabled after interactive authentication");
+    }
   }
 
   Future<AnalyticsRuntimeCapability> _enableCollection() async {
