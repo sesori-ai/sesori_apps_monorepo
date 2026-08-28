@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-7/9 merged; Step 8/9 verified and ready to publish
+- **Status:** Steps 1-7/9 merged; Step 8/9 in PR #1181
 - **Current branch:** `grok-harness-step-8-regression`
 - **Base:** `origin/main` after merged PR #1179
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
-- **Open PR:** none; Step 8 publication is next
-- **Local successor:** none; Step 9 starts after Step 8 publication
+- **Open PR:** #1181 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1181>
+- **Local successor:** Step 9 starts after this tracker update is published
 
 ## Fixed Series
 
@@ -32,7 +32,7 @@
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
    - **State:** merged in #1179.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
-   - **State:** rebased onto merged #1179 and verified; ready to publish.
+   - **State:** in PR #1181.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
    - **State:** not started.
 
@@ -150,7 +150,7 @@
 - [x] Skip architecture review because this step changes regression documentation only.
 - [x] Commit the completed successor locally; do not publish before #1179 merges.
 - [x] Rebase onto merged #1179 and repeat focused documentation validation.
-- [ ] Publish Step 8 and start its PR monitor.
+- [x] Publish Step 8 as PR #1181 and start its monitor.
 
 ## Decisions And Evidence
 
