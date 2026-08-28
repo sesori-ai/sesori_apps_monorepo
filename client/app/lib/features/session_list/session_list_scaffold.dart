@@ -85,6 +85,9 @@ class const SessionListScaffold({
           onSessionTap: onSessionTap,
           sessionMenuEntries: sessionMenuEntries,
         ),
+        if (state is SessionListLoaded && state.sessions.isNotEmpty)
+          // Clear the floating new-task button and the home indicator.
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
       ],
     );
   }

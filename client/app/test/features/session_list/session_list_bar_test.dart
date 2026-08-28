@@ -5,7 +5,9 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_scaffold.dart";
+import "package:sesori_mobile/features/session_list/session_tile.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -176,5 +178,26 @@ void main() {
 
     // The popover shows the same (already-complete) slug — a second occurrence.
     expect(find.text("sesori-ai/sesori_apps_monorepo"), findsNWidgets(2));
+  });
+
+  testWidgets("last session scrolls clear of the floating new-task button", (tester) async {
+    final sessions = [
+      for (var index = 0; index < 12; index++) testSession(id: "s$index", title: "Task $index"),
+    ];
+    await pumpScaffold(
+      tester,
+      state: SessionListState.loaded(sessions: sessions, baseBranch: "main", repoSlug: "org/repo"),
+    );
+
+    final scrollView = tester.widget<CustomScrollView>(find.byType(CustomScrollView));
+    scrollView.controller!.jumpTo(scrollView.controller!.position.maxScrollExtent);
+    await tester.pump();
+
+    final lastTile = find.ancestor(of: find.text("Task 11"), matching: find.byType(SessionTile));
+    final loc = AppLocalizations.of(tester.element(find.byType(SessionListScaffold)))!;
+    final newTaskButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewTask);
+    expect(lastTile, findsOneWidget);
+    expect(newTaskButton, findsOneWidget);
+    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newTaskButton).dy));
   });
 }
