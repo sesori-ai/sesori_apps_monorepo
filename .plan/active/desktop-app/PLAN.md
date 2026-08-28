@@ -197,9 +197,10 @@ First real GUI↔helper handshake since the prior plan's wire verification.
 other→bounded backoff → give-up surfacing recent log lines. The crash budget
 resets after a stable healthy runtime, and any manual lifecycle action cancels
 a pending retry timer (no delayed second helper) — both covered by
-state-machine tests. A helper asked to
-restart that never exits is killed+respawned after a grace window (covers the
-known teardown-hang gap). Adds **`ControlCommandService`** (Layer 3): the
+state-machine tests. The GUI needs no restart-hang fallback of its own: it
+cannot observe phone-triggered restart intent before exit 86, so the known
+teardown-hang gap is closed bridge-side by the step-5 restart watchdog and
+exit 86 stays the single restart contract. Adds **`ControlCommandService`** (Layer 3): the
 single owner of GUI→helper sends (`prompt_response` here;
 `unregister_and_exit` in step 11) over `ControlChannelServer`, clearing
 answered prompts from `BridgePromptTracker` — cubits never touch the Layer-4
@@ -221,7 +222,12 @@ C7) — including the bridge receiver paths
 dispatcher branches, and the dev harness, all in the same PR. The new health
 rule leaves `ControlPluginHealthState.unavailable` unreachable (the mapper
 emits only healthy/degraded; `unknown` stays the init/forward-parse fallback),
-so that variant and its client/test branches are deleted too. No compatibility
+so that variant and its client/test branches are deleted too. The dev harness
+itself survives until step 12 — step 5 only updates its affected branches.
+Also bridge-side: arm a **teardown watchdog when a supervised restart is
+requested** — a hard deadline that force-exits 86 if session teardown hangs,
+so the exit sentinel is guaranteed and the GUI never needs a restart-intent
+signal (closes the documented teardown-hang gap at its root). No compatibility
 shims: the control channel has never shipped in a public release and both
 halves live in this repo.
 
@@ -237,7 +243,10 @@ adapter; close hides, quit matches tray semantics. Prego theme adoption in the
 desktop shell via a small theme-assembly helper **added to `module_prego`**
 (the terminal owner: `ThemeData` from `PregoColors`/`PregoTextTheme` +
 extensions); step 14 converges `client/app` on the same helper. Window
-contents v1: account + sign-out, bridge on/off, status (relay /
+contents v1: account + sign-out (interim semantics: stop the helper via
+expected-stop **before** the local sign-out, so a signed-out GUI never leaves
+a running helper holding a usable token; full coordinated logout with
+unregister arrives in step 11), bridge on/off, status (relay /
 registration / plugin health / session count / takeover / login-required /
 crash give-up with recent log lines), open-logs affordance. Creates
 `docs/regression/desktop-bridge-supervision.md`.
@@ -263,8 +272,12 @@ accumulate duplicates.
 **Step 9 — ⚙️ Single instance + last-state.** Layer-1
 `DesktopInstanceStorage` (instance lock + persisted on/off & last-state under
 desktop-owned app data) beneath `DesktopInstanceRepository` (Layer 2, maps and
-aggregates) under `DesktopInstanceService` (Layer 3); second launch focuses
-the first; stale-lock recovery after a GUI crash. Layer-4
+aggregates) under `DesktopInstanceService` (Layer 3). The Layer-1 boundary
+also carries the **activation channel** (the lock owner listens on a local
+socket/pipe; a second launch signals it and exits), surfaced through the
+repository/service as a focus-request stream the window owner consumes —
+lock + prefs alone cannot make the first instance focus. Second launch
+focuses the first; stale-lock recovery after a GUI crash. Layer-4
 `DesktopStartupOrchestrator` composes instance + process services to restore a
 last-on bridge behind the auth gate (no same-layer service deps).
 
@@ -297,7 +310,10 @@ completes offline, then clears local tokens only (never account-wide).
 spawn a real (locally built) helper → handshake → token pull → helper
 authenticates against a fake relay → restart 86 → respawn → logout →
 unregister — deterministic in desktop CI (ephemeral ports, temp dirs,
-always-kill cleanup). The desktop CI job builds the helper itself, and the
+always-kill cleanup, and a **fake auth registration endpoint** passed through
+the helper's configurable auth-backend option, since `ensureRegistered()`
+calls the auth backend before relay use — the suite must never touch
+production services). The desktop CI job builds the helper itself, and the
 `desktop-ci.yml` path filter gains the bridge control/protocol sources and
 build inputs it exercises — a bridge-only control regression must trigger
 this suite, not skip it. Delete `bridge/app/tool/dev_control_host.dart` (the
@@ -357,7 +373,10 @@ churn.*
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
 heavy part).** Relocate voice lifecycle behind `module_core` service seams and
 media picking behind a platform seam (recording stays a mobile shell
-adapter). The desktop shell declares **explicit capability values, never
+adapter). The move fixes the existing layer skip rather than enshrining it: a
+Layer-2 `VoiceRepository` wraps `VoiceApi`, the relocated transcription
+service consumes the repository, and recorder/file/wake-lock stay foundation
+capabilities implemented per shell. The desktop shell declares **explicit capability values, never
 silent no-ops**: voice unsupported → text-first composer with voice entry
 hidden (the `voiceFirst` default must not apply), and attachments use a real
 desktop file picker (or the affordance is hidden until one exists) — no
