@@ -42,9 +42,6 @@ class const NewSessionScreen({
             projectId: projectId,
           ),
         ),
-        BlocProvider(
-          create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
-        ),
       ],
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
@@ -509,53 +506,60 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                         if (!hasNoHarnesses)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Semantics(
-                              enabled: isComposerEnabled,
-                              child: ExcludeFocus(
-                                excluding: !isComposerEnabled,
-                                child: IgnorePointer(
-                                  ignoring: !isComposerEnabled,
-                                  child: PromptInput(
-                                    draftIdentity: ComposerDraftRepository.newSessionIdentity(
-                                      projectId: widget.projectId,
-                                    ),
-                                    restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
-                                    initialDraft: context.read<NewSessionCubit>().composerDraft,
-                                    initialAttachments: restoredAttachments,
-                                    onInitialAttachmentsConsumed: () {
-                                      final submission = restoringSubmission;
-                                      if (submission != null) {
-                                        context.read<NewSessionCubit>().acknowledgeRestoredSubmission(
-                                          submission: submission,
+                            child: BlocProvider(
+                              create: (_) => VoiceInputCubit(
+                                service: getIt<VoiceTranscriptionService>(),
+                              ),
+                              child: Semantics(
+                                enabled: isComposerEnabled,
+                                child: ExcludeFocus(
+                                  excluding: !isComposerEnabled,
+                                  child: IgnorePointer(
+                                    ignoring: !isComposerEnabled,
+                                    child: PromptInput(
+                                      draftIdentity: ComposerDraftRepository.newSessionIdentity(
+                                        projectId: widget.projectId,
+                                      ),
+                                      restorationKey: restoringSubmission == null
+                                          ? null
+                                          : ObjectKey(restoringSubmission),
+                                      initialDraft: context.read<NewSessionCubit>().composerDraft,
+                                      initialAttachments: restoredAttachments,
+                                      onInitialAttachmentsConsumed: () {
+                                        final submission = restoringSubmission;
+                                        if (submission != null) {
+                                          context.read<NewSessionCubit>().acknowledgeRestoredSubmission(
+                                            submission: submission,
+                                          );
+                                        }
+                                      },
+                                      hasMessages: false,
+                                      attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+                                      isBusy: false,
+                                      onSend: ({required draft, required command, required attachments}) {
+                                        context.read<NewSessionCubit>().createSession(
+                                          draft: draft,
+                                          command: command,
+                                          attachments: attachments,
+                                          dedicatedWorktree: _dedicatedWorktree,
                                         );
-                                      }
-                                    },
-                                    hasMessages: false,
-                                    attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-                                    isBusy: false,
-                                    onSend: ({required draft, required command, required attachments}) {
-                                      context.read<NewSessionCubit>().createSession(
+                                      },
+                                      onVoiceTranscriptionCompleted: context
+                                          .read<NewSessionCubit>()
+                                          .reportVoiceTranscriptionCompleted,
+                                      onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
                                         draft: draft,
-                                        command: command,
-                                        attachments: attachments,
-                                        dedicatedWorktree: _dedicatedWorktree,
-                                      );
-                                    },
-                                    onVoiceTranscriptionCompleted: context
-                                        .read<NewSessionCubit>()
-                                        .reportVoiceTranscriptionCompleted,
-                                    onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(
-                                      draft: draft,
+                                      ),
+                                      onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+                                      onAbort: _dismissScreen,
+                                      surfaceStyleController: _composerSurfaceStyle,
+                                      header: _buildErrorBanner(state),
+                                      composerHeader: _buildComposerHeader(state),
+                                      availableCommands: composerData?.commands ?? const [],
+                                      stagedCommand: composerData?.stagedCommand,
+                                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                                     ),
-                                    onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-                                    onAbort: _dismissScreen,
-                                    surfaceStyleController: _composerSurfaceStyle,
-                                    header: _buildErrorBanner(state),
-                                    composerHeader: _buildComposerHeader(state),
-                                    availableCommands: composerData?.commands ?? const [],
-                                    stagedCommand: composerData?.stagedCommand,
-                                    onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                                    onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
                                   ),
                                 ),
                               ),

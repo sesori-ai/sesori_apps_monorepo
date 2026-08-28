@@ -214,6 +214,26 @@ void main() {
     verify(captureSession.close).called(1);
   });
 
+  test("close waits for active cancellation before disposing capture", () async {
+    final cancelCompleter = Completer<void>();
+    when(captureSession.cancel).thenAnswer((_) => cancelCompleter.future);
+
+    await service.start(session: session);
+    final cancelling = service.cancel(session: session);
+    await Future<void>.delayed(Duration.zero);
+    service.invalidate(session: session);
+    final closing = service.close(session: session);
+    await Future<void>.delayed(Duration.zero);
+
+    verifyNever(captureSession.close);
+    cancelCompleter.complete();
+    await cancelling;
+    await closing;
+
+    verify(captureSession.cancel).called(1);
+    verify(captureSession.close).called(1);
+  });
+
   test("close synchronously fences startup before disposing native state", () async {
     final startCompleter = Completer<void>();
     when(captureSession.start).thenAnswer((_) => startCompleter.future);

@@ -22,8 +22,12 @@ class FlutterVoiceCapture({
   required final AudioFormatConfig _audioFormat,
   @ignoreParam @visibleForTesting final AudioRecorder Function() _recorderFactory = AudioRecorder.new,
 }) implements VoiceCapture {
+  final _activityCoordinator = _VoiceCaptureActivityCoordinator();
+
   @override
-  Future<void> prewarm() async {
+  Future<void> prewarm() => _activityCoordinator.prewarm(operation: _performPrewarm);
+
+  Future<void> _performPrewarm() async {
     final recorder = _recorderFactory();
     try {
       final hasPermission = await recorder.hasPermission(request: false);
@@ -51,7 +55,47 @@ class FlutterVoiceCapture({
     fileProvider: _fileProvider,
     wakeLockService: _wakeLockService,
     audioFormat: _audioFormat,
+    activityCoordinator: _activityCoordinator,
   );
+}
+
+final class _VoiceCaptureActivityCoordinator() {
+  Future<void>? _prewarmFuture;
+  int _activeCaptures = 0;
+
+  Future<void> prewarm({required Future<void> Function() operation}) {
+    if (_activeCaptures > 0) return Future<void>.value();
+    final existing = _prewarmFuture;
+    if (existing != null) return existing;
+
+    late final Future<void> trackedFuture;
+    trackedFuture = operation().whenComplete(() {
+      if (identical(_prewarmFuture, trackedFuture)) _prewarmFuture = null;
+    });
+    _prewarmFuture = trackedFuture;
+    return trackedFuture;
+  }
+
+  Future<_VoiceCaptureActivityLease> acquire() async {
+    final prewarmFuture = _prewarmFuture;
+    if (prewarmFuture != null) await prewarmFuture;
+    _activeCaptures++;
+    return _VoiceCaptureActivityLease._(coordinator: this);
+  }
+
+  void _release({required _VoiceCaptureActivityLease lease}) {
+    if (lease._released) return;
+    lease._released = true;
+    _activeCaptures--;
+  }
+}
+
+final class _VoiceCaptureActivityLease._({
+  required final _VoiceCaptureActivityCoordinator _coordinator,
+}) {
+  bool _released = false;
+
+  void release() => _coordinator._release(lease: this);
 }
 
 final class _FlutterVoiceCaptureSession({
@@ -59,11 +103,13 @@ final class _FlutterVoiceCaptureSession({
   required final RecordingFileProvider _fileProvider,
   required final WakeLockService _wakeLockService,
   required final AudioFormatConfig _audioFormat,
+  required final _VoiceCaptureActivityCoordinator _activityCoordinator,
 }) implements VoiceCaptureSession {
   final StreamController<double> _amplitudeController = StreamController<double>.broadcast();
 
   StreamSubscription<Amplitude>? _amplitudeSubscription;
   WakeLockLease? _wakeLockLease;
+  _VoiceCaptureActivityLease? _activityLease;
   String? _currentPath;
   bool _isRecording = false;
   bool _isClosed = false;
@@ -75,6 +121,17 @@ final class _FlutterVoiceCaptureSession({
   Future<void> start() async {
     if (_isClosed || _isRecording) throw VoiceCaptureError.failed(innerError: null);
 
+    final activityLease = await _activityCoordinator.acquire();
+    try {
+      await _startNative();
+      _activityLease = activityLease;
+    } on Object {
+      activityLease.release();
+      rethrow;
+    }
+  }
+
+  Future<void> _startNative() async {
     bool hasPermission;
     try {
       hasPermission = await _recorder.hasPermission();
@@ -177,9 +234,13 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<void> releaseOperation() async {
-    final lease = _wakeLockLease;
+    final wakeLockLease = _wakeLockLease;
     _wakeLockLease = null;
-    if (lease != null) await lease.release();
+    if (wakeLockLease != null) await wakeLockLease.release();
+
+    final activityLease = _activityLease;
+    _activityLease = null;
+    activityLease?.release();
   }
 
   @override

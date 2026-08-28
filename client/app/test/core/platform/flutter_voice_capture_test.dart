@@ -94,6 +94,72 @@ void main() {
     verify(recorder.dispose).called(1);
   });
 
+  test("shares one in-flight native prewarm across composer sessions", () async {
+    final prewarmCompleter = Completer<void>();
+    when(
+      () => prewarmClient.prewarm(
+        sampleRate: any(named: "sampleRate"),
+        bitRate: any(named: "bitRate"),
+        numChannels: any(named: "numChannels"),
+      ),
+    ).thenAnswer((_) => prewarmCompleter.future);
+
+    final first = capture.prewarm();
+    final second = capture.prewarm();
+    await Future<void>.delayed(Duration.zero);
+
+    verify(
+      () => prewarmClient.prewarm(
+        sampleRate: audioFormat.sampleRate,
+        bitRate: audioFormat.bitRate,
+        numChannels: audioFormat.numChannels,
+      ),
+    ).called(1);
+    prewarmCompleter.complete();
+    await Future.wait([first, second]);
+  });
+
+  test("recording start waits for the shared native prewarm", () async {
+    final prewarmCompleter = Completer<void>();
+    when(
+      () => prewarmClient.prewarm(
+        sampleRate: any(named: "sampleRate"),
+        bitRate: any(named: "bitRate"),
+        numChannels: any(named: "numChannels"),
+      ),
+    ).thenAnswer((_) => prewarmCompleter.future);
+
+    final prewarm = capture.prewarm();
+    final session = capture.createSession();
+    final start = session.start();
+    await Future<void>.delayed(Duration.zero);
+    verifyNever(() => recorder.start(any(), path: any(named: "path")));
+
+    prewarmCompleter.complete();
+    await prewarm;
+    await start;
+    verify(() => recorder.start(any(), path: recordingPath)).called(1);
+    await session.cancel();
+    await session.close();
+  });
+
+  test("does not reconfigure native audio while another session is active", () async {
+    final session = capture.createSession();
+    await session.start();
+
+    await capture.prewarm();
+
+    verifyNever(
+      () => prewarmClient.prewarm(
+        sampleRate: any(named: "sampleRate"),
+        bitRate: any(named: "bitRate"),
+        numChannels: any(named: "numChannels"),
+      ),
+    );
+    await session.cancel();
+    await session.close();
+  });
+
   test("records, normalizes amplitude, returns a typed artifact, and deletes it", () async {
     await File(recordingPath).writeAsBytes([1, 2, 3]);
     final session = capture.createSession();

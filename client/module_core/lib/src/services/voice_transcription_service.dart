@@ -150,7 +150,18 @@ class VoiceTranscriptionService({
     }
   }
 
-  Future<void> cancel({required VoiceTranscriptionSession session}) async {
+  Future<void> cancel({required VoiceTranscriptionSession session}) {
+    final existing = session._cancelFuture;
+    if (existing != null) return existing;
+
+    final operation = _cancel(session: session);
+    session._cancelFuture = operation;
+    return operation.whenComplete(() {
+      if (identical(session._cancelFuture, operation)) session._cancelFuture = null;
+    });
+  }
+
+  Future<void> _cancel({required VoiceTranscriptionSession session}) async {
     if (session._state is _VoiceSessionIdle ||
         session._state is _VoiceSessionClosing ||
         session._state is _VoiceSessionDisposed) {
@@ -158,7 +169,7 @@ class VoiceTranscriptionService({
     }
 
     final state = session._state;
-    session._generation++;
+    final generation = ++session._generation;
     _cancelMaxDurationTimer(session: session);
 
     switch (state) {
@@ -170,7 +181,9 @@ class VoiceTranscriptionService({
       case _VoiceSessionIdle() || _VoiceSessionClosing() || _VoiceSessionDisposed():
         return;
     }
-    session._state = const _VoiceSessionIdle();
+    if (_ownsGeneration(session: session, generation: generation)) {
+      session._state = const _VoiceSessionIdle();
+    }
   }
 
   void invalidate({required VoiceTranscriptionSession session}) {
@@ -214,6 +227,15 @@ class VoiceTranscriptionService({
         await stopFuture;
       } catch (error, stackTrace) {
         logw("Voice recording stop settled with an error during disposal", error, stackTrace);
+      }
+    }
+
+    final cancelFuture = session._cancelFuture;
+    if (cancelFuture != null) {
+      try {
+        await cancelFuture;
+      } catch (error, stackTrace) {
+        logw("Voice recording cancellation settled with an error during disposal", error, stackTrace);
       }
     }
 
@@ -265,6 +287,7 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   Future<void>? _prewarmFuture;
   Future<void>? _startFuture;
   Future<VoiceRecordingArtifact>? _stopFuture;
+  Future<void>? _cancelFuture;
   Timer? _maxDurationTimer;
   int _generation = 0;
 }

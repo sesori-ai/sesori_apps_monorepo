@@ -1723,7 +1723,7 @@ void main() {
     );
   });
 
-  testWidgets("removes composer while a session is sending", (tester) async {
+  testWidgets("removes composer and closes its voice lifecycle while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1749,6 +1749,9 @@ void main() {
     expect(find.byType(PromptInput), findsNothing);
     expect(find.byIcon(TablerSolid.player_stop), findsNothing);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    verify(() => voiceTranscriptionService.invalidate(session: voiceSession)).called(1);
+    verify(() => voiceTranscriptionService.close(session: voiceSession)).called(1);
 
     verify(
       () => sessionService.createSessionWithMessage(
