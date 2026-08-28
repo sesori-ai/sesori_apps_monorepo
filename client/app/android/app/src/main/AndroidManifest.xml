@@ -2,12 +2,17 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE" />
+    <uses-permission android:name="com.android.vending.CHECK_LICENSE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
 
     <!-- SOME LIBRARY ADDS PERMISSIONS THAT WE DON'T WANT -->
+    <!-- Singular limits advertising identifiers; keep both Android ad-ID APIs unavailable at the manifest boundary. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" tools:node="remove" />
     <uses-permission android:name="android.permission.BODY_SENSORS" tools:node="remove" />
     <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" tools:node="remove" />

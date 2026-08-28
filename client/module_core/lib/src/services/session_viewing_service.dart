@@ -6,11 +6,11 @@ import "package:meta/meta.dart";
 
 import "../logging/logging.dart";
 import "../platform/lifecycle_source.dart";
-import "../repositories/session_view_repository.dart";
+import "../repositories/view_declaration_repository.dart";
 
 /// Layer-3 owner of the "which session am I viewing" state. Cubits call this
 /// (never `ConnectionService` transport directly). It keeps the current viewed
-/// session id and declares it to the bridge via [SessionViewRepository].
+/// session id and declares it to the bridge via [ViewDeclarationRepository].
 ///
 /// On background it declares "viewing nothing" but retains the intended
 /// session. Only a real background transition counts: a desktop window that
@@ -21,7 +21,7 @@ import "../repositories/session_view_repository.dart";
 /// post-resume/reconnect refresh has rendered fresh content.
 @lazySingleton
 class SessionViewingService({
-  required final SessionViewRepository _viewRepository,
+  required final ViewDeclarationRepository _viewRepository,
   required LifecycleSource lifecycleSource,
 }) with Disposable {
   StreamSubscription<LifecycleState>? _lifecycleSubscription;

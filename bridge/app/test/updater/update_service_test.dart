@@ -35,7 +35,7 @@ class _FakeReleaseRepository() implements ReleaseRepository {
 }
 
 class _FakeInstallService() implements UpdateInstallService {
-  UpdateInstallResult result = const UpdateInstallResult.staged(stagingPath: '/tmp/staging');
+  UpdateInstallResult result = const UpdateInstallStaged(stagingPath: '/tmp/staging');
   int stageCount = 0;
 
   @override
@@ -262,7 +262,7 @@ void main() {
 
   test('a genuine stage failure surfaces an error and does not apply', () {
     release.onCheck = () async => _release();
-    install.result = const UpdateInstallResult.failed(result: UpdateResult.checksumFailed);
+    install.result = const UpdateInstallStageFailed(result: UpdateResult.checksumFailed);
 
     runStarted(buildService(), (async) {
       expect(apply.appliedVersions, isEmpty);
@@ -274,7 +274,7 @@ void main() {
 
   test('a transient stage failure stays quiet', () {
     release.onCheck = () async => _release();
-    install.result = const UpdateInstallResult.failed(result: UpdateResult.networkError);
+    install.result = const UpdateInstallStageFailed(result: UpdateResult.networkError);
 
     runStarted(buildService(), (async) {
       expect(apply.appliedVersions, isEmpty);

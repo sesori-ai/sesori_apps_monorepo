@@ -11,7 +11,7 @@ import "repositories/cursor_generated_image_reader.dart";
 /// `cursor/update_todos`) as `extMethod` JSON-RPC *requests* even though it
 /// treats them as fire-and-forget; the approval registry acks and re-injects
 /// those into the notification pipeline (see
-/// [AcpApprovalRegistry.fireAndForgetExtensionMethods]), so this mapper is the
+/// `CursorApprovalRegistry.handleExtensionRequest`), so this mapper is the
 /// single handling site for both wire shapes.
 class CursorEventMapper({
   required super.launchDirectory,
@@ -107,8 +107,8 @@ class CursorEventMapper({
   @override
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     if (_isGateNotice(text)) {
-      // Preserve cursor-agent's own wording (trimmed) as the shown message.
-      return AcpHaltNotice(errorName: "cursor_gate", message: text.trim());
+      // AcpEventMapper preserves cursor-agent's exact wording as the shown message.
+      return const AcpHaltNotice(errorName: "cursor_gate");
     }
     return null;
   }

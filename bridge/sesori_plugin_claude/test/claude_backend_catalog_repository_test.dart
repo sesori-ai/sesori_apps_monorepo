@@ -44,8 +44,9 @@ void main() {
       expect(catalog.agents.every((agent) => agent.model?.modelID == "opus[1m]"), isTrue);
       expect(catalog.agents.every((agent) => agent.model?.variant == "high"), isTrue);
       final provider = catalog.providers.providers.single;
-      expect(provider, isA<PluginProviderAnthropic>());
       expect(provider.id, "anthropic");
+      expect(provider.name, "Anthropic");
+      expect(provider.authType, PluginProviderAuthType.oauth);
       expect(provider.defaultModelID, "opus[1m]");
       expect(provider.models.map((model) => model.id), ["haiku", "opus[1m]"]);
       expect(provider.models.first.variants, isEmpty);

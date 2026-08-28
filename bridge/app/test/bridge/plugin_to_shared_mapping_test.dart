@@ -4,194 +4,72 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  group("PluginMessagePartTypeMapping.toShared()", () {
-    test("maps patch to MessagePartType.patch", () {
-      expect(PluginMessagePartType.patch.toShared(), equals(MessagePartType.patch));
-    });
-
-    test("maps agent to MessagePartType.agent", () {
-      expect(PluginMessagePartType.agent.toShared(), equals(MessagePartType.agent));
-    });
-
-    test("maps retry to MessagePartType.retry", () {
-      expect(PluginMessagePartType.retry.toShared(), equals(MessagePartType.retry));
-    });
-
-    test("maps compaction to MessagePartType.compaction", () {
-      expect(PluginMessagePartType.compaction.toShared(), equals(MessagePartType.compaction));
-    });
-
-    test("throws StateError for unknown", () {
-      expect(() => PluginMessagePartType.unknown.toShared(), throwsStateError);
-    });
-  });
-
   group("PluginMessagePartMapping.toShared()", () {
     test("passes through agentName", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.agent(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.agent,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
         agentName: "my-agent",
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.agentName, equals("my-agent"));
+      expect(shared, isA<MessagePartAgent>());
+      expect((shared as MessagePartAgent).agentName, equals("my-agent"));
       expect(shared.sessionID, equals("stable-session"));
     });
 
-    test("carries the subtask child reference through for its caller to translate", () {
-      const part = PluginMessagePart(
-        id: "p1",
-        sessionID: "s1",
-        messageID: "m1",
-        type: PluginMessagePartType.subtask,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: "explore",
-        description: "Explore",
-        agent: "explore",
-        childSessionID: "backend-child",
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
-      );
-
-      final shared = part.toShared(sessionId: "stable-session");
-
-      expect(shared.childSessionID, equals("backend-child"));
-      expect(shared.toJson()["childSessionID"], equals("backend-child"));
-    });
-
-    test("omits an absent child reference from the wire payload", () {
-      const part = PluginMessagePart(
-        id: "p1",
-        sessionID: "s1",
-        messageID: "m1",
-        type: PluginMessagePartType.subtask,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: "explore",
-        description: "Explore",
-        agent: "explore",
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
-      );
-
-      final json = part.toShared(sessionId: "stable-session").toJson();
-
-      expect(json.containsKey("childSessionID"), isFalse);
-      expect(MessagePart.fromJson(json).childSessionID, isNull);
-    });
-
     test("passes through attempt", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.retry(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.retry,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
         attempt: 3,
-        retryError: null,
-        attachment: null,
+        retryError: "retry",
       );
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.attempt, equals(3));
+      expect(shared, isA<MessagePartRetry>());
+      expect((shared as MessagePartRetry).attempt, equals(3));
     });
 
     test("passes through retryError", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.retry(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.retry,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
         attempt: 1,
         retryError: "connection timeout",
-        attachment: null,
       );
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.retryError, equals("connection timeout"));
+      expect(shared, isA<MessagePartRetry>());
+      expect((shared as MessagePartRetry).retryError, equals("connection timeout"));
     });
 
-    test("passes through null values for new fields", () {
-      const part = PluginMessagePart(
-        id: "p1",
-        sessionID: "s1",
-        messageID: "m1",
-        type: PluginMessagePartType.text,
-        text: "hello",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
-      );
+    test("maps text without unrelated variant fields", () {
+      const part = PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello");
 
       final shared = part.toShared(sessionId: "stable-session");
 
-      expect(shared.agentName, isNull);
-      expect(shared.attempt, isNull);
-      expect(shared.retryError, isNull);
+      expect(shared, isA<MessagePartText>());
+      expect(shared.toJson(), {
+        "id": "p1",
+        "sessionID": "stable-session",
+        "messageID": "m1",
+        "text": "hello",
+        "type": "text",
+      });
     });
 
     test("maps normalized remote attachment data", () {
-      final part = PluginMessagePart(
+      final part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.remoteUrl(
           mime: "application/pdf",
           url: Uri.parse("https://files.example.com/report.pdf"),
@@ -200,7 +78,7 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(
           const MessageAttachment.remoteUrl(
             mime: "application/pdf",
@@ -212,21 +90,10 @@ void main() {
     });
 
     test("degrades a plugin remote attachment outside HTTP(S) to metadata", () {
-      final part = PluginMessagePart(
+      final part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.remoteUrl(
           mime: "text/plain",
           url: Uri.parse("file:///private/secret.txt"),
@@ -235,27 +102,16 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
       );
     });
 
     test("strips path components from plugin-provided filenames", () {
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.file(
         id: "p1",
         sessionID: "s1",
         messageID: "m1",
-        type: PluginMessagePartType.file,
-        text: null,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
         attachment: PluginMessageAttachment.metadata(
           mime: "text/plain",
           filename: "/Users/alice/private/project/secret.txt",
@@ -263,7 +119,7 @@ void main() {
       );
 
       expect(
-        part.toShared(sessionId: "s1").attachment,
+        (part.toShared(sessionId: "s1") as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "secret.txt")),
       );
     });
@@ -275,25 +131,9 @@ void main() {
       expect(PluginToolStatus.running.toShared(), equals(ToolStatus.running));
       expect(PluginToolStatus.completed.toShared(), equals(ToolStatus.completed));
       expect(PluginToolStatus.error.toShared(), equals(ToolStatus.error));
-      expect(PluginToolStatus.cancelled.toShared(), equals(ToolStatus.cancelled));
       // Unlike message-part type, unknown is a real renderable state and maps
       // through rather than throwing.
       expect(PluginToolStatus.unknown.toShared(), equals(ToolStatus.unknown));
-    });
-
-    test("cancelled keeps a wire value an older client degrades to unknown", () {
-      const state = PluginToolState(
-        status: PluginToolStatus.cancelled,
-        title: null,
-        output: null,
-        error: null,
-        attachments: [],
-      );
-
-      final json = state.toShared().toJson();
-
-      expect(json["status"], equals("cancelled"));
-      expect(ToolState.fromJson({...json, "status": "a-status-from-a-newer-bridge"}).status, equals(ToolStatus.unknown));
     });
   });
 

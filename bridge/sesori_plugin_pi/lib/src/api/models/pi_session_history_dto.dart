@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../models/pi_assistant_stop_reason.dart";
+import "../../models/pi_thinking_level.dart";
 
 part "pi_session_history_dto.freezed.dart";
 part "pi_session_history_dto.g.dart";
@@ -57,6 +58,7 @@ sealed class PiSessionEntryDto with _$PiSessionEntryDto {
     required String id,
     required String? parentId,
     required DateTime timestamp,
+    @JsonKey(fromJson: _thinkingLevelOrNull) required PiThinkingLevel? thinkingLevel,
   }) = PiThinkingLevelChangeEntryDto;
 
   @FreezedUnionValue("model_change")
@@ -141,6 +143,7 @@ sealed class PiSessionFileEntryDto with _$PiSessionFileEntryDto {
     required String? id,
     required String? parentId,
     required DateTime timestamp,
+    @JsonKey(fromJson: _thinkingLevelOrNull) required PiThinkingLevel? thinkingLevel,
   }) = PiSessionFileThinkingLevelChangeEntryDto;
 
   @FreezedUnionValue("model_change")
@@ -397,3 +400,5 @@ int? _intOrNull(Object? value) => value is num && value.isFinite ? value.toInt()
 
 PiAssistantStopReason? _stopReasonOrNull(Object? value) =>
     PiAssistantStopReason.tryParse(value: value is String ? value : null);
+
+PiThinkingLevel? _thinkingLevelOrNull(Object? value) => PiThinkingLevel.tryParse(value: value is String ? value : null);

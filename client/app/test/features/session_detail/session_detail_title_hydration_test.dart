@@ -67,7 +67,6 @@ SessionDetailLoadResult _loadedResult() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -92,7 +91,6 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -124,7 +122,6 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       isRootSession: true,
       isArchived: false,
     ),
-    isBridgeConnected: true,
   );
 }
 
@@ -141,6 +138,8 @@ void _registerDependencies({
   final getIt = GetIt.instance;
 
   getIt.registerSingleton<ConnectionService>(connectionService);
+
+  getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
@@ -187,7 +186,7 @@ void main() {
     globalEvents = StreamController<SseEvent>.broadcast();
     connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );
@@ -197,7 +196,7 @@ void main() {
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenReturn(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       ),
     );

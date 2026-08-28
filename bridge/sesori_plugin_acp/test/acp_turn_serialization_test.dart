@@ -7,6 +7,27 @@ import "package:test/test.dart";
 
 /// An [AcpPlugin] whose [applyTurnSelection] blocks on a test-controlled gate,
 /// so a test can land an abort while a turn is mid-selection.
+class _PromptHookPlugin({
+  required super.id,
+  required super.agentDisplayName,
+  required super.launchSpec,
+  required super.launchDirectory,
+  required super.eventMapper,
+  required super.commandTracker,
+  required super.sessionOptionsService,
+  required super.processFactory,
+}) extends TestAcpPlugin {
+  @override
+  Map<String, dynamic> outboundPromptMeta({
+    required String sessionId,
+    required String messageId,
+  }) => {
+    "identity": {"sessionId": sessionId, "messageId": messageId},
+  };
+
+  Future<AcpStdioClient> borrowConnectedClient() => requireConnectedClient();
+}
+
 class _GatedSelectionPlugin({
   required super.id,
   required super.agentDisplayName,
@@ -15,7 +36,7 @@ class _GatedSelectionPlugin({
   required super.eventMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
-  required AcpProcessFactory super.processFactory,
+  required super.processFactory,
 }) extends TestAcpPlugin {
   Completer<void>? selectionGate;
 
@@ -30,6 +51,16 @@ class _GatedSelectionPlugin({
     final gate = selectionGate;
     if (gate != null) await gate.future;
   }
+}
+
+class _TimestampingEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      PluginMessageTime(created: createdAtMs, completed: null);
 }
 
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
@@ -163,6 +194,57 @@ void main() {
     int busyCount() => emitted.whereType<BridgeSseSessionStatus>().length;
     int idleCount() => emitted.whereType<BridgeSseSessionIdle>().length;
 
+    test("prompt hooks expose live client and preserve prompt identity", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final hookPlugin = _PromptHookPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = hookPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      final borrowing = hookPlugin.borrowConnectedClient();
+      respondTo(await waitForFrame("initialize"), {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": false},
+        "authMethods": <Object?>[],
+      });
+      expect(await borrowing, same(hookPlugin.client));
+      final sessionId = await createSession(cwd, "s1");
+      final firstId = await sendPrompt(sessionId, "first");
+      final first = await waitForFrameCount("session/prompt", 1);
+
+      expect((first["params"] as Map)["_meta"], {
+        "identity": {"sessionId": sessionId, "messageId": "$firstId-user"},
+      });
+      expect(
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .where((event) => event.info["promptId"] == firstId)
+            .single
+            .info["id"],
+        "$firstId-user",
+      );
+      respondTo(first, {"stopReason": "end_turn"});
+    });
+
     test("a prompt becomes a user message only when its ACP frame is dispatched", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
@@ -221,6 +303,55 @@ void main() {
         promptId,
       );
       respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a queued prompt message uses its dispatch time", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final timestampingPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: _TimestampingEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = timestampingPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      final firstPromptId = await sendPrompt(sessionId, "first");
+      final first = await waitForFrame("session/prompt");
+      final secondPromptId = await sendPrompt(sessionId, "second");
+      final queuedAt = (await plugin.getQueuedPrompts(sessionId: sessionId))
+          .singleWhere((prompt) => prompt.id == secondPromptId)
+          .createdAt;
+
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      respondTo(first, {"stopReason": "end_turn"});
+      final second = await waitForFrameCount("session/prompt", 2);
+      await pump();
+
+      final secondMessage = emitted.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["promptId"] == secondPromptId,
+      );
+      expect((secondMessage.info["time"] as Map)["created"], greaterThan(queuedAt));
+
+      expect(firstPromptId, isNot(secondPromptId));
+      respondTo(second, {"stopReason": "end_turn"});
     });
 
     test("a failed ACP frame flush never marks the prompt sent", () async {

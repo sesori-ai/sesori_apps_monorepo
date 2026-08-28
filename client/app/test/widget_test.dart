@@ -13,7 +13,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(registerAllFallbackValues);
 
-  setUp(() {
+  setUp(() async {
     final mockStorage = MockFlutterSecureStorage();
     when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
     when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => null);
@@ -21,9 +21,9 @@ void main() {
     when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => null);
     when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => null);
 
-    configureDependencies(
+    await configureDependencies(
       firebaseEnabled: false,
-      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
+      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       ),
     );

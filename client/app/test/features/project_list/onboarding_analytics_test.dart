@@ -32,7 +32,7 @@ const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
 );
-const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
   config: _connectionConfig,

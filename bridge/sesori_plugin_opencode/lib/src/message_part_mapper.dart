@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show
@@ -49,101 +47,69 @@ class const MessagePartMapper() {
   /// strongly-typed, non-null fields (no `?? ""` fallbacks).
   PluginMessagePart mapPart(Part raw) {
     final part = _mapPart(raw);
-    if (part.attachment == null && (part.state?.attachments.isEmpty ?? true)) return part;
-    return applyAttachmentBudget(parts: [part], maxAttachmentBytes: maxTranscriptImageCollectionBytes).single;
+    if (part case PluginMessagePartFile() || PluginMessagePartTool(state: PluginToolState(attachments: [_, ...]))) {
+      return applyAttachmentBudget(parts: [part], maxAttachmentBytes: maxTranscriptImageCollectionBytes).single;
+    }
+    return part;
   }
 
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
     TextPart(synthetic: true) => _unknownPart(raw),
-    TextPart() => _part(
+    TextPart() => PluginMessagePart.text(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.text,
       text: raw.text,
-      attachment: null,
     ),
-    ReasoningPart() => _part(
+    ReasoningPart() => PluginMessagePart.reasoning(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.reasoning,
       text: raw.text,
-      attachment: null,
     ),
-    ToolPart() => _part(
+    ToolPart() => PluginMessagePart.tool(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.tool,
       tool: raw.tool,
       state: _mapToolState(raw.state),
-      attachment: null,
     ),
-    SubtaskPart() => _part(
+    SubtaskPart() => PluginMessagePart.subtask(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.subtask,
       prompt: raw.prompt,
       description: raw.description,
       agent: raw.agent,
-      attachment: null,
+      // OpenCode reports neither a subtask lifecycle nor the session its work
+      // runs in; the client associates it by title instead.
+      taskState: null,
+      childSessionID: null,
     ),
-    AgentPart() => _part(
+    AgentPart() => PluginMessagePart.agent(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.agent,
       agentName: raw.name,
-      attachment: null,
     ),
-    RetryPart() => _part(
+    RetryPart() => PluginMessagePart.retry(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.retry,
       attempt: raw.attempt,
       retryError: raw.error.data.message,
-      attachment: null,
     ),
     FilePart() => _mapFilePart(raw: raw),
-    SnapshotPart() => _part(
+    SnapshotPart() => PluginMessagePart.snapshot(id: raw.id, sessionID: raw.sessionID, messageID: raw.messageID),
+    PatchPart() => PluginMessagePart.patch(id: raw.id, sessionID: raw.sessionID, messageID: raw.messageID),
+    CompactionPart() => PluginMessagePart.text(
       id: raw.id,
       sessionID: raw.sessionID,
       messageID: raw.messageID,
-      type: PluginMessagePartType.snapshot,
-      attachment: null,
-    ),
-    PatchPart() => _part(
-      id: raw.id,
-      sessionID: raw.sessionID,
-      messageID: raw.messageID,
-      type: PluginMessagePartType.patch,
-      attachment: null,
-    ),
-    CompactionPart() => _part(
-      id: raw.id,
-      sessionID: raw.sessionID,
-      messageID: raw.messageID,
-      type: PluginMessagePartType.text,
       text: _compactionCommandText,
-      attachment: null,
     ),
-    StepStartPart() => _part(
-      id: raw.id,
-      sessionID: raw.sessionID,
-      messageID: raw.messageID,
-      type: PluginMessagePartType.stepStart,
-      attachment: null,
-    ),
-    StepFinishPart() => _part(
-      id: raw.id,
-      sessionID: raw.sessionID,
-      messageID: raw.messageID,
-      type: PluginMessagePartType.stepFinish,
-      attachment: null,
-    ),
+    StepStartPart() => PluginMessagePart.stepStart(id: raw.id, sessionID: raw.sessionID, messageID: raw.messageID),
+    StepFinishPart() => PluginMessagePart.stepFinish(id: raw.id, sessionID: raw.sessionID, messageID: raw.messageID),
     // `Part` is an `abstract interface` (not `sealed`), so a default arm is
     // required. `PartUnknown` and any future variant fall through here and
     // become an `unknown` part, which downstream mapping filters out.
@@ -173,62 +139,23 @@ class const MessagePartMapper() {
       return attachment;
     }
 
-    PluginMessagePart boundPart({required PluginMessagePart part}) {
-      final attachment = part.attachment;
-      final state = part.state;
-      return part.copyWith(
-        attachment: attachment == null ? null : bound(attachment: attachment),
-        state: state == null
-            ? null
-            : state.copyWith(
-                attachments: state.attachments
-                    .map((attachment) => bound(attachment: attachment))
-                    .toList(growable: false),
-              ),
-      );
-    }
+    PluginMessagePart boundPart({required PluginMessagePart part}) => switch (part) {
+      PluginMessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
+      PluginMessagePartTool(:final state) => part.copyWith(
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(growable: false),
+        ),
+      ),
+      _ => part,
+    };
 
     return parts.map((part) => boundPart(part: part)).toList(growable: false);
   }
 
-  PluginMessagePart _part({
-    required String id,
-    required String sessionID,
-    required String messageID,
-    required PluginMessagePartType type,
-    String? text,
-    String? tool,
-    PluginToolState? state,
-    String? prompt,
-    String? description,
-    String? agent,
-    String? agentName,
-    int? attempt,
-    String? retryError,
-    required PluginMessageAttachment? attachment,
-  }) => PluginMessagePart(
-    id: id,
-    sessionID: sessionID,
-    messageID: messageID,
-    type: type,
-    text: text,
-    tool: tool,
-    state: state,
-    prompt: prompt,
-    description: description,
-    agent: agent,
-    childSessionID: null,
-    agentName: agentName,
-    attempt: attempt,
-    retryError: retryError,
-    attachment: attachment,
-  );
-
-  PluginMessagePart _mapFilePart({required FilePart raw}) => _part(
+  PluginMessagePart _mapFilePart({required FilePart raw}) => PluginMessagePart.file(
     id: raw.id,
     sessionID: raw.sessionID,
     messageID: raw.messageID,
-    type: PluginMessagePartType.file,
     attachment: _mapAttachment(raw: raw, fallbackFilename: null),
   );
 
@@ -289,7 +216,7 @@ class const MessagePartMapper() {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
 
-    final normalized = _tryNormalizeBase64(encoded: raw.url.substring(separator + 1));
+    final normalized = normalizeAttachmentBase64(encoded: raw.url.substring(separator + 1));
     if (normalized == null) {
       Log.w("OpenCode returned an invalid base64 image attachment; forwarding metadata only");
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
@@ -300,14 +227,6 @@ class const MessagePartMapper() {
       return PluginMessageAttachment.metadata(mime: mime, filename: filename);
     }
     return PluginMessageAttachment.inlineImage(mime: mime, base64: normalized, filename: filename);
-  }
-
-  String? _tryNormalizeBase64({required String encoded}) {
-    try {
-      return base64.normalize(encoded);
-    } on FormatException {
-      return null;
-    }
   }
 
   bool _isDataUrl({required String url}) => url.length >= 5 && url.substring(0, 5).toLowerCase() == "data:";
@@ -336,12 +255,10 @@ class const MessagePartMapper() {
   PluginMessagePart _unknownPart(Part raw) {
     final json = raw.toJson();
     final map = json is Map<String, dynamic> ? json : const <String, dynamic>{};
-    return _part(
+    return PluginMessagePart.unknown(
       id: map["id"] as String,
       sessionID: map["sessionID"] as String,
       messageID: map["messageID"] as String,
-      type: PluginMessagePartType.unknown,
-      attachment: null,
     );
   }
 

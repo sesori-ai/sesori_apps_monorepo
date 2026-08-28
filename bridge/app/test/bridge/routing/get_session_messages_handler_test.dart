@@ -45,9 +45,6 @@ void main() {
           () => handler.handle(
             makeRequest("POST", "/session/messages"),
             body: SessionMessagesRequest(sessionId: "session-1", limit: limit, before: null),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           ),
           throwsA(isA<RelayResponse>().having((response) => response.status, "status", 400)),
         );
@@ -59,9 +56,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/messages"),
           body: const SessionMessagesRequest(sessionId: "", limit: null, before: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -71,9 +65,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "session-xyz", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetMessagesSessionId, equals("session-xyz"));
     });
@@ -82,9 +73,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<MessageWithPartsResponse>());
     });
@@ -93,9 +81,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.messages, isEmpty);
     });
@@ -116,9 +101,11 @@ void main() {
           info: PluginMessage.assistant(
             id: "m2",
             sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
+            agent: "build",
+            modelID: "gpt-5",
+            providerID: "openai",
+            variant: "high",
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],
@@ -128,12 +115,16 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.messages.length, equals(2));
+      expect(
+        response.replayedPromptDefaults,
+        const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        ),
+      );
     });
 
     test("keeps default delivery inline and threads explicit stored references", () async {
@@ -147,21 +138,10 @@ void main() {
             time: null,
           ),
           parts: [
-            PluginMessagePart(
+            PluginMessagePart.file(
               id: "p1",
               sessionID: "s1",
               messageID: "m1",
-              type: PluginMessagePartType.file,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              childSessionID: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
               attachment: PluginMessageAttachment.inlineImage(
                 mime: "image/png",
                 base64: base64Encode(const [1, 2, 3]),
@@ -175,11 +155,11 @@ void main() {
       final inlineResponse = await handler.handle(
         makeRequest("POST", "/session/messages"),
         body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
-      expect(inlineResponse.messages.single.parts.single.attachment, isA<MessageAttachmentInlineImage>());
+      expect(
+        (inlineResponse.messages.single.parts.single as MessagePartFile).attachment,
+        isA<MessageAttachmentInlineImage>(),
+      );
 
       final response = await handler.handle(
         makeRequest("POST", "/session/messages"),
@@ -189,13 +169,10 @@ void main() {
           before: null,
           attachmentDelivery: MessageAttachmentDelivery.storedReference,
         ),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(
-        response.messages.single.parts.single.attachment,
+        (response.messages.single.parts.single as MessagePartFile).attachment,
         isA<MessageAttachmentStoredImage>().having((image) => image.bridgeId, "bridgeId", "br_test1234"),
       );
     });
@@ -203,15 +180,12 @@ void main() {
     test("handleInternal returns 502 for upstream incompatibility", () async {
       plugin.throwOnGetMessagesError = PluginApiException("GET /session/s1/message", 502);
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/messages",
           body: jsonEncode(const SessionMessagesRequest(sessionId: "s1", limit: null, before: null).toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(502));

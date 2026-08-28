@@ -113,8 +113,8 @@ void main() {
       expect(await connecting, isTrue);
     });
 
-    test("uses OMP's process-wide and fail-closed policies", () {
-      expect(plugin.serializesPromptsProcessWide, isTrue);
+    test("uses OMP's per-session and fail-closed policies", () {
+      expect(plugin.serializesPromptsProcessWide, isFalse);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
       expect(plugin.supportsFormElicitation, isTrue);
@@ -201,14 +201,14 @@ void main() {
       respond(launchDirectoryFrame, {"sessions": <Object?>[]});
       expect(await global, isEmpty);
 
-      final project = plugin.getSessions("/repo");
+      final project = plugin.getSessions(projectId: "/repo", start: null, limit: null);
       final cwdFrame = await waitForFrame(AcpMethods.sessionList, count: 3);
       expect(cwdFrame["params"], {"cwd": "/repo"});
       respond(cwdFrame, {"sessions": <Object?>[]});
       expect(await project, isEmpty);
     });
 
-    test("serializes prompts and routes sessionless forms to the active turn", () async {
+    test("runs sessions concurrently and routes forms by explicit session id", () async {
       await connect();
       final first = await create("first");
       final second = await create("second");
@@ -216,14 +216,15 @@ void main() {
       await send(first.id, "one");
       final firstPrompt = await waitForFrame(AcpMethods.sessionPrompt);
       await send(second.id, "two");
-      await Future<void>.delayed(Duration.zero);
-      expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
+      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
 
       fake.emit({
         "jsonrpc": "2.0",
         "id": 41,
         "method": AcpMethods.elicitationCreate,
         "params": {
+          "sessionId": first.id,
           "mode": "form",
           "message": "Configure extension",
           "requestedSchema": {
@@ -251,8 +252,6 @@ void main() {
       });
 
       respond(firstPrompt, {"stopReason": "end_turn"});
-      final secondPrompt = await waitForFrame(AcpMethods.sessionPrompt, count: 2);
-      expect((secondPrompt["params"] as Map)["sessionId"], second.id);
       respond(secondPrompt, {"stopReason": "end_turn"});
     });
 
@@ -357,16 +356,16 @@ void main() {
         ]),
       );
       final finalizedReasoning = parts.indexWhere(
-        (part) => part.type == PluginMessagePartType.reasoning && part.text == "Thinking",
+        (part) => part is PluginMessagePartReasoning && part.text == "Thinking",
       );
       final tool = parts.indexWhere((part) => part.type == PluginMessagePartType.tool);
       expect(finalizedReasoning, isNonNegative);
       expect(finalizedReasoning, lessThan(tool));
-      expect(parts.where((part) => part.type == PluginMessagePartType.tool).single.state?.output, "tool output");
-      final image = parts.where((part) => part.type == PluginMessagePartType.file).single.attachment!;
+      expect(parts.whereType<PluginMessagePartTool>().single.state.output, "tool output");
+      final image = parts.whereType<PluginMessagePartFile>().single.attachment;
       expect(image, isA<PluginMessageAttachmentInlineImage>());
       expect(image.toString(), isNot(contains("/private/")));
-      expect(parts.where((part) => part.type == PluginMessagePartType.text).last.text, "Finished");
+      expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
     });
 
     test("replays stored OMP history through session load", () async {
@@ -416,12 +415,12 @@ void main() {
 
       final messages = await loading;
       expect(messages, hasLength(2));
-      expect(messages.first.parts.single.text, "Question");
+      expect((messages.first.parts.single as PluginMessagePartText).text, "Question");
       expect(messages.last.parts.map((part) => part.type), [
         PluginMessagePartType.text,
         PluginMessagePartType.file,
       ]);
-      final image = messages.last.parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      final image = (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));
@@ -577,6 +576,7 @@ void main() {
 
       expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
       final toast = events.whereType<BridgeSseTuiToastShow>().single;
+      expect(toast.sessionID, session.id);
       expect(toast.message, contains("run /login"));
       expect(toast.message, isNot(contains("/Users/private")));
       expect(toast.message, isNot(contains("private prompt")));

@@ -4,6 +4,7 @@ import "dart:ffi" show Abi;
 import "dart:io";
 
 import "package:args/args.dart";
+import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -134,7 +135,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: {plugin.id},
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
@@ -836,7 +836,7 @@ class _BenchmarkPlugin({
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) {
     listReadCalls++;
     return Future<List<PluginSession>>.error(StateError("catalog read unexpectedly called plugin.getSessions"));
   }
@@ -862,6 +862,7 @@ class _CountingSSEManager({required super.failureReporter}) extends SSEManager {
     : super(
         replayWindow: const Duration(minutes: 1),
         onBytesSent: (_) {},
+        encryptor: RelayCryptoService().createSessionEncryptor(SecretKey(List<int>.filled(32, 0))),
       );
 
   int enqueueCount = 0;

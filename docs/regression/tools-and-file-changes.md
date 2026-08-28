@@ -11,6 +11,13 @@ signal that a tool changed files.
 - Every plugin normalizes backend tool activity into the shared tool part
   contract: stable identity, tool name, lifecycle status (pending, running,
   completed, error, plus a forward-compatible unknown), title, output, error.
+- Plugin and shared message parts are sealed variants, so text, tool, subtask,
+  file, agent, and retry data cannot be combined with unrelated part types. The
+  shared variants retain the released `type` values and normalize known payloads
+  whose variant-specific fields were omitted by an older bridge into temporary,
+  non-null compatibility defaults: empty text/name details, retry attempt zero,
+  an unknown file attachment, and pending tool state. Current peers serialize
+  those non-null values.
 - Tool output is bounded to the shared limit and truncated by runes, so a
   character is never split; the rule is identical live and on replay.
 - Backend vocabulary stays in the owning plugin. Attachments use client-safe
@@ -23,6 +30,10 @@ signal that a tool changed files.
   reload with the same identity, status, and output; unknown status renders as
   the fallback. A backend abort without a turn identifier still finalizes tools
   in the active turn.
+- DeepSeek projects tool calls and updates through standard ACP with exact call
+  identity, bounded presenter output, terminal result/error state, and diff
+  content. Presenter failure degrades to a generic bounded tool card instead of
+  dropping the call or result.
 
 ## Regression Levels
 
@@ -48,6 +59,9 @@ multi-byte, and empty output; compare live with a later reload.
   completion.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
+- A part carries fields owned by another variant, or a released known-type
+  payload fails to decode because an older bridge omitted variant data, or a
+  current peer serializes null variant data.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 
@@ -58,7 +72,7 @@ multi-byte, and empty output; compare live with a later reload.
 - Rendering needs the client; the phone is the only transcript surface.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
-- An older client does not tolerate an unknown `MessagePartType` from a newer
+- An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
 
@@ -66,9 +80,10 @@ multi-byte, and empty output; compare live with a later reload.
 
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
-- Bridge: `bridge/app/lib/src/bridge/plugin_to_shared_mapping.dart`,
-  `bridge/sse/bridge_event_mapper.dart`; mappers and tests under
+- Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,
+  `bridge/app/lib/src/sse/bridge_event_mapper.dart`; mappers and tests under
   `bridge/sesori_plugin_*/`; `client/app/lib/features/session_detail/widgets/`
-- Tests: `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
+- Tests: `shared/sesori_shared/test/models/message_attachment_test.dart`,
+  `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`

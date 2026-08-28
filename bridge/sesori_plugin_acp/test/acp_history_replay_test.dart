@@ -208,13 +208,13 @@ void main() {
         PluginMessagePartType.file,
         PluginMessagePartType.text,
       ]);
-      final assistantAttachment = messages.first.parts[1].attachment! as PluginMessageAttachmentInlineImage;
+      final assistantAttachment = messages.first.parts[1].attachment as PluginMessageAttachmentInlineImage;
       expect(assistantAttachment.base64, "AA==");
       expect(assistantAttachment.filename, "assistant.png");
 
       final tool = messages[1].parts.single;
-      expect(tool.state?.output, "tool output");
-      final toolAttachment = tool.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(tool.state.output, "tool output");
+      final toolAttachment = tool.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(toolAttachment.base64, "AQ==");
       expect(toolAttachment.filename, "tool.webp");
       expect(toolAttachment.toString(), isNot(contains("private.example")));

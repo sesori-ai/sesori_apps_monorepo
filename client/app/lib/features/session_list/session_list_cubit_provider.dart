@@ -14,7 +14,7 @@ class const SessionListCubitProvider({
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => SessionListCubit(
-        sessionService: getIt<SessionService>(),
+        sessionRepository: getIt<SessionRepository>(),
         sessionListService: getIt<SessionListService>(),
         projectRepository: getIt<ProjectRepository>(),
         connectionService: getIt<ConnectionService>(),
@@ -24,6 +24,7 @@ class const SessionListCubitProvider({
         routeSource: getIt<RouteSource>(),
         projectId: projectId,
         failureReporter: getIt<FailureReporter>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
       ),
       child: child,
     );

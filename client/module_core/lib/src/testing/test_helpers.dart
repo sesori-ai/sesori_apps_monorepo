@@ -14,7 +14,6 @@ import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
-import "../capabilities/session/session_service.dart";
 import "../capabilities/voice/voice_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
@@ -35,6 +34,8 @@ import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
+import "../services/catalog_rescan_service.dart";
+import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
 import "../services/product_analytics_service.dart";
@@ -246,8 +247,6 @@ class MockProjectRepository() extends Mock implements ProjectRepository;
 
 class MockSessionApi() extends Mock implements SessionApi;
 
-class MockSessionService() extends Mock implements SessionService;
-
 class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
@@ -360,12 +359,12 @@ T _namedArgument<T>({required Invocation invocation, required Symbol name}) {
   );
 }
 
-void delegateSessionRepositoryToService({
+void delegateSessionRepository({
   required MockSessionRepository repository,
-  required MockSessionService service,
+  required MockSessionRepository source,
 }) {
   when(() => repository.abortSession(sessionId: any(named: "sessionId"))).thenAnswer(
-    (invocation) => service.abortSession(
+    (invocation) => source.abortSession(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
@@ -376,7 +375,7 @@ void delegateSessionRepositoryToService({
       answers: any(named: "answers"),
     ),
   ).thenAnswer(
-    (invocation) => service.replyToQuestion(
+    (invocation) => source.replyToQuestion(
       requestId: _namedArgument<String>(invocation: invocation, name: #requestId),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       answers: _namedArgument<List<ReplyAnswer>>(invocation: invocation, name: #answers),
@@ -388,7 +387,7 @@ void delegateSessionRepositoryToService({
       sessionId: any(named: "sessionId"),
     ),
   ).thenAnswer(
-    (invocation) => service.rejectQuestion(
+    (invocation) => source.rejectQuestion(
       requestId: _namedArgument<String>(invocation: invocation, name: #requestId),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
@@ -400,7 +399,7 @@ void delegateSessionRepositoryToService({
       before: any(named: "before"),
     ),
   ).thenAnswer(
-    (invocation) => service.getMessages(
+    (invocation) => source.getMessages(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       limit: _namedArgument<int?>(invocation: invocation, name: #limit),
       before: _namedArgument<int?>(invocation: invocation, name: #before),
@@ -409,14 +408,14 @@ void delegateSessionRepositoryToService({
   when(
     () => repository.getPendingQuestions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getPendingQuestions(
+    (invocation) => source.getPendingQuestions(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
   when(
     () => repository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getPendingPermissions(
+    (invocation) => source.getPendingPermissions(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
@@ -426,19 +425,19 @@ void delegateSessionRepositoryToService({
   when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getChildren(
+    (invocation) => source.getChildren(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
     ),
   );
-  when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
-  delegateSessionOptionsRepositoryToService(repository: repository, service: service);
+  when(() => repository.getSessionStatuses()).thenAnswer((_) => source.getSessionStatuses());
+  delegateSessionOptionsRepository(repository: repository, source: source);
   when(
     () => repository.listAgents(
       projectId: any(named: "projectId"),
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listAgents(
+    (invocation) => source.listAgents(
       projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
@@ -449,7 +448,7 @@ void delegateSessionRepositoryToService({
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listProviders(
+    (invocation) => source.listProviders(
       projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
@@ -460,8 +459,8 @@ void delegateSessionRepositoryToService({
       pluginId: any(named: "pluginId"),
     ),
   ).thenAnswer(
-    (invocation) => service.listCommands(
-      projectId: _namedArgument<String?>(invocation: invocation, name: #projectId),
+    (invocation) => source.listCommands(
+      projectId: _namedArgument<String>(invocation: invocation, name: #projectId),
       pluginId: _namedArgument<String>(invocation: invocation, name: #pluginId),
     ),
   );
@@ -477,14 +476,13 @@ void delegateSessionRepositoryToService({
       command: any(named: "command"),
     ),
   ).thenAnswer(
-    (invocation) => service.sendMessage(
+    (invocation) => source.sendMessage(
       promptId: "prompt-1",
       attachments: _namedArgument<List<ComposerAttachment>>(invocation: invocation, name: #attachments),
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       text: _namedArgument<String>(invocation: invocation, name: #text),
       agent: _namedArgument<String?>(invocation: invocation, name: #agent),
-      providerID: _namedArgument<PromptModel?>(invocation: invocation, name: #model)?.providerID,
-      modelID: _namedArgument<PromptModel?>(invocation: invocation, name: #model)?.modelID,
+      model: _namedArgument<PromptModel?>(invocation: invocation, name: #model),
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
     ),
@@ -493,17 +491,17 @@ void delegateSessionRepositoryToService({
 
 /// Adapts existing new-session tests that stub the three legacy service calls
 /// to the aggregate repository seam used by the modern client flow.
-void delegateSessionOptionsRepositoryToService({
+void delegateSessionOptionsRepository({
   required MockSessionRepository repository,
-  required MockSessionService service,
+  required MockSessionRepository source,
 }) {
   Future<SessionOptionsRepositoryResult> loadOptions(Invocation invocation) async {
     final projectId = _namedArgument<String>(invocation: invocation, name: #projectId);
     final pluginId = _namedArgument<String>(invocation: invocation, name: #pluginId);
     final (agents, providers, commands) = await (
-      service.listAgents(projectId: projectId, pluginId: pluginId),
-      service.listProviders(projectId: projectId, pluginId: pluginId),
-      service.listCommands(projectId: projectId, pluginId: pluginId),
+      source.listAgents(projectId: projectId, pluginId: pluginId),
+      source.listProviders(projectId: projectId, pluginId: pluginId),
+      source.listCommands(projectId: projectId, pluginId: pluginId),
     ).wait;
     return switch ((agents, providers, commands)) {
       (
@@ -518,6 +516,7 @@ void delegateSessionOptionsRepositoryToService({
             providers: providerData.items,
             providersConnectedOnly: providerData.connectedOnly,
             commands: commandData.items,
+            lastUsedPromptDefaults: null,
           ),
         ),
       (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
@@ -546,10 +545,11 @@ void stubSessionRepositoryGetSession({
 }
 
 void registerCoreFallbackValues() {
-  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
+  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+  registerFallbackValue(AccountStatus.existing);
   registerFallbackValue(SessionOptionsRequestMode.dynamic);
   registerFallbackValue(ProjectViewClaim());
   registerFallbackValue(ProjectViewPaneClaim());
@@ -624,7 +624,7 @@ Session testSession({
 }
 
 HealthResponse testHealthResponse() {
-  return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 }
 
 BridgeSummary testBridgeSummary({
@@ -680,25 +680,15 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
       agent: null,
       modelID: null,
       providerID: null,
+      sender: MessageSender.agent,
       time: null,
     ),
     parts: [
-      MessagePart(
+      MessagePart.text(
         id: "part-1",
         sessionID: "session-1",
         messageID: messageId,
-        type: MessagePartType.text,
         text: "Hello, world!",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       ),
     ],
   );
@@ -839,12 +829,85 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
   Future<bool> restoreLocalSession() async => false;
 
   @override
-  Future<AuthUser> loginWithEmail({required String email, required String password}) async {
+  Future<AuthLoginResult> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<AuthUser> loginWithApple({required String idToken, required String nonce}) async {
+  Future<AuthLoginResult> loginWithApple({required String idToken, required String nonce}) async {
     throw UnimplementedError();
+  }
+}
+
+/// A [CatalogRescanService] a test drives directly.
+///
+/// The real service owns a whole operation lifecycle; a consumer only cares
+/// that it publishes state, announces committed catalog changes, and accepts
+/// intents, so this exposes exactly those.
+class FakeCatalogRescanService() implements CatalogRescanService {
+  final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
+    const CatalogRescanState.idle(),
+  );
+  final StreamController<void> _catalogChanged = StreamController<void>.broadcast(sync: true);
+
+  final List<void> _startAlls = [];
+  final List<void> _cancels = [];
+  final List<void> _dismisses = [];
+
+  int get startAllCalls => _startAlls.length;
+  int get cancelCalls => _cancels.length;
+  int get dismissCalls => _dismisses.length;
+
+  @override
+  ValueStream<CatalogRescanState> get state => _state.stream;
+
+  @override
+  Stream<void> get catalogChanged => _catalogChanged.stream;
+
+  /// Plugin ids passed to [start], in call order.
+  final List<String> startedPluginIds = [];
+
+  CatalogRescanStartResult _startResult = const CatalogRescanStartResult.accepted();
+
+  /// Sets what [start] answers, so a test can drive a rejection.
+  void stubStartResult(CatalogRescanStartResult result) => _startResult = result;
+
+  @override
+  Future<void> startAll() async => _startAlls.add(null);
+
+  void Function()? _beforeStartAnswers;
+
+  /// Sets a hook that runs inside [start] before it answers, so a test can
+  /// drive the state the real service would already have published by then: a
+  /// definite rejection settles the operation before the call returns.
+  void stubBeforeStartAnswers(void Function() hook) => _beforeStartAnswers = hook;
+
+  @override
+  Future<CatalogRescanStartResult> start({required String pluginId}) async {
+    startedPluginIds.add(pluginId);
+    _beforeStartAnswers?.call();
+    return _startResult;
+  }
+
+  @override
+  Future<void> cancel() async => _cancels.add(null);
+
+  @override
+  void dismiss() => _dismisses.add(null);
+
+  /// Publishes [next] as the current scan state.
+  void emit(CatalogRescanState next) => _state.add(next);
+
+  /// Announces that an import committed a durable catalog change.
+  void emitCatalogChanged() => _catalogChanged.add(null);
+
+  /// Closes both streams. Named to match `Disposable`, because `get_it` calls
+  /// it on reset and every widget test that registers this fake goes through
+  /// that path.
+  @override
+  Future<void> onDispose() async {
+    if (_state.isClosed) return;
+    await _state.close();
+    await _catalogChanged.close();
   }
 }

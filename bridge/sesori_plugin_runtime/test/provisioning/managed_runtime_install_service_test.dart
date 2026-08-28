@@ -41,7 +41,14 @@ class const _StubManifest({required final bool hasAsset}) implements RuntimeMani
   RuntimeAsset? assetFor({required PlatformTarget target}) => hasAsset ? _asset : null;
 
   @override
+  bool supportsManagedInstallOn({required PlatformTarget target}) => hasAsset;
+
+  @override
   String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
+
+  @override
+  String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
+      "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
 
   @override
   String managedBinaryPath({required String stateDirectory}) {
@@ -51,6 +58,17 @@ class const _StubManifest({required final bool hasAsset}) implements RuntimeMani
 
 class _FakeValidator({required final RuntimeVersion? managedVersion}) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
+
+  @override
+  Future<RuntimeProbeOutcome> probe({
+    required String executable,
+    required Map<String, String>? environment,
+  }) async {
+    detectedExecutables.add(executable);
+    return managedVersion == null
+        ? const RuntimeProbeUnrecognized()
+        : RuntimeProbeReady(version: managedVersion!);
+  }
 
   @override
   Future<RuntimeVersion?> detectVersion({

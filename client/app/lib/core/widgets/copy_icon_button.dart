@@ -4,6 +4,8 @@ import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../utils/copy_text_to_clipboard.dart";
+
 /// Small icon button that copies [text] to the clipboard and briefly confirms
 /// with a check mark plus light haptic feedback. Self-contained — no snackbar
 /// or popup-alert dependency, so it is safe to embed inside a
@@ -32,12 +34,7 @@ class _CopyIconButtonState() extends State<CopyIconButton> {
   }
 
   Future<void> _copy() async {
-    // Clipboard/haptic can throw on restricted platforms or states; fail soft.
-    try {
-      await Clipboard.setData(ClipboardData(text: widget.text));
-    } on Object catch (_) {
-      return; // Copy failed — do not show the success indicator.
-    }
+    if (!await copyTextToClipboard(text: widget.text, operation: "text")) return;
     // Haptic is best-effort; its failure must not hide the success state.
     try {
       await HapticFeedback.lightImpact();

@@ -782,6 +782,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailErrorTitle => 'Failed to load messages';
 
   @override
+  String get sessionDetailAutomation => 'Automation';
+
+  @override
   String get sessionDetailRetry => 'Retry';
 
   @override
@@ -1745,4 +1748,139 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get projectsOnboardingWhyFaqReadAnswer =>
       'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.';
+
+  @override
+  String get catalogScanPullCaption => 'Keep pulling to find new sessions';
+
+  @override
+  String get catalogScanRunningTitle => 'Scanning all harnesses';
+
+  @override
+  String get catalogScanStartingDetail => 'Starting…';
+
+  @override
+  String catalogScanRunningDetail(String harness, int sessions) {
+    String _temp0 = intl.Intl.pluralLogic(
+      sessions,
+      locale: localeName,
+      other: '$sessions sessions',
+      one: '1 session',
+    );
+    return '$harness — $_temp0';
+  }
+
+  @override
+  String get catalogScanCancel => 'Cancel';
+
+  @override
+  String get catalogScanCompleteTitle => 'Scan complete';
+
+  @override
+  String get catalogScanNothingNew => 'No new sessions';
+
+  @override
+  String catalogScanNewSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new sessions',
+      one: '1 new session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogScanNewProjectCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new projects',
+      one: '1 new project',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogScanSessionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sessions',
+      one: '1 session',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogScanProjectCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count projects',
+      one: '1 project',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String catalogScanCountsJoined(String sessions, String projects) {
+    return '$sessions in $projects';
+  }
+
+  @override
+  String get catalogScanPartlyFailedTitle => 'Scan finished';
+
+  @override
+  String catalogScanPartlyFailedDetail(int failed, int total) {
+    return '$failed of $total harnesses could not be scanned';
+  }
+
+  @override
+  String get catalogScanFailedTitle => 'Scan failed';
+
+  @override
+  String get catalogScanFailedDetail => 'Check the bridge log for details';
+
+  @override
+  String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';
+
+  @override
+  String get catalogScanUnsupportedDetail => 'Update the bridge to scan from here';
+
+  @override
+  String get catalogScanNoHarnessTitle => 'No harness to scan';
+
+  @override
+  String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
+
+  @override
+  String harnessManagementScanFinished(String result) {
+    return 'Scan complete — $result';
+  }
+
+  @override
+  String harnessManagementScanPartlyFailed(int failed, int total) {
+    return '$failed of $total harnesses could not be scanned';
+  }
+
+  @override
+  String get harnessManagementScanFinishedFailed => 'Scan failed. Check the bridge log for details';
+
+  @override
+  String get harnessManagementScan => 'Scan for sessions';
+
+  @override
+  String get harnessManagementScanDescription => 'Import projects and sessions this harness has on disk';
+
+  @override
+  String get harnessManagementScanNotReady => 'This harness cannot be scanned right now';
+
+  @override
+  String get harnessManagementScanUnsupported => 'Update the bridge to scan from here';
+
+  @override
+  String get harnessManagementScanFailed => 'Could not start the scan. Try again in a moment';
+
+  @override
+  String get catalogScanDismiss => 'Dismiss';
 }

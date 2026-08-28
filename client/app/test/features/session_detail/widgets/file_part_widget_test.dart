@@ -1376,12 +1376,10 @@ void main() {
   });
 
   testWidgets("renders completed tool attachments", (tester) async {
-    const part = MessagePart(
+    const part = MessagePart.tool(
       id: "part-1",
       sessionID: "session-1",
       messageID: "message-1",
-      type: MessagePartType.tool,
-      text: null,
       tool: "browser",
       state: ToolState(
         status: ToolStatus.completed,
@@ -1392,15 +1390,8 @@ void main() {
           MessageAttachment.metadata(mime: "image/png", filename: "screenshot.png"),
         ],
       ),
-      prompt: null,
-      description: null,
-      agent: null,
-      childSessionID: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     );
+    if (part is! MessagePartTool) fail("MessagePart.tool returned a non-tool variant");
 
     await tester.pumpWidget(
       _app(
@@ -1421,21 +1412,10 @@ void main() {
         time: null,
       ),
       parts: [
-        MessagePart(
+        MessagePart.file(
           id: "part-1",
           sessionID: "session-1",
           messageID: "message-1",
-          type: MessagePartType.file,
-          text: null,
-          tool: null,
-          state: null,
-          prompt: null,
-          description: null,
-          agent: null,
-          childSessionID: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
           attachment: MessageAttachment.metadata(mime: "text/plain", filename: "notes.txt"),
         ),
       ],

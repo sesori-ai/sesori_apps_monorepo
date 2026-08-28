@@ -18,6 +18,9 @@ management API, when it reports its runtime as missing or too old.
   `ldd` evidence; macOS and Windows use direct target mapping, and Windows arm64 remains unsupported.
   Pi installs its complete official package tree on all six published targets and keeps the
   `pi`/`pi.exe` entry beside its assets, native modules, and package metadata.
+  DeepSeek likewise installs its complete adapter package on macOS, Linux, and
+  Windows for arm64 and x64. Its launcher remains beside the bundled Node runtime
+  and package tree, so installation never depends on system Node or npm.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - The command is accepted immediately because an install can outlast a request budget;
   progress reports phases with a percentage, and the terminal outcome also lands in the
@@ -69,7 +72,9 @@ download, verification, or placement. Use a disposable data directory.
 
 - `bridge/sesori_plugin_interface/.../bridge_plugin_descriptor.dart`,
   `bridge/sesori_plugin_runtime/lib/src/provisioning/`, OpenCode, Codex, Cursor, Pi, and OMP manifests
-- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`, `.../plugin_registry.dart`
+- `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
+  `bridge/app/lib/src/runtime/plugin_registry.dart`,
+  `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_runtime_manifest.dart`
 - `client/module_core/.../plugin_management_service.dart`,
   `client/app/lib/features/settings/harnesses_settings_screen.dart`
 - Tests: `bridge/app/test/services/plugin_lifecycle_service_test.dart`, per-plugin

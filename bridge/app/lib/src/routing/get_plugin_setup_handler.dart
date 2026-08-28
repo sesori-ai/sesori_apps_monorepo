@@ -9,11 +9,8 @@ class GetPluginSetupHandler({required final PluginLifecycleService _lifecycleSer
 
   @override
   Future<PluginSetupResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) async {
+    RelayRequest request,
+  ) async {
     return _lifecycleService.setupSnapshot;
   }
 }

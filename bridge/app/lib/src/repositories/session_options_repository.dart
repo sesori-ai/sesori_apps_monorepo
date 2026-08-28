@@ -206,6 +206,7 @@ class SessionOptionsRepository({
           commands: CommandListResponse(
             items: options.commands.map((command) => command.toSharedCommandInfo()).toList(growable: false),
           ),
+          lastUsedPromptDefaults: null,
         ),
         completeness: options.completeness,
         generation: generation,
@@ -239,6 +240,7 @@ class SessionOptionsRepository({
         agents: Agents.fromJson(jsonDecodeMap(row.agentsJson)),
         providers: ProviderListResponse.fromJson(jsonDecodeMap(row.providersJson)),
         commands: CommandListResponse.fromJson(jsonDecodeMap(row.commandsJson)),
+        lastUsedPromptDefaults: null,
       ),
     );
   }

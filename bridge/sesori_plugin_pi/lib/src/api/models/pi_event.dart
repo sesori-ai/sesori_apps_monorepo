@@ -229,7 +229,7 @@ final class const PiAutoRetryStartEvent({
   required final int? maxAttempts,
   required final int? delayMs,
 
-  /// Raw provider text. It can carry request details, so it is never logged.
+  /// Raw provider text, forwarded unchanged in the user-facing retry status.
   required final String? errorMessage,
   required super.raw,
 }) extends PiEvent;
@@ -245,6 +245,8 @@ final class const PiSummarizationRetryScheduledEvent({
   required final int? attempt,
   required final int? maxAttempts,
   required final int? delayMs,
+
+  /// Raw provider text, forwarded unchanged in the user-facing retry status.
   required final String? errorMessage,
   required super.raw,
 }) extends PiEvent;

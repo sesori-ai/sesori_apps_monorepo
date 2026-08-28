@@ -5,6 +5,9 @@ import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+typedef AcpReplayUserMessageIdOverride = String? Function({required String acpMessageId});
+typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map<String, dynamic> params});
+
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
 ///
@@ -21,6 +24,12 @@ class AcpReplayCollector({
   var String? modelId,
   var String? providerId,
   required final String? initialUserMessageId,
+
+  /// Overrides a replayed user's ACP message id with backend authority.
+  required final AcpReplayUserMessageIdOverride? messageIdOverride,
+
+  /// Extracts an optional backend time from the complete replay envelope.
+  required final AcpReplayMessageTimeResolver? messageTimeResolver,
 
   /// Classifies a fully-accumulated assistant message as a backend halt notice
   /// (see [AcpEventMapper.classifyHaltNotice]) so a reloaded session renders the
@@ -40,22 +49,28 @@ class AcpReplayCollector({
     if (update == null) return;
     final rawSessionUpdate = update["sessionUpdate"];
     final sessionUpdate = rawSessionUpdate is String ? rawSessionUpdate : null;
+    final time = messageTimeResolver?.call(params: params);
     if (sessionUpdate != "agent_message_chunk") {
       _pendingAssistantContent = null;
     }
     switch (sessionUpdate) {
       case "agent_message_chunk":
-        _consumeAssistantContent(update: update);
+        _consumeAssistantContent(update: update, time: time);
       case "agent_thought_chunk":
         final t = _contentMapper.text(content: update["content"]);
-        if (t != null) _assistant(messageId: _chunkMessageId(update)).reasoning.write(t);
+        if (t != null) {
+          final draft = _assistant(messageId: _chunkMessageId(update));
+          _retainTime(draft: draft, time: time);
+          draft.reasoning.write(t);
+        }
       case "user_message_chunk":
-        _consumeUserContent(update: update);
+        _consumeUserContent(update: update, time: time);
       case "tool_call":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
+        _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         if (draft == null) {
@@ -88,6 +103,7 @@ class AcpReplayCollector({
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
+        _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         if (draft == null) {
@@ -127,8 +143,12 @@ class AcpReplayCollector({
     }
   }
 
-  void _consumeUserContent({required Map<String, dynamic> update}) {
+  void _consumeUserContent({
+    required Map<String, dynamic> update,
+    required PluginMessageTime? time,
+  }) {
     final draft = _user(messageId: _chunkMessageId(update));
+    _retainTime(draft: draft, time: time);
     final blocks = _contentMapper.mapScoped(
       content: _stripUserImageUris(update["content"]),
       scope: draft.contentTracker.mappingScope,
@@ -138,7 +158,10 @@ class AcpReplayCollector({
     }
   }
 
-  void _consumeAssistantContent({required Map<String, dynamic> update}) {
+  void _consumeAssistantContent({
+    required Map<String, dynamic> update,
+    required PluginMessageTime? time,
+  }) {
     final messageId = _chunkMessageId(update);
     final existing = _matchingRole(role: "assistant", messageId: messageId);
     final AcpContentTracker tracker;
@@ -154,6 +177,7 @@ class AcpReplayCollector({
         _pendingAssistantContent = _PendingAssistantContent(
           messageId: messageId,
           tracker: tracker,
+          time: time,
         );
       }
     }
@@ -169,9 +193,12 @@ class AcpReplayCollector({
         _newDraft(
           role: "assistant",
           messageId: messageId,
+          overrideId: null,
           contentTracker: tracker,
         );
+    final pendingTime = _pendingAssistantContent?.time;
     _pendingAssistantContent = null;
+    _retainTime(draft: draft, time: pendingTime ?? time);
     for (final mutation in mutations) {
       draft.entries.add(_AssistantContentEntry(mutation: mutation));
     }
@@ -205,9 +232,10 @@ class AcpReplayCollector({
             agent: agentId,
             modelID: modelId,
             providerID: providerId,
+            variant: null,
             errorName: halt.errorName,
-            errorMessage: halt.message,
-            time: null,
+            errorMessage: assistantText,
+            time: draft.time,
           ),
           parts: const [],
         );
@@ -302,7 +330,7 @@ class AcpReplayCollector({
         id: draft.id,
         sessionID: sessionId,
         agent: null,
-        time: null,
+        time: draft.time,
         promptId: null,
       );
     }
@@ -312,7 +340,9 @@ class AcpReplayCollector({
       agent: agentId,
       modelID: modelId,
       providerID: providerId,
-      time: null,
+      variant: null,
+      sender: PluginMessageSender.agent,
+      time: draft.time,
     );
   }
 
@@ -322,23 +352,21 @@ class AcpReplayCollector({
     PluginMessagePartType type,
     String text,
   ) {
-    return PluginMessagePart(
-      id: "${draft.id}-$suffix",
-      sessionID: sessionId,
-      messageID: draft.id,
-      type: type,
-      text: text,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      childSessionID: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
-    );
+    return switch (type) {
+      PluginMessagePartType.text => PluginMessagePart.text(
+        id: "${draft.id}-$suffix",
+        sessionID: sessionId,
+        messageID: draft.id,
+        text: text,
+      ),
+      PluginMessagePartType.reasoning => PluginMessagePart.reasoning(
+        id: "${draft.id}-$suffix",
+        sessionID: sessionId,
+        messageID: draft.id,
+        text: text,
+      ),
+      _ => throw StateError("ACP text part cannot use $type"),
+    };
   }
 
   PluginMessagePart _attachmentPart({
@@ -346,21 +374,10 @@ class AcpReplayCollector({
     required String suffix,
     required PluginMessageAttachment attachment,
   }) {
-    return PluginMessagePart(
+    return PluginMessagePart.file(
       id: "${draft.id}-$suffix",
       sessionID: sessionId,
       messageID: draft.id,
-      type: PluginMessagePartType.file,
-      text: null,
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      childSessionID: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
       attachment: attachment,
     );
   }
@@ -371,12 +388,10 @@ class AcpReplayCollector({
     required _ToolDraft tool,
   }) {
     final content = tool.contentTracker.snapshot;
-    return PluginMessagePart(
+    return PluginMessagePart.tool(
       id: "${draft.id}-tool-$toolId",
       sessionID: sessionId,
       messageID: draft.id,
-      type: PluginMessagePartType.tool,
-      text: null,
       tool: tool.tool,
       state: PluginToolState(
         status: tool.status,
@@ -385,19 +400,21 @@ class AcpReplayCollector({
         error: tool.status == PluginToolStatus.error ? content.output : null,
         attachments: content.attachments,
       ),
-      prompt: null,
-      description: null,
-      agent: null,
-      childSessionID: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     );
   }
 
-  _Draft _assistant({String? messageId}) => _ensureRole("assistant", messageId: messageId);
-  _Draft _user({String? messageId}) => _ensureRole("user", messageId: messageId);
+  void _retainTime({required _Draft draft, required PluginMessageTime? time}) {
+    if (time != null && (draft.time == null || time.created < draft.time!.created)) {
+      draft.time = time;
+    }
+  }
+
+  _Draft _assistant({String? messageId}) => _ensureRole("assistant", messageId: messageId, overrideId: null);
+  _Draft _user({String? messageId}) => _ensureRole(
+    "user",
+    messageId: messageId,
+    overrideId: messageId == null ? null : messageIdOverride?.call(acpMessageId: messageId),
+  );
 
   // Tool calls carry no messageId (they are not ContentChunks) and attach to
   // the current assistant message even when its content chunks are stamped.
@@ -411,6 +428,7 @@ class AcpReplayCollector({
     return _newDraft(
       role: "assistant",
       messageId: null,
+      overrideId: null,
       contentTracker: null,
     );
   }
@@ -428,11 +446,12 @@ class AcpReplayCollector({
   /// content chunk continues only an id-less draft; tool attachments use
   /// [_assistantForTool] because ACP does not stamp them. Comparison is against
   /// the last draft only, matching the spec's sequential semantics.
-  _Draft _ensureRole(String role, {String? messageId}) {
+  _Draft _ensureRole(String role, {required String? messageId, required String? overrideId}) {
     return _matchingRole(role: role, messageId: messageId) ??
         _newDraft(
           role: role,
           messageId: messageId,
+          overrideId: overrideId,
           contentTracker: null,
         );
   }
@@ -449,13 +468,14 @@ class AcpReplayCollector({
   _Draft _newDraft({
     required String role,
     required String? messageId,
+    required String? overrideId,
     required AcpContentTracker? contentTracker,
   }) {
     final isFirstUser = role == "user" && !_hasUserDraft;
     if (role == "user") _hasUserDraft = true;
-    final defaultId = messageId != null && messageId.isNotEmpty
-        ? "$sessionId-m$messageId-$role"
-        : "$sessionId-h${_seq++}-$role";
+    final defaultId =
+        overrideId ??
+        (messageId != null && messageId.isNotEmpty ? "$sessionId-m$messageId-$role" : "$sessionId-h${_seq++}-$role");
     final draft = _Draft(
       role: role,
       id: isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId,
@@ -472,10 +492,11 @@ class AcpReplayCollector({
     return id is String && id.isNotEmpty ? id : null;
   }
 
-  _ToolDraft? _findTool(String toolId) {
+  _ToolDraft? _findTool(String toolId) => _draftForTool(toolId)?.tools[toolId];
+
+  _Draft? _draftForTool(String toolId) {
     for (final draft in _drafts.reversed) {
-      final tool = draft.tools[toolId];
-      if (tool != null) return tool;
+      if (draft.tools.containsKey(toolId)) return draft;
     }
     return null;
   }
@@ -513,6 +534,7 @@ class _Draft({
   final StringBuffer reasoning = StringBuffer();
   final List<_AssistantDraftEntry> entries = [];
   final Map<String, _ToolDraft> tools = {};
+  PluginMessageTime? time;
 }
 
 sealed class const _AssistantDraftEntry();
@@ -525,6 +547,7 @@ final class const _AssistantToolEntry({required final String toolId, required fi
 final class const _PendingAssistantContent({
   required final String? messageId,
   required final AcpContentTracker tracker,
+  required final PluginMessageTime? time,
 });
 
 class _ToolDraft({

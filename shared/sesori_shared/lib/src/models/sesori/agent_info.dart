@@ -6,7 +6,7 @@ part "agent_info.freezed.dart";
 
 part "agent_info.g.dart";
 
-/// Represents an available agent from `GET /agent`.
+/// Represents an agent available for session creation.
 ///
 /// We only model the fields relevant for the mobile picker UI.
 @Freezed(fromJson: true, toJson: true)

@@ -6,15 +6,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:sesori_bridge/src/auth/auth_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
-import 'package:sesori_bridge/src/auth/login_oauth_api.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
+import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('LoginOAuthApi', () {
+  group('AuthApi OAuth', () {
     group('GitHub OAuth', () {
       test('performOAuthLogin initializes, opens browser, polls, and returns tokens', () async {
         final authServer = await _OAuthLongPollTestServer.start(
@@ -29,6 +30,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -107,6 +109,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -150,6 +153,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -199,6 +203,7 @@ void main() {
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -248,6 +253,7 @@ void main() {
                 providerUserId: 'google-1',
                 providerUsername: null,
               ),
+              accountStatus: AccountStatus.existing,
             ),
           ],
         );
@@ -275,11 +281,11 @@ void main() {
           statusResponses: const [AuthSessionStatusResponse.pending()],
         );
         addTearDown(authServer.close);
-        final api = LoginOAuthApi(
+        final api = AuthApi(
           authBackendUrl: authServer.baseUrl,
           client: authServer.client,
-          clientType: AuthClientType.bridgeMacos,
-          device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
+          requestDeadline: AuthApi.defaultRequestDeadline,
+          sendRequest: sendRequestWithDeadline,
         );
 
         await api.ackOAuthSessionCompletion(sessionToken: 'session-token-123');
@@ -526,12 +532,14 @@ LoginOAuthService _createOAuthService({
   Future<void> Function(Duration duration)? delay,
 }) {
   return LoginOAuthService(
-    api: LoginOAuthApi(
+    api: AuthApi(
       authBackendUrl: authServer.baseUrl,
       client: authServer.client,
-      clientType: AuthClientType.bridgeMacos,
-      device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
+      requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
     ),
+    clientType: AuthClientType.bridgeMacos,
+    device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
     browserLauncher: browserLauncher,
     browserOpenability: browserOpenability,
     pollTimeout: pollTimeout,

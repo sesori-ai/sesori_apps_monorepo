@@ -151,29 +151,21 @@ Message _message({required String id}) => Message.user(
 MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   info: _message(id: id),
   parts: [
-    MessagePart(
+    MessagePart.text(
       id: "$id-p1",
       sessionID: "ses_a",
       messageID: id,
-      type: MessagePartType.text,
       text: "text of $id",
-      tool: null,
-      state: null,
-      prompt: null,
-      description: null,
-      agent: null,
-      childSessionID: null,
-      agentName: null,
-      attempt: null,
-      retryError: null,
-      attachment: null,
     ),
   ],
 );
 
 class _FakeSessionRepository({required final List<MessageWithParts> transcript}) implements SessionRepository {
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => transcript;
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async => (
+    messages: transcript,
+    promptDefaults: null,
+  );
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(

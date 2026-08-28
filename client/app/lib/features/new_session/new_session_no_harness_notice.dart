@@ -35,7 +35,6 @@ class const NewSessionNoHarnessNotice({super.key, required final VoidCallback on
             title: Text(loc.newSessionHarnessSettings),
             trailing: const Icon(TablerRegular.chevron_right),
             onTap: onSettingsPressed,
-            isLast: true,
           ),
         ],
       ),

@@ -54,7 +54,7 @@ final class const _MalformedMessageAttachmentError({required final Object innerE
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON converter input
-MessageAttachment? _messageAttachmentFromJson(Object? json) {
+MessageAttachment? _messageAttachmentOrNullFromJson(Object? json) {
   if (json == null) return null;
   if (json is! Map) {
     developer.log("Ignoring malformed message attachment payload", name: "sesori_shared");
@@ -75,6 +75,10 @@ MessageAttachment? _messageAttachmentFromJson(Object? json) {
 }
 
 // ignore: no_slop_linter/prefer_specific_type, JSON converter input
+MessageAttachment _messageAttachmentFromJson(Object? json) =>
+    _messageAttachmentOrNullFromJson(json) ?? const MessageAttachment.unknown();
+
+// ignore: no_slop_linter/prefer_specific_type, JSON converter input
 List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
   if (json == null) return const [];
   if (json is! List) {
@@ -82,68 +86,134 @@ List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
     return const [];
   }
   return [
-    for (final item in json) ?_messageAttachmentFromJson(item),
+    for (final item in json) ?_messageAttachmentOrNullFromJson(item),
   ];
-}
-
-@JsonEnum()
-enum MessagePartType() {
-  @JsonValue("text")
-  text,
-  @JsonValue("reasoning")
-  reasoning,
-  @JsonValue("tool")
-  tool,
-  @JsonValue("subtask")
-  subtask,
-  @JsonValue("step-start")
-  stepStart,
-  @JsonValue("step-finish")
-  stepFinish,
-  @JsonValue("file")
-  file,
-  @JsonValue("snapshot")
-  snapshot,
-  @JsonValue("patch")
-  patch,
-  @JsonValue("agent")
-  agent,
-  @JsonValue("retry")
-  retry,
-  @JsonValue("compaction")
-  compaction,
 }
 
 @JsonEnum()
 enum MessageAttachmentDelivery() { inline, storedReference }
 
-@Freezed(fromJson: true, toJson: true)
-sealed class MessagePart with _$MessagePart {
-  const factory({
+@Freezed(unionKey: "type", fromJson: true, toJson: true)
+sealed class const MessagePart._() with _$MessagePart {
+  @FreezedUnionValue("text")
+  const factory text({
     required String id,
     required String sessionID,
     required String messageID,
-    required MessagePartType type,
-    required String? text,
-    required String? tool,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
+    // Remove @Default and require text when the minimum supported bridge always sends it.
+    @Default("") String text,
+  }) = MessagePartText;
 
-    /// For a `tool` part, the tool call's lifecycle. For a `subtask` part, the
-    /// subtask's own lifecycle, which is authoritative for its inline status;
-    /// a backend that does not report one sends null.
-    required ToolState? state,
-    required String? prompt,
-    required String? description,
-    required String? agent,
+  @FreezedUnionValue("reasoning")
+  const factory reasoning({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit text.
+    // Remove @Default and require text when the minimum supported bridge always sends it.
+    @Default("") String text,
+  }) = MessagePartReasoning;
 
-    /// The session hosting a `subtask` part's work, when the backend exposes
-    /// one and the bridge could resolve it. Null leaves consumers to their own
+  @FreezedUnionValue("tool")
+  const factory tool({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the tool name.
+    // Remove @Default and require tool when the minimum supported bridge always sends it.
+    @Default("") String tool,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit tool state.
+    // Remove @Default and require state when the minimum supported bridge always sends it.
+    @Default(
+      ToolState(
+        status: ToolStatus.pending,
+        title: null,
+        output: null,
+        error: null,
+      ),
+    )
+    ToolState state,
+  }) = MessagePartTool;
+
+  @FreezedUnionValue("subtask")
+  const factory subtask({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask prompt.
+    // Remove @Default and require prompt when the minimum supported bridge always sends it.
+    @Default("") String prompt,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask description.
+    // Remove @Default and require description when the minimum supported bridge always sends it.
+    @Default("") String description,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask agent.
+    // Remove @Default and require agent when the minimum supported bridge always sends it.
+    @Default("") String agent,
+
+    /// The subtask's own lifecycle, authoritative for its inline status. Null
+    /// when the backend reports none, leaving consumers to infer it.
+    ToolState? taskState,
+
+    /// The session hosting this subtask's work, when the backend exposes one
+    /// and the bridge could resolve it. Null leaves consumers to their own
     /// association, so a part is never withheld for an unresolved reference.
-    required String? childSessionID,
-    required String? agentName,
-    required int? attempt,
-    required String? retryError,
-    @JsonKey(fromJson: _messageAttachmentFromJson) required MessageAttachment? attachment,
-  }) = _MessagePart;
+    String? childSessionID,
+  }) = MessagePartSubtask;
+
+  @FreezedUnionValue("step-start")
+  const factory stepStart({required String id, required String sessionID, required String messageID}) =
+      MessagePartStepStart;
+
+  @FreezedUnionValue("step-finish")
+  const factory stepFinish({required String id, required String sessionID, required String messageID}) =
+      MessagePartStepFinish;
+
+  @FreezedUnionValue("file")
+  const factory file({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the attachment.
+    // Remove @Default and require attachment when the minimum supported bridge always sends it.
+    @JsonKey(fromJson: _messageAttachmentFromJson)
+    @Default(MessageAttachment.unknown())
+    MessageAttachment attachment,
+  }) = MessagePartFile;
+
+  @FreezedUnionValue("snapshot")
+  const factory snapshot({required String id, required String sessionID, required String messageID}) =
+      MessagePartSnapshot;
+
+  @FreezedUnionValue("patch")
+  const factory patch({required String id, required String sessionID, required String messageID}) = MessagePartPatch;
+
+  @FreezedUnionValue("agent")
+  const factory agent({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the agent name.
+    // Remove @Default and require agentName when the minimum supported bridge always sends it.
+    @Default("") String agentName,
+  }) = MessagePartAgent;
+
+  @FreezedUnionValue("retry")
+  const factory retry({
+    required String id,
+    required String sessionID,
+    required String messageID,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry attempt.
+    // Remove @Default and require attempt when the minimum supported bridge always sends it.
+    @Default(0) int attempt,
+    // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the retry error.
+    // Remove @Default and require retryError when the minimum supported bridge always sends it.
+    @Default("") String retryError,
+  }) = MessagePartRetry;
+
+  @FreezedUnionValue("compaction")
+  const factory compaction({required String id, required String sessionID, required String messageID}) =
+      MessagePartCompaction;
 
   factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 }
@@ -214,12 +284,12 @@ extension MessageAttachmentSafety on MessageAttachment {
   }
 }
 
-/// Lifecycle of a tool invocation, and of a subtask when its part carries a
-/// [ToolState]. Wire values mirror OpenCode's tool-state `status`
-/// discriminator, plus [cancelled] for work a backend stopped before it
-/// produced a result; [unknown] is the forward-compatible fallback for any
-/// status a newer bridge emits that this client does not yet model. A client
-/// older than [cancelled] decodes it as [unknown].
+/// Lifecycle of a tool invocation, and of a subtask that reports one. Wire
+/// values mirror OpenCode's tool-state `status` discriminator, plus
+/// [cancelled] for work a backend stopped before it produced a result;
+/// [unknown] is the forward-compatible fallback for any status a newer bridge
+/// emits that this client does not yet model, which is how a client older
+/// than [cancelled] reads it.
 @JsonEnum()
 enum ToolStatus() {
   @JsonValue("pending")
@@ -243,7 +313,9 @@ sealed class ToolState with _$ToolState {
     required String? title,
     required String? output,
     required String? error,
-    // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments, which means the tool returned none. Remove @Default and require attachments after the minimum supported bridge sends it.
+    // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments,
+    // which means the tool returned none. Remove @Default and require
+    // attachments after the minimum supported bridge sends it.
     @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
   }) = _ToolState;
 

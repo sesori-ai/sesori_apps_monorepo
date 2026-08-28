@@ -49,6 +49,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
+        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -118,7 +119,7 @@ void main() {
       );
     });
 
-    test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
+    test("deleteSession removes the stored row including its prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -131,6 +132,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "sess-tomb",
         backendSessionId: "sess-tomb",
         projectId: "proj-tomb",
@@ -140,8 +142,12 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
+        lastAgent: "build",
+        lastAgentModel: const AgentModel(
+          providerID: "provider",
+          modelID: "model",
+          variant: "high",
+        ),
       );
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isFalse);
 
@@ -233,7 +239,6 @@ void main() {
           plugins: [failingPlugin, cleanupPlugin],
           failingPluginId: failingPlugin.id,
         ),
-        bridgeDerivedProjectPluginIds: {failingPlugin.id},
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -303,6 +308,7 @@ void main() {
 
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -417,16 +423,13 @@ void main() {
       expect(session.pluginId, equals(plugin.id));
       expect(session.time?.updated, equals(2));
       expect(session.time?.archived, isNull);
-      expect(session.title, "Catalog title");
-      expect(session.branchName, equals("feature/one"));
-      expect(session.hasWorktree, isTrue);
-      expect(session.promptDefaults?.agent, equals("agent-1"));
-      expect(session.promptDefaults?.model?.providerID, equals("provider-1"));
-      expect(session.promptDefaults?.model?.modelID, equals("model-1"));
-      expect(session.promptDefaults?.model?.variant, equals("variant-1"));
+      expect(session.title, "Live plugin title");
+      expect(session.branchName, isNull);
+      expect(session.hasWorktree, isFalse);
+      expect(session.promptDefaults, isNull);
       expect(session.pullRequest?.number, equals(11));
       expect(session.pullRequest?.state, equals(PrState.open));
-      expect(session.lastUserActivityAt, 1234);
+      expect(session.lastUserActivityAt, isNull);
     });
 
     test("enrichSessions clears incoming PR data without a freshly visible selection", () async {
@@ -499,6 +502,7 @@ void main() {
 
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -583,9 +587,7 @@ void main() {
 
       expect(result, hasLength(2));
       expect(result.map((session) => session.pluginId), everyElement(plugin.id));
-      expect(result[0].time?.created, equals(10));
-      expect(result[0].time?.updated, equals(1234));
-      expect(result[0].time?.archived, equals(1234));
+      expect(result[0].time, isNull);
       expect(result[0].pullRequest?.number, equals(5));
       expect(result[1].time?.created, equals(3));
       expect(result[1].time?.updated, equals(4));
@@ -599,7 +601,6 @@ void main() {
       final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/derived", allSessions: const []);
       final repository = SessionRepository(
         runtime: createTestPluginRuntime(plugins: [plugin]),
-        bridgeDerivedProjectPluginIds: {derivedPlugin.id},
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -610,6 +611,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "native-session",
         backendSessionId: "native-session",
         projectId: "stored-native",
@@ -624,6 +626,7 @@ void main() {
       );
       await db.sessionDao.insertSession(
         pluginId: derivedPlugin.id,
+        preservePullRequestScope: false,
         sessionId: "derived-session",
         backendSessionId: "derived-session",
         projectId: "stored-derived",
@@ -670,7 +673,7 @@ void main() {
       );
 
       expect(result[0].projectID, "native-reported-project");
-      expect(result[1].projectID, "stored-derived");
+      expect(result[1].projectID, "/derived/.worktrees/session");
     });
 
     test("insertStoredSession ensures project and stores prompt defaults transactionally", () async {
@@ -943,6 +946,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "p1",
@@ -979,7 +983,7 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("Renamed"));
     });
 
-    test("findProjectIdForSession returns stored project id without scanning plugin", () async {
+    test("getCatalogSession returns the stored project without scanning the plugin", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -994,6 +998,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s-target",
         backendSessionId: "s-target",
         projectId: "p-stored",
@@ -1007,14 +1012,14 @@ void main() {
         lastAgentModel: null,
       );
 
-      final result = await repository.findProjectIdForSession(sessionId: "s-target");
+      final result = await repository.getCatalogSession(sessionId: "s-target");
 
-      expect(result, equals("p-stored"));
+      expect(result?.projectID, equals("p-stored"));
       expect(plugin.getProjectsCalls, isZero);
       expect(plugin.getSessionsCalls, isZero);
     });
 
-    test("findProjectIdForSession keeps a missing binding missing without plugin discovery", () async {
+    test("getCatalogSession keeps a missing binding missing without plugin discovery", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -1026,7 +1031,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      final result = await repository.findProjectIdForSession(sessionId: "s-target");
+      final result = await repository.getCatalogSession(sessionId: "s-target");
 
       expect(result, isNull);
       expect(plugin.getProjectsCalls, isZero);
@@ -1088,11 +1093,7 @@ void main() {
       );
       final publication = await committed;
       final row = await db.sessionDao.getSession(sessionId: created.id);
-      final detail = await repository.getSessionForProject(
-        projectId: "stable-project",
-        sessionId: created.id,
-        verifiedGithubLogin: null,
-      );
+      final detail = await repository.getCatalogSession(sessionId: created.id);
 
       expect(created.id, startsWith("ses_"));
       expect(created.pluginId, plugin.id);
@@ -1144,6 +1145,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: derivedPlugin.id,
+        preservePullRequestScope: false,
       );
 
       final created = await repository.createSession(
@@ -1198,6 +1200,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
+        preservePullRequestScope: false,
       );
       await db.sessionDao.setTitle(
         sessionId: "stable-session",
@@ -1585,22 +1588,11 @@ void main() {
         PluginMessageWithParts(
           info: PluginMessageUser(promptId: null, id: "message-1", sessionID: "backend-s1", agent: null, time: null),
           parts: [
-            PluginMessagePart(
+            PluginMessagePart.text(
               id: "part-1",
               sessionID: "backend-s1",
               messageID: "message-1",
-              type: PluginMessagePartType.text,
               text: "hello",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              childSessionID: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ],
         ),
@@ -1614,91 +1606,9 @@ void main() {
       final statuses = await repository.getSessionStatuses();
 
       expect(plugin.lastGetMessagesSessionId, equals("backend-s1"));
-      expect(messages.single.info.sessionID, equals("stable-s1"));
-      expect(messages.single.parts.single.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.info.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.parts.single.sessionID, equals("stable-s1"));
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
-    });
-
-    test("replayed subtask child references map to stable ids, and unbound ones to null", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-      for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
-        await repository.insertStoredSession(
-          sessionId: sessionId,
-          backendSessionId: backendSessionId,
-          pluginId: plugin.id,
-          projectId: "/repo",
-          isDedicated: false,
-          createdAt: 1,
-          worktreePath: null,
-          branchName: null,
-          baseBranch: null,
-          baseCommit: null,
-          agent: null,
-          agentModel: null,
-        );
-      }
-      plugin.messagesResult = const [
-        PluginMessageWithParts(
-          info: PluginMessageAssistant(
-            id: "message-1",
-            sessionID: "backend-s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-            time: null,
-          ),
-          parts: [
-            PluginMessagePart(
-              id: "part-bound",
-              sessionID: "backend-s1",
-              messageID: "message-1",
-              type: PluginMessagePartType.subtask,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: "explore",
-              description: "Explore",
-              agent: "explore",
-              childSessionID: "backend-child",
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
-            ),
-            PluginMessagePart(
-              id: "part-unbound",
-              sessionID: "backend-s1",
-              messageID: "message-1",
-              type: PluginMessagePartType.subtask,
-              text: null,
-              tool: null,
-              state: null,
-              prompt: "review",
-              description: "Review",
-              agent: "explore",
-              childSessionID: "backend-unpublished",
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
-            ),
-          ],
-        ),
-      ];
-
-      final parts = (await repository.getSessionMessages(sessionId: "stable-s1")).single.parts;
-
-      expect(parts.first.childSessionID, equals("stable-child"));
-      expect(parts.last.childSessionID, isNull);
-      expect(parts.last.description, equals("Review"));
     });
 
     test("session statuses report eligible inactive plugins as unavailable", () async {
@@ -1825,7 +1735,6 @@ void main() {
       final runtime = _GenerationReplacingRuntime(plugin: plugin);
       final repository = SessionRepository(
         runtime: runtime,
-        bridgeDerivedProjectPluginIds: const {},
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
@@ -2121,6 +2030,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
     }
 
@@ -2154,17 +2064,15 @@ void main() {
       );
 
       expect(sessions.map((s) => s.id).toSet(), {"w1"});
-      // Enrichment adopts the stored attribution as projectID (the plugin
-      // reported the worktree cwd), so live created/updated events for this
-      // session are not dropped by the parent project's session list. The
-      // directory stays the session's real cwd.
+      // Catalog mapping already uses the stored parent attribution while the
+      // session directory remains its real worktree cwd.
       final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
       expect(worktreeSession.projectID, parent);
       expect(worktreeSession.directory, worktree);
       expect(plugin.receivedKnownDirectories, isNull);
     });
 
-    test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
+    test("getCatalogSession resolves a recorded worktree session to its stored parent", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -2186,12 +2094,12 @@ void main() {
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
 
-      final result = await repository.findProjectIdForSession(sessionId: "a1");
+      final result = await repository.getCatalogSession(sessionId: "a1");
 
-      expect(result, equals(parent));
+      expect(result?.projectID, equals(parent));
     });
 
-    test("findProjectIdForSession keeps a rowless derived session missing", () async {
+    test("getCatalogSession keeps a rowless derived session missing", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
@@ -2208,7 +2116,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      final result = await repository.findProjectIdForSession(sessionId: "b1");
+      final result = await repository.getCatalogSession(sessionId: "b1");
 
       expect(result, isNull);
       expect(plugin.listAllSessionsCalls, isZero);
@@ -2243,6 +2151,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
 
       // The worktree session primes with its worktree path...
@@ -2426,6 +2335,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
+        preservePullRequestScope: false,
       );
 
       expect(
@@ -2591,6 +2501,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
+        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "stable-child",
@@ -2617,21 +2528,9 @@ void main() {
         ),
         isNull,
       );
-      final childDetail = await repository.getSessionForProject(
-        projectId: "/repo",
-        sessionId: "stable-child",
-        verifiedGithubLogin: null,
-      );
+      final childDetail = await repository.getCatalogSession(sessionId: "stable-child");
       expect(childDetail?.id, "stable-child");
       expect(childDetail?.parentID, "stable-parent");
-      expect(
-        await repository.getSessionForProject(
-          projectId: "/other",
-          sessionId: "stable-child",
-          verifiedGithubLogin: null,
-        ),
-        isNull,
-      );
 
       plugin.getChildSessionsError = const PluginOperationException(
         "getChildSessions",
@@ -2732,8 +2631,8 @@ void main() {
       );
       expect(sessions, isEmpty);
 
-      expect(await repository.findProjectIdForSession(sessionId: "deleted-s"), isNull);
-      expect(await repository.findProjectIdForSession(sessionId: "kept-s"), isNull);
+      expect(await repository.getCatalogSession(sessionId: "deleted-s"), isNull);
+      expect(await repository.getCatalogSession(sessionId: "kept-s"), isNull);
       expect(plugin.listAllSessionsCalls, 0);
     });
 
@@ -2871,14 +2770,14 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
     getSessionsCalls++;
-    lastGetSessionsWorktree = worktree;
+    lastGetSessionsWorktree = projectId;
     if (getSessionsFailuresRemaining > 0) {
       getSessionsFailuresRemaining--;
       throw StateError("session collection unavailable");
     }
-    return sessionsByWorktree[worktree] ?? sessionsResult;
+    return sessionsByWorktree[projectId] ?? sessionsResult;
   }
 
   @override

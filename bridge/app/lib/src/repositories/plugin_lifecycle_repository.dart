@@ -2,18 +2,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../runtime/plugin_runtime.dart";
 
-class const PluginLifecycleSnapshot({
-  required final String pluginId,
-  required final PluginProjectOwnership projectOwnership,
-  required final PluginSetupStatus setup,
-  required final PluginRuntimeAccessGate accessGate,
-  required final bool startAllowed,
-  required final PluginRuntimeState state,
-  required final PluginWorkState workState,
-  required final int leaseCount,
-  required final bool transitionSettled,
-});
-
 class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   Future<Map<String, PluginSetupStatus>> inspect({
     required Set<String> pluginIds,
@@ -69,23 +57,6 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
     required PluginStopIntent intent,
   }) => _runtime.restart(pluginId: pluginId, intent: intent);
 
-  Stream<List<PluginLifecycleSnapshot>> get snapshots => _runtime.snapshots.map(_mapSnapshots);
-  List<PluginLifecycleSnapshot> get snapshot => _mapSnapshots(_runtime.snapshot);
-
-  List<PluginLifecycleSnapshot> _mapSnapshots(List<PluginRuntimeSnapshot> snapshots) {
-    return List<PluginLifecycleSnapshot>.unmodifiable([
-      for (final snapshot in snapshots)
-        PluginLifecycleSnapshot(
-          pluginId: snapshot.pluginId,
-          projectOwnership: snapshot.projectOwnership,
-          setup: snapshot.setup,
-          accessGate: snapshot.accessGate,
-          startAllowed: snapshot.startAllowed,
-          state: snapshot.state,
-          workState: snapshot.workState,
-          leaseCount: snapshot.leaseCount,
-          transitionSettled: snapshot.transition == PluginRuntimeTransition.none,
-        ),
-    ]);
-  }
+  Stream<List<PluginRuntimeSnapshot>> get snapshots => _runtime.snapshots;
+  List<PluginRuntimeSnapshot> get snapshot => _runtime.snapshot;
 }

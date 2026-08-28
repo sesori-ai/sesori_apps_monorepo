@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:typed_data";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -40,6 +41,12 @@ final class const CapturedPartShapes({
 /// fallback is bounded to the released inline-wire budget.
 final class const CapturedPartUnavailable({required final MessagePart inlineFallbackPart}) extends CapturedPartDelivery;
 
+typedef SessionMessagesPage = ({
+  List<MessageWithParts> messages,
+  int? nextCursor,
+  SessionPromptDefaults? replayedPromptDefaults,
+});
+
 /// The single writer of the chat history store.
 ///
 /// Every mutation runs through a per-session queue so writes for one session
@@ -50,9 +57,9 @@ class ChatHistoryService({
   required final AttachmentThumbnailBuilder _attachmentThumbnailBuilder,
   required final BridgeIdProvider _bridgeIdProvider,
 }) {
-  final Map<String, Future<void>> _writeQueues = {};
-  final Map<String, Future<void>> _inFlightBackfills = {};
-  Future<void> _thumbnailGenerationLane = Future.value();
+  final KeyedParallelLock<String> _writeLock = KeyedParallelLock<String>();
+  final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
+  final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
 
   /// One page of the session's messages, served from the store whenever it is
   /// known to be current and falling back to the backend otherwise.
@@ -63,7 +70,7 @@ class ChatHistoryService({
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
-  Future<ChatHistoryPage> getSessionMessages({
+  Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     int? limit,
     int? before,
@@ -75,6 +82,7 @@ class ChatHistoryService({
     // let queued work — an observed import, or a failed capture clearing
     // `syncedAt` — commit in between, and the caller would receive a
     // transcript the store already knew was stale.
+    final activeBackfill = _inFlightBackfills[sessionId];
     final decided = await _enqueueRead(
       sessionId: sessionId,
       read: () async {
@@ -110,14 +118,19 @@ class ChatHistoryService({
       },
     );
     if (decided != null) {
+      final replayedPromptDefaults = activeBackfill == null ? null : await activeBackfill;
       // A store that stayed "fresh" across an abrupt bridge death still holds
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
-      if (!_containsOpenToolPart(page: decided)) return decided;
-      if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) return decided;
+      if (!_containsOpenToolPart(page: decided)) {
+        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+      }
+      if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
+        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+      }
       final storageScope = await _requireStorageScope(sessionId: sessionId);
-      return await _enqueueRead(
+      final page = await _enqueueRead(
         sessionId: sessionId,
         read: () => _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
@@ -127,16 +140,17 @@ class ChatHistoryService({
           attachmentProjection: attachmentProjection,
         ),
       );
+      return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
     }
 
-    await backfillSession(sessionId: sessionId);
+    final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
     // A backend transcript reports no result for a tool whose turn died, so a
     // fresh backfill can import open tool parts that will never complete.
     await _sweepUnlessTurnRunning(sessionId: sessionId);
     final storageScope = await _requireStorageScope(sessionId: sessionId);
     // The backfill is itself queued, so this read lands after it and after
     // any capture that raced its fetch.
-    return await _enqueueRead(
+    final page = await _enqueueRead(
       sessionId: sessionId,
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
@@ -146,7 +160,17 @@ class ChatHistoryService({
         attachmentProjection: attachmentProjection,
       ),
     );
+    return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
   }
+
+  SessionMessagesPage _messagesPage({
+    required ChatHistoryPage page,
+    required SessionPromptDefaults? replayedPromptDefaults,
+  }) => (
+    messages: page.messages,
+    nextCursor: page.nextCursor,
+    replayedPromptDefaults: replayedPromptDefaults,
+  );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>
       switch (delivery) {
@@ -206,38 +230,38 @@ class ChatHistoryService({
     required AttachmentStorageScope storageScope,
     required String attachmentId,
   }) {
-    final result = _thumbnailGenerationLane.then((_) async {
-      final original = await _chatHistoryRepository.readStoredAttachment(
-        storageScope: storageScope,
-        attachmentId: attachmentId,
-      );
-      if (original == null) return const SessionAttachmentMissing();
-      if (original.length > maxTranscriptImageBytes) {
-        return const SessionAttachmentTooLarge();
-      }
-      final built = await _attachmentThumbnailBuilder.build(bytes: original);
-      return switch (built) {
-        AttachmentThumbnailRendered(:final bytes, :final format) =>
-          await _chatHistoryRepository.writeStoredAttachmentThumbnail(
-                storageScope: storageScope,
-                attachmentId: attachmentId,
-                format: format,
-                bytes: bytes,
-              )
-              ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
-              : const SessionAttachmentMissing(),
-        AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
-        AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
-        AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
-          sessionId: sessionId,
+    return _thumbnailGenerationLock.use(
+      operation: () async {
+        final original = await _chatHistoryRepository.readStoredAttachment(
+          storageScope: storageScope,
           attachmentId: attachmentId,
-          cause: cause,
-          stackTrace: stackTrace,
-        ),
-      };
-    });
-    _thumbnailGenerationLane = result.then<void>((_) {}, onError: (Object _) {});
-    return result;
+        );
+        if (original == null) return const SessionAttachmentMissing();
+        if (original.length > maxTranscriptImageBytes) {
+          return const SessionAttachmentTooLarge();
+        }
+        final built = await _attachmentThumbnailBuilder.build(bytes: original);
+        return switch (built) {
+          AttachmentThumbnailRendered(:final bytes, :final format) =>
+            await _chatHistoryRepository.writeStoredAttachmentThumbnail(
+                  storageScope: storageScope,
+                  attachmentId: attachmentId,
+                  format: format,
+                  bytes: bytes,
+                )
+                ? SessionAttachmentFound(bytes: bytes, mime: format.mime)
+                : const SessionAttachmentMissing(),
+          AttachmentThumbnailUnsupported() => const SessionAttachmentUnsupported(),
+          AttachmentThumbnailTooLarge() => const SessionAttachmentTooLarge(),
+          AttachmentThumbnailFailed(:final cause, :final stackTrace) => _logThumbnailFailure(
+            sessionId: sessionId,
+            attachmentId: attachmentId,
+            cause: cause,
+            stackTrace: stackTrace,
+          ),
+        };
+      },
+    );
   }
 
   SessionAttachmentResult _logThumbnailFailure({
@@ -338,11 +362,13 @@ class ChatHistoryService({
   ///
   /// The Orchestrator uses this single predicate so "needs an awaited capture"
   /// and "may be delivered as a reference" can never disagree.
-  bool requiresAwaitedAttachmentCapture({required MessagePart part}) {
-    if (part.attachment is MessageAttachmentInlineImage) return true;
-    final attachments = part.state?.attachments ?? const <MessageAttachment>[];
-    return attachments.any((attachment) => attachment is MessageAttachmentInlineImage);
-  }
+  bool requiresAwaitedAttachmentCapture({required MessagePart part}) => switch (part) {
+    MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
+    MessagePartTool(:final state) => state.attachments.any(
+      (attachment) => attachment is MessageAttachmentInlineImage,
+    ),
+    _ => false,
+  };
 
   /// Records a finalized part and returns it in every delivery shape.
   ///
@@ -430,15 +456,15 @@ class ChatHistoryService({
       return attachment;
     }
 
-    final state = part.state;
-    return part.copyWith(
-      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
-      state: state == null
-          ? null
-          : state.copyWith(
-              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-            ),
-    );
+    return switch (part) {
+      MessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
+      MessagePartTool(:final state) => part.copyWith(
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+        ),
+      ),
+      _ => part,
+    };
   }
 
   /// Finalizes tool parts left open after the session's turn ended, returning
@@ -500,8 +526,8 @@ class ChatHistoryService({
   bool _containsOpenToolPart({required ChatHistoryPage page}) {
     for (final message in page.messages) {
       for (final part in message.parts) {
-        if (part.type != MessagePartType.tool) continue;
-        final status = part.state?.status;
+        if (part is! MessagePartTool) continue;
+        final status = part.state.status;
         if (status == ToolStatus.pending || status == ToolStatus.running) return true;
       }
     }
@@ -586,7 +612,11 @@ class ChatHistoryService({
   ///
   /// Concurrent callers for the same session await one fetch. Failures
   /// propagate so a cache miss never looks like an empty thread.
-  Future<void> backfillSession({required String sessionId}) {
+  Future<void> backfillSession({required String sessionId}) async {
+    await _backfillSessionForRead(sessionId: sessionId);
+  }
+
+  Future<SessionPromptDefaults?> _backfillSessionForRead({required String sessionId}) {
     final inFlight = _inFlightBackfills[sessionId];
     if (inFlight != null) return inFlight;
 
@@ -608,7 +638,7 @@ class ChatHistoryService({
   ///
   /// Captures for this session wait for the fetch, but they never block the
   /// event pipeline: the listener dispatches them without awaiting.
-  Future<void> _backfillSession({required String sessionId}) {
+  Future<SessionPromptDefaults?> _backfillSession({required String sessionId}) {
     return _enqueue(
       sessionId: sessionId,
       write: () async {
@@ -616,16 +646,31 @@ class ChatHistoryService({
         // between the read and the write.
         final observedBefore = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         final backendActivityAt = observedBefore?.backendActivityAt ?? 0;
+        final shouldReconcilePromptDefaults =
+            observedBefore == null || observedBefore.syncedAt == null || observedBefore.watermark < backendActivityAt;
         final storageScope = await _requireStorageScope(sessionId: sessionId);
-        final messages = await _sessionRepository.getSessionMessages(sessionId: sessionId);
+        final snapshot = await _sessionRepository.getSessionMessages(sessionId: sessionId);
         await _chatHistoryRepository.replaceSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          messages: messages,
+          messages: snapshot.messages,
+          lastImportedAt: observedBefore?.syncedAt,
           watermark: backendActivityAt,
           backendActivityAt: backendActivityAt,
           syncedAt: DateTime.now().millisecondsSinceEpoch,
         );
+        final promptDefaults = shouldReconcilePromptDefaults ? snapshot.promptDefaults : null;
+        if (promptDefaults == null) return null;
+        try {
+          await _sessionRepository.updatePromptDefaults(
+            sessionId: sessionId,
+            agent: promptDefaults.agent,
+            agentModel: promptDefaults.model,
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w("Failed to persist replayed prompt defaults for session $sessionId", error, stackTrace);
+        }
+        return promptDefaults;
       },
     );
   }
@@ -640,8 +685,6 @@ class ChatHistoryService({
   Future<void> exportSessionHistory({
     required StoredSession session,
     required String? title,
-    required String? lastAgent,
-    required String? lastAgentModel,
     required int createdAt,
     required int updatedAt,
     required int archivedAt,
@@ -681,8 +724,6 @@ class ChatHistoryService({
         await _chatHistoryRepository.exportSession(
           session: session,
           title: title,
-          lastAgent: lastAgent,
-          lastAgentModel: lastAgentModel,
           createdAt: createdAt,
           updatedAt: updatedAt,
           archivedAt: archivedAt,
@@ -809,9 +850,8 @@ class ChatHistoryService({
     }
   }
 
-  Future<void> _enqueue({required String sessionId, required Future<void> Function() write}) {
-    return _enqueueAll(sessionIds: [sessionId], write: write);
-  }
+  Future<T> _enqueue<T>({required String sessionId, required Future<T> Function() write}) =>
+      _writeLock.use(key: sessionId, operation: write);
 
   /// Runs [read] after the session's pending writes and holds the queue for
   /// its duration, so a write enqueued while it runs commits after it rather
@@ -821,39 +861,37 @@ class ChatHistoryService({
   /// reads are bounded local queries. Attachment rendition reads deliberately
   /// hold the queue through decode and derived-file persistence so archive or
   /// purge cannot invalidate their selected source underneath them.
-  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) {
-    final pending = _writeQueues[sessionId] ?? Future<void>.value();
-    final result = pending.then((_) => read());
-    final tail = result.then<void>((_) {}, onError: (Object _) {});
-    _writeQueues[sessionId] = tail;
-    unawaited(
-      tail.whenComplete(() {
-        if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
-      }),
-    );
-    return result;
-  }
+  Future<T> _enqueueRead<T>({required String sessionId, required Future<T> Function() read}) =>
+      _writeLock.use(key: sessionId, operation: read);
 
-  /// Runs [write] after every listed session's pending writes, and makes it
-  /// the new tail for all of them.
-  Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) {
-    final pending = Future.wait([
-      for (final sessionId in sessionIds) _writeQueues[sessionId] ?? Future<void>.value(),
-    ]);
-    final result = pending.then((_) => write());
-    // The queue continues from a swallowed copy so one failed write does not
-    // poison later writes for the session; the caller still sees the error.
-    final tail = result.then<void>((_) {}, onError: (Object _) {});
-    for (final sessionId in sessionIds) {
-      _writeQueues[sessionId] = tail;
+  /// Runs [write] after every listed session's pending writes, and holds all
+  /// listed session lanes for its duration.
+  ///
+  /// Deadlock-freedom rests on submitting every reservation in this one
+  /// synchronous burst: `use` takes its FIFO position on each lane before
+  /// returning, so two multi-session writes meet in the same relative order on
+  /// every lane they share. Do not await between the submissions. Duplicate
+  /// ids collapse to one lane because a second reservation on the same lane
+  /// would wait behind the first forever.
+  Future<void> _enqueueAll({required List<String> sessionIds, required Future<void> Function() write}) async {
+    final lanes = [for (final sessionId in sessionIds.toSet()) (sessionId: sessionId, acquired: Completer<void>())];
+    final release = Completer<void>();
+    final reservations = [
+      for (final lane in lanes)
+        _writeLock.use(
+          key: lane.sessionId,
+          operation: () async {
+            lane.acquired.complete();
+            await release.future;
+          },
+        ),
+    ];
+    await Future.wait([for (final lane in lanes) lane.acquired.future]);
+    try {
+      await write();
+    } finally {
+      release.complete();
+      await Future.wait(reservations);
     }
-    unawaited(
-      tail.whenComplete(() {
-        for (final sessionId in sessionIds) {
-          if (identical(_writeQueues[sessionId], tail)) _writeQueues.remove(sessionId);
-        }
-      }),
-    );
-    return result;
   }
 }

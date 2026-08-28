@@ -32,8 +32,6 @@ void main() {
     Future<void> export() => history.service.exportSessionHistory(
       session: _storedSession(),
       title: "Archived session",
-      lastAgent: "build",
-      lastAgentModel: "claude-sonnet",
       createdAt: 100,
       updatedAt: 200,
       archivedAt: 300,
@@ -45,6 +43,36 @@ void main() {
       final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
       expect(page!.messages.map((message) => message.info.id), const ["m1", "m2"]);
       expect(page.nextCursor, isNull);
+    });
+
+    test("rehydrates a released flattened part from an audit file", () async {
+      await export();
+      final raw = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
+      final messages = raw["messages"] as List<dynamic>;
+      final firstMessage = messages.first as Map<String, dynamic>;
+      firstMessage["parts"] = [
+        {
+          "id": "legacy-retry",
+          "sessionID": "ses_a",
+          "messageID": "m1",
+          "type": "retry",
+          "attempt": 2,
+        },
+      ];
+      await history.archivedStorage.write(sessionId: "ses_a", contents: jsonEncode(raw));
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+
+      expect(
+        page!.messages.first.parts.single,
+        const MessagePart.retry(
+          id: "legacy-retry",
+          sessionID: "ses_a",
+          messageID: "m1",
+          attempt: 2,
+          retryError: "",
+        ),
+      );
     });
 
     test("the archived transcript survives purging the live store", () async {
@@ -88,6 +116,7 @@ void main() {
       final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
       final attachment = page!.messages
           .expand((message) => message.parts)
+          .whereType<MessagePartFile>()
           .map((part) => part.attachment)
           .whereType<MessageAttachmentInlineImage>()
           .single;
@@ -207,8 +236,6 @@ void main() {
       await history.service.exportSessionHistory(
         session: _archivedStoredSession(),
         title: "Archived session",
-        lastAgent: null,
-        lastAgentModel: null,
         createdAt: 100,
         updatedAt: 200,
         archivedAt: 400,
@@ -232,14 +259,27 @@ void main() {
       expect(page.nextCursor, isNull);
     });
 
-    test("the archived snapshot keeps the agent metadata", () async {
+    test("the archived snapshot omits live prompt defaults", () async {
       await export();
 
-      final file = ArchivedSessionFileDto.fromJson(
-        jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!),
-      );
-      expect(file.session.lastAgent, "build");
-      expect(file.session.lastAgentModel, "claude-sonnet");
+      final file = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
+      final session = file["session"]! as Map<String, dynamic>;
+      expect(session, isNot(contains("lastAgent")));
+      expect(session, isNot(contains("lastAgentModel")));
+    });
+
+    test("released archive snapshots with prompt defaults remain readable", () async {
+      await export();
+      final file = jsonDecodeMap((await history.archivedStorage.read(sessionId: "ses_a"))!);
+      final session = file["session"]! as Map<String, dynamic>;
+      session
+        ..["lastAgent"] = "build"
+        ..["lastAgentModel"] = "claude-sonnet";
+      await history.archivedStorage.write(sessionId: "ses_a", contents: jsonEncode(file));
+
+      final page = await history.service.getArchivedSessionMessages(sessionId: "ses_a");
+
+      expect(page?.messages.map((message) => message.info.id), const ["m1", "m2"]);
     });
 
     test("an unrecognised schema version is refused, not decoded as v1", () async {
@@ -462,23 +502,9 @@ MessagePart _part({
   required String id,
   required String messageId,
   MessageAttachment? attachment,
-}) => MessagePart(
-  id: id,
-  sessionID: "ses_a",
-  messageID: messageId,
-  type: MessagePartType.text,
-  text: "text of $messageId",
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  childSessionID: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: attachment,
-);
+}) => attachment == null
+    ? MessagePart.text(id: id, sessionID: "ses_a", messageID: messageId, text: "text of $messageId")
+    : MessagePart.file(id: id, sessionID: "ses_a", messageID: messageId, attachment: attachment);
 
 MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   info: _message(id: id),
@@ -501,11 +527,11 @@ class _FakeSessionRepository({required final List<MessageWithParts> transcript})
       sessionIds.intersection(archivedSessionIds);
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     final failure = error;
     if (failure != null) throw failure;
-    return transcript;
+    return (messages: transcript, promptDefaults: null);
   }
 
   @override

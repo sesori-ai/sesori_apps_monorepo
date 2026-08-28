@@ -30,7 +30,7 @@ class const SessionEventMapper() {
       BridgeSseMessagePartRemoved(:final sessionID) ||
       BridgeSseQueuedPromptsUpdated(:final sessionID) ||
       BridgeSseTodoUpdated(:final sessionID) => {sessionID},
-      BridgeSseSessionError(:final sessionID) => {?sessionID},
+      BridgeSseSessionError(:final sessionID) || BridgeSseTuiToastShow(:final sessionID) => {?sessionID},
       BridgeSseMessageUpdated(:final info) => {Message.fromJson(info).sessionID},
       BridgeSseMessagePartUpdated(:final part) => {part.sessionID},
       BridgeSsePermissionAsked(:final sessionID, :final displaySessionId) ||
@@ -64,7 +64,6 @@ class const SessionEventMapper() {
       BridgeSseInstallationUpdateAvailable() ||
       BridgeSseWorkspaceReady() ||
       BridgeSseWorkspaceFailed() ||
-      BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
       BridgeSseWorktreeFailed() => const <String>{},
       BridgeSseSessionCreated() ||
@@ -81,7 +80,7 @@ class const SessionEventMapper() {
   /// child session before the bridge has bound it.
   Set<String> optionalBackendSessionIds({required BridgeSseEvent event}) => switch (event) {
     BridgeSseTerminalHandoff(:final event) => optionalBackendSessionIds(event: event),
-    BridgeSseMessagePartUpdated(:final part) => {?part.childSessionID},
+    BridgeSseMessagePartUpdated(part: PluginMessagePartSubtask(:final childSessionID)) => {?childSessionID},
     _ => const <String>{},
   };
 
@@ -188,10 +187,16 @@ class const SessionEventMapper() {
       },
       BridgeSseMessagePartUpdated(:final part) => switch (mapped(part.sessionID)) {
         final sessionId? => BridgeSseMessagePartUpdated(
-          part: part.copyWith(
-            sessionID: sessionId,
-            childSessionID: mappedOptional(part.childSessionID),
-          ),
+          part: switch (part) {
+            // Only a subtask names a child, and that reference is optional:
+            // one the bridge has not bound yet becomes null rather than
+            // withholding the part.
+            final PluginMessagePartSubtask subtask => subtask.copyWith(
+              sessionID: sessionId,
+              childSessionID: mappedOptional(subtask.childSessionID),
+            ),
+            _ => part.copyWith(sessionID: sessionId),
+          },
         ),
         null => null,
       },
@@ -288,6 +293,18 @@ class const SessionEventMapper() {
         final sessionId? => BridgeSseTodoUpdated(sessionID: sessionId),
         null => null,
       },
+      BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) => switch (sessionID) {
+        final backendId? => switch (mapped(backendId)) {
+          final sessionId? => BridgeSseTuiToastShow(
+            sessionID: sessionId,
+            title: title,
+            message: message,
+            variant: variant,
+          ),
+          null => null,
+        },
+        null => event,
+      },
       BridgeSseServerConnected() ||
       BridgeSseServerHeartbeat() ||
       BridgeSseServerInstanceDisposed() ||
@@ -311,7 +328,6 @@ class const SessionEventMapper() {
       BridgeSseInstallationUpdateAvailable() ||
       BridgeSseWorkspaceReady() ||
       BridgeSseWorkspaceFailed() ||
-      BridgeSseTuiToastShow() ||
       BridgeSseWorktreeReady() ||
       BridgeSseWorktreeFailed() => event,
     };

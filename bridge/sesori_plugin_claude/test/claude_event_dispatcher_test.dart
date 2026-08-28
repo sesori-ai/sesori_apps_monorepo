@@ -197,6 +197,120 @@ void main() {
       expect(complete.whereType<BridgeSseMessagePartUpdated>().single.part.text, "persisted answer");
     });
 
+    test("numbers per-block assistant frames across the whole message", () {
+      // Claude Code emits one `assistant` frame per content block under the
+      // same message id, before that block stops, with the block alone at
+      // content offset 0 (verified against CLI 2.1.237).
+      _startMessage(mapper, messageId: "msg-split");
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 0,
+            "content_block": {"type": "thinking", "thinking": ""},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 0,
+            "delta": {"type": "thinking_delta", "thinking": "reason"},
+          },
+        ),
+      );
+      _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {"type": "thinking", "thinking": "reason", "signature": "opaque"},
+          ],
+        ),
+      );
+      final thinkingStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 0}));
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 1,
+            "content_block": {"type": "text", "text": ""},
+          },
+        ),
+      );
+      final textDelta = _map(
+        mapper,
+        _stream(
+          "content_block_delta",
+          event: {
+            "index": 1,
+            "delta": {"type": "text_delta", "text": "answer"},
+          },
+        ),
+      );
+      final textComplete = _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {"type": "text", "text": "answer"},
+          ],
+        ),
+      );
+      final textStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 1}));
+      _map(
+        mapper,
+        _stream(
+          "content_block_start",
+          event: {
+            "index": 2,
+            "content_block": {
+              "type": "tool_use",
+              "id": "toolu-split",
+              "name": "Read",
+              "input": <String, Object?>{},
+            },
+          },
+        ),
+      );
+      final toolComplete = _map(
+        mapper,
+        _assistant(
+          id: "msg-split",
+          content: const [
+            {
+              "type": "tool_use",
+              "id": "toolu-split",
+              "name": "Read",
+              "input": {"file_path": "a.dart"},
+            },
+          ],
+        ),
+      );
+      final toolStopped = _map(mapper, _stream("content_block_stop", event: const {"index": 2}));
+
+      final thinking = thinkingStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(thinking.id, "msg-split-block-0");
+      expect(thinking.type, PluginMessagePartType.reasoning);
+      expect(thinking.text, "reason");
+      expect((textDelta.single as BridgeSseMessagePartDelta).partID, "msg-split-block-1");
+      // The complete text must finalize the streamed block-1 part, never land
+      // on block-0 as a second text copy over the thinking part.
+      expect(textComplete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      final text = textStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(text.id, "msg-split-block-1");
+      expect(text.type, PluginMessagePartType.text);
+      expect(text.text, "answer");
+      expect(toolComplete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      final tool = toolStopped.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(tool.id, "toolu-split");
+      expect(tool.state.status, PluginToolStatus.running);
+    });
+
     test("hides local command records and keeps the last real model", () {
       _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
       _startMessage(mapper, messageId: "msg-command", model: "<synthetic>");
@@ -219,17 +333,19 @@ void main() {
           ],
         ),
       );
-      final error = _map(
-        mapper,
-        {
-          "type": "result",
-          "subtype": "success",
-          "session_id": "session-1",
-          "uuid": "result-error",
-          "is_error": true,
-          "terminal_reason": "api_error",
-        },
-      ).single as BridgeSseMessageUpdated;
+      final error =
+          _map(
+                mapper,
+                {
+                  "type": "result",
+                  "subtype": "success",
+                  "session_id": "session-1",
+                  "uuid": "result-error",
+                  "is_error": true,
+                  "terminal_reason": "api_error",
+                },
+              ).single
+              as BridgeSseMessageUpdated;
 
       expect(assistant, isEmpty);
       expect(user, isEmpty);
@@ -315,14 +431,14 @@ void main() {
       );
 
       expect(
-        started.whereType<BridgeSseMessagePartUpdated>().single.part.state?.status,
+        started.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
         PluginToolStatus.pending,
       );
-      expect((input.single as BridgeSseMessagePartUpdated).part.state?.status, PluginToolStatus.running);
+      expect((input.single as BridgeSseMessagePartUpdated).part.state.status, PluginToolStatus.running);
       expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
       final terminal = completed.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(terminal.state?.status, PluginToolStatus.completed);
-      expect(terminal.state?.output, "done");
+      expect(terminal.state.status, PluginToolStatus.completed);
+      expect(terminal.state.output, "done");
       expect(duplicate.whereType<BridgeSseSessionDiff>(), isEmpty);
       expect(duplicate.whereType<BridgeSseMessagePartUpdated>().single.part.state, terminal.state);
     });
@@ -428,8 +544,7 @@ void main() {
     });
 
     test("strips the bridge worktree envelope from a replayed user frame", () {
-      const envelope =
-          "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
+      const envelope = "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
       final replayed = _map(
         mapper,
         _user(
@@ -454,7 +569,7 @@ void main() {
       expect(contextOnly, isEmpty);
     });
 
-    test("maps retry and terminal errors with parseable privacy-safe payloads", () {
+    test("maps retry and terminal errors without replacing backend text", () {
       final before = DateTime.now().millisecondsSinceEpoch;
       final retry =
           _map(
@@ -474,7 +589,7 @@ void main() {
               as BridgeSseSessionStatus;
       final status = shared.SessionStatus.fromJson(retry.status) as shared.SessionStatusRetry;
       expect(status.attempt, 2);
-      expect(status.message, "Claude Code is retrying after a rate limit.");
+      expect(status.message, "rate_limit");
       expect(status.next, inInclusiveRange(before + 5000, DateTime.now().millisecondsSinceEpoch + 5000));
 
       _startMessage(mapper, messageId: "msg-error", model: "claude-opus-5");
@@ -489,16 +604,32 @@ void main() {
                   "is_error": true,
                   "terminal_reason": "api_error",
                   "api_error_status": 404,
-                  "result": "raw backend detail must not be forwarded",
+                  "result": "  raw backend detail must be forwarded  ",
                 },
               ).single
               as BridgeSseMessageUpdated;
       final info = shared.Message.fromJson(error.info) as shared.MessageError;
       expect(info.errorName, "api_error");
-      expect(info.errorMessage, "Claude Code could not complete the API request (HTTP 404).");
-      expect(info.errorMessage, isNot(contains("raw backend detail")));
+      expect(info.errorMessage, "  raw backend detail must be forwarded  ");
       expect(info.modelID, "claude-opus-5");
       expect(info.providerID, "anthropic");
+
+      final multipleErrors =
+          _map(
+                mapper,
+                {
+                  "type": "result",
+                  "subtype": "error_during_execution",
+                  "session_id": "session-1",
+                  "uuid": "result-multiple-errors",
+                  "is_error": true,
+                  "terminal_reason": "api_error",
+                  "errors": ["first backend error", "second backend error"],
+                },
+              ).single
+              as BridgeSseMessageUpdated;
+      final multipleInfo = shared.Message.fromJson(multipleErrors.info) as shared.MessageError;
+      expect(multipleInfo.errorMessage, "first backend error\nsecond backend error");
     });
 
     test("complete live assistant shapes match transcript history", () {
@@ -542,6 +673,7 @@ void main() {
               ClaudeTranscriptAssistantRecord(
                 id: "msg-1",
                 model: "claude-opus-5",
+                effort: null,
                 content: content,
                 cwd: "/tmp/project",
                 timestamp: timestamp,

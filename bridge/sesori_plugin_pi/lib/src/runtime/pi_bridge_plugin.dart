@@ -17,7 +17,8 @@ final class PiBridgePlugin({
     markReady();
   }
 
-  late final StreamSubscription<PiProcessSpawnEvent> _spawnEvents;
+  // ignore: cancel_subscriptions, cancelled by onShutdown's shared cleanup sequence
+  late final StreamSubscription<ProcessSpawnOutcome> _spawnEvents;
 
   @override
   BridgePluginApi get api => _plugin;
@@ -44,11 +45,11 @@ final class PiBridgePlugin({
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) => _plugin.interruptActiveWork(budget: budget);
 
-  void _handleSpawnEvent(PiProcessSpawnEvent event) {
+  void _handleSpawnEvent(ProcessSpawnOutcome event) {
     switch (event) {
-      case PiProcessSpawnEvent.succeeded:
+      case ProcessSpawnOutcome.succeeded:
         markReady();
-      case PiProcessSpawnEvent.failed:
+      case ProcessSpawnOutcome.failed:
         markDegraded(
           recoverable: true,
           requiresUserAction: true,
@@ -58,28 +59,11 @@ final class PiBridgePlugin({
   }
 
   @override
-  Future<void> onShutdown({required Duration? budget}) async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
-
-    Future<void> attempt(Future<void> Function() cleanup) async {
-      try {
-        await cleanup();
-      } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
-      }
-    }
-
-    try {
-      await _spawnEvents.cancel();
-    } on Object catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
-    }
-    await attempt(() => _plugin.shutdown(shutdownBudget: budget));
-    await attempt(_processFactory.dispose);
-    final error = firstError;
-    if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);
-  }
+  Future<void> onShutdown({required Duration? budget}) => runShutdownCleanups(
+    cleanups: [
+      _spawnEvents.cancel,
+      () => _plugin.shutdown(shutdownBudget: budget),
+      _processFactory.dispose,
+    ],
+  );
 }

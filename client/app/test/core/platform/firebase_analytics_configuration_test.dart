@@ -4,14 +4,12 @@ import "package:flutter_test/flutter_test.dart";
 
 void main() {
   late String androidManifest;
-  late String androidMainActivity;
+  late String androidFastfile;
   late List<String> appleInfoPlists;
 
   setUpAll(() async {
     androidManifest = await File("android/app/src/main/AndroidManifest.xml").readAsString();
-    androidMainActivity = await File(
-      "android/app/src/main/kotlin/com/sesori/app/MainActivity.kt",
-    ).readAsString();
+    androidFastfile = await File("android/fastlane/Fastfile").readAsString();
     appleInfoPlists = [
       await File("ios/Runner/Info.plist").readAsString(),
       await File("macos/Runner/Info.plist").readAsString(),
@@ -39,15 +37,13 @@ void main() {
     expectAppleKeyDisabled(key: "FIREBASE_ANALYTICS_COLLECTION_ENABLED");
   });
 
-  test("Android uses the official Firebase Test Lab environment signal", () {
+  test("the Android release lane stamps the build time the analytics window reads", () {
+    // Play's pre-launch crawl only exists on Android, so this is the lane whose
+    // stamp actually keeps crawler installs out of the user counts.
     expect(
-      androidMainActivity,
-      contains('const val FIREBASE_TEST_LAB_CHANNEL_NAME = "com.sesori.app/firebase-test-lab"'),
-    );
-    expect(androidMainActivity, contains('"isRunning" ->'));
-    expect(
-      androidMainActivity,
-      contains('Settings.System.getString(contentResolver, "firebase.test.lab") == "true"'),
+      androidFastfile,
+      contains("--dart-define=SESORI_BUILD_EPOCH_SECONDS=#{Time.now.utc.to_i}"),
+      reason: "an unstamped release build reads as outside the window and reports every launch",
     );
   });
 

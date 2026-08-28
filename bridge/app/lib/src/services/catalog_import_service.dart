@@ -110,6 +110,10 @@ class CatalogImportService({
               pluginId: pluginId,
               projectsImported: 0,
               sessionsImported: 0,
+              // No import ran, so nothing is new. Zero rather than null: null
+              // means the bridge does not report deltas at all, and this one
+              // does.
+              newItems: const CatalogImportNewItems(projects: 0, sessions: 0),
               completedAt: completion.completedAt,
             ),
           );

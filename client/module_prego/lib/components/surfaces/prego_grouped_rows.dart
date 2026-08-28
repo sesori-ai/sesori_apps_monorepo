@@ -25,8 +25,7 @@ const double _leadingIconSize = 20.0;
 class const PregoGroupedRows({
   super.key,
 
-  /// The rows, typically [PregoGroupedRow]s. Mark the final row with
-  /// [PregoGroupedRow.isLast] so it drops its bottom divider.
+  /// Rows rendered with dividers between children.
   required final List<Widget> children,
 }) extends StatelessWidget {
   @override
@@ -38,17 +37,32 @@ class const PregoGroupedRows({
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
+        children: [
+          for (var index = 0; index < children.length; index++)
+            _GroupedRowPosition(
+              key: switch (children[index].key) {
+                final key? => ValueKey<Key>(key),
+                null => null,
+              },
+              isLast: index == children.length - 1,
+              child: children[index],
+            ),
+        ],
       ),
     );
   }
 }
 
+class const _GroupedRowPosition({super.key, required final bool isLast, required super.child}) extends InheritedWidget {
+  static bool isLastOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_GroupedRowPosition>()?.isLast ?? false;
+
+  @override
+  bool updateShouldNotify(_GroupedRowPosition oldWidget) => isLast != oldWidget.isLast;
+}
+
 /// A settings row (Figma "Row"): optional 20px leading glyph, `text-md` title,
 /// optional `text-xs` subtitle, and a trailing slot (chevron, switch, …).
-///
-/// Rows compose a hairline divider below themselves aligned with the title
-/// column; set [isLast] on the final row of a [PregoGroupedRows] card.
 class const PregoGroupedRow({
   super.key,
 
@@ -64,9 +78,6 @@ class const PregoGroupedRow({
   /// Trailing slot. Icon descendants default to 20px in the tertiary colour.
   final Widget? trailing,
   final VoidCallback? onTap,
-
-  /// Whether this is the last row in its card; suppresses the bottom divider.
-  final bool isLast = false,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -129,7 +140,7 @@ class const PregoGroupedRow({
       tile = InkWell(onTap: onTap, child: tile);
     }
 
-    if (isLast) return tile;
+    if (_GroupedRowPosition.isLastOf(context)) return tile;
 
     // Hairline between rows, aligned with the title column like the Figma
     // rows' top border (which starts after the leading slot).

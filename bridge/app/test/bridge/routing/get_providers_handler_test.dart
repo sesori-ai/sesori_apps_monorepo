@@ -47,9 +47,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "opencode"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetProvidersProjectId, equals("project-1"));
     });
@@ -60,9 +57,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response, isA<ProviderListResponse>());
     });
@@ -71,9 +65,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(response.items, isEmpty);
     });
@@ -83,7 +74,7 @@ void main() {
     test("maps provider id and name fields", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -96,9 +87,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -110,7 +98,7 @@ void main() {
     test("maps defaultModelID when present", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -123,9 +111,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -135,7 +120,7 @@ void main() {
     test("defaultModelID is null when absent", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.google(
+          PluginProvider(
             id: "google",
             name: "Google",
             authType: PluginProviderAuthType.apiKey,
@@ -148,9 +133,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final provider = response.items[0];
@@ -160,7 +142,7 @@ void main() {
     test("maps models with id, providerID, name, and family", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -176,9 +158,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -200,7 +179,7 @@ void main() {
     test("maps model availability and releaseDate from plugin", () async {
       plugin.providersResult = PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -231,9 +210,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -254,7 +230,7 @@ void main() {
     test("preserves 1.4-style synthetic model IDs", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -269,9 +245,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final model = response.items.single.models["openai/gpt-4.1-mini"]!;
@@ -283,7 +256,7 @@ void main() {
     test("maps isAvailable values directly", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
@@ -299,9 +272,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final models = response.items[0].models;
@@ -312,7 +282,7 @@ void main() {
     test("unknown model statuses remain available through the route contract", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
@@ -327,9 +297,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items.single.models["gpt-4.1"]!.isAvailable, isTrue);
@@ -338,7 +305,7 @@ void main() {
     test("provider with no models has empty models map", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.custom(
+          PluginProvider(
             id: "empty-provider",
             name: "Empty Provider",
             authType: PluginProviderAuthType.unknown,
@@ -351,9 +318,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items[0].models, isEmpty);
@@ -362,21 +326,21 @@ void main() {
     test("returns all providers when plugin returns multiple", () async {
       plugin.providersResult = const PluginProvidersResult(
         providers: [
-          PluginProvider.anthropic(
+          PluginProvider(
             id: "anthropic",
             name: "Anthropic",
             authType: PluginProviderAuthType.apiKey,
             models: [],
             defaultModelID: null,
           ),
-          PluginProvider.openAI(
+          PluginProvider(
             id: "openai",
             name: "OpenAI",
             authType: PluginProviderAuthType.apiKey,
             models: [],
             defaultModelID: null,
           ),
-          PluginProvider.google(
+          PluginProvider(
             id: "google",
             name: "Google",
             authType: PluginProviderAuthType.apiKey,
@@ -389,9 +353,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/provider"),
         body: const PluginProjectIdRequest(projectId: "project-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.items, hasLength(3));

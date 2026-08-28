@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/auth/token.dart";
+import "package:sesori_bridge/src/foundation/data_directory_hardening.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -31,20 +32,6 @@ void main() {
       final json = data.toJson();
 
       expect(json["lastProvider"], equals("github"));
-    });
-
-    test("fromJson ignores a legacy bridgeId key from old token files", () {
-      final restored = TokenData.fromJson(<String, dynamic>{
-        "accessToken": "access-token",
-        "refreshToken": "refresh-token",
-        "bridgeId": "br_abc12345",
-        "lastProvider": "github",
-      });
-
-      expect(restored.accessToken, equals("access-token"));
-      expect(restored.refreshToken, equals("refresh-token"));
-      expect(restored.lastProvider, equals(AuthProvider.github));
-      expect(restored.toJson().containsKey("bridgeId"), isFalse);
     });
 
     test("fromJson throws when lastProvider is missing", () {
@@ -102,7 +89,11 @@ void main() {
         lastProvider: AuthProvider.github,
       );
 
-      await saveTokens(data: data, dataDirectory: firstRoot);
+      await saveTokens(
+        data: data,
+        dataDirectory: firstRoot,
+        writeRestrictedFile: writeRestrictedFile,
+      );
 
       expect(File(tokenPath(dataDirectory: firstRoot)).existsSync(), isTrue);
       expect(File(tokenPath(dataDirectory: secondRoot)).existsSync(), isFalse);

@@ -59,7 +59,7 @@ final class ClaudePlugin({
   String get launchDirectory => _launchDirectory;
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) async {
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
     final persisted = await _transcripts.getSessions(projectId: projectId, start: null, limit: null);
     final target = normalizeProjectDirectory(directory: projectId);
     final combined = _mergeSessions(persisted, [
@@ -307,7 +307,7 @@ final class ClaudePlugin({
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async {
-    final sessions = await getSessions(projectId);
+    final sessions = await getSessions(projectId: projectId, start: null, limit: null);
     return [
       for (final session in sessions) ..._approvals.pendingQuestionsForSession(sessionId: session.id),
     ];
@@ -407,7 +407,6 @@ final class ClaudePlugin({
     _transcripts.deleteSession(sessionId: backendSessionId);
   }
 
-  @override
   Future<void> dispose() => _disposeFuture ??= _dispose();
 
   Future<void> _dispose() async {
@@ -490,6 +489,14 @@ final class ClaudePlugin({
     }
   }
 
+  PluginOperationException _unsupportedSelection({
+    required String operation,
+    required String message,
+    required bool staleOptions,
+  }) => staleOptions
+      ? PluginStaleOptionsException(operation, message: message)
+      : PluginOperationException(operation, statusCode: 400, message: message);
+
   void _validateModel(
     ({String providerID, String modelID})? model, {
     required String operation,
@@ -497,9 +504,7 @@ final class ClaudePlugin({
   }) {
     if (model == null) return;
     if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude model")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude model");
+      throw _unsupportedSelection(operation: operation, message: "unsupported Claude model", staleOptions: staleOptions);
     }
   }
 
@@ -511,9 +516,7 @@ final class ClaudePlugin({
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude effort")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude effort");
+      throw _unsupportedSelection(operation: operation, message: "unsupported Claude effort", staleOptions: staleOptions);
     }
     return effort;
   }
@@ -526,9 +529,7 @@ final class ClaudePlugin({
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "unsupported Claude agent")
-          : PluginOperationException(operation, statusCode: 400, message: "unsupported Claude agent");
+      throw _unsupportedSelection(operation: operation, message: "unsupported Claude agent", staleOptions: staleOptions);
     }
     return selection.permissionMode;
   }
@@ -639,22 +640,11 @@ final class ClaudePlugin({
     );
     _eventBuffer.add(
       BridgeSseMessagePartUpdated(
-        part: PluginMessagePart(
+        part: PluginMessagePart.text(
           id: "$messageId-text",
           sessionID: sessionId,
           messageID: messageId,
-          type: PluginMessagePartType.text,
           text: visible,
-          tool: null,
-          state: null,
-          prompt: null,
-          description: null,
-          agent: null,
-          childSessionID: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       ),
     );

@@ -9,15 +9,17 @@ import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_a
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
+import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
+import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUp(() {
-    configureDependencies(
+  setUp(() async {
+    await configureDependencies(
       firebaseEnabled: false,
-      analyticsRuntimeCapability: const AnalyticsRuntimeCapability.disabled(
+      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
       ),
     );
@@ -31,6 +33,12 @@ void main() {
     expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
     expect(getIt<FailureReporter>(), isA<NoOpFailureReporter>());
     expect(getIt<PushMessagingSource>(), isA<NoOpPushMessagingSource>());
+  });
+
+  test("Singular attribution resolves independently of Firebase", () {
+    expect(getIt<AttributionClient>(), isA<SingularAttributionClient>());
+    expect(getIt<SingularStaticAdapter>(), isA<SingularStaticAdapter>());
+    expect(getIt<InstallationAnalyticsService>(), isA<InstallationAnalyticsService>());
   });
 
   test("disabled Firebase environment registers no FlutterFire SDK object", () {

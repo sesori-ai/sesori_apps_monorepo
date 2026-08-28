@@ -60,7 +60,7 @@ void main() {
           clientFactory: () => CodexAppServerClient(serverUrl: serverUrl),
           keepaliveInterval: const Duration(seconds: 30),
         );
-        expect(await plugin.getSessions("/repo/example"), isEmpty);
+        expect(await plugin.getSessions(projectId: "/repo/example", start: null, limit: null), isEmpty);
         expect(await plugin.getSessionMessages("s-1"), isEmpty);
         expect(await plugin.getSessionStatuses(), isEmpty);
         expect(plugin.getActiveSessionsSummary(), isEmpty);
@@ -362,6 +362,30 @@ void main() {
       );
       await busyAgain.timeout(const Duration(seconds: 2));
 
+      // Leave a prompt outstanding so teardown emits its clearing event, whose
+      // work-state sync must not overwrite the disconnect's `unknown`.
+      final secondAsk = plugin.events.where((event) => event is BridgeSsePermissionAsked).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "id": 100,
+          "method": "item/commandExecution/requestApproval",
+          "params": {
+            "threadId": "t-running",
+            "turnId": "turn-2",
+            "itemId": "item-2",
+            "command": "ls -la",
+          },
+        }),
+      );
+      await secondAsk.timeout(const Duration(seconds: 2));
+
+      final disconnectWorkStates = <PluginWorkState>[];
+      final workStateSubscription = plugin.workState.listen(disconnectWorkStates.add);
+      addTearDown(workStateSubscription.cancel);
+      await pumpEventQueue();
+      disconnectWorkStates.clear();
+
       final disconnected = plugin.events
           .where((event) => event is BridgeSseSessionIdle)
           .cast<BridgeSseSessionIdle>()
@@ -377,6 +401,9 @@ void main() {
         await plugin.getPendingPermissions(sessionId: "t-running"),
         isEmpty,
       );
+      await pumpEventQueue();
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+      expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
     test("dispose closes event buffer without error", () async {

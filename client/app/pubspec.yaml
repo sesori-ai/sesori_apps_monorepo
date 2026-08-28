@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.8.1+1
+version: 1.8.2+1
 environment:
   sdk: ^3.13.1
 
@@ -77,13 +77,12 @@ dependencies:
   firebase_analytics: ^12.4.6
   firebase_crashlytics: ^5.2.7
   firebase_messaging: ^16.5.0
+  singular_flutter_sdk: ^1.9.0
   flutter_local_notifications: ^22.3.0
   flutter_svg: ^2.3.0
   sign_in_with_apple: ^8.1.0
   crypto: ^3.0.7
   vector_graphics: ^1.2.3
-  flutter_chat_ui: ^2.11.1
-  flutter_chat_core: ^2.9.0
   image_picker: ^1.2.3
   flutter_keyboard_visibility:
     git:

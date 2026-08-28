@@ -55,14 +55,13 @@ SessionDetailState _loadedState({
     ),
     stagedCommand: null,
     isRefreshing: false,
-    retryErrorMessage: null,
   );
 }
 
 MessageWithParts _messageWithPart({
   String messageId = "msg-1",
   String partId = "part-1",
-  String? text,
+  String text = "",
 }) {
   return MessageWithParts(
     info: Message.assistant(
@@ -74,22 +73,11 @@ MessageWithParts _messageWithPart({
       time: null,
     ),
     parts: [
-      MessagePart(
+      MessagePart.reasoning(
         id: partId,
         sessionID: "session-1",
         messageID: messageId,
-        type: MessagePartType.reasoning,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       ),
     ],
   );

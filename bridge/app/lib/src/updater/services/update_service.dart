@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:io' show HttpException, SocketException;
 
-import 'package:http/http.dart' show ClientException;
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
@@ -12,6 +10,7 @@ import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';
+import '../models/update_install_result.dart';
 import '../models/update_result.dart';
 import '../repositories/release_repository.dart';
 import '../repositories/update_log_repository.dart';
@@ -103,20 +102,11 @@ class UpdateService({
       // Expected, benign for a best-effort updater — stays quiet in Log.
       logWarning(_rateLimitMessage(error));
       return;
-    } on SocketException catch (error) {
-      // Offline / unreachable — benign; the next cycle retries.
-      logWarning('Skipping update check — network unavailable: $error');
-      return;
-    } on TimeoutException catch (error) {
-      logWarning('Skipping update check — the release check timed out: $error');
-      return;
-    } on HttpException catch (error) {
-      logWarning('Skipping update check — network error: $error');
-      return;
-    } on ClientException catch (error) {
-      logWarning('Skipping update check — network error: $error');
-      return;
     } on Object catch (error, stackTrace) {
+      if (isTransientNetworkError(error)) {
+        logWarning('Skipping update check — network error: $error');
+        return;
+      }
       await _reportGenuineFailure(
         toVersion: 'the latest release',
         reason: error.toString(),
@@ -144,14 +134,15 @@ class UpdateService({
         release: release,
         installRoot: _installRoot,
       );
-      final stagingPath = staged.stagingPath;
-      if (staged.result != UpdateResult.success || stagingPath == null) {
-        await _reportStageFailure(release: release, result: staged.result);
-        return;
+      final String stagingPath;
+      switch (staged) {
+        case UpdateInstallStageFailed(:final result):
+          await _reportStageFailure(release: release, result: result);
+          return;
+        case UpdateInstallStaged(stagingPath: final path):
+          stagingPath = path;
       }
 
-      // Re-check after staging (another await): never apply an in-place swap
-      // once disposed.
       if (_disposed) {
         return;
       }
@@ -229,10 +220,9 @@ class UpdateService({
       case UpdateResult.permissionDenied:
       case UpdateResult.checksumFailed:
       case UpdateResult.downloadFailed:
-      case UpdateResult.success:
         await _reportGenuineFailure(
           toVersion: release.version,
-          reason: _stageFailureReason(result),
+          reason: result.userFacingReason,
           logDetail: 'Staging ${release.version} failed: ${result.name}',
         );
     }
@@ -261,23 +251,6 @@ class UpdateService({
   }
 
   void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
-
-  String _stageFailureReason(UpdateResult result) {
-    switch (result) {
-      case UpdateResult.permissionDenied:
-        return 'permission denied writing to the install directory';
-      case UpdateResult.checksumFailed:
-        return 'the downloaded archive failed checksum verification';
-      case UpdateResult.downloadFailed:
-        return 'the release archive could not be downloaded or extracted';
-      case UpdateResult.networkError:
-        return 'a network error occurred';
-      case UpdateResult.alreadyLocked:
-        return 'another update is already in progress';
-      case UpdateResult.success:
-        return 'an unexpected error occurred';
-    }
-  }
 
   String _rateLimitMessage(GitHubRateLimitException error) {
     final reset = error.resetAt;

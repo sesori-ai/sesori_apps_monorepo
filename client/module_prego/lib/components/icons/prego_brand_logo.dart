@@ -8,10 +8,10 @@ import "../../theme/prego_theme.dart";
 /// The mark of the harness a session, project or setting belongs to.
 ///
 /// Each supported harness has its own artwork, so a screen mixing backends
-/// tells them apart at a glance. Each mark ships a light and a dark export in
-/// its official brand colours and follows the theme brightness. A harness
-/// this build has no artwork for — a newer bridge can advertise one — falls
-/// back to a plug drawn in [color].
+/// tells them apart at a glance. Theme-specific exports follow the current
+/// brightness; theme-independent marks keep their official brand colours. A
+/// harness this build has no artwork for — a newer bridge can advertise one
+/// — falls back to a plug drawn in [color].
 ///
 /// The mark is decorative. Callers that lean on it to identify the harness
 /// must say so in words themselves; [displayNameFor] gives them the name.
@@ -54,6 +54,7 @@ class const PregoBrandLogo({
       final id when id == Harness.pi.name =>
         isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
       final id when id == Harness.omp.name => "assets/svgs/brands/omp.svg",
+      final id when id == Harness.deepseek.name => "assets/svgs/brands/deepseek.svg",
       _ => null,
     };
   }
@@ -72,6 +73,7 @@ class const PregoBrandLogo({
     final id when id == Harness.hermes.name => "Hermes Agent",
     final id when id == Harness.pi.name => "Pi",
     final id when id == Harness.omp.name => "Oh My Pi",
+    final id when id == Harness.deepseek.name => "DeepSeek",
     _ => pluginId,
   };
 }

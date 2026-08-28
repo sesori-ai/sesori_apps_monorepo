@@ -80,6 +80,7 @@ class CodexMessageRepository({
     var messageCounter = 0;
     String? sessionProvider;
     String? currentModel;
+    String? currentVariant;
 
     PluginMessage assistantInfo({
       required String id,
@@ -90,6 +91,8 @@ class CodexMessageRepository({
       agent: "codex",
       modelID: currentModel ?? config.model,
       providerID: sessionProvider ?? config.modelProvider ?? "openai",
+      variant: currentVariant,
+      sender: PluginMessageSender.agent,
       time: time,
     );
 
@@ -202,6 +205,7 @@ class CodexMessageRepository({
               agent: "codex",
               modelID: currentModel ?? config.model,
               providerID: sessionProvider ?? config.modelProvider ?? "openai",
+              variant: currentVariant,
               errorName: "CodexError",
               errorMessage: error.message,
               time: _messageTimeFrom(lineTimestamp),
@@ -219,6 +223,8 @@ class CodexMessageRepository({
         case CodexRolloutTurnContextLineDto(payload: final context):
           final model = context.model;
           if (model != null && model.isNotEmpty) currentModel = model;
+          final effort = context.effort?.trim();
+          currentVariant = effort == null || effort.isEmpty ? null : effort;
           continue;
         case CodexRolloutCompactedLineDto(:final timestamp):
           messageCounter += 1;
@@ -319,22 +325,11 @@ class CodexMessageRepository({
             PluginMessageWithParts(
               info: assistantInfo(id: messageId, time: messageTime),
               parts: [
-                PluginMessagePart(
+                PluginMessagePart.reasoning(
                   id: "$messageId-reasoning",
                   sessionID: sessionId,
                   messageID: messageId,
-                  type: PluginMessagePartType.reasoning,
                   text: reasoning,
-                  tool: null,
-                  state: null,
-                  prompt: null,
-                  description: null,
-                  agent: null,
-                  childSessionID: null,
-                  agentName: null,
-                  attempt: null,
-                  retryError: null,
-                  attachment: null,
                 ),
               ],
             ),
@@ -463,39 +458,17 @@ class CodexMessageRepository({
       info: info,
       parts: [
         if (text != null)
-          PluginMessagePart(
+          PluginMessagePart.text(
             id: "$messageId-text",
             sessionID: sessionId,
             messageID: messageId,
-            type: PluginMessagePartType.text,
             text: text,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         for (var index = 0; index < attachments.length; index++)
-          PluginMessagePart(
+          PluginMessagePart.file(
             id: "$messageId-file-${index + 1}",
             sessionID: sessionId,
             messageID: messageId,
-            type: PluginMessagePartType.file,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
             attachment: attachments[index],
           ),
       ],
@@ -515,12 +488,10 @@ class CodexMessageRepository({
     return PluginMessageWithParts(
       info: info,
       parts: [
-        PluginMessagePart(
+        PluginMessagePart.tool(
           id: "$messageId-tool",
           sessionID: sessionId,
           messageID: messageId,
-          type: PluginMessagePartType.tool,
-          text: "",
           tool: tool,
           state: PluginToolState(
             status: status,
@@ -529,14 +500,6 @@ class CodexMessageRepository({
             error: status == PluginToolStatus.error ? output : null,
             attachments: attachments,
           ),
-          prompt: null,
-          description: null,
-          agent: null,
-          childSessionID: null,
-          agentName: null,
-          attempt: null,
-          retryError: null,
-          attachment: null,
         ),
       ],
     );

@@ -14,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
+import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
@@ -57,6 +58,8 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/new_session_defaults_repository.dart";
+import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
@@ -82,7 +85,6 @@ import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
-import "routing/get_agents_handler.dart";
 import "routing/get_base_branch_handler.dart";
 import "routing/get_bridge_settings_handler.dart";
 import "routing/get_catalog_import_statuses_handler.dart";
@@ -183,7 +185,6 @@ typedef OrchestratorComposition = ({
 class Orchestrator({
     required final BridgeConfig config,
     required final RelayClient _client,
-    required final String _legacyMissingPluginId,
     required final PluginLifecycleService _pluginLifecycleService,
     required final PluginRuntime _pluginRuntime,
     required final BridgeSettingsRepository _bridgeSettingsRepository,
@@ -215,16 +216,15 @@ class Orchestrator({
     final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
-      bridgeDerivedProjectPluginIds: {
-        for (final entry in pluginComposition.projectOwnershipById.entries)
-          if (entry.value == PluginProjectOwnership.bridgeDerived) entry.key,
-      },
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       pullRequestDao: _database.pullRequestDao,
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
+    );
+    final newSessionDefaultsRepository = NewSessionDefaultsRepository(
+      dao: NewSessionDefaultsDao(database: _database),
     );
     final sessionOptionsRepository = SessionOptionsRepository(
       runtime: _pluginRuntime,
@@ -234,6 +234,7 @@ class Orchestrator({
     );
     final sessionOptionsService = SessionOptionsService(
       repository: sessionOptionsRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       pluginScopes: pluginComposition.sessionOptionsScopeById,
       clock: _clock,
       retention: const Duration(days: 30),
@@ -347,9 +348,10 @@ class Orchestrator({
       ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
+    final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
-      sessionDao: _database.sessionDao,
+      pendingSupport: pendingInteractionSupport,
     );
     final healthRepository = HealthRepository(
       bridgeVersion: appVersion,
@@ -362,10 +364,10 @@ class Orchestrator({
     final agentRepository = AgentRepository(
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
-      legacyPluginId: _legacyMissingPluginId,
     );
     final questionRepository = QuestionRepository(
       runtime: _pluginRuntime,
+      pendingSupport: pendingInteractionSupport,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
       aggregateSourceDeadline: aggregateSourceDeadline,
@@ -375,7 +377,6 @@ class Orchestrator({
       questionRepository: questionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
-      legacyMissingPluginId: _legacyMissingPluginId,
     );
     final sessionCreationService = SessionCreationService(
       sessionMetadataRepository: SessionMetadataRepository(
@@ -388,7 +389,9 @@ class Orchestrator({
       ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionOptionsService: sessionOptionsService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
@@ -401,14 +404,17 @@ class Orchestrator({
       projectRepository: projectRepository,
     );
     final roomKey = _generateRoomKey();
+    final cryptoService = RelayCryptoService();
+    final sessionEncryptor = cryptoService.createSessionEncryptor(SecretKey(roomKey));
+    final keyExchangeManager = KeyExchangeManager(roomKey, cryptoService: cryptoService);
     final bytesSentController = StreamController<int>.broadcast();
     final localWireEventsController = StreamController<SesoriSseEvent>.broadcast();
     final sseManager = SSEManager(
       replayWindow: config.sseReplayWindow,
       onBytesSent: bytesSentController.add,
       failureReporter: _failureReporter,
+      encryptor: sessionEncryptor,
     );
-    sseManager.setRoomKey(roomKey);
 
     final catalogImportRepository = CatalogImportRepository(
       runtime: _pluginRuntime,
@@ -499,9 +505,10 @@ class Orchestrator({
       bridgeSettingsRepository: _bridgeSettingsRepository,
       permissionAutoApprovalService: permissionAutoApprovalService,
     );
-    final pluginEventListeners = [
-      PluginEventListener(source: _pluginRuntime.backendEvents, dispatcher: sessionEventDispatcher),
-    ];
+    final pluginEventListener = PluginEventListener(
+      source: _pluginRuntime.backendEvents,
+      dispatcher: sessionEventDispatcher,
+    );
     final sessionBindingCommitListener = SessionBindingCommitListener(
       source: sessionRepository.bindingCommits,
       dispatcher: sessionEventDispatcher,
@@ -573,7 +580,6 @@ class Orchestrator({
         CancelQueuedPromptHandler(sessionPromptService: sessionPromptService),
         AbortSessionHandler(sessionAbortService: sessionAbortService),
         GetProvidersHandler(providerRepository),
-        GetAgentsHandler(agentRepository),
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
@@ -606,7 +612,7 @@ class Orchestrator({
       config: config,
       client: _client,
       pluginEvents: normalizedPluginEvents,
-      pluginEventListeners: pluginEventListeners,
+      pluginEventListener: pluginEventListener,
       sessionBindingCommitListener: sessionBindingCommitListener,
       sessionMutationListener: sessionMutationListener,
       chatHistoryListener: chatHistoryListener,
@@ -616,13 +622,13 @@ class Orchestrator({
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
-      pushDispatcher: pushDispatcher,
       completionListener: completionListener,
       maintenanceListener: maintenanceListener,
       accessTokenProvider: _accessTokenProvider,
       tokenRefresher: _tokenRefresher,
       bridgeRegistrationService: _bridgeRegistrationService,
-      roomKey: roomKey,
+      sessionEncryptor: sessionEncryptor,
+      keyExchangeManager: keyExchangeManager,
       sseManager: sseManager,
       routedRequestDispatcher: routedRequestDispatcher,
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
@@ -704,7 +710,7 @@ class OrchestratorSession._({
     required final BridgeConfig config,
     required final RelayClient _client,
     required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
-    required final List<PluginEventListener> _pluginEventListeners,
+    required final PluginEventListener _pluginEventListener,
     required final SessionBindingCommitListener _sessionBindingCommitListener,
     required final SessionMutationListener _sessionMutationListener,
     required final ChatHistoryListener _chatHistoryListener,
@@ -714,13 +720,13 @@ class OrchestratorSession._({
     required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
     required final SessionEventDispatcher _sessionEventDispatcher,
     required final PluginRuntime _pluginRuntime,
-    required final PushDispatcher _pushDispatcher,
     required final CompletionPushListener _completionListener,
     required final MaintenancePushListener _maintenanceListener,
     required final AccessTokenProvider _accessTokenProvider,
     required final TokenRefresher _tokenRefresher,
     required final BridgeRegistrationService _bridgeRegistrationService,
-    required final List<int> _roomKey,
+    required final SessionEncryptor _sessionEncryptor,
+    required final KeyExchangeManager _keyExchangeManager,
     required final SSEManager _sseManager,
     required final RoutedRequestDispatcher _routedRequestDispatcher,
     required final BridgeEventMapper _mapper,
@@ -750,10 +756,6 @@ class OrchestratorSession._({
     required final ControlStatusNotifier? _statusNotifier,
     required final ReconnectBackoffPolicy _reconnectBackoff,
   }) {
-  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
-  final CompositeSubscription _promptDefaultsSubscriptions = CompositeSubscription();
-  // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
-  final CompositeSubscription _catalogImportSubscriptions = CompositeSubscription();
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
@@ -797,7 +799,7 @@ class OrchestratorSession._({
         .listen((progress) {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
         })
-        .addTo(_catalogImportSubscriptions);
+        .addTo(_subscriptions);
     pluginManagementSnapshotTokens
         .listen((snapshotToken) {
           _enqueueWireEvent(SesoriSseEvent.pluginManagementChanged(snapshotToken: snapshotToken));
@@ -834,7 +836,7 @@ class OrchestratorSession._({
             ),
           );
         })
-        .addTo(_promptDefaultsSubscriptions);
+        .addTo(_subscriptions);
   }
 
   /// Broadcast stream of byte counts emitted each time data is sent to a phone.
@@ -887,9 +889,7 @@ class OrchestratorSession._({
     _sessionMutationListener.start();
     _chatHistoryListener.start();
     _sessionBindingCommitListener.start();
-    for (final listener in _pluginEventListeners) {
-      listener.start();
-    }
+    _pluginEventListener.start();
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
@@ -953,7 +953,6 @@ class OrchestratorSession._({
   Future<void> _startAndServe({
     required Completer<OrchestratorSessionStartResult> readiness,
   }) async {
-    final kxManager = KeyExchangeManager(_roomKey);
     final activePhoneIncarnations = <int, Object>{};
 
     Log.d("registering bridge with auth server...");
@@ -961,80 +960,75 @@ class OrchestratorSession._({
     Log.d("bridge registered");
     if (_cancelled) return;
 
-    final RelayConnection relayConnection;
-    try {
-      Log.d("connecting to relay...");
-      relayConnection = await _client.connect();
-      _relayConnection = relayConnection;
-      Log.d("relay connected");
-      if (_cancelled) {
-        final closeFuture = _client.closeIfCurrent(connection: relayConnection);
-        if (identical(_relayConnection, relayConnection)) {
-          _relayConnection = null;
-        }
-        await closeFuture;
-        return;
+    Log.d("connecting to relay...");
+    final relayConnection = await _client.connect();
+    _relayConnection = relayConnection;
+    Log.d("relay connected");
+    if (_cancelled) {
+      final closeFuture = _client.closeIfCurrent(connection: relayConnection);
+      if (identical(_relayConnection, relayConnection)) {
+        _relayConnection = null;
       }
-
-      _maintenanceListener.start();
-      _projectActivityService.changes
-          .listen((change) {
-            final event = SesoriSseEvent.projectUpdated(
-              projectID: change.projectId,
-              updatedAt: change.updatedAt,
-            );
-            _enqueueWireEvent(event);
-            _completionListener.handleSseEvent(event);
-          })
-          .addTo(_subscriptions);
-
-      if (_yoloSettingsService.currentSettings.enabled) await _permissionAutoApprovalService.approvePending();
-      final startupSummary = await _buildProjectsSummary();
-      if (startupSummary != null) {
-        _completionListener.handleSseEvent(startupSummary);
-        if (startupSummary is SesoriProjectsSummary) {
-          _statusNotifier?.handleProjectsSummary(summary: startupSummary);
-        }
-      }
-      _prSyncService.renderedChanges
-          .listen((change) {
-            _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));
-          })
-          .addTo(_subscriptions);
-      _sessionUnseenService.unseenChanges
-          .listen((change) {
-            _enqueueWireEvent(
-              SesoriSseEvent.sessionUnseenChanged(
-                projectID: change.projectId,
-                sessionId: change.sessionId,
-                unseen: change.unseen,
-                projectHasUnseenChanges: change.projectHasUnseenChanges,
-                lastUserActivityAt: change.lastUserActivityAt,
-              ),
-            );
-          })
-          .addTo(_subscriptions);
-      // Live re-auth: when the token provider emits a token whose auth IDENTITY
-      // differs from the one the relay socket is actually authenticated with
-      // (supervised mode: the GUI pushed a token_update after an account switch;
-      // standalone: a re-login as another user picked up by the next refresh),
-      // drop the relay so the reconnect loop below re-authenticates on the fresh
-      // token — the same path a relay-side disconnect drives, so both triggers
-      // stay symmetric.
-      //
-      // Identity-gated on purpose: the relay validates the JWT once at connect
-      // and never re-checks it for the lifetime of the socket, so a routine
-      // same-user token rotation (TokenManager refreshing near expiry during
-      // metadata generation or push sends, or the GUI pushing a routine refresh)
-      // keeps the open socket fully valid. Dropping it would disconnect every
-      // phone mid-flight for nothing — see [_requiresRelayReauth].
-      _accessTokenProvider.tokenStream
-          .where(_requiresRelayReauth)
-          .listen((token) => unawaited(_reauthenticateRelay()))
-          .addTo(_subscriptions);
-    } catch (e) {
-      throw Exception("failed to connect to relay: $e");
+      await closeFuture;
+      return;
     }
+
+    _maintenanceListener.start();
+    _projectActivityService.changes
+        .listen((change) {
+          final event = SesoriSseEvent.projectUpdated(
+            projectID: change.projectId,
+            updatedAt: change.updatedAt,
+          );
+          _enqueueWireEvent(event);
+          _completionListener.handleSseEvent(event);
+        })
+        .addTo(_subscriptions);
+
+    if (_yoloSettingsService.currentSettings.enabled) await _permissionAutoApprovalService.approvePending();
+    final startupSummary = await _buildProjectsSummary();
+    if (startupSummary != null) {
+      _completionListener.handleSseEvent(startupSummary);
+      if (startupSummary is SesoriProjectsSummary) {
+        _statusNotifier?.handleProjectsSummary(summary: startupSummary);
+      }
+    }
+    _prSyncService.renderedChanges
+        .listen((change) {
+          _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));
+        })
+        .addTo(_subscriptions);
+    _sessionUnseenService.unseenChanges
+        .listen((change) {
+          _enqueueWireEvent(
+            SesoriSseEvent.sessionUnseenChanged(
+              projectID: change.projectId,
+              sessionId: change.sessionId,
+              unseen: change.unseen,
+              projectHasUnseenChanges: change.projectHasUnseenChanges,
+              lastUserActivityAt: change.lastUserActivityAt,
+            ),
+          );
+        })
+        .addTo(_subscriptions);
+    // Live re-auth: when the token provider emits a token whose auth IDENTITY
+    // differs from the one the relay socket is actually authenticated with
+    // (supervised mode: the GUI pushed a token_update after an account switch;
+    // standalone: a re-login as another user picked up by the next refresh),
+    // drop the relay so the reconnect loop below re-authenticates on the fresh
+    // token — the same path a relay-side disconnect drives, so both triggers
+    // stay symmetric.
+    //
+    // Identity-gated on purpose: the relay validates the JWT once at connect
+    // and never re-checks it for the lifetime of the socket, so a routine
+    // same-user token rotation (TokenService refreshing near expiry during
+    // metadata generation or push sends, or the GUI pushing a routine refresh)
+    // keeps the open socket fully valid. Dropping it would disconnect every
+    // phone mid-flight for nothing — see [_requiresRelayReauth].
+    _accessTokenProvider.tokenStream
+        .where(_requiresRelayReauth)
+        .listen((token) => unawaited(_reauthenticateRelay()))
+        .addTo(_subscriptions);
 
     Console.message("Relay:  ${config.relayURL}");
     Console.message("Waiting for relay events...");
@@ -1042,7 +1036,6 @@ class OrchestratorSession._({
     await _serveRelayConnections(
       readiness: readiness,
       initialConnection: relayConnection,
-      kxManager: kxManager,
       activePhoneIncarnations: activePhoneIncarnations,
     );
   }
@@ -1050,6 +1043,7 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1074,9 +1068,7 @@ class OrchestratorSession._({
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
-      attempt(_promptDefaultsSubscriptions.cancel),
-      attempt(_catalogImportSubscriptions.cancel),
-      for (final listener in _pluginEventListeners) attempt(listener.dispose),
+      attempt(_pluginEventListener.dispose),
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
@@ -1118,7 +1110,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await attempt(_viewedProjectPrRefreshListener.dispose);
-    await attempt(_prSyncService.dispose);
+    await attempt(_prSyncService.drain);
     Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
@@ -1126,9 +1118,6 @@ class OrchestratorSession._({
     Log.v("stopping sse manager...");
     await attempt(_sseManager.stop);
     Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
-    Log.v("disposing push notification service...");
-    await attempt(_pushDispatcher.dispose);
-    Log.v("push notification service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([
       attempt(_localWireEventsController.close),
       attempt(_bytesSentController.close),
@@ -1148,7 +1137,6 @@ class OrchestratorSession._({
   Future<void> _serveRelayConnections({
     required Completer<OrchestratorSessionStartResult> readiness,
     required RelayConnection initialConnection,
-    required KeyExchangeManager kxManager,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     var connection = initialConnection;
@@ -1167,8 +1155,6 @@ class OrchestratorSession._({
             iterator: iterator,
             firstRead: firstRead,
             connection: connection,
-            roomKey: _roomKey,
-            kxManager: kxManager,
             activePhoneIncarnations: activePhoneIncarnations,
           );
         } on Object catch (error, stackTrace) {
@@ -1272,6 +1258,7 @@ class OrchestratorSession._({
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
+    _prSyncService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
@@ -1363,13 +1350,11 @@ class OrchestratorSession._({
     return () async {
       await previous;
       try {
-        final generation = source.generation;
-        if (generation != null &&
-            !_pluginRuntime.isCurrentEvent(
-              pluginId: source.pluginId,
-              generation: generation,
-              allowDuringStop: source.allowDuringStop,
-            )) {
+        if (!_isCurrentSource(
+          pluginId: source.pluginId,
+          generation: source.generation,
+          allowDuringStop: source.allowDuringStop,
+        )) {
           return;
         }
         await _processPluginEvent(source);
@@ -1392,14 +1377,6 @@ class OrchestratorSession._({
       _ => sourcedEvent,
     };
     try {
-      if (generation != null &&
-          !_pluginRuntime.isCurrentEvent(
-            pluginId: pluginId,
-            generation: generation,
-            allowDuringStop: allowDuringStop,
-          )) {
-        return;
-      }
       Log.v("[sse] plugin event arrived: ${event.runtimeType}");
 
       if (event is BridgeSsePermissionReplied) {
@@ -1478,12 +1455,11 @@ class OrchestratorSession._({
         final sesoriEvent = event is BridgeSseProjectUpdated ? null : _mapper.map(event: event, pluginId: pluginId);
         delivery = sesoriEvent == null ? null : SseEventDelivery.uniform(event: sesoriEvent);
       }
-      if (generation != null &&
-          !_pluginRuntime.isCurrentEvent(
-            pluginId: pluginId,
-            generation: generation,
-            allowDuringStop: allowDuringStop,
-          )) {
+      if (!_isCurrentSource(
+        pluginId: pluginId,
+        generation: generation,
+        allowDuringStop: allowDuringStop,
+      )) {
         return;
       }
       if (delivery != null) {
@@ -1500,12 +1476,11 @@ class OrchestratorSession._({
       // Both trigger types mean activity changed. Rebuild from repository data
       // after delivering session.deleted so clients observe deletion first.
       if (refreshProjectsSummary) {
-        if (generation != null &&
-            !_pluginRuntime.isCurrentEvent(
-              pluginId: pluginId,
-              generation: generation,
-              allowDuringStop: allowDuringStop,
-            )) {
+        if (!_isCurrentSource(
+          pluginId: pluginId,
+          generation: generation,
+          allowDuringStop: allowDuringStop,
+        )) {
           return;
         }
         await _buildAndDeliverProjectsSummaryInOrder(
@@ -1535,7 +1510,7 @@ class OrchestratorSession._({
   /// rewritten part to subscribers as an ordinary part update.
   Future<void> _finalizeOpenToolParts({
     required String sessionId,
-    required String? pluginId,
+    required String pluginId,
     required int? generation,
     required bool allowDuringStop,
   }) async {
@@ -1603,7 +1578,7 @@ class OrchestratorSession._({
 
   Future<void> _deliverSseEvent({
     required SseEventDelivery delivery,
-    required String? pluginId,
+    required String pluginId,
     required int? generation,
     required bool allowDuringStop,
   }) async {
@@ -1653,7 +1628,7 @@ class OrchestratorSession._({
   }
 
   Future<void> _buildAndDeliverProjectsSummaryInOrder({
-    required String? pluginId,
+    required String pluginId,
     required int? generation,
     required bool allowDuringStop,
   }) {
@@ -1688,12 +1663,11 @@ class OrchestratorSession._({
   }
 
   bool _isCurrentSource({
-    required String? pluginId,
+    required String pluginId,
     required int? generation,
     required bool allowDuringStop,
   }) {
     if (generation == null) return true;
-    if (pluginId == null) return false;
     return _pluginRuntime.isCurrentEvent(
       pluginId: pluginId,
       generation: generation,
@@ -1813,12 +1787,12 @@ class OrchestratorSession._({
   /// [ControlTokenUnavailableException] (supervised mode — the GUI reported
   /// signed-out / mid-login and the service invalidated its cache), or any other
   /// refresh failure with NO usable cached token to fall back on (e.g. standalone
-  /// [TokenManager] whose token store was deleted on logout). In both cases the
+  /// [TokenService] whose token store was deleted on logout). In both cases the
   /// caller MUST NOT reconnect — there is no safe token to authenticate with.
   ///
   /// Returns `true` when a refresh succeeds, or when a refresh fails for a reason
   /// other than unavailability AND a usable cached token still exists (e.g.
-  /// standalone [TokenManager] hitting a transiently-down auth-refresh endpoint
+  /// standalone [TokenService] hitting a transiently-down auth-refresh endpoint
   /// while its cached JWT is still valid) — so the reconnect proceeds with that
   /// cached token, preserving the pre-existing standalone resilience.
   Future<bool> _refreshAccessToken() async {
@@ -1916,8 +1890,6 @@ class OrchestratorSession._({
     required StreamIterator<RelayClientMessage> iterator,
     required Future<bool> firstRead,
     required RelayConnection connection,
-    required List<int> roomKey,
-    required KeyExchangeManager kxManager,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     var hasMessage = await firstRead;
@@ -1996,7 +1968,7 @@ class OrchestratorSession._({
 
           Uint8List encrypted;
           try {
-            encrypted = await kxManager.handleKeyExchange(message: relayMessage);
+            encrypted = await _keyExchangeManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
           } catch (e) {
             Log.e("failed key exchange for connId $connID: $e");
@@ -2028,14 +2000,10 @@ class OrchestratorSession._({
           "checking protocolVersion: payload[0]=0x${payload[0].toRadixString(16)} expected=0x${protocolVersion.toRadixString(16)}",
         );
         if (payload[0] == protocolVersion) {
-          final encryptor = RelayCryptoService().createSessionEncryptor(
-            SecretKey(List<int>.from(roomKey)),
-          );
-
           List<int>? decrypted;
           Object? decryptError;
           try {
-            decrypted = await unframe(payload, encryptor: encryptor);
+            decrypted = await unframe(payload, encryptor: _sessionEncryptor);
           } catch (e) {
             decryptError = e;
           }
@@ -2097,7 +2065,7 @@ class OrchestratorSession._({
           );
           Uint8List encryptedAck;
           try {
-            encryptedAck = await frame(ackJSON, encryptor: encryptor);
+            encryptedAck = await frame(ackJSON, encryptor: _sessionEncryptor);
           } catch (_) {
             break processMessage;
           }
@@ -2403,10 +2371,7 @@ class OrchestratorSession._({
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
     Log.v("[response] encrypting ${jsonBytes.length} bytes for connID=$connID");
-    final cryptoService = RelayCryptoService();
-    final encryptionKey = SecretKey(List<int>.from(_roomKey));
-    final encryptor = cryptoService.createSessionEncryptor(encryptionKey);
-    final framed = await frame(jsonBytes, encryptor: encryptor);
+    final framed = await frame(jsonBytes, encryptor: _sessionEncryptor);
     return (payload: framed, cleartextLength: jsonBytes.length);
   }
 

@@ -23,7 +23,7 @@ void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -33,7 +33,7 @@ void main() {
   });
 
   group("SessionDetailCubit permission handling", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -47,7 +47,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -69,7 +69,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -499,7 +499,13 @@ void main() {
       expect(cubit.state, const SessionDetailState.loading());
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
       );
       await _awaitLoaded(cubit);
 
@@ -796,7 +802,7 @@ SessionDetailCubit _buildCubit({
   );
 }
 
-void _stubLoadApis(MockSessionService service, {required String sessionId}) {
+void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
   when(
     () => service.getMessages(
       sessionId: any(named: "sessionId"),
@@ -805,7 +811,13 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      ApiResponse.success(
+        MessageWithPartsResponse(
+          messages: [_messageWithParts()],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     ),
   );
   when(

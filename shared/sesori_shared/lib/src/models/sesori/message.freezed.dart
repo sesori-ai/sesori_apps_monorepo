@@ -221,7 +221,7 @@ $MessageTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class MessageAssistant extends Message {
-  const MessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, required this.time,  String? $type}): $type = $type ?? 'assistant',super._();
+  const MessageAssistant({required this.id, required this.sessionID, required this.agent, required this.modelID, required this.providerID, @JsonKey(unknownEnumValue: MessageSender.unknown) this.sender = MessageSender.agent, required this.time,  String? $type}): $type = $type ?? 'assistant',super._();
   factory MessageAssistant.fromJson(Map<String, dynamic> json) => _$MessageAssistantFromJson(json);
 
 @override final  String id;
@@ -229,6 +229,8 @@ class MessageAssistant extends Message {
 @override final  String? agent;
  final  String? modelID;
  final  String? providerID;
+/// Whether this envelope was authored by the agent or by session automation.
+@JsonKey(unknownEnumValue: MessageSender.unknown) final  MessageSender sender;
 @override final  MessageTime? time;
 
 @JsonKey(name: 'role')
@@ -248,16 +250,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,time);
+int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,sender,time);
 
 @override
 String toString() {
-  return 'Message.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, time: $time)';
+  return 'Message.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, sender: $sender, time: $time)';
 }
 
 
@@ -268,7 +270,7 @@ abstract mixin class $MessageAssistantCopyWith<$Res> implements $MessageCopyWith
   factory $MessageAssistantCopyWith(MessageAssistant value, $Res Function(MessageAssistant) _then) = _$MessageAssistantCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? agent, String? modelID, String? providerID, MessageTime? time
+ String id, String sessionID, String? agent, String? modelID, String? providerID,@JsonKey(unknownEnumValue: MessageSender.unknown) MessageSender sender, MessageTime? time
 });
 
 
@@ -285,14 +287,15 @@ class _$MessageAssistantCopyWithImpl<$Res>
 
 /// Create a copy of Message
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? agent = freezed,Object? modelID = freezed,Object? providerID = freezed,Object? sender = null,Object? time = freezed,}) {
   return _then(MessageAssistant(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,agent: freezed == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
 as String?,modelID: freezed == modelID ? _self.modelID : modelID // ignore: cast_nullable_to_non_nullable
 as String?,providerID: freezed == providerID ? _self.providerID : providerID // ignore: cast_nullable_to_non_nullable
-as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
+as String?,sender: null == sender ? _self.sender : sender // ignore: cast_nullable_to_non_nullable
+as MessageSender,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
 as MessageTime?,
   ));
 }
@@ -325,6 +328,7 @@ class MessageError extends Message {
  final  String? modelID;
  final  String? providerID;
  final  String errorName;
+/// The backend-provided error text, unchanged when the backend supplied it.
  final  String errorMessage;
 @override final  MessageTime? time;
 

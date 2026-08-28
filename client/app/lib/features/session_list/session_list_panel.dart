@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
@@ -123,10 +124,31 @@ class const SessionListPanel({
   /// pull-to-refresh (only once the list has loaded).
   Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
-    Widget scrollView = CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+    final canRefresh = state is SessionListLoaded;
+    final catalogScan = state is SessionListLoaded ? state.catalogScan : const CatalogRescanState.idle();
+    return CustomScrollView(
+      physics: canRefresh
+          ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+          : const AlwaysScrollableScrollPhysics(),
       slivers: [
+        if (canRefresh)
+          PregoSliverRefreshControl(
+            onRefresh: () => refreshSessionList(context),
+            deepRefresh: CatalogScanRow.deepRefresh(
+              context: context,
+              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
+            ),
+            decorate: null,
+            onPulledExtentChanged: null,
+          ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SliverToBoxAdapter(
+          child: CatalogScanRow(
+            scan: catalogScan,
+            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
+            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
+          ),
+        ),
         SessionListContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,
@@ -135,13 +157,6 @@ class const SessionListPanel({
         ),
       ],
     );
-    if (state is SessionListLoaded) {
-      scrollView = RefreshIndicator.noSpinner(
-        onRefresh: () => refreshSessionList(context),
-        child: scrollView,
-      );
-    }
-    return scrollView;
   }
 
   String _title({required AppLocalizations loc}) => switch (projectName) {

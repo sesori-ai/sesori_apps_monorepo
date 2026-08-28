@@ -1,9 +1,11 @@
 import "dart:async";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_options_cache_key.dart";
+import "../repositories/new_session_defaults_repository.dart";
 import "../repositories/session_options_repository.dart";
 
 /// How long a cached snapshot stays fresh. Past it the bridge still serves the
@@ -40,6 +42,7 @@ final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
 class SessionOptionsService({
     required final SessionOptionsRepository _repository,
+    required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
     required Map<String, PluginSessionOptionsScope> pluginScopes,
     required final ServerClock _clock,
     required final Duration _retention,
@@ -52,10 +55,20 @@ class SessionOptionsService({
 
   final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
-  final Map<SessionOptionsCacheKey, Future<void>> _invalidations = {};
+  final KeyedParallelLock<SessionOptionsCacheKey> _invalidationLock = KeyedParallelLock<SessionOptionsCacheKey>();
   final Map<SessionOptionsCacheKey, int> _invalidationEpochs = {};
 
   Future<SessionOptionsOutcome> loadDynamic({
+    required String pluginId,
+    required String projectId,
+  }) {
+    return _withLastUsedPromptDefaults(
+      pluginId: pluginId,
+      outcome: _loadDynamic(pluginId: pluginId, projectId: projectId),
+    );
+  }
+
+  Future<SessionOptionsOutcome> _loadDynamic({
     required String pluginId,
     required String projectId,
   }) async {
@@ -124,6 +137,16 @@ class SessionOptionsService({
   Future<SessionOptionsOutcome> loadCacheOnly({
     required String pluginId,
     required String projectId,
+  }) {
+    return _withLastUsedPromptDefaults(
+      pluginId: pluginId,
+      outcome: _loadCacheOnly(pluginId: pluginId, projectId: projectId),
+    );
+  }
+
+  Future<SessionOptionsOutcome> _loadCacheOnly({
+    required String pluginId,
+    required String projectId,
   }) async {
     final resolved = await _resolve(pluginId: pluginId, projectId: projectId);
     if (resolved == null) return const SessionOptionsProjectNotFound();
@@ -140,6 +163,16 @@ class SessionOptionsService({
   }
 
   Future<SessionOptionsOutcome> refreshExplicit({
+    required String pluginId,
+    required String projectId,
+  }) {
+    return _withLastUsedPromptDefaults(
+      pluginId: pluginId,
+      outcome: _refreshExplicit(pluginId: pluginId, projectId: projectId),
+    );
+  }
+
+  Future<SessionOptionsOutcome> _refreshExplicit({
     required String pluginId,
     required String projectId,
   }) async {
@@ -160,6 +193,23 @@ class SessionOptionsService({
     );
   }
 
+  Future<SessionOptionsOutcome> _withLastUsedPromptDefaults({
+    required String pluginId,
+    required Future<SessionOptionsOutcome> outcome,
+  }) async {
+    final resolved = await outcome;
+    if (resolved case SessionOptionsAvailable(:final response)) {
+      try {
+        final defaults = await _newSessionDefaultsRepository.read(pluginId: pluginId);
+        return SessionOptionsAvailable(response: response.copyWith(lastUsedPromptDefaults: defaults));
+      } on Object catch (error, stackTrace) {
+        Log.w("Failed to read new-session defaults for plugin $pluginId", error, stackTrace);
+        return SessionOptionsAvailable(response: response.copyWith(lastUsedPromptDefaults: null));
+      }
+    }
+    return resolved;
+  }
+
   /// Discards an options snapshot proven stale by a rejected send. The client
   /// that receives the typed rejection then requests forced discovery; the
   /// rejected snapshot cannot be retained if that discovery fails.
@@ -175,28 +225,12 @@ class SessionOptionsService({
     if (resolved == null) return;
     final key = resolved.key;
     _invalidationEpochs[key] = _invalidationEpoch(key: key) + 1;
-    Future<void> delete() => _repository.delete(key: key);
-    final prior = _invalidations[key];
-    final invalidation = prior == null
-        ? Future<void>.sync(delete)
-        : prior.then((_) => delete(), onError: (Object _, StackTrace _) => delete());
-    _invalidations[key] = invalidation;
-    try {
-      await invalidation;
-    } finally {
-      // Identity-checked: a later rejection may already have chained its own
-      // delete onto this one and now owns the slot.
-      _invalidations.removeWhere((pending, entry) => pending == key && identical(entry, invalidation));
-    }
+    await _invalidationLock.use(key: key, operation: () => _repository.delete(key: key));
   }
 
   /// Holds a commit until every delete already issued for [key] has settled,
   /// so a snapshot captured after a rejection survives the delete that raced it.
-  Future<void> _awaitInvalidation({required SessionOptionsCacheKey key}) async {
-    final invalidation = _invalidations[key];
-    if (invalidation == null) return;
-    await invalidation.then<void>((_) {}, onError: (Object _, StackTrace _) {});
-  }
+  Future<void> _awaitInvalidation({required SessionOptionsCacheKey key}) => _invalidationLock.idleFor(key: key);
 
   int _invalidationEpoch({required SessionOptionsCacheKey key}) => _invalidationEpochs[key] ?? 0;
 

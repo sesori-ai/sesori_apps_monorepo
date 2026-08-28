@@ -47,9 +47,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/questions"),
           body: const SessionIdRequest(sessionId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -59,9 +56,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/questions"),
         body: const SessionIdRequest(sessionId: "s-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data, isA<List<PendingQuestion>>());
@@ -91,9 +85,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/questions"),
         body: const SessionIdRequest(sessionId: "s-1"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final item = response.data.first;

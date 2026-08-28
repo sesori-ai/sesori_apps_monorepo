@@ -8,11 +8,11 @@ part of 'plugin_session_status.dart';
 
 Map<String, dynamic> _$PluginSessionStatusIdleToJson(
   PluginSessionStatusIdle instance,
-) => <String, dynamic>{'runtimeType': instance.$type};
+) => <String, dynamic>{'type': instance.$type};
 
 Map<String, dynamic> _$PluginSessionStatusBusyToJson(
   PluginSessionStatusBusy instance,
-) => <String, dynamic>{'runtimeType': instance.$type};
+) => <String, dynamic>{'type': instance.$type};
 
 Map<String, dynamic> _$PluginSessionStatusRetryToJson(
   PluginSessionStatusRetry instance,
@@ -20,5 +20,5 @@ Map<String, dynamic> _$PluginSessionStatusRetryToJson(
   'attempt': instance.attempt,
   'message': instance.message,
   'next': instance.next,
-  'runtimeType': instance.$type,
+  'type': instance.$type,
 };

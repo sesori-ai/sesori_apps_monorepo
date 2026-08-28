@@ -30,11 +30,12 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
         }
       case SesoriMessageUpdated(:final info):
         _messageRoles[info.id] = _PushTrackedMessageRole(
-          role: info is MessageAssistant
-              ? "assistant"
-              : info is MessageUser
-              ? "user"
-              : "error",
+          role: switch (info) {
+            MessageAssistant(sender: MessageSender.agent) => _PushMessageRole.assistant,
+            MessageAssistant() => _PushMessageRole.system,
+            MessageUser() => _PushMessageRole.user,
+            MessageError() => _PushMessageRole.error,
+          },
           sessionId: info.sessionID,
           updatedAt: now,
         );
@@ -275,7 +276,9 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
       latestAssistantTextCount: latestAssistantTextCount,
       latestAssistantTextCharCount: latestAssistantTextCharCount,
       messageRoleCount: _messageRoles.length,
-      assistantMessageRoleCount: _messageRoles.values.where((messageRole) => messageRole.role == "assistant").length,
+      assistantMessageRoleCount: _messageRoles.values
+          .where((messageRole) => messageRole.role == _PushMessageRole.assistant)
+          .length,
       oldestSessionActivityAt: oldestSessionActivityAt,
       oldestMessageRoleUpdatedAt: oldestMessageRoleUpdatedAt,
       prunableRoots: _findPrunableRoots(),
@@ -496,16 +499,12 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
 
   void _updateLatestAssistantText({required MessagePart part}) {
     final messageRole = _messageRoles[part.messageID];
-    if (part.type != MessagePartType.text || messageRole == null) {
+    if (part is! MessagePartText || messageRole == null) {
       return;
     }
-    final isAssistant = switch (messageRole.role) {
-      "assistant" => true,
-      _ => false,
-    };
-    if (!isAssistant) return;
+    if (messageRole.role != _PushMessageRole.assistant) return;
 
-    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text ?? "";
+    _stateForSession(sessionId: part.sessionID).latestAssistantText = part.text;
   }
 
   void _upsertSession({required Session session, required DateTime touchedAt}) {
@@ -542,8 +541,10 @@ final class _PushTrackedSessionState() {
   DateTime? lastTouchedAt;
 }
 
+enum _PushMessageRole() { user, assistant, system, error }
+
 final class const _PushTrackedMessageRole({
-  required final String role,
+  required final _PushMessageRole role,
   required final String sessionId,
   required final DateTime updatedAt,
 });

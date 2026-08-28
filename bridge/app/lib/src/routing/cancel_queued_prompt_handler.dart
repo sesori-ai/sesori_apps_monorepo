@@ -18,13 +18,9 @@ class CancelQueuedPromptHandler({required final SessionPromptService _sessionPro
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required CancelQueuedPromptRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
-    if (body.sessionId.isEmpty || body.promptId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session or prompt id");
-    }
+    requireNonEmpty(request: request, value: body.sessionId, label: "session or prompt id");
+    requireNonEmpty(request: request, value: body.promptId, label: "session or prompt id");
 
     final removed = await _sessionPromptService.cancelQueuedPrompt(
       sessionId: body.sessionId,

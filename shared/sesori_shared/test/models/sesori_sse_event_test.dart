@@ -126,6 +126,55 @@ void main() {
     expect(SesoriSseEvent.fromJson(json), event);
   });
 
+  group('tui.toast.show session scope', () {
+    test('round-trips a session-attributed toast', () {
+      const event = SesoriSseEvent.tuiToastShow(
+        sessionID: 'session-1',
+        title: 'Pi',
+        message: 'Extension finished',
+        variant: 'success',
+      );
+
+      final json = event.toJson();
+
+      expect(json, {
+        'type': 'tui.toast.show',
+        'sessionID': 'session-1',
+        'title': 'Pi',
+        'message': 'Extension finished',
+        'variant': 'success',
+      });
+      expect(SesoriSseEvent.fromJson(json), event);
+      expect(event, isA<SesoriSessionEvent>());
+    });
+
+    test('accepts legacy session omission as an unattributed toast', () {
+      final event = SesoriSseEvent.fromJson({
+        'type': 'tui.toast.show',
+        'title': 'Notice',
+        'message': 'Still global',
+        'variant': 'info',
+      });
+
+      expect(
+        event,
+        const SesoriSseEvent.tuiToastShow(
+          sessionID: null,
+          title: 'Notice',
+          message: 'Still global',
+          variant: 'info',
+        ),
+      );
+      expect(event.toJson(), {
+        'type': 'tui.toast.show',
+        'title': 'Notice',
+        'message': 'Still global',
+        'variant': 'info',
+      });
+      expect(event, isA<SesoriSessionEvent>());
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // Round-trip JSON compatibility
   // ---------------------------------------------------------------------------

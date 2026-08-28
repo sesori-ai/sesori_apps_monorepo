@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../repositories/models/repo_provider.dart";
+import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
 
 part "session_list_state.freezed.dart";
@@ -22,6 +23,14 @@ sealed class SessionListState with _$SessionListState {
     @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
     @Default(false) bool isRefreshing,
 
+    /// The catalog scan shown above the list, if any is worth showing.
+    ///
+    /// Carried here beside [isRefreshing] because it is the same kind of thing:
+    /// transient operation status the list renders over its content. The scan
+    /// itself is owned by `CatalogRescanService`; this is only the projection
+    /// the screen watches.
+    @Default(CatalogRescanState.idle()) CatalogRescanState catalogScan,
+
     /// Map of session ID -> whether it has unseen changes (bold title). Merges
     /// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
     /// updates, the latter taking precedence.
@@ -39,13 +48,6 @@ sealed class SessionListState with _$SessionListState {
     /// non-null [repoSlug].
     @Default(RepoProvider.other) RepoProvider repoProvider,
   }) = SessionListLoaded;
-
-  /// The requested project ID no longer resolves to the expected project on
-  /// the server.
-  const factory staleProject({
-    /// The project ID the server actually resolved.
-    required String resolvedProjectId,
-  }) = SessionListStaleProject;
 
   const factory failed({required RemoteFailureReason reason}) = SessionListFailed;
 }

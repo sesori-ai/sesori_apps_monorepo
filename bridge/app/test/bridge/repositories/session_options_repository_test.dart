@@ -51,6 +51,7 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "plugin-1",
+        preservePullRequestScope: false,
       );
 
       expect(await repository.resolveProjectPath(projectId: "project-1"), "/projects/current");
@@ -360,7 +361,7 @@ PluginSessionOptions _pluginOptions({required String marker}) {
     ],
     providers: PluginProvidersResult(
       providers: [
-        PluginProvider.custom(
+        PluginProvider(
           id: "provider-1",
           name: "Provider $marker",
           authType: PluginProviderAuthType.unknown,
@@ -438,6 +439,7 @@ SessionOptionsResponse _response({required String marker}) {
         ),
       ],
     ),
+    lastUsedPromptDefaults: null,
   );
 }
 

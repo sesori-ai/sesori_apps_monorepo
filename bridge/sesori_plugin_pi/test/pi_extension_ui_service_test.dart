@@ -229,6 +229,7 @@ void main() {
     expect(processes.replies.single.reply, isA<PiExtensionUiCancelledReply>());
     expect(events.whereType<PiExtensionUiQuestionRejected>(), hasLength(2));
     final toast = events.whereType<PiExtensionUiToast>().single;
+    expect(toast.sessionId, "child");
     expect(toast.message.runes.length, PiExtensionUiService.maxTextLength);
     expect(toast.variant, PiNotificationType.warning);
   });
@@ -470,6 +471,8 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
     identityTracker: PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: const Duration(seconds: 2),
+    abortRpcTimeout: const Duration(seconds: 1),
+    promptRpcTimeout: const Duration(minutes: 30),
   );
 
   List<_SentReply> get replies => [
@@ -489,7 +492,12 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
 
   Future<void> start({required String sessionId, required String directory}) async {
     final process = processes.last;
-    final connecting = repository.ensureResident(sessionId: sessionId, knownDirectories: {directory});
+    final connecting = repository.ensureResident(
+      sessionId: sessionId,
+      knownDirectories: {directory},
+      model: null,
+      variant: null,
+    );
     final command = await _waitForCommand(process: process, type: "get_entries");
     process.emitResponse(
       id: command["id"]! as String,

@@ -168,6 +168,8 @@ void main() {
   test("installation events stay account-less and use only bounded parameters", () {
     const started = InstallationAnalyticsEvent.loginAttemptStarted(provider: AnalyticsLoginProvider.github);
     const completed = InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.apple);
+    const signedUp = InstallationAnalyticsEvent.accountCreated(method: AnalyticsLoginProvider.google);
+    const loggedIn = InstallationAnalyticsEvent.accountLogin(method: AnalyticsLoginProvider.email);
     const failed = InstallationAnalyticsEvent.loginAttemptFailed(
       provider: AnalyticsLoginProvider.email,
       failureKind: AnalyticsLoginFailureKind.timeout,
@@ -177,9 +179,14 @@ void main() {
     expect(started.parameters, {"provider": "github"});
     expect(completed.wireName, "login_attempt_completed");
     expect(completed.parameters, {"provider": "apple"});
+    expect(signedUp.wireName, "sign_up");
+    expect(signedUp.parameters, {"method": "google"});
+    expect(loggedIn.wireName, "login");
+    expect(loggedIn.parameters, {"method": "email"});
     expect(failed.wireName, "login_attempt_failed");
     expect(failed.parameters, {"provider": "email", "failure_kind": "timeout"});
-    for (final event in [started, completed, failed]) {
+    for (final event in [started, completed, signedUp, loggedIn, failed]) {
+      expect(event.wireName.length, lessThanOrEqualTo(40));
       expect(event.parameters, isNot(contains("user_key")));
       expect(event.parameters, isNot(contains("attempt_id")));
     }

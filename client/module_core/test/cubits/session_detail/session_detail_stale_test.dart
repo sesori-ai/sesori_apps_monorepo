@@ -26,7 +26,7 @@ void main() {
   const sessionId = "session-1";
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
   const connectionLostStatus = ConnectionStatus.connectionLost(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
@@ -39,7 +39,7 @@ void main() {
   });
 
   group("SessionDetailCubit stale reconnect", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
@@ -52,7 +52,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
@@ -73,7 +73,7 @@ void main() {
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
@@ -146,7 +146,11 @@ void main() {
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
-            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")], nextCursor: null),
+            MessageWithPartsResponse(
+              messages: [_messageWithParts(messageId: "msg-refreshed")],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
           ),
         );
 
@@ -223,7 +227,11 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-immediate")], nextCursor: null),
+          MessageWithPartsResponse(
+            messages: [_messageWithParts(messageId: "msg-immediate")],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
         ),
       );
 
@@ -453,6 +461,7 @@ void main() {
               ),
             ],
             nextCursor: null,
+            replayedPromptDefaults: null,
           ),
         ),
       );
@@ -586,7 +595,11 @@ void main() {
 
       messagesCompleter.complete(
         ApiResponse.success(
-          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-race")], nextCursor: null),
+          MessageWithPartsResponse(
+            messages: [_messageWithParts(messageId: "msg-race")],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
         ),
       );
       await pumpEventQueue();
@@ -625,7 +638,11 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-provider-fallback")], nextCursor: null),
+          MessageWithPartsResponse(
+            messages: [_messageWithParts(messageId: "msg-provider-fallback")],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
         ),
       );
       when(
@@ -698,7 +715,13 @@ void main() {
       ).called(1);
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
       );
       await _awaitLoaded(cubit);
       await cubit.close();
@@ -859,7 +882,13 @@ void main() {
           if (messageLoads == 1) {
             return ApiResponse.error(ApiError.generic());
           }
-          return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+          return ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          );
         });
 
         mockConnectionService.emitDataMayBeStale();
@@ -978,7 +1007,13 @@ void main() {
           messageLoads++;
           if (messageLoads == 1) return firstMessages.future;
           return Future.value(
-            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+            ApiResponse.success(
+              MessageWithPartsResponse(
+                messages: [_messageWithParts()],
+                nextCursor: null,
+                replayedPromptDefaults: null,
+              ),
+            ),
           );
         });
 
@@ -1076,7 +1111,11 @@ void main() {
 
       messagesCompleter.complete(
         ApiResponse.success(
-          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-coalesced")], nextCursor: null),
+          MessageWithPartsResponse(
+            messages: [_messageWithParts(messageId: "msg-coalesced")],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
         ),
       );
       await pumpEventQueue();
@@ -1240,10 +1279,22 @@ void main() {
             before: any(named: "before"),
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
         messagesCompleter.complete(
-          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
 
         // Once the next window elapses, the retained signal produces the
@@ -1324,10 +1375,22 @@ void main() {
             before: any(named: "before"),
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
         messagesCompleter.complete(
-          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
         async.elapse(Duration.zero);
         verify(
@@ -1465,7 +1528,13 @@ void main() {
           if (messageLoads == 1) {
             return ApiResponse.error(ApiError.generic());
           }
-          return ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null));
+          return ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          );
         });
 
         lifecycle.emitState(LifecycleState.paused);
@@ -1557,10 +1626,22 @@ void main() {
             before: any(named: "before"),
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
         messagesCompleter.complete(
-          ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
         async.elapse(Duration.zero);
         verify(
@@ -1577,7 +1658,7 @@ void main() {
   });
 }
 
-void _stubLoadApis(MockSessionService service, {required String sessionId}) {
+void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
   when(
     () => service.getMessages(
       sessionId: any(named: "sessionId"),
@@ -1586,7 +1667,13 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      ApiResponse.success(
+        MessageWithPartsResponse(
+          messages: [_messageWithParts()],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     ),
   );
   when(

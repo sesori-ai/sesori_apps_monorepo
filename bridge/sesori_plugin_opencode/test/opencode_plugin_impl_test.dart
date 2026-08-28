@@ -6,6 +6,7 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+enum _OptionDiscoveryRequest() { agents, providers }
 
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
@@ -51,7 +52,7 @@ void main() {
 
     test("dispose during an in-flight initialize never starts the SSE stream", () async {
       server.holdProjects = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       // Hold the cold-start at the gated GET /project, then dispose while it
       // is still in flight — the late _sseConnection.start() must not revive
@@ -72,7 +73,7 @@ void main() {
 
     test("initialize waits until the SSE listener is connected", () async {
       server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       addTearDown(plugin.dispose);
       var completed = false;
       final initialize = plugin.initialize().whenComplete(() => completed = true);
@@ -90,7 +91,7 @@ void main() {
 
     test("dispose unblocks initialize while the SSE listener is connecting", () async {
       server.holdSseResponse = Completer<void>();
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       final initialize = plugin.initialize();
       while (!server.requestLog.contains("GET /global/event")) {
         await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -102,7 +103,7 @@ void main() {
 
     test("first SSE connection retries a failed cold start", () async {
       server.projectFailuresRemaining = 1;
-      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       addTearDown(plugin.dispose);
       final recovered = plugin.events.firstWhere((event) => event is BridgeSseProjectUpdated);
 
@@ -114,6 +115,7 @@ void main() {
 
     test("getProjects maps internal projects to plugin projects", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final projects = await plugin.getProjects();
 
@@ -132,8 +134,9 @@ void main() {
 
     test("getSessions maps internal sessions to plugin sessions", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
-      final sessions = await plugin.getSessions("/repo");
+      final sessions = await plugin.getSessions(projectId: "/repo", start: null, limit: null);
 
       expect(sessions, hasLength(2));
 
@@ -152,6 +155,7 @@ void main() {
 
     test("getProjects seeds sandbox aliases so moved-location sessions canonicalize without a lookup", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       // A restarted plugin serving a previously-moved project: the backend's
       // project list already records the live location as a sandbox, and no
       // per-directory project lookup has happened yet.
@@ -167,13 +171,14 @@ void main() {
 
       await plugin.getProjects();
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       expect(moved.projectID, equals("/repo"));
     });
 
     test("getProject at a moved live directory registers an alias that canonicalizes session mapping", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       // The folder moved: /repo is still the project's root worktree, and the
       // backend records the live location as a sandbox.
       server.addSandbox(projectKey: "p1", sandbox: "/moved/repo");
@@ -195,7 +200,7 @@ void main() {
       expect(project.directory, equals("/moved/repo"));
       expect(project.activity, isNull);
 
-      final sessions = await plugin.getSessions("/moved/repo");
+      final sessions = await plugin.getSessions(projectId: "/moved/repo", start: null, limit: null);
       final moved = sessions.firstWhere((session) => session.id == "s-moved");
       // Without the alias this would fall back to the requested directory.
       expect(moved.projectID, equals("/repo"));
@@ -203,6 +208,7 @@ void main() {
 
     test("getCommands delegates through service and includes the synthetic compact command", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final commands = await plugin.getCommands(projectId: "/repo");
 
@@ -214,6 +220,7 @@ void main() {
 
     test("getSessionOptions delegates the complete coherent aggregate", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getSessionOptions(
         projectId: "project-1",
@@ -224,6 +231,8 @@ void main() {
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.agents, isNotEmpty);
       expect(options.providers.providers, isNotEmpty);
+      expect(server.lastAgentDirectoryHeader, "project-1");
+      expect(server.lastProvidersDirectoryHeader, "project-1");
       expect(
         options.commands.map((command) => command.name),
         contains(OpenCodeService.compactionCommandName),
@@ -232,6 +241,7 @@ void main() {
 
     test("createSession creates the session then sends the first prompt", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
 
@@ -260,6 +270,7 @@ void main() {
 
     test("sendPrompt resolves tracked directory before sending", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
 
@@ -299,6 +310,7 @@ void main() {
 
     test("stamps the prompt id on the echo of the message it named", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       final events = <BridgeSseEvent>[];
       final subscription = plugin.events.listen(events.add);
@@ -351,6 +363,7 @@ void main() {
           if (!connected.isCompleted) connected.complete();
         },
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       await server.waitForSseConnection();
@@ -378,6 +391,7 @@ void main() {
         },
         onDisconnected: disconnected.complete,
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       await server.waitForSseConnection();
@@ -407,6 +421,7 @@ void main() {
         },
         onDisconnected: disconnected.complete,
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       expect(plugin.currentWorkState, PluginWorkState.idle);
@@ -426,6 +441,7 @@ void main() {
           if (!connected.isCompleted) connected.complete();
         },
       );
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await connected.future;
       server.promptStatusCode = HttpStatus.internalServerError;
@@ -445,8 +461,140 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
+    final staleSelectionCases =
+        <
+          ({
+            String name,
+            String? agent,
+            PluginSessionVariant? variant,
+            ({String providerID, String modelID})? model,
+            String expectedMessage,
+            _OptionDiscoveryRequest discoveryRequest,
+          })
+        >[
+          (
+            name: "agent",
+            agent: "removed-agent",
+            variant: null,
+            model: null,
+            expectedMessage: "OpenCode no longer offers the selected agent.",
+            discoveryRequest: _OptionDiscoveryRequest.agents,
+          ),
+          (
+            name: "model",
+            agent: null,
+            variant: null,
+            model: (providerID: "anthropic", modelID: "removed-model"),
+            expectedMessage: "OpenCode no longer offers the selected model.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+          (
+            name: "variant",
+            agent: null,
+            variant: const PluginSessionVariant(id: "medium"),
+            model: (providerID: "anthropic", modelID: "claude-3-opus"),
+            expectedMessage: "OpenCode no longer offers the selected variant.",
+            discoveryRequest: _OptionDiscoveryRequest.providers,
+          ),
+        ];
+
+    for (final testCase in staleSelectionCases) {
+      test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+        addTearDown(plugin.dispose);
+        await server.waitForSseConnection();
+        server
+          ..failNoReplyMessageNumber = 1
+          ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+        server.requestLog.clear();
+
+        await expectLater(
+          plugin.sendPrompt(
+            promptId: "prompt-stale-${testCase.name}",
+            sessionId: "s-root",
+            parts: const [PluginPromptPart.text(text: "Continue")],
+            agent: testCase.agent,
+            variant: testCase.variant,
+            model: testCase.model,
+          ),
+          throwsA(
+            isA<PluginStaleOptionsException>()
+                .having((error) => error.operation, "operation", "sendPrompt")
+                .having((error) => error.message, "message", testCase.expectedMessage)
+                .having(
+                  (error) => error.cause,
+                  "cause",
+                  isA<PluginApiException>().having(
+                    (error) => error.statusCode,
+                    "statusCode",
+                    HttpStatus.internalServerError,
+                  ),
+                ),
+          ),
+        );
+
+        expect(
+          server.requestLog,
+          equals([
+            "POST /session/s-root/message",
+            switch (testCase.discoveryRequest) {
+              _OptionDiscoveryRequest.agents => "GET /agent",
+              _OptionDiscoveryRequest.providers => "GET /config/providers",
+            },
+          ]),
+        );
+        expect(server.requestLog, isNot(contains("POST /session/s-root/prompt_async")));
+        switch (testCase.discoveryRequest) {
+          case _OptionDiscoveryRequest.agents:
+            expect(server.lastAgentDirectoryHeader, "/repo");
+          case _OptionDiscoveryRequest.providers:
+            expect(server.lastProvidersDirectoryHeader, "/repo");
+        }
+      });
+    }
+
+    test("preserves a generic reservation failure when the selected agent remains available", () async {
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
+      addTearDown(plugin.dispose);
+      await server.waitForSseConnection();
+      server
+        ..failNoReplyMessageNumber = 1
+        ..noReplyMessageFailureStatusCode = HttpStatus.internalServerError;
+      server.requestLog.clear();
+
+      await expectLater(
+        plugin.sendPrompt(
+          promptId: "prompt-backend-failure",
+          sessionId: "s-root",
+          parts: const [PluginPromptPart.text(text: "Continue")],
+          agent: "build",
+          variant: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginApiException>().having(
+            (error) => error.statusCode,
+            "statusCode",
+            HttpStatus.internalServerError,
+          ),
+        ),
+      );
+
+      expect(
+        server.requestLog,
+        equals([
+          "POST /session/s-root/message",
+          "GET /agent",
+        ]),
+      );
+      expect(server.lastAgentDirectoryHeader, "/repo");
+    });
+
     test("sendCommand detaches with the tracked directory and marks the turn busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.requestLog.clear();
@@ -519,6 +667,7 @@ void main() {
 
     test("definite prompt refusal removes its correlation and reserved message", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.promptStatusCode = HttpStatus.badRequest;
 
@@ -566,6 +715,7 @@ void main() {
 
     test("bare compact reuses a correlated server message and native compaction part", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
       final events = <BridgeSseEvent>[];
@@ -637,6 +787,7 @@ void main() {
 
     test("compact guidance is persisted before reserving the marker", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
       server.requestLog.clear();
 
@@ -670,6 +821,7 @@ void main() {
 
     test("compact removes guidance when marker reservation is rejected", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.failNoReplyMessageNumber = 2;
@@ -694,6 +846,7 @@ void main() {
 
     test("compact removes guidance and marker when conversion is rejected", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.messagePartStatusCode = HttpStatus.badRequest;
@@ -718,6 +871,7 @@ void main() {
 
     test("detached sendCommand failure revokes provisional plugin busy", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       server.holdCommand = Completer<void>();
@@ -744,6 +898,7 @@ void main() {
 
     test("getSessionMessages maps raw messages to plugin messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-1");
 
@@ -762,6 +917,7 @@ void main() {
 
     test("getSessionMessages exposes normalized file parts and filters snapshots", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-filter");
 
@@ -790,6 +946,7 @@ void main() {
 
     test("getSessionMessages shows automatic compaction user messages", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-new-parts-filter");
 
@@ -803,6 +960,7 @@ void main() {
 
     test("getSessionMessages agent part carries agentName", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-agent-part");
 
@@ -814,6 +972,7 @@ void main() {
 
     test("getSessionMessages retry part carries attempt and retryError", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-retry-part");
 
@@ -826,11 +985,12 @@ void main() {
 
     test("getSessionMessages truncates tool output to 500 chars", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-long");
 
       expect(messages, hasLength(2));
-      final output = messages.last.parts.single.state?.output;
+      final output = messages.last.parts.single.state.output;
       expect(output, isNotNull);
       expect(output!.length, lessThanOrEqualTo(500));
       expect(output.length, equals(500));
@@ -838,22 +998,24 @@ void main() {
 
     test("getSessionMessages keeps short tool output unchanged", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final messages = await plugin.getSessionMessages("ses-tool-short");
 
       expect(messages, hasLength(2));
-      expect(messages.last.parts.single.state?.output, equals("short"));
+      expect(messages.last.parts.single.state.output, equals("short"));
     });
 
     test("getProviders with connectedOnly false returns config providers with variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
       expect(result.providers, hasLength(2));
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
-      expect(anthropic, isA<PluginProviderAnthropic>());
+      expect(anthropic.id, equals("anthropic"));
       expect(anthropic.name, equals("Anthropic"));
       expect(anthropic.authType, equals(PluginProviderAuthType.apiKey));
       expect(anthropic.models, hasLength(2));
@@ -874,13 +1036,14 @@ void main() {
       expect(sonnet.releaseDate, equals(DateTime(2024, 6, 1)));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
-      expect(custom, isA<PluginProviderCustom>());
+      expect(custom.id, equals("my-custom"));
       expect(custom.name, equals("My Custom Provider"));
       expect(custom.authType, equals(PluginProviderAuthType.unknown));
     });
 
     test("getProviders with connectedOnly true still returns config providers", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
@@ -890,18 +1053,20 @@ void main() {
 
     test("getProviders maps known provider IDs to correct union variants", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       final result = await plugin.getProviders(projectId: "project-1");
 
       final anthropic = result.providers.firstWhere((p) => p.id == "anthropic");
-      expect(anthropic, isA<PluginProviderAnthropic>());
+      expect(anthropic.id, equals("anthropic"));
 
       final custom = result.providers.firstWhere((p) => p.id == "my-custom");
-      expect(custom, isA<PluginProviderCustom>());
+      expect(custom.id, equals("my-custom"));
     });
 
     test("events stream emits bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
 
       // Wait for the actual event instead of a blind delay.
       // _initialize() emits BridgeSseProjectUpdated after coldStart().
@@ -913,6 +1078,7 @@ void main() {
 
     test("forced interruption includes an accepted prompt before busy SSE arrives", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       addTearDown(plugin.dispose);
       await server.waitForSseConnection();
       final initialProjectUpdated = Completer<void>();
@@ -970,6 +1136,7 @@ void main() {
 
     test("unknown and malformed SSE frames are ignored without emitting bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
 
       final events = <BridgeSseEvent>[];
@@ -1010,6 +1177,7 @@ void main() {
 
     test("sync SSE frames are swallowed without emitting bridge events", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
       await server.waitForSseConnection();
 
       final events = <BridgeSseEvent>[];
@@ -1074,6 +1242,7 @@ void main() {
       };
 
       final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
       // Now change the API response to omit the child — as if OpenCode
@@ -1102,6 +1271,7 @@ void main() {
       };
 
       final plugin = OpenCodePlugin(serverUrl: dynamicServer.baseUrl);
+      await plugin.initialize();
       await dynamicServer.waitForSseConnection();
 
       // API now returns idle — stale relative to the tracker.
@@ -1118,6 +1288,7 @@ void main() {
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1132,6 +1303,7 @@ void main() {
     group("archiveSession", () {
       test("sends PATCH with time.archived body", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1149,6 +1321,7 @@ void main() {
     group("renameProject", () {
       test("resolves worktree to project UUID then sends PATCH with name", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+      await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1334,12 +1507,15 @@ class _FakeOpenCodeServer() {
   final List<String> deletedMessageIds = [];
   Map<String, dynamic>? lastCommandBody;
   String? lastCommandDirectoryHeader;
+  String? lastAgentDirectoryHeader;
+  String? lastProvidersDirectoryHeader;
   String? lastCreatedSessionParentId;
   Completer<void>? holdCommand;
   int promptStatusCode = HttpStatus.ok;
   int commandStatusCode = HttpStatus.ok;
   int messagePartStatusCode = HttpStatus.ok;
   int? failNoReplyMessageNumber;
+  int noReplyMessageFailureStatusCode = HttpStatus.badRequest;
   int _nextMessageNumber = 1;
   bool acceptSseConnections = true;
   final List<String> abortedSessionIds = [];
@@ -1492,7 +1668,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/agent") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastAgentDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, [
           {
             "name": "build",
@@ -1560,7 +1736,7 @@ class _FakeOpenCodeServer() {
         final body = (jsonDecode(rawBody) as Map).cast<String, dynamic>();
         noReplyMessageBodies.add(body);
         if (noReplyMessageBodies.length == failNoReplyMessageNumber) {
-          request.response.statusCode = HttpStatus.badRequest;
+          request.response.statusCode = noReplyMessageFailureStatusCode;
           request.response.write("message failed");
           await request.response.close();
           return;
@@ -1703,7 +1879,7 @@ class _FakeOpenCodeServer() {
       }
 
       if (request.method == "GET" && path == "/config/providers") {
-        expect(request.headers.value("x-opencode-directory"), equals("project-1"));
+        lastProvidersDirectoryHeader = request.headers.value("x-opencode-directory");
         await _sendJson(request.response, {
           "providers": [
             {

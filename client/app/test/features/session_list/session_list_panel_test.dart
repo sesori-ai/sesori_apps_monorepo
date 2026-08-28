@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
+import "package:cupertino_ui/cupertino_ui.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -30,10 +33,11 @@ void main() {
 
   // Renders the real panel at a fixed width; the header sits inside the panel's
   // own 16pt horizontal padding, so the header content width is [width] - 32.
-  Future<void> pumpPanel(WidgetTester tester, {required double width}) async {
+  Future<void> pumpPanel(WidgetTester tester, {required double width, required TargetPlatform platform}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
+          platform: platform,
           colorScheme: PregoColors.light.toFlutterColorScheme(),
           textTheme: PregoTextTheme.light.asFlutterTextTheme(),
           extensions: [PregoDesignSystem.light],
@@ -71,7 +75,7 @@ void main() {
   testWidgets("narrow landscape pane lays out the header without overflow", (tester) async {
     // 258 - 32pt padding = 226pt header — the narrowest real split pane, where
     // the labelled layout used to overflow by 25px across and 310px down.
-    await pumpPanel(tester, width: 258);
+    await pumpPanel(tester, width: 258, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
     // The action collapses to an icon-only button so the title keeps its width;
@@ -87,10 +91,60 @@ void main() {
     // can't be asserted here: the fixed-width test font renders "New session"
     // far wider than the real font, which would overflow a snug header only in
     // tests — the real-font fit is verified on-device.)
-    await pumpPanel(tester, width: 600);
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
 
     expect(tester.takeException(), isNull);
     expect(find.byIcon(Icons.add), findsOneWidget);
     expect(find.text(newSessionLabel(tester)), findsOneWidget);
+  });
+
+  testWidgets("wide Android pane uses the Cupertino refresh control", (tester) async {
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.android);
+
+    expect(find.byType(CupertinoSliverRefreshControl, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
+  });
+
+  testWidgets("wide macOS pane stays displaced while refresh is pending", (tester) async {
+    final refreshCompleter = Completer<bool>();
+    var refreshStarted = false;
+    when(
+      () => cubit.refreshSessions(waitForPrData: true),
+    ).thenAnswer((_) {
+      refreshStarted = true;
+      return refreshCompleter.future;
+    });
+    await pumpPanel(tester, width: 600, platform: TargetPlatform.macOS);
+
+    expect(tester.widget<CustomScrollView>(find.byType(CustomScrollView)).physics, isA<BouncingScrollPhysics>());
+    expect(find.byType(CupertinoSliverRefreshControl, skipOffstage: false), findsOneWidget);
+    expect(find.byType(RefreshIndicator), findsNothing);
+    final content = find.byKey(const Key("session-empty-terminal"));
+    final initialContentTop = tester.getTopLeft(content).dy;
+
+    // The refresh is dispatched on release, not at the trigger, so the drag
+    // arms it and letting go is what starts it. Hold still before letting go:
+    // the control waits for the overscroll to spring back to the extent it
+    // holds itself, which a fling delays well past this window.
+    final gesture = await tester.startGesture(tester.getCenter(content));
+    for (var step = 0; step < 30; step++) {
+      await gesture.moveBy(const Offset(0, 10));
+      await tester.pump();
+    }
+    await gesture.moveBy(Offset.zero);
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.up();
+    for (var frame = 0; frame < 60 && !refreshStarted; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(refreshStarted, isTrue);
+
+    expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    expect(find.byType(RefreshProgressIndicator), findsNothing);
+    expect(tester.getTopLeft(content).dy, greaterThan(initialContentTop));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    refreshCompleter.complete(true);
+    await tester.pump();
   });
 }

@@ -8,6 +8,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("snapshot emissions cannot be mutated by subscribers", () async {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    final snapshots = await runtime.snapshots.first;
+
+    expect(snapshots.clear, throwsUnsupportedError);
+    expect((await runtime.snapshots.first).single.pluginId, "one");
+  });
+
   test("only the latest setup inspection can update a slot", () async {
     final firstGate = Completer<PluginSetupStatus>();
     final secondGate = Completer<PluginSetupStatus>();
@@ -1872,7 +1882,6 @@ class _FakeApi({
     return activeSessionsSummary;
   }
 
-  @override
   Future<void> dispose() async {
     disposeCount++;
     if (closeEventsOnDispose && !eventsController.isClosed) await eventsController.close();

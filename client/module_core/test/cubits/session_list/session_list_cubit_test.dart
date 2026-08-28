@@ -12,7 +12,9 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
+import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
@@ -25,7 +27,8 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("SessionListCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
+    late FakeCatalogRescanService fakeCatalogRescanService;
     late MockProjectRepository mockProjectRepository;
     late SessionListService sessionListService;
     late MockConnectionService mockConnectionService;
@@ -40,7 +43,8 @@ void main() {
     const projectId = "project-1";
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      fakeCatalogRescanService = FakeCatalogRescanService();
+      mockSessionService = MockSessionRepository();
       mockProjectRepository = MockProjectRepository();
       sessionListService = SessionListService(
         repository: mockProjectRepository,
@@ -84,7 +88,7 @@ void main() {
 
     /// Convenience factory — stubs must be set up before calling this.
     SessionListCubit buildCubit() => SessionListCubit(
-      sessionService: mockSessionService,
+      sessionRepository: mockSessionService,
       sessionListService: sessionListService,
       projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
@@ -94,6 +98,7 @@ void main() {
       routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
+      catalogRescanService: fakeCatalogRescanService,
     );
 
     test("successful list render readies its project claim and close releases it", () async {
@@ -551,11 +556,7 @@ void main() {
             force: any(named: "force"),
           ),
         ).thenThrow(
-          const SessionCleanupRejectedException(
-            rejection: SessionCleanupRejection(
-              issues: [CleanupIssue.unstagedChanges()],
-            ),
-          ),
+          _cleanupRejected(const CleanupIssue.unstagedChanges()),
         );
         return buildCubit();
       },
@@ -633,11 +634,7 @@ void main() {
             force: any(named: "force"),
           ),
         ).thenThrow(
-          const SessionCleanupRejectedException(
-            rejection: SessionCleanupRejection(
-              issues: [CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")],
-            ),
-          ),
+          _cleanupRejected(const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")),
         );
         return buildCubit();
       },
@@ -1130,6 +1127,46 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
+      "retryLoadSessions reconnects before loading",
+      build: () {
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        when(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async {});
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+        await cubit.retryLoadSessions();
+      },
+      skip: 1,
+      expect: () => [
+        isA<SessionListLoading>(),
+        isA<SessionListLoaded>().having((state) => state.sessions.length, "sessions count after retry", 1),
+      ],
+      verify: (_) {
+        verify(
+          () => mockConnectionService.reconnectAndAwaitOutcome(
+            timeout: const Duration(seconds: 15),
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers silent refresh",
       build: () {
         when(
@@ -1170,7 +1207,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1210,7 +1247,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1265,7 +1302,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -1310,7 +1347,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1495,7 +1532,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          sessionService: mockSessionService,
+          sessionRepository: mockSessionService,
           sessionListService: sessionListService,
           projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
@@ -1505,6 +1542,7 @@ void main() {
           routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
+          catalogRescanService: fakeCatalogRescanService,
         );
       },
       expect: () => [
@@ -1926,8 +1964,8 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         statusController.add(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "test.example.com"),
-            health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: null),
+            config: ServerConnectionConfig(relayHost: "test.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: false),
           ),
         );
         await awaitState(
@@ -2152,5 +2190,292 @@ void main() {
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
+
+    group("catalog scan", () {
+      void stubSessions() {
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+      }
+
+      Future<ApiResponse<SessionListResponse>> successfulResponse({required List<Session> sessions}) {
+        return Future<ApiResponse<SessionListResponse>>.value(
+          ApiResponse.success(SessionListResponse(items: sessions)),
+        );
+      }
+
+      test("projects the scan onto the loaded state", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.running(
+            activePluginName: "Codex",
+            sessionsSeen: 148,
+            pluginIds: {"codex"},
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as SessionListLoaded).catalogScan,
+          isA<CatalogRescanRunning>().having((s) => s.activePluginName, "activePluginName", "Codex"),
+        );
+      });
+
+      test("refreshes after a committed catalog change", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        clearInteractions(mockProjectRepository);
+        stubSessions();
+
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+
+        verify(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).called(1);
+      });
+
+      test("keeps a terminal scan through an unrelated list rebuild", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emit(
+          const CatalogRescanState.failed(harnessCount: 2),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).catalogScan, isA<CatalogRescanFailed>());
+
+        // Any list rebuild — a session event, a toggle, the refresh the scan
+        // itself triggers — must not reset a row that persists until dismissed.
+        cubit.toggleArchived();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          (cubit.state as SessionListLoaded).catalogScan,
+          isA<CatalogRescanFailed>(),
+          reason: "a failure the user has not read must survive a rebuild",
+        );
+      });
+
+      test("post-commit data wins over overlapping earlier reads", () async {
+        final olderRefresh = Completer<ApiResponse<SessionListResponse>>();
+        final olderFullLoad = Completer<ApiResponse<SessionListResponse>>();
+        final postCommit = Completer<ApiResponse<SessionListResponse>>();
+        final catalogSession = testSession(id: "catalog", title: "Imported after scan");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => olderRefresh.future,
+          2 => olderFullLoad.future,
+          3 => postCommit.future,
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        unawaited(cubit.refreshSessions());
+        await Future<void>.delayed(Duration.zero);
+        unawaited(cubit.loadSessions());
+        await Future<void>.delayed(Duration.zero);
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 4, reason: "the catalog refresh must not coalesce onto the older refresh");
+
+        postCommit.complete(ApiResponse.success(SessionListResponse(items: [catalogSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+
+        olderFullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        olderRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+      });
+
+      test("a catalog failure that supersedes a full load exits loading", () async {
+        final fullLoad = Completer<ApiResponse<SessionListResponse>>();
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => fullLoad.future,
+          2 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(sessions: const []),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        final load = cubit.loadSessions();
+        await Future<void>.delayed(Duration.zero);
+        final failure = cubit.stream.firstWhere((state) => state is SessionListFailed);
+        fakeCatalogRescanService.emitCatalogChanged();
+
+        expect(await failure, isA<SessionListFailed>());
+        fullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        await load;
+      });
+
+      test("a superseded explicit refresh reports the catalog refresh failure", () async {
+        final explicitRefresh = Completer<ApiResponse<SessionListResponse>>();
+        final waitForPrDataCalls = <bool>[];
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => explicitRefresh.future,
+          2 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          _ => successfulResponse(sessions: const []),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((invocation) {
+          waitForPrDataCalls.add(invocation.namedArguments[#waitForPrData] as bool);
+          return nextResponse();
+        });
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        final refresh = cubit.refreshSessions(waitForPrData: true);
+        await Future<void>.delayed(Duration.zero);
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3);
+        expect(waitForPrDataCalls, [false, true, true]);
+
+        explicitRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
+        expect(await refresh, isFalse);
+        expect(requestCount, 3, reason: "the stale explicit read must not rearm the failed catalog refresh");
+      });
+
+      test("runs a trailing catalog refresh after another commit arrives in flight", () async {
+        final firstPostCommit = Completer<ApiResponse<SessionListResponse>>();
+        final secondPostCommit = Completer<ApiResponse<SessionListResponse>>();
+        final firstSession = testSession(id: "first", title: "First import");
+        final secondSession = testSession(id: "second", title: "Second import");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => firstPostCommit.future,
+          2 => secondPostCommit.future,
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService
+          ..emitCatalogChanged()
+          ..emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2);
+
+        firstPostCommit.complete(ApiResponse.success(SessionListResponse(items: [firstSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 3, reason: "the second commit needs a later snapshot");
+
+        secondPostCommit.complete(ApiResponse.success(SessionListResponse(items: [secondSession])));
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionListLoaded).sessions, [secondSession]);
+      });
+
+      test("preserves a failed catalog refresh for the next ordinary refresh", () async {
+        final catalogSession = testSession(id: "catalog", title: "Imported after retry");
+        var requestCount = 0;
+        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
+          0 => successfulResponse(sessions: const []),
+          1 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
+          2 => successfulResponse(sessions: [catalogSession]),
+          _ => throw StateError("unexpected session list request"),
+        };
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+            waitForPrData: any(named: "waitForPrData"),
+          ),
+        ).thenAnswer((_) => nextResponse());
+
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        fakeCatalogRescanService.emitCatalogChanged();
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(requestCount, 2, reason: "a failed catalog refresh must not retry in a loop");
+
+        expect(await cubit.refreshSessions(), isTrue);
+        expect(requestCount, 3);
+        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+      });
+
+      test("forwards the scan intents to the service", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        cubit
+          ..startCatalogScan()
+          ..cancelCatalogScan()
+          ..dismissCatalogScan();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(fakeCatalogRescanService.startAllCalls, 1);
+        expect(fakeCatalogRescanService.cancelCalls, 1);
+        expect(fakeCatalogRescanService.dismissCalls, 1);
+      });
+    });
   });
+}
+
+domain.SessionCleanupRejectedException _cleanupRejected(CleanupIssue issue) {
+  final rejection = SessionCleanupRejection(issues: [issue]);
+  return domain.SessionCleanupRejectedException(
+    rejection: domain.SessionCleanupRejection(issues: rejection.issues),
+    innerError: SessionCleanupApiRejectedException(rejection: rejection),
+  );
 }

@@ -37,8 +37,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/session/abort"),
         body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
       );
 
       expect(plugin.lastAbortSessionId, equals("s1"));
@@ -48,8 +46,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/abort"),
         body: const SessionIdRequest(sessionId: "s1"),
-        pathParams: {},
-        queryParams: {},
       );
 
       expect(response, equals(const SuccessEmptyResponse()));

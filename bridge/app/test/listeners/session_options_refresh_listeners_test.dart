@@ -155,6 +155,7 @@ const _optionsResponse = SessionOptionsResponse(
   agents: Agents(agents: []),
   providers: ProviderListResponse(items: [], connectedOnly: true),
   commands: CommandListResponse(items: []),
+  lastUsedPromptDefaults: null,
 );
 
 class _FakeSessionOptionsService() implements SessionOptionsService {

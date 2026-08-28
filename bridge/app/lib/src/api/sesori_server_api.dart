@@ -5,6 +5,8 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest, jsonDecodeMap;
 
 import "../auth/token_refresher.dart";
+import "../foundation/abortable_request.dart";
+import "../foundation/auth_backend_url.dart";
 import "models/app_client_status_response.dart";
 import "models/generate_session_metadata_response.dart";
 
@@ -27,21 +29,6 @@ class SesoriServerApiResponseException({
   String toString() => "SesoriServerApiResponseException: $method $uri returned an invalid response";
 }
 
-class SesoriServerRequestAbortSignal() {
-  final StreamController<void> _controller = StreamController<void>.broadcast(sync: true);
-  bool _aborted = false;
-
-  bool get isAborted => _aborted;
-  Stream<void> get aborts => _controller.stream;
-
-  void abort() {
-    if (_aborted) return;
-    _aborted = true;
-    _controller.add(null);
-    unawaited(_controller.close());
-  }
-}
-
 class SesoriServerApi({
   required String authBackendUrl,
   required final http.Client _client,
@@ -50,29 +37,28 @@ class SesoriServerApi({
 }) {
   static const Duration defaultRequestDeadline = Duration(seconds: 35);
 
-  final String _authBackendUrl = authBackendUrl.replaceFirst(RegExp(r"/+$"), "");
+  final String _authBackendUrl = normalizeAuthBackendUrl(url: authBackendUrl);
 
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) async {
     final uri = Uri.parse("$_authBackendUrl/auth/app-clients/status");
-    final abortCompleter = Completer<void>();
-    final deadlineTimer = Timer(_requestDeadline, abortCompleter.complete);
-    final request = http.AbortableRequest("GET", uri, abortTrigger: abortCompleter.future)
-      ..headers["Authorization"] = "Bearer $accessToken";
-
-    try {
-      final response = await http.Response.fromStream(await _client.send(request));
-      if (response.statusCode != 200) {
-        throw SesoriServerApiException(method: request.method, statusCode: response.statusCode, uri: uri);
-      }
-      return AppClientStatusResponse.fromJson(jsonDecodeMap(response.body));
-    } finally {
-      deadlineTimer.cancel();
+    final response = await sendAbortableRequest(
+      client: _client,
+      method: "GET",
+      url: uri,
+      headers: {"Authorization": "Bearer $accessToken"},
+      body: null,
+      deadline: _requestDeadline,
+      abortSignal: null,
+    );
+    if (response.statusCode != 200) {
+      throw SesoriServerApiException(method: "GET", statusCode: response.statusCode, uri: uri);
     }
+    return AppClientStatusResponse.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<GenerateSessionMetadataResponse> generateSessionMetadata({
     required GenerateSessionMetadataRequest request,
-    required SesoriServerRequestAbortSignal abortSignal,
+    required AbortSignal abortSignal,
   }) async {
     final uri = Uri.parse("$_authBackendUrl/sessions/generate-metadata");
     final token = await _getAccessTokenUnlessAborted(
@@ -104,7 +90,7 @@ class SesoriServerApi({
 
   Future<String> _getAccessTokenUnlessAborted({
     required Uri uri,
-    required SesoriServerRequestAbortSignal abortSignal,
+    required AbortSignal abortSignal,
     required bool forceRefresh,
   }) async {
     _throwIfAborted(uri: uri, abortSignal: abortSignal);
@@ -142,32 +128,23 @@ class SesoriServerApi({
     required Uri uri,
     required GenerateSessionMetadataRequest request,
     required String accessToken,
-    required SesoriServerRequestAbortSignal abortSignal,
-  }) async {
-    final abortCompleter = Completer<void>();
-    final deadlineTimer = Timer(_requestDeadline, () {
-      if (!abortCompleter.isCompleted) abortCompleter.complete();
-    });
-    final abortSubscription = abortSignal.aborts.listen((_) {
-      if (!abortCompleter.isCompleted) abortCompleter.complete();
-    });
-    if (abortSignal.isAborted && !abortCompleter.isCompleted) abortCompleter.complete();
-    final httpRequest = http.AbortableRequest("POST", uri, abortTrigger: abortCompleter.future)
-      ..headers.addAll({
+    required AbortSignal abortSignal,
+  }) {
+    return sendAbortableRequest(
+      client: _client,
+      method: "POST",
+      url: uri,
+      headers: {
         "Authorization": "Bearer $accessToken",
         "Content-Type": "application/json",
-      })
-      ..body = jsonEncode(request.toJson());
-
-    try {
-      return await http.Response.fromStream(await _client.send(httpRequest));
-    } finally {
-      deadlineTimer.cancel();
-      await abortSubscription.cancel();
-    }
+      },
+      body: jsonEncode(request.toJson()),
+      deadline: _requestDeadline,
+      abortSignal: abortSignal,
+    );
   }
 
-  void _throwIfAborted({required Uri uri, required SesoriServerRequestAbortSignal abortSignal}) {
+  void _throwIfAborted({required Uri uri, required AbortSignal abortSignal}) {
     if (abortSignal.isAborted) throw http.RequestAbortedException(uri);
   }
 

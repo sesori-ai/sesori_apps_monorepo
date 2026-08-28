@@ -104,11 +104,14 @@ void main() {
       addTearDown(service.onDispose);
       await _waitFor(() => service.snapshots.hasValue);
 
-      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
-        (result) => result.failure,
-        "failure",
-        isA<PluginAuthenticationFailureRequest>(),
-      ));
+      expect(
+        await service.startAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureRequest>(),
+        ),
+      );
       expect(service.authenticationChallenges.value, isEmpty);
       connection.emitStatus(const ConnectionDisconnected());
       expect(service.authenticationChallenges.value, isEmpty);
@@ -172,11 +175,14 @@ void main() {
       );
       start.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
 
-      expect(await result, isA<PluginAuthenticationStartFailed>().having(
-        (result) => result.failure,
-        "failure",
-        isA<PluginAuthenticationFailureUncertain>(),
-      ));
+      expect(
+        await result,
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 
@@ -1200,7 +1206,7 @@ void main() {
   });
 }
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com");
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 

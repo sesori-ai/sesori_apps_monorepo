@@ -25,7 +25,7 @@ AssistantMessage _assistantMessage({required Object? error}) {
       cache: AssistantMessageTokensCache(read: 0, write: 0),
     ),
     structured: null,
-    variant: null,
+    variant: "high",
     finish: null,
   );
 }
@@ -44,6 +44,7 @@ void main() {
       expect(assistant.agent, equals("general"));
       expect(assistant.modelID, equals("gpt-4"));
       expect(assistant.providerID, equals("openai"));
+      expect(assistant.variant, equals("high"));
       expect(assistant.time?.created, equals(100));
       expect(assistant.time?.completed, equals(200));
     });
@@ -66,6 +67,7 @@ void main() {
       expect(error.errorMessage, equals("invalid api key"));
       expect(error.modelID, equals("gpt-4"));
       expect(error.providerID, equals("openai"));
+      expect(error.variant, equals("high"));
       expect(error.time?.created, equals(100));
     });
 

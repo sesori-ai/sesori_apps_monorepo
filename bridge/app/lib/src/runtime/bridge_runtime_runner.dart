@@ -25,8 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ProcessUser,
         ServerClock,
         StartAbortController;
-import "package:sesori_shared/sesori_shared.dart"
-    show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo, legacyMissingPluginId;
+import "package:sesori_shared/sesori_shared.dart" show AuthClientType, AuthDeviceInfoBuilder, DeviceInfo;
 
 import "../api/app_onboarding_state_storage.dart";
 import "../api/archived_session_storage.dart";
@@ -37,25 +36,27 @@ import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
-import "../auth/bridge_id_migration_service.dart";
+import "../auth/auth_api.dart";
+import "../auth/auth_repository.dart";
 import "../auth/bridge_id_storage.dart";
-import "../auth/bridge_registration_api.dart";
 import "../auth/bridge_registration_repository.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/login_email_api.dart";
 import "../auth/login_email_repository.dart";
-import "../auth/login_oauth_api.dart";
 import "../auth/login_oauth_service.dart";
 import "../auth/token.dart";
-import "../auth/token_manager.dart";
 import "../auth/token_refresher.dart";
+import "../auth/token_service.dart";
 import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_provision_notifier.dart";
 import "../control/control_status_notifier.dart";
+import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
+import "../foundation/data_directory_hardening.dart";
+import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
@@ -100,7 +101,6 @@ import "../updater/api/update_cache_api.dart";
 import "../updater/api/update_log_api.dart";
 import "../updater/formatters/update_message_formatter.dart";
 import "../updater/formatters/update_output_formatter.dart";
-import "../updater/foundation/filesystem_cleaner.dart";
 import "../updater/foundation/release_track.dart";
 import "../updater/foundation/update_lock.dart";
 import "../updater/foundation/update_policy.dart";
@@ -242,16 +242,21 @@ class const BridgeRuntimeRunner._() {
       )
       ..addPhase(
         phase: BridgeShutdownPhase.drain,
-        action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
-      )
-      ..addPhase(
-        phase: BridgeShutdownPhase.drain,
         action: () => sessionRun ?? Future<void>.value(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.pluginDispose,
         action: shutdownStartedPlugins,
         budget: _pluginShutdownBudget,
+      )
+      ..addPhase(
+        phase: BridgeShutdownPhase.pluginDispose,
+        // Imports were fenced and asked to cancel in the signal phase, but a
+        // backend call already in flight may only settle when its plugin
+        // transport closes. Start the drain beside plugin shutdown rather than
+        // waiting on it first; the coordinator starts every action in a phase
+        // before awaiting any of them.
+        action: () => runtime?.catalogImportService.drain() ?? Future<void>.value(),
       )
       ..addPhase(
         phase: BridgeShutdownPhase.lifecycle,
@@ -306,7 +311,6 @@ class const BridgeRuntimeRunner._() {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
-      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
@@ -319,57 +323,45 @@ class const BridgeRuntimeRunner._() {
       localHostname: _localHostname(),
     );
     final bridgeClientType = _bridgeClientType();
+    final authApi = AuthApi(
+      authBackendUrl: options.authBackendUrl,
+      client: httpClient,
+      requestDeadline: AuthApi.defaultRequestDeadline,
+      sendRequest: sendRequestWithDeadline,
+    );
+    final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
+      authRepository: authRepository,
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
         promptForCredentials: terminalPromptRepository.promptForEmailCredentials,
       ),
       loginOAuthService: LoginOAuthService(
-        api: LoginOAuthApi(
-          authBackendUrl: options.authBackendUrl,
-          client: httpClient,
+        api: authApi,
+        clientType: bridgeClientType,
+        device: _bridgeDeviceInfo(
           clientType: bridgeClientType,
-          device: _bridgeDeviceInfo(
-            clientType: bridgeClientType,
-            machineName: machineName,
-          ),
+          machineName: machineName,
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
       ),
-      environment: environment,
       loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
       saveTokens: (data) => saveTokens(
         data: data,
         dataDirectory: options.dataDirectory,
+        writeRestrictedFile: writeRestrictedFile,
       ),
       clearTokens: () => clearTokens(dataDirectory: options.dataDirectory),
     );
 
-    // Persisted bridge-id storage (its own file, not token.json). Constructed
-    // here so the supervised registration service below can share it; the
-    // legacy-id migration that populates it still runs at its normal point
-    // before authentication.
+    // Persisted bridge-id storage shared by registration and supervised control.
     final bridgeIdStorage = BridgeIdStorage(
       filePath: bridgeIdPath(dataDirectory: options.dataDirectory),
+      writeRestrictedFile: writeRestrictedFile,
     );
 
     try {
-      // Copy a legacy bridge id out of token.json into its own storage before
-      // anything ID-dependent runs — in particular before the supervised control
-      // channel + dispatcher come up, so a GUI `unregister_and_exit` that arrives
-      // during early startup unregisters the migrated id instead of reading an
-      // empty store and leaking the server-side registration. The first token
-      // save no longer serializes bridgeId, so skipping this would erase the only
-      // copy. A failure here aborts startup so the next run retries the copy with
-      // the legacy source still intact.
-      await BridgeIdMigrationService(
-        bridgeIdStorage: bridgeIdStorage,
-        readLegacyBridgeId: () => readLegacyBridgeId(
-          dataDirectory: options.dataDirectory,
-        ),
-      ).migrate();
-
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -408,8 +400,7 @@ class const BridgeRuntimeRunner._() {
         // runtime (unregister/register), after the migration below, so building
         // it before that migration is safe.
         supervisedRegistrationService = _buildRegistrationService(
-          httpClient: httpClient,
-          authBackendUrl: options.authBackendUrl,
+          authApi: authApi,
           tokenRefresher: controlChannelTokenService,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
@@ -472,7 +463,7 @@ class const BridgeRuntimeRunner._() {
       final BridgeSettingsRepository bridgeSettingsRepository;
       final BridgeSettings bridgeSettings;
       try {
-        bridgeSettingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        bridgeSettingsRepository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
         shutdownCoordinator.add(disposable: bridgeSettingsRepository.dispose);
         bridgeSettings = await bridgeSettingsRepository.loadSettings();
       } on Object catch (error, stackTrace) {
@@ -533,7 +524,7 @@ class const BridgeRuntimeRunner._() {
       // In supervised mode the GUI is the token authority: the control-channel
       // token service is the access-token provider + refresher, pulling tokens
       // from the GUI over the loopback channel. Standalone keeps the
-      // TokenManager, which refreshes against the auth server with the locally
+      // TokenService, which refreshes against the auth server with the locally
       // stored refresh token (no GUI exists to ask).
       final String authAccessToken;
       final AccessTokenProvider accessTokenProvider;
@@ -557,23 +548,21 @@ class const BridgeRuntimeRunner._() {
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
-        final tokenManager = TokenManager(
+        final tokenService = TokenService(
           initialToken: authAccessToken,
-          authBackendUrl: options.authBackendUrl,
           loadTokens: () => loadTokens(dataDirectory: options.dataDirectory),
           saveTokens: (data) => saveTokens(
             data: data,
             dataDirectory: options.dataDirectory,
+            writeRestrictedFile: writeRestrictedFile,
           ),
-          ownedClient: http.Client(),
-          requestDeadline: TokenManager.defaultRequestDeadline,
+          authRepository: authRepository,
         );
-        shutdownCoordinator.add(disposable: tokenManager.dispose);
-        accessTokenProvider = tokenManager;
-        tokenRefresher = tokenManager;
+        shutdownCoordinator.add(disposable: tokenService.dispose);
+        accessTokenProvider = tokenService;
+        tokenRefresher = tokenService;
       }
       await runtimeAuthService.logAuthenticatedUser(
-        authBackendUrl: options.authBackendUrl,
         accessToken: authAccessToken,
       );
 
@@ -587,8 +576,7 @@ class const BridgeRuntimeRunner._() {
         bridgeRegistrationService = supervisedRegistrationService;
       } else {
         bridgeRegistrationService = _buildRegistrationService(
-          httpClient: httpClient,
-          authBackendUrl: options.authBackendUrl,
+          authApi: authApi,
           tokenRefresher: tokenRefresher,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
@@ -655,7 +643,6 @@ class const BridgeRuntimeRunner._() {
             bridgeSettingsRepository: bridgeSettingsRepository,
             idleTimerScheduler: const PluginIdleTimerScheduler(),
             bridgeIdProvider: bridgeRegistrationService,
-          )..registerPlugins(
             plugins: [
               for (final descriptor in knownPlugins)
                 (
@@ -833,7 +820,6 @@ class const BridgeRuntimeRunner._() {
           yolo: bridgeSettings.yolo,
         ),
         client: relayClient,
-        legacyMissingPluginId: legacyMissingPluginId,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
         bridgeSettingsRepository: bridgeSettingsRepository,
@@ -1123,18 +1109,14 @@ class const BridgeRuntimeRunner._() {
   /// route the logout command, while standalone builds it after interactive auth
   /// yields its refresher — both from one definition.
   static BridgeRegistrationService _buildRegistrationService({
-    required http.Client httpClient,
-    required String authBackendUrl,
+    required AuthApi authApi,
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
     required String machineName,
   }) {
     return BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
-        api: BridgeRegistrationApi(
-          authBackendUrl: authBackendUrl,
-          client: httpClient,
-        ),
+        api: authApi,
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,

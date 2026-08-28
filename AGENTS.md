@@ -1,8 +1,5 @@
 # Sesori Agent Context
 
-`AGENTS.bak.md` is a historical archive, not active instruction. Do not use it
-as guidance unless the user explicitly asks to inspect the old rules.
-
 ## Project And Stakes
 
 Sesori lets developers monitor and control AI coding sessions from phone and
@@ -70,12 +67,24 @@ eagerly "just in case."
   modern state when one valid meaning exists. Add a dated compatibility comment
   with the legacy rationale and exact cleanup:
   `// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): ...`
+  `vX.Y.Z` is the current product version from `bridge/app/pubspec.yaml` (or
+  `client/app`), never a library package's own version. Word the cleanup as its
+  retiring condition, not a future version.
+- Put the marker directly above the field, parameter, or branch it explains,
+  inside the enclosing declaration, not above the enclosing function, factory,
+  class, or doc comment. Mark the enclosing declaration only when it is itself
+  what compatibility retains.
 - For database fields that should always contain data after migration, prefer
   an honest backfill and a non-null column. Keep the field nullable when absence
   is genuinely meaningful or no valid backfill exists.
 - Never hand-edit generated files. Change their source and run the generator.
 - Add or update the relevant `docs/regression/` feature document when adding a
   feature or materially changing existing feature behavior.
+- Regression documents track supported behavior, material failure signals, and
+  coverage worth executing. Do not leave tombstones for removed routes, fields,
+  migrations, flags, or other behavior; remove stale references instead. Record
+  absence only when reintroducing the artifact would itself break a live
+  capability or security invariant.
 - Create and update GitHub PR bodies with real multiline Markdown through
   `--body-file` or stdin; never pass escaped `\n` text.
 - Every PR title starts with one implementation-complexity emoji: `🌱` trivial,

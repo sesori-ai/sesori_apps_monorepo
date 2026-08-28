@@ -36,6 +36,12 @@ extension BuildContextLocalization on BuildContext {
     return localizations;
   }
 
+  /// The app currently resolves every English-speaking user to the generic
+  /// `en` translation, which loses the device's region. Date formatting uses
+  /// the full platform locale so, for example, `en_GB` does not inherit the
+  /// generic English month/day order.
+  String get _dateFormattingLocale => View.of(this).platformDispatcher.locale.toString();
+
   String formatTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
@@ -45,7 +51,7 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inHours < 1) return loc.timestampMinutesAgo(diff.inMinutes);
     if (diff.inDays < 1) return loc.timestampHoursAgo(diff.inHours);
     if (diff.inDays < 30) return loc.timestampDaysAgo(diff.inDays);
-    return DateFormat.yMd(loc.localeName).format(date);
+    return DateFormat.yMd(_dateFormattingLocale).format(date);
   }
 
   /// The same instant as [formatTimestamp], shortened to what a list row's
@@ -69,7 +75,9 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inDays < 1) return loc.timestampCompactHours(diff.inHours);
     if (diff.inDays < 30) return loc.timestampCompactDays(diff.inDays);
 
-    final pattern = date.year == now.year ? DateFormat.Md(loc.localeName) : DateFormat.yMd(loc.localeName);
+    final pattern = date.year == now.year
+        ? DateFormat.Md(_dateFormattingLocale)
+        : DateFormat.yMd(_dateFormattingLocale);
     return pattern.format(date);
   }
 
@@ -82,7 +90,7 @@ extension BuildContextLocalization on BuildContext {
   String formatMessageTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
-    final locale = loc.localeName;
+    final locale = _dateFormattingLocale;
     final time = DateFormat.jm(locale).format(date);
 
     final isToday = date.year == now.year && date.month == now.month && date.day == now.day;

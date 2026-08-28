@@ -124,6 +124,7 @@ SessionOptionsCatalog _testSessionOptionsCatalog() => SessionOptionsCatalog(
   providers: testProviderListResponse().items,
   providersConnectedOnly: testProviderListResponse().connectedOnly,
   commands: const [],
+  lastUsedPromptDefaults: null,
 );
 
 Finder _pickerMenuItem(String label) => find.descendant(
@@ -236,7 +237,7 @@ Future<void> enterTextAndSend({required WidgetTester tester, required String tex
 }
 
 void main() {
-  late MockSessionService sessionService;
+  late MockSessionRepository sessionService;
   late MockSessionRepository sessionRepository;
   late MockPluginRepository pluginRepository;
   late MockPluginPreferenceRepository pluginPreferenceRepository;
@@ -256,15 +257,15 @@ void main() {
   setUp(() async {
     KeyboardVisibilityTesting.setVisibilityForTesting(false);
     await GetIt.instance.reset();
-    sessionService = MockSessionService();
+    sessionService = MockSessionRepository();
     sessionRepository = MockSessionRepository();
     pluginRepository = MockPluginRepository();
     pluginPreferenceRepository = MockPluginPreferenceRepository();
     connectionService = MockConnectionService();
     connectionStatus = BehaviorSubject.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com"),
-        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
       ),
     );
     projectRepository = MockProjectRepository();
@@ -355,6 +356,7 @@ void main() {
               providers: providerData.items,
               providersConnectedOnly: providerData.connectedOnly,
               commands: commandData.items,
+              lastUsedPromptDefaults: null,
             ),
           ),
         (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
@@ -387,6 +389,7 @@ void main() {
               providers: providerData.items,
               providersConnectedOnly: providerData.connectedOnly,
               commands: commandData.items,
+              lastUsedPromptDefaults: null,
             ),
           ),
         (ErrorResponse(:final error), _, _) => LegacySessionOptionsRepositoryFailure(
@@ -429,7 +432,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    GetIt.instance.registerSingleton<SessionService>(sessionService);
+    GetIt.instance.registerSingleton<SessionRepository>(sessionService);
     GetIt.instance.registerSingleton<PluginRepository>(pluginRepository);
     GetIt.instance.registerSingleton<NewSessionPluginService>(
       NewSessionPluginService(
@@ -444,6 +447,7 @@ void main() {
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
+    GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
@@ -623,8 +627,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -647,8 +650,7 @@ void main() {
         pluginId: "plugin-1",
         text: "use backend defaults",
         agent: null,
-        providerID: null,
-        modelID: null,
+        model: null,
         variant: null,
         command: null,
         dedicatedWorktree: true,
@@ -824,6 +826,43 @@ void main() {
 
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "coder"), findsNothing);
+  });
+
+  testWidgets("prefills the bridge-stored selection from the last successful creation", (tester) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer(
+      (_) async => SessionOptionsRepositoryAvailable(
+        isStale: false,
+        catalog: SessionOptionsCatalog(
+          agents: [
+            _testAgent(name: "coder", description: "A coding assistant", variant: "xhigh"),
+            _testAgent(name: "review", description: "A reviewing assistant", variant: "xhigh"),
+          ],
+          providers: testProviderListResponse().items,
+          providersConnectedOnly: false,
+          commands: const [],
+          lastUsedPromptDefaults: const SessionPromptDefaults(
+            agent: "review",
+            model: AgentModel(
+              providerID: "anthropic",
+              modelID: "claude-3-5-sonnet",
+              variant: "xhigh",
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(PregoPickerButton, "review"), findsOneWidget);
+    expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("shows variant picker when selected agent has a variant", (tester) async {
@@ -1206,8 +1245,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1256,11 +1294,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1336,11 +1374,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1404,8 +1442,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1468,11 +1505,11 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
-            filesystemAccessDegraded: null,
+            filesystemAccessDegraded: false,
           ),
         ),
       );
@@ -1659,8 +1696,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1696,8 +1732,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1722,8 +1757,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1740,8 +1774,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1784,8 +1817,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1833,8 +1865,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1871,8 +1902,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1932,8 +1962,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),
@@ -1969,7 +1998,7 @@ void main() {
     expect(tester.widget<PromptInput>(find.byType(PromptInput)).restorationKey, isNull);
     expect(
       tester.element(find.byType(PromptInput)).read<NewSessionCubit>().state,
-      isA<NewSessionCreationError>(),
+      isA<NewSessionComposing>().having((state) => state.phase, "phase", isA<NewSessionPhaseCreationError>()),
     );
     expect(creationCalls, 1);
     expect(identical(submittedAttachments.single.single, attachment), isTrue);
@@ -1992,8 +2021,7 @@ void main() {
         pluginId: any(named: "pluginId"),
         text: any(named: "text"),
         agent: any(named: "agent"),
-        providerID: any(named: "providerID"),
-        modelID: any(named: "modelID"),
+        model: any(named: "model"),
         variant: any(named: "variant"),
         command: any(named: "command"),
         dedicatedWorktree: any(named: "dedicatedWorktree"),

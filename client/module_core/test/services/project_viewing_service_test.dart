@@ -3,11 +3,11 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/repositories/project_view_repository.dart";
+import "package:sesori_dart_core/src/repositories/view_declaration_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProjectViewRepository() extends Mock implements ProjectViewRepository;
+class _MockViewDeclarationRepository() extends Mock implements ViewDeclarationRepository;
 
 class _MockConnectionService() extends Mock implements ConnectionService;
 
@@ -34,12 +34,12 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
 }
 
 const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token");
-const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 
 void main() {
   group("ProjectViewingService", () {
-    late _MockProjectViewRepository repository;
+    late _MockViewDeclarationRepository repository;
     late _MockConnectionService connectionService;
     late _FakeLifecycleSource lifecycleSource;
     late _FakeRouteSource routeSource;
@@ -48,7 +48,7 @@ void main() {
     late ProjectViewingService service;
 
     setUp(() {
-      repository = _MockProjectViewRepository();
+      repository = _MockViewDeclarationRepository();
       connectionService = _MockConnectionService();
       lifecycleSource = _FakeLifecycleSource();
       routeSource = _FakeRouteSource(initialRoute: AppRouteDef.sessions);

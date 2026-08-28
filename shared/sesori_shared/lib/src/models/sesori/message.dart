@@ -4,23 +4,29 @@ part "message.freezed.dart";
 
 part "message.g.dart";
 
+/// Identifies who authored a non-user message.
+///
+/// [unknown] is forward-compatible and must be presented as non-agent output.
+@JsonEnum()
+enum MessageSender() { agent, system, unknown }
+
 /// Sealed class representing a message in a session.
 ///
 /// Three variants:
 /// - [MessageUser]: a message sent by the user
-/// - [MessageAssistant]: a regular assistant response
+/// - [MessageAssistant]: a non-user message with explicit sender attribution
 /// - [MessageError]: an assistant message that failed with an error
 ///
 /// The JSON serialization uses `"role"` as the union key. Each variant
 /// serializes with its corresponding role value:
 /// - `MessageUser`: `"user"`
-/// - `MessageAssistant`: `"assistant"`
+/// - `MessageAssistant`: `"assistant"` (including compatibility-safe system messages)
 /// - `MessageError`: `"error"`
 ///
-/// The bridge layer is responsible for normalizing backend-specific error
-/// shapes (e.g., a nested `error.data.message`) into the flat
-/// `errorName` and `errorMessage` fields before constructing a
-/// [MessageError].
+/// The bridge layer is responsible for flattening backend-specific error
+/// shapes (e.g., a nested `error.data.message`) into `errorName` and
+/// `errorMessage`. Backend-provided text is preserved verbatim; a harness may
+/// synthesize a fallback only when its backend supplied no error text.
 @Freezed(unionKey: "role", fromJson: true, toJson: true)
 sealed class const Message._() with _$Message {
   const factory user({
@@ -43,6 +49,14 @@ sealed class const Message._() with _$Message {
     required String? agent,
     required String? modelID,
     required String? providerID,
+
+    /// Whether this envelope was authored by the agent or by session automation.
+    // COMPATIBILITY 2026-08-27 (v1.8.2): Older bridges omit sender because assistant envelopes did not
+    // distinguish automation. Default to agent until the minimum supported bridge always sends sender, then remove
+    // @Default.
+    @JsonKey(unknownEnumValue: MessageSender.unknown)
+    @Default(MessageSender.agent)
+    MessageSender sender,
     required MessageTime? time,
   }) = MessageAssistant;
 
@@ -53,6 +67,8 @@ sealed class const Message._() with _$Message {
     required String? modelID,
     required String? providerID,
     required String errorName,
+
+    /// The backend-provided error text, unchanged when the backend supplied it.
     required String errorMessage,
     required MessageTime? time,
   }) = MessageError;

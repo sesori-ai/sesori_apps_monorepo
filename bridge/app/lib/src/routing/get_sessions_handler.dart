@@ -26,18 +26,8 @@ class GetSessionsHandler({
   Future<SessionListResponse> handle(
     RelayRequest request, {
     required SessionListRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
-    final projectId = body.projectId;
-    if (projectId.isEmpty) {
-      throw buildErrorResponse(
-        request,
-        400,
-        "missing project id in body",
-      );
-    }
+    final projectId = requireNonEmpty(request: request, value: body.projectId, label: "project id");
 
     final start = body.start;
     final limit = body.limit;

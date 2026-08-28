@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 /// Startup diagnostics for the bridge.
@@ -41,7 +42,7 @@ class BridgeDiagnostics() {
   /// directories like `~/Desktop`, `~/Documents`, and `~/Downloads`.
   /// This check tests listing a few common paths and warns if any fail.
   Future<bool> checkFilesystemAccess() async {
-    final homeDir = Platform.environment["HOME"] ?? Platform.environment["USERPROFILE"];
+    final homeDir = resolveUserHomeDirectory(environment: Platform.environment);
     if (homeDir == null) {
       Log.w("Could not determine home directory — filesystem suggestions may not work.");
       return false;

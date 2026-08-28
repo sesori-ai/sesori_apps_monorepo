@@ -17,6 +17,15 @@ final class ClaudeEventDispatcher({
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
 
+  /// Content blocks already carried by `assistant` frames, per message id.
+  ///
+  /// Claude Code emits one `assistant` frame per content block under the same
+  /// `message.id`, so every frame's own content restarts at offset 0. Blocks
+  /// are numbered across the whole message instead, matching the stream's
+  /// block index and the transcript history; otherwise a block streamed at
+  /// index >= 1 is finalized under a second part id and renders twice.
+  final Map<String, int> _assistantBlockCounts = {};
+
   void beginTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
 
   /// Clears completed-turn stream state.
@@ -43,6 +52,7 @@ final class ClaudeEventDispatcher({
     for (final messageId in messageIds) {
       _streamedBlocks.remove(messageId);
       _completedStreamedParts.remove(messageId);
+      _assistantBlockCounts.remove(messageId);
     }
   }
 
@@ -55,7 +65,7 @@ final class ClaudeEventDispatcher({
     if (attempt == null || delay == null) return null;
     return PluginSessionStatus.retry(
       attempt: attempt,
-      message: _retryMessage(message.error),
+      message: _retryMessage(message),
       next: now.millisecondsSinceEpoch + delay,
     );
   }
@@ -247,10 +257,23 @@ final class ClaudeEventDispatcher({
     final messageId = _nonEmptyString(message.messageId);
     if (messageId == null) return const [];
     _messageIds[sessionId] = messageId;
+    _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
+    // Counted before any filtering so a skipped block still occupies its
+    // ordinal, exactly as it does in the stream and the transcript.
+    final firstBlockIndex = _assistantBlockCounts[messageId] ?? 0;
+    _assistantBlockCounts[messageId] = firstBlockIndex + mapped.length;
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
-    final parts = _content.mapParts(content: message.message["content"], sessionId: sessionId, messageId: messageId);
+    final parts = [
+      for (var offset = 0; offset < mapped.length; offset++)
+        _content.mapPart(
+          block: mapped[offset],
+          index: firstBlockIndex + offset,
+          sessionId: sessionId,
+          messageId: messageId,
+        ),
+    ];
     if (!parts.any((part) => part.type.isVisible)) return const [];
     _announcedMessageIds[sessionId] = messageId;
     final events = <BridgeSseEvent>[
@@ -262,8 +285,9 @@ final class ClaudeEventDispatcher({
         ).toJson(),
       ),
     ];
-    for (var index = 0; index < mapped.length; index++) {
-      final part = switch (mapped[index]) {
+    for (var offset = 0; offset < mapped.length; offset++) {
+      final index = firstBlockIndex + offset;
+      final part = switch (mapped[offset]) {
         ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
           sessionId: sessionId,
           tool: _tools.upsertCompleteBlock(
@@ -275,7 +299,7 @@ final class ClaudeEventDispatcher({
             input: input,
           ),
         ),
-        _ => parts[index],
+        _ => parts[offset],
       };
       if (_streamedBlocks[messageId]?.contains(index) ?? false) {
         _completedStreamedParts.putIfAbsent(messageId, () => <int, PluginMessagePart>{})[index] = part;
@@ -355,7 +379,7 @@ final class ClaudeEventDispatcher({
         sessionID: sessionId,
         status: shared.SessionStatus.retry(
           attempt: attempt,
-          message: _retryMessage(message.error),
+          message: _retryMessage(message),
           next: now.millisecondsSinceEpoch + delay,
         ).toJson(),
       ),
@@ -380,6 +404,7 @@ final class ClaudeEventDispatcher({
           agent: "claude",
           modelID: _models[sessionId],
           providerID: "anthropic",
+          variant: null,
           errorName: error.name,
           errorMessage: error.message,
           time: null,
@@ -398,6 +423,8 @@ final class ClaudeEventDispatcher({
     agent: "claude",
     modelID: _models[sessionId],
     providerID: "anthropic",
+    variant: null,
+    sender: PluginMessageSender.agent,
     time: time,
   );
 
@@ -418,40 +445,28 @@ PluginMessagePart _textPart({
   required int index,
   required PluginMessagePartType type,
   required String text,
-}) => PluginMessagePart(
-  id: "$messageId-block-$index",
-  sessionID: sessionId,
-  messageID: messageId,
-  type: type,
-  text: text,
-  tool: null,
-  state: null,
-  prompt: null,
-  description: null,
-  agent: null,
-  childSessionID: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
-);
+}) => switch (type) {
+  PluginMessagePartType.text => PluginMessagePart.fromText(
+    id: "$messageId-block-$index",
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  PluginMessagePartType.reasoning => PluginMessagePart.fromThinking(
+    id: "$messageId-block-$index",
+    sessionID: sessionId,
+    messageID: messageId,
+    text: text,
+  ),
+  _ => throw ArgumentError.value(type, "type"),
+};
 
-PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart(
+PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart.fromTool(
   id: tool.id,
   sessionID: sessionId,
   messageID: tool.messageId,
-  type: PluginMessagePartType.tool,
-  text: null,
   tool: tool.name,
   state: tool.state,
-  prompt: null,
-  description: null,
-  agent: null,
-  childSessionID: null,
-  agentName: null,
-  attempt: null,
-  retryError: null,
-  attachment: null,
 );
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;
@@ -466,23 +481,18 @@ String? _realModel({required String? model}) {
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
 
-String _retryMessage(ClaudeAssistantError error) => switch (error) {
-  ClaudeAssistantError.authenticationFailed ||
-  ClaudeAssistantError.oauthOrgNotAllowed => "Claude Code is retrying after an authentication failure.",
-  ClaudeAssistantError.billingError => "Claude Code is retrying after a billing failure.",
-  ClaudeAssistantError.rateLimit => "Claude Code is retrying after a rate limit.",
-  ClaudeAssistantError.overloaded => "Claude Code is retrying because the service is overloaded.",
-  ClaudeAssistantError.modelNotFound => "Claude Code is retrying with the selected model.",
-  ClaudeAssistantError.maxOutputTokens => "Claude Code is retrying after reaching the output limit.",
-  ClaudeAssistantError.invalidRequest ||
-  ClaudeAssistantError.serverError ||
-  ClaudeAssistantError.unknown => "Claude Code is retrying the request.",
-};
+String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Claude Code is retrying the request.";
 
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
   if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
     return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
   }
+  final fallback = _resultErrorFallback(result);
+  final rawError = result.errors.isNotEmpty ? result.errors.join("\n") : result.result;
+  return rawError == null ? fallback : (name: fallback.name, message: rawError);
+}
+
+({String name, String message}) _resultErrorFallback(ClaudeResultMessage result) {
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {
     return (name: "authentication_failed", message: "Claude Code authentication failed.");
   }

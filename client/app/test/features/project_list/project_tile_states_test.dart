@@ -22,7 +22,7 @@ import "../../helpers/test_helpers.dart";
 /// timeout and throw.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
-  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
 
   /// The row is laid out from the type scale it renders — a 16/24 title over

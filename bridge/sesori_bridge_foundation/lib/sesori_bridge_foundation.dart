@@ -3,6 +3,7 @@
 /// building blocks with no business logic.
 library;
 
+export "src/ansi.dart";
 export "src/archive_extractor.dart";
 export "src/binary_download_client.dart";
 export "src/checksum_validator.dart";

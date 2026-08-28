@@ -4,9 +4,8 @@ part "server_connection_config.freezed.dart";
 
 @Freezed()
 sealed class ServerConnectionConfig with _$ServerConnectionConfig {
-  // ignore: no_slop_linter/prefer_required_named_parameters, optional public auth token for disconnected states
   const factory({
     required String relayHost,
-    String? authToken,
+    required String? authToken,
   }) = _ServerConnectionConfig;
 }

@@ -76,21 +76,7 @@ void main() {
     });
 
     // ------------------------------------------------------------------
-    // 4. setActiveDirectory
-    // ------------------------------------------------------------------
-
-    test("setActiveDirectory: sets and retrieves activeDirectory", () {
-      const directory = "/home/user/my-project";
-
-      expect(service.activeDirectory, isNull);
-
-      service.setActiveDirectory(directory);
-
-      expect(service.activeDirectory, equals(directory));
-    });
-
-    // ------------------------------------------------------------------
-    // 5. status stream immediate seed
+    // 4. status stream immediate seed
     // ------------------------------------------------------------------
 
     test("status stream immediately emits disconnected seed value", () async {

@@ -67,26 +67,17 @@ Session _childSession({required String id, String? title}) {
   );
 }
 
-MessagePart _subtaskPart({String? description, String? childSessionID, ToolStatus? status}) {
-  return MessagePart(
+MessagePartSubtask _subtaskPart({String? description}) {
+  final part = MessagePart.subtask(
     id: "part-1",
     sessionID: "session-parent",
     messageID: "msg-1",
-    type: MessagePartType.subtask,
-    text: null,
-    tool: null,
-    state: status == null
-        ? null
-        : ToolState(status: status, title: null, output: null, error: null, attachments: const []),
-    prompt: description,
-    description: description,
-    agent: null,
-    childSessionID: childSessionID,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
+    prompt: description ?? "",
+    description: description ?? "",
+    agent: "",
   );
+  if (part case final MessagePartSubtask subtask) return subtask;
+  throw StateError("MessagePart.subtask returned a non-subtask variant");
 }
 
 void main() {
@@ -143,144 +134,6 @@ void main() {
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
       expect(find.text("name=Project One"), findsOneWidget);
-    });
-
-    testWidgets("a named child session is opened by id, not by matching titles", (tester) async {
-      await tester.pumpWidget(
-        _buildApp(
-          child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              // The only known child has a matching title, so the heuristic
-              // would open it; the named child must win.
-              part: _subtaskPart(description: "Child Session", childSessionID: "agent-42"),
-              children: [_childSession(id: "child-1", title: "Child Session")],
-              childStatuses: const {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Child Session"));
-      await tester.pumpAndSettle();
-
-      expect(find.text("sessionId=agent-42"), findsOneWidget);
-      expect(find.text("readOnly=true"), findsOneWidget);
-    });
-
-    testWidgets("a named child session is opened even before the bridge publishes it", (tester) async {
-      await tester.pumpWidget(
-        _buildApp(
-          child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Explore the plugin", childSessionID: "agent-42"),
-              children: const [],
-              childStatuses: const {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Explore the plugin"));
-      await tester.pumpAndSettle();
-
-      expect(find.text("sessionId=agent-42"), findsOneWidget);
-    });
-
-    testWidgets("an unnamed child with no title match stays closed", (tester) async {
-      await tester.pumpWidget(
-        _buildApp(
-          child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Explore the plugin"),
-              children: [
-                _childSession(id: "child-1", title: "Something else"),
-                _childSession(id: "child-2", title: "Another thing"),
-              ],
-              childStatuses: const {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Explore the plugin"));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining("sessionId="), findsNothing);
-    });
-  });
-
-  group("SubtaskPartWidget status", () {
-    // A running tile animates forever, so these pump one frame instead of
-    // settling.
-    Future<void> pumpStatus(WidgetTester tester, {required ToolStatus? status}) async {
-      await tester.pumpWidget(
-        _buildApp(
-          child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Explore the plugin", childSessionID: "agent-42", status: status),
-              children: const [],
-              childStatuses: const {},
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-    }
-
-    testWidgets("a running subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.running);
-
-      expect(find.text("Running"), findsOneWidget);
-      expect(find.byType(PregoActivityIndicator), findsOneWidget);
-    });
-
-    testWidgets("a completed subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.completed);
-
-      expect(find.text("Done"), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
-    });
-
-    testWidgets("a failed subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.error);
-
-      expect(find.text("Failed"), findsOneWidget);
-      expect(find.byIcon(Icons.error), findsOneWidget);
-    });
-
-    testWidgets("a cancelled subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.cancelled);
-
-      expect(find.text("Cancelled"), findsOneWidget);
-      expect(find.byIcon(Icons.cancel), findsOneWidget);
-    });
-
-    testWidgets("a subtask without its own lifecycle keeps following its child session", (tester) async {
-      final child = _childSession(id: "child-1", title: "Child Session");
-      await tester.pumpWidget(
-        _buildApp(
-          child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Child Session"),
-              children: [child],
-              childStatuses: const {"child-1": SessionStatus.busy()},
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.byType(PregoActivityIndicator), findsOneWidget);
-      // No lifecycle of its own means no status label to report.
-      expect(find.text("Running"), findsNothing);
     });
   });
 

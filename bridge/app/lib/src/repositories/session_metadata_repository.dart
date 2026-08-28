@@ -4,6 +4,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRequest;
 
 import "../api/sesori_server_api.dart";
+import "../foundation/abortable_request.dart";
 
 typedef GeneratedSessionMetadata = ({String title, String branchName});
 
@@ -21,7 +22,7 @@ class SessionMetadataInvalidResponseException({
 
 class SessionMetadataRepository({required final SesoriServerApi _api}) {
   static const int maximumFirstMessageLength = 500;
-  final SesoriServerRequestAbortSignal _abortSignal = SesoriServerRequestAbortSignal();
+  final AbortSignal _abortSignal = AbortSignal();
 
   void beginShutdown() => _abortSignal.abort();
 

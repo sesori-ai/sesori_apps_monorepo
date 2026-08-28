@@ -17,6 +17,12 @@ import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
 void main() {
+  test("bridge-generated prompt ids use 16 random bytes", () {
+    final promptId = SessionPromptService.generatePromptId();
+
+    expect(promptId, matches(RegExp(r"^prm_[0-9a-f]{32}$")));
+  });
+
   group("SessionPromptService command dispatch", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;

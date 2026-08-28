@@ -172,11 +172,13 @@ class BridgeEventMapper({
         ),
         BridgeSseWorkspaceReady(:final name) => SesoriSseEvent.workspaceReady(name: name),
         BridgeSseWorkspaceFailed(:final message) => SesoriSseEvent.workspaceFailed(message: message),
-        BridgeSseTuiToastShow(:final title, :final message, :final variant) => SesoriSseEvent.tuiToastShow(
-          title: title,
-          message: message,
-          variant: variant,
-        ),
+        BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) =>
+          SesoriSseEvent.tuiToastShow(
+            sessionID: sessionID,
+            title: title,
+            message: message,
+            variant: variant,
+          ),
         BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
         BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
       };
@@ -233,12 +235,14 @@ class BridgeEventMapper({
   /// runes, or the original part if no truncation is needed.
   /// Uses rune-based truncation to avoid splitting UTF-16 surrogate pairs.
   PluginMessagePart _truncateToolOutput(PluginMessagePart part) {
-    final output = part.state?.output;
-    if (output == null || output.length <= maxToolOutputLength) return part;
-    return part.copyWith(
-      state: part.state!.copyWith(
-        output: String.fromCharCodes(output.runes.take(maxToolOutputLength)),
-      ),
-    );
+    if (part case PluginMessagePartTool(:final state)) {
+      final output = state.output;
+      if (output != null && output.length > maxToolOutputLength) {
+        return part.copyWith(
+          state: state.copyWith(output: String.fromCharCodes(output.runes.take(maxToolOutputLength))),
+        );
+      }
+    }
+    return part;
   }
 }

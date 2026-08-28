@@ -18,9 +18,10 @@ import "trackers/cursor_catalog_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 ///
-/// Cursor keeps every stock ACP turn policy. Its selection writes are
-/// best-effort (`_setConfig` never throws), so `failsTurnOnSelectionError` is
-/// moot and left at the base default.
+/// Cursor uses standard ACP cancellation to stop an active turn before a
+/// same-session follow-up dispatches. Its selection writes are best-effort
+/// (`_setConfig` never throws), so `failsTurnOnSelectionError` is moot and left
+/// at the base default.
 class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
@@ -33,7 +34,7 @@ class CursorPlugin._({
   required super.commandTracker,
   required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
-  super.processFactory,
+  required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
@@ -42,7 +43,7 @@ class CursorPlugin._({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,
     String? apiEndpoint,
-    AcpProcessFactory? processFactory,
+    required AcpProcessFactory processFactory,
     required CursorSessionCleanupService sessionCleanupService,
   }) {
     final cwd = launchDirectory ?? Directory.current.path;
@@ -134,6 +135,9 @@ class CursorPlugin._({
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
+
+  @override
+  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {

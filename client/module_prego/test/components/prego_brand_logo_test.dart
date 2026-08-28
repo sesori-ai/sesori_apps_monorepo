@@ -59,6 +59,11 @@ void main() {
       lightAsset: "assets/svgs/brands/omp.svg",
       darkAsset: "assets/svgs/brands/omp.svg",
     ),
+    (
+      pluginId: Harness.deepseek.name,
+      lightAsset: "assets/svgs/brands/deepseek.svg",
+      darkAsset: "assets/svgs/brands/deepseek.svg",
+    ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
       await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null)));
@@ -101,6 +106,7 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
     expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
+    expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), "DeepSeek");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 
@@ -112,6 +118,12 @@ void main() {
     expect(dark, contains('<circle cx="12" cy="12" r="12" fill="#FFFFFF"/>'));
     expect(dark, contains('transform="translate(3 3) scale(0.75)"'));
     expect(light, isNot(contains("<circle")));
+  });
+
+  test("DeepSeek artwork keeps its brand-blue fill in both themes", () {
+    final artwork = File("assets/svgs/brands/deepseek.svg").readAsStringSync();
+
+    expect(artwork, contains('fill="#4D6BFE"'));
   });
 
   testWidgets("forwards size and keeps the mark decorative", (tester) async {

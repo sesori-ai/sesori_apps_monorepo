@@ -13,8 +13,8 @@ void main() {
       expect(config.authToken, equals("Bearer eyJhbGci..."));
     });
 
-    test("authToken is optional and defaults to null", () {
-      const config = ServerConnectionConfig(relayHost: "relay.sesori.com");
+    test("authToken intent is explicit when disconnected", () {
+      const config = ServerConnectionConfig(relayHost: "relay.sesori.com", authToken: null);
 
       expect(config.relayHost, equals("relay.sesori.com"));
       expect(config.authToken, isNull);
@@ -28,8 +28,8 @@ void main() {
     });
 
     test("two configs with different relayHost are not equal", () {
-      const a = ServerConnectionConfig(relayHost: "relay.sesori.com");
-      const b = ServerConnectionConfig(relayHost: "other.sesori.com");
+      const a = ServerConnectionConfig(relayHost: "relay.sesori.com", authToken: null);
+      const b = ServerConnectionConfig(relayHost: "other.sesori.com", authToken: null);
 
       expect(a, isNot(equals(b)));
     });

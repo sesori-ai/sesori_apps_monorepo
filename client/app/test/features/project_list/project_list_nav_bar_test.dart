@@ -26,7 +26,7 @@ import "../../helpers/test_helpers.dart";
 /// reports what the setup checklist is waiting for.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
-  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+  const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
   const connected = ConnectionStatus.connected(config: config, health: health);
 
@@ -169,15 +169,18 @@ void main() {
   });
 
   testWidgets("pulling the disconnected page down re-attempts the bridge connection", (tester) async {
+    when(
+      () => mockConnectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")),
+    ).thenAnswer((_) async {});
     await pumpScreen(tester, hasRegisteredBridges: false);
-    verifyNever(() => mockConnectionService.reconnect());
+    verifyNever(() => mockConnectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")));
 
     // The scaffold's sliver refresh control drives the reconnect that the
     // body's own pull-to-refresh used to.
     await tester.fling(find.byType(CustomScrollView), const Offset(0, 300), 1000);
     await tester.pumpAndSettle();
 
-    verify(() => mockConnectionService.reconnect()).called(1);
+    verify(() => mockConnectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15))).called(1);
   });
 
   // -------------------------------------------------------------------------

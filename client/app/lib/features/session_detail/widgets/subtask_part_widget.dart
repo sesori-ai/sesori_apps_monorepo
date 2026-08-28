@@ -11,7 +11,7 @@ import "../../../l10n/app_localizations.dart";
 class const SubtaskPartWidget({
   super.key,
   required final String? projectId,
-  required final MessagePart part,
+  required final MessagePartSubtask part,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
 }) extends StatelessWidget {
@@ -19,7 +19,11 @@ class const SubtaskPartWidget({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final description = part.description ?? part.prompt ?? loc.sessionDetailSubtaskUnnamed;
+    final description = part.description.isNotEmpty
+        ? part.description
+        : part.prompt.isNotEmpty
+        ? part.prompt
+        : loc.sessionDetailSubtaskUnnamed;
     final agent = part.agent;
 
     final childSession = _resolveChildSession();
@@ -27,7 +31,7 @@ class const SubtaskPartWidget({
     final targetProjectId = projectId ?? childSession?.projectID;
     // A backend that reports the subtask's own lifecycle is authoritative for
     // it. Otherwise the child session's status is the only signal available.
-    final status = part.state?.status;
+    final status = part.taskState?.status;
     final childStatus = childSession == null
         ? null
         : childStatuses[childSession.id] ?? const SessionStatus.idle();
@@ -74,7 +78,7 @@ class const SubtaskPartWidget({
                         maxLines: 2,
                         overflow: .ellipsis,
                       ),
-                      if (agent != null)
+                      if (agent.isNotEmpty)
                         Text(
                           agent,
                           style: prego.textTheme.textXs.regular.copyWith(
@@ -176,7 +180,11 @@ class const SubtaskPartWidget({
     // If there's only one child, it's likely the one.
     if (children.length == 1) return children.first;
 
-    final desc = part.description ?? part.prompt;
+    final desc = part.description.isNotEmpty
+        ? part.description
+        : part.prompt.isNotEmpty
+        ? part.prompt
+        : null;
     if (desc == null) return null;
 
     // 1. Exact match.

@@ -17,9 +17,6 @@ class GetCommandsHandler({required final SessionRepository _sessionRepository})
   Future<CommandListResponse> handle(
     RelayRequest request, {
     required PluginProjectIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     return await _sessionRepository.getCommands(
       projectId: body.projectId,

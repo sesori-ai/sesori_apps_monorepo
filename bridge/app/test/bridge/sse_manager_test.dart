@@ -38,6 +38,7 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
@@ -57,9 +58,9 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
       final client = _RecordingRelayClient();
-      manager.setRoomKey(makeRoomKey());
 
       manager.enqueueUniform(_event("none"));
       await _pumpEventLoop();
@@ -74,8 +75,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -88,6 +89,11 @@ void main() {
 
       expect(client.sentConnIDs, containsAll([1, 2]));
       expect(client.sentPayloads, everyElement(isA<Uint8List>()));
+      expect(
+        client.sentPayloads.first.sublist(1, 25),
+        isNot(equals(client.sentPayloads.last.sublist(1, 25))),
+        reason: "the shared encryptor must generate a fresh nonce per frame",
+      );
 
       final firstEnvelope = await _decryptEnvelope(client.sentPayloads.first, roomKey);
       final secondEnvelope = await _decryptEnvelope(client.sentPayloads.last, roomKey);
@@ -111,27 +117,12 @@ void main() {
       expect((secondMsg as RelaySseEvent).data, equals(expectedData));
     });
 
-    test("without room key events are not sent", () async {
-      final client = _RecordingRelayClient();
-      final manager = SSEManager(
-        replayWindow: SSEManager.defaultReplayWindow,
-        onBytesSent: (_) {},
-        failureReporter: FakeFailureReporter(),
-      );
-      addTearDown(manager.stop);
-
-      manager.subscribeForTest(7, client);
-      manager.enqueueUniform(_event("repo-x"));
-      await _pumpEventLoop();
-
-      expect(client.sentConnIDs, isEmpty);
-    });
-
     test("non-last unsubscribe creates orphan queue", () {
       final manager = SSEManager(
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
@@ -153,6 +144,7 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
@@ -175,8 +167,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       // Phone connects and receives one event.
@@ -210,8 +202,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -242,8 +234,8 @@ void main() {
           replayWindow: SSEManager.defaultReplayWindow,
           onBytesSent: (_) {},
           failureReporter: FakeFailureReporter(),
+          encryptor: _encryptor(roomKey),
         );
-        manager.setRoomKey(roomKey);
         addTearDown(manager.stop);
 
         manager.subscribeForTest(1, client);
@@ -271,8 +263,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -310,8 +302,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: sentByteCounts.add,
         failureReporter: reporter,
+        encryptor: _encryptor(makeRoomKey()),
       );
-      manager.setRoomKey(makeRoomKey());
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -339,8 +331,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
-      manager.setRoomKey(makeRoomKey());
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -365,8 +357,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -389,8 +381,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(1, client);
@@ -417,6 +409,7 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: FakeFailureReporter(),
+        encryptor: _encryptor(makeRoomKey()),
       );
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
@@ -443,8 +436,8 @@ void main() {
         replayWindow: SSEManager.defaultReplayWindow,
         onBytesSent: (_) {},
         failureReporter: capturingReporter,
+        encryptor: _encryptor(roomKey),
       );
-      manager.setRoomKey(roomKey);
       addTearDown(manager.stop);
 
       manager.subscribeForTest(42, throwingClient);
@@ -466,7 +459,15 @@ SesoriSseEvent _event(String worktree) {
     projects: [
       ProjectActivitySummary(
         id: worktree,
-        activeSessions: [const ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null)],
+        activeSessions: [
+          const ActiveSession(
+            id: "s1",
+            mainAgentRunning: false,
+            childSessionIds: [],
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
+        ],
       ),
     ],
   );
@@ -477,21 +478,10 @@ const _imageBase64 = "aW1hZ2UtYnl0ZXM=";
 /// One live part event in both shapes: the released inline payload and the
 /// reference payload that carries no bytes.
 SseEventDelivery _attachmentShapedDelivery() {
-  MessagePart part({required MessageAttachment attachment}) => MessagePart(
+  MessagePart part({required MessageAttachment attachment}) => MessagePart.file(
     id: "p1",
     sessionID: "ses_a",
     messageID: "m1",
-    type: MessagePartType.file,
-    text: null,
-    tool: null,
-    state: null,
-    prompt: null,
-    description: null,
-    agent: null,
-    childSessionID: null,
-    agentName: null,
-    attempt: null,
-    retryError: null,
     attachment: attachment,
   );
   return SseEventDelivery.attachmentShaped(
@@ -531,6 +521,10 @@ Future<Map<String, dynamic>> _decryptEnvelope(
   final decryptor = crypto.createSessionEncryptor(SecretKey(roomKey));
   final decrypted = await unframe(framed, encryptor: decryptor);
   return jsonDecode(utf8.decode(decrypted)) as Map<String, dynamic>;
+}
+
+SessionEncryptor _encryptor(List<int> roomKey) {
+  return RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
 }
 
 Future<void> _waitForSendCount(_RecordingRelayClient client, int count) async {

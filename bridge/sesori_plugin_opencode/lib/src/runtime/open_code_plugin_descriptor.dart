@@ -9,7 +9,6 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions;
 
 import "../opencode_plugin_impl.dart";
-import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
@@ -27,10 +26,8 @@ abstract final class _OpenCodeConfigKey() {
   static const String binary = "bin";
 }
 
-/// Builds the [OpenCodeManagedApi] for a resolved server. The production default
-/// constructs an [OpenCodePlugin] with auto-initialization disabled (the
-/// descriptor awaits [OpenCodeManagedApi.initialize] explicitly); tests inject a
-/// fake.
+/// Builds the [OpenCodeManagedApi] for a resolved server. The descriptor awaits
+/// [OpenCodeManagedApi.initialize] explicitly; tests inject a fake.
 typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
   required String serverUrl,
   required String? password,
@@ -47,7 +44,6 @@ OpenCodeManagedApi _defaultBuildApi({
   return OpenCodePlugin(
     serverUrl: serverUrl,
     password: password,
-    autoInitialize: false,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
   );
@@ -60,9 +56,8 @@ OpenCodeManagedApi _defaultBuildApi({
 ///
 /// Registered in `bin/bridge.dart` since the flip (PR 12 of the
 /// plugin-lifecycle migration), with the hardened policy knobs active:
-/// deadline-paced health confirmation, the start intent recorded to a
-/// bridge-private side file, pre-probed explicit ports, early child exits
-/// treated as authoritative failure, and bounded restart pinned to the
+/// deadline-paced health confirmation, pre-probed explicit ports, early child
+/// exits treated as authoritative failure, and bounded restart pinned to the
 /// original port.
 ///
 /// The optional constructor parameters are test seams (and the random/candidate
@@ -87,25 +82,14 @@ class const OpenCodePluginDescriptor({
   /// Frozen ownership filename in the legacy shared runtime directory.
   static const String ownershipFileName = "opencode-processes.json";
 
-  /// Backend-namespaced start intent filename in shared runtime storage.
-  static const String startIntentFileName = "opencode-start-intent.json";
-
-  /// The OpenCode CLI options the bridge declares for this plugin.
-  ///
-  /// Names are bare; the bridge namespaces them to `--opencode-<name>`. The
-  /// pre-namespacing spellings that already shipped (`--port`, `--no-auto-start`,
-  /// `--password`) are kept as deprecated aliases so existing invocations keep
-  /// working (with a warning). `bin` already namespaces to the historical
-  /// `--opencode-bin`, and the never-released `host`/`no-password` flags are new,
-  /// so none of those need an alias.
+  /// The OpenCode CLI options the bridge declares for this plugin. Names are
+  /// bare; the bridge namespaces them to `--opencode-<name>`.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
       name: _OpenCodeConfigKey.port,
       help: "Port for opencode server to listen on",
       defaultsTo: null,
       valueHelp: null,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --port. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
-      deprecatedAliases: ["port"],
     ),
     PluginValueOption(
       name: _OpenCodeConfigKey.host,
@@ -125,8 +109,6 @@ class const OpenCodePluginDescriptor({
       help: "Skip auto-starting opencode server (use existing server)",
       defaultsTo: false,
       negatable: true,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --no-auto-start. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
-      deprecatedAliases: ["no-auto-start"],
     ),
     PluginValueOption(
       name: _OpenCodeConfigKey.password,
@@ -135,8 +117,6 @@ class const OpenCodePluginDescriptor({
       allowedValues: null,
       valueHelp: null,
       validate: null,
-      // COMPATIBILITY 2026-06-22 (v1.1.1): Existing scripts may use --password. Remove this alias when pre-namespaced bridge CLI flags are unsupported.
-      deprecatedAliases: ["password"],
     ),
     PluginFlagOption(
       name: _OpenCodeConfigKey.noPassword,
@@ -268,12 +248,16 @@ class const OpenCodePluginDescriptor({
     };
   }
 
+  String? _explicitBin(PluginConfig config) {
+    final value = config.value(_OpenCodeConfigKey.binary)?.trim();
+    return value == null || value.isEmpty ? null : value;
+  }
+
   /// Whether the pinned managed OpenCode runtime can be installed on request:
   /// no explicit binary override (that binary is authoritative) and a
   /// published release asset for this platform.
   bool _supportsManagedInstall({required PluginConfig config}) {
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    if (explicitBin != null && explicitBin.isNotEmpty) return false;
+    if (_explicitBin(config) != null) return false;
     final PlatformTarget target;
     try {
       target = PlatformTarget.current();
@@ -281,7 +265,7 @@ class const OpenCodePluginDescriptor({
       Log.w("[opencode] platform detection failed; managed install unavailable", error, stackTrace);
       return false;
     }
-    return const OpenCodeRuntimeManifest().assetFor(target: target) != null;
+    return const OpenCodeRuntimeManifest().supportsManagedInstallOn(target: target);
   }
 
   @override
@@ -338,32 +322,13 @@ class const OpenCodePluginDescriptor({
       return const PluginSetupReady();
     }
 
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    final hasExplicitBin = explicitBin != null && explicitBin.isNotEmpty;
+    final explicitBin = _explicitBin(config);
     const manifest = OpenCodeRuntimeManifest();
-    final executable = hasExplicitBin ? explicitBin : manifest.pathExecutableName;
     final executor = HostProcessCommandExecutor(
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
-    final versionValidator = RuntimeVersionValidator(
-      commandExecutor: executor,
-      manifest: manifest,
-      probeTimeout: _versionProbeTimeout,
-    );
-    /// The pinned managed runtime's version when it is already installed and
-    /// matches the bundled pin, or null. Only consulted without an explicit
-    /// binary, which is authoritative when set.
-    Future<String?> managedRuntimeVersion() async {
-      if (hasExplicitBin) return null;
-      final managedVersion = await versionValidator.detectVersion(
-        executable: manifest.managedBinaryPath(stateDirectory: stateDirectory),
-        environment: environment,
-      );
-      if (managedVersion == null || managedVersion.compareTo(manifest.bundledVersion) != 0) return null;
-      return managedVersion.raw;
-    }
 
     /// What to tell the user when no usable runtime was found and Sesori can
     /// install one: a superseded managed install needs updating, anything else
@@ -375,77 +340,50 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    final CommandResult result;
-    try {
-      result = await executor.run(
-        executable,
-        const ["--version"],
-        environment: environment,
-        timeout: _versionProbeTimeout,
-      );
-    } on io.ProcessException {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return PluginSetupRuntimeMissing(
-          actionHint: hasExplicitBin
-              ? "Fix the configured OpenCode binary path, then restart the bridge."
-              : missingRuntimeHint(),
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    } on TimeoutException {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
+    final selection = await ManagedRuntimeSelectionService(
+      manifest: manifest,
+      versionValidator: RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: manifest,
+        probeTimeout: _versionProbeTimeout,
+      ),
+    ).select(
+      explicitExecutablePath: explicitBin,
+      fallbackExecutableCandidates: const [],
+      environment: environment,
+      stateDirectory: stateDirectory,
+      abortSignal: StartAbortSignal.never,
+      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
+    );
+    if (selection case ManagedRuntimeSelected(:final version)) {
+      return PluginSetupReady.versioned(runtimeVersion: version.raw);
+    }
+    final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
+    return switch (rejection) {
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
+        actionHint: explicitBin == null
+            ? missingRuntimeHint()
+            : "Fix the configured OpenCode binary path, then restart the bridge.",
+      ),
+      ManagedRuntimeVersionRejected() when explicitBin == null => PluginSetupRuntimeMissing(
+        actionHint: missingRuntimeHint(),
+      ),
+      ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
+      ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit()) when explicitBin == null =>
+        PluginSetupRuntimeMissing(actionHint: missingRuntimeHint()),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeNonZeroExit() || RuntimeProbeTimedOut()) =>
+        const PluginSetupUnknown(
           actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    } on Object {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-
-    if (result.exitCode != 0) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        if (!hasExplicitBin) {
-          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-        }
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode did not answer its setup check. Verify the local installation and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    final version = versionValidator.parseVersionOutput(output: result.stdout);
-    if (version == null) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        return const PluginSetupUnknown(
-          actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    if (version.compareTo(manifest.minPathVersion) < 0) {
-      final managedVersion = await managedRuntimeVersion();
-      if (managedVersion == null) {
-        if (!hasExplicitBin) {
-          return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
-        }
-        return const PluginSetupUnavailable(
-          actionHint: "The configured OpenCode binary is too old. Update it and restart the bridge.",
-        );
-      }
-      return PluginSetupReady.versioned(runtimeVersion: managedVersion);
-    }
-    return PluginSetupReady.versioned(runtimeVersion: version.raw);
+        ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeUnrecognized()) => const PluginSetupUnknown(
+        actionHint: "OpenCode returned an unrecognized version. Update OpenCode and retry.",
+      ),
+      ManagedRuntimeProbeRejected(outcome: RuntimeProbeFailed()) => const PluginSetupUnknown(
+        actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
+      ),
+    };
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the
@@ -459,18 +397,17 @@ class const OpenCodePluginDescriptor({
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
       return;
     }
-    final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-    if (explicitBin != null && explicitBin.isNotEmpty) {
+    if (_explicitBin(config) != null) {
       return;
     }
 
     final injected = _provisionService;
     if (injected != null) {
-      yield* injected.provision(host: host);
+      yield* injected.provision(host: host, explicitExecutablePath: null);
       return;
     }
 
-    yield* _buildDefaultProvisionService(host: host).provision(host: host);
+    yield* _buildDefaultProvisionService(host: host).provision(host: host, explicitExecutablePath: null);
   }
 
   /// Assembles the production resolver from the host's process service so
@@ -486,10 +423,13 @@ class const OpenCodePluginDescriptor({
     );
     return ManagedRuntimeProvisionService(
       manifest: manifest,
-      versionValidator: RuntimeVersionValidator(
-        commandExecutor: commandExecutor,
+      selectionService: ManagedRuntimeSelectionService(
         manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
+        versionValidator: RuntimeVersionValidator(
+          commandExecutor: commandExecutor,
+          manifest: manifest,
+          probeTimeout: _versionProbeTimeout,
+        ),
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],
@@ -497,7 +437,7 @@ class const OpenCodePluginDescriptor({
   }
 
   @override
-  Future<OpenCodeBridgePlugin> start(PluginHost host) async {
+  Future<ManagedRuntimeBridgePlugin<OpenCodeOwnershipRecord, OpenCodeManagedApi>> start(PluginHost host) async {
     // The OpenCode database is intentionally left untouched. Previous
     // auto-vacuum maintenance has been removed because it interfered with
     // the database while OpenCode was running.
@@ -537,11 +477,6 @@ class const OpenCodePluginDescriptor({
       clock: host.clock,
       runtimeId: "opencode",
       gracefulShutdownWait: openCodeGracefulShutdownWait,
-      // Backs the intentSideFile record timing: the start intent is written
-      // here before spawn and resolved after. The bridge-private side file
-      // never touches the frozen ownership file, and a leftover intent from a
-      // crashed start is simply overwritten (then cleared) by the next one.
-      intentStore: RuntimeStartIntentStore(store: host.store, fileName: startIntentFileName),
     );
 
     late final ManagedRuntimeSpec<OpenCodeOwnershipRecord> spec;
@@ -585,10 +520,7 @@ class const OpenCodePluginDescriptor({
       // Precedence: an explicit --opencode-bin wins (trusted, no version gate),
       // else the path ensureRuntime resolved (a recent PATH install or the
       // managed download), exposed via the host.
-      final explicitBin = config.value(_OpenCodeConfigKey.binary)?.trim();
-      final resolvedExecutable = (explicitBin != null && explicitBin.isNotEmpty)
-          ? explicitBin
-          : host.provisionedRuntimePath;
+      final resolvedExecutable = _explicitBin(config) ?? host.provisionedRuntimePath;
 
       if (resolvedExecutable == null) {
         // Runtime provisioning failed and no explicit binary was given. Stay
@@ -673,7 +605,7 @@ class const OpenCodePluginDescriptor({
 
     final ownedRecord = handle?.record;
 
-    final reporter = OpenCodeRuntimeStatusReporter(
+    final reporter = ManagedRuntimeStatusReporter(
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
       degradedDebounce: _degradedDebounce,
@@ -702,14 +634,21 @@ class const OpenCodePluginDescriptor({
       onDisconnected: reporter.markDisconnected,
     );
 
-    final plugin = OpenCodeBridgePlugin(
+    final plugin = ManagedRuntimeBridgePlugin<OpenCodeOwnershipRecord, OpenCodeManagedApi>(
       api: api,
+      managedApi: api,
       reporter: reporter,
       monitor: monitor,
       service: service,
       ownedRecord: ownedRecord,
-      port: port,
-      serverUrl: serverUrl,
+      diagnostics: PluginDiagnostics(
+        pluginId: Harness.opencode.name,
+        endpoint: serverUrl,
+        details: <String, String>{"port": "$port", "mode": ownedRecord == null ? "attached" : "managed"},
+      ),
+      displayName: "OpenCode",
+      logContext: "opencode",
+      interruptOwnedOnly: true,
     );
 
     if (handle == null) {

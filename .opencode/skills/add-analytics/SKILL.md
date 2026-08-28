@@ -34,9 +34,10 @@ state under `services/models/`:
 
 - Consumers call `ProductAnalyticsService` for authenticated account-linked
   events.
-- The three approved pre-auth login events call
-  `InstallationAnalyticsService`; they are account-less and preference-exempt
-  by explicit product decision.
+- Five approved account-less authentication events call
+  `InstallationAnalyticsService`: the started/completed/failed attempt funnel
+  plus Firebase's recommended `sign_up` and `login` outcomes. They are
+  preference-exempt by explicit product decision.
 - Delivery flows `Client (Foundation) -> API -> Repository -> Service ->
   Consumer`. Cubits/widgets/listeners never hold `AnalyticsClient` or
   `AnalyticsApi` directly.
@@ -52,7 +53,7 @@ state under `services/models/`:
 | Reactive state | Dedicated listener or bounded transition guard | Bridge/screen state |
 | Screen | `GoRouterRouteSource` -> exhaustive `AnalyticsScreen` mapping | `product_screen_viewed` |
 | Flutter-only capability | UI call site after capability succeeds, calling Layer-3 service | Voice transcription completed |
-| Pre-auth login | `LoginCubit` terminal state through `InstallationAnalyticsService` | Timeout by provider |
+| Account-less authentication | `LoginCubit` terminal state through `InstallationAnalyticsService` | Attempt failure or server-confirmed signup/login |
 
 Never use a widget tap as a proxy when a confirmed outcome exists. Never emit a
 success event when an operation is queued, merely attempted, or later requeued.
@@ -100,8 +101,10 @@ Never report:
 
 Account-linked events use only the pseudonymous custom `user_key` produced in
 the repository. Never set Firebase global `user_id` for the new design.
-Installation login events carry no `user_key` or attempt ID and may not be
-extended beyond their approved provider/failure enums without a new decision.
+Installation authentication events carry no `user_key` or attempt ID. Funnel
+events use only approved provider/failure enums; recommended `sign_up`/`login`
+events use only the same pinned provider enum as `method`. Any broader
+parameters require a new decision.
 
 ## Implementation checklist
 

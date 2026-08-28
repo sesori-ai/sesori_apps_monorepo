@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:sesori_plugin_interface/plugin_interface_testing.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
@@ -214,6 +216,50 @@ void main() {
         await expectLater(plugin.shutdown(budget: null), throwsStateError);
         expect(plugin.currentStatus, const PluginStopped());
       });
+
+      test('runs every cleanup and preserves first error and stack', () async {
+        final plugin = _SteadyPlugin();
+        final calls = <String>[];
+        final firstError = StateError('first');
+        final firstStack = StackTrace.current;
+
+        try {
+          await plugin.runCleanups([
+            () async {
+              calls.add('first');
+              Error.throwWithStackTrace(firstError, firstStack);
+            },
+            () async {
+              calls.add('second');
+              throw ArgumentError('second');
+            },
+            () async => calls.add('third'),
+          ]);
+          fail('cleanup failure expected');
+        } on Object catch (error, stackTrace) {
+          expect(error, same(firstError));
+          expect(stackTrace.toString(), firstStack.toString());
+        }
+        expect(calls, ['first', 'second', 'third']);
+      });
+
+      test('logs cleanup failures after the first', () async {
+        final plugin = _SteadyPlugin();
+        final stderrLines = <String>[];
+
+        await IOOverrides.runZoned(
+          () => expectLater(
+            plugin.runCleanups([
+              () async => throw StateError('first'),
+              () async => throw ArgumentError('second'),
+            ]),
+            throwsStateError,
+          ),
+          stderr: () => CapturingStdout(lines: stderrLines),
+        );
+
+        expect(stderrLines.join('\n'), contains('Invalid argument(s): second'));
+      });
     });
   });
 }
@@ -232,6 +278,8 @@ class _SteadyPlugin({final bool throwOnShutdown = false}) with SteadyPluginLifec
   }
 
   void reportFailed(String reason, {Object? cause}) => markFailed(reason, cause: cause);
+
+  Future<void> runCleanups(List<Future<void> Function()> cleanups) => runShutdownCleanups(cleanups: cleanups);
 
   @override
   ServerClock get statusClock => clock;

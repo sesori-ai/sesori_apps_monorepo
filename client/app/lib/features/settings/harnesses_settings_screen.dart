@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:flutter/services.dart";
+import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -12,6 +12,8 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/utils/copy_text_to_clipboard.dart";
+import "../../core/widgets/catalog_scan_row.dart";
 import "../../core/widgets/connection_banner.dart";
 import "widgets/settings_section.dart";
 
@@ -29,6 +31,7 @@ class const HarnessesSettingsScreen({
       create: (_) => PluginManagementCubit(
         service: getIt<PluginManagementService>(),
         urlLauncher: getIt<UrlLauncher>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
       ),
       child: _HarnessesSettingsBody(presentation: presentation),
     );
@@ -54,6 +57,41 @@ class const _HarnessesSettingsBody({required final HarnessSettingsPresentation p
             final confirmation = _forceConfirmation(state);
             if (confirmation == null) return;
             unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
+          },
+        ),
+        // This screen hosts no progress row, so a scan started here would
+        // otherwise end in silence: the spinner stops and the service clears
+        // its result before the user could reach a list to read it.
+        BlocListener<PluginManagementCubit, PluginManagementState>(
+          listenWhen: (previous, current) => _scanOutcome(previous) == null && _scanOutcome(current) != null,
+          listener: (context, state) {
+            final outcome = _scanOutcome(state);
+            if (outcome == null) return;
+            final loc = context.loc;
+            final (title, variant) = switch (outcome) {
+              CatalogRescanOutcomeSucceeded(:final counts) => (
+                loc.harnessManagementScanFinished(catalogScanCountsLine(loc: loc, counts: counts)),
+                PregoPopupAlertsNotificationsVariant.success,
+              ),
+              CatalogRescanOutcomePartlyFailed(:final succeededCount, :final failedCount) => (
+                loc.harnessManagementScanPartlyFailed(failedCount, succeededCount + failedCount),
+                PregoPopupAlertsNotificationsVariant.error,
+              ),
+              CatalogRescanOutcomeFailed() => (
+                loc.harnessManagementScanFinishedFailed,
+                PregoPopupAlertsNotificationsVariant.error,
+              ),
+            };
+            PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
+            // Announced as well as shown. The popup renders ordinary text into
+            // an overlay, which moves no semantic focus and carries no live
+            // region, so on its own it tells a screen-reader user nothing —
+            // and they are the reason this surface exists, the pull being a
+            // gesture they cannot perform.
+            unawaited(
+              SemanticsService.sendAnnouncement(View.of(context), title, Directionality.of(context)),
+            );
+            cubit.dismissCatalogScanOutcome();
           },
         ),
         BlocListener<PluginManagementCubit, PluginManagementState>(
@@ -112,68 +150,22 @@ class const _HarnessesSettingsBody({required final HarnessSettingsPresentation p
   }
 }
 
-({String pluginId, Uri verificationUri, String userCode, bool cancelling, bool uncertain, bool browserFailed})?
-_authenticationChallenge({required PluginManagementState state}) => switch (state) {
-  PluginManagementReady(
-    authentication: PluginAuthenticationPresentationChallenge(:final pluginId, :final verificationUri, :final userCode),
-  ) =>
-    (
-      pluginId: pluginId,
-      verificationUri: verificationUri,
-      userCode: userCode,
-      cancelling: false,
-      uncertain: false,
-      browserFailed: false,
-    ),
-  PluginManagementReady(
-    authentication: PluginAuthenticationPresentationBrowserLaunchFailedState(
-      :final pluginId,
-      :final verificationUri,
-      :final userCode,
-    ),
-  ) =>
-    (
-      pluginId: pluginId,
-      verificationUri: verificationUri,
-      userCode: userCode,
-      cancelling: false,
-      uncertain: false,
-      browserFailed: true,
-    ),
-  PluginManagementReady(
-    authentication: PluginAuthenticationPresentationCancelling(
-      :final pluginId,
-      :final verificationUri,
-      :final userCode,
-    ),
-  ) =>
-    (
-      pluginId: pluginId,
-      verificationUri: verificationUri,
-      userCode: userCode,
-      cancelling: true,
-      uncertain: false,
-      browserFailed: false,
-    ),
-  PluginManagementReady(
-    authentication: PluginAuthenticationPresentationCancellingUncertain(
-      :final pluginId,
-      :final verificationUri,
-      :final userCode,
-    ),
-  ) =>
-    (
-      pluginId: pluginId,
-      verificationUri: verificationUri,
-      userCode: userCode,
-      cancelling: true,
-      uncertain: true,
-      browserFailed: false,
-    ),
+PluginAuthenticationPresentationState? _authenticationChallenge({required PluginManagementState state}) =>
+    switch (state) {
+  PluginManagementReady(authentication: final PluginAuthenticationPresentationChallenge challenge) => challenge,
+  PluginManagementReady(authentication: final PluginAuthenticationPresentationBrowserLaunchFailedState challenge) =>
+    challenge,
+  PluginManagementReady(authentication: final PluginAuthenticationPresentationCancelling challenge) => challenge,
+  PluginManagementReady(authentication: final PluginAuthenticationPresentationCancellingUncertain challenge) => challenge,
   PluginManagementReady() ||
   PluginManagementLoading() ||
   PluginManagementUnsupported() ||
   PluginManagementFailure() => null,
+    };
+
+CatalogRescanOutcome? _scanOutcome(PluginManagementState state) => switch (state) {
+  PluginManagementReady(:final scanOutcome) => scanOutcome,
+  PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
 };
 
 PluginManagementActionForceConfirmationRequired? _forceConfirmation(PluginManagementState state) => switch (state) {
@@ -200,15 +192,10 @@ class const _LoadingView() extends StatelessWidget {
 class const _UnsupportedView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.info_circle,
-          title: Text(context.loc.harnessesUnsupportedTitle),
-          subtitle: Text(context.loc.harnessesUnsupportedDescription),
-          isLast: true,
-        ),
-      ],
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.info_circle,
+      title: Text(context.loc.harnessesUnsupportedTitle),
+      subtitle: Text(context.loc.harnessesUnsupportedDescription),
     );
   }
 }
@@ -216,13 +203,11 @@ class const _UnsupportedView() extends StatelessWidget {
 class const _FailureView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return PregoGroupedRows(
-      children: [
-        PregoGroupedRow(
-          icon: TablerRegular.alert_triangle,
-          title: Text(context.loc.harnessesLoadFailedTitle),
-          subtitle: Text(context.loc.harnessesLoadFailedDescription),
-          trailing: KeyedSubtree(
+    return PregoGroupedNoticeRow(
+      icon: TablerRegular.alert_triangle,
+      title: Text(context.loc.harnessesLoadFailedTitle),
+      subtitle: Text(context.loc.harnessesLoadFailedDescription),
+      trailing: KeyedSubtree(
             key: const Key("harness_management_retry"),
             child: PregoButtonsSolid(
               key: const Key("harnesses_retry"),
@@ -231,10 +216,7 @@ class const _FailureView() extends StatelessWidget {
               size: PregoButtonsSolidSize.sm,
               onPressed: context.read<PluginManagementCubit>().refresh,
             ),
-          ),
-          isLast: true,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -313,7 +295,6 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                   onTap: _controlsBlocked(state.action)
                       ? null
                       : () => _editDefaultTimeout(context: context, state: state),
-                  isLast: true,
                 ),
               ],
             ),
@@ -323,15 +304,10 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
         SettingsSection(
           title: loc.harnessesRegisteredSection,
           child: response.plugins.isEmpty
-              ? PregoGroupedRows(
-                  children: [
-                    PregoGroupedRow(
-                      icon: TablerRegular.info_circle,
-                      title: Text(loc.harnessesEmptyTitle),
-                      subtitle: Text(loc.harnessesEmptyDescription),
-                      isLast: true,
-                    ),
-                  ],
+              ? PregoGroupedNoticeRow(
+                  icon: TablerRegular.info_circle,
+                  title: Text(loc.harnessesEmptyTitle),
+                  subtitle: Text(loc.harnessesEmptyDescription),
                 )
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -343,6 +319,8 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                         action: state.action,
                         authentication: state.authentication,
                         install: state.installs[response.plugins[index].setup.id],
+                        scanning: state.scanningPluginIds.contains(response.plugins[index].setup.id),
+                        scanRejection: state.scanRejections[response.plugins[index].setup.id],
                       ),
                       if (index != response.plugins.length - 1) const SizedBox(height: PregoSpacing.md),
                     ],
@@ -374,7 +352,6 @@ class const _MessageRow({
             onPressed: onDismiss,
             icon: const Icon(TablerRegular.x),
           ),
-          isLast: true,
         ),
       ],
     );
@@ -388,6 +365,12 @@ class const _HarnessControlCard({
     required final PluginAuthenticationPresentationState authentication,
     /// This harness' in-flight managed runtime install, when one is running.
   required final PluginInstallProgress? install,
+    /// Whether a catalog scan covering this harness is running, started here
+  /// or from a list's pull.
+  required final bool scanning,
+    /// Why this harness' last targeted scan was turned down, if it was. Never
+  /// carries an accepted start.
+  required final CatalogRescanStartResult? scanRejection,
   }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -412,6 +395,16 @@ class const _HarnessControlCard({
         capabilities.contains(PluginManagementCapability.install) &&
         (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
     final showRestart = showOperational && supportsLifecycle;
+    final showScan = plugin.runtimeState.isRoutable;
+    // A rejection replaces the row's description until the user starts another
+    // scan, so the answer to "why did nothing happen" stays on the card that
+    // was tapped. The bridge's own error text is never among these.
+    final scanRejectionText = switch (scanRejection) {
+      null || CatalogRescanStartAccepted() => null,
+      CatalogRescanStartNotImportable() => loc.harnessManagementScanNotReady,
+      CatalogRescanStartUnsupported() => loc.harnessManagementScanUnsupported,
+      CatalogRescanStartFailed() => loc.harnessManagementScanFailed,
+    };
     final showTimeout = showOperational && supportsIdleTimeout;
     final showClearTimeout = showTimeout && plugin.hasIdleTimeoutOverride;
     final supportsAuthentication = capabilities.contains(PluginManagementCapability.authentication);
@@ -473,34 +466,11 @@ class const _HarnessControlCard({
           _FactRow(
             title: loc.harnessesSetupStatus,
             value: _setupStatus(context: context, state: plugin.setup.state),
-            isLast:
-                !(runtimeVersion != null ||
-                    showRuntime ||
-                    showWork ||
-                    showExternal ||
-                    showInstall ||
-                    showAuthentication ||
-                    showLifecycle ||
-                    showSetupRefresh ||
-                    showRestart ||
-                    showTimeout ||
-                    showClearTimeout),
           ),
           if (runtimeVersion != null)
             _FactRow(
               title: loc.harnessesRuntimeVersion,
               value: runtimeVersion,
-              isLast:
-                  !(showRuntime ||
-                      showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showAuthentication ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showAuthentication)
             PregoGroupedRow(
@@ -518,43 +488,16 @@ class const _HarnessControlCard({
               onTap: blocked || authenticationStarting
                   ? null
                   : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
-              isLast:
-                  !(showRuntime ||
-                      showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showRuntime)
             _FactRow(
               title: loc.harnessesRuntimeStatus,
               value: _runtimeStatus(context: context, state: plugin.runtimeState),
-              isLast:
-                  !(showWork ||
-                      showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showWork)
             _FactRow(
               title: loc.harnessesWorkStatus,
               value: _workStatus(context: context, state: plugin.workState),
-              isLast:
-                  !(showExternal ||
-                      showInstall ||
-                      showLifecycle ||
-                      showSetupRefresh ||
-                      showRestart ||
-                      showTimeout ||
-                      showClearTimeout),
             ),
           if (showExternal)
             PregoGroupedRow(
@@ -562,8 +505,6 @@ class const _HarnessControlCard({
               icon: TablerRegular.info_circle,
               title: Text(loc.harnessManagementExternalTitle),
               subtitle: Text(loc.harnessManagementExternalDescription),
-              isLast:
-                  !(showInstall || showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
             ),
           if (showInstall)
             PregoGroupedRow(
@@ -592,7 +533,6 @@ class const _HarnessControlCard({
               onTap: blocked || installing
                   ? null
                   : () => context.read<PluginManagementCubit>().install(pluginId: pluginId),
-              isLast: !(showLifecycle || showSetupRefresh || showRestart || showTimeout || showClearTimeout),
             ),
           if (showLifecycle)
             MergeSemantics(
@@ -612,7 +552,6 @@ class const _HarnessControlCard({
                     : () => enabled
                           ? context.read<PluginManagementCubit>().disable(pluginId: pluginId)
                           : context.read<PluginManagementCubit>().enable(pluginId: pluginId),
-                isLast: !(showSetupRefresh || showRestart || showTimeout || showClearTimeout),
               ),
             ),
           if (showSetupRefresh)
@@ -621,7 +560,6 @@ class const _HarnessControlCard({
               icon: TablerRegular.refresh,
               title: Text(loc.harnessManagementRefreshSetup),
               onTap: blocked ? null : () => context.read<PluginManagementCubit>().refreshSetup(pluginId: pluginId),
-              isLast: !(showRestart || showTimeout || showClearTimeout),
             ),
           if (showRestart)
             PregoGroupedRow(
@@ -629,7 +567,21 @@ class const _HarnessControlCard({
               icon: TablerRegular.rotate_clockwise,
               title: Text(loc.harnessManagementRestart),
               onTap: blocked ? null : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
-              isLast: !(showTimeout || showClearTimeout),
+            ),
+          // The keyboard-and-pointer twin of the lists' deep pull, which is
+          // invisible to a screen reader and awkward with a mouse. Offered only
+          // for a routable harness: `isEnabled` is also true for blocked and
+          // failed, which the bridge answers with a 503.
+          if (showScan)
+            PregoGroupedRow(
+              key: Key("harness_management_scan_$pluginId"),
+              icon: TablerRegular.refresh_dot,
+              title: Text(loc.harnessManagementScan),
+              subtitle: Text(scanRejectionText ?? loc.harnessManagementScanDescription),
+              trailing: scanning ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              onTap: blocked || scanning
+                  ? null
+                  : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
             ),
           if (showTimeout)
             PregoGroupedRow(
@@ -645,7 +597,6 @@ class const _HarnessControlCard({
               ),
               trailing: Text(_timeoutLabel(context: context, minutes: plugin.idleTimeoutMins)),
               onTap: blocked ? null : () => _editHarnessTimeout(context: context, plugin: plugin),
-              isLast: !showClearTimeout,
             ),
           if (showClearTimeout)
             PregoGroupedRow(
@@ -655,7 +606,6 @@ class const _HarnessControlCard({
               onTap: blocked
                   ? null
                   : () => context.read<PluginManagementCubit>().clearIdleTimeoutOverride(pluginId: pluginId),
-              isLast: true,
             ),
         ],
       ),
@@ -663,7 +613,7 @@ class const _HarnessControlCard({
   }
 }
 
-class const _FactRow({required final String title, required final String value, required final bool isLast}) extends StatelessWidget {
+class const _FactRow({required final String title, required final String value}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PregoGroupedRow(
@@ -673,7 +623,6 @@ class const _FactRow({required final String title, required final String value, 
         textAlign: TextAlign.end,
         style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
       ),
-      isLast: isLast,
     );
   }
 }
@@ -850,7 +799,6 @@ class _TimeoutSheetState() extends State<_TimeoutSheet> {
                       activeColor: context.prego.colors.fgBrandPrimary,
                     ),
                     onTap: () => _select(_TimeoutChoice.custom),
-                    isLast: true,
                   ),
                 ),
               ],
@@ -883,30 +831,23 @@ class _TimeoutSheetState() extends State<_TimeoutSheet> {
             ),
           ],
           const SizedBox(height: PregoSpacing.x2l),
-          Row(
-            children: [
-              Expanded(
-                child: PregoButtonsSolid(
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
                   key: const Key("harness_management_timeout_cancel"),
                   label: loc.harnessManagementCancel,
                   hierarchy: PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.lg,
                   fullWidth: true,
                   onPressed: () => context.pop(),
-                ),
-              ),
-              const SizedBox(width: PregoSpacing.md),
-              Expanded(
-                child: PregoButtonsSolid(
+            ),
+            primary: PregoButtonsSolid(
                   key: const Key("harness_management_timeout_save"),
                   label: loc.harnessManagementSave,
                   hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                   size: PregoButtonsSolidSize.lg,
                   fullWidth: true,
                   onPressed: _submit,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -936,21 +877,16 @@ Future<void> _showForceConfirmation({
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
           const SizedBox(height: PregoSpacing.x2l),
-          Row(
-            children: [
-              Expanded(
-                child: PregoButtonsSolid(
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
                   key: const Key("harness_management_force_cancel"),
                   label: context.loc.harnessManagementCancel,
                   hierarchy: PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.lg,
                   fullWidth: true,
                   onPressed: () => sheetContext.pop(false),
-                ),
-              ),
-              const SizedBox(width: PregoSpacing.md),
-              Expanded(
-                child: PregoButtonsSolid(
+            ),
+            primary: PregoButtonsSolid(
                   key: const Key("harness_management_force_confirm"),
                   label: context.loc.harnessManagementForceAction,
                   hierarchy: PregoButtonsSolidHierarchy.primary,
@@ -958,9 +894,7 @@ Future<void> _showForceConfirmation({
                   type: PregoButtonsSolidType.destructive,
                   fullWidth: true,
                   onPressed: () => sheetContext.pop(true),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -999,16 +933,11 @@ Future<void> _showAuthenticationSheet({
 
 class const _AuthenticationSheet() extends StatelessWidget {
   Future<void> _copyCode({required BuildContext context, required String code}) async {
-    try {
-      await Clipboard.setData(ClipboardData(text: code));
-      if (!context.mounted) return;
-      PregoPopupAlertPresenter.of(context).show(
-        title: context.loc.harnessAuthenticationCodeCopied,
-        variant: PregoPopupAlertsNotificationsVariant.success,
-      );
-    } on Object catch (error, stackTrace) {
-      logw("Failed to copy authentication code", error, stackTrace);
-    }
+    if (!await copyTextToClipboard(text: code, operation: "authentication code") || !context.mounted) return;
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.harnessAuthenticationCodeCopied,
+      variant: PregoPopupAlertsNotificationsVariant.success,
+    );
   }
 
   @override
@@ -1039,6 +968,15 @@ class const _AuthenticationSheet() extends StatelessWidget {
       );
     }
 
+    final userCode = switch (challenge) {
+      PluginAuthenticationPresentationChallenge(:final userCode) ||
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final userCode) ||
+      PluginAuthenticationPresentationCancelling(:final userCode) ||
+      PluginAuthenticationPresentationCancellingUncertain(:final userCode) => userCode,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationStarting() ||
+      PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+    };
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
       child: Column(
@@ -1059,19 +997,18 @@ class const _AuthenticationSheet() extends StatelessWidget {
                 key: const Key("harness_authentication_code"),
                 icon: TablerRegular.key,
                 title: Text(loc.harnessAuthenticationCodeLabel),
-                subtitle: SelectableText(challenge.userCode),
+                subtitle: SelectableText(userCode),
                 trailing: IconButton(
                   key: const Key("harness_authentication_copy"),
                   tooltip: loc.harnessAuthenticationCopyCode,
-                  onPressed: () => _copyCode(context: context, code: challenge.userCode),
+                  onPressed: () => _copyCode(context: context, code: userCode),
                   icon: const Icon(TablerRegular.copy),
                 ),
-                isLast: true,
               ),
             ],
           ),
           const SizedBox(height: PregoSpacing.xl),
-          if (challenge.browserFailed) ...[
+          if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState) ...[
             Text(
               loc.harnessAuthenticationBrowserFailed,
               textAlign: TextAlign.center,
@@ -1080,11 +1017,16 @@ class const _AuthenticationSheet() extends StatelessWidget {
             const SizedBox(height: PregoSpacing.md),
           ],
           Text(
-            challenge.uncertain
-                ? loc.harnessAuthenticationCancellingUncertain
-                : challenge.cancelling
-                ? loc.harnessAuthenticationCancelling
-                : loc.harnessAuthenticationWaiting,
+            switch (challenge) {
+              PluginAuthenticationPresentationCancellingUncertain() =>
+                loc.harnessAuthenticationCancellingUncertain,
+              PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationWaiting,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+            },
             textAlign: TextAlign.center,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
@@ -1095,22 +1037,44 @@ class const _AuthenticationSheet() extends StatelessWidget {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.lg,
             fullWidth: true,
-            onPressed: challenge.cancelling ? null : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+            onPressed: switch (challenge) {
+              PluginAuthenticationPresentationCancelling() ||
+              PluginAuthenticationPresentationCancellingUncertain() => null,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() =>
+                context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+            },
           ),
           const SizedBox(height: PregoSpacing.md),
           PregoButtonsSolid(
             key: const Key("harness_authentication_cancel"),
-            label: challenge.cancelling && !challenge.uncertain
-                ? loc.harnessAuthenticationCancelling
-                : loc.harnessAuthenticationCancel,
+            label: switch (challenge) {
+              PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+              PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancel,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+            },
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
             type: PregoButtonsSolidType.destructive,
             fullWidth: true,
-            isLoading: challenge.cancelling && !challenge.uncertain,
-            onPressed: challenge.cancelling && !challenge.uncertain
-                ? null
-                : context.read<PluginManagementCubit>().cancelAuthentication,
+            isLoading: challenge is PluginAuthenticationPresentationCancelling,
+            onPressed: switch (challenge) {
+              PluginAuthenticationPresentationCancelling() => null,
+              PluginAuthenticationPresentationChallenge() ||
+              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+              PluginAuthenticationPresentationCancellingUncertain() =>
+                context.read<PluginManagementCubit>().cancelAuthentication,
+              PluginAuthenticationPresentationIdle() ||
+              PluginAuthenticationPresentationStarting() ||
+              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+            },
           ),
         ],
       ),

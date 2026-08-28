@@ -65,9 +65,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/sessions"),
           body: const SessionListRequest(projectId: "", start: null, limit: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -86,15 +83,12 @@ void main() {
         prSyncService: prSyncService,
       );
 
-      final response = await realHandler.handleInternal(
+      final response = await realHandler.routeForTest(
         makeRequest(
           "POST",
           "/sessions",
           body: jsonEncode(const SessionListRequest(projectId: "/unknown", start: null, limit: null).toJson()),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(404));
@@ -106,9 +100,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/home/user/proj", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetSessionsWorktree, equals("/home/user/proj"));
     });
@@ -117,9 +108,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: 5, limit: 20),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetSessionsStart, equals(5));
       expect(plugin.lastGetSessionsLimit, equals(20));
@@ -156,9 +144,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: 2, limit: 3),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final projects = await db.select(db.projectsTable).get();
@@ -177,9 +162,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/sessions"),
           body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(same(failure)),
       );
@@ -217,9 +199,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final rows = await db.select(db.sessionTable).get();
@@ -230,9 +209,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(plugin.lastGetSessionsStart, isNull);
       expect(plugin.lastGetSessionsLimit, isNull);
@@ -242,9 +218,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       expect(result, isA<SessionListResponse>());
     });
@@ -264,9 +237,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final session = result.items.first;
@@ -291,9 +261,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = result.items.first.time;
@@ -317,9 +284,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final session = result.items.first;
@@ -370,9 +334,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = result.items.first.time;
@@ -396,9 +357,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = result.items.first.time;
@@ -451,9 +409,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final time = result.items.first.time;
@@ -550,9 +505,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.length, equals(3));
@@ -605,9 +557,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.first.hasWorktree, isTrue);
@@ -657,9 +606,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.first.hasWorktree, isFalse);
@@ -680,9 +626,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.first.hasWorktree, isFalse);
@@ -722,9 +665,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final pr = result.items.single.pullRequest;
@@ -770,25 +710,16 @@ void main() {
       final first = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       prSyncService.verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: "hubot");
       final switched = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       prSyncService.verifiedGithubLogin = null;
       final unknown = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(first.items.single.pullRequest?.number, 43);
@@ -812,6 +743,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: "fake",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -877,9 +809,6 @@ void main() {
       final result = await realHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items, hasLength(1));
@@ -918,9 +847,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.single.pullRequest, isNull);
@@ -968,9 +894,6 @@ void main() {
       final result = await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "/tmp", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items, hasLength(2));
@@ -983,9 +906,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       // Allow the unawaited background refresh to run.
       await Future<void>.delayed(Duration.zero);
@@ -1005,9 +925,6 @@ void main() {
       final response = orderingHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await identityBlockingService.identityVerificationStarted.future;
       final callsBeforeIdentityCompleted = List.of(identityBlockingService.calls);
@@ -1062,9 +979,6 @@ void main() {
       final result = await boundedHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.single.pullRequest, isNull);
@@ -1077,9 +991,6 @@ void main() {
       await handler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "project-1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(prSyncService.calls, hasLength(1));
@@ -1138,16 +1049,13 @@ void main() {
       final response = timeoutHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       await branchPersisted.future;
 
       try {
         final result = await response;
         expect(result.items, hasLength(1));
-        expect(result.items.single.branchName, "feature/b");
+        expect(result.items.single.branchName, isNull);
         expect(result.items.single.pullRequest?.number, 98);
         expect(sessionRepository.getSessionsCallCount, equals(1));
       } finally {
@@ -1203,9 +1111,6 @@ void main() {
           .handle(
             makeRequest("POST", "/sessions"),
             body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(const Duration(milliseconds: 500));
 
@@ -1257,9 +1162,6 @@ void main() {
       final result = await timeoutHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.single.title, "session one");
@@ -1314,13 +1216,10 @@ void main() {
           .handle(
             makeRequest("POST", "/sessions"),
             body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-            pathParams: {},
-            queryParams: {},
-            fragment: null,
           )
           .timeout(prRefreshTimeout);
 
-      expect(result.items.single.branchName, "feature/new");
+      expect(result.items.single.branchName, isNull);
       expect(result.items.single.pullRequest?.number, 100);
       expect(sessionRepository.getSessionsCallCount, 1);
       expect(sessionRepository.enrichSessionsCallCount, 1);
@@ -1371,9 +1270,6 @@ void main() {
       final result = await boundedHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
       elapsed.stop();
 
@@ -1419,9 +1315,6 @@ void main() {
       final result = await failingHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items.single.pullRequest?.number, 103);
@@ -1465,9 +1358,6 @@ void main() {
       final result = await enrichedHandler.handle(
         makeRequest("POST", "/sessions"),
         body: const SessionListRequest(projectId: "p1", start: null, limit: null, waitForPrData: true),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(result.items, hasLength(1));
@@ -1523,11 +1413,11 @@ final class _IdentityBlockingPrSyncService() extends FakePrSyncService {
 
 /// Fails only the post-refresh re-read, keeping the first identity-gated read.
 final class _RereadFailingSessionRepository({
-    required super.plugin,
-    required super.sessionDao,
-    required super.pullRequestRepository,
-    required super.persistenceDatabase,
-  }) extends FakeSessionRepository {
+  required super.plugin,
+  required super.sessionDao,
+  required super.pullRequestRepository,
+  required super.persistenceDatabase,
+}) extends FakeSessionRepository {
   int enrichmentAttempts = 0;
 
   @override
@@ -1547,11 +1437,11 @@ final class _RereadFailingSessionRepository({
 }
 
 final class _StalledEnrichmentSessionRepository({
-    required super.plugin,
-    required super.sessionDao,
-    required super.pullRequestRepository,
-    required super.persistenceDatabase,
-  }) extends FakeSessionRepository {
+  required super.plugin,
+  required super.sessionDao,
+  required super.pullRequestRepository,
+  required super.persistenceDatabase,
+}) extends FakeSessionRepository {
   final Completer<void> enrichmentStarted = Completer<void>();
   final Completer<List<Session>> _stalled = Completer<List<Session>>();
 

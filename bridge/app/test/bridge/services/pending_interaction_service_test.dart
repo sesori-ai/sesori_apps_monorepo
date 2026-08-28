@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
@@ -13,6 +12,8 @@ import "package:sesori_bridge/src/services/permission_auto_approval_service.dart
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+import "../../helpers/in_memory_bridge_settings_api.dart";
 
 void main() {
   group("PendingInteractionService", () {
@@ -31,7 +32,10 @@ void main() {
       });
       permissionRepository = _PermissionRepository();
       questionRepository = _QuestionRepository();
-      settingsRepository = BridgeSettingsRepository(api: _BridgeSettingsApi());
+      settingsRepository = BridgeSettingsRepository(
+        defaultEditorApi: null,
+        api: InMemoryBridgeSettingsApi(config: '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}'),
+      );
       await settingsRepository.loadSettings();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = PendingInteractionService(
@@ -39,7 +43,6 @@ void main() {
         questionRepository: questionRepository,
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
-        legacyMissingPluginId: "legacy",
       );
       autoApproval = PermissionAutoApprovalService(
         sessionRepository: sessionRepository,
@@ -114,7 +117,9 @@ void main() {
       sessionRepository.activitySummaries = const [
         ProjectActivitySummary(
           id: "project",
-          activeSessions: [ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null)],
+          activeSessions: [
+            ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+          ],
         ),
       ];
       permissionRepository.pendingPermissions = const [
@@ -306,19 +311,4 @@ class _QuestionRepository() implements QuestionRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _BridgeSettingsApi() implements BridgeSettingsApi {
-  String config = '{"yolo":true,"pullRequestRefreshIntervalSeconds":30}';
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async {
-    config = jsonContent;
-  }
 }

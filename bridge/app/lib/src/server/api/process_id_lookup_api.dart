@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:io";
 
+import "../../foundation/csv_parser.dart";
 import "../../foundation/process_runner.dart";
 
 sealed class ProcessIdLookupApi._() {
@@ -73,7 +74,7 @@ final class _WindowsProcessIdLookupApi({required final ProcessRunner _processRun
 
     final processIds = <int>[];
     for (final line in const LineSplitter().convert(result.stdout.toString())) {
-      final values = _parseCsvLine(line: line.trim());
+      final values = CsvParser.parseLine(line: line.trim());
       if (values.length < 2) {
         continue;
       }
@@ -83,35 +84,5 @@ final class _WindowsProcessIdLookupApi({required final ProcessRunner _processRun
       }
     }
     return processIds;
-  }
-
-  static List<String> _parseCsvLine({required String line}) {
-    final values = <String>[];
-    final buffer = StringBuffer();
-    var inQuotes = false;
-
-    for (var index = 0; index < line.length; index += 1) {
-      final character = line[index];
-      if (character == '"') {
-        if (inQuotes && index + 1 < line.length && line[index + 1] == '"') {
-          buffer.write('"');
-          index += 1;
-        } else {
-          inQuotes = !inQuotes;
-        }
-        continue;
-      }
-
-      if (character == "," && !inQuotes) {
-        values.add(buffer.toString());
-        buffer.clear();
-        continue;
-      }
-
-      buffer.write(character);
-    }
-
-    values.add(buffer.toString());
-    return values;
   }
 }

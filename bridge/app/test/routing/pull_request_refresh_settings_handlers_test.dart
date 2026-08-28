@@ -1,6 +1,5 @@
 import "dart:convert";
 
-import "package:sesori_bridge/src/api/bridge_settings_api.dart";
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_pull_request_refresh_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
@@ -12,17 +11,18 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../bridge/routing/routing_test_helpers.dart";
+import "../helpers/in_memory_bridge_settings_api.dart";
 
 void main() {
   group("pull request refresh settings handlers", () {
-    late _MemoryBridgeSettingsApi api;
+    late InMemoryBridgeSettingsApi api;
     late BridgeSettingsRepository repository;
     late PullRequestRefreshSettingsService service;
     late YoloSettingsService yoloService;
 
     setUp(() async {
-      api = _MemoryBridgeSettingsApi();
-      repository = BridgeSettingsRepository(api: api);
+      api = InMemoryBridgeSettingsApi(config: '{"pullRequestRefreshIntervalSeconds":30}');
+      repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       service = PullRequestRefreshSettingsService(bridgeSettingsRepository: repository);
       yoloService = YoloSettingsService(
@@ -34,11 +34,8 @@ void main() {
     tearDown(() => repository.dispose());
 
     test("GET returns the committed interval", () async {
-      final response = await GetPullRequestRefreshSettingsHandler(settingsService: service).handleInternal(
+      final response = await GetPullRequestRefreshSettingsHandler(settingsService: service).routeForTest(
         makeRequest("GET", "/settings/pull-request-refresh"),
-        pathParams: const {},
-        queryParams: const {},
-        fragment: null,
       );
 
       expect(response.status, 200);
@@ -70,7 +67,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -78,9 +75,6 @@ void main() {
                 const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45).toJson(),
               ),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 200);
@@ -96,7 +90,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -104,9 +98,6 @@ void main() {
                 const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 14).toJson(),
               ),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);
@@ -126,7 +117,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
@@ -135,9 +126,6 @@ void main() {
                 "intervalSeconds": 30.5,
               }),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);
@@ -149,15 +137,12 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
-          ).handleInternal(
+          ).routeForTest(
             makeRequest(
               "PATCH",
               "/settings",
               body: jsonEncode({"type": "futureSetting", "enabled": true}),
             ),
-            pathParams: const {},
-            queryParams: const {},
-            fragment: null,
           );
 
       expect(response.status, 400);
@@ -177,21 +162,4 @@ class _FakePermissionAutoApprovalService() implements PermissionAutoApprovalServ
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _MemoryBridgeSettingsApi() implements BridgeSettingsApi {
-  String? config = '{"pullRequestRefreshIntervalSeconds":30}';
-  int writeCount = 0;
-
-  @override
-  String get configFilePath => "/tmp/config.json";
-
-  @override
-  Future<String?> readConfig() async => config;
-
-  @override
-  Future<void> writeConfig(String jsonContent) async {
-    config = jsonContent;
-    writeCount++;
-  }
 }

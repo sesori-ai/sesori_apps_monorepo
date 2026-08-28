@@ -8,11 +8,9 @@ class PiCatalogService({
   required final PiBackendCatalogRepository _repository,
   required final PiCatalogTracker _tracker,
   required final Duration _totalTimeout,
-  required final int _maxModels,
 }) {
   this {
     if (_totalTimeout <= Duration.zero) throw ArgumentError.value(_totalTimeout, "totalTimeout", "must be positive");
-    if (_maxModels <= 0) throw ArgumentError.value(_maxModels, "maxModels", "must be positive");
   }
 
   final Map<String, Future<_PiCatalogProbeOutcome>> _inFlight = {};
@@ -63,7 +61,6 @@ class PiCatalogService({
       final probe = await _repository.probe(
         projectId: projectId,
         totalTimeout: _totalTimeout,
-        maxModels: _maxModels,
       );
       final snapshot = PluginSessionOptions(
         agents: probe.agents,

@@ -145,22 +145,11 @@ void main() {
         );
         harness.listener.handleSseEvent(
           const SesoriSseEvent.messagePartUpdated(
-            part: MessagePart(
+            part: MessagePart.text(
               id: "part-1",
               sessionID: "child",
               messageID: "msg-1",
-              type: MessagePartType.text,
               text: "Child preview survives payload derivation but should be cleared after.",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              childSessionID: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
             ),
           ),
         );
@@ -254,9 +243,6 @@ class _FakePushDispatcher() implements PushDispatcher {
   void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     immediateEvents.add(event);
   }
-
-  @override
-  Future<void> dispose() async {}
 }
 
 Session _session({

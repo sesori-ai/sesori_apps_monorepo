@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
+import "package:sesori_bridge/src/foundation/data_directory_hardening.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -9,7 +10,10 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp("bridge_id_storage_test");
-    storage = BridgeIdStorage(filePath: "${tempDir.path}/nested/bridge_id");
+    storage = BridgeIdStorage(
+      filePath: "${tempDir.path}/nested/bridge_id",
+      writeRestrictedFile: writeRestrictedFile,
+    );
   });
 
   tearDown(() async {

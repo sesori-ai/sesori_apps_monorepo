@@ -216,7 +216,7 @@ void main() {
         }),
         CodexRolloutLineDto.fromJson({
           "type": "turn_context",
-          "payload": {"model": "gpt-5.4"},
+          "payload": {"model": "gpt-5.4", "reasoning_effort": "high"},
         }),
         CodexRolloutLineDto.fromJson({
           "type": "response_item",
@@ -243,6 +243,7 @@ void main() {
       expect(lines[4], isA<CodexRolloutUnknownLineDto>());
       expect(_sessionMetadataPayload(line: lines[0]).id, "session-id");
       expect(_turnContextPayload(line: lines[1]).model, "gpt-5.4");
+      expect(_turnContextPayload(line: lines[1]).effort, "high");
       expect(_responseItemPayload(line: lines[2]), isA<CodexRolloutMessageDto>());
     });
 
@@ -974,9 +975,9 @@ void main() {
       expect(messages[0].parts.first.text, equals("hello, codex"));
       expect(messages[0].parts.first.text, isNot(contains("/private/prompt.png")));
       expect(messages[0].parts, hasLength(2));
-      expect(messages[0].parts.first.attachment, isNull);
+      expect(messages[0].parts.first, isA<PluginMessagePartText>());
       expect(messages[0].parts.last.type, PluginMessagePartType.file);
-      final promptImage = messages[0].parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      final promptImage = messages[0].parts.last.attachment as PluginMessageAttachmentInlineImage;
       expect(promptImage.mime, "image/png");
       expect(promptImage.base64, "AA==");
       expect(messages[1].info, isA<PluginMessageAssistant>());
@@ -1063,7 +1064,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.last.parts, hasLength(2));
       expect(messages.last.parts.first.text, "visible prompt");
       expect(messages.last.parts.first.text, isNot(contains("SYSTEM CONTEXT")));
-      final image = messages.last.parts.last.attachment! as PluginMessageAttachmentInlineImage;
+      final image = messages.last.parts.last.attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
     });
 
@@ -1112,7 +1113,11 @@ authored arguments
         structuredToolStatusByCallId: const {},
       );
 
-      expect(messages.single.parts.single.text, r"$review authored arguments" "\n");
+      expect(
+        messages.single.parts.single.text,
+        r"$review authored arguments"
+        "\n",
+      );
     });
 
     test("readMessages hides bridge context from an argumentless command", () {
@@ -1216,7 +1221,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.6"},
+            "payload": {"model": "gpt-5.6", "reasoning_effort": "high"},
           }),
           jsonEncode({
             "timestamp": "2026-08-19T18:06:15.079Z",
@@ -1245,6 +1250,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(error.id, "turn-quota");
       expect(error.modelID, "gpt-5.6");
       expect(error.providerID, "openai");
+      expect(error.variant, "high");
       expect(error.errorName, "CodexError");
       expect(error.errorMessage, "You've hit your usage limit.");
       expect(messages.single.parts, isEmpty);
@@ -1493,9 +1499,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.info.time?.created, 1784818097959);
       final part = messages.single.parts.single;
       expect(part.tool, "compact");
-      expect(part.state?.title, "Context compacted");
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.output, isNull);
+      expect(part.state.title, "Context compacted");
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.output, isNull);
     });
 
     test("readMessages restores image generations with stable persisted and fallback ids", () {
@@ -1548,8 +1554,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         expect(part.id, "${message.info.id}-tool");
         expect(part.messageID, message.info.id);
         expect(part.tool, "image_generation");
-        expect(part.state?.status, PluginToolStatus.completed);
-        final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+        expect(part.state.status, PluginToolStatus.completed);
+        final attachment = part.state.attachments.single as PluginMessageAttachmentInlineImage;
         expect(attachment.mime, "image/png");
         expect(attachment.base64, "AA==");
         expect(attachment.filename, isNull);
@@ -1607,13 +1613,13 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(
         busyMessages
             .where((message) => message.parts.single.type == PluginMessagePartType.tool)
-            .map((message) => message.parts.single.state?.status),
+            .map((message) => message.parts.single.state.status),
         everyElement(PluginToolStatus.running),
       );
       expect(
         idleMessages
             .where((message) => message.parts.single.type == PluginMessagePartType.tool)
-            .map((message) => message.parts.single.state?.status),
+            .map((message) => message.parts.single.state.status),
         everyElement(PluginToolStatus.error),
       );
     });
@@ -1659,8 +1665,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.info.id, "image-1");
       final part = messages.single.parts.single;
       expect(part.tool, "image_generation");
-      expect(part.state?.status, PluginToolStatus.completed);
-      final attachment = part.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(part.state.status, PluginToolStatus.completed);
+      final attachment = part.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(attachment.base64, "AA==");
       expect(attachment.filename, "final.png");
     });
@@ -1836,17 +1842,17 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(exec.id, "c1-tool");
       expect(exec.type, equals(PluginMessagePartType.tool));
       expect(exec.tool, equals("shell"));
-      expect(exec.state?.status, equals(PluginToolStatus.completed));
-      expect(exec.state?.title, equals("ls -la"));
-      expect(exec.state?.output, contains("foo.dart"));
+      expect(exec.state.status, equals(PluginToolStatus.completed));
+      expect(exec.state.title, equals("ls -la"));
+      expect(exec.state.output, contains("foo.dart"));
 
       final search = messages[1].parts.single;
       expect(search.tool, equals("web_search"));
-      expect(search.state?.title, equals("flutter docs"));
+      expect(search.state.title, equals("flutter docs"));
 
       final patch = messages[2].parts.single;
       expect(patch.tool, equals("edit"));
-      expect(patch.state?.status, equals(PluginToolStatus.error));
+      expect(patch.state.status, equals(PluginToolStatus.error));
     });
 
     test("readMessages closes calls from terminal or idle evidence", () {
@@ -2077,20 +2083,20 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         for (final message in messages)
           if (message.parts.single.type == PluginMessagePartType.tool) message.info.id: message.parts.single,
       };
-      expect(tools["call-shell"]?.state?.status, PluginToolStatus.error);
-      expect(tools["call-shell"]?.state?.output, contains("early output"));
-      expect(tools["call-shell"]?.state?.output, contains("middle output"));
-      expect(tools["call-shell"]?.state?.output, contains("aborted by user after 1.0s"));
-      expect(tools["call-completed"]?.state?.status, PluginToolStatus.completed);
-      expect(tools["call-aborted"]?.state?.status, PluginToolStatus.error);
-      expect(tools["call-legacy-completed"]?.state?.status, PluginToolStatus.completed);
-      expect(tools["call-legacy-aborted"]?.state?.status, PluginToolStatus.error);
-      expect(tools["call-interrupted-legacy"]?.state?.status, PluginToolStatus.error);
-      expect(tools["call-active"]?.state?.status, PluginToolStatus.running);
+      expect(tools["call-shell"]?.state.status, PluginToolStatus.error);
+      expect(tools["call-shell"]?.state.output, contains("early output"));
+      expect(tools["call-shell"]?.state.output, contains("middle output"));
+      expect(tools["call-shell"]?.state.output, contains("aborted by user after 1.0s"));
+      expect(tools["call-completed"]?.state.status, PluginToolStatus.completed);
+      expect(tools["call-aborted"]?.state.status, PluginToolStatus.error);
+      expect(tools["call-legacy-completed"]?.state.status, PluginToolStatus.completed);
+      expect(tools["call-legacy-aborted"]?.state.status, PluginToolStatus.error);
+      expect(tools["call-interrupted-legacy"]?.state.status, PluginToolStatus.error);
+      expect(tools["call-active"]?.state.status, PluginToolStatus.running);
       final idleActiveCall = idleMessages.singleWhere(
         (message) => message.info.id == "call-active",
       );
-      expect(idleActiveCall.parts.single.state?.status, PluginToolStatus.error);
+      expect(idleActiveCall.parts.single.state.status, PluginToolStatus.error);
     });
 
     test("readMessages restores current calls around malformed content items", () {
@@ -2184,10 +2190,10 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final tool = messages[1].parts.single;
       expect(tool.type, PluginMessagePartType.tool);
       expect(tool.tool, "shell");
-      expect(tool.state?.status, PluginToolStatus.completed);
-      expect(tool.state?.title, "ls -la");
-      expect(tool.state?.output, contains("foo.dart"));
-      final attachment = tool.state!.attachments.single as PluginMessageAttachmentInlineImage;
+      expect(tool.state.status, PluginToolStatus.completed);
+      expect(tool.state.title, "ls -la");
+      expect(tool.state.output, contains("foo.dart"));
+      final attachment = tool.state.attachments.single as PluginMessageAttachmentInlineImage;
       expect(attachment.mime, "image/png");
       expect(attachment.base64, "AA==");
 
@@ -2235,7 +2241,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           .parts
           .single
           .state
-          ?.output;
+          .output;
 
       expect(output?.runes, hasLength(maxToolOutputLength));
       expect(output, endsWith(emoji));
@@ -2318,13 +2324,13 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         keepaliveInterval: const Duration(seconds: 30),
       );
 
-      final sessions = await plugin.getSessions("/work/sample-app");
+      final sessions = await plugin.getSessions(projectId: "/work/sample-app", start: null, limit: null);
       expect(sessions, hasLength(1));
       expect(sessions.single.id, equals("019a0000-1111-2222-3333-aaaaaaaaaaaa"));
       expect(sessions.single.directory, equals("/work/sample-app"));
 
       // Filtering by a different CWD returns empty.
-      final none = await plugin.getSessions("/somewhere/else");
+      final none = await plugin.getSessions(projectId: "/somewhere/else", start: null, limit: null);
       expect(none, isEmpty);
       await plugin.dispose();
     });
@@ -2408,7 +2414,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       final messages = await plugin.getSessionMessages(sessionId);
 
-      expect(messages.single.parts.single.state?.status, PluginToolStatus.running);
+      expect(messages.single.parts.single.state.status, PluginToolStatus.running);
       await plugin.dispose();
     });
 
@@ -2424,7 +2430,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex"},
+            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
           }),
         ],
       );
@@ -2455,7 +2461,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex"},
+            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
           }),
           jsonEncode({
             "type": "response_item",
@@ -2470,7 +2476,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           // Model switches mid-session — later assistant messages reflect it.
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.4-codex"},
+            "payload": {"model": "gpt-5.4-codex", "reasoning_effort": "xhigh"},
           }),
           jsonEncode({
             "type": "response_item",
@@ -2497,7 +2503,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(first.agent, equals("codex"));
       expect(first.providerID, equals("openai"));
       expect(first.modelID, equals("gpt-5.2-codex"));
+      expect(first.variant, equals("low"));
       expect(second.modelID, equals("gpt-5.4-codex"));
+      expect(second.variant, equals("xhigh"));
     });
 
     test("readMessages falls back to config model when no turn_context", () {
@@ -2542,6 +2550,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final assistant = messages.single.info as PluginMessageAssistant;
       expect(assistant.modelID, equals("gpt-5.5"));
       expect(assistant.providerID, equals("openai"));
+      expect(assistant.variant, isNull);
     });
   });
 }

@@ -16,6 +16,7 @@ import "package:re_highlight/languages/yaml.dart";
 import "package:re_highlight/re_highlight.dart";
 import "package:re_highlight/styles/github-dark.dart";
 import "package:re_highlight/styles/github.dart";
+import "package:sesori_dart_core/logging.dart";
 
 /// Shared `re_highlight` foundation for the app's two syntax highlighters: the
 /// whole-block [CodeHighlighter] (chat/markdown code fences) and the
@@ -73,7 +74,8 @@ TextSpan? renderHighlightedSpan({
     final renderer = TextSpanRenderer(baseStyle, theme);
     result.render(renderer);
     return renderer.span;
-  } catch (_) {
-    return null; // Graceful fallback for grammar edge cases.
+  } on Object catch (error, stackTrace) {
+    logw("Failed to render syntax highlighting", error, stackTrace);
+    return null;
   }
 }

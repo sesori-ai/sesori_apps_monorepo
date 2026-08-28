@@ -9,9 +9,6 @@ class GetBridgeSettingsHandler({required final BridgeSettingsRepository _setting
 
   @override
   Future<BridgeSettingsResponse> handle(
-    RelayRequest request, {
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
-  }) => _settingsRepository.readCommittedResponse();
+    RelayRequest request,
+  ) => _settingsRepository.readCommittedResponse();
 }

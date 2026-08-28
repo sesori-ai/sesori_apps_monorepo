@@ -60,8 +60,13 @@ class BridgeShutdownCoordinator({
       return total + phaseBudget;
     });
     final totalSw = Stopwatch()..start();
+    BridgeShutdownPhase? activePhase;
     final backstop = Timer(shutdownBudget + _backstopSlack, () {
-      Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms - forcing exit");
+      final phase = activePhase;
+      Log.e(
+        "Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms"
+        "${phase == null ? "" : " during the ${phase.name} phase"} - forcing exit",
+      );
       unawaited(_emergencyDisposalThenExit());
     });
     Object? firstError;
@@ -69,6 +74,7 @@ class BridgeShutdownCoordinator({
 
     try {
       for (final phase in BridgeShutdownPhase.values) {
+        activePhase = phase;
         final actions = _actions[phase]!;
         final futures = <Future<void>>[];
         for (final action in actions) {
@@ -93,6 +99,7 @@ class BridgeShutdownCoordinator({
           }
         }
       }
+      activePhase = null;
     } finally {
       backstop.cancel();
       Log.d("[shutdown] coordinator complete (${totalSw.elapsedMilliseconds}ms total)");

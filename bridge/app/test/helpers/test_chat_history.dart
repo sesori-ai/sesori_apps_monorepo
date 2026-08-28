@@ -99,7 +99,7 @@ class TestChatHistoryService({
   required super.bridgeIdProvider,
 }) extends ChatHistoryService {
   @override
-  Future<ChatHistoryPage> getSessionMessages({
+  Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     int? limit,
     int? before,

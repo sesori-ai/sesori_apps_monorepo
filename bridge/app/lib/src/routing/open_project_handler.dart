@@ -22,9 +22,6 @@ class OpenProjectHandler({required final ProjectMutationService _projectMutation
   Future<Project> handle(
     RelayRequest request, {
     required OpenProjectRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final path = body.path;
 

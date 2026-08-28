@@ -4,12 +4,10 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Conso
 
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../auth/auth_repository.dart';
 import '../auth/login_email_repository.dart';
 import '../auth/login_oauth_service.dart';
-import '../auth/profile.dart';
 import '../auth/token.dart';
-import '../auth/validate.dart';
-import '../foundation/legacy_post_update_relaunch.dart';
 import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
@@ -17,23 +15,12 @@ const Duration _oAuthAckTimeout = Duration(seconds: 5);
 class const BridgeRuntimeAuthService({
   required final LoginEmailRepository _loginEmailRepository,
   required final LoginOAuthService _loginOAuthService,
-  required final Map<String, String> _environment,
+  required final AuthRepository _authRepository,
   required final Future<TokenData> Function() _loadTokens,
   required final Future<void> Function(TokenData tokens) _saveTokens,
   required final Future<void> Function() _clearTokens,
 }) {
   Future<AuthProvider> promptForProvider() async {
-    if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
-      // Legacy upgrade: an old binary relaunched us (possibly non-interactively)
-      // after applying an update, and there are no usable stored tokens. Don't
-      // block on an unanswerable prompt — tell the user to start again from a
-      // terminal.
-      throw Exception(
-        'Login required, but this bridge was relaunched non-interactively after an auto-update. '
-        'Run sesori-bridge again from a terminal to log in.',
-      );
-    }
-
     while (true) {
       stdout.writeln('Select login method: [1] GitHub [2] Google [3] Apple [4] Email');
       stdout.write('Enter choice (1-4): ');
@@ -59,22 +46,36 @@ class const BridgeRuntimeAuthService({
   }
 
   Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async {
+    TokenData? storedTokens;
     try {
-      final storedTokens = await _loadTokens();
+      storedTokens = await _loadTokens();
       try {
-        final validation = await validateToken(
-          authBackendURL: options.authBackendUrl,
-          accessToken: storedTokens.accessToken,
-          refreshToken: storedTokens.refreshToken,
-        );
-        if (validation.isValid) {
-          final tokensToSave = TokenData(
-            accessToken: validation.accessToken,
-            refreshToken: validation.refreshToken,
-            lastProvider: storedTokens.lastProvider,
-          );
-          await _saveTokens(tokensToSave);
-          return tokensToSave;
+        final lookup = await _authRepository.lookupCurrentUser(accessToken: storedTokens.accessToken);
+        switch (lookup) {
+          case AuthUserFound():
+            final tokensToSave = TokenData(
+              accessToken: storedTokens.accessToken,
+              refreshToken: storedTokens.refreshToken,
+              lastProvider: storedTokens.lastProvider,
+            );
+            await _saveTokens(tokensToSave);
+            return tokensToSave;
+          case AuthUserRejected(statusCode: 401):
+            final refresh = await _authRepository.refreshToken(refreshToken: storedTokens.refreshToken);
+            switch (refresh) {
+              case AuthTokenRefreshed(:final response):
+                final tokensToSave = TokenData(
+                  accessToken: response.accessToken,
+                  refreshToken: response.refreshToken,
+                  lastProvider: storedTokens.lastProvider,
+                );
+                await _saveTokens(tokensToSave);
+                return tokensToSave;
+              case AuthTokenRefreshRejected():
+                break;
+            }
+          case AuthUserRejected():
+            break;
         }
       } catch (error) {
         throw Exception('validate stored tokens: $error');
@@ -90,20 +91,11 @@ class const BridgeRuntimeAuthService({
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
       await _clearTokens();
+      storedTokens = null;
       // Fall through to login below
     }
 
-    AuthProvider provider;
-    try {
-      final storedTokens = await _loadTokens();
-      provider = storedTokens.lastProvider;
-    } on PathNotFoundException {
-      provider = await promptForProvider();
-    } on FileSystemException catch (error) {
-      throw Exception('load stored tokens: $error');
-    } on FormatException {
-      provider = await promptForProvider();
-    }
+    final provider = storedTokens?.lastProvider ?? await promptForProvider();
 
     return await _loginAndPersist(
       authBackendUrl: options.authBackendUrl,
@@ -112,11 +104,10 @@ class const BridgeRuntimeAuthService({
   }
 
   Future<void> logAuthenticatedUser({
-    required String authBackendUrl,
     required String accessToken,
   }) async {
     try {
-      final username = await fetchUsername(authBackendUrl, accessToken);
+      final username = await _authRepository.fetchUsername(accessToken: accessToken);
       Console.message('Authenticated as $username');
     } catch (error) {
       Log.w('Authenticated (unable to fetch profile username: $error)');

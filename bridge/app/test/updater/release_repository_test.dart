@@ -824,8 +824,8 @@ void main() {
 
         final resolution = await repository.resolveUpdate();
 
-        expect(resolution.latestEligible?.version, equals('0.4.0'));
-        expect(resolution.latestVersion?.toString(), equals('0.4.0'));
+        expect(resolution.latest?.release.version, equals('0.4.0'));
+        expect(resolution.latest?.version.toString(), equals('0.4.0'));
         expect(resolution.currentVersion.toString(), equals('0.2.0'));
         expect(resolution.currentEligible, isTrue);
       });
@@ -839,8 +839,8 @@ void main() {
         final resolution = await repository.resolveUpdate();
 
         // checkForNewerRelease() would return null here; resolveUpdate must not.
-        expect(resolution.latestEligible?.version, equals('0.3.0'));
-        expect(resolution.latestVersion?.toString(), equals('0.3.0'));
+        expect(resolution.latest?.release.version, equals('0.3.0'));
+        expect(resolution.latest?.version.toString(), equals('0.3.0'));
       });
 
       test('reports an off-track running build as ineligible', () async {
@@ -852,7 +852,7 @@ void main() {
         final resolution = await repository.resolveUpdate();
 
         expect(resolution.currentEligible, isFalse);
-        expect(resolution.latestEligible?.version, equals('0.3.0'));
+        expect(resolution.latest?.release.version, equals('0.3.0'));
       });
 
       test('always fetches fresh, ignoring a fresh cache', () async {
@@ -879,7 +879,7 @@ void main() {
         final resolution = await repository.resolveUpdate();
 
         expect(httpCallCount, equals(1), reason: 'resolveUpdate bypasses the read cache');
-        expect(resolution.latestEligible?.version, equals('0.4.0'));
+        expect(resolution.latest?.release.version, equals('0.4.0'));
       });
 
       test('returns a null latest when no eligible release exists', () async {
@@ -890,8 +890,7 @@ void main() {
 
         final resolution = await repository.resolveUpdate();
 
-        expect(resolution.latestEligible, isNull);
-        expect(resolution.latestVersion, isNull);
+        expect(resolution.latest, isNull);
       });
 
       test('writes the resolved release to the cache as a side effect', () async {

@@ -27,23 +27,7 @@ void main() {
       expect(
         mapper.map(
           event: const BridgeSseMessagePartUpdated(
-            part: PluginMessagePart(
-              id: "p1",
-              sessionID: "s1",
-              messageID: "m1",
-              type: PluginMessagePartType.text,
-              text: "hello",
-              tool: null,
-              state: null,
-              prompt: null,
-              description: null,
-              agent: null,
-              childSessionID: null,
-              agentName: null,
-              attempt: null,
-              retryError: null,
-              attachment: null,
-            ),
+            part: PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello"),
           ),
           pluginId: "test-plugin",
         ),
@@ -89,6 +73,49 @@ void main() {
       );
     });
 
+    test("maps a system sender through the shared message update", () {
+      final result = mapEvent(
+        BridgeSseMessageUpdated(
+          info: const PluginMessage.assistant(
+            id: "m-system",
+            sessionID: "s1",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            variant: null,
+            sender: PluginMessageSender.system,
+            time: null,
+          ).toJson(),
+        ),
+      );
+
+      expect(result, isA<SesoriMessageUpdated>());
+      final event = result! as SesoriMessageUpdated;
+      expect(event.info, isA<MessageAssistant>());
+      expect((event.info as MessageAssistant).sender, MessageSender.system);
+    });
+
+    test("maps serialized plugin retry status through the shared SSE union", () {
+      final result = mapEvent(
+        BridgeSseSessionStatus(
+          sessionID: "s1",
+          status: const PluginSessionStatus.retry(
+            attempt: 1,
+            message: "provider overloaded",
+            next: 2000,
+          ).toJson(),
+        ),
+      );
+
+      expect(result, isA<SesoriSessionStatus>());
+      final event = result! as SesoriSessionStatus;
+      expect(event.sessionID, "s1");
+      expect(
+        event.status,
+        const SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000),
+      );
+    });
+
     test("attributes command catalog updates to their source plugin", () {
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),
@@ -96,6 +123,27 @@ void main() {
       );
 
       expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
+    });
+
+    test("maps toast session attribution to the wire event", () {
+      final result = mapEvent(
+        const BridgeSseTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
+
+      expect(
+        result,
+        const SesoriTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
     });
 
     test("maps session.created with provided enriched payload", () {
@@ -189,21 +237,10 @@ void main() {
     test("passes file message part updates with normalized attachment data", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.file(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.file,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
             attachment: PluginMessageAttachment.metadata(mime: "text/plain", filename: "notes.txt"),
           ),
         ),
@@ -212,7 +249,7 @@ void main() {
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
       expect(
-        event.part.attachment,
+        (event.part as MessagePartFile).attachment,
         equals(const MessageAttachment.metadata(mime: "text/plain", filename: "notes.txt")),
       );
     });
@@ -220,23 +257,7 @@ void main() {
     test("filters snapshot message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.snapshot,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.snapshot(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -246,23 +267,7 @@ void main() {
     test("filters patch message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.patch,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.patch(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -272,23 +277,7 @@ void main() {
     test("filters compaction message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.compaction,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1"),
         ),
       );
 
@@ -298,22 +287,11 @@ void main() {
     test("passes agent message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.agent(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.agent,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
             agentName: "test-agent",
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
@@ -325,22 +303,12 @@ void main() {
     test("passes retry message part updates", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.retry(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.retry,
-            text: null,
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
             attempt: 2,
             retryError: "timeout",
-            attachment: null,
           ),
         ),
       );
@@ -353,13 +321,11 @@ void main() {
       final longOutput = List.filled(1000, "x").join();
       final result = mapEvent(
         BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.tool(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.tool,
-            text: null,
-            tool: null,
+            tool: "tool",
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
@@ -367,63 +333,38 @@ void main() {
               error: null,
               attachments: const [],
             ),
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.state?.output?.length, lessThanOrEqualTo(500));
-      expect(event.part.state?.output?.length, equals(500));
+      final state = (event.part as MessagePartTool).state;
+      expect(state.output?.length, lessThanOrEqualTo(500));
+      expect(state.output?.length, equals(500));
     });
 
     test("passes through text message parts", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
-            id: "p1",
-            sessionID: "s1",
-            messageID: "m1",
-            type: PluginMessagePartType.text,
-            text: "hello",
-            tool: null,
-            state: null,
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
-          ),
+          part: PluginMessagePart.text(id: "p1", sessionID: "s1", messageID: "m1", text: "hello"),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.type, equals(MessagePartType.text));
-      expect(event.part.text, equals("hello"));
+      expect(event.part, isA<MessagePartText>());
+      expect((event.part as MessagePartText).text, equals("hello"));
     });
 
     test("keeps short tool output unchanged", () async {
       final result = mapEvent(
         const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart(
+          part: PluginMessagePart.tool(
             id: "p1",
             sessionID: "s1",
             messageID: "m1",
-            type: PluginMessagePartType.tool,
-            text: null,
-            tool: null,
+            tool: "tool",
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
@@ -431,21 +372,13 @@ void main() {
               error: null,
               attachments: [],
             ),
-            prompt: null,
-            description: null,
-            agent: null,
-            childSessionID: null,
-            agentName: null,
-            attempt: null,
-            retryError: null,
-            attachment: null,
           ),
         ),
       );
 
       expect(result, isA<SesoriMessagePartUpdated>());
       final event = result! as SesoriMessagePartUpdated;
-      expect(event.part.state?.output, equals("short"));
+      expect((event.part as MessagePartTool).state.output, equals("short"));
     });
 
     test("map() drops BridgeSseProjectUpdated (the orchestrator builds the summary)", () {

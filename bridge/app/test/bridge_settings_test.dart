@@ -4,7 +4,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeSettings', () {
-    test('uses stable non-plugin defaults and omits an untouched plugins root', () {
+    test('uses stable defaults and omits an untouched plugins root', () {
       const settings = BridgeSettings();
 
       expect(settings.sleepPrevention, SleepPreventionMode.always);
@@ -12,7 +12,7 @@ void main() {
       expect(settings.releaseTrack, ReleaseTrack.stable);
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
       expect(settings.plugins.disabledPluginIds, isEmpty);
-      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), defaultPluginIdleTimeoutMins);
+      expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), 45);
       expect(settings.toJson(), {
         'sleepPrevention': 'always',
         'yolo': false,

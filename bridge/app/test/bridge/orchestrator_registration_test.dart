@@ -6,7 +6,7 @@ import "dart:typed_data";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
+import "package:sesori_bridge/src/auth/auth_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
@@ -545,7 +545,6 @@ class _RegistrationHarness._({
         yolo: false,
       ),
       client: relayClient,
-      legacyMissingPluginId: plugin.id,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

@@ -113,7 +113,6 @@ class const _ProfileBody() extends StatelessWidget {
                               )
                             : null,
                         onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),
-                        isLast: true,
                       ),
                     ],
                   ),
@@ -204,7 +203,6 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
       ),
       trailing: trailing,
       onTap: canToggle ? () => toggle(enabled: preference != ProductAnalyticsPreference.enabled) : null,
-      isLast: true,
     );
     return PregoGroupedRows(
       children: [hasFailure ? row : MergeSemantics(child: row)],

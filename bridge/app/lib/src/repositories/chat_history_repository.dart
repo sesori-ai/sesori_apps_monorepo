@@ -215,20 +215,24 @@ class ChatHistoryRepository({
       return attachment;
     }
 
-    final state = part.state;
-    return part.copyWith(
-      attachment: part.attachment == null ? null : bound(attachment: part.attachment!),
-      state: state == null
-          ? null
-          : state.copyWith(
-              attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
-            ),
-    );
+    return switch (part) {
+      MessagePartFile(:final attachment) => part.copyWith(attachment: bound(attachment: attachment)),
+      MessagePartTool(:final state) => part.copyWith(
+        state: state.copyWith(
+          attachments: state.attachments.map((attachment) => bound(attachment: attachment)).toList(),
+        ),
+      ),
+      _ => part,
+    };
   }
 
-  bool _hasInlineImage({required MessagePart part}) =>
-      part.attachment is MessageAttachmentInlineImage ||
-      (part.state?.attachments.any((attachment) => attachment is MessageAttachmentInlineImage) ?? false);
+  bool _hasInlineImage({required MessagePart part}) => switch (part) {
+    MessagePartFile(:final attachment) => attachment is MessageAttachmentInlineImage,
+    MessagePartTool(:final state) => state.attachments.any(
+      (attachment) => attachment is MessageAttachmentInlineImage,
+    ),
+    _ => false,
+  };
 
   int _storedImageBytes({required String partJson}) {
     final json = jsonDecodeMap(partJson);
@@ -346,13 +350,25 @@ class ChatHistoryRepository({
   /// Replaces the session's transcript with [messages], numbering them in
   /// transcript order.
   ///
-  /// Rows the transcript does not contain — live events newer than the fetch —
-  /// are kept above the imported maximum, preserving their relative order, so
-  /// no captured message is lost to a backfill that raced it.
+  /// Rows the transcript does not contain are retained only when they were
+  /// written after [lastImportedAt], the moment the previous import finished.
+  /// Those are the rows that import could not have covered: a live capture
+  /// since, or one the backend never reports at all. An older row was in an
+  /// earlier transcript and is not in this one, so the backend removed it —
+  /// an edited message rolls its session back, and a bridge that was not
+  /// watching that backend sees the removal only as this gap. Keeping it would
+  /// restore messages the user deleted elsewhere. A session with no completed
+  /// import has no such line to draw, so everything stored is kept.
+  ///
+  /// Retained rows rejoin the imported transcript at their recorded message
+  /// time while their relative order stays stable. Thus an older backend-only
+  /// row cannot jump to the newest edge on re-import, while a genuinely newer
+  /// live row stays there.
   Future<void> replaceSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
     required List<MessageWithParts> messages,
+    required int? lastImportedAt,
     required int watermark,
     required int backendActivityAt,
     required int syncedAt,
@@ -361,15 +377,15 @@ class ChatHistoryRepository({
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
     final retained = [
       for (final row in storedRows)
-        if (!importedIds.contains(row.messageId)) row,
+        if (!importedIds.contains(row.messageId) && (lastImportedAt == null || row.updatedAt > lastImportedAt)) row,
     ];
 
-    final messageRows = <HistoryMessagesTableData>[];
+    final importedMessageRows = <HistoryMessagesTableData>[];
     final partRows = <HistoryPartsTableData>[];
     var seq = 0;
     for (final message in messages) {
       seq++;
-      messageRows.add(
+      importedMessageRows.add(
         HistoryMessagesTableData(
           sessionId: sessionId,
           messageId: message.info.id,
@@ -392,9 +408,38 @@ class ChatHistoryRepository({
         );
       }
     }
-    for (final row in retained..sort((left, right) => left.seq.compareTo(right.seq))) {
-      seq++;
-      messageRows.add(row.copyWith(seq: seq));
+    final retainedCreatedAt = [
+      for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
+    ];
+    int? nextRetainedCreatedAt;
+    for (var index = retainedCreatedAt.length - 1; index >= 0; index--) {
+      nextRetainedCreatedAt = retainedCreatedAt[index] ?? nextRetainedCreatedAt;
+      retainedCreatedAt[index] = nextRetainedCreatedAt;
+    }
+    int? previousRetainedCreatedAt;
+    for (var index = 0; index < retainedCreatedAt.length; index++) {
+      final createdAt = retainedCreatedAt[index] ?? previousRetainedCreatedAt;
+      if (createdAt == null) continue;
+      final orderedCreatedAt = previousRetainedCreatedAt == null || createdAt >= previousRetainedCreatedAt
+          ? createdAt
+          : previousRetainedCreatedAt;
+      retainedCreatedAt[index] = orderedCreatedAt;
+      previousRetainedCreatedAt = orderedCreatedAt;
+    }
+
+    final messageRows = <HistoryMessagesTableData>[];
+    var importedIndex = 0;
+    var retainedIndex = 0;
+    while (importedIndex < importedMessageRows.length || retainedIndex < retained.length) {
+      final useRetained =
+          importedIndex == importedMessageRows.length ||
+          (retainedIndex < retained.length &&
+              retainedCreatedAt[retainedIndex] != null &&
+              messages[importedIndex].info.time?.created != null &&
+              retainedCreatedAt[retainedIndex]! < messages[importedIndex].info.time!.created);
+      final row = useRetained ? retained[retainedIndex++] : importedMessageRows[importedIndex++];
+      final orderedSeq = messageRows.length + 1;
+      messageRows.add(row.seq == orderedSeq ? row : row.copyWith(seq: orderedSeq));
     }
 
     await _chatHistoryDao.replaceSessionRows(
@@ -439,8 +484,6 @@ class ChatHistoryRepository({
     required int updatedAt,
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
-    required String? lastAgent,
-    required String? lastAgentModel,
   }) async {
     final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
     final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
@@ -466,8 +509,6 @@ class ChatHistoryRepository({
         branchName: session.branchName,
         baseBranch: session.baseBranch,
         baseCommit: session.baseCommit,
-        lastAgent: lastAgent,
-        lastAgentModel: lastAgentModel,
         title: title,
         createdAt: createdAt,
         updatedAt: updatedAt,

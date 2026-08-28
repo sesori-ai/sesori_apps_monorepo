@@ -17,14 +17,9 @@ class GetProjectQuestionsHandler({required final QuestionRepository _questionRep
   Future<PendingQuestionResponse> handle(
     RelayRequest request, {
     required ProjectIdRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final projectId = body.projectId;
-    if (projectId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty project id");
-    }
+    requireNonEmpty(request: request, value: projectId, label: "project id");
 
     final questions = await _questionRepository.getProjectQuestions(projectId: projectId);
     return PendingQuestionResponse(data: questions);

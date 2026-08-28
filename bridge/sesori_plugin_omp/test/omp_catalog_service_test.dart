@@ -35,7 +35,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 8,
     );
 
     final outcome = await service.ensureCatalog(projectId: "/project");
@@ -69,7 +68,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 8,
     );
 
     repository.commandName = "alpha";
@@ -97,7 +95,6 @@ void main() {
       repository: repository,
       tracker: OmpCatalogTracker(),
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 8,
     );
 
     final catalog = (await service.ensureCatalog(projectId: "/project") as OmpCatalogObserved).catalog;
@@ -119,7 +116,6 @@ void main() {
       repository: repository,
       tracker: tracker,
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 8,
     );
     final good = (await service.ensureCatalog(projectId: "/project") as OmpCatalogObserved).catalog;
     repository.created = const AcpNewSessionResult(
@@ -146,7 +142,6 @@ void main() {
       repository: repository,
       tracker: OmpCatalogTracker(),
       totalTimeout: const Duration(seconds: 2),
-      maxModels: 8,
     );
 
     final outcome = await service.ensureCatalog(projectId: "/project");
@@ -156,6 +151,31 @@ void main() {
     expect(catalog.models, hasLength(3));
     expect(catalog.thinkingByModel, isNot(contains("custom/team/model-v2")));
     expect(catalog.thinkingByModel["other/model"]!.variants, ["high"]);
+  });
+
+  test("hydrates every model in large catalogs", () async {
+    final models = [for (var index = 0; index < 30; index++) "provider/model-$index"];
+    final created = _result(sessionId: "probe", model: models.first, thinking: const ["off"]);
+    created.configOptions.first["options"] = [
+      for (final model in models) {"value": model, "name": model},
+    ];
+    final repository = _FakeCatalogRepository(
+      created: created,
+      selections: const {},
+    );
+    final service = OmpCatalogService(
+      repository: repository,
+      tracker: OmpCatalogTracker(),
+      totalTimeout: const Duration(seconds: 2),
+    );
+
+    final outcome = await service.ensureCatalog(projectId: "/project");
+    final catalog = (outcome as OmpCatalogObserved).catalog;
+
+    expect(catalog.models, hasLength(models.length));
+    expect(catalog.thinkingByModel.keys, unorderedEquals(models));
+    expect(catalog.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(repository.selectedModels, models);
   });
 }
 

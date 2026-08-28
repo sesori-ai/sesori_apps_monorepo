@@ -138,7 +138,10 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
 
 _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
-) => _CodexRolloutTurnContextPayloadDto(model: json['model'] as String?);
+) => _CodexRolloutTurnContextPayloadDto(
+  model: json['model'] as String?,
+  effort: _stringOrNull(json['reasoning_effort']),
+);
 
 _CodexRolloutItemMetadataDto _$CodexRolloutItemMetadataDtoFromJson(Map json) =>
     _CodexRolloutItemMetadataDto(turnId: json['turn_id'] as String?);

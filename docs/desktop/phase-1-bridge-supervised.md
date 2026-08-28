@@ -319,7 +319,8 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   ported. Legacy standalone users keep their id via one-time adoption from
   `token.json` (read once when the new file is absent), implemented as an
   injected `readLegacyBridgeId` seam so `auth/` never learns about `token.json`
-  internals from the service side.
+  internals from the service side. Step 42 later retired this one-time migration
+  after the supported public baseline advanced to v1.4.0.
 
 ## PR 1.7 — Exit-code restart (`86`) + bypass successor-spawn
 - **Goal:** In supervised mode `handleRestartHandoff()` flushes the

@@ -301,6 +301,48 @@ void main() {
       await subscription.cancel();
     });
 
+    test("stamps an unmarked decorated image echo and consumes its queued entry", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        promptId: "prm_image",
+        sessionId: testSessionId,
+        parts: const [
+          PluginPromptPart.text(text: "inspect image"),
+          PluginPromptPart.fileData(mime: "image/JPEG", base64: "aA==", filename: "image.jpg"),
+        ],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await _waitForUserText(first, "inspect image");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+
+      first.emit(_decoratedImageEcho(written: written, uuid: "echo-image"));
+      await pump();
+      await pump();
+
+      final user = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["id"] == "echo-image",
+      );
+      expect(user.info["promptId"], "prm_image");
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type),
+        containsAll([
+          PluginMessagePartType.text,
+          PluginMessagePartType.file,
+        ]),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+      await subscription.cancel();
+    });
+
     test("queues a steering prompt, stamps its echo, and consumes the entry after the message", () async {
       await harness.createSession();
       final first = harness.processes.single;
@@ -541,7 +583,7 @@ void main() {
       await harness.plugin.deleteSession(session.id);
 
       expect(process.killed, isTrue);
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
       await expectLater(
         harness.plugin.deleteSession(session.id),
@@ -563,7 +605,7 @@ void main() {
         ),
       );
 
-      expect(await harness.plugin.getSessions("/tmp/project"), isEmpty);
+      expect(await harness.plugin.getSessions(projectId: "/tmp/project", start: null, limit: null), isEmpty);
       expect(await harness.plugin.getSessionStatuses(), isEmpty);
     });
 
@@ -590,6 +632,27 @@ void main() {
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
       expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
+
+      // The retried request streaming again is the recovery signal; the turn
+      // is still running, so the session returns to busy rather than idle.
+      process.emit({
+        "type": "stream_event",
+        "session_id": testSessionId,
+        "uuid": "stream-1",
+        "parent_tool_use_id": null,
+        "event": {
+          "type": "message_start",
+          "message": {"id": "msg-recovered", "model": "claude-opus-5"},
+        },
+      });
+      await pump();
+
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      expect(
+        shared.SessionStatus.fromJson(events.whereType<BridgeSseSessionStatus>().last.status),
+        isA<shared.SessionStatusBusy>(),
+      );
+      expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       await subscription.cancel();
     });
 
@@ -904,6 +967,33 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
   "isReplay": true,
   "timestamp": "2026-08-11T12:00:00.000Z",
 };
+
+Map<String, Object?> _decoratedImageEcho({required Map<String, Object?> written, required String uuid}) {
+  final message = (written["message"]! as Map).cast<String, Object?>();
+  final content = (message["content"]! as List).cast<Object?>();
+  final image = (content[1]! as Map).cast<String, Object?>();
+  final source = (image["source"]! as Map).cast<String, Object?>();
+  return {
+    ...written,
+    "uuid": uuid,
+    "message": {
+      ...message,
+      "content": [
+        content.first,
+        {
+          ...image,
+          "cache_control": {"type": "ephemeral"},
+          "source": {
+            ...source,
+            "media_type": "image/jpeg",
+            "data": "aA",
+            "cache_control": {"type": "ephemeral"},
+          },
+        },
+      ],
+    },
+  };
+}
 
 final class _ThrowingDeleteTranscriptApi() extends ClaudeTranscriptApi {
   this : super(environment: const {});

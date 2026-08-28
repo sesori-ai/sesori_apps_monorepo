@@ -16,11 +16,12 @@ class const AssistantMessageCard({
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
+  required final EdgeInsetsGeometry contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: contentPadding,
       child: SelectionArea(
         child: Column(
           crossAxisAlignment: .start,
@@ -37,15 +38,17 @@ class const AssistantMessageCard({
     var index = 0;
     while (index < parts.length) {
       final part = parts[index];
-      if (part.type != MessagePartType.file) {
+      if (part is! MessagePartFile) {
         if (_isVisible(part)) widgets.add(_buildPart(context: context, part: part));
         index++;
         continue;
       }
 
-      final run = <MessagePart>[];
-      while (index < parts.length && parts[index].type == MessagePartType.file) {
-        run.add(parts[index]);
+      final run = <MessagePartFile>[];
+      while (index < parts.length) {
+        final candidate = parts[index];
+        if (candidate is! MessagePartFile) break;
+        run.add(candidate);
         index++;
       }
       final attachments = run.map((part) => part.attachment).whereType<MessageAttachment>().toList();
@@ -62,59 +65,58 @@ class const AssistantMessageCard({
     return widgets;
   }
 
-  bool _isVisible(MessagePart part) {
-    return const [
-      MessagePartType.text,
-      MessagePartType.reasoning,
-      MessagePartType.tool,
-      MessagePartType.subtask,
-      MessagePartType.stepStart,
-      MessagePartType.stepFinish,
-      MessagePartType.agent,
-      MessagePartType.retry,
-      MessagePartType.file,
-    ].contains(part.type);
-  }
+  bool _isVisible(MessagePart part) => switch (part) {
+    MessagePartText() ||
+    MessagePartReasoning() ||
+    MessagePartTool() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartFile() => true,
+    MessagePartSnapshot() || MessagePartPatch() || MessagePartCompaction() => false,
+  };
 
   Widget _buildPart({required BuildContext context, required MessagePart part}) {
     final streaming = streamingText[part.id];
 
-    return switch (part.type) {
-      MessagePartType.text => TextPartWidget(
+    return switch (part) {
+      MessagePartText(:final text) => TextPartWidget(
         key: ValueKey(part.id),
-        text: streaming ?? part.text ?? "",
+        text: streaming ?? text,
         isStreaming: streaming != null,
       ),
-      MessagePartType.reasoning => ReasoningPartCard(
+      MessagePartReasoning(:final text) => ReasoningPartCard(
         key: ValueKey(part.id),
-        text: streaming ?? part.text ?? "",
+        text: streaming ?? text,
         isStreaming: streaming != null,
         partId: part.id,
         messageId: message.info.id,
       ),
-      MessagePartType.tool => ToolPartWidget(key: ValueKey(part.id), part: part),
-      MessagePartType.subtask => SubtaskPartWidget(
+      MessagePartTool() => ToolPartWidget(key: ValueKey(part.id), part: part),
+      MessagePartSubtask() => SubtaskPartWidget(
         key: ValueKey(part.id),
         projectId: projectId,
         part: part,
         children: children,
         childStatuses: childStatuses,
       ),
-      MessagePartType.agent => AgentPartWidget(
+      MessagePartAgent(:final agentName) => AgentPartWidget(
         key: ValueKey(part.id),
-        agentName: part.agentName,
+        agentName: agentName,
       ),
-      MessagePartType.retry => RetryPartWidget(
+      MessagePartRetry(:final attempt, :final retryError) => RetryPartWidget(
         key: ValueKey(part.id),
-        attempt: part.attempt,
-        retryError: part.retryError,
+        attempt: attempt,
+        retryError: retryError,
       ),
-      MessagePartType.stepStart => const SizedBox.shrink(),
-      MessagePartType.stepFinish => const SizedBox.shrink(),
-      MessagePartType.file => const SizedBox.shrink(),
-      MessagePartType.snapshot => const SizedBox.shrink(),
-      MessagePartType.patch => const SizedBox.shrink(),
-      MessagePartType.compaction => const SizedBox.shrink(),
+      MessagePartStepStart() ||
+      MessagePartStepFinish() ||
+      MessagePartFile() ||
+      MessagePartSnapshot() ||
+      MessagePartPatch() ||
+      MessagePartCompaction() => const SizedBox.shrink(),
     };
   }
 }

@@ -30,12 +30,7 @@ class CodexSessionService({
 }) {
   static const String compactionCommandName = "compact";
 
-  static const PluginCommand _compactionCommand = PluginCommand(
-    name: compactionCommandName,
-    description: "Summarize the conversation so far to free up the context window",
-    provider: null,
-    source: PluginCommandSource.command,
-  );
+  static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
 
   CodexThreadRepository? _threadRepository;
   CodexModelRepository? _modelRepository;
@@ -91,7 +86,7 @@ class CodexSessionService({
         error,
         stackTrace,
       );
-      return (commands: const [_compactionCommand], usedFallback: true);
+      return (commands: [_compactionCommand], usedFallback: true);
     }
     if (commands.any((command) => command.name == compactionCommandName)) {
       return (commands: commands, usedFallback: false);
@@ -520,7 +515,7 @@ class CodexSessionService({
         providers: selectedModelID == null
             ? const []
             : [
-                PluginProvider.custom(
+                PluginProvider(
                   id: providerID,
                   name: _providerDisplayName(providerID: providerID),
                   authType: PluginProviderAuthType.unknown,

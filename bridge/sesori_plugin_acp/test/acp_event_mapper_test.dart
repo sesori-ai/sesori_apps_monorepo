@@ -3,6 +3,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
+class _EnvelopeTimeEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
+    final created = notification.params["messageCreatedAt"];
+    return created is int ? PluginMessageTime(created: created, completed: null) : null;
+  }
+}
+
 /// Asserts the mapper emits sesori-schema payloads — message envelopes must
 /// round-trip through `Message.fromJson`, exactly like the codex mapper.
 void main() {
@@ -83,10 +95,19 @@ void main() {
         }),
       );
 
-      final parts = [
-        ...transition.whereType<BridgeSseMessagePartUpdated>(),
-        ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
-      ].map((event) => event.part).where((part) => part.text?.isNotEmpty ?? false).toList();
+      final parts =
+          [
+                ...transition.whereType<BridgeSseMessagePartUpdated>(),
+                ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
+              ]
+              .map((event) => event.part)
+              .where(
+                (part) => switch (part) {
+                  PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
+                  _ => false,
+                },
+              )
+              .toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -298,7 +319,7 @@ void main() {
         PluginMessagePartType.text,
       ]);
       expect(parts[1].attachment, isA<PluginMessageAttachmentInlineImage>());
-      expect(parts[1].attachment?.filename, "output.png");
+      expect(parts[1].attachment.filename, "output.png");
       expect(events.whereType<BridgeSseMessagePartDelta>().map((event) => event.delta), ["before", "after"]);
     });
 
@@ -362,8 +383,10 @@ void main() {
 
     test("an accepted prompt maps to one canonical live user message", () {
       final events = mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [
           const PluginPromptPart.text(text: "Hello"),
           const PluginPromptPart.text(text: "Cursor"),
@@ -392,8 +415,10 @@ void main() {
     ]) {
       test("an accepted prompt preserves ${parts.length == 1 ? "attachment-only" : "mixed"} content", () {
         final events = mapper.mapSentPrompt(
+          messageId: "s1-sent-1-user",
           promptId: "prompt-1",
           sessionId: "s1",
+          createdAtMs: 1,
           parts: parts,
         );
 
@@ -405,7 +430,7 @@ void main() {
         ]);
         final attachment = mapped.where((part) => part.type == PluginMessagePartType.file).single.attachment;
         expect(attachment, isA<PluginMessageAttachmentInlineImage>());
-        expect((attachment! as PluginMessageAttachmentInlineImage).base64, "AA==");
+        expect((attachment as PluginMessageAttachmentInlineImage).base64, "AA==");
         expect(events.toString(), isNot(contains("private.png")));
       });
     }
@@ -413,6 +438,7 @@ void main() {
     test("an initial prompt uses the history-stable message and part identity", () {
       final events = mapper.mapInitialPrompt(
         sessionId: "s1",
+        createdAtMs: 1,
         parts: const [
           PluginPromptPart.text(text: "Hello"),
           PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
@@ -433,8 +459,10 @@ void main() {
 
     test("a live agent user echo is dropped", () {
       mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [const PluginPromptPart.text(text: "Hello")],
       );
 
@@ -541,7 +569,7 @@ void main() {
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.type, PluginMessagePartType.tool);
       expect(part.tool, "read");
-      expect(part.state?.status, PluginToolStatus.pending);
+      expect(part.state.status, PluginToolStatus.pending);
     });
 
     test("tool_call falls through an empty kind to title and never throws", () {
@@ -574,7 +602,7 @@ void main() {
       );
       final badPart = nonStringKind.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(badPart.tool, "tool");
-      expect(badPart.state?.title, isNull);
+      expect(badPart.state.title, isNull);
     });
 
     test("tool_call reads output from the standard ACP content wrapper", () {
@@ -597,7 +625,7 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.output, "wrapped output");
+      expect(part.state.output, "wrapped output");
     });
 
     test("a partial tool_call_update preserves the tool's prior name/title/output", () {
@@ -624,9 +652,9 @@ void main() {
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.tool, "execute", reason: "name preserved across a partial update");
-      expect(part.state?.title, "Run tests", reason: "title preserved");
-      expect(part.state?.status, PluginToolStatus.completed, reason: "status advanced");
-      expect(part.state?.output, "starting", reason: "prior output preserved when the update omits it");
+      expect(part.state.title, "Run tests", reason: "title preserved");
+      expect(part.state.status, PluginToolStatus.completed, reason: "status advanced");
+      expect(part.state.output, "starting", reason: "prior output preserved when the update omits it");
     });
 
     test("a title-only tool_call_update keeps the canonical tool id", () {
@@ -651,7 +679,7 @@ void main() {
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.tool, "edit", reason: "no kind → canonical id preserved");
-      expect(part.state?.title, "Edit main.dart (revised)");
+      expect(part.state.title, "Edit main.dart (revised)");
     });
 
     test("a first-seen tool_call_update synthesizes the message envelope", () {
@@ -668,6 +696,46 @@ void main() {
       );
       expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
       expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
+    });
+
+    test("a reordered tool call corrects its synthesized envelope time", () {
+      mapper = _EnvelopeTimeEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
+      AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": body,
+          "messageCreatedAt": createdAt,
+        },
+      );
+
+      final updateEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-reordered",
+          "status": "completed",
+        }, 20),
+      );
+      expect(
+        (updateEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        20,
+      );
+
+      final callEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tc-reordered",
+          "kind": "read",
+        }, 10),
+      );
+      expect(
+        (callEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        10,
+      );
     });
 
     test("a completed tool retains its state for a late in-turn update; beginTurn clears it", () {
@@ -699,9 +767,9 @@ void main() {
       );
       expect(late.whereType<BridgeSseMessageUpdated>(), isEmpty, reason: "retained → not first-seen");
       final latePart = late.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(latePart.state?.status, PluginToolStatus.completed, reason: "terminal status preserved");
+      expect(latePart.state.status, PluginToolStatus.completed, reason: "terminal status preserved");
       expect(latePart.tool, "read");
-      expect(latePart.state?.output, "final");
+      expect(latePart.state.output, "final");
 
       // The next turn clears the prior turn's tools to keep the cache bounded.
       mapper.beginTurn("s1");
@@ -928,9 +996,9 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.status, PluginToolStatus.completed);
-      expect(part.state?.output, "a.dart\nb.dart");
-      expect(part.state?.error, isNull);
+      expect(part.state.status, PluginToolStatus.completed);
+      expect(part.state.output, "a.dart\nb.dart");
+      expect(part.state.error, isNull);
     });
 
     test("read-style tool surfaces rawOutput.content", () {
@@ -945,7 +1013,7 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.output, "hello from cursor e2e");
+      expect(part.state.output, "hello from cursor e2e");
     });
 
     test("failed tool_call_update mirrors output into error", () {
@@ -959,9 +1027,9 @@ void main() {
         }),
       );
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(part.state?.status, PluginToolStatus.error);
-      expect(part.state?.output, "boom");
-      expect(part.state?.error, "boom");
+      expect(part.state.status, PluginToolStatus.error);
+      expect(part.state.output, "boom");
+      expect(part.state.error, "boom");
     });
 
     test("oversized tool output is truncated", () {
@@ -975,7 +1043,7 @@ void main() {
           "rawOutput": {"stdout": big, "stderr": ""},
         }),
       );
-      final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state?.output;
+      final output = events.whereType<BridgeSseMessagePartUpdated>().single.part.state.output;
       expect(output, hasLength(maxToolOutputLength + 1)); // 500 chars + ellipsis
       expect(output, endsWith("…"));
     });
@@ -1231,7 +1299,7 @@ void main() {
         events.whereType<BridgeSseMessageUpdated>().single.info,
       );
       expect(message, isA<shared.MessageError>());
-      expect((message as shared.MessageError).errorMessage, "HALT: fix it");
+      expect((message as shared.MessageError).errorMessage, "\n\nHALT: fix it");
       // No assistant text part or delta — the notice rides in the error message.
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
@@ -1410,7 +1478,7 @@ void main() {
 }
 
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
-/// as a halt notice, using the trimmed text as the shown message.
+/// while the base mapper preserves the original text as the shown message.
 class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper {
   this
     : super(
@@ -1422,7 +1490,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     final trimmed = text.trim();
     if (trimmed.startsWith("HALT:")) {
-      return AcpHaltNotice(errorName: "test_halt", message: trimmed);
+      return const AcpHaltNotice(errorName: "test_halt");
     }
     return null;
   }

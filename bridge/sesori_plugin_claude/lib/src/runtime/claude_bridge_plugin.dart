@@ -19,7 +19,8 @@ final class ClaudeBridgePlugin({
     markReady();
   }
 
-  late final StreamSubscription<ClaudeProcessSpawnEvent> _spawnEvents;
+  // ignore: cancel_subscriptions, cancelled by onShutdown's shared cleanup sequence
+  late final StreamSubscription<ProcessSpawnOutcome> _spawnEvents;
 
   @override
   BridgePluginApi get api => _plugin;
@@ -46,11 +47,11 @@ final class ClaudeBridgePlugin({
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) => _sessions.interruptActiveWork(budget: budget);
 
-  void _handleSpawnEvent(ClaudeProcessSpawnEvent event) {
+  void _handleSpawnEvent(ProcessSpawnOutcome event) {
     switch (event) {
-      case ClaudeProcessSpawnSucceeded():
+      case ProcessSpawnOutcome.succeeded:
         markReady();
-      case ClaudeProcessSpawnFailed():
+      case ProcessSpawnOutcome.failed:
         markDegraded(
           recoverable: true,
           requiresUserAction: true,
@@ -60,28 +61,7 @@ final class ClaudeBridgePlugin({
   }
 
   @override
-  Future<void> onShutdown({required Duration? budget}) async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
-
-    Future<void> attempt(Future<void> Function() cleanup) async {
-      try {
-        await cleanup();
-      } on Object catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
-      }
-    }
-
-    try {
-      await _spawnEvents.cancel();
-    } on Object catch (error, stackTrace) {
-      firstError = error;
-      firstStackTrace = stackTrace;
-    }
-    await attempt(_plugin.dispose);
-    await attempt(_processFactory.dispose);
-    final error = firstError;
-    if (error != null) Error.throwWithStackTrace(error, firstStackTrace!);
-  }
+  Future<void> onShutdown({required Duration? budget}) => runShutdownCleanups(
+    cleanups: [_spawnEvents.cancel, _plugin.dispose, _processFactory.dispose],
+  );
 }

@@ -1,3 +1,5 @@
-# plugins:
-#   no_slop_linter:
-#     path: ../shared/no_slop_linter
+include: app/analysis_options.yaml
+
+plugins:
+  no_slop_linter:
+    path: ../shared/no_slop_linter

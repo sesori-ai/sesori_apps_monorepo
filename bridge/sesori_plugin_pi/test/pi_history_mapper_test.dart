@@ -4,6 +4,7 @@ import "dart:typed_data";
 
 import "package:pi_plugin/src/api/models/pi_session_history_dto.dart";
 import "package:pi_plugin/src/models/pi_assistant_stop_reason.dart";
+import "package:pi_plugin/src/models/pi_thinking_level.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_history_mapper.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_message_identity_builder.dart";
 import "package:pi_plugin/src/repositories/mappers/pi_persisted_user_text_codec.dart";
@@ -132,6 +133,81 @@ void main() {
       expect(first[1].info.id, "pi:session:user:10:2");
     });
 
+    test("applies thinking-level changes along only the active branch", () {
+      final messages = mapper.map(
+        sessionId: sessionId,
+        entries: [
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "initial-level",
+            parentId: null,
+            timestamp: DateTime.fromMillisecondsSinceEpoch(1),
+            thinkingLevel: PiThinkingLevel.high,
+          ),
+          _message(
+            id: "first-assistant",
+            parentId: "initial-level",
+            message: _assistantText("first", timestamp: 2),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "abandoned-level",
+            parentId: "first-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(3),
+            thinkingLevel: PiThinkingLevel.low,
+          ),
+          _message(
+            id: "abandoned-assistant",
+            parentId: "abandoned-level",
+            message: _assistantText("abandoned", timestamp: 4),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "active-level",
+            parentId: "first-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(5),
+            thinkingLevel: PiThinkingLevel.xhigh,
+          ),
+          _message(
+            id: "active-assistant",
+            parentId: "active-level",
+            message: _assistantText("active", timestamp: 6),
+          ),
+          PiSessionEntryDto.thinkingLevelChange(
+            id: "unknown-level",
+            parentId: "active-assistant",
+            timestamp: DateTime.fromMillisecondsSinceEpoch(7),
+            thinkingLevel: null,
+          ),
+          _message(
+            id: "latest-assistant",
+            parentId: "unknown-level",
+            message: _assistantText("latest", timestamp: 8),
+          ),
+        ],
+        leafId: "latest-assistant",
+      );
+
+      expect(_texts(messages), ["first", "active", "latest"]);
+      expect(
+        messages.map((message) => message.info).whereType<PluginMessageAssistant>().map((message) => message.variant),
+        ["high", "xhigh", null],
+      );
+    });
+
+    test("parses persisted thinking levels tolerantly", () {
+      PiThinkingLevel? parse(String thinkingLevel) {
+        final entry = PiSessionEntryDto.fromJson({
+          "type": "thinking_level_change",
+          "id": "level",
+          "parentId": null,
+          "timestamp": "2026-08-01T00:00:00Z",
+          "thinkingLevel": thinkingLevel,
+        });
+        return (entry as PiThinkingLevelChangeEntryDto).thinkingLevel;
+      }
+
+      expect(parse("high"), PiThinkingLevel.high);
+      expect(parse("future-level"), isNull);
+    });
+
     test("falls back only from a missing non-null leaf and bounds cycles", () async {
       final fallback = mapper.map(
         sessionId: sessionId,
@@ -206,14 +282,14 @@ void main() {
       expect(messages.last.info.time, isNull);
       final compact = messages.last.parts.single;
       expect(compact.tool, "compact");
-      expect(compact.state?.status, PluginToolStatus.completed);
-      expect(compact.state?.title, "Context compacted");
-      expect(compact.state?.output, isNull);
+      expect(compact.state.status, PluginToolStatus.completed);
+      expect(compact.state.title, "Context compacted");
+      expect(compact.state.output, isNull);
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 
-    test("logs assistant failure locally and maps it privately", () async {
-      const privateError = "secret provider payload";
+    test("logs assistant failure locally and forwards it unchanged", () async {
+      const backendError = "provider overload detail";
       late List<PluginMessageWithParts> messages;
       final warnings = await _captureWarnings(() async {
         messages = mapper.map(
@@ -234,7 +310,7 @@ void main() {
                 "provider": "provider",
                 "model": "model",
                 "stopReason": "error",
-                "errorMessage": privateError,
+                "errorMessage": backendError,
                 "timestamp": 1,
               }),
             ),
@@ -268,19 +344,19 @@ void main() {
 
       expect(messages, hasLength(2));
       expect(messages.first.info, isA<PluginMessageError>());
+      expect((messages.first.info as PluginMessageError).errorMessage, backendError);
       expect(_reasoning(messages), ["visible reasoning"]);
       final completed = messages.first.parts.singleWhere((part) => part.id == "completed");
       final unfinished = messages.first.parts.singleWhere((part) => part.id == "unfinished");
       final aborted = messages.last.parts.single;
-      expect(completed.state?.status, PluginToolStatus.completed);
-      expect(completed.state?.output, "result");
-      expect(unfinished.state?.status, PluginToolStatus.error);
-      expect(unfinished.state?.error, "Pi tool call did not complete.");
-      expect(aborted.state?.status, PluginToolStatus.error);
-      expect(aborted.state?.error, "Pi tool call did not complete.");
-      expect(messages.toString(), isNot(contains(privateError)));
+      expect(completed.state.status, PluginToolStatus.completed);
+      expect(completed.state.output, "result");
+      expect(unfinished.state.status, PluginToolStatus.error);
+      expect(unfinished.state.error, "Pi tool call did not complete.");
+      expect(aborted.state.status, PluginToolStatus.error);
+      expect(aborted.state.error, "Pi tool call did not complete.");
       expect(messages.toString(), isNot(contains("private reasoning")));
-      expect(warnings, contains(privateError));
+      expect(warnings, contains(backendError));
     });
 
     test("enforces image candidate count", () {
@@ -386,8 +462,8 @@ void main() {
       final tools = messages.last.parts.where((part) => part.type == PluginMessagePartType.tool);
       expect(tools, hasLength(2));
       for (final tool in tools) {
-        expect(tool.state?.attachments, hasLength(2));
-        expect(tool.state?.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
+        expect(tool.state.attachments, hasLength(2));
+        expect(tool.state.attachments, everyElement(isA<PluginMessageAttachmentInlineImage>()));
       }
     });
 
@@ -462,6 +538,10 @@ void main() {
         "pi:session:custom:${PiMessageIdentityBuilder.customMessageTimestampSentinel}:1",
         "pi:session:custom:${PiMessageIdentityBuilder.customMessageTimestampSentinel}:2",
       ]);
+      expect(
+        messages.map((message) => (message.info as PluginMessageAssistant).sender),
+        everyElement(PluginMessageSender.system),
+      );
       expect(messages.first.info.time?.created, 7);
       expect(messages[1].info.time, isNull);
       expect(messages[2].info.time, isNull);
@@ -489,8 +569,8 @@ void main() {
       expect(messages.single.info.id, "pi:session:bashExecution:8:1");
       final part = messages.single.parts.single;
       expect(part.tool, "bash");
-      expect(part.state?.output?.runes.length, maxToolOutputLength);
-      expect(part.state?.title?.runes.length, maxToolOutputLength);
+      expect(part.state.output?.runes.length, maxToolOutputLength);
+      expect(part.state.title?.runes.length, maxToolOutputLength);
       expect(messages.toString(), isNot(contains(privatePath)));
     });
 
@@ -510,7 +590,7 @@ void main() {
         leafId: "silent",
       );
 
-      expect(messages.single.parts.single.state?.output, isNull);
+      expect(messages.single.parts.single.state.output, isNull);
     });
 
     test("bounds combined tool-result text while preserving later attachments", () {
@@ -542,7 +622,7 @@ void main() {
         leafId: "result",
       );
 
-      final state = messages.single.parts.single.state!;
+      final state = messages.single.parts.single.state;
       expect(state.output?.runes.length, maxToolOutputLength);
       expect(state.attachments, hasLength(1));
     });
@@ -704,13 +784,13 @@ PiAssistantMessageDto _assistantText(String text, {required int timestamp}) {
 List<String> _texts(List<PluginMessageWithParts> messages) => [
   for (final message in messages)
     for (final part in message.parts)
-      if (part.type == PluginMessagePartType.text) part.text!,
+      if (part.type == PluginMessagePartType.text) part.text,
 ];
 
 List<String> _reasoning(List<PluginMessageWithParts> messages) => [
   for (final message in messages)
     for (final part in message.parts)
-      if (part.type == PluginMessagePartType.reasoning) part.text!,
+      if (part.type == PluginMessagePartType.reasoning) part.text,
 ];
 
 Future<String> _captureWarnings(Future<void> Function() action) async {

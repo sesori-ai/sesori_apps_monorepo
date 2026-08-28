@@ -21,9 +21,6 @@ class FilesystemSuggestionsHandler({required final FilesystemRepository _filesys
   Future<FilesystemSuggestions> handle(
     RelayRequest request, {
     required FilesystemSuggestionsRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final prefix = body.prefix ?? _filesystemRepository.defaultBrowsePath;
 

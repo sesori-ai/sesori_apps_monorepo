@@ -345,6 +345,23 @@ void main() {
       expect(started.process.killed, isTrue);
     });
 
+    test("ignores an asynchronous stdin failure after process exit is confirmed", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+      final pending = started.client.send(
+        command: PiRpcCommand.getState,
+        arguments: const {},
+        timeout: const Duration(seconds: 5),
+      );
+      await waitForCommand(process: started.process, type: "get_state");
+
+      started.process.exit(code: -2);
+      await expectLater(pending, throwsA(isA<PiRpcProcessExitException>()));
+      started.process.failStdin(error: const SocketException("broken pipe"));
+      await pump();
+      expect(started.process.killed, isFalse);
+    });
+
     test("fails fast once the process has exited", () async {
       final started = await startTestClient();
       addTearDown(started.client.dispose);

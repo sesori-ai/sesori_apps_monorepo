@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "codex_app_server_client.dart";
@@ -48,230 +46,78 @@ const String _elicitationApprovalKindKey = "codex_approval_kind";
 
 enum _ElicitationApprovalKind() { mcpToolCall, toolSuggestion }
 
-/// A pending codex approval, kept until the user answers or codex
-/// rescinds it.
 class _PendingApproval({
-    /// Stable id the bridge surfaces to mobile.
-  required final String bridgeRequestId,
-    /// Original JSON-RPC `id` from codex — required to send the response
-  /// frame back on the same request.
   required final Object codexId,
-    /// Thread id this approval belongs to. May be the empty string when
-  /// codex didn't include one (rare).
-  required final String sessionId,
-    /// JSON-RPC method this approval came in on.
   required final String method,
-    /// Raw params, kept so the reply can echo whatever codex needs.
   required final Map<String, dynamic> params,
-    required final _PendingKind kind,
-  });
-
-enum _PendingKind() { permission, question }
+  required final ApprovalResponder respond,
+  required final ApprovalErrorResponder respondError,
+});
 
 /// Per-request reply functions injected at construction time so the
 /// registry stays decoupled from [CodexAppServerClient].
 typedef ApprovalResponder = void Function(Object id, Object? result);
 typedef ApprovalErrorResponder = void Function(Object id, int code, String message);
 
+void _resolveCodexPermission({required _PendingApproval payload, required PluginPermissionReply reply}) {
+  payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, reply));
+}
+
+PendingQuestionReplyOutcome _resolveCodexQuestion({
+  required _PendingApproval payload,
+  required List<List<String>> answers,
+}) {
+  payload.respond(payload.codexId, ApprovalRegistry._questionResponse(payload, answers));
+  return PendingQuestionReplyOutcome.replied;
+}
+
+void _rejectCodexQuestion({required _PendingApproval payload}) {
+  if (payload.method == _elicitationMethod) {
+    payload.respond(payload.codexId, const {"action": "decline"});
+    return;
+  }
+  payload.respondError(payload.codexId, -32603, "user rejected");
+}
+
+void _cancelCodexPending({required _PendingApproval payload, required PendingCancellationReason reason}) {
+  if (_permissionMethods.contains(payload.method) ||
+      payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(payload.params)) {
+    payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, PluginPermissionReply.reject));
+  } else if (payload.method == _elicitationMethod) {
+    payload.respond(payload.codexId, const {"action": "cancel"});
+  } else {
+    payload.respondError(
+      payload.codexId,
+      -32000,
+      switch (reason) {
+        PendingCancellationReason.sessionCancelled => "thread closed",
+        PendingCancellationReason.disposed => "bridge dispose",
+      },
+    );
+  }
+}
+
 /// Routes codex server-originated approval requests to the bridge SSE
 /// stream and answers them when the bridge consumer replies.
 ///
 /// Subscribe with [attach]. Detach + free pending state with [dispose].
 class ApprovalRegistry({
-    required final void Function(BridgeSseEvent event) _emit,
-    required final ApprovalResponder _respond,
-    required final ApprovalErrorResponder _respondError,
-    String Function()? idGenerator,
-  }) {
-  final String Function()? _injectedIdGenerator = idGenerator;
-
-  StreamSubscription<CodexServerRequest>? _subscription;
-  int _seq = 0;
-
-  String _generateId() {
-    final injected = _injectedIdGenerator;
-    if (injected != null) return injected();
-    _seq++;
-    return "br-$_seq";
-  }
-
-  /// bridgeRequestId → pending entry. Removed on reply or rejection.
-  final Map<String, _PendingApproval> _pending = {};
-
-  /// Subscribes to [stream] of codex server requests. Returns the
-  /// subscription so the caller can manage it if desired.
-  StreamSubscription<CodexServerRequest> attach(
-    Stream<CodexServerRequest> stream,
-  ) {
-    final subscription = stream.listen(_handle);
-    _subscription = subscription;
-    return subscription;
-  }
-
-  /// Cancels the subscription and denies every still-pending approval so
-  /// codex doesn't wait forever.
-  Future<void> dispose() async {
-    // Isolate the cancel so a failing cancel can never skip the pending-denial
-    // loop below — otherwise codex would wait forever on unanswered approvals.
-    try {
-      await _subscription?.cancel();
-    } catch (_) {
-      // Best-effort; we still must deny everything that's pending.
-    }
-    _subscription = null;
-    final remaining = List<_PendingApproval>.from(_pending.values);
-    _pending.clear();
-    for (final entry in remaining) {
-      try {
-        _denyPending(entry, questionErrorMessage: "bridge dispose");
-      } catch (_) {
-        // Best-effort.
-      }
-    }
-  }
-
-  /// Approvals that are still waiting for the user, scoped to one session.
-  List<PluginPendingQuestion> pendingForSession(String sessionId) {
-    return _pending.values
-        .where(
-          (e) => e.kind == _PendingKind.question && e.sessionId == sessionId,
-        )
-        .map(_toPluginPendingQuestion)
-        .toList(growable: false);
-  }
-
-  /// Approvals waiting for any of the given session ids. Mobile passes
-  /// the full list of sessions visible under a project.
-  List<PluginPendingQuestion> pendingForProject(
-    Iterable<String> sessionIds,
-  ) {
-    final set = Set<String>.from(sessionIds);
-    return _pending.values
-        .where(
-          (e) => e.kind == _PendingKind.question && set.contains(e.sessionId),
-        )
-        .map(_toPluginPendingQuestion)
-        .toList(growable: false);
-  }
-
-  /// Permission asks still waiting for the user, scoped to one session.
-  List<PluginPendingPermission> pendingPermissionsForSession(String sessionId) {
-    return _pending.values
-        .where(
-          (e) => e.kind == _PendingKind.permission && e.sessionId == sessionId,
-        )
-        .map(_toPluginPendingPermission)
-        .toList(growable: false);
-  }
-
-  /// Returns the session id for a pending request, or null if the id is
-  /// unknown.
-  String? sessionIdFor(String bridgeRequestId) => _pending[bridgeRequestId]?.sessionId;
-
-  bool hasPendingInput(String sessionId) => _pending.values.any((entry) => entry.sessionId == sessionId);
-
-  bool get hasAnyPendingInput => _pending.isNotEmpty;
-
-  Set<String> get pendingSessionIds => Set<String>.unmodifiable(
-    _pending.values.map((entry) => entry.sessionId),
-  );
-
-  void cancelForSession(String sessionId) {
-    final entries = _pending.values.where((entry) => entry.sessionId == sessionId).toList(growable: false);
-    for (final entry in entries) {
-      _pending.remove(entry.bridgeRequestId);
-      try {
-        _denyPending(entry, questionErrorMessage: "thread closed");
-      } on Object catch (error, stackTrace) {
-        Log.w("[codex] failed to deny pending approval for closed thread", error, stackTrace);
-      }
-      _emit(
-        entry.kind == _PendingKind.permission
-            ? BridgeSsePermissionReplied(
-                requestID: entry.bridgeRequestId,
-                sessionID: entry.sessionId,
-                displaySessionId: entry.sessionId,
-                reply: PluginPermissionReply.reject.name,
-              )
-            : BridgeSseQuestionRejected(
-                requestID: entry.bridgeRequestId,
-                sessionID: entry.sessionId,
-                displaySessionId: entry.sessionId,
-              ),
+  required super.emit,
+  required final ApprovalResponder _respond,
+  required final ApprovalErrorResponder _respondError,
+  super.idGenerator,
+}) extends PendingPermissionRegistry<CodexServerRequest, _PendingApproval> {
+  this
+    : super(
+        logContext: "[codex]",
+        resolvePermission: _resolveCodexPermission,
+        resolveQuestion: _resolveCodexQuestion,
+        rejectQuestion: _rejectCodexQuestion,
+        cancelPending: _cancelCodexPending,
       );
-    }
-  }
 
-  void _denyPending(_PendingApproval entry, {required String questionErrorMessage}) {
-    if (entry.kind == _PendingKind.permission) {
-      _respond(entry.codexId, _permissionResponse(entry, PluginPermissionReply.reject));
-    } else if (entry.method == _elicitationMethod) {
-      _respond(entry.codexId, const {"action": "cancel"});
-    } else {
-      _respondError(entry.codexId, -32000, questionErrorMessage);
-    }
-  }
-
-  /// Acknowledges a permission ask with a once/always/reject decision.
-  ///
-  /// Returns true when the response was sent, false if the id had
-  /// already been resolved or didn't exist.
-  bool replyPermission(String bridgeRequestId, PluginPermissionReply reply) {
-    final entry = _pending.remove(bridgeRequestId);
-    if (entry == null || entry.kind != _PendingKind.permission) return false;
-    _respond(entry.codexId, _permissionResponse(entry, reply));
-    _emit(
-      BridgeSsePermissionReplied(
-        requestID: bridgeRequestId,
-        sessionID: entry.sessionId,
-        displaySessionId: entry.sessionId,
-        reply: reply.name,
-      ),
-    );
-    return true;
-  }
-
-  /// Replies to an elicitation / user-input request. `answers` is the
-  /// list-of-lists shape the bridge contract requires (one inner list
-  /// per question, multi-select allowed).
-  bool replyQuestion(String bridgeRequestId, List<List<String>> answers) {
-    final entry = _pending.remove(bridgeRequestId);
-    if (entry == null || entry.kind != _PendingKind.question) return false;
-    _respond(entry.codexId, _questionResponse(entry, answers));
-    _emit(
-      BridgeSseQuestionReplied(
-        requestID: bridgeRequestId,
-        sessionID: entry.sessionId,
-        displaySessionId: entry.sessionId,
-      ),
-    );
-    return true;
-  }
-
-  /// Reject an elicitation / user-input request.
-  ///
-  /// MCP elicitations carry a proper `decline` action; `item/tool/
-  /// requestUserInput` has no decline variant, so a JSON-RPC error is the
-  /// signal that the user dismissed it.
-  bool rejectQuestion(String bridgeRequestId) {
-    final entry = _pending.remove(bridgeRequestId);
-    if (entry == null || entry.kind != _PendingKind.question) return false;
-    if (entry.method == _elicitationMethod) {
-      _respond(entry.codexId, const {"action": "decline"});
-    } else {
-      _respondError(entry.codexId, -32603, "user rejected");
-    }
-    _emit(
-      BridgeSseQuestionRejected(
-        requestID: bridgeRequestId,
-        sessionID: entry.sessionId,
-        displaySessionId: entry.sessionId,
-      ),
-    );
-    return true;
-  }
-
-  void _handle(CodexServerRequest request) {
+  @override
+  void handleRequest(CodexServerRequest request) {
     final method = request.method;
     final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
     final isPermission = _permissionMethods.contains(method) || isMcpToolApproval;
@@ -283,63 +129,33 @@ class ApprovalRegistry({
     }
 
     final sessionId = _extractSessionId(request.params);
-    final bridgeRequestId = _generateId();
     final entry = _PendingApproval(
-      bridgeRequestId: bridgeRequestId,
       codexId: request.id,
-      sessionId: sessionId ?? "",
       method: method,
       params: request.params,
-      kind: isPermission ? _PendingKind.permission : _PendingKind.question,
+      respond: _respond,
+      respondError: _respondError,
     );
-    _pending[bridgeRequestId] = entry;
+    final resolvedSessionId = sessionId ?? "";
 
     if (isPermission) {
       final allowAlways = _allowsAlways(entry);
-      _emit(
-        BridgeSsePermissionAsked(
-          requestID: bridgeRequestId,
-          sessionID: entry.sessionId,
-          // codex has no sub-agent hierarchy, so a request's display root is
-          // its own session.
-          displaySessionId: entry.sessionId,
-          tool: _toolHintFor(method),
-          description: _permissionDescriptionFor(entry),
-          allowAlways: allowAlways,
-        ),
+      registerPendingPermission(
+        payload: entry,
+        sessionId: resolvedSessionId,
+        displaySessionId: resolvedSessionId,
+        tool: _toolHintFor(method),
+        description: _permissionDescriptionFor(entry),
+        allowAlways: allowAlways,
       );
     } else {
-      _emit(
-        BridgeSseQuestionAsked(
-          id: bridgeRequestId,
-          sessionID: entry.sessionId,
-          displaySessionId: entry.sessionId,
-          questions: [_questionInfoFor(entry)],
-        ),
+      registerPendingQuestion(
+        payload: entry,
+        sessionId: resolvedSessionId,
+        displaySessionId: resolvedSessionId,
+        questions: [_questionInfoFor(entry)],
       );
     }
-  }
-
-  PluginPendingQuestion _toPluginPendingQuestion(_PendingApproval entry) {
-    return PluginPendingQuestion(
-      id: entry.bridgeRequestId,
-      sessionID: entry.sessionId,
-      // codex has no sub-agent hierarchy, so a request's display root is its
-      // own session.
-      displaySessionId: entry.sessionId,
-      questions: [_questionInfoFor(entry)],
-    );
-  }
-
-  PluginPendingPermission _toPluginPendingPermission(_PendingApproval entry) {
-    return PluginPendingPermission(
-      id: entry.bridgeRequestId,
-      sessionID: entry.sessionId,
-      displaySessionId: entry.sessionId,
-      tool: _toolHintFor(entry.method),
-      description: _permissionDescriptionFor(entry),
-      allowAlways: _allowsAlways(entry),
-    );
   }
 
   bool _allowsAlways(_PendingApproval entry) {
@@ -376,7 +192,7 @@ class ApprovalRegistry({
   ///   - command/file change   → `{decision: accept|acceptForSession|decline}`
   ///   - permissions request    → `{permissions: GrantedPermissionProfile, scope}`
   ///   - MCP tool approval      → `{action, content, _meta}`
-  Map<String, dynamic> _permissionResponse(
+  static Map<String, dynamic> _permissionResponse(
     _PendingApproval entry,
     PluginPermissionReply reply,
   ) {
@@ -438,7 +254,7 @@ class ApprovalRegistry({
   /// Builds the JSON-RPC result for a question reply, keyed by wire method:
   ///   - `item/tool/requestUserInput` → `{answers: {<qid>: {answers: [..]}}}`
   ///   - `mcpServer/elicitation/request` → `{action: accept, content}`
-  Map<String, dynamic> _questionResponse(
+  static Map<String, dynamic> _questionResponse(
     _PendingApproval entry,
     List<List<String>> answers,
   ) {
@@ -492,7 +308,7 @@ class ApprovalRegistry({
     return method;
   }
 
-  bool _isMcpToolApproval(Map<String, dynamic> params) {
+  static bool _isMcpToolApproval(Map<String, dynamic> params) {
     if (params["mode"] != "form") return false;
     final meta = _asMap(params["_meta"]);
     if (_parseElicitationApprovalKind(
@@ -510,7 +326,7 @@ class ApprovalRegistry({
     return properties != null && properties.isEmpty;
   }
 
-  _ElicitationApprovalKind? _parseElicitationApprovalKind(Object? raw) {
+  static _ElicitationApprovalKind? _parseElicitationApprovalKind(Object? raw) {
     return switch (raw) {
       "mcp_tool_call" => _ElicitationApprovalKind.mcpToolCall,
       "tool_suggestion" => _ElicitationApprovalKind.toolSuggestion,
@@ -525,7 +341,7 @@ class ApprovalRegistry({
     return null;
   }
 
-  Map<String, dynamic>? _asMap(Object? value) {
+  static Map<String, dynamic>? _asMap(Object? value) {
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }

@@ -12,6 +12,8 @@ import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
+enum _StaleSessionOption() { agent, model, variant }
+
 String formatDroppedSseFrameLog({
   required String category,
   required String message,
@@ -35,10 +37,12 @@ class OpenCodePlugin._({
   required final io.HttpClient _httpClient,
   required String serverUrl,
   required String? password,
-  required bool autoInitialize,
   void Function()? onConnected,
   void Function()? onDisconnected,
 }) implements OpenCodeManagedApi {
+  static const String _sendPromptOperation = "sendPrompt";
+  static const String _sendCommandOperation = "sendCommand";
+
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.unknown);
@@ -61,16 +65,11 @@ class OpenCodePlugin._({
 
   /// Builds an OpenCode plugin against the server at [serverUrl].
   ///
-  /// When [autoInitialize] is true (the default, used by the legacy bridge-app
-  /// flow), cold-start is kicked off fire-and-forget at construction, swallowing
-  /// failures so creation never throws. The descriptor passes
-  /// `autoInitialize: false` and awaits [initialize] itself so it can surface a
-  /// cold-start failure as a degraded status. [onConnected]/[onDisconnected]
-  /// follow the SSE transport's live state for lifecycle reporting.
+  /// [onConnected]/[onDisconnected] follow the SSE transport's live state for
+  /// lifecycle reporting.
   factory({
     required String serverUrl,
     String? password,
-    bool autoInitialize = true,
     void Function()? onConnected,
     void Function()? onDisconnected,
   }) {
@@ -89,7 +88,6 @@ class OpenCodePlugin._({
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
-      autoInitialize: autoInitialize,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
@@ -118,16 +116,6 @@ class OpenCodePlugin._({
     // has already returned); re-emit the activity summary when it does so the
     // running badge surfaces on the correct root session.
     _summarySubscription = _service.summaryInvalidations.listen((_) => _emitProjectsSummary());
-    if (autoInitialize) {
-      // Legacy behavior: cold-start fire-and-forget so direct construction never
-      // throws (the descriptor awaits initialize() instead). The failure is
-      // swallowed to keep startup fail-soft, but logged so it stays diagnosable.
-      unawaited(
-        initialize().catchError((Object error, StackTrace stackTrace) {
-          Log.e("[opencode] auto-initialize cold-start failed: $error\n$stackTrace");
-        }),
-      );
-    }
   }
 
   /// Hydrates the session tracker and starts the SSE stream. Idempotent:
@@ -174,6 +162,93 @@ class OpenCodePlugin._({
     final result = await _call(fn);
     _syncWorkState();
     return result;
+  }
+
+  /// Preserves OpenCode's synchronous reservation as the rejection boundary
+  /// while translating its generic 500 for a removed selection into the typed
+  /// stale-options contract. Discovery runs only after that ambiguous failure;
+  /// unrelated backend failures retain their original error and stack trace.
+  Future<T> _reserveWithStaleOptionsClassification<T>({
+    required String operation,
+    required String sessionId,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+    required Future<T> Function() reserve,
+  }) async {
+    try {
+      return await _call(reserve);
+    } on PluginApiException catch (error, stackTrace) {
+      if (error.statusCode != io.HttpStatus.internalServerError ||
+          (agent == null && variant == null && model == null)) {
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+
+      final _StaleSessionOption? staleOption;
+      try {
+        staleOption = await _findStaleSessionOption(
+          sessionId: sessionId,
+          agent: agent,
+          variant: variant,
+          model: model,
+        );
+      } on Object catch (validationError, validationStackTrace) {
+        Log.w(
+          "[opencode] failed to validate session options after reservation failure for $sessionId",
+          validationError,
+          validationStackTrace,
+        );
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+
+      if (staleOption == null) Error.throwWithStackTrace(error, stackTrace);
+      Error.throwWithStackTrace(
+        PluginStaleOptionsException(
+          operation,
+          message: switch (staleOption) {
+            _StaleSessionOption.agent => "OpenCode no longer offers the selected agent.",
+            _StaleSessionOption.model => "OpenCode no longer offers the selected model.",
+            _StaleSessionOption.variant => "OpenCode no longer offers the selected variant.",
+          },
+          cause: error,
+        ),
+        stackTrace,
+      );
+    }
+  }
+
+  Future<_StaleSessionOption?> _findStaleSessionOption({
+    required String sessionId,
+    required String? agent,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    final projectId = _service.tracker.getSessionDirectory(sessionId: sessionId);
+    if (projectId == null) return null;
+
+    if (agent != null) {
+      final agents = await _call(() => _service.getAgents(projectId: projectId));
+      if (!agents.any((candidate) => candidate.name == agent)) return _StaleSessionOption.agent;
+    }
+
+    if (model case final requestedModel?) {
+      final providers = await _call(() => _service.getProviders(projectId: projectId));
+      PluginModel? offeredModel;
+      for (final provider in providers.providers) {
+        if (provider.id != requestedModel.providerID) continue;
+        for (final candidate in provider.models) {
+          if (candidate.id == requestedModel.modelID) {
+            offeredModel = candidate;
+            break;
+          }
+        }
+        break;
+      }
+      if (offeredModel == null || !offeredModel.isAvailable) return _StaleSessionOption.model;
+      if (variant != null && !offeredModel.variants.contains(variant.id)) return _StaleSessionOption.variant;
+    }
+
+    return null;
   }
 
   Future<void> _dispatchReservedMessage({
@@ -282,10 +357,10 @@ class OpenCodePlugin._({
   Future<List<PluginProject>> getProjects() => _call(_service.getProjects);
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String projectId, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async {
     final sessions = await _call(
       () => _service.getSessions(
@@ -424,8 +499,13 @@ class OpenCodePlugin._({
     // OpenCode allocates the ordered id on its own host. Its reservation echo
     // is empty and cannot render; reusing the message below publishes the
     // stamped, renderable envelope after this correlation is recorded.
-    final messageId = await _call(
-      () => _service.reserveMessage(
+    final messageId = await _reserveWithStaleOptionsClassification(
+      operation: _sendPromptOperation,
+      sessionId: sessionId,
+      agent: agent,
+      variant: variant,
+      model: model,
+      reserve: () => _service.reserveMessage(
         sessionId: sessionId,
         agent: agent,
         variant: variant,
@@ -465,8 +545,13 @@ class OpenCodePlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     if (command == OpenCodeService.compactionCommandName) {
-      final reservation = await _call(
-        () => _service.reserveCompactionMessage(
+      final reservation = await _reserveWithStaleOptionsClassification(
+        operation: _sendCommandOperation,
+        sessionId: sessionId,
+        agent: agent,
+        variant: variant,
+        model: model,
+        reserve: () => _service.reserveCompactionMessage(
           sessionId: sessionId,
           arguments: arguments,
           userVisibleArguments: userVisibleArguments,
@@ -494,8 +579,13 @@ class OpenCodePlugin._({
       return;
     }
 
-    final messageId = await _call(
-      () => _service.reserveMessage(
+    final messageId = await _reserveWithStaleOptionsClassification(
+      operation: _sendCommandOperation,
+      sessionId: sessionId,
+      agent: agent,
+      variant: variant,
+      model: model,
+      reserve: () => _service.reserveMessage(
         sessionId: sessionId,
         agent: agent,
         variant: variant,

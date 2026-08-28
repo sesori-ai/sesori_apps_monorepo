@@ -75,6 +75,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -127,15 +128,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.status, equals(200));
@@ -180,6 +178,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -216,15 +215,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -246,6 +242,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -283,15 +280,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -316,6 +310,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -352,15 +347,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -385,6 +377,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
@@ -421,15 +414,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "s1")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -451,6 +441,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "unicode-session",
         backendSessionId: "unicode-session",
         projectId: "project-1",
@@ -488,15 +479,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "unicode-session")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {
@@ -512,6 +500,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
         pluginId: "opencode",
+        preservePullRequestScope: false,
         sessionId: "large-base-session",
         backendSessionId: "large-base-session",
         projectId: "project-1",
@@ -549,15 +538,12 @@ void main() {
         throw StateError("Unexpected git call: $arguments");
       };
 
-      final response = await handler.handleInternal(
+      final response = await handler.routeForTest(
         makeRequest(
           "POST",
           "/session/diffs",
           body: jsonEncode(const SessionIdRequest(sessionId: "large-base-session")),
         ),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       final body = switch (jsonDecode(response.body!)) {

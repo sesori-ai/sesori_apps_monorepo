@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -197,8 +196,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: _MeasureSize(
-              onChange: (size) {
+            child: PregoSizeObserver(
+              onSizeChanged: (size) {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
@@ -289,32 +288,4 @@ bool hasActiveWork({
 }) {
   return sessionStatus is! SessionStatusIdle ||
       childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry);
-}
-
-/// Reports its child's measured size via [onChange] after each layout pass.
-/// Used to feed the floating composer's height to the message list so the
-/// newest message and the "jump to latest" pill rest clear of it. [onChange]
-/// is invoked post-frame so listeners may safely call `setState`.
-class const _MeasureSize({required final ValueChanged<Size> onChange, required super.child})
-    extends SingleChildRenderObjectWidget {
-  @override
-  RenderObject createRenderObject(BuildContext context) => _MeasureSizeRenderBox(onChange);
-
-  @override
-  void updateRenderObject(BuildContext context, _MeasureSizeRenderBox renderObject) {
-    renderObject.onChange = onChange;
-  }
-}
-
-class _MeasureSizeRenderBox(var ValueChanged<Size> onChange) extends RenderProxyBox {
-  Size? _lastReported;
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    final size = child?.size ?? Size.zero;
-    if (size == _lastReported) return;
-    _lastReported = size;
-    WidgetsBinding.instance.addPostFrameCallback((_) => onChange(size));
-  }
 }

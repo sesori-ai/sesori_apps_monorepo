@@ -47,7 +47,6 @@ void main() {
       final sharedDirectory = p.join('/home/alex/.cache/sesori', 'runtime');
 
       expect(OpenCodePluginDescriptor.ownershipFileName, isNot(CodexPluginDescriptor.ownershipFileName));
-      expect(OpenCodePluginDescriptor.startIntentFileName, isNot(CodexPluginDescriptor.startIntentFileName));
       expect(
         p.join(sharedDirectory, const OpenCodePluginDescriptor().id),
         isNot(p.join(sharedDirectory, const CodexPluginDescriptor().id)),

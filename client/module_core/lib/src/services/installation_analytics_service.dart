@@ -2,9 +2,11 @@ import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
+import "../repositories/attribution_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
 enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, unknown }
@@ -13,6 +15,7 @@ enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, un
 class InstallationAnalyticsService({
     required final AnalyticsRuntimeCapability _capability,
     required final AnalyticsRepository _repository,
+    required final AttributionRepository _attributionRepository,
   }) {
 
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
@@ -23,12 +26,29 @@ class InstallationAnalyticsService({
     );
   }
 
-  Future<AnalyticsDeliveryResult> loginAttemptCompleted({required AuthProvider provider}) {
-    return _log(
-      event: InstallationAnalyticsEvent.loginAttemptCompleted(
-        provider: _analyticsProvider(provider: provider),
+  Future<AnalyticsDeliveryResult> loginAttemptCompleted({
+    required AuthProvider provider,
+    required AccountStatus accountStatus,
+  }) async {
+    final analyticsProvider = _analyticsProvider(provider: provider);
+    final accountOutcomeEvent = switch (accountStatus) {
+      AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: analyticsProvider),
+      AccountStatus.existing => InstallationAnalyticsEvent.accountLogin(method: analyticsProvider),
+      AccountStatus.unknown => null,
+    };
+    final results = await Future.wait([
+      _log(
+        event: InstallationAnalyticsEvent.loginAttemptCompleted(
+          provider: analyticsProvider,
+        ),
       ),
-    );
+      if (accountOutcomeEvent != null) _log(event: accountOutcomeEvent),
+      _logAttribution(accountStatus: accountStatus),
+    ]);
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
   }
 
   Future<AnalyticsDeliveryResult> loginAttemptFailed({
@@ -57,6 +77,18 @@ class InstallationAnalyticsService({
     LoginAttemptFailureCause.timeout => AnalyticsLoginFailureKind.timeout,
     LoginAttemptFailureCause.unknown => AnalyticsLoginFailureKind.unknown,
   };
+
+  Future<AnalyticsDeliveryResult> _logAttribution({required AccountStatus accountStatus}) async {
+    final results = <AnalyticsDeliveryResult>[];
+    if (accountStatus == AccountStatus.created) {
+      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
 
   Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) async {
     if (!_capability.isEnabled) {

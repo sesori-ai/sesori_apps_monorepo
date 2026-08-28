@@ -1723,6 +1723,203 @@ $PluginAuthenticationPresentationErrorCopyWith<$Res> get error {
 }
 
 /// @nodoc
+mixin _$CatalogRescanOutcome {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcome);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CatalogRescanOutcome()';
+}
+
+
+}
+
+/// @nodoc
+class $CatalogRescanOutcomeCopyWith<$Res>  {
+$CatalogRescanOutcomeCopyWith(CatalogRescanOutcome _, $Res Function(CatalogRescanOutcome) __);
+}
+
+
+
+/// @nodoc
+
+
+class CatalogRescanOutcomeSucceeded implements CatalogRescanOutcome {
+  const CatalogRescanOutcomeSucceeded({required this.counts});
+  
+
+ final  CatalogRescanCounts counts;
+
+/// Create a copy of CatalogRescanOutcome
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CatalogRescanOutcomeSucceededCopyWith<CatalogRescanOutcomeSucceeded> get copyWith => _$CatalogRescanOutcomeSucceededCopyWithImpl<CatalogRescanOutcomeSucceeded>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeSucceeded&&(identical(other.counts, counts) || other.counts == counts));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,counts);
+
+@override
+String toString() {
+  return 'CatalogRescanOutcome.succeeded(counts: $counts)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CatalogRescanOutcomeSucceededCopyWith<$Res> implements $CatalogRescanOutcomeCopyWith<$Res> {
+  factory $CatalogRescanOutcomeSucceededCopyWith(CatalogRescanOutcomeSucceeded value, $Res Function(CatalogRescanOutcomeSucceeded) _then) = _$CatalogRescanOutcomeSucceededCopyWithImpl;
+@useResult
+$Res call({
+ CatalogRescanCounts counts
+});
+
+
+
+
+}
+/// @nodoc
+class _$CatalogRescanOutcomeSucceededCopyWithImpl<$Res>
+    implements $CatalogRescanOutcomeSucceededCopyWith<$Res> {
+  _$CatalogRescanOutcomeSucceededCopyWithImpl(this._self, this._then);
+
+  final CatalogRescanOutcomeSucceeded _self;
+  final $Res Function(CatalogRescanOutcomeSucceeded) _then;
+
+/// Create a copy of CatalogRescanOutcome
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? counts = null,}) {
+  return _then(CatalogRescanOutcomeSucceeded(
+counts: null == counts ? _self.counts : counts // ignore: cast_nullable_to_non_nullable
+as CatalogRescanCounts,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class CatalogRescanOutcomePartlyFailed implements CatalogRescanOutcome {
+  const CatalogRescanOutcomePartlyFailed({required this.succeededCount, required this.failedCount});
+  
+
+ final  int succeededCount;
+ final  int failedCount;
+
+/// Create a copy of CatalogRescanOutcome
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CatalogRescanOutcomePartlyFailedCopyWith<CatalogRescanOutcomePartlyFailed> get copyWith => _$CatalogRescanOutcomePartlyFailedCopyWithImpl<CatalogRescanOutcomePartlyFailed>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomePartlyFailed&&(identical(other.succeededCount, succeededCount) || other.succeededCount == succeededCount)&&(identical(other.failedCount, failedCount) || other.failedCount == failedCount));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,succeededCount,failedCount);
+
+@override
+String toString() {
+  return 'CatalogRescanOutcome.partlyFailed(succeededCount: $succeededCount, failedCount: $failedCount)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CatalogRescanOutcomePartlyFailedCopyWith<$Res> implements $CatalogRescanOutcomeCopyWith<$Res> {
+  factory $CatalogRescanOutcomePartlyFailedCopyWith(CatalogRescanOutcomePartlyFailed value, $Res Function(CatalogRescanOutcomePartlyFailed) _then) = _$CatalogRescanOutcomePartlyFailedCopyWithImpl;
+@useResult
+$Res call({
+ int succeededCount, int failedCount
+});
+
+
+
+
+}
+/// @nodoc
+class _$CatalogRescanOutcomePartlyFailedCopyWithImpl<$Res>
+    implements $CatalogRescanOutcomePartlyFailedCopyWith<$Res> {
+  _$CatalogRescanOutcomePartlyFailedCopyWithImpl(this._self, this._then);
+
+  final CatalogRescanOutcomePartlyFailed _self;
+  final $Res Function(CatalogRescanOutcomePartlyFailed) _then;
+
+/// Create a copy of CatalogRescanOutcome
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? succeededCount = null,Object? failedCount = null,}) {
+  return _then(CatalogRescanOutcomePartlyFailed(
+succeededCount: null == succeededCount ? _self.succeededCount : succeededCount // ignore: cast_nullable_to_non_nullable
+as int,failedCount: null == failedCount ? _self.failedCount : failedCount // ignore: cast_nullable_to_non_nullable
+as int,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class CatalogRescanOutcomeFailed implements CatalogRescanOutcome {
+  const CatalogRescanOutcomeFailed();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeFailed);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'CatalogRescanOutcome.failed()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
 mixin _$PluginManagementState {
 
 
@@ -1896,7 +2093,7 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs}): _installs = installs;
+  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections, required this.scanOutcome}): _installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
   
 
  final  PluginManagementResponse response;
@@ -1912,6 +2109,37 @@ class PluginManagementReady implements PluginManagementState {
   return EqualUnmodifiableMapView(_installs);
 }
 
+/// Harnesses with a catalog scan in flight, whether this screen started it
+/// or the lists did. Their scan action is not offered again while it runs.
+ final  Set<String> _scanningPluginIds;
+/// Harnesses with a catalog scan in flight, whether this screen started it
+/// or the lists did. Their scan action is not offered again while it runs.
+ Set<String> get scanningPluginIds {
+  if (_scanningPluginIds is EqualUnmodifiableSetView) return _scanningPluginIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_scanningPluginIds);
+}
+
+/// Why a targeted scan was turned down, keyed by the harness the user
+/// named. An accepted start is never recorded: the card reports it by
+/// disabling its own action, and the aggregate row reports the run.
+ final  Map<String, CatalogRescanStartResult> _scanRejections;
+/// Why a targeted scan was turned down, keyed by the harness the user
+/// named. An accepted start is never recorded: the card reports it by
+/// disabling its own action, and the aggregate row reports the run.
+ Map<String, CatalogRescanStartResult> get scanRejections {
+  if (_scanRejections is EqualUnmodifiableMapView) return _scanRejections;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_scanRejections);
+}
+
+/// How a scan started from this screen ended, held until it is reported.
+///
+/// This screen hosts no progress row, so a scan started here would
+/// otherwise finish in silence: the spinner simply stops, and the result
+/// the service published is auto-cleared before the user could reach a
+/// list to read it.
+ final  CatalogRescanOutcome? scanOutcome;
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
@@ -1923,16 +2151,16 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs)&&const DeepCollectionEquality().equals(other._scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other._scanRejections, _scanRejections)&&(identical(other.scanOutcome, scanOutcome) || other.scanOutcome == scanOutcome));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refresh,action,authentication,const DeepCollectionEquality().hash(_installs));
+int get hashCode => Object.hash(runtimeType,response,refresh,action,authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections),scanOutcome);
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, authentication: $authentication, installs: $installs)';
+  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections, scanOutcome: $scanOutcome)';
 }
 
 
@@ -1943,11 +2171,11 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections, CatalogRescanOutcome? scanOutcome
 });
 
 
-$PluginManagementResponseCopyWith<$Res> get response;$PluginManagementRefreshStateCopyWith<$Res> get refresh;$PluginManagementActionStateCopyWith<$Res> get action;$PluginAuthenticationPresentationStateCopyWith<$Res> get authentication;
+$PluginManagementResponseCopyWith<$Res> get response;$PluginManagementRefreshStateCopyWith<$Res> get refresh;$PluginManagementActionStateCopyWith<$Res> get action;$PluginAuthenticationPresentationStateCopyWith<$Res> get authentication;$CatalogRescanOutcomeCopyWith<$Res>? get scanOutcome;
 
 }
 /// @nodoc
@@ -1960,14 +2188,17 @@ class _$PluginManagementReadyCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? authentication = null,Object? installs = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? authentication = null,Object? installs = null,Object? scanningPluginIds = null,Object? scanRejections = null,Object? scanOutcome = freezed,}) {
   return _then(PluginManagementReady(
 response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
 as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh // ignore: cast_nullable_to_non_nullable
 as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
 as PluginManagementActionState,authentication: null == authentication ? _self.authentication : authentication // ignore: cast_nullable_to_non_nullable
 as PluginAuthenticationPresentationState,installs: null == installs ? _self._installs : installs // ignore: cast_nullable_to_non_nullable
-as Map<String, PluginInstallProgress>,
+as Map<String, PluginInstallProgress>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,scanRejections: null == scanRejections ? _self._scanRejections : scanRejections // ignore: cast_nullable_to_non_nullable
+as Map<String, CatalogRescanStartResult>,scanOutcome: freezed == scanOutcome ? _self.scanOutcome : scanOutcome // ignore: cast_nullable_to_non_nullable
+as CatalogRescanOutcome?,
   ));
 }
 
@@ -2006,6 +2237,18 @@ $PluginAuthenticationPresentationStateCopyWith<$Res> get authentication {
   
   return $PluginAuthenticationPresentationStateCopyWith<$Res>(_self.authentication, (value) {
     return _then(_self.copyWith(authentication: value));
+  });
+}/// Create a copy of PluginManagementState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CatalogRescanOutcomeCopyWith<$Res>? get scanOutcome {
+    if (_self.scanOutcome == null) {
+    return null;
+  }
+
+  return $CatalogRescanOutcomeCopyWith<$Res>(_self.scanOutcome!, (value) {
+    return _then(_self.copyWith(scanOutcome: value));
   });
 }
 }

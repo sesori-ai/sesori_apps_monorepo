@@ -20,6 +20,13 @@ variant, and worktree mode, and creating the session with its first input.
   default-first, and a model that offers variants always has one selected: the
   agent's declared variant when valid, otherwise the first available. Selecting a
   variant is therefore a switch between named levels, never a reset to unset.
+- After a new session and its first prompt or command are accepted, the bridge
+  remembers the complete agent, model, and effort selection per plugin. The next
+  New Session screen uses it as the prefill across projects for that plugin after
+  validating every value against the current catalog; removed values fall back to
+  current plugin defaults. A failed creation never replaces the remembered
+  selection. Preference read/write failures stay observable locally but never hide
+  usable options or turn an already-created session into a retryable failure.
 - Hermes Agent seeds its configured model and provider from `hermes status`,
   then discovers the available model catalog in a separate empty ACP session
   before the user creates one. The discovery process must exit before Sesori
@@ -30,6 +37,16 @@ variant, and worktree mode, and creating the session with its first input.
   Hermes values accepted by `session/set_model`, including named custom
   providers, and a selected model is applied before the turn. Hermes also
   advertises image prompt capability so inline attachments are accepted.
+- DeepSeek exposes one primary agent plus provider-grouped models, exact
+  reasoning variants, and commands from `deepseek/catalog`. Model identifiers
+  remain opaque even when upstream provider/model names contain slashes or
+  Unicode. Sound providers survive bounded peer failures as a partial result;
+  total provider failure is explicit so bridge-owned cache retention applies.
+  The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
+  before prompt dispatch, fails closed on either rejection, and records the
+  selected identity only after every requested write succeeds. Catalog reads use
+  the connected adapter without creating a session or model request; selection
+  is session-local and never writes normal `DSH_HOME` settings.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -56,7 +73,9 @@ variant, and worktree mode, and creating the session with its first input.
   behind it; the surface never names that split, because the user cannot act on
   it and the line above the composer already says what is missing.
 - Concurrent requests coalesce; an incomplete observation never replaces a
-  complete cached one, and a moved project invalidates its entries.
+  complete cached one, and a moved project invalidates its entries. Rejected-selection
+  invalidation keeps its epoch checks before serving or committing, so a retained
+  snapshot invalidated during discovery is not served once.
 - Backend notifications use scoped event domains: Codex skill changes emit a
   command-catalog invalidation rather than project activity, while MCP startup
   changes remain MCP-tool events.
@@ -107,17 +126,22 @@ variant, and worktree mode, and creating the session with its first input.
 - Graceful shutdown fences new create routes, aborts and drains accepted metadata
   work, drains session operations and local mutations, then closes normalized
   event delivery and its remaining tails.
-- OMP discovers modes, commands, providers/models, and model-specific thinking
-  levels in a project-scoped scratch session. Model values remain exact even
-  when the model ID contains slashes, and the configured pre-sweep model remains
-  the default. A rejected or partially applied selection fails before prompting.
+- OMP discovers modes, commands, every advertised provider/model, and model-specific
+  thinking levels in a project-scoped scratch session. Large catalogs from multiple
+  logged-in providers remain complete so they can replace an older complete cache.
+  Model values remain exact even when the model ID contains slashes, and the configured
+  pre-sweep model remains the default. A rejected or partially applied selection fails
+  before prompting.
+- Pi likewise discovers every advertised model and its available thinking levels within
+  the existing total probe deadline, so catalog size alone never makes a healthy refresh
+  partial or leaves an older complete cache in place.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
 | L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
@@ -139,6 +163,9 @@ reconnect or option refresh while restoration is pending.
 
 - Options are empty or stale where a discovery failure should be an explicit
   error, or a partial observation overwrites a complete cache.
+- A successful creation does not become the next per-plugin prefill, a failed
+  creation replaces it, one plugin's selection leaks into another, or a removed
+  saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
   pressed, or renames itself after which load it happens to be repeating.
@@ -149,6 +176,9 @@ reconnect or option refresh while restoration is pending.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
+- A DeepSeek catalog loses sound providers because one provider failed, parses
+  an opaque model ID, dispatches before both requested config writes settle, or
+  records a partially applied selection as successful.
 - Creation succeeds for a non-routable plugin or unknown project.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
@@ -172,9 +202,11 @@ reconnect or option refresh while restoration is pending.
 
 - Bridge: `bridge/app/lib/src/api/sesori_server_api.dart`,
   `bridge/app/lib/src/repositories/session_metadata_repository.dart`,
-  `bridge/app/lib/src/bridge/services/` (session creation, mutation, events,
+  `bridge/app/lib/src/services/` (session creation, mutation, events,
   options, worktree), the create-session and options handlers, and their tests
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
+- DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/`,
+  `lib/src/services/`, and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
 - Client: `client/module_core/lib/src/services/new_session_options_service.dart`

@@ -73,7 +73,7 @@ void main() {
     );
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 200),
+      const ProjectTime(created: 100, updated: 200),
       reason: "an incomplete assistant message must not use the receipt-time fallback",
     );
     await service.handleEvent(
@@ -96,7 +96,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 1000),
+      const ProjectTime(created: 100, updated: 1000),
     );
   });
 
@@ -120,7 +120,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 300),
+      const ProjectTime(created: 100, updated: 300),
     );
   });
 
@@ -144,7 +144,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 200),
+      const ProjectTime(created: 100, updated: 200),
     );
   });
 
@@ -168,7 +168,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 1000),
+      const ProjectTime(created: 100, updated: 1000),
     );
   });
 
@@ -273,7 +273,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 600),
+      const ProjectTime(created: 100, updated: 600),
     );
   });
 
@@ -311,7 +311,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 100),
+      const ProjectTime(created: 100, updated: 100),
     );
   });
 
@@ -349,7 +349,7 @@ void main() {
 
     expect(
       await _activity(database: database, projectId: "project"),
-      const ProjectActivity(createdAt: 100, updatedAt: 300),
+      const ProjectTime(created: 100, updated: 300),
     );
     expect(changes, [const ProjectActivityChange(projectId: "project", updatedAt: 300)]);
     await subscription.cancel();
@@ -379,11 +379,11 @@ void main() {
     expect(plugin.getProjectsCallCount, 1, reason: "native reconciliation must fetch projects once, not per project");
     expect(
       await _activity(database: database, projectId: "created-only"),
-      const ProjectActivity(createdAt: 50, updatedAt: 500),
+      const ProjectTime(created: 50, updated: 500),
     );
     expect(
       await _activity(database: database, projectId: "advanced"),
-      const ProjectActivity(createdAt: 80, updatedAt: 600),
+      const ProjectTime(created: 80, updated: 600),
     );
     expect(changes, [const ProjectActivityChange(projectId: "advanced", updatedAt: 600)]);
     await subscription.cancel();
@@ -438,13 +438,14 @@ Future<void> _storeSession({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: "fake",
+    preservePullRequestScope: false,
   );
 }
 
-Future<ProjectActivity?> _activity({required AppDatabase database, required String projectId}) async {
+Future<ProjectTime?> _activity({required AppDatabase database, required String projectId}) async {
   final row = await database.projectsDao.getProject(projectId: projectId);
   if (row == null) return null;
-  return ProjectActivity(createdAt: row.createdAt, updatedAt: row.updatedAt);
+  return ProjectTime(created: row.createdAt, updated: row.updatedAt);
 }
 
 class _HangingProjectsPlugin() extends FakeBridgePlugin {

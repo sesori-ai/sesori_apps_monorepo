@@ -6,8 +6,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-import "support/in_memory_host_json_store.dart";
-
 const _gracefulShutdownWait = Duration(seconds: 5);
 // Five 500ms-spaced probes, expressed as the deadline pacing the supervisor
 // now always uses. Most tests here run on a clock that never advances, so the
@@ -33,6 +31,7 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: _dynamic(<int>[4096, 49152, 49153])),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(49153));
@@ -56,6 +55,7 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: _dynamic(<int>[49152])),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(49152));
@@ -90,6 +90,7 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: _dynamic(<int>[49152, 49153])),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(49153));
@@ -124,6 +125,7 @@ void main() {
             portPolicy: _dynamic(List<int>.generate(10, (index) => 49152 + index)),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -148,6 +150,7 @@ void main() {
             ),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -166,6 +169,7 @@ void main() {
             portPolicy: _dynamic(<int>[49152, 49153]),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<ProcessException>()),
       );
@@ -200,6 +204,7 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 4096)),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -219,6 +224,7 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50128)),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<StateError>()),
       );
@@ -239,6 +245,7 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50123)),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(
@@ -263,6 +270,7 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50130)),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -292,6 +300,7 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50133)),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -306,6 +315,7 @@ void main() {
             portPolicy: const ExplicitPortPolicy(port: 4096),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -325,6 +335,7 @@ void main() {
           portPolicy: const ExplicitPortPolicy(port: 4096),
         ),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(fakes.bindable.probedPorts, equals(<int>[4096]));
@@ -353,6 +364,7 @@ void main() {
             portPolicy: const ExplicitPortPolicy(port: 50140),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -373,6 +385,7 @@ void main() {
             buildRecord: (draft) => throw StateError("malformed record"),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<StateError>()),
       );
@@ -408,6 +421,7 @@ void main() {
           ),
         ),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
+        startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(50150));
@@ -436,6 +450,7 @@ void main() {
             ),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -479,6 +494,7 @@ void main() {
             ),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -602,6 +618,7 @@ void main() {
       final handle = await fakes.service().attach(
         spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50125)),
         port: 50125,
+        startAborted: StartAbortSignal.never,
       );
 
       expect(handle.port, equals(50125));
@@ -623,6 +640,7 @@ void main() {
         fakes.service().attach(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50126)),
           port: 50126,
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -658,6 +676,7 @@ void main() {
         fakes.service().attach(
           spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50127)),
           port: 50127,
+          startAborted: StartAbortSignal.never,
         ),
         throwsA(isA<PluginStartException>()),
       );
@@ -749,7 +768,6 @@ class _Fakes({_RecordingClock? clock}) {
   final _SpawnPlan spawn = _SpawnPlan();
   final _ProbePlan probe = _ProbePlan();
   final _BindablePlan bindable = _BindablePlan();
-  final InMemoryHostJsonStore intentFiles = InMemoryHostJsonStore();
 
   ManagedProcessService<_TestRecord> service() {
     return ManagedProcessService<_TestRecord>(
@@ -760,7 +778,6 @@ class _Fakes({_RecordingClock? clock}) {
       clock: clock,
       runtimeId: "OPENCODE",
       gracefulShutdownWait: _gracefulShutdownWait,
-      intentStore: RuntimeStartIntentStore(store: intentFiles, fileName: "opencode-start-intent.json"),
     );
   }
 

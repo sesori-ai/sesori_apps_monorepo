@@ -23,8 +23,10 @@ class const BridgeSseGlobalDisposed() extends BridgeSseEvent;
 /// Signals that the emitting plugin's process-wide command catalog changed.
 class const BridgeSseCommandCatalogUpdated() extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionCreated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionUpdated({required final Map<String, dynamic> info, required final bool titleChanged})
     extends BridgeSseEvent;
 
@@ -41,6 +43,7 @@ class const BridgeSseSessionPromptDefaultsChanged({
   required final PluginAgentModel? model,
 }) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionDeleted({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseSessionDiff({required final String sessionID}) extends BridgeSseEvent;
@@ -49,6 +52,9 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
+/// [status] uses the shared session-status JSON shape with a `type` discriminator.
+/// `PluginSessionStatus.toJson()` produces that shape for plugin-owned status.
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
     extends BridgeSseEvent;
 
@@ -72,6 +78,7 @@ class const BridgeSseQueuedPromptsUpdated({
   required final List<PluginQueuedPrompt> prompts,
 }) extends BridgeSseEvent;
 
+// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
 
 class const BridgeSseMessageRemoved({required final String sessionID, required final String messageID})
@@ -176,8 +183,14 @@ class const BridgeSseWorkspaceReady({final String? name}) extends BridgeSseEvent
 
 class const BridgeSseWorkspaceFailed({final String? message}) extends BridgeSseEvent;
 
-class const BridgeSseTuiToastShow({final String? title, final String? message, final String? variant})
-    extends BridgeSseEvent;
+/// Transient backend guidance. [sessionID] is the backend session identity
+/// before bridge-core remapping; null means genuinely global or unattributed.
+class const BridgeSseTuiToastShow({
+  required final String? sessionID,
+  required final String? title,
+  required final String? message,
+  required final String? variant,
+}) extends BridgeSseEvent;
 
 class const BridgeSseWorktreeReady() extends BridgeSseEvent;
 

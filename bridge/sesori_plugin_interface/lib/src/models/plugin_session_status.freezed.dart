@@ -54,7 +54,7 @@ class PluginSessionStatusIdle implements PluginSessionStatus {
 
 
 
-@JsonKey(name: 'runtimeType')
+@JsonKey(name: 'type')
 final String $type;
 
 
@@ -93,7 +93,7 @@ class PluginSessionStatusBusy implements PluginSessionStatus {
 
 
 
-@JsonKey(name: 'runtimeType')
+@JsonKey(name: 'type')
 final String $type;
 
 
@@ -134,7 +134,7 @@ class PluginSessionStatusRetry implements PluginSessionStatus {
  final  String message;
  final  int next;
 
-@JsonKey(name: 'runtimeType')
+@JsonKey(name: 'type')
 final String $type;
 
 

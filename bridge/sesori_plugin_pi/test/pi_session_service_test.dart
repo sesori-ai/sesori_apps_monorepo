@@ -83,8 +83,18 @@ void main() {
     final frames = <PiSessionProcessFrame>[];
     fixture.repository.frames.listen(frames.add);
 
-    final first = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
-    final second = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final first = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
+    final second = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     process.emit(frame: {"type": "agent_start"});
     await pump();
     expect(frames, isEmpty);
@@ -105,7 +115,12 @@ void main() {
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await waitForCommand(process: process, type: "get_entries");
     expect(storage.pending, isNull);
     expect(storage.clearedDirectories, containsAll({"/project"}));
@@ -126,6 +141,8 @@ void main() {
       final connection = failedCleanupFixture.repository.ensureResident(
         sessionId: "other",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       await _answerEntries(failedCleanupProcess);
       await connection;
@@ -145,7 +162,12 @@ void main() {
     final fixture = _Fixture(processes: [resumed, created], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(resumed);
     await resident;
     expect(fixture.spawned.single.launch, isA<PiResumedSession>());
@@ -154,7 +176,12 @@ void main() {
     storage
       ..resolved = null
       ..pending = const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null);
-    final pending = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/pending"});
+    final pending = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/pending"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(created);
     await pending;
     expect(fixture.spawned.last.launch, isA<PiNewSession>());
@@ -222,6 +249,8 @@ void main() {
     final connecting = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await waitForCommand(process: process, type: "get_entries");
 
@@ -246,10 +275,17 @@ void main() {
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
       historyRpcTimeout: const Duration(seconds: 2),
+      abortRpcTimeout: const Duration(seconds: 1),
+      promptRpcTimeout: const Duration(minutes: 30),
     );
     addTearDown(repository.dispose);
 
-    final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await pump();
     await repository.teardown(sessionId: "session");
     spawn.complete(process);
@@ -268,6 +304,8 @@ void main() {
     final firstConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(first);
     final firstGeneration = (await firstConnection).generation;
@@ -276,6 +314,8 @@ void main() {
     final secondConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(second);
     expect((await secondConnection).generation, greaterThan(firstGeneration));
@@ -287,7 +327,12 @@ void main() {
     final fixture = _Fixture(processes: [resident, transient]);
     addTearDown(fixture.dispose);
 
-    final connecting = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
     final rename = fixture.repository.renameSession(
       sessionId: "session",
@@ -342,6 +387,8 @@ void main() {
       final connecting = fixture.repository.ensureResident(
         sessionId: "session",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       gate.complete();
 
@@ -361,7 +408,7 @@ void main() {
     });
   }
 
-  test("selection completes before prompt dispatch", () async {
+  test("selection is present at process startup and completes before prompt dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -377,6 +424,19 @@ void main() {
       model: (providerID: "provider", modelID: "model"),
     );
     await _answerEntries(process);
+    expect(fixture.spawned.single.arguments, [
+      "--mode",
+      "rpc",
+      "--approve",
+      "--session",
+      "/sessions/session.jsonl",
+      "--provider",
+      "provider",
+      "--model",
+      "model",
+      "--thinking",
+      "high",
+    ]);
     final model = await waitForCommand(process: process, type: "set_model");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
     process.emitResponse(id: model["id"]! as String, command: "set_model");
@@ -659,6 +719,12 @@ void main() {
     expect(completed, isFalse);
     process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
     await accepted;
+    final settledState = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: settledState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
     await _waitForIdle(service: service, sessionId: "session");
 
     final failed = service.sendCommand(
@@ -680,12 +746,14 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
-  test("prompt admission is immediate, same-session FIFO, and sessions run concurrently", () async {
+  test("prompt admission is immediate, busy follow-ups steer in FIFO, and sessions run concurrently", () async {
     final first = FakePiProcess();
     final other = FakePiProcess();
     final fixture = _Fixture(processes: [first, other]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     await service.sendPrompt(
       sessionId: "one",
@@ -719,13 +787,263 @@ void main() {
     final firstPrompt = await waitForCommand(process: first, type: "prompt");
     final otherPrompt = await waitForCommand(process: other, type: "prompt");
     expect(firstPrompt["message"], "first");
+    expect(firstPrompt["streamingBehavior"], "steer");
     expect(otherPrompt["message"], "other");
+    expect(otherPrompt["streamingBehavior"], "steer");
     expect(first.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
 
+    first.emit(frame: {"type": "agent_start"});
+    first.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "first"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
     first.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
-    first.emit(frame: {"type": "agent_settled"});
     final secondPrompt = await _waitForNthCommand(process: first, type: "prompt", count: 2);
     expect(secondPrompt["message"], "second");
+    expect(secondPrompt["streamingBehavior"], "steer");
+    expect(
+      service.sessionStatuses["one"],
+      const PluginSessionStatus.busy(),
+      reason: "the follow-up must dispatch before the active run settles",
+    );
+
+    first.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    first.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "second"},
+          ],
+          "timestamp": 2,
+        },
+      },
+    );
+    first.emit(frame: {"type": "agent_settled"});
+    other.emitResponse(id: otherPrompt["id"]! as String, command: "prompt");
+    other.emit(frame: {"type": "agent_settled"});
+    await Future.wait([
+      _waitForIdle(service: service, sessionId: "one"),
+      _waitForIdle(service: service, sessionId: "two"),
+    ]);
+    expect(
+      events
+          .whereType<BridgeSseMessageUpdated>()
+          .map((event) => event.info["promptId"])
+          .where((promptId) => promptId == "prompt-8" || promptId == "prompt-9"),
+      ["prompt-8", "prompt-9"],
+    );
+  });
+
+  test("settlement before steering acceptance does not finish the new run", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "settling-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "settling-steer",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steer")],
+      userVisibleText: "steer",
+      variant: null,
+      model: null,
+    );
+
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+
+    process.emit(frame: {"type": "agent_settled"});
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+    final stateCommand = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: stateCommand["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": true, "pendingMessageCount": 0},
+    );
+    await pump();
+
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.currentWorkState, PluginWorkState.busy);
+
+    process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("a selection-changing follow-up waits for the active Pi run boundary", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "selection-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: (providerID: "provider", modelID: "first-model"),
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "selection-second",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: null,
+      model: (providerID: "provider", modelID: "second-model"),
+    );
+
+    await _answerEntries(process);
+    final firstModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    await pump();
+
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+
+    process.emit(frame: {"type": "agent_settled"});
+    final secondModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+    expect(secondModel["modelId"], "second-model");
+    process.emitResponse(id: secondModel["id"]! as String, command: "set_model");
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("omitted selections inherit the active run and keep steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    const model = (providerID: "provider", modelID: "model");
+    const variant = PluginSessionVariant(id: "high");
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: variant,
+      model: model,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-inherited",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "inherit")],
+      userVisibleText: "inherit",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "effective-explicit",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "explicit")],
+      userVisibleText: "explicit",
+      variant: variant,
+      model: model,
+    );
+
+    await _answerEntries(process);
+    final setModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: setModel["id"]! as String, command: "set_model");
+    final setThinking = await waitForCommand(process: process, type: "set_thinking_level");
+    process.emitResponse(id: setThinking["id"]! as String, command: "set_thinking_level");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+
+    final inheritedPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: inheritedPrompt["id"]! as String, command: "prompt");
+    final explicitPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 3);
+    expect(explicitPrompt["message"], "explicit");
+    expect(process.written.where((frame) => frame["type"] == "set_model"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "set_thinking_level"), hasLength(1));
+
+    process.emitResponse(id: explicitPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  test("queued work resets a terminal retry status before dispatch", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retry-first",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: (providerID: "provider", modelID: "first-model"),
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "retry-next",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "next")],
+      userVisibleText: "next",
+      variant: null,
+      model: (providerID: "provider", modelID: "next-model"),
+    );
+
+    await _answerEntries(process);
+    final firstModel = await waitForCommand(process: process, type: "set_model");
+    process.emitResponse(id: firstModel["id"]! as String, command: "set_model");
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "auto_retry_start", "attempt": 2, "delayMs": 500});
+    process.emit(frame: {"type": "auto_retry_end", "success": false, "attempt": 2});
+    await pump();
+    expect(service.sessionStatuses["session"], isA<PluginSessionStatusRetry>());
+
+    process.emit(frame: {"type": "agent_settled"});
+    final nextModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(events.whereType<BridgeSseSessionStatus>().last.status["type"], "busy");
+
+    process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
+    final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: nextPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
   });
 
   test("a retried prompt id is an idempotent no-op instead of a duplicate turn", () async {
@@ -1096,13 +1414,89 @@ void main() {
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
   });
 
+  test("process exit removes an active compaction card", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "compacting-prompt",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after compaction")],
+      userVisibleText: "after compaction",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
+    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+
+    process.exit(code: 9);
+
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
+  });
+
+  test("pre-prompt compaction stays visible beyond the ordinary RPC timeout", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])
+      ..historyRpcTimeout = const Duration(milliseconds: 20)
+      ..promptRpcTimeout = const Duration(seconds: 1);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "compacting-prompt",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "after compaction")],
+      userVisibleText: "after compaction",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+
+    expect(process.killed, isFalse);
+    expect(service.queuedPrompts(sessionId: "session").single.id, "compacting-prompt");
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
+    final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(runningPart.messageID, runningMessage.info["id"]);
+    expect(runningPart.state.status, PluginToolStatus.running);
+    expect(runningPart.state.title, "Compacting context");
+
+    process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
+    await pump();
+
+    expect(events.whereType<BridgeSseMessageUpdated>().last.info["id"], runningMessage.info["id"]);
+    final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
+    expect(completedPart.id, runningPart.id);
+    expect(completedPart.state.status, PluginToolStatus.completed);
+    expect(completedPart.state.title, "Context compacted");
+
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    await pump();
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
   test("ambiguous prompt timeout tears down generation before queued work reconnects", () async {
     final timedOut = FakePiProcess();
     final replacement = FakePiProcess();
-    final fixture = _Fixture(
-      processes: [timedOut, replacement],
-      historyRpcTimeout: const Duration(milliseconds: 20),
-    );
+    final fixture = _Fixture(processes: [timedOut, replacement])..promptRpcTimeout = const Duration(milliseconds: 20);
     addTearDown(fixture.dispose);
     final service = fixture.service();
 
@@ -1269,11 +1663,13 @@ void main() {
     await _waitForIdle(service: service, sessionId: "child");
   });
 
-  test("abort invalidates queue, sends abort, and tears down process", () async {
+  test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1297,13 +1693,225 @@ void main() {
     final prompt = await waitForCommand(process: process, type: "prompt");
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
     process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
+    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(steeringPrompt["message"], "queued");
+    expect(steeringPrompt["streamingBehavior"], "steer");
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
     final abort = service.abort(sessionId: "session");
     final abortCommand = await waitForCommand(process: process, type: "abort");
     process.emitResponse(id: abortCommand["id"]! as String, command: "abort");
     await abort;
 
     expect(process.killed, isTrue);
-    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(2));
+    expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
+  });
+
+  test("abort force-replaces Pi when its acknowledgement waits on hidden steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..abortRpcTimeout = const Duration(milliseconds: 10);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-active",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active")],
+      userVisibleText: "active",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-steering",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steering")],
+      userVisibleText: "steering",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+
+    final warnings = await _captureWarnings(() async {
+      final abort = service.abort(sessionId: "session");
+      await waitForCommand(process: process, type: "abort");
+      await abort;
+    });
+
+    expect(warnings, contains("abort acknowledgement timed out; forcing process replacement"));
+    expect(process.killed, isTrue);
+    expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+  });
+
+  test("shutdown interruption accepts process exit before abort response", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-shutdown",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active work")],
+      userVisibleText: "active work",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+
+    final warnings = await _captureWarnings(() async {
+      final interruption = service.interruptActiveWork(budget: const Duration(seconds: 1));
+      await waitForCommand(process: process, type: "abort");
+      process.exit(code: -2);
+      await interruption;
+    });
+
+    expect(warnings, isNot(contains("abort command failed")));
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+    expect(fixture.repository.residentSessionIds, isEmpty);
+  });
+
+  test("extension-initiated idle turns remain visible and reset resident idleness", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-extension",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "start")],
+      userVisibleText: "start",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    await pump();
+    expect(clock.delays, [const Duration(minutes: 5)]);
+    events.clear();
+
+    process.emit(frame: {"type": "agent_start"});
+    await _waitForEvent<BridgeSseSessionStatus>(events: events);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.currentWorkState, PluginWorkState.busy);
+
+    clock.elapse();
+    await pump();
+    expect(process.killed, isFalse);
+
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "custom",
+          "content": "[PR Monitor] report",
+          "display": true,
+          "timestamp": 100,
+        },
+      },
+    );
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "assistant",
+          "content": [
+            {"type": "text", "text": "Handled report"},
+          ],
+          "provider": "provider",
+          "model": "model",
+          "stopReason": "stop",
+          "errorMessage": null,
+          "timestamp": 101,
+        },
+      },
+    );
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
+
+    final messageInfos = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+    expect(messageInfos.map((info) => info["role"]), ["assistant", "assistant"]);
+    expect(messageInfos.map((info) => info["sender"]), ["system", "agent"]);
+    expect(
+      events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
+      containsAllInOrder(["[PR Monitor] report", "Handled report"]),
+    );
+    expect(
+      events.whereType<BridgeSseSessionStatus>().map((event) => event.status["type"]),
+      ["busy", "idle"],
+    );
+    expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    expect(service.currentWorkState, PluginWorkState.idle);
+    expect(clock.delays, [const Duration(minutes: 5), const Duration(minutes: 5)]);
+
+    clock.elapse();
+    await pump();
+    expect(process.killed, isTrue);
+  });
+
+  test("extension-initiated process exit reports failure and returns idle", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..idleTimeout = null;
+    addTearDown(fixture.dispose);
+    late PiSessionService service;
+    final events = <BridgeSseEvent>[];
+    final warnings = await _captureWarnings(() async {
+      service = fixture.service();
+      service.events.listen(events.add);
+
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: "prompt-before-extension-exit",
+        directory: "/project",
+        parts: [const PluginPromptPart.text(text: "start")],
+        userVisibleText: "start",
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emit(frame: {"type": "agent_start"});
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      process.emit(frame: {"type": "agent_settled"});
+      await _waitForIdle(service: service, sessionId: "session");
+      events.clear();
+
+      process.emit(frame: {"type": "agent_start"});
+      await _waitForEvent<BridgeSseSessionStatus>(events: events);
+      process.exit(code: 9);
+      await _waitForEvent<BridgeSseSessionError>(events: events);
+    });
+
+    expect(warnings, contains("extension-initiated turn for session id=session"));
+    expect(warnings, contains("PiRpcProcessExitException(exitCode: 9)"));
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+    expect(service.currentWorkState, PluginWorkState.idle);
+    expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
     expect(fixture.repository.residentSessionIds, isEmpty);
   });
 
@@ -1332,11 +1940,65 @@ void main() {
     await pump();
     expect(first.killed, isTrue);
 
-    final resident = fixture.repository.ensureResident(sessionId: "two", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "two",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(second);
     await resident;
     await service.dispose();
     expect(second.killed, isTrue);
+  });
+
+  test("reads the configured idle timeout live at each reap arm", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final clock = _ManualClock();
+    final service = fixture.service(clock: clock);
+    fixture.idleTimeout = null;
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-no-reap",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "first")],
+      userVisibleText: "first",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(clock.delays, isEmpty);
+    clock.elapse();
+    await pump();
+    expect(fixture.repository.residentSessionIds, contains("session"));
+
+    fixture.idleTimeout = const Duration(minutes: 1);
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-reap",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "second")],
+      userVisibleText: "second",
+      variant: null,
+      model: null,
+    );
+    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(clock.delays, [const Duration(minutes: 1)]);
+    clock.elapse();
+    await pump();
+    expect(process.killed, isTrue);
   });
 
   test("dispose awaits an active idle-reap teardown", () async {
@@ -1679,9 +2341,12 @@ PiResolvedSession _resolved({String id = "session"}) => PiResolvedSession(
 final class _Fixture({
   required List<FakePiProcess> processes,
   final _Storage? storageOverride,
-  final Duration historyRpcTimeout = const Duration(seconds: 2),
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
+  Duration? idleTimeout = const Duration(minutes: 5);
+  Duration historyRpcTimeout = const Duration(seconds: 2);
+  Duration abortRpcTimeout = const Duration(seconds: 1);
+  Duration promptRpcTimeout = const Duration(seconds: 2);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
   late final PiMessageIdentityTracker identities = PiMessageIdentityTracker(pluginId: "pi");
@@ -1702,6 +2367,8 @@ final class _Fixture({
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
+    promptRpcTimeout: promptRpcTimeout,
   );
 
   PiSessionService service({ServerClock clock = const ServerClock()}) {
@@ -1722,7 +2389,7 @@ final class _Fixture({
       ),
       extensionUiService: extension,
       clock: clock,
-      idleTimeout: const Duration(minutes: 5),
+      resolveIdleTimeout: () => idleTimeout,
     );
     extensions.add(extension);
     _services.add(service);
@@ -1781,9 +2448,13 @@ final class _HistoryStorage({required super.storageApi}) extends PiSessionHistor
 
 final class _ManualClock() implements ServerClock {
   Completer<void>? _delay;
+  final List<Duration> delays = [];
 
   @override
-  Future<void> delay({required Duration duration}) => (_delay = Completer<void>()).future;
+  Future<void> delay({required Duration duration}) {
+    delays.add(duration);
+    return (_delay = Completer<void>()).future;
+  }
 
   void elapse() => _delay?.complete();
 

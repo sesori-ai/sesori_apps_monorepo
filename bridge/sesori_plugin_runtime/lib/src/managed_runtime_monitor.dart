@@ -13,11 +13,8 @@ import "runtime_restart_policy.dart";
 /// address-frozen port with backoff, publishing lifecycle transitions through
 /// the plugin's [PluginStatusController].
 ///
-/// The monitor is a **separate** component that composes [ManagedProcessService]
-/// rather than living inside it. The legacy in-place wrapper (and its fidelity
-/// gate) drives the service directly and never constructs a monitor, so
-/// "exit monitoring / restart / stderr logging" are simply absent there — the
-/// way the migration keeps these hardened behaviors off until the flip.
+/// Composes [ManagedProcessService] while owning exit monitoring, bounded
+/// restart, and stderr logging.
 ///
 /// Concurrency contract:
 /// - Every exit-driven action runs only for the *current* child
@@ -132,10 +129,12 @@ class ManagedRuntimeMonitor<R>({
 
     // exitCode is a bare Future with no cancel; _onUnexpectedExit re-checks the
     // current-child identity and the disarm flag, so a stale completion is inert.
-    unawaited(process.exitCode.then((code) => _onUnexpectedExit(process, code)).catchError((Object _) {}));
+    unawaited(
+      process.exitCode.then((code) => _onUnexpectedExit(process: process, exitCode: code)).catchError((Object _) {}),
+    );
   }
 
-  Future<void> _onUnexpectedExit(SpawnedProcess process, int exitCode) async {
+  Future<void> _onUnexpectedExit({required SpawnedProcess process, required int exitCode}) async {
     if (_disarmed || !identical(process, _currentHandle?.process)) {
       return;
     }

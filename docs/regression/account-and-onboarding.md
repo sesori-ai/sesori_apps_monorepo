@@ -13,7 +13,13 @@ participates.
   gives a typed recoverable reason, and leaving the app mid sign-in is not terminal.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
-  cleared on logout; the connection follows logout.
+  cleared on logout; the connection follows logout. Startup reads stored tokens
+  once before deciding whether validation or a fresh login is needed. Standalone
+  bridge logout remains clean and idempotent when tokens are already absent or
+  the saved authentication session has expired.
+- Auth-server URLs behave identically with or without trailing slashes, and
+  deadline expiry actively aborts registration and token-refresh transport,
+  including response-body consumption.
 - With no bridge, Projects shows install and start commands, the explainer, and
   support links, and copy/share hand off the command unchanged; connected with no
   projects shows the add-project call to action instead.

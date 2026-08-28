@@ -42,7 +42,6 @@ class const AccountRow({
       subtitle: hasUsername ? Text(providerLabel) : null,
       trailing: onTap != null ? const Icon(TablerRegular.chevron_right) : null,
       onTap: onTap,
-      isLast: true,
     );
   }
 }

@@ -749,15 +749,7 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     final cubit = context.read<ProjectListCubit>();
     final command = widget.command;
     final reportCopied = widget.reportCopied;
-    // Clipboard can throw on restricted platforms/states; fail soft and skip
-    // the success alert. Log so a broken copy button leaves a diagnostic
-    // trail instead of failing silently.
-    try {
-      await Clipboard.setData(ClipboardData(text: command));
-    } on Object catch (error, stackTrace) {
-      logw("Failed to copy command", error, stackTrace);
-      return;
-    }
+    if (!await copyTextToClipboard(text: command, operation: "command")) return;
     reportCopied(cubit);
     popupAlertPresenter.show(
       title: loc.projectsOnboardingCommandCopied,

@@ -59,9 +59,6 @@ void main() {
         () => handler.handle(
           makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: ""),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
@@ -72,9 +69,6 @@ void main() {
         handler.handle(
           makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: "unknown"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
@@ -96,9 +90,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response, const PendingPermissionResponse(data: []));
@@ -120,9 +111,6 @@ void main() {
       final response = await handler.handle(
         makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data, isA<List<PendingPermission>>());
@@ -155,9 +143,6 @@ void main() {
         derivedHandler.handle(
           makeRequest("POST", "/session/permissions"),
           body: const SessionIdRequest(sessionId: "gone"),
-          pathParams: {},
-          queryParams: {},
-          fragment: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
@@ -235,9 +220,6 @@ void main() {
       final response = await derivedHandler.handle(
         makeRequest("POST", "/session/permissions"),
         body: const SessionIdRequest(sessionId: "stable-root"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.data.map((permission) => permission.id), ["visible"]);

@@ -171,9 +171,7 @@ class TestPluginRuntime({
   Stream<SourcedPluginProvisionProgress> get provisionProgress => const Stream.empty();
 
   @override
-  Future<void> shutdownStartedPlugins() => Future.wait([
-    for (final plugin in _plugins.values) plugin.dispose(),
-  ]);
+  Future<void> shutdownStartedPlugins() async {}
 
   @override
   Future<void> dispose() async {

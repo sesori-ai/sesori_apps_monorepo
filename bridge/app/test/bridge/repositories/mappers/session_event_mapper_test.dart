@@ -23,22 +23,11 @@ void main() {
         agent: null,
         time: null,
       ).toJson();
-      const part = PluginMessagePart(
+      const part = PluginMessagePart.text(
         id: "part",
         sessionID: "backend-session",
         messageID: "message",
-        type: PluginMessagePartType.text,
         text: "text",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
       final cases = <({String name, BridgeSseEvent event, Set<String> expectedBackendIds})>[
         (
@@ -181,6 +170,16 @@ void main() {
           event: const BridgeSseTodoUpdated(sessionID: "backend-session"),
           expectedBackendIds: {"backend-session"},
         ),
+        (
+          name: "toast shown",
+          event: const BridgeSseTuiToastShow(
+            sessionID: "backend-session",
+            title: "Pi",
+            message: "Done",
+            variant: "success",
+          ),
+          expectedBackendIds: {"backend-session"},
+        ),
       ];
 
       for (final testCase in cases) {
@@ -230,6 +229,12 @@ void main() {
 
     test("preserves nullable session references and non-session events", () {
       const error = BridgeSseSessionError(sessionID: null);
+      const toast = BridgeSseTuiToastShow(
+        sessionID: null,
+        title: "Notice",
+        message: null,
+        variant: "info",
+      );
       const connected = BridgeSseServerConnected();
       const commandCatalogUpdated = BridgeSseCommandCatalogUpdated();
       const optionsChanged = BridgeSseSessionOptionsChanged(sessionID: "backend-session");
@@ -238,6 +243,8 @@ void main() {
       final mappedError = mapper.map(event: error, sessionIdsByBackendId: const {});
       expect(mappedError, isA<BridgeSseSessionError>());
       expect((mappedError! as BridgeSseSessionError).sessionID, isNull);
+      expect(mapper.backendSessionIds(event: toast), isEmpty);
+      expect(mapper.map(event: toast, sessionIdsByBackendId: const {}), same(toast));
       expect(mapper.map(event: connected, sessionIdsByBackendId: const {}), same(connected));
       expect(mapper.backendSessionIds(event: commandCatalogUpdated), isEmpty);
       expect(
@@ -250,59 +257,7 @@ void main() {
         same(optionsChanged),
       );
     });
-
-    test("a subtask's child reference is optional, translated when bound", () {
-      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
-
-      expect(mapper.backendSessionIds(event: event), {"backend-session"});
-      expect(mapper.optionalBackendSessionIds(event: event), {"backend-child"});
-
-      final mapped = mapper.map(
-        event: event,
-        sessionIdsByBackendId: const {...ids, "backend-child": "ses-child"},
-      );
-
-      expect((mapped! as BridgeSseMessagePartUpdated).part.sessionID, "ses-session");
-      expect((mapped as BridgeSseMessagePartUpdated).part.childSessionID, "ses-child");
-    });
-
-    test("an unbound child reference becomes null without withholding the part", () {
-      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
-
-      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
-
-      expect((mapped! as BridgeSseMessagePartUpdated).part.sessionID, "ses-session");
-      expect((mapped as BridgeSseMessagePartUpdated).part.childSessionID, isNull);
-    });
-
-    test("a part with no child reference contributes no optional id", () {
-      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: null));
-
-      expect(mapper.optionalBackendSessionIds(event: event), isEmpty);
-      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
-      expect((mapped! as BridgeSseMessagePartUpdated).part.childSessionID, isNull);
-    });
   });
-}
-
-PluginMessagePart _subtaskPart({required String? childSessionID}) {
-  return PluginMessagePart(
-    id: "part",
-    sessionID: "backend-session",
-    messageID: "message",
-    type: PluginMessagePartType.subtask,
-    text: null,
-    tool: null,
-    state: null,
-    prompt: "prompt",
-    description: "description",
-    agent: "explore",
-    childSessionID: childSessionID,
-    agentName: null,
-    attempt: null,
-    retryError: null,
-    attachment: null,
-  );
 }
 
 Map<String, dynamic> _sessionInfo({required String sessionId, required String? parentId}) {

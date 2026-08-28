@@ -53,6 +53,7 @@ PiThinkingLevelChangeEntryDto _$PiThinkingLevelChangeEntryDtoFromJson(
   id: json['id'] as String,
   parentId: json['parentId'] as String?,
   timestamp: DateTime.parse(json['timestamp'] as String),
+  thinkingLevel: _thinkingLevelOrNull(json['thinkingLevel']),
   $type: json['type'] as String?,
 );
 
@@ -136,6 +137,7 @@ _$PiSessionFileThinkingLevelChangeEntryDtoFromJson(Map json) =>
       id: json['id'] as String?,
       parentId: json['parentId'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      thinkingLevel: _thinkingLevelOrNull(json['thinkingLevel']),
       $type: json['type'] as String?,
     );
 

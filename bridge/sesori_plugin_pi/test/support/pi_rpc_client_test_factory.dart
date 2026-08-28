@@ -14,6 +14,8 @@ PiLaunchSpec testLaunchSpec() => PiLaunchSpec(
   binaryPath: "pi",
   workingDirectory: "/tmp/project",
   launch: PiNewSession(sessionId: "sesori-pi-1"),
+  model: null,
+  thinkingLevel: null,
   environment: const {},
 );
 

@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 /// Top-level defaults read from `~/.codex/config.toml`.
 ///
@@ -29,7 +30,8 @@ class CodexConfigDefaults {
 /// are read. Profile-scoped model overrides (`[profiles.*]`) are not resolved
 /// — rollouts are the authoritative per-session source, and this is only a
 /// fallback for sessions that predate `turn_context` records.
-// COMPATIBILITY 2026-06-25 (v1.1.2): Old Codex rollouts omit turn_context model metadata. Remove config fallback reads when those rollouts are unsupported.
+// COMPATIBILITY: Codex rollouts may omit `turn_context` model metadata. Keep this
+// live backend fallback unless Codex guarantees that metadata for every rollout.
 class CodexConfigReader({Map<String, String>? environment}) {
   final Map<String, String> _environment = environment ?? Platform.environment;
 
@@ -51,9 +53,8 @@ class CodexConfigReader({Map<String, String>? environment}) {
     final List<String> rawLines;
     try {
       rawLines = file.readAsLinesSync();
-    } catch (_) {
-      // Permission/IO error reading the config: this is only a fallback
-      // source, so degrade to no defaults rather than failing the caller.
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to read fallback config defaults from ${file.path}", error, stackTrace);
       return const CodexConfigDefaults.empty();
     }
 

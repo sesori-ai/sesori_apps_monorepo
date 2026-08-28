@@ -88,7 +88,7 @@ class PluginRuntime({
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
-  List<PluginRuntimeSnapshot> get snapshot => List<PluginRuntimeSnapshot>.unmodifiable(_buildSnapshots());
+  List<PluginRuntimeSnapshot> get snapshot => _buildSnapshots();
   Stream<SourcedPluginRuntimeEvent> get backendEvents => _backendEventsSubject.stream;
   Stream<SourcedPluginProvisionProgress> get provisionProgress => _provisionProgressSubject.stream;
 
@@ -1658,7 +1658,9 @@ class PluginRuntime({
     return slot;
   }
 
-  List<PluginRuntimeSnapshot> _buildSnapshots() => [for (final slot in _slots.values) _snapshotFor(slot)];
+  List<PluginRuntimeSnapshot> _buildSnapshots() => List<PluginRuntimeSnapshot>.unmodifiable([
+    for (final slot in _slots.values) _snapshotFor(slot),
+  ]);
 
   PluginRuntimeSnapshot _snapshotFor(_PluginRuntimeSlot slot) {
     final state = switch (slot.accessGate) {

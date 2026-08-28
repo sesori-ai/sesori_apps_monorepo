@@ -1,106 +1,57 @@
 part of "session_list_action_dispatcher.dart";
 
-// -----------------------------------------------------------------------------
-// Delete session bottom sheet
-// -----------------------------------------------------------------------------
-
 class const _DeleteSessionSheet({
   required final Session session,
   required final void Function({required bool deleteWorktree}) onConfirm,
-}) extends StatefulWidget {
-  @override
-  State<_DeleteSessionSheet> createState() => _DeleteSessionSheetState();
-}
-
-class _DeleteSessionSheetState() extends State<_DeleteSessionSheet> {
-  bool _deleteWorktree = true;
-
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    // Without a dedicated worktree there is nothing to clean up, so the sheet
-    // confirms the deletion and offers no cleanup choices.
-    final hasWorktree = widget.session.hasWorktree;
-
-    // Transparent Material so the checkbox tiles' ink paints on top of the
-    // sheet surface instead of behind it on the modal's transparent Material.
-    return Material(
-      type: MaterialType.transparency,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(bottom: 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              loc.sessionListDeleteConfirmMessage,
-              style: context.prego.textTheme.textSm.regular.copyWith(
-                color: context.prego.colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (hasWorktree) ...[
-              CheckboxListTile(
-                value: _deleteWorktree,
-                onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
-                title: Text(loc.sessionListDeleteWorktreeCheckbox),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
-              const SizedBox(height: 12),
-            ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => context.pop(),
-                  child: Text(loc.sessionListDeleteConfirmCancel),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
-                  onPressed: () {
-                    context.pop();
-                    widget.onConfirm(
-                      deleteWorktree: hasWorktree && _deleteWorktree,
-                    );
-                  },
-                  child: Text(loc.sessionListDeleteConfirmAction),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return _CleanupConfirmSheet(
+      session: session,
+      message: loc.sessionListDeleteConfirmMessage,
+      confirmLabel: loc.sessionListDeleteConfirmAction,
+      destructive: true,
+      onConfirm: onConfirm,
     );
   }
 }
 
-// -----------------------------------------------------------------------------
-// Archive session bottom sheet
-// -----------------------------------------------------------------------------
-
 class const _ArchiveSessionSheet({
   required final Session session,
   required final void Function({required bool deleteWorktree}) onConfirm,
-}) extends StatefulWidget {
+}) extends StatelessWidget {
   @override
-  State<_ArchiveSessionSheet> createState() => _ArchiveSessionSheetState();
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return _CleanupConfirmSheet(
+      session: session,
+      message: loc.sessionListArchiveConfirmMessage,
+      confirmLabel: loc.sessionListArchiveConfirmAction,
+      destructive: false,
+      onConfirm: onConfirm,
+    );
+  }
 }
 
-class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
+class const _CleanupConfirmSheet({
+  required final Session session,
+  required final String message,
+  required final String confirmLabel,
+  required final bool destructive,
+  required final void Function({required bool deleteWorktree}) onConfirm,
+}) extends StatefulWidget {
+  @override
+  State<_CleanupConfirmSheet> createState() => _CleanupConfirmSheetState();
+}
+
+class _CleanupConfirmSheetState() extends State<_CleanupConfirmSheet> {
   bool _deleteWorktree = true;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    // Without a dedicated worktree there is nothing to clean up, so the sheet
-    // confirms the permanent archive and offers no cleanup choices.
     final hasWorktree = widget.session.hasWorktree;
-
-    // Transparent Material so the checkbox tiles' ink paints on top of the
-    // sheet surface instead of behind it on the modal's transparent Material.
     return Material(
       type: MaterialType.transparency,
       child: Padding(
@@ -110,16 +61,14 @@ class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              loc.sessionListArchiveConfirmMessage,
-              style: context.prego.textTheme.textSm.regular.copyWith(
-                color: context.prego.colors.textSecondary,
-              ),
+              widget.message,
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
             const SizedBox(height: 12),
             if (hasWorktree) ...[
               CheckboxListTile(
                 value: _deleteWorktree,
-                onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+                onChanged: (value) => setState(() => _deleteWorktree = value ?? false),
                 title: Text(loc.sessionListDeleteWorktreeCheckbox),
                 dense: true,
                 controlAffinity: ListTileControlAffinity.leading,
@@ -130,19 +79,17 @@ class _ArchiveSessionSheetState() extends State<_ArchiveSessionSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(
-                  onPressed: () => context.pop(),
-                  child: Text(loc.sessionListDeleteConfirmCancel),
-                ),
+                TextButton(onPressed: () => context.pop(), child: Text(loc.sessionListDeleteConfirmCancel)),
                 const SizedBox(width: 8),
                 FilledButton(
+                  style: widget.destructive
+                      ? FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary)
+                      : null,
                   onPressed: () {
                     context.pop();
-                    widget.onConfirm(
-                      deleteWorktree: hasWorktree && _deleteWorktree,
-                    );
+                    widget.onConfirm(deleteWorktree: hasWorktree && _deleteWorktree);
                   },
-                  child: Text(loc.sessionListArchiveConfirmAction),
+                  child: Text(widget.confirmLabel),
                 ),
               ],
             ),

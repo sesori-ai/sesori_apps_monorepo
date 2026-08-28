@@ -4,22 +4,13 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show HostPortService, PluginHost, ProcessIdentity, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostPortService, PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
 
-/// OpenCode-specific runtime policy, re-expressed over the [PluginHost] services
-/// instead of the bridge-side `OpenCodeProcessApi` / `OpenCodeServerService`.
-///
-/// PR 11 of the plugin-lifecycle migration: everything that decides *how*
-/// OpenCode is launched, probed, and recorded now lives in the plugin package.
-/// The spawn goes through [PluginHost.processes] (which captures identity), the
-/// health probe hits `/global/health` with the same Basic-auth scheme, the
-/// password is generated the same way, and the port constants are unchanged.
-/// The interim duplication with the bridge-side copies is deliberate; the
-/// bridge-side copies are deleted in PR 13.
+/// OpenCode-specific launch, health-probe, and ownership-record policy over
+/// services exposed by [PluginHost].
 
 /// The reserved default port OpenCode listens on, excluded from dynamic
 /// discovery.
@@ -165,47 +156,17 @@ String generateOpenCodePassword({Random? random}) {
   return bytes.map((byte) => byte.toRadixString(16).padLeft(2, "0")).join();
 }
 
-bool _isDynamicCandidate(int port) =>
-    port != openCodeDefaultPort && port >= dynamicOpenCodePortMin && port <= dynamicOpenCodePortMax;
-
 /// The dynamic port candidates the supervisor probes when no explicit port is
 /// requested.
-///
-/// When [candidates] is supplied (tests), it is filtered through the same
-/// reserved/in-range rule and used verbatim. Otherwise random ports in the
-/// dynamic range are drawn until [dynamicOpenCodeMaxAttempts] distinct valid
-/// candidates have been yielded — matching the legacy generator so the
-/// supervisor, which counts every examined candidate against `maxAttempts`,
-/// sees the same sequence.
-///
-/// Both paths examine at most [dynamicOpenCodeMaxAttempts] candidates: the
-/// pre-filtering here happens before [DynamicPortPolicy.maxAttempts] is applied,
-/// so without this cap a supplied lazy/infinite all-invalid source could spin
-/// forever before the policy ever bounds it.
-Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? random}) sync* {
-  final supplied = candidates;
-  if (supplied != null) {
-    var examined = 0;
-    for (final port in supplied) {
-      if (examined >= dynamicOpenCodeMaxAttempts) {
-        return;
-      }
-      examined++;
-      if (_isDynamicCandidate(port)) {
-        yield port;
-      }
-    }
-    return;
-  }
-
-  final rng = random ?? Random.secure();
-  final seen = <int>{};
-  while (seen.length < dynamicOpenCodeMaxAttempts) {
-    final port = dynamicOpenCodePortMin + rng.nextInt(dynamicOpenCodePortMax - dynamicOpenCodePortMin + 1);
-    if (_isDynamicCandidate(port) && seen.add(port)) {
-      yield port;
-    }
-  }
+Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? random}) {
+  return dynamicPortCandidates(
+    minPort: dynamicOpenCodePortMin,
+    maxPort: dynamicOpenCodePortMax,
+    maxDraws: dynamicOpenCodeMaxAttempts,
+    reservedPort: openCodeDefaultPort,
+    candidates: candidates,
+    random: random,
+  );
 }
 
 /// Spawns `opencode serve` on [port] through the host's process service, which
@@ -213,7 +174,7 @@ Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? rand
 /// [SpawnedProcess.identity] and never re-inspects it.
 ///
 /// The returned process is wrapped so its stdout/stderr are drained from the
-/// moment of spawn (see [_DrainingOpenCodeProcess]): the supervisor's exit
+/// moment of spawn: the supervisor's exit
 /// monitor only attaches *after* `start()` has confirmed health, so without an
 /// immediate drain a verbose `opencode serve` could fill the OS pipe buffer and
 /// block before it ever answers the health probe. The legacy path drained both
@@ -242,57 +203,7 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
   );
-  return _DrainingOpenCodeProcess(process);
-}
-
-/// Wraps a [SpawnedProcess] so its stdout/stderr are drained from the moment of
-/// spawn, for the child's whole lifetime, so the OS pipe can never fill (which
-/// would otherwise block a verbose `opencode serve` before the first health
-/// probe — the exit monitor only arms after `start()` returns).
-///
-/// The streams are exposed as broadcast, so the exit monitor can still attach
-/// once armed (e.g. to log stderr); output produced before that is consumed by
-/// the always-present internal drain. Everything else delegates to the wrapped
-/// process.
-class _DrainingOpenCodeProcess(final SpawnedProcess _inner) implements SpawnedProcess {
-  this {
-    _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    unawaited(_releaseDrainsOnExit());
-  }
-
-  final Stream<List<int>> _stdout = _inner.stdout.asBroadcastStream();
-  final Stream<List<int>> _stderr = _inner.stderr.asBroadcastStream();
-  late final StreamSubscription<List<int>> _stdoutDrain;
-  late final StreamSubscription<List<int>> _stderrDrain;
-
-  Future<void> _releaseDrainsOnExit() async {
-    try {
-      await _inner.exitCode;
-    } on Object {
-      // Ignore: the only purpose here is to release the drains after exit.
-    }
-    await _stdoutDrain.cancel();
-    await _stderrDrain.cancel();
-  }
-
-  @override
-  int get pid => _inner.pid;
-
-  @override
-  ProcessIdentity get identity => _inner.identity;
-
-  @override
-  io.IOSink get stdin => _inner.stdin;
-
-  @override
-  Stream<List<int>> get stdout => _stdout;
-
-  @override
-  Stream<List<int>> get stderr => _stderr;
-
-  @override
-  Future<int> get exitCode => _inner.exitCode;
+  return DrainingSpawnedProcess(inner: process);
 }
 
 /// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
@@ -356,11 +267,10 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraf
 
 /// Assembles the [ManagedRuntimeSpec] for OpenCode with the **hardened** policy
 /// knobs active since the flip (PR 12): deadline-paced health confirmation
-/// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]), the
-/// start intent recorded to a bridge-private side file before spawn (the frozen
-/// ownership file is untouched), and a child exit before the first healthy
-/// probe treated as authoritative failure (a healthy response after our child
-/// died would be an unrelated process squatting the port).
+/// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]) and a
+/// child exit before the first healthy probe treated as authoritative failure
+/// (a healthy response after our child died would be an unrelated process
+/// squatting the port).
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,

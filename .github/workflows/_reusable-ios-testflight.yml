@@ -30,6 +30,10 @@ on:
         required: true
       ITC_TEAM_ID:
         required: false
+      SINGULAR_SDK_KEY:
+        required: true
+      SINGULAR_SDK_SECRET:
+        required: true
 
 # Xcode and CocoaPods versions — update these when upgrading
 env:
@@ -93,8 +97,47 @@ jobs:
           bundler-cache: true
           working-directory: client/app/ios
 
+      # The build stamp mirrors the Android lane so every lane-built binary
+      # carries its build time. The analytics gate that reads it is Android-only
+      # (TestFlight runs no crawl), so on iOS the value is informational.
       - name: Generate iOS build config
-        run: flutter build ios --config-only --release --no-codesign
+        env:
+          SINGULAR_SDK_KEY: ${{ secrets.SINGULAR_SDK_KEY }}
+          SINGULAR_SDK_SECRET: ${{ secrets.SINGULAR_SDK_SECRET }}
+        run: |
+          set -euo pipefail
+
+          flutter_args=(
+            ios
+            --config-only
+            --release
+            --no-codesign
+            "--dart-define=SESORI_BUILD_EPOCH_SECONDS=$(date -u +%s)"
+          )
+          singular_defines_path="$RUNNER_TEMP/sesori-singular-dart-defines.json"
+          export SINGULAR_DEFINES_PATH="$singular_defines_path"
+          trap 'rm -f "$SINGULAR_DEFINES_PATH"' EXIT
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+
+          defines = {
+              "SESORI_SINGULAR_SDK_KEY": os.environ["SINGULAR_SDK_KEY"],
+              "SESORI_SINGULAR_SDK_SECRET": os.environ["SINGULAR_SDK_SECRET"],
+          }
+          for name, value in defines.items():
+              encoded = base64.b64encode(f"{name}={value}".encode()).decode()
+              print(f"::add-mask::{encoded}")
+
+          os.umask(0o077)
+          with open(os.environ["SINGULAR_DEFINES_PATH"], "w", encoding="utf-8") as output:
+              json.dump(defines, output)
+          os.chmod(os.environ["SINGULAR_DEFINES_PATH"], 0o600)
+          PY
+          flutter_args+=("--dart-define-from-file=$singular_defines_path")
+
+          flutter build "${flutter_args[@]}"
         working-directory: client/app
 
       - name: Deploy to TestFlight

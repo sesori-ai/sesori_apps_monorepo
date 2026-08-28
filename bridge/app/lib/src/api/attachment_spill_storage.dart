@@ -6,7 +6,7 @@ import "package:crypto/crypto.dart";
 import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 
-import "data_directory_hardening.dart";
+import "../foundation/data_directory_hardening.dart";
 
 final class const AttachmentStorageScope({
   required final String pluginId,

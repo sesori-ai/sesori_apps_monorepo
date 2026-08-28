@@ -20,11 +20,8 @@ void main() {
     final response =
         await GetPluginManagementHandler(
           lifecycleService: _FakePluginLifecycleService(),
-        ).handleInternal(
+        ).routeForTest(
           makeRequest("GET", "/plugin/management"),
-          pathParams: const {},
-          queryParams: const {},
-          fragment: null,
         );
 
     expect(response.status, 200);

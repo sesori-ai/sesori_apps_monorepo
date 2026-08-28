@@ -134,12 +134,11 @@ class SessionDetailLoadService({
         _SessionDetailOptionsAvailable(:final options) => options,
         _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
       };
-      final promptDefaults = session?.promptDefaults;
-
-      final (messages, olderMessagesCursor) = switch (messagesResponse) {
-        SuccessResponse(:final data) => (data.messages, data.nextCursor),
+      final (messages, olderMessagesCursor, replayedPromptDefaults) = switch (messagesResponse) {
+        SuccessResponse(:final data) => (data.messages, data.nextCursor, data.replayedPromptDefaults),
         ErrorResponse(:final error) => throw error,
       };
+      final promptDefaults = replayedPromptDefaults ?? session?.promptDefaults;
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
@@ -194,7 +193,6 @@ class SessionDetailLoadService({
           isRootSession: session != null ? session.parentID == null : null,
           isArchived: isArchived,
         ),
-        isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
     } on Object catch (error, stackTrace) {
       return SessionDetailLoadResult.failed(error: error, stackTrace: stackTrace);
@@ -356,7 +354,7 @@ class const SessionDetailSnapshot({
   required final List<PendingPermission> pendingPermissions,
   required final List<Session> childSessions,
   required final Map<String, SessionStatus> statuses,
-  required final List<AgentInfo?> agents,
+  required final List<AgentInfo> agents,
   required final ProviderListResponse? providerData,
   required final List<CommandInfo> commands,
   required final String? canonicalSessionTitle,
@@ -396,7 +394,6 @@ final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionErr
 sealed class const SessionDetailLoadResult() {
   const factory loaded({
     required SessionDetailSnapshot snapshot,
-    required bool isBridgeConnected,
   }) = SessionDetailLoadResultLoaded;
 
   const factory waitingForConnection() = SessionDetailLoadResultWaitingForConnection;
@@ -410,7 +407,6 @@ sealed class const SessionDetailLoadResult() {
 
 final class const SessionDetailLoadResultLoaded({
   required final SessionDetailSnapshot snapshot,
-  required final bool isBridgeConnected,
 }) extends SessionDetailLoadResult;
 
 final class const SessionDetailLoadResultWaitingForConnection() extends SessionDetailLoadResult;

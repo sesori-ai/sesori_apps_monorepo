@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -96,7 +97,7 @@ final class ClaudeSessionService({
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final StreamController<ClaudeTurnDispatched> _dispatches = StreamController.broadcast(sync: true);
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  final Set<Future<void>> _inFlightTeardowns = {};
+  final PendingOperations _inFlightTeardowns = PendingOperations();
   final Map<String, Future<void>> _teardownsBySession = {};
   late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
   Future<void>? _disposeFuture;
@@ -542,7 +543,7 @@ final class ClaudeSessionService({
     await _processEvents.cancel();
     _approvals.dispose();
     await _processes.dispose();
-    await Future.wait(_inFlightTeardowns.toList(growable: false));
+    await _inFlightTeardowns.drain();
     await _events.close();
     await _dispatches.close();
     await _workState.close();
@@ -588,12 +589,11 @@ final class ClaudeSessionService({
         if (_clock.now().isAfter(wakeupAt.add(idleTimeout))) break;
       }
       final teardown = _processes.teardown(sessionId: sessionId);
-      _inFlightTeardowns.add(teardown);
+      unawaited(_inFlightTeardowns.track(operation: teardown));
       _teardownsBySession[sessionId] = teardown;
       try {
         await teardown;
       } finally {
-        _inFlightTeardowns.remove(teardown);
         if (identical(_teardownsBySession[sessionId], teardown)) {
           unawaited(_teardownsBySession.remove(sessionId));
         }
@@ -634,6 +634,7 @@ final class ClaudeSessionService({
         // turn and carries a new `ScheduleWakeup` must keep the new schedule.
         _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
         _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
+        _settleRetry(sessionId: event.sessionId, message: event.message);
         final request = event.controlRequest;
         if (request != null) _approvals.handle(sessionId: event.sessionId, message: request);
       case ClaudeSessionProcessExited():
@@ -696,6 +697,15 @@ final class ClaudeSessionService({
       case ClaudeStreamMessage():
         break;
     }
+  }
+
+  /// Returns a retrying session to busy as soon as its retried request streams
+  /// output again. Only a new turn or the turn's end clears the status
+  /// otherwise, so a recovered retry would stay visible for the whole turn.
+  void _settleRetry({required String sessionId, required ClaudeStreamMessage message}) {
+    if (message is! ClaudeStreamEventMessage && message is! ClaudeAssistantMessage) return;
+    if (_retryStatuses.remove(sessionId) == null) return;
+    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {

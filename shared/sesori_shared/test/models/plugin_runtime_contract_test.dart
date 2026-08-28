@@ -133,6 +133,10 @@ void main() {
 
     expect(HealthResponse.fromJson(response.toJson()), response);
     expect(response.toJson(), isNot(contains("plugins")));
+    expect(
+      () => HealthResponse.fromJson(const {"healthy": true, "version": "1.5.1"}),
+      throwsA(isA<TypeError>()),
+    );
   });
 
   test("statuses round-trip unavailable sources and decode the legacy default", () {

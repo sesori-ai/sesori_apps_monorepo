@@ -7,7 +7,6 @@ import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/debug_server.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
@@ -62,7 +61,6 @@ Future<_DebugServerHarness> _createDebugServerHarness({
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     ),
-    legacyMissingPluginId: plugin.id,
     pluginLifecycleService: lifecycleService,
     pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
     bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -74,7 +72,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     httpClient: httpClient,
     processRunner: ProcessRunner(),
     accessTokenProvider: FakeAccessTokenProvider(),
-    tokenRefresher: _FakeTokenRefresher(),
+    tokenRefresher: FakeTokenRefresher(),
     bridgeRegistrationService: createFakeBridgeRegistrationService(),
     failureReporter: failureReporter,
     restartService: effectiveRestartService,
@@ -184,6 +182,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
@@ -415,6 +414,7 @@ void main() {
       ];
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "stable-s1",
         backendSessionId: "s1",
         projectId: "/tmp/test",
@@ -465,6 +465,7 @@ void main() {
       ];
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
@@ -522,6 +523,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
@@ -620,6 +622,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
@@ -665,7 +668,7 @@ void main() {
             )
             ..addPhase(
               phase: BridgeShutdownPhase.pluginDispose,
-              action: runtimeForLifecycleService(service: harness.lifecycleService).shutdownStartedPlugins,
+              action: plugin.dispose,
             );
       await debugServer.start();
 
@@ -1053,11 +1056,6 @@ class const _DebugServerHarness({
   }
 }
 
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
-}
-
 // ---------------------------------------------------------------------------
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
@@ -1102,10 +1100,10 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   }
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async => sessionsResult;
 
   @override
@@ -1245,7 +1243,6 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required ({String providerID, String modelID})? model,
   }) async {}
 
-  @override
   Future<void> dispose() async {}
 
   void add(BridgeSseEvent event) => _controller.add(event);
@@ -1355,10 +1352,10 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
   Future<List<PluginProject>> getProjects() async => [];
 
   @override
-  Future<List<PluginSession>> getSessions(
-    String worktree, {
-    int? start,
-    int? limit,
+  Future<List<PluginSession>> getSessions({
+    required String projectId,
+    required int? start,
+    required int? limit,
   }) async => [];
 
   @override
@@ -1492,7 +1489,6 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
       const PluginProvidersResult(providers: []);
 
-  @override
   Future<void> dispose() async {}
 
   Future<void> close() => _eventController.close();

@@ -1,43 +1,31 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
-import "../../foundation/models/product_analytics/product_analytics_event.dart";
-import "../../logging/logging.dart";
-import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/session_repository.dart";
-import "../../services/product_analytics_service.dart";
+import "../../services/loaded_state_analytics_reporter.dart";
 import "diff_state.dart";
 
-enum _DiffAnalyticsGuard() { ready, inFlight, consumed }
-
 class DiffCubit({
-    required final SessionRepository _sessionRepository,
-    required final ConnectionService _connectionService,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final String sessionId,
-    required final Duration staleRetryDelay,
-  }) extends Cubit<DiffState> {
-  late final StreamSubscription<SesoriSessionEvent> _eventSubscription;
-  late final StreamSubscription<bool> _analyticsStateSubscription;
+  required final SessionRepository _sessionRepository,
+  required final ConnectionService _connectionService,
+  required final LoadedStateAnalyticsReporter _loadedStateAnalyticsReporter,
+  required final String sessionId,
+  required final Duration staleRetryDelay,
+}) extends Cubit<DiffState> {
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _activeRefresh;
   Timer? _staleRetryTimer;
   bool _refreshQueued = false;
   bool _queuedShowLoading = false;
   bool _staleRefreshPending = false;
-  _DiffAnalyticsGuard _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
-  _DiffAnalyticsGuard _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
 
   this : super(const DiffState.loading()) {
-    _eventSubscription = _connectionService.sessionEvents(sessionId).listen(_handleEvent);
-    _analyticsStateSubscription = _productAnalyticsService.stateStream
-        .map((state) => state.isActive)
-        .distinct()
-        .where((isActive) => isActive)
-        .listen((_) => _retryCurrentDiffAnalytics());
+    _subscriptions.add(_connectionService.sessionEvents(sessionId).listen(_handleEvent));
     unawaited(_refresh(showLoading: false));
   }
 
@@ -98,6 +86,7 @@ class DiffCubit({
 
   Future<bool> _fetchAndEmit({required bool showLoading}) async {
     if (showLoading) {
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
       emit(const DiffState.loading());
     }
     try {
@@ -107,84 +96,29 @@ class DiffCubit({
       switch (response) {
         case SuccessResponse(:final data):
           emit(DiffState.loaded(files: data.diffs));
-          _reportDiffLoaded(isEmpty: data.diffs.isEmpty);
+          _loadedStateAnalyticsReporter.reportLoaded(
+            isEmpty: data.diffs.isEmpty,
+            occurredAtUtc: DateTime.now().toUtc(),
+          );
           return true;
         case ErrorResponse(:final error):
+          _loadedStateAnalyticsReporter.clearCurrentOccurrence();
           emit(DiffState.failed(error: error));
           return false;
       }
     } catch (e) {
       if (isClosed) return false;
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
       emit(DiffState.failed(error: e));
       return false;
     }
   }
 
-  void _retryCurrentDiffAnalytics() {
-    if (isClosed) return;
-    final current = state;
-    if (current is DiffStateLoaded) {
-      _reportDiffLoaded(isEmpty: current.files.isEmpty);
-    }
-  }
-
-  void _reportDiffLoaded({required bool isEmpty}) {
-    final guard = isEmpty ? _emptyDiffAnalytics : _nonEmptyDiffAnalytics;
-    if (guard != _DiffAnalyticsGuard.ready) return;
-    final attemptedWhileActive = _productAnalyticsService.state.isActive;
-    if (isEmpty) {
-      _emptyDiffAnalytics = _DiffAnalyticsGuard.inFlight;
-    } else {
-      _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.inFlight;
-    }
-
-    unawaited(
-      _productAnalyticsService
-          .logEvent(
-            event: ProductAnalyticsEvent.sessionDiffViewed(
-              changeState: isEmpty ? AnalyticsChangeState.empty : AnalyticsChangeState.nonEmpty,
-            ),
-            occurredAtUtc: DateTime.now().toUtc(),
-          )
-          .then<void>((result) {
-            final consumed =
-                result == AnalyticsDeliveryResult.acceptedBySdk ||
-                (!isEmpty && result == AnalyticsDeliveryResult.deferredUntilPreference);
-            final next = consumed ? _DiffAnalyticsGuard.consumed : _DiffAnalyticsGuard.ready;
-            if (isEmpty) {
-              _emptyDiffAnalytics = next;
-            } else {
-              _nonEmptyDiffAnalytics = next;
-            }
-            final isActive = _productAnalyticsService.state.isActive;
-            if (!consumed && isActive) {
-              logw("Failed to deliver session diff analytics event");
-            }
-            if (!consumed && isEmpty && !attemptedWhileActive && isActive) {
-              _retryCurrentDiffAnalytics();
-            }
-          })
-          .catchError((Object error, StackTrace stackTrace) {
-            if (isEmpty) {
-              _emptyDiffAnalytics = _DiffAnalyticsGuard.ready;
-            } else {
-              _nonEmptyDiffAnalytics = _DiffAnalyticsGuard.ready;
-            }
-            logw("Failed to report session diff analytics event", error, stackTrace);
-            if (isEmpty && !attemptedWhileActive && _productAnalyticsService.state.isActive) {
-              _retryCurrentDiffAnalytics();
-            }
-          }),
-    );
-  }
-
   @override
   Future<void> close() async {
     _staleRetryTimer?.cancel();
-    await Future.wait([
-      _eventSubscription.cancel(),
-      _analyticsStateSubscription.cancel(),
-    ]);
+    await _subscriptions.dispose();
+    await _loadedStateAnalyticsReporter.close();
     return await super.close();
   }
 }

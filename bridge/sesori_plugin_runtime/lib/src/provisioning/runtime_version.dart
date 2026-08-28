@@ -25,8 +25,9 @@ sealed class const RuntimeVersion() implements Comparable<RuntimeVersion> {
 
 /// A semver-ordered runtime version (OpenCode, codex).
 final class const SemanticRuntimeVersion._({
-  @override
-  required final String raw, required final SemanticVersion version}) extends RuntimeVersion {
+  @override required final String raw,
+  required final SemanticVersion version,
+}) extends RuntimeVersion {
   factory parse({required String value}) {
     return SemanticRuntimeVersion._(
       raw: value.trim(),
@@ -42,7 +43,11 @@ final class const SemanticRuntimeVersion._({
   @override
   int compareTo(RuntimeVersion other) {
     if (other is! SemanticRuntimeVersion) {
-      throw ArgumentError.value(other, "other", "cannot compare a semantic version with ${other.runtimeType}");
+      throw ArgumentError.value(
+        other,
+        "other",
+        "cannot compare a semantic version with ${other.runtimeType.toString()}",
+      );
     }
     return version.compareTo(other.version);
   }
@@ -70,12 +75,11 @@ final class const SemanticRuntimeVersion._({
 /// day and carries no order, so a dated build is never ranked below the same
 /// day's bare version — the mistake semver ordering makes.
 final class const CalendarRuntimeVersion._({
-    @override
-  required final String raw,
-    required final int year,
-    required final int month,
-    required final int day,
-  }) extends RuntimeVersion {
+  @override required final String raw,
+  required final int year,
+  required final int month,
+  required final int day,
+}) extends RuntimeVersion {
   static final RegExp _pattern = RegExp(r"^(\d{4})\.(\d{1,2})\.(\d{1,2})(?:[-.].*)?$");
 
   factory parse({required String value}) {
@@ -90,8 +94,11 @@ final class const CalendarRuntimeVersion._({
     final trimmed = value.trim();
     final match = _pattern.firstMatch(trimmed);
     if (match == null) return null;
+    // ignore: no_slop_linter/avoid_bang_operator, the matching pattern requires this date group
     final year = int.parse(match.group(1)!);
+    // ignore: no_slop_linter/avoid_bang_operator, the matching pattern requires this date group
     final month = int.parse(match.group(2)!);
+    // ignore: no_slop_linter/avoid_bang_operator, the matching pattern requires this date group
     final day = int.parse(match.group(3)!);
     final date = DateTime.utc(year, month, day);
     if (date.year != year || date.month != month || date.day != day) return null;
@@ -106,7 +113,11 @@ final class const CalendarRuntimeVersion._({
   @override
   int compareTo(RuntimeVersion other) {
     if (other is! CalendarRuntimeVersion) {
-      throw ArgumentError.value(other, "other", "cannot compare a calendar version with ${other.runtimeType}");
+      throw ArgumentError.value(
+        other,
+        "other",
+        "cannot compare a calendar version with ${other.runtimeType.toString()}",
+      );
     }
     final byYear = year.compareTo(other.year);
     if (byYear != 0) return byYear;

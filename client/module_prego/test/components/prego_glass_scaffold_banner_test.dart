@@ -329,21 +329,33 @@ void main() {
     final initialTitleTop = tester.getTopLeft(largeTitle).dy;
     final gesture = await tester.startGesture(tester.getCenter(find.byKey(_contentKey)));
 
-    for (var step = 0; step < 30 && !refreshStarted; step++) {
-      await gesture.moveBy(const Offset(0, 10));
+    for (var step = 0; step < 30; step++) {
+      await gesture.moveBy(const Offset(0, 20));
       await tester.pump();
       expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
     }
-    expect(refreshStarted, isTrue);
 
-    await tester.pump(); // apply the refresh sliver's held layout extent
+    // The refresh is dispatched on release rather than at the trigger, so the
+    // title has to hold its place across the drag, the release, and the held
+    // extent that follows.
+    // Hold still before letting go, so the release is not a fling: the control
+    // only counts the pull as let go once the overscroll has sprung back to
+    // the extent it holds on its own.
+    await gesture.moveBy(Offset.zero);
+    await tester.pump(const Duration(milliseconds: 200));
+    await gesture.up();
+    // Fixed frames rather than settling: once the refresh is held, its spinner
+    // animates for as long as it runs.
+    for (var frame = 0; frame < 60 && !refreshStarted; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(refreshStarted, isTrue);
     expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
 
     rebuildHarness(() {});
     await tester.pump();
     expect(tester.getTopLeft(largeTitle).dy, moreOrLessEquals(initialTitleTop));
 
-    await gesture.up();
     refreshCompleter.complete();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(largeTitle).dy, closeTo(initialTitleTop, 1));

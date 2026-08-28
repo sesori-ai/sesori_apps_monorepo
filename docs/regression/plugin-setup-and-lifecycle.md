@@ -21,33 +21,56 @@ idle suspension, the management snapshot, and lifecycle commands.
   while preserving an explicit path as authoritative.
   Provider setup remains an out-of-band Hermes CLI action, so authentication-required
   Hermes entries give local setup guidance rather than offering bridge-managed login.
+- DeepSeek is an ACP harness with six-platform managed package archives. Its
+  descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
+  release (`>=0.1.0`) and the exact managed `0.1.1` release. An old or malformed
+  PATH candidate falls through to managed selection. It performs bounded parseable-version and
+  side-effect-free `check --state-dir` probes, advertises install only on a
+  supported platform without an explicit path, and gives local DeepSeek
+  provider/setup guidance. Managed installation verifies the immutable archive
+  digest and preserves the packaged launcher with its bundled Node runtime. Startup
+  validates ACP v1 plus required DeepSeek extension metadata, owns one stdio
+  child through the host process seam, degrades on an unexpected exit, lazily
+  reconnects on demand, and shuts down idempotently without treating its own
+  termination as a crash.
+- Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
+  `deepseek/*` is limited to catalog, detached history, rename, questions, and
+  bounded statuses on that same connection. Normal `DSH_HOME` remains the source
+  of settings, credentials, providers, and skills but its session root is never
+  scanned. Session, attachment, query, and spill mutations stay below plugin
+  state, and session-local model/reasoning writes never modify user settings.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,
-  skills, and prompt templates are trusted without prompts); OMP inherits the user's
-  `tools.approvalMode`. Provider login for both happens locally, never from the phone.
-- Backend `tui.toast.show` SSE events render app-wide through the backend-neutral
-  toast surface, presented with the design-system popup alert on the root
-  navigator's overlay: every accepted toast is a new effect (equal repeated guidance
-  included), toasts with no renderable text are dropped, and unknown variants
-  degrade to info.
+  skills, and prompt templates are trusted without prompts); OMP launches `omp acp`
+  without an approval-mode override, leaving approval behavior to OMP. Provider login
+  for both happens locally, never from the phone.
+- Backend `tui.toast.show` SSE events render through the backend-neutral toast
+  surface, presented with the design-system popup alert on the root navigator's
+  overlay. Session-attributed events appear only while that session's detail or
+  diffs route is on top; unattributed events remain app-wide. Every accepted toast
+  is a new effect (equal repeated guidance included), toasts with no renderable
+  text are dropped, and unknown variants degrade to info.
 - Listings order by display name case-insensitively with the identifier as tie-breaker,
   and the default is the preferred harness when selectable, else the first selectable.
 - Client-owned branding maps recognized built-in harness ids to their stable names and
   theme-specific artwork. Hermes renders as `Hermes Agent` with its light or dark
   NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
-  with its official icon, while an unknown plugin id retains the generic icon and
-  raw-id fallback.
+  with its official icon. DeepSeek renders as `DeepSeek` with its official
+  theme-independent brand-blue whale mark. Surfaces without recognized
+  metadata retain the generic icon and raw-id fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
-  idle window and a resident one never does, and idle timeouts survive restart.
-  Enable, disable, restart, and refresh are offered only where declared, with enable
-  persisting eligibility, re-inspecting setup, then starting when ready.
-- A resident harness that keeps the idle-timeout capability (Claude Code) reports the
-  configured timeout instead of zero and consumes it internally through the host: the
-  Claude plugin reaps each idle session's CLI child process after that window and
+  idle window and a resident one never does, and idle timeouts survive restart. With no
+  configured default or per-harness override, every harness uses the bridge's 45-minute
+  fallback. Enable, disable, restart, and refresh are offered only where declared, with
+  enable persisting eligibility, re-inspecting setup, then starting when ready.
+- A resident harness that keeps the idle-timeout capability (Claude Code or Pi) reports
+  the configured timeout instead of zero and consumes it internally through the host.
+  Each plugin reaps its idle per-session CLI/RPC child process after that window and
   transparently resumes it on the next prompt, so the settings knob stays effective
-  even though whole-plugin suspension never runs. A runtime timeout change applies at
-  each session's next idle transition without a plugin restart.
+  without a competing whole-plugin suspension timer. A runtime timeout change applies
+  at each session's next idle transition without a plugin restart; no timeout keeps the
+  child resident.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.
@@ -57,10 +80,14 @@ idle suspension, the management snapshot, and lifecycle commands.
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
 - Deliberate bridge shutdown enters each live harness's lifecycle shutdown before closing
-  its transport directly. Managed runtime monitors disarm before transport or process
+  its transport directly. Stdio transports close child stdin before graceful termination
+  and bounded force-kill. Managed runtime monitors disarm before transport or process
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
+- Codex session metadata uses the top-level `model` and `model_provider` values from
+  `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
+  remains authoritative when present.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
@@ -85,15 +112,34 @@ idle suspension, the management snapshot, and lifecycle commands.
   Its device-code sheet keeps anti-phishing guidance and the selectable/copyable one-time
   code visible, opens the external browser only on explicit intent, and separates sheet
   dismissal from cancellation. Terminal progress closes the sheet and refreshes setup.
+- Mobile offers a per-harness catalog scan on Settings to Harnesses, the pointer and
+  screen-reader equivalent of the lists' second-stage pull. It appears only for a harness
+  whose reported runtime state is routable, so a setup-blocked or failed harness the bridge
+  would reject is not offered a tappable no-op. The action reports work in place while any
+  scan covering that harness runs, whichever surface started it, and does not accept a
+  second start until it settles.
+- A scan the user aimed at one harness reports its own rejection on that harness's card,
+  unlike the all-harness fan-out, which silently skips a harness it cannot import from.
+  Not-importable, unsupported-bridge, and failed-request answers each read differently and
+  are cleared by the next attempt on that harness, whichever surface makes it. A start whose
+  outcome is unknown leaves the harness in the running scan rather than reporting a refusal
+  beside its own progress, so a card never pairs work in flight with a reason it failed. The
+  underlying request error is kept for the local log and never rendered.
+- A scan started from the harness settings surface announces how it ended there, because that
+  surface carries no progress row and the published result clears itself before the user could
+  reach a list to read it. What it found, a partial failure, and a total failure each read
+  differently. A scan started from a list is not announced again here, and neither is a start
+  the bridge refused outright, which the harness card already reports; a run that ends without
+  a terminal outcome announces nothing at all.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
-| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, and idle-timeout default plus override persisted across a bridge restart. Client end to end; every harness declaring the relevant capability must pass. |
-| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
+| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
+| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Client end to end; every harness declaring the relevant capability must pass. |
+| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
@@ -115,6 +161,12 @@ timeouts, and sessions afterwards.
   different from the executable selected by setup inspection and runtime resolution.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
+- A catalog scan offered on a harness the bridge will not import from, a scan already
+  covering a harness still accepting another start from its card, a targeted rejection
+  landing on the wrong harness or on none, or a request error reaching the card as text.
+- A scan started from harness settings finishing with no announcement, one announced twice,
+  a scan started elsewhere announced there, or a refused start reported both on its card and
+  as a finished scan.
 - A missing authentication state from an older bridge decoding as anything but idle, a
   future state or conflict reason failing open, challenge data entering snapshots/SSE, or
   a failed progress payload without its required sanitized message.
@@ -128,11 +180,18 @@ timeouts, and sessions afterwards.
   instead of the explicit no-harness state when none is usable.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
+- A DeepSeek setup probe creates a session or mutates runtime state, accepts an
+  old/malformed adapter version, selects managed runtime ahead of a supported
+  PATH release, offers install with an explicit path or on an unsupported
+  platform, or keeps using a dead stdio child after an unexpected exit.
 
 ## Known Limitations
 
 - The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope, and no lifecycle path installs a runtime.
+  are out of scope.
+- DeepSeek is registered and enabled by default. Its official theme-independent
+  brand-blue artwork, local provider setup guidance, and managed install controls
+  follow the same backend-neutral registry and client surfaces as every other harness.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted.
 - Hermes model/provider configuration is intentionally unavailable through Sesori and must
@@ -148,11 +207,12 @@ timeouts, and sessions afterwards.
 
 ## Sources
 
-- `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered OpenCode, Codex,
-  Cursor, Claude Code, and Hermes Agent descriptors; plugin routing handlers
+- `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered production plugin
+  descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
-  `bridge/app/lib/src/bridge/runtime/plugin_registry.dart`
+  `bridge/app/lib/src/runtime/plugin_registry.dart`
 - `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart` and its tests
+- `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
 - `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the
   harness settings screen

@@ -3,9 +3,9 @@ import "dart:typed_data";
 
 import "package:sesori_shared/sesori_shared.dart";
 
-class KeyExchangeManager(List<int> roomKey, {RelayCryptoService? cryptoService}) {
+class KeyExchangeManager(List<int> roomKey, {required RelayCryptoService cryptoService}) {
   final List<int> _roomKey = List<int>.from(roomKey);
-  final RelayCryptoService _cryptoService = cryptoService ?? RelayCryptoService();
+  final RelayCryptoService _cryptoService = cryptoService;
 
   /// The key-exchange frame is the initiation signal. The relay does not send
   /// `phone_connected` snapshots when a bridge joins phones already online.

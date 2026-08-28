@@ -48,9 +48,8 @@ final class PiPlugin._({
     required Duration historyRpcTimeout,
     required Duration catalogTimeout,
     required Duration healthTimeout,
-    required Duration idleTimeout,
+    required Duration? Function() resolveIdleTimeout,
     required Duration editorTimeout,
-    required int maxCatalogModels,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
     final catalogRepository = PiSessionCatalogRepository(storageApi: storage);
@@ -66,6 +65,13 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi's abort response waits for full agent idleness, which can include
+      // an already queued steering continuation. Bound that acknowledgement
+      // tightly so Stop can force process replacement instead of stalling.
+      abortRpcTimeout: const Duration(seconds: 1),
+      // Pi can run model-backed automatic compaction before acknowledging a
+      // prompt, so prompt preflight needs the same generous bound as a turn.
+      promptRpcTimeout: const Duration(minutes: 30),
     );
     final extensionUiService = PiExtensionUiService(
       catalogRepository: catalogRepository,
@@ -83,7 +89,7 @@ final class PiPlugin._({
       ),
       extensionUiService: extensionUiService,
       clock: clock,
-      idleTimeout: idleTimeout,
+      resolveIdleTimeout: resolveIdleTimeout,
     );
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
@@ -95,7 +101,6 @@ final class PiPlugin._({
       ),
       tracker: PiCatalogTracker(),
       totalTimeout: catalogTimeout,
-      maxModels: maxCatalogModels,
     );
     return PiPlugin._(
       catalogRepository: catalogRepository,
@@ -132,7 +137,7 @@ final class PiPlugin._({
       _catalogRepository.primeSessionDirectory(sessionId: sessionId, directory: directory);
 
   @override
-  Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit}) =>
+  Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) =>
       _catalogRepository.getSessions(projectId: projectId, start: start, limit: limit);
 
   @override
@@ -272,10 +277,11 @@ final class PiPlugin._({
     final session = await _requiredSession(sessionId: sessionId, operation: "getSessionMessages");
     if (session.time == null) return const [];
     try {
-      return await _processRepository.loadHistory(
+      final history = await _processRepository.loadHistory(
         sessionId: sessionId,
         knownDirectories: {session.directory},
       );
+      return _sessionService.withLiveMessages(sessionId: sessionId, history: history);
     } on PluginOperationException {
       rethrow;
     } on Object catch (error, stackTrace) {
@@ -432,7 +438,6 @@ final class PiPlugin._({
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
-  @override
   Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
 
   /// [shutdownBudget] `null` means the caller imposes no deadline.
@@ -461,6 +466,14 @@ final class PiPlugin._({
     if (error != null) Error.throwWithStackTrace(error, firstStack!);
   }
 
+  PluginOperationException _unsupportedSelection({
+    required String operation,
+    required String message,
+    required bool staleOptions,
+  }) => staleOptions
+      ? PluginStaleOptionsException(operation, message: message)
+      : PluginOperationException(operation, statusCode: 400, message: message);
+
   Future<void> _validateSelection({
     required String projectId,
     required PluginSessionVariant? variant,
@@ -470,29 +483,29 @@ final class PiPlugin._({
     required bool staleOptions,
   }) async {
     if (agent != null && agent != "pi") {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi agent.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi agent.");
+      throw _unsupportedSelection(operation: operation, message: "Unsupported Pi agent.", staleOptions: staleOptions);
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "Unsupported Pi thinking level.",
+        staleOptions: staleOptions,
+      );
     }
     if (model == null) return;
     final options = await _catalogService.requireOptions(projectId: projectId);
     final provider = options.providers.providers.where((candidate) => candidate.id == model.providerID).firstOrNull;
     if (provider == null || !provider.models.any((candidate) => candidate.id == model.modelID)) {
-      throw staleOptions
-          ? PluginStaleOptionsException(operation, message: "Unsupported Pi model.")
-          : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi model.");
+      throw _unsupportedSelection(operation: operation, message: "Unsupported Pi model.", staleOptions: staleOptions);
     }
     if (variant != null) {
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
       if (!selected.variants.contains(variant.id)) {
-        throw staleOptions
-            ? PluginStaleOptionsException(operation, message: "Unsupported Pi thinking level.")
-            : PluginOperationException(operation, statusCode: 400, message: "Unsupported Pi thinking level.");
+        throw _unsupportedSelection(
+          operation: operation,
+          message: "Unsupported Pi thinking level.",
+          staleOptions: staleOptions,
+        );
       }
     }
   }
@@ -524,7 +537,8 @@ final class PiPlugin._({
             sessionID: ownerSessionId,
             displaySessionId: displaySessionId,
           ),
-        PiExtensionUiToast(:final title, :final message, :final variant) => BridgeSseTuiToastShow(
+        PiExtensionUiToast(:final sessionId, :final title, :final message, :final variant) => BridgeSseTuiToastShow(
+          sessionID: sessionId,
           title: title,
           message: message,
           variant: switch (variant) {

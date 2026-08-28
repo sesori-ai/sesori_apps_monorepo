@@ -326,7 +326,6 @@ class _FakePluginApi(@override final String id) extends NativeProjectsPluginApi 
   @override
   Stream<BridgeSseEvent> get events => _eventsController.stream;
 
-  @override
   Future<void> dispose() => _eventsController.close();
 
   @override

@@ -11,7 +11,7 @@ import "../foundation/control_channel_client.dart";
 /// Supervised-mode access-token authority over the loopback control channel: the
 /// GUI, not an interactive terminal or the auth server's refresh endpoint, is
 /// the bridge's token source. This service is the supervised-mode counterpart of
-/// the standalone [TokenManager] — both implement [AccessTokenProvider] and
+/// the standalone [TokenService] — both implement [AccessTokenProvider] and
 /// [TokenRefresher], and the composition root picks one by mode.
 ///
 /// [getAccessToken] asks the GUI for a token by sending a

@@ -22,7 +22,7 @@ const _sessionId = "session-1";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -140,7 +140,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -148,7 +148,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -158,6 +157,26 @@ void main() {
       expect(state.messages.length, 1);
       expect(state.messages.first.info.id, "msg-1");
       expect(state.agent, "build");
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.assistant(
+            id: "system-1",
+            sessionID: _sessionId,
+            agent: "automation",
+            modelID: "automation-model",
+            providerID: "automation-provider",
+            sender: MessageSender.system,
+            time: null,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final afterSystem = cubit.state as SessionDetailLoaded;
+      expect(afterSystem.messages.map((message) => message.info.id), ["msg-1", "system-1"]);
+      expect(afterSystem.agent, "build");
+      expect(afterSystem.assistantAgentModel, state.assistantAgentModel);
     });
 
     test("a live error updates assistant model attribution", () async {
@@ -188,7 +207,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       final cubit = createCubit(loadService: mockLoadService);
@@ -267,7 +285,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -275,7 +293,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -331,7 +348,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -339,7 +356,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -384,7 +400,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -392,7 +408,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       final responses = <Completer<ApiResponse<CommandListResponse>>>[];
@@ -454,7 +469,7 @@ void main() {
           pendingPermissions: const <PendingPermission>[],
           childSessions: const <Session>[],
           statuses: const <String, SessionStatus>{},
-          agents: const <AgentInfo?>[],
+          agents: const <AgentInfo>[],
           providerData: null,
           commands: const <CommandInfo>[],
           canonicalSessionTitle: null,
@@ -472,7 +487,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(supportsPromptAttachments: true),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -483,7 +497,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(supportsPromptAttachments: null),
-          isBridgeConnected: true,
         ),
       );
 
@@ -523,7 +536,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -539,7 +552,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -602,7 +614,6 @@ void main() {
       refreshes.first.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() => refreshes.length == 2);
@@ -611,7 +622,6 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() => sendCalls == 2);
@@ -641,7 +651,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -649,7 +659,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -705,7 +714,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -721,7 +730,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -732,7 +740,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       var sendCalls = 0;
@@ -793,7 +800,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -812,7 +819,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -828,7 +835,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: supportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       final refreshes = <Completer<SessionDetailLoadResult>>[];
@@ -888,7 +894,6 @@ void main() {
       refreshes.first.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: supportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() => refreshes.length == 2);
@@ -898,7 +903,6 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: unsupportedSnapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() {
@@ -938,7 +942,7 @@ void main() {
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
         statuses: <String, SessionStatus>{},
-        agents: <AgentInfo?>[],
+        agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -954,7 +958,6 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       final refreshes = <Completer<SessionDetailLoadResult>>[];
@@ -994,7 +997,6 @@ void main() {
       refreshes[1].complete(
         const SessionDetailLoadResult.loaded(
           snapshot: snapshot,
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1066,7 +1068,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1074,7 +1076,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1145,7 +1146,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1153,7 +1154,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);
@@ -1184,7 +1184,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1192,7 +1192,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1238,22 +1237,11 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final refresh = Completer<SessionDetailLoadResult>();
 
-      MessagePart textPart({required String id, required String text}) => MessagePart(
+      MessagePart textPart({required String id, required String text}) => MessagePart.text(
         id: id,
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
@@ -1267,7 +1255,7 @@ void main() {
         pendingPermissions: const <PendingPermission>[],
         childSessions: const <Session>[],
         statuses: const <String, SessionStatus>{},
-        agents: const <AgentInfo?>[],
+        agents: const <AgentInfo>[],
         providerData: null,
         commands: const <CommandInfo>[],
         canonicalSessionTitle: null,
@@ -1284,7 +1272,6 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: snapshot(messages: const []),
-          isBridgeConnected: true,
         ),
       );
       when(
@@ -1336,7 +1323,6 @@ void main() {
               ),
             ],
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitCondition(() {
@@ -1345,7 +1331,7 @@ void main() {
       });
 
       final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
-      expect(parts.map((part) => (part.id, part.text)), [
+      expect(parts.whereType<MessagePartText>().map((part) => (part.id, part.text)), [
         ("part-before-refresh", "fresh snapshot"),
         ("part-during-refresh", "live"),
       ]);
@@ -1371,7 +1357,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1379,29 +1365,17 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
       final cubit = createCubit(loadService: mockLoadService);
       await _awaitLoaded(cubit);
 
-      const part = MessagePart(
+      const part = MessagePart.text(
         id: "part-1",
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: "Keep this prompt",
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
       sessionEvents.add(const SesoriMessagePartUpdated(part: part));
       await Future<void>.delayed(Duration.zero);
@@ -1445,7 +1419,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1453,26 +1427,14 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
-      MessagePart part({required String id, required String text}) => MessagePart(
+      MessagePart part({required String id, required String text}) => MessagePart.text(
         id: id,
         sessionID: _sessionId,
         messageID: "message-1",
-        type: MessagePartType.text,
         text: text,
-        tool: null,
-        state: null,
-        prompt: null,
-        description: null,
-        agent: null,
-        childSessionID: null,
-        agentName: null,
-        attempt: null,
-        retryError: null,
-        attachment: null,
       );
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -1509,7 +1471,7 @@ void main() {
 
       final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
       expect(parts.map((item) => item.id), ["part-a", "part-b"]);
-      expect(parts.map((item) => item.text), ["new", "second"]);
+      expect(parts.whereType<MessagePartText>().map((item) => item.text), ["new", "second"]);
     });
 
     test("inserts late message envelopes by transcript time", () async {
@@ -1543,7 +1505,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1551,7 +1513,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1619,7 +1580,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1627,7 +1588,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1695,7 +1655,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1703,7 +1663,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
 
@@ -1764,7 +1723,7 @@ void main() {
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
             statuses: <String, SessionStatus>{},
-            agents: <AgentInfo?>[],
+            agents: <AgentInfo>[],
             providerData: null,
             commands: <CommandInfo>[],
             canonicalSessionTitle: null,
@@ -1772,7 +1731,6 @@ void main() {
             isRootSession: true,
             isArchived: false,
           ),
-          isBridgeConnected: true,
         ),
       );
       await _awaitLoaded(cubit);

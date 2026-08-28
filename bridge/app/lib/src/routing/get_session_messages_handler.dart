@@ -18,14 +18,9 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
   Future<MessageWithPartsResponse> handle(
     RelayRequest request, {
     required SessionMessagesRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final sessionId = body.sessionId;
-    if (sessionId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty session id");
-    }
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
     // A non-positive limit has no honest answer: it is neither "the whole
     // transcript" (null) nor a page anyone can page onward from, so refuse it
     // rather than returning an empty page that never terminates.
@@ -39,6 +34,10 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       before: body.before,
       attachmentDelivery: body.attachmentDelivery,
     );
-    return MessageWithPartsResponse(messages: page.messages, nextCursor: page.nextCursor);
+    return MessageWithPartsResponse(
+      messages: page.messages,
+      nextCursor: page.nextCursor,
+      replayedPromptDefaults: page.replayedPromptDefaults,
+    );
   }
 }

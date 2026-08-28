@@ -18,7 +18,7 @@ const _sessionId = "session-1";
 void main() {
   const connectedStatus = ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
-    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+    health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
   setUpAll(() {
@@ -59,7 +59,6 @@ void main() {
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
-        isBridgeConnected: true,
       ),
     );
     when(
@@ -70,7 +69,6 @@ void main() {
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
         snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
-        isBridgeConnected: true,
       ),
     );
 

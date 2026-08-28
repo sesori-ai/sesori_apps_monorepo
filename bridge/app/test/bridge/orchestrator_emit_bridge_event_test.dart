@@ -5,7 +5,6 @@ import "dart:io";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
@@ -269,6 +268,7 @@ void main() {
       lastAgent: null,
       lastAgentModel: null,
       pluginId: "one",
+      preservePullRequestScope: false,
     );
     final patch = harness.composition.session.localWireEvents
         .where((event) => event is SesoriSessionUnseenChanged)
@@ -880,6 +880,7 @@ Future<void> _insertEventSession({required AppDatabase database, required String
   await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
   await database.sessionDao.insertSession(
     pluginId: pluginId,
+    preservePullRequestScope: false,
     sessionId: "stable-session",
     backendSessionId: "backend-session",
     projectId: "project",
@@ -1099,7 +1100,6 @@ class const _OrchestratorHarness({
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
-      legacyMissingPluginId: "opencode",
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -1111,7 +1111,7 @@ class const _OrchestratorHarness({
       httpClient: httpClient,
       processRunner: NoopProcessRunner(),
       accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: _FakeTokenRefresher(),
+      tokenRefresher: FakeTokenRefresher(token: "token"),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       restartService: restartService,
@@ -1204,9 +1204,4 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
     activeSummaryReadStarted = null;
     return activitySummaries;
   }
-}
-
-class _FakeTokenRefresher() implements TokenRefresher {
-  @override
-  Future<String> getAccessToken({bool forceRefresh = false}) async => "token";
 }

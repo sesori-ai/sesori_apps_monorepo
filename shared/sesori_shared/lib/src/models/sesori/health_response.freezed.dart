@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HealthResponse {
 
- bool get healthy; String get version; bool? get filesystemAccessDegraded;
+ bool get healthy; String get version; bool get filesystemAccessDegraded;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $HealthResponseCopyWith<$Res>  {
   factory $HealthResponseCopyWith(HealthResponse value, $Res Function(HealthResponse) _then) = _$HealthResponseCopyWithImpl;
 @useResult
 $Res call({
- bool healthy, String version, bool? filesystemAccessDegraded
+ bool healthy, String version, bool filesystemAccessDegraded
 });
 
 
@@ -66,12 +66,12 @@ class _$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,}) {
   return _then(HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,filesystemAccessDegraded: freezed == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool?,
+as String,filesystemAccessDegraded: null == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -88,7 +88,7 @@ class _HealthResponse implements HealthResponse {
 
 @override final  bool healthy;
 @override final  String version;
-@override final  bool? filesystemAccessDegraded;
+@override final  bool filesystemAccessDegraded;
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -123,7 +123,7 @@ abstract mixin class _$HealthResponseCopyWith<$Res> implements $HealthResponseCo
   factory _$HealthResponseCopyWith(_HealthResponse value, $Res Function(_HealthResponse) _then) = __$HealthResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool healthy, String version, bool? filesystemAccessDegraded
+ bool healthy, String version, bool filesystemAccessDegraded
 });
 
 
@@ -140,12 +140,12 @@ class __$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,}) {
   return _then(_HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,filesystemAccessDegraded: freezed == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool?,
+as String,filesystemAccessDegraded: null == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

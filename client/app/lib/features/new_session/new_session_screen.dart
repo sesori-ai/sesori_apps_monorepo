@@ -30,7 +30,7 @@ class const NewSessionScreen({
     return BlocProvider(
       create: (_) => NewSessionCubit(
         connectionService: getIt<ConnectionService>(),
-        sessionService: getIt<SessionService>(),
+        sessionRepository: getIt<SessionRepository>(),
         newSessionPluginService: getIt<NewSessionPluginService>(),
         newSessionOptionsService: getIt<NewSessionOptionsService>(),
         projectRepository: getIt<ProjectRepository>(),
@@ -158,8 +158,8 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
   Widget? _buildErrorBanner(NewSessionState state) {
     final prego = context.prego;
     final loc = context.loc;
-    return switch (state) {
-      NewSessionRestoringSubmission(:final reason) || NewSessionCreationError(:final reason) => Padding(
+    return switch (state.phase) {
+      NewSessionPhaseRestoringSubmission(:final reason) || NewSessionPhaseCreationError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,14 +175,14 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
           ],
         ),
       ),
-      NewSessionDiscoveryError(:final reason) => Padding(
+      NewSessionPhaseDiscoveryError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Text(
           reason.localizedMessage(loc),
           style: TextStyle(color: prego.colors.fgErrorPrimary),
         ),
       ),
-      NewSessionIdle() || NewSessionSending() || NewSessionCreated() => null,
+      NewSessionPhaseIdle() || NewSessionPhaseSending() || null => null,
     };
   }
 
@@ -374,18 +374,18 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
     final loc = context.loc;
-    final isSending = state is NewSessionSending;
+    final isSending = state.phase is NewSessionPhaseSending;
     final composerData = state.agentModelData;
     final needsHarnessDiscovery = cubit.needsHarnessDiscovery;
     final hasNoHarnesses = cubit.hasNoHarnesses;
     final optionsStatus = _resolveOptionsStatus(data: composerData);
-    final restoringSubmission = switch (state) {
-      NewSessionRestoringSubmission(:final submission) => submission,
-      NewSessionIdle() ||
-      NewSessionSending() ||
-      NewSessionCreationError() ||
-      NewSessionDiscoveryError() ||
-      NewSessionCreated() => null,
+    final restoringSubmission = switch (state.phase) {
+      NewSessionPhaseRestoringSubmission(:final submission) => submission,
+      NewSessionPhaseIdle() ||
+      NewSessionPhaseSending() ||
+      NewSessionPhaseCreationError() ||
+      NewSessionPhaseDiscoveryError() ||
+      null => null,
     };
     final restoredAttachments = switch (restoringSubmission) {
       NewSessionTextSubmissionSnapshot(:final attachments) => attachments,

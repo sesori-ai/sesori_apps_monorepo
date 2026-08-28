@@ -165,6 +165,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       SseWorkspaceReady(:final name) => BridgeSseWorkspaceReady(name: name),
       SseWorkspaceFailed(:final message) => BridgeSseWorkspaceFailed(message: message),
       SseTuiToastShow(:final title, :final message, :final variant) => BridgeSseTuiToastShow(
+        sessionID: null,
         title: title,
         message: message,
         variant: variant,

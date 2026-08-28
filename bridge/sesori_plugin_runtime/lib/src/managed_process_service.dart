@@ -3,7 +3,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "managed_runtime_spec.dart";
 import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
-import "runtime_start_intent.dart";
 
 class ManagedProcessService<R>({
   required final RuntimeOwnershipRepository<R> _ownershipRepository,
@@ -13,11 +12,6 @@ class ManagedProcessService<R>({
   required final ServerClock _clock,
   required final String _runtimeId,
   required final Duration _gracefulShutdownWait,
-
-  /// Bridge-private side-file store: an intent record is written before spawn
-  /// and resolved after, so a crash between the two still leaves a reclaimable
-  /// trace of the child we were about to own.
-  required final RuntimeStartIntentStore _intentStore,
 }) {
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
@@ -35,9 +29,9 @@ class ManagedProcessService<R>({
   Future<ManagedRuntimeHandle<R>> start({
     required ManagedRuntimeSpec<R> spec,
     required List<ProcessIdentity> terminatedBridgeIdentities,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
 
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
@@ -58,9 +52,9 @@ class ManagedProcessService<R>({
   Future<ManagedRuntimeHandle<R>> attach({
     required ManagedRuntimeSpec<R> spec,
     required int port,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
     _throwIfAborted(abort);
 
     final probe = await _probeTolerant(spec: spec, port: port);
@@ -92,16 +86,15 @@ class ManagedProcessService<R>({
   /// the address to free (bounded by [portReleaseTimeout]) — if it never frees
   /// it throws [PluginStartException], which the caller treats as terminal.
   /// Otherwise it spawns a fresh child and writes the new ownership record and
-  /// confirms health on exactly the cold-start path (including intent side-file
-  /// handling and rollback).
+  /// confirms health on exactly the cold-start path, including rollback.
   Future<ManagedRuntimeHandle<R>> restartOnPort({
     required ManagedRuntimeSpec<R> spec,
     required int port,
     required Duration portReleaseTimeout,
     required Duration portReleasePollInterval,
-    StartAbortSignal? startAborted,
+    required StartAbortSignal startAborted,
   }) async {
-    final abort = startAborted ?? StartAbortSignal.never;
+    final abort = startAborted;
     _throwIfAborted(abort);
     await _waitForPortRelease(
       spec: spec,
@@ -220,27 +213,9 @@ class ManagedProcessService<R>({
     required int port,
     required StartAbortSignal abort,
   }) async {
-    // Record the spawn intent before the child exists, so a crash between
-    // spawn and the ownership write still names the bridge run and the port.
-    await _intentStore.write(
-      RuntimeStartIntent(
-        ownerSessionId: _bridge.ownerSessionId,
-        port: port,
-        bridgePid: _bridge.identity.pid,
-        bridgeStartMarker: _bridge.identity.startMarker,
-        recordedAt: _clock.now(),
-      ),
-    );
-
     // Spawn errors propagate before any ownership state is acquired: the
     // explicit-port caller surfaces them raw, the dynamic caller retries.
-    final SpawnedProcess spawned;
-    try {
-      spawned = await spec.spawn(port: port);
-    } on Object {
-      await _clearIntentQuietly();
-      rethrow;
-    }
+    final spawned = await spec.spawn(port: port);
 
     // The documented post-spawn abort checkpoint: settle here, before any
     // ownership state is created, so an abort that fired during the spawn does
@@ -248,7 +223,6 @@ class ManagedProcessService<R>({
     // freshly spawned child is still untracked, so stop it directly.
     if (abort.isAborted) {
       await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a post-spawn abort");
-      await _clearIntentQuietly();
       throw const PluginStartAbortedException();
     }
 
@@ -267,7 +241,6 @@ class ManagedProcessService<R>({
       // The child is already running but not yet tracked or recorded — stop it
       // directly so a record-factory failure cannot leak a started runtime.
       await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a record build error");
-      await _clearIntentQuietly();
       rethrow;
     }
     trackOwnedRuntime(
@@ -277,9 +250,6 @@ class ManagedProcessService<R>({
 
     try {
       await _ownershipRepository.upsert(record: record);
-      // The starting record is now in the frozen ownership file; an orphan is
-      // trackable from there, so the intent has done its job.
-      await _clearIntentQuietly();
       _throwIfAborted(abort);
 
       final health = await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
@@ -303,18 +273,7 @@ class ManagedProcessService<R>({
       } on Object catch (cleanupError, cleanupStackTrace) {
         Log.w("[$_runtimeId] Failed to clean up after a failed start on port $port", cleanupError, cleanupStackTrace);
       }
-      await _clearIntentQuietly();
       rethrow;
-    }
-  }
-
-  /// Best-effort removal of the intent side file. An intent-clear failure must
-  /// never mask the start error that prompted it, so this only logs.
-  Future<void> _clearIntentQuietly() async {
-    try {
-      await _intentStore.clear();
-    } on Object catch (error, stackTrace) {
-      Log.w("[$_runtimeId] Failed to clear the runtime start-intent side file", error, stackTrace);
     }
   }
 
@@ -603,8 +562,8 @@ class ManagedProcessService<R>({
         (_runtimeStartMarkerOf(record: record) == null ||
             process.identity.startMarker == _runtimeStartMarkerOf(record: record)) &&
         _samePath(
-          process.identity.executablePath,
-          _runtimeExecutablePathOf(record: record),
+          actual: process.identity.executablePath,
+          expected: _runtimeExecutablePathOf(record: record),
           platform: process.identity.platform,
         ) &&
         _matchesRuntimeCommandLine(identity: process.identity, record: record);
@@ -654,10 +613,18 @@ class ManagedProcessService<R>({
     }
     if (_runtimeStartMarkerOf(record: record) != null || identity.startMarker != null) {
       return identity.startMarker == _runtimeStartMarkerOf(record: record) &&
-          _samePath(identity.executablePath, _runtimeExecutablePathOf(record: record), platform: identity.platform) &&
+          _samePath(
+            actual: identity.executablePath,
+            expected: _runtimeExecutablePathOf(record: record),
+            platform: identity.platform,
+          ) &&
           _matchesRuntimeCommandLine(identity: identity, record: record);
     }
-    return _samePath(identity.executablePath, _runtimeExecutablePathOf(record: record), platform: identity.platform);
+    return _samePath(
+      actual: identity.executablePath,
+      expected: _runtimeExecutablePathOf(record: record),
+      platform: identity.platform,
+    );
   }
 
   bool _matchesBridgeRecord({required ProcessIdentity identity, required R record}) {
@@ -670,7 +637,7 @@ class ManagedProcessService<R>({
     return true;
   }
 
-  bool _samePath(String? actual, String? expected, {required String platform}) {
+  bool _samePath({required String? actual, required String? expected, required String platform}) {
     if (actual == null || expected == null) {
       return false;
     }

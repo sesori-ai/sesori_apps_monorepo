@@ -5,9 +5,7 @@ import "request_handler.dart";
 
 /// Handles `POST /question/reject` — rejects a pending question.
 ///
-/// Session context scopes modern question IDs. It remains optional for
-/// backwards compatibility with older clients, where the pending owner must
-/// resolve unambiguously before rejection.
+/// Session context scopes question IDs to their owning session.
 class RejectQuestionHandler({required final PendingInteractionService _pendingInteractionService})
     extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
   this
@@ -21,18 +19,15 @@ class RejectQuestionHandler({required final PendingInteractionService _pendingIn
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
     required RejectQuestionRequest body,
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-    required String? fragment,
   }) async {
     final requestId = body.requestId;
-    if (requestId.isEmpty) {
-      throw buildErrorResponse(request, 400, "empty request id");
-    }
+    final sessionId = body.sessionId;
+    requireNonEmpty(request: request, value: requestId, label: "request id");
+    requireNonEmpty(request: request, value: sessionId, label: "session id");
 
     await _pendingInteractionService.rejectQuestion(
       questionId: requestId,
-      sessionId: body.sessionId,
+      sessionId: sessionId,
     );
 
     return const SuccessEmptyResponse();

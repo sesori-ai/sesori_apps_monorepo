@@ -18,7 +18,7 @@ class _FakeTokenRefreshManager(final String _token, {final String? _forceRefresh
     if (forceRefresh) {
       forceRefreshCalled = true;
       if (_forceRefreshToken != null) return _forceRefreshToken;
-      throw const TokenRefreshException("Force refresh failed");
+      throw const TokenRefreshException(reason: "Force refresh failed");
     }
     return _token;
   }
@@ -328,32 +328,5 @@ void main() {
       expect(requestCount, equals(1));
       expect(fakeManager.forceRefreshCalled, isFalse);
     });
-
-    test("dispose does not close the shared http transport", () async {
-      final httpClient = _FakeHttpClient();
-      final client = PushNotificationClient(
-        authBackendURL: "https://api.sesori.test",
-        tokenRefreshManager: _FakeTokenRefreshManager("token"),
-        client: httpClient,
-      );
-
-      await client.dispose();
-
-      expect(httpClient.closeCallCount, equals(0));
-    });
   });
-}
-
-class _FakeHttpClient() extends http.BaseClient {
-  int closeCallCount = 0;
-
-  @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    throw UnimplementedError();
-  }
-
-  @override
-  void close() {
-    closeCallCount += 1;
-  }
 }

@@ -417,8 +417,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   // TUI
   // ---------------------------------------------------------------------------
 
+  /// Transient backend guidance. A null [sessionID] remains app-wide.
   @FreezedUnionValue("tui.toast.show")
+  @Implements<SesoriSessionEvent>()
   const factory tuiToastShow({
+    required String? sessionID,
     required String? title,
     required String? message,
     required String? variant,

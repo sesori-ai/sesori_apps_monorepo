@@ -19,11 +19,7 @@ sealed class ReplyToQuestionRequest with _$ReplyToQuestionRequest {
 sealed class RejectQuestionRequest with _$RejectQuestionRequest {
   const factory({
     required String requestId, // questions request id
-    // `required` so callers cannot forget to supply it, but nullable on the
-    // wire: older clients that omit it deserialize to null, and the bridge
-    // falls back to resolving the owning session from the question id.
-    // COMPATIBILITY 2026-06-17 (v1.1.0): Old clients omit sessionId on rejection. Make it non-null and remove bridge null handling once those clients are unsupported.
-    required String? sessionId,
+    required String sessionId,
   }) = _RejectQuestionRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);

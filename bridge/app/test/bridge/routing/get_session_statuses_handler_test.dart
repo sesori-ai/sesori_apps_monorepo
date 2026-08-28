@@ -47,6 +47,7 @@ void main() {
         sessionId: "stable-root",
         backendSessionId: "backend-root",
         pluginId: plugin.id,
+        preservePullRequestScope: false,
         projectId: "project",
         isDedicated: false,
         createdAt: 1,
@@ -64,9 +65,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/session/status"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.statuses, equals({"stable-root": const SessionStatus.idle()}));
@@ -79,6 +77,7 @@ void main() {
           sessionId: "stable-$id",
           backendSessionId: id,
           pluginId: plugin.id,
+          preservePullRequestScope: false,
           projectId: "project",
           isDedicated: false,
           createdAt: 1,
@@ -102,9 +101,6 @@ void main() {
 
       final response = await handler.handle(
         makeRequest("GET", "/session/status"),
-        pathParams: {},
-        queryParams: {},
-        fragment: null,
       );
 
       expect(response.statuses["stable-idle-session"], equals(const SessionStatus.idle()));

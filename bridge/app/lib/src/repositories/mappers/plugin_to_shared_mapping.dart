@@ -1,29 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Maps [PluginMessagePartType] to [MessagePartType] with compile-time safety.
-/// An exhaustive switch ensures any new enum value causes a compile error here,
-/// rather than a runtime crash.
-extension PluginMessagePartTypeMapping on PluginMessagePartType {
-  MessagePartType toShared() => switch (this) {
-    PluginMessagePartType.text => MessagePartType.text,
-    PluginMessagePartType.reasoning => MessagePartType.reasoning,
-    PluginMessagePartType.tool => MessagePartType.tool,
-    PluginMessagePartType.subtask => MessagePartType.subtask,
-    PluginMessagePartType.stepStart => MessagePartType.stepStart,
-    PluginMessagePartType.stepFinish => MessagePartType.stepFinish,
-    PluginMessagePartType.file => MessagePartType.file,
-    PluginMessagePartType.snapshot => MessagePartType.snapshot,
-    PluginMessagePartType.patch => MessagePartType.patch,
-    PluginMessagePartType.agent => MessagePartType.agent,
-    PluginMessagePartType.retry => MessagePartType.retry,
-    PluginMessagePartType.compaction => MessagePartType.compaction,
-    PluginMessagePartType.unknown => throw StateError(
-      "PluginMessagePartType.unknown must be filtered out before mapping to shared model",
-    ),
-  };
-}
-
 /// Maps [PluginToolStatus] to the shared [ToolStatus] with compile-time
 /// exhaustiveness — a new plugin status forces a compile error here rather than
 /// silently leaking a wire string. Unlike [PluginMessagePartType], `unknown` is
@@ -98,25 +75,95 @@ extension PluginQuestionInfoMapping on PluginQuestionInfo {
 
 /// Maps [PluginMessagePart] to the shared [MessagePart].
 extension PluginMessagePartMapping on PluginMessagePart {
-  MessagePart toShared({required String sessionId}) => MessagePart(
-    id: id,
-    sessionID: sessionId,
-    messageID: messageID,
-    type: type.toShared(),
-    text: text,
-    tool: tool,
-    state: state?.toShared(),
-    prompt: prompt,
-    description: description,
-    agent: agent,
-    // Carried through as the plugin reported it. The live path translates it
-    // in `SessionEventMapper`; the history path in `SessionRepository`.
-    childSessionID: childSessionID,
-    agentName: agentName,
-    attempt: attempt,
-    retryError: retryError,
-    attachment: attachment?.toShared(),
-  );
+  MessagePart toShared({required String sessionId}) => switch (this) {
+    PluginMessagePartText(:final id, :final messageID, :final text) => MessagePart.text(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      text: text,
+    ),
+    PluginMessagePartReasoning(:final id, :final messageID, :final text) => MessagePart.reasoning(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      text: text,
+    ),
+    PluginMessagePartTool(:final id, :final messageID, :final tool, :final state) => MessagePart.tool(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      tool: tool ?? "",
+      state: state.toShared(),
+    ),
+    PluginMessagePartSubtask(
+      :final id,
+      :final messageID,
+      :final prompt,
+      :final description,
+      :final agent,
+      :final taskState,
+      :final childSessionID,
+    ) =>
+      MessagePart.subtask(
+        id: id,
+        sessionID: sessionId,
+        messageID: messageID,
+        prompt: prompt,
+        description: description,
+        agent: agent,
+        taskState: taskState?.toShared(),
+        // Carried through as the plugin reported it. The live path translates
+        // it in `SessionEventMapper`; the history path in `SessionRepository`.
+        childSessionID: childSessionID,
+      ),
+    PluginMessagePartStepStart(:final id, :final messageID) => MessagePart.stepStart(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+    ),
+    PluginMessagePartStepFinish(:final id, :final messageID) => MessagePart.stepFinish(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+    ),
+    PluginMessagePartFile(:final id, :final messageID, :final attachment) => MessagePart.file(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      attachment: attachment.toShared(),
+    ),
+    PluginMessagePartSnapshot(:final id, :final messageID) => MessagePart.snapshot(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+    ),
+    PluginMessagePartPatch(:final id, :final messageID) => MessagePart.patch(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+    ),
+    PluginMessagePartAgent(:final id, :final messageID, :final agentName) => MessagePart.agent(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      agentName: agentName,
+    ),
+    PluginMessagePartRetry(:final id, :final messageID, :final attempt, :final retryError) => MessagePart.retry(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+      attempt: attempt,
+      retryError: retryError,
+    ),
+    PluginMessagePartCompaction(:final id, :final messageID) => MessagePart.compaction(
+      id: id,
+      sessionID: sessionId,
+      messageID: messageID,
+    ),
+    PluginMessagePartUnknown() => throw StateError(
+      "PluginMessagePartUnknown must be filtered out before mapping to shared model",
+    ),
+  };
 }
 
 /// Maps plugin-level queued prompts to the shared wire model.

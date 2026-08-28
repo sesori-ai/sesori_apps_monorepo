@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:go_router/go_router.dart";
@@ -19,10 +18,6 @@ class const CommandPickerSheet({
     BuildContext context, {
     required List<CommandInfo> commands,
   }) {
-    // Status-bar inset, captured before presenting: the modal route strips
-    // the top inset from both `padding` and `viewPadding`, so inside the
-    // sheet it reads as 0.
-    final topInset = MediaQuery.paddingOf(context).top;
     return showPregoBottomSheet<CommandInfo>(
       context: context,
       title: context.loc.sessionDetailCommandPickerTitle,
@@ -30,22 +25,8 @@ class const CommandPickerSheet({
       // consumes the home-indicator inset as scroll padding.
       contentPadding: EdgeInsetsDirectional.zero,
       handleBottomSafeArea: false,
-      builder: (sheetContext) {
-        // The body hosts its own scroll view, so it needs a bounded height.
-        // Shrink above the keyboard (the sheet re-adds the keyboard inset
-        // below the body) so the search field stays visible while typing,
-        // and cap at the space left below the sheet header (mirroring the
-        // model picker) so the outer sheet never gains scroll range of its
-        // own on top of the inner list.
-        final screenHeight = MediaQuery.heightOf(sheetContext);
-        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
-        final height = math.min(screenHeight * 0.7 - keyboard, maxBody);
-        return SizedBox(
-          height: math.max(height, screenHeight * 0.3),
-          child: CommandPickerSheet(commands: commands),
-        );
-      },
+      bodySize: PregoBottomSheetBodySize.seventyPercent,
+      builder: (_) => CommandPickerSheet(commands: commands),
     );
   }
 

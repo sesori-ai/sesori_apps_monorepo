@@ -146,7 +146,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
           // An unhandled async error here would take down the whole isolate
           // over a status report; log it instead.
           .catchError((Object error, StackTrace stackTrace) {
-            Log.w("SteadyPluginLifecycle: degraded debounce failed: $error\n$stackTrace");
+            Log.w("SteadyPluginLifecycle: degraded debounce failed", error, stackTrace);
           }),
     );
   }
@@ -154,14 +154,14 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// Reports a terminal failure. Dropped silently once [shutdown] has
   /// started (no `Failed` after `Stopping`).
   @protected
+  // ignore: no_slop_linter/prefer_specific_type, caught failure causes are opaque
   void markFailed(String reason, {required Object? cause}) {
     _cancelPendingDegraded();
     _statusMachine.trySet(PluginFailed(reason: reason, cause: cause));
   }
 
   /// Releases the plugin's resources. Override point for the mixed-in class;
-  /// the default does nothing. Must be safe to run before or after
-  /// `BridgePluginApi.dispose()`.
+  /// the default does nothing.
   ///
   /// If this throws, the plugin still reaches `Stopped`, and the same error
   /// is rethrown to *every* `shutdown()` caller — the failure is part of the
@@ -169,6 +169,26 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// clean one.
   @protected
   Future<void> onShutdown({required Duration? budget}) async {}
+
+  @protected
+  Future<void> runShutdownCleanups({required Iterable<Future<void> Function()> cleanups}) async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+    for (final cleanup in cleanups) {
+      try {
+        await cleanup();
+      } on Object catch (error, stackTrace) {
+        if (firstError == null) {
+          firstError = error;
+          firstStackTrace = stackTrace;
+        } else {
+          Log.w("Additional shutdown cleanup failed", error, stackTrace);
+        }
+      }
+    }
+    final stackTrace = firstStackTrace;
+    if (firstError != null && stackTrace != null) Error.throwWithStackTrace(firstError, stackTrace);
+  }
 
   @override
   Future<void> shutdown({required Duration? budget}) {

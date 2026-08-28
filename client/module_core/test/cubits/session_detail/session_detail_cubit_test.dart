@@ -40,7 +40,7 @@ void main() {
   });
 
   group("SessionDetailCubit", () {
-    late MockSessionService mockSessionService;
+    late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
     late MockProjectRepository mockProjectRepository;
@@ -56,7 +56,7 @@ void main() {
     late BehaviorSubject<ConnectionStatus> connectionStatus;
 
     setUp(() {
-      mockSessionService = MockSessionService();
+      mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
       mockProjectRepository = MockProjectRepository();
@@ -101,7 +101,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      delegateSessionRepositoryToService(repository: mockSessionRepository, service: mockSessionService);
+      delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
       when(() => mockProjectRepository.findSessionContext(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => const ProjectSessionContext(
@@ -306,8 +306,7 @@ void main() {
             sessionId: sessionId,
             text: "hi",
             agent: "coder",
-            providerID: "anthropic",
-            modelID: "claude-3-5-sonnet",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
           ),
@@ -375,8 +374,7 @@ void main() {
             text: "look at this",
             attachments: any(named: "attachments", that: hasLength(1)),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -435,8 +433,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
           ),
@@ -484,8 +481,7 @@ void main() {
             text: any(named: "text"),
             attachments: any(named: "attachments"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: any(named: "command"),
           ),
@@ -533,8 +529,7 @@ void main() {
             sessionId: sessionId,
             text: "lib/main.dart",
             agent: "coder",
-            providerID: "anthropic",
-            modelID: "claude-3-5-sonnet",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
             command: "review",
           ),
@@ -636,8 +631,7 @@ void main() {
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
-            providerID: "anthropic",
-            modelID: "claude-3-5-sonnet",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
           ),
@@ -971,7 +965,11 @@ void main() {
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
-            const MessageWithPartsResponse(messages: <MessageWithParts>[], nextCursor: null),
+            const MessageWithPartsResponse(
+              messages: <MessageWithParts>[],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
           ),
         );
 
@@ -1285,7 +1283,7 @@ void main() {
 
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
@@ -1342,12 +1340,24 @@ void main() {
         if (getMessagesCallCount == 2) {
           slowRefreshStarted.complete();
           return completeSlowRefresh.future.then(
-            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+            (_) => ApiResponse.success(
+              MessageWithPartsResponse(
+                messages: [testMessageWithParts()],
+                nextCursor: null,
+                replayedPromptDefaults: null,
+              ),
+            ),
           );
         }
 
         return Future<ApiResponse<MessageWithPartsResponse>>.value(
-          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [testMessageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
       });
 
@@ -1371,7 +1381,7 @@ void main() {
 
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           health: testHealthResponse(),
         ),
       );
@@ -1508,7 +1518,7 @@ void main() {
         await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
         await cubit.sendMessage(
@@ -1535,8 +1545,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -1565,7 +1574,7 @@ void main() {
         await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.reconnecting(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
         await cubit.sendMessage(
@@ -1592,8 +1601,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -1611,8 +1619,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -1658,8 +1665,7 @@ void main() {
             sessionId: sessionId,
             text: "hello",
             agent: "coder",
-            providerID: "anthropic",
-            modelID: "claude-3-5-sonnet",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
           ),
@@ -1708,7 +1714,7 @@ void main() {
         // Connection drops.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
 
@@ -1756,8 +1762,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -1788,7 +1793,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
 
@@ -1803,13 +1808,13 @@ void main() {
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
@@ -1835,8 +1840,7 @@ void main() {
             sessionId: sessionId,
             text: "retry me",
             agent: "coder",
-            providerID: "anthropic",
-            modelID: "claude-3-5-sonnet",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
             command: null,
           ),
@@ -1873,7 +1877,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         ),
       );
 
@@ -1891,13 +1895,13 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           health: testHealthResponse(),
         ),
       );
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           health: testHealthResponse(),
         ),
       );
@@ -1910,8 +1914,7 @@ void main() {
           sessionId: sessionId,
           text: "hello",
           agent: "coder",
-          providerID: "anthropic",
-          modelID: "claude-3-5-sonnet",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
           command: null,
         ),
@@ -1934,12 +1937,24 @@ void main() {
         if (getMessagesCallCount == 2) {
           slowRefreshStarted.complete();
           return completeSlowRefresh.future.then(
-            (_) => ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+            (_) => ApiResponse.success(
+              MessageWithPartsResponse(
+                messages: [testMessageWithParts()],
+                nextCursor: null,
+                replayedPromptDefaults: null,
+              ),
+            ),
           );
         }
 
         return Future<ApiResponse<MessageWithPartsResponse>>.value(
-          ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+          ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [testMessageWithParts()],
+              nextCursor: null,
+              replayedPromptDefaults: null,
+            ),
+          ),
         );
       });
 
@@ -1962,7 +1977,7 @@ void main() {
       await _awaitLoaded(cubit);
 
       final connected = ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         health: testHealthResponse(),
       );
       connectionStatus.add(connected);
@@ -1970,7 +1985,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         ),
       );
       await cubit.sendMessage(
@@ -2009,8 +2024,7 @@ void main() {
           sessionId: sessionId,
           text: "lib/main.dart",
           agent: "coder",
-          providerID: "anthropic",
-          modelID: "claude-3-5-sonnet",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
           command: "review",
         ),
@@ -2029,8 +2043,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
         ),
@@ -2064,7 +2077,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
         ),
       );
       await cubit.sendMessage(
@@ -2076,13 +2089,13 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           health: testHealthResponse(),
         ),
       );
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           health: testHealthResponse(),
         ),
       );
@@ -2137,8 +2150,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           text: any(named: "text"),
           agent: any(named: "agent"),
-          providerID: any(named: "providerID"),
-          modelID: any(named: "modelID"),
+          model: any(named: "model"),
           variant: any(named: "variant"),
           command: any(named: "command"),
         ),
@@ -2195,8 +2207,7 @@ void main() {
           sessionId: sessionId,
           text: "second",
           agent: "coder",
-          providerID: "anthropic",
-          modelID: "claude-3-5-sonnet",
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
           command: null,
         ),
@@ -2226,7 +2237,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
 
@@ -2247,13 +2258,13 @@ void main() {
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
@@ -2269,8 +2280,7 @@ void main() {
             sessionId: sessionId,
             text: "first",
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -2282,8 +2292,7 @@ void main() {
             sessionId: sessionId,
             text: "second",
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -2303,8 +2312,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             text: any(named: "text"),
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -2332,7 +2340,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
 
@@ -2347,13 +2355,13 @@ void main() {
         // Simulate reconnection — triggers drain, but send will fail.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
@@ -2391,8 +2399,7 @@ void main() {
             sessionId: sessionId,
             text: "will fail",
             agent: any(named: "agent"),
-            providerID: any(named: "providerID"),
-            modelID: any(named: "modelID"),
+            model: any(named: "model"),
             variant: any(named: "variant"),
             command: null,
           ),
@@ -2488,7 +2495,7 @@ void main() {
         final viewingService = stubbedSessionViewingService();
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
           ),
         );
         final cubit = SessionDetailCubit(
@@ -2524,13 +2531,13 @@ void main() {
         // so the deferred refresh must re-declare it once it renders.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
-            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
             health: testHealthResponse(),
           ),
         );
@@ -2544,8 +2551,8 @@ void main() {
         final lifecycle = MockLifecycleSource();
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com"),
-            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
         final cubit = SessionDetailCubit(
@@ -2656,8 +2663,8 @@ Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
 }
 
 void _stubAllDefaults(
-  MockSessionService service,
-  MockSessionService sessionService,
+  MockSessionRepository service,
+  MockSessionRepository sessionService,
   MockConnectionService connectionService, {
   required String sessionId,
   required MockNotificationCanceller notificationCanceller,
@@ -2673,7 +2680,13 @@ void _stubAllDefaults(
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [testMessageWithParts()], nextCursor: null)),
+      ApiResponse.success(
+        MessageWithPartsResponse(
+          messages: [testMessageWithParts()],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     ),
   );
   when(
@@ -2745,7 +2758,7 @@ void _stubAllDefaults(
     () => connectionService.currentStatus,
   ).thenReturn(
     ConnectionStatus.connected(
-      config: const ServerConnectionConfig(relayHost: "fake.example.com"),
+      config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
       health: testHealthResponse(),
     ),
   );
@@ -2766,8 +2779,7 @@ void _stubAllDefaults(
       text: any(named: "text"),
       attachments: any(named: "attachments"),
       agent: any(named: "agent"),
-      providerID: any(named: "providerID"),
-      modelID: any(named: "modelID"),
+      model: any(named: "model"),
       variant: any(named: "variant"),
       command: any(named: "command"),
     ),
