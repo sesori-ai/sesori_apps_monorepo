@@ -46,8 +46,8 @@ state, and inbound versus conversational control ownership stays separated.
 ## Verification
 
 - `client/module_desktop_core`: `dart analyze --fatal-infos` — clean.
-- `client/module_desktop_core`: `dart test` — 102 tests passed.
-- Focused process/command/DI suites — 26 tests passed, covering all deliberate
+- `client/module_desktop_core`: `dart test` — 103 tests passed.
+- Focused process/command/DI suites — 27 tests passed, covering all deliberate
   exit classes, auth recovery versus manual Off, bounded give-up with recent
   logs, stable-runtime reset, both manual timer-cancellation paths, and prompt
   send/retention/stale-id behavior.
@@ -55,5 +55,5 @@ state, and inbound versus conversational control ownership stays separated.
 - `client/desktop`: `flutter test` — 22 tests passed; four-phase DI resolves
   both Layer-3 services.
 - Regenerated desktop-core Injectable output with `build_runner`.
-- Change size after review fixes: 1,232 changed lines including new files,
+- Change size after review fixes: 1,255 changed lines including new files,
   under the 1,500-line soft cap.

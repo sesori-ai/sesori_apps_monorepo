@@ -104,6 +104,7 @@ class BridgeProcessService.forTesting({
   int _crashCount = 0;
   int _lifecycleGeneration = 0;
   int _successfulAuthenticationGeneration = 0;
+  int _authenticationGenerationAtSpawn = 0;
   late AuthState _lastObservedAuthState;
   int? _activePid;
   DateTime? _healthySince;
@@ -202,6 +203,7 @@ class BridgeProcessService.forTesting({
       );
       childCreated = true;
       _activePid = streams.pid;
+      _authenticationGenerationAtSpawn = _successfulAuthenticationGeneration;
       _healthySince = null;
       _throwIfStartCancelled();
 
@@ -339,9 +341,9 @@ class BridgeProcessService.forTesting({
   void _beginExitCleanup({required BridgeProcessExit? exit}) {
     _activePid = null;
     final bool stableRun = _wasStableRun();
+    final int authenticationGenerationAtSpawn = _authenticationGenerationAtSpawn;
     _clearRunHealth();
     final int generation = _lifecycleGeneration;
-    final int authenticationGeneration = _successfulAuthenticationGeneration;
     final Future<void> cleanup = _stopControlServerAfterExit();
     _exitCleanup = cleanup;
     unawaited(
@@ -350,7 +352,7 @@ class BridgeProcessService.forTesting({
         exit: exit,
         stableRun: stableRun,
         generation: generation,
-        authenticationGeneration: authenticationGeneration,
+        authenticationGenerationAtSpawn: authenticationGenerationAtSpawn,
       ),
     );
   }
@@ -360,7 +362,7 @@ class BridgeProcessService.forTesting({
     required BridgeProcessExit? exit,
     required bool stableRun,
     required int generation,
-    required int authenticationGeneration,
+    required int authenticationGenerationAtSpawn,
   }) async {
     await cleanup;
     if (identical(_exitCleanup, cleanup)) {
@@ -373,7 +375,7 @@ class BridgeProcessService.forTesting({
       exit: exit,
       stableRun: stableRun,
       generation: generation,
-      authenticationGeneration: authenticationGeneration,
+      authenticationGenerationAtSpawn: authenticationGenerationAtSpawn,
     );
   }
 
@@ -393,7 +395,7 @@ class BridgeProcessService.forTesting({
     required BridgeProcessExit? exit,
     required bool stableRun,
     required int generation,
-    required int authenticationGeneration,
+    required int authenticationGenerationAtSpawn,
   }) {
     if (stableRun) {
       _crashCount = 0;
@@ -428,10 +430,11 @@ class BridgeProcessService.forTesting({
       case BridgeSupervisedExitCode.authRequired:
         _crashCount = 0;
         _publish(const BridgeProcessLoginRequired());
-        if (_successfulAuthenticationGeneration > authenticationGeneration) {
+        if (_authSession.currentState is AuthAuthenticated &&
+            _successfulAuthenticationGeneration > authenticationGenerationAtSpawn) {
           _restartAutomatically(
             generation: generation,
-            context: "Bridge start after authentication completed during exit cleanup",
+            context: "Bridge start after authentication completed while the prior helper was exiting",
           );
         }
         return;
@@ -563,6 +566,7 @@ class BridgeProcessService.forTesting({
   }
 
   void _clearRunHealth() {
+    _authenticationGenerationAtSpawn = 0;
     _healthySince = null;
   }
 

@@ -303,6 +303,25 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
+    test("an authentication completed before the exit-87 event still restarts desired On", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      authSession.state = const AuthState.unauthenticated();
+      authSession.state = _authenticatedState;
+      await pumpEventQueue(times: 2);
+      final Future<BridgeProcessState> restarted = service.states
+          .skip(1)
+          .firstWhere(
+            (state) => state is BridgeProcessRunning,
+          );
+
+      repository.emitExit(exitCode: 87, expected: false);
+      await restarted;
+
+      expect(repository.spawnCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
     test("an authentication completed during exit-87 cleanup still restarts desired On", () async {
       authSession.state = _authenticatedState;
       await service.start();
