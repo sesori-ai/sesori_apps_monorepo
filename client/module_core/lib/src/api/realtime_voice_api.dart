@@ -4,9 +4,9 @@ import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 import "package:web_socket_channel/web_socket_channel.dart";
 
-import "../capabilities/voice/project_glossary_key.dart";
 import "../foundation/platform/realtime_websocket_connector.dart";
 import "../logging/logging.dart";
 import "models/realtime_voice_protocol.dart";
@@ -23,37 +23,11 @@ class RealtimeVoiceApi({
   required final RealtimeWebSocketConnector connector,
   required final AuthTokenProvider tokenProvider,
 }) {
-  Future<RealtimeVoiceSession> start({required RealtimeAudioFormat audio, required String? projectKey}) async {
-    // This API promises auth only ever sees the opaque derived key. Refuse a
-    // value that is not one rather than forwarding it, so a caller that passes
-    // a raw project ID fails here instead of leaking it off the device.
-    if (projectKey != null && !isValidProjectGlossaryKey(value: projectKey)) {
-      throw const RealtimeVoiceProtocolException("Realtime projectKey must be an opaque project glossary key");
-    }
-    final token = await tokenProvider.getFreshAccessToken();
-    if (token == null) {
-      throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);
-    }
-
-    late final WebSocketChannel channel;
-    try {
-      channel = await connector.connect(
-        uri: Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
-        headers: {"Authorization": "Bearer $token"},
-        connectTimeout: realtimeVoiceConnectTimeout,
-      );
-    } on RealtimeWebSocketOpenException catch (error) {
-      if (error.timedOut) {
-        throw RealtimeVoiceOpenTimeoutException(cause: error, httpStatus: error.httpStatus);
-      }
-      throw switch (error.httpStatus) {
-        401 => RealtimeVoiceOpenAuthenticationException(cause: error, httpStatus: error.httpStatus),
-        404 => RealtimeVoiceOpenHandshakeNotFoundException(cause: error, httpStatus: error.httpStatus),
-        429 => RealtimeVoiceOpenHandshakeRateLimitedException(cause: error, httpStatus: error.httpStatus),
-        _ => RealtimeVoiceOpenTransportException(cause: error, httpStatus: error.httpStatus),
-      };
-    }
-
+  Future<RealtimeVoiceSession> start({
+    required RealtimeAudioFormat audio,
+    required ProjectGlossaryKey? projectKey,
+  }) async {
+    final channel = await _openChannel();
     final session = RealtimeVoiceSession(channel: channel);
     try {
       session._sendJson(RealtimeStartMessage(audio: audio, projectKey: projectKey).toJson());
@@ -64,6 +38,52 @@ class RealtimeVoiceApi({
       rethrow;
     }
     return session;
+  }
+
+  Future<WebSocketChannel> _openChannel() async {
+    final token = await tokenProvider.getFreshAccessToken();
+    if (token == null) {
+      throw const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: null);
+    }
+
+    try {
+      return await _connect(token: token);
+    } on RealtimeWebSocketOpenException catch (error) {
+      if (error.httpStatus != 401) throw _mapOpenFailure(error: error);
+
+      String? refreshedToken;
+      try {
+        refreshedToken = await tokenProvider.getFreshAccessToken(forceRefresh: true);
+      } on Object catch (refreshError) {
+        throw RealtimeVoiceOpenAuthenticationException(cause: refreshError, httpStatus: error.httpStatus);
+      }
+      if (refreshedToken == null) {
+        throw RealtimeVoiceOpenAuthenticationException(cause: error, httpStatus: error.httpStatus);
+      }
+      try {
+        return await _connect(token: refreshedToken);
+      } on RealtimeWebSocketOpenException catch (retryError) {
+        throw _mapOpenFailure(error: retryError);
+      }
+    }
+  }
+
+  Future<WebSocketChannel> _connect({required String token}) => connector.connect(
+    uri: Uri.parse(authBaseUrl).replace(scheme: "wss", path: "/voice/realtime", query: null),
+    headers: {"Authorization": "Bearer $token"},
+    connectTimeout: realtimeVoiceConnectTimeout,
+  );
+
+  static RealtimeVoiceOpenException _mapOpenFailure({required RealtimeWebSocketOpenException error}) {
+    if (error.timedOut) {
+      return RealtimeVoiceOpenTimeoutException(cause: error, httpStatus: error.httpStatus);
+    }
+    return switch (error.httpStatus) {
+      401 => RealtimeVoiceOpenAuthenticationException(cause: error, httpStatus: error.httpStatus),
+      404 => RealtimeVoiceOpenHandshakeNotFoundException(cause: error, httpStatus: error.httpStatus),
+      429 => RealtimeVoiceOpenHandshakeRateLimitedException(cause: error, httpStatus: error.httpStatus),
+      _ => RealtimeVoiceOpenTransportException(cause: error, httpStatus: error.httpStatus),
+    };
   }
 }
 

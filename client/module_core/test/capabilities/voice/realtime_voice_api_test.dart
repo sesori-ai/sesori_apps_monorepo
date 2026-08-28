@@ -6,6 +6,7 @@ import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/api/models/realtime_voice_protocol.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
@@ -66,6 +67,31 @@ class _Connector({bool syncInbound = false, bool hangSubscriptionCancel = false,
     if (!connectCompleter.isCompleted) {
       connectCompleter.complete(channel);
     }
+  }
+}
+
+class _RejectedThenConnectedConnector() implements RealtimeWebSocketConnector {
+  final channel = _FakeChannel(syncInbound: false, hangSubscriptionCancel: false, hangSinkClose: false)
+    ..completeReady();
+  final List<Map<String, String>> headerAttempts = [];
+  int connectCalls = 0;
+
+  @override
+  Future<WebSocketChannel> connect({
+    required Uri uri,
+    required Map<String, String> headers,
+    required Duration connectTimeout,
+  }) async {
+    headerAttempts.add(headers);
+    connectCalls++;
+    if (connectCalls == 1) {
+      throw RealtimeWebSocketOpenException(
+        cause: StateError("rejected stale token"),
+        httpStatus: 401,
+        timedOut: false,
+      );
+    }
+    return channel;
   }
 }
 
@@ -154,6 +180,7 @@ void main() {
   late _TokenProvider tokenProvider;
   late _Connector connector;
   late RealtimeVoiceApi api;
+  final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
 
   setUp(() {
     tokenProvider = _TokenProvider();
@@ -165,7 +192,7 @@ void main() {
   test("Given a realtime start When connecting Then uses fresh bearer upgrade header and start frame only", () async {
     final session = await api.start(
       audio: const RealtimeAudioFormat(sampleRate: 16000),
-      projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
+      projectKey: projectKey,
     );
 
     expect(connector.uri, Uri.parse("wss://api.sesori.com/voice/realtime"));
@@ -179,23 +206,10 @@ void main() {
     expect(start, {
       "type": "start",
       "protocolVersion": 1,
-      "projectKey": deriveProjectGlossaryKey(projectId: "project-123"),
+      "projectKey": projectKey.value,
       "audio": {"encoding": "pcm_s16le", "sampleRate": 16000, "channels": 1},
     });
     await session.close();
-  });
-
-  test("Given a raw project ID as projectKey When starting Then refuses before opening the socket", () async {
-    // Only the opaque derived key may reach auth. A caller passing the raw ID
-    // must fail here rather than have it leave the device, so the guard has to
-    // run before the connector is touched.
-    await expectLater(
-      api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: "project-123"),
-      throwsA(isA<RealtimeVoiceProtocolException>()),
-    );
-
-    expect(connector.uri, isNull);
-    expect(tokenProvider.forceRefreshes, isEmpty);
   });
 
   test("Given an async WebSocket connection When starting Then waits for ready before sending start", () async {
@@ -267,8 +281,25 @@ void main() {
         ),
       );
       expect(connector.channel.outbound, isEmpty);
+      expect(tokenProvider.forceRefreshes, [false, true]);
     },
   );
+
+  test("Given a rejected access token When refresh succeeds Then retries the handshake exactly once", () async {
+    final refreshingConnector = _RejectedThenConnectedConnector();
+    api = RealtimeVoiceApi(connector: refreshingConnector, tokenProvider: tokenProvider);
+
+    final session = await api.start(audio: const RealtimeAudioFormat(sampleRate: 16000), projectKey: projectKey);
+
+    expect(tokenProvider.forceRefreshes, [false, true]);
+    expect(refreshingConnector.connectCalls, 2);
+    expect(refreshingConnector.headerAttempts, [
+      {"Authorization": "Bearer fresh-token-1"},
+      {"Authorization": "Bearer fresh-token-2"},
+    ]);
+    expect(refreshingConnector.channel.outbound, hasLength(1));
+    await session.close();
+  });
 
   test("Given connector open facts When starting Then maps them into API-layer failures", () async {
     final cases = <RealtimeWebSocketOpenException, Type>{

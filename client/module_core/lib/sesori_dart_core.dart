@@ -53,7 +53,6 @@ export "src/capabilities/relay/room_key_storage.dart";
 export "src/capabilities/server_connection/connection_service.dart";
 export "src/capabilities/server_connection/models/connection_status.dart";
 export "src/capabilities/server_connection/server_connection_config.dart";
-export "src/capabilities/voice/project_glossary_key.dart";
 export "src/capabilities/voice/voice_api.dart";
 export "src/consumers/analytics/session_activity_analytics_listener.dart";
 export "src/cubits/appearance/appearance_cubit.dart";

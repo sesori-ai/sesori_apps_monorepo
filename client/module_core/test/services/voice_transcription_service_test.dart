@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class MockVoiceRepository() extends Mock implements VoiceRepository;
@@ -22,10 +23,12 @@ void main() {
   late VoiceTranscriptionSession session;
 
   const artifact = VoiceRecordingArtifact(path: "/tmp/voice.m4a", mimeType: "audio/mp4");
+  final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
 
   setUpAll(() {
     registerFallbackValue(artifact);
     registerFallbackValue(const VoiceRealtimeAudioFormat(sampleRate: 16000));
+    registerFallbackValue(projectKey);
     registerFallbackValue(Uint8List.fromList([0, 0]));
   });
 
@@ -36,6 +39,9 @@ void main() {
     when(capture.createSession).thenReturn(captureSession);
     when(capture.prewarm).thenAnswer((_) async {});
     when(repository.discoverCapabilities).thenAnswer((_) async => const VoiceCapabilitiesAsyncFallback());
+    when(
+      () => repository.resolveProjectGlossaryKey(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => projectKey);
     when(() => captureSession.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
     when(captureSession.start).thenAnswer((_) async {});
     when(captureSession.stop).thenAnswer((_) async => artifact);
@@ -104,9 +110,10 @@ void main() {
       () => repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
-        projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
+        projectKey: projectKey,
       ),
     ).called(1);
+    verify(() => repository.resolveProjectGlossaryKey(projectId: "project-123")).called(1);
     verifyNever(captureSession.startRealtime);
   });
 
@@ -329,7 +336,7 @@ void main() {
       ),
     ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
 
-    final limitReached = service.maxDurationReachedStream(session: session).first;
+    final terminalReached = service.realtimeTerminalStream(session: session).first;
     final starting = service.start(session: session, projectId: "project-123");
     await Future<void>.delayed(Duration.zero);
     events.add(const VoiceRealtimeReady());
@@ -338,7 +345,7 @@ void main() {
     events.add(const VoiceRealtimeCompleted(reason: VoiceRealtimeCompletionReason.sessionLimit));
     resumeCompleter.complete();
     await starting;
-    await limitReached;
+    expect(await terminalReached, VoiceRealtimeTerminalCause.limitReached);
 
     verify(captureSession.resumeRealtime).called(1);
     expect(await service.stopAndTranscribe(session: session), "done");
@@ -377,6 +384,51 @@ void main() {
 
     verify(captureSession.cancel).called(1);
     verifyNever(captureSession.resumeRealtime);
+  });
+
+  test("cancellation while setup subscriptions close also closes the opened realtime socket", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final setupCancellation = Completer<void>();
+    var setupCancellationStarted = false;
+    final frames = StreamController<Uint8List>(
+      onCancel: () {
+        setupCancellationStarted = true;
+        return setupCancellation.future;
+      },
+    );
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final connection = MockVoiceRealtimeConnection();
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer(
+      (_) async => VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    when(connection.cancel).thenAnswer((_) async {});
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
+
+    final starting = service.start(session: session, projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+    expect(setupCancellationStarted, isTrue);
+
+    await service.cancel(session: session);
+    setupCancellation.complete();
+
+    await expectLater(starting, throwsA(isA<TranscriptionCancelledError>()));
+    verify(connection.cancel).called(1);
+    verify(captureSession.cancel).called(1);
   });
 
   test("cancellation during realtime ready wait settles startup without resume or fallback", () async {
@@ -506,8 +558,9 @@ void main() {
     frames.add(Uint8List.fromList([1, 0]));
     events.add(const VoiceRealtimeTranscript(confirmedDelta: "confirmed", provisional: "lost"));
     await Future<void>.delayed(Duration.zero);
+    final terminalReached = service.realtimeTerminalStream(session: session).first;
     events.addError(Exception("connection closed"), StackTrace.current);
-    await Future<void>.delayed(Duration.zero);
+    expect(await terminalReached, VoiceRealtimeTerminalCause.failed);
 
     await expectLater(
       service.stopAndTranscribe(session: session),
@@ -523,6 +576,60 @@ void main() {
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
         projectKey: any(named: "projectKey"),
+      ),
+    );
+  });
+
+  test("post-audio native capture failure remains an operational recording failure", () async {
+    const capabilities = VoiceCapabilities(realtimeEnabled: true, supportsProtocol1: true);
+    final frames = StreamController<Uint8List>.broadcast();
+    final formats = StreamController<VoiceRealtimeCaptureFormat>.broadcast();
+    final events = StreamController<VoiceRealtimeConnectionEvent>.broadcast();
+    final connection = MockVoiceRealtimeConnection();
+    addTearDown(frames.close);
+    addTearDown(formats.close);
+    addTearDown(events.close);
+    when(repository.discoverCapabilities).thenAnswer(
+      (_) async => const VoiceCapabilitiesAvailable(capabilities: capabilities),
+    );
+    when(captureSession.startRealtime).thenAnswer(
+      (_) async => VoiceRealtimeCapture(
+        format: const VoiceRealtimeCaptureFormat(sampleRate: 16000),
+        frames: frames.stream,
+        formatChanges: formats.stream,
+      ),
+    );
+    when(captureSession.resumeRealtime).thenAnswer((_) async {});
+    when(captureSession.stopRealtime).thenAnswer((_) async {});
+    when(() => connection.events).thenAnswer((_) => events.stream);
+    when(() => connection.sendAudio(any())).thenReturn(null);
+    when(connection.cancel).thenAnswer((_) async {});
+    when(connection.close).thenAnswer((_) async {});
+    when(
+      () => repository.openRealtime(
+        audio: any(named: "audio"),
+        projectKey: any(named: "projectKey"),
+      ),
+    ).thenAnswer((_) async => VoiceRealtimeOpenOutcome.opened(connection: connection));
+
+    final starting = service.start(session: session, projectId: "project-123");
+    await Future<void>.delayed(Duration.zero);
+    events.add(const VoiceRealtimeReady());
+    await starting;
+    frames.add(Uint8List.fromList([1, 0]));
+    await Future<void>.delayed(Duration.zero);
+    final terminalReached = service.realtimeTerminalStream(session: session).first;
+    frames.addError(VoiceCaptureError.failed(innerError: StateError("recorder interrupted")));
+    expect(await terminalReached, VoiceRealtimeTerminalCause.failed);
+
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(
+        isA<VoiceRealtimePartialTranscriptionError>().having(
+          (error) => error.failure,
+          "failure",
+          isA<RecordingFailedError>(),
+        ),
       ),
     );
   });
@@ -600,7 +707,7 @@ void main() {
     firstFinish.complete(
       const VoiceRealtimeTerminalCompleted(reason: VoiceRealtimeCompletionReason.finished),
     );
-    expect(await staleStop, "old");
+    await expectLater(staleStop, throwsA(isA<TranscriptionCancelledError>()));
     expect(service.currentPreview(session: session).confirmedText, "new");
     expect(service.currentPreview(session: session).provisionalText, "draft");
     verifyNever(secondConnection.cancel);

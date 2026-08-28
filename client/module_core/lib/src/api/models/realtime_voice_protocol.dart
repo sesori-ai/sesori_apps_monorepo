@@ -1,6 +1,6 @@
 // ignore_for_file: no_slop_linter/prefer_specific_type, no_slop_linter/prefer_required_named_parameters
 
-import "../../capabilities/voice/project_glossary_key.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 const int realtimeProtocolVersion = 1;
 const int realtimeNormalCloseCode = 1000;
@@ -69,12 +69,14 @@ final class const RealtimeVoiceProtocolException(@override final String message)
 
 sealed class const RealtimeClientMessage();
 
-final class const RealtimeStartMessage({required final RealtimeAudioFormat audio, required final String? projectKey})
-    extends RealtimeClientMessage {
+final class const RealtimeStartMessage({
+  required final RealtimeAudioFormat audio,
+  required final ProjectGlossaryKey? projectKey,
+}) extends RealtimeClientMessage {
   Map<String, Object?> toJson() => {
     "type": "start",
     "protocolVersion": realtimeProtocolVersion,
-    "projectKey": projectKey,
+    "projectKey": projectKey?.value,
     "audio": audio.toJson(),
   };
 }
@@ -137,13 +139,14 @@ RealtimeStartMessage _parseStart(Map<String, Object?> map) {
   }
   final Object? projectKey = map["projectKey"];
   final audio = _parseAudio(map["audio"]);
-  if (projectKey != null && (projectKey is! String || !isValidProjectGlossaryKey(value: projectKey))) {
-    throw const FormatException("Invalid realtime project key");
-  }
   return switch (projectKey) {
     null => RealtimeStartMessage(audio: audio, projectKey: null),
     // ignore: prefer_final_locals, switch pattern variable cannot use final modifier in this SDK
-    String key => RealtimeStartMessage(audio: audio, projectKey: key),
+    String key => RealtimeStartMessage(
+      audio: audio,
+      projectKey:
+          ProjectGlossaryKey.tryParse(value: key) ?? (throw const FormatException("Invalid realtime project key")),
+    ),
     _ => throw const FormatException("Invalid realtime project key"),
   };
 }

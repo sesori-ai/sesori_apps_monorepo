@@ -77,6 +77,7 @@ class AudioFormatConfig.forPlatform({required bool isWeb, bool isAndroid = false
       encoder: AudioEncoder.pcm16bits,
       sampleRate: 16000,
       numChannels: 1,
+      iosConfig: IosRecordConfig(allowHapticsAndSystemSoundsDuringRecording: true),
     ),
     requestedFormat: RealtimeRecorderFormat(
       encoding: RealtimeRecorderEncoding.signedPcm16LittleEndian,

@@ -3,11 +3,14 @@ import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../api/models/realtime_voice_protocol.dart";
+import "../api/project_api.dart";
 import "../api/realtime_voice_api.dart";
 import "../api/voice_capabilities_api.dart";
 import "../capabilities/voice/voice_api.dart";
+import "../logging/logging.dart";
 import "../models/voice_capabilities.dart";
 import "../models/voice_realtime.dart";
 
@@ -15,6 +18,7 @@ import "../models/voice_realtime.dart";
 class VoiceRepository({
   required final VoiceApi _api,
   required final VoiceCapabilitiesApi _capabilitiesApi,
+  required final ProjectApi _projectApi,
   required final RealtimeVoiceApi _realtimeApi,
 }) {
   Future<VoiceCapabilitiesDiscoveryOutcome> discoverCapabilities() async {
@@ -39,9 +43,22 @@ class VoiceRepository({
     };
   }
 
+  Future<ProjectGlossaryKey?> resolveProjectGlossaryKey({required String projectId}) async {
+    try {
+      final response = await _projectApi.getProject(projectId: projectId);
+      return switch (response) {
+        SuccessResponse(:final data) => data.voiceGlossaryKey,
+        ErrorResponse() => null,
+      };
+    } on Object catch (error, stackTrace) {
+      logw("Failed to load the bridge-derived voice glossary key", error, stackTrace);
+      return null;
+    }
+  }
+
   Future<VoiceRealtimeOpenOutcome> openRealtime({
     required VoiceRealtimeAudioFormat audio,
-    required String projectKey,
+    required ProjectGlossaryKey? projectKey,
   }) async {
     try {
       final session = await _realtimeApi.start(
@@ -69,7 +86,7 @@ class VoiceRepository({
   Future<VoiceTranscriptionOutcome> transcribe({
     required String audioFilePath,
     required String mimeType,
-    required String? projectKey,
+    required ProjectGlossaryKey? projectKey,
   }) async {
     final response = await _api.transcribe(
       audioFilePath: audioFilePath,

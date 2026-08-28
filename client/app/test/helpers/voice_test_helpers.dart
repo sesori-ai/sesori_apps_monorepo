@@ -8,11 +8,13 @@ class MockVoiceTranscriptionSession() extends Mock implements VoiceTranscription
 MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   required MockVoiceTranscriptionService service,
   Stream<void> maxDurationStream = const Stream<void>.empty(),
+  Stream<VoiceRealtimeTerminalCause> realtimeTerminalStream = const Stream<VoiceRealtimeTerminalCause>.empty(),
   Stream<double> amplitudeStream = const Stream<double>.empty(),
 }) {
   final session = MockVoiceTranscriptionSession();
   when(service.createSession).thenReturn(session);
   when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationStream);
+  when(() => service.realtimeTerminalStream(session: session)).thenAnswer((_) => realtimeTerminalStream);
   when(() => service.amplitudeStream(session: session)).thenAnswer((_) => amplitudeStream);
   when(() => service.currentPreview(session: session)).thenReturn(
     const VoiceTranscriptionPreview(confirmedText: "", provisionalText: ""),

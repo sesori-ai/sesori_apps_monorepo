@@ -14,14 +14,19 @@ void main() {
   late MockVoiceTranscriptionService service;
   late MockVoiceTranscriptionSession session;
   late StreamController<void> maxDurationController;
+  late StreamController<VoiceRealtimeTerminalCause> realtimeTerminalController;
 
   setUp(() {
     service = MockVoiceTranscriptionService();
     session = MockVoiceTranscriptionSession();
     maxDurationController = StreamController<void>.broadcast();
+    realtimeTerminalController = StreamController<VoiceRealtimeTerminalCause>.broadcast();
     when(service.createSession).thenReturn(session);
     when(() => service.amplitudeStream(session: session)).thenAnswer((_) => const Stream<double>.empty());
     when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationController.stream);
+    when(
+      () => service.realtimeTerminalStream(session: session),
+    ).thenAnswer((_) => realtimeTerminalController.stream);
     when(() => service.currentPreview(session: session)).thenReturn(emptyPreview);
     when(() => service.previewStream(session: session)).thenAnswer((_) => const Stream.empty());
     when(() => service.prewarm(session: session)).thenAnswer((_) async {});
@@ -41,6 +46,7 @@ void main() {
 
   tearDown(() async {
     await maxDurationController.close();
+    await realtimeTerminalController.close();
   });
 
   blocTest<VoiceInputCubit, VoiceInputState>(
@@ -211,6 +217,30 @@ void main() {
     expect(cubit.state, isNot(isA<VoiceInputRetryPending>()));
   });
 
+  test("realtime terminal failure auto-stops while the recording gesture is still held", () async {
+    when(() => service.stopAndTranscribe(session: session)).thenThrow(
+      VoiceRealtimePartialTranscriptionError(
+        confirmedText: "confirmed words",
+        failure: VoiceTranscriptionError.realtimeInterrupted(innerError: Exception("closed")),
+      ),
+    );
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+    await cubit.startRecording(projectId: "project-123");
+
+    realtimeTerminalController.add(VoiceRealtimeTerminalCause.failed);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      cubit.state,
+      isA<VoiceInputRealtimePartialFailed>()
+          .having((state) => state.confirmedText, "confirmedText", "confirmed words")
+          .having((state) => state.error, "error", isA<RealtimeInterruptedVoiceError>()),
+    );
+    verify(() => service.stopAndTranscribe(session: session)).called(1);
+  });
+
   test("cancelling a manual retry returns to retry-pending", () async {
     final retryCompleter = Completer<String>();
     when(() => service.stopAndTranscribe(session: session)).thenThrow(
@@ -288,6 +318,33 @@ void main() {
 
     expect(cubit.state, const VoiceInputState.completed(transcript: "hello"));
     verify(() => service.stopAndTranscribe(session: session)).called(1);
+  });
+
+  test("a cancelled stale finish cannot settle a newer transcribing interaction", () async {
+    final firstFinish = Completer<String>();
+    final secondFinish = Completer<String>();
+    var stops = 0;
+    when(
+      () => service.stopAndTranscribe(session: session),
+    ).thenAnswer((_) => stops++ == 0 ? firstFinish.future : secondFinish.future);
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+
+    await cubit.startRecording(projectId: "project-123");
+    final staleStop = cubit.stopAndTranscribe(limitReached: false);
+    await Future<void>.delayed(Duration.zero);
+    await cubit.cancel();
+    await cubit.startRecording(projectId: "project-123");
+    final currentStop = cubit.stopAndTranscribe(limitReached: false);
+    await Future<void>.delayed(Duration.zero);
+
+    firstFinish.completeError(VoiceTranscriptionError.cancelled());
+    await staleStop;
+    expect(cubit.state, isA<VoiceInputTranscribing>());
+
+    secondFinish.complete("new transcript");
+    await currentStop;
+    expect(cubit.state, const VoiceInputState.completed(transcript: "new transcript"));
   });
 
   blocTest<VoiceInputCubit, VoiceInputState>(

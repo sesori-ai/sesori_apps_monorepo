@@ -5,12 +5,15 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/api/models/realtime_voice_protocol.dart";
 import "package:sesori_dart_core/src/api/models/voice_capabilities_api_model.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 class MockVoiceApi() extends Mock implements VoiceApi;
 
 class MockVoiceCapabilitiesApi() extends Mock implements VoiceCapabilitiesApi;
+
+class MockProjectApi() extends Mock implements ProjectApi;
 
 class MockRealtimeVoiceApi() extends Mock implements RealtimeVoiceApi;
 
@@ -34,18 +37,27 @@ class _RepositoryRealtimeSink() extends Mock implements WebSocketSink {
 void main() {
   setUpAll(() {
     registerFallbackValue(const RealtimeAudioFormat(sampleRate: 16000));
+    registerFallbackValue(ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}"));
   });
 
   late MockVoiceApi api;
   late MockVoiceCapabilitiesApi capabilitiesApi;
+  late MockProjectApi projectApi;
   late MockRealtimeVoiceApi realtimeApi;
   late VoiceRepository repository;
+  final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
 
   setUp(() {
     api = MockVoiceApi();
     capabilitiesApi = MockVoiceCapabilitiesApi();
+    projectApi = MockProjectApi();
     realtimeApi = MockRealtimeVoiceApi();
-    repository = VoiceRepository(api: api, capabilitiesApi: capabilitiesApi, realtimeApi: realtimeApi);
+    repository = VoiceRepository(
+      api: api,
+      capabilitiesApi: capabilitiesApi,
+      projectApi: projectApi,
+      realtimeApi: realtimeApi,
+    );
   });
 
   test("maps capability API responses into closed product outcomes", () async {
@@ -82,6 +94,23 @@ void main() {
     expect(await repository.discoverCapabilities(), isA<VoiceCapabilitiesContractFailure>());
   });
 
+  test("uses only the bridge-derived glossary key and degrades for an older bridge", () async {
+    when(
+      () => projectApi.getProject(projectId: "project-123"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        Project(id: "project-123", name: "Project", path: "/project", time: null, voiceGlossaryKey: projectKey),
+      ),
+    );
+
+    expect(await repository.resolveProjectGlossaryKey(projectId: "project-123"), projectKey);
+
+    when(
+      () => projectApi.getProject(projectId: "project-123"),
+    ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+    expect(await repository.resolveProjectGlossaryKey(projectId: "project-123"), isNull);
+  });
+
   test("maps realtime open failures into closed repository outcomes", () async {
     final cases = <Exception, Type>{
       const RealtimeVoiceOpenAuthenticationException(cause: null, httpStatus: 401): VoiceRealtimeOpenNotAuthenticated,
@@ -104,7 +133,7 @@ void main() {
 
       final outcome = await repository.openRealtime(
         audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
-        projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
+        projectKey: projectKey,
       );
       expect(outcome.runtimeType, entry.value);
     }
@@ -131,7 +160,7 @@ void main() {
 
       final outcome = await repository.openRealtime(
         audio: const VoiceRealtimeAudioFormat(sampleRate: 16000),
-        projectKey: deriveProjectGlossaryKey(projectId: "project-123"),
+        projectKey: projectKey,
       );
       final connection = (outcome as VoiceRealtimeOpened).connection;
       final eventFuture = connection.events.first;

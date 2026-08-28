@@ -60,6 +60,45 @@ void main() {
       expect(restored.path, equals("/moved/a"));
     });
 
+    test("JSON roundtrip carries the bridge-derived voice glossary key", () {
+      final key = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
+      final original = Project(
+        id: "/projects/a",
+        name: "A",
+        path: "/projects/a",
+        time: null,
+        voiceGlossaryKey: key,
+      );
+
+      final json = original.toJson();
+      final restored = Project.fromJson(json);
+
+      expect(json["voiceGlossaryKey"], key.value);
+      expect(restored.voiceGlossaryKey, key);
+    });
+
+    test("fromJson rejects a malformed voice glossary key", () {
+      expect(
+        () => Project.fromJson({
+          "id": "/projects/a",
+          "name": "A",
+          "time": null,
+          "voiceGlossaryKey": "/projects/a",
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test("fromJson without a voice glossary key preserves older-bridge no-glossary behavior", () {
+      final project = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+      });
+
+      expect(project.voiceGlossaryKey, isNull);
+    });
+
     test("fromJson without a path (older bridge) decodes to empty string", () {
       final project = Project.fromJson({
         "id": "/projects/a",

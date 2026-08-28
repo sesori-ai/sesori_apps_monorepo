@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/api/models/voice_capabilities_api_model.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class _RecordingAuthClient() extends Mock implements AuthenticatedHttpApiClient {
@@ -153,7 +154,7 @@ void main() {
   });
 
   test("async upload sends an already-authorized opaque project key", () async {
-    final projectKey = deriveProjectGlossaryKey(projectId: "project-123");
+    final projectKey = ProjectGlossaryKey.parse(value: "prj_v1_${List.filled(43, "a").join()}");
 
     await api.transcribe(
       audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
@@ -162,25 +163,16 @@ void main() {
     );
 
     expect(authClient.timeout, const Duration(seconds: 120));
-    expect(authClient.fields.single, {"projectKey": projectKey});
+    expect(authClient.fields.single, {"projectKey": projectKey.value});
     expect(authClient.fields.single.toString(), isNot(contains("project-123")));
   });
 
-  test("async upload omits absent project context and rejects a raw project id", () async {
+  test("async upload omits absent project context", () async {
     await api.transcribe(
       audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
       mimeType: "application/json",
       projectKey: null,
     );
     expect(authClient.fields.single, isNull);
-
-    await expectLater(
-      api.transcribe(
-        audioFilePath: "test/fixtures/voice_realtime_protocol_v1.json",
-        mimeType: "application/json",
-        projectKey: "project-123",
-      ),
-      throwsArgumentError,
-    );
   });
 }

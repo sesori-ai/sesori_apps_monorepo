@@ -5,9 +5,9 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../../logging/logging.dart";
-import "project_glossary_key.dart";
 import "voice_transcription_failure_metadata.dart";
 
 /// Timeout for the transcription upload request.
@@ -26,7 +26,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   Future<VoiceTranscriptionApiResult> transcribe({
     required String audioFilePath,
     required String mimeType,
-    required String? projectKey,
+    required ProjectGlossaryKey? projectKey,
   }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
     final fields = _transcriptionFields(projectKey: projectKey);
@@ -79,12 +79,9 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
     }
   }
 
-  static Map<String, String>? _transcriptionFields({required String? projectKey}) {
+  static Map<String, String>? _transcriptionFields({required ProjectGlossaryKey? projectKey}) {
     if (projectKey == null) return null;
-    if (!isValidProjectGlossaryKey(value: projectKey)) {
-      throw ArgumentError.value(projectKey, "projectKey", "Expected opaque project glossary key");
-    }
-    return {"projectKey": projectKey};
+    return {"projectKey": projectKey.value};
   }
 
   static bool? _parseRetryable({required ApiError error}) {

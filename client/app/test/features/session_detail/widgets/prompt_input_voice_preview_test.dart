@@ -65,6 +65,9 @@ void main() {
     when(() => voiceTranscriptionService.maxDurationReachedStream(session: voiceSession)).thenAnswer(
       (_) => maxDurationController.stream,
     );
+    when(
+      () => voiceTranscriptionService.realtimeTerminalStream(session: voiceSession),
+    ).thenAnswer((_) => const Stream.empty());
     when(() => voiceTranscriptionService.prewarm(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession)).thenAnswer(
       (_) => const Stream<double>.empty(),

@@ -351,7 +351,14 @@ class Orchestrator({
       prSyncService: prSyncService,
       settingsService: pullRequestRefreshSettingsService,
     );
-    final currentProjectService = CurrentProjectService(projectRepository: projectRepository);
+    final projectGlossaryScopeService = ProjectGlossaryScopeService(
+      repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
+    final currentProjectService = CurrentProjectService(
+      projectRepository: projectRepository,
+      projectGlossaryScopeService: projectGlossaryScopeService,
+    );
     final sesoriServerApi = SesoriServerApi(
       authBackendUrl: config.authBackendURL,
       client: _httpClient,
@@ -360,10 +367,7 @@ class Orchestrator({
     );
     final projectGlossaryPopulationService = ProjectGlossaryPopulationService(
       projectRepository: projectRepository,
-      scopeService: ProjectGlossaryScopeService(
-        repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
-        bridgeIdProvider: _bridgeRegistrationService,
-      ),
+      scopeService: projectGlossaryScopeService,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,
         filesystemApi: const FilesystemApi(),

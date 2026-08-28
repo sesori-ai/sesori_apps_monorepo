@@ -56,6 +56,7 @@ void main() {
       expect(recordConfig.encoder, AudioEncoder.pcm16bits);
       expect(recordConfig.sampleRate, 16000);
       expect(recordConfig.numChannels, 1);
+      expect(recordConfig.iosConfig.allowHapticsAndSystemSoundsDuringRecording, isTrue);
       expect(config.realtimeRecorder.requestedFormat.encoding, RealtimeRecorderEncoding.signedPcm16LittleEndian);
       expect(config.realtimeRecorder.requestedFormat.channelLayout, RealtimeRecorderChannelLayout.mono);
       expect(config.realtimeRecorder.requestedFormat.sampleRate, 16000);

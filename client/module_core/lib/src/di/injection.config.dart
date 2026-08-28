@@ -252,19 +252,6 @@ extension GetItInjectableX on _i174.GetIt {
         routeSource: gh<_i366.RouteSource>(),
       ),
     );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(
-        api: gh<_i176.VoiceApi>(),
-        capabilitiesApi: gh<_i702.VoiceCapabilitiesApi>(),
-        realtimeApi: gh<_i394.RealtimeVoiceApi>(),
-      ),
-    );
-    gh.lazySingleton<_i679.VoiceTranscriptionService>(
-      () => _i679.VoiceTranscriptionService(
-        repository: gh<_i107.VoiceRepository>(),
-        capture: gh<_i359.VoiceCapture>(),
-      ),
-    );
     gh.lazySingleton<_i896.RoomKeyStorage>(
       () => _i896.RoomKeyStorage(gh<_i442.SecureStorage>()),
     );
@@ -396,6 +383,14 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        capabilitiesApi: gh<_i702.VoiceCapabilitiesApi>(),
+        projectApi: gh<_i733.ProjectApi>(),
+        realtimeApi: gh<_i394.RealtimeVoiceApi>(),
+      ),
+    );
     gh.lazySingleton<_i699.RegisteredBridgesService>(
       () => _i699.RegisteredBridgesService(
         bridgeRepository: gh<_i205.BridgeRepository>(),
@@ -442,6 +437,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i18.SessionViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
         lifecycleSource: gh<_i903.LifecycleSource>(),
+      ),
+    );
+    gh.lazySingleton<_i679.VoiceTranscriptionService>(
+      () => _i679.VoiceTranscriptionService(
+        repository: gh<_i107.VoiceRepository>(),
+        capture: gh<_i359.VoiceCapture>(),
       ),
     );
     gh.lazySingleton<_i531.MessageImageRepository>(
