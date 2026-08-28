@@ -16,19 +16,14 @@ class const ProjectGlossaryTermCalculator() {
     "[A-Za-z0-9][A-Za-z0-9_./+=#-]{15,}",
   );
   static final RegExp _credentialTripleDoubleAssignmentPattern = RegExp(
-    r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*'''
-    r'''"""[\s\S]*?(?:"""|$)''',
-    caseSensitive: false,
+    r'''["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*[:=]\s*"""[\s\S]*?(?:"""|$)''',
   );
   static final RegExp _credentialTripleSingleAssignmentPattern = RegExp(
-    r"""["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*"""
-    r"""'''[\s\S]*?(?:'''|$)""",
-    caseSensitive: false,
+    r"""["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*[:=]\s*'''[\s\S]*?(?:'''|$)""",
   );
   static final RegExp _credentialAssignmentPattern = RegExp(
-    r'''["']?(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)["']?\s*[:=]\s*'''
+    r'''["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*[:=]\s*'''
     r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
-    caseSensitive: false,
   );
   static final RegExp _xmlOpeningElementPattern = RegExp(
     r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
@@ -39,9 +34,8 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _xmlNameAcronymBoundaryPattern = RegExp("([A-Z]+)([A-Z][a-z])");
   static final RegExp _xmlNameCamelBoundaryPattern = RegExp("([a-z0-9])([A-Z])");
   static final RegExp _xmlNameSeparatorPattern = RegExp(r"[.:\-_]+");
-  static final RegExp _authorizationCredentialPattern = RegExp(
-    r'''["']?authorization["']?\s*[:=]\s*(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
-    caseSensitive: false,
+  static final RegExp _uriUserInfoPattern = RegExp(
+    r'''[A-Za-z][A-Za-z0-9+.-]*://[^\s/:@"'<>]+:[^\s/@"'<>]+@''',
   );
   static final RegExp _bearerCredentialPattern = RegExp(
     r'''bearer\s+[A-Za-z0-9_./+=#-]{8,}["']?''',
@@ -302,15 +296,34 @@ when with web widget widgets will windows window workspace www
     return false;
   }
 
+  String _filterCredentialAssignments(String value) {
+    final tripleDouble = _redactCredentialAssignments(
+      value: value,
+      pattern: _credentialTripleDoubleAssignmentPattern,
+    );
+    final tripleSingle = _redactCredentialAssignments(
+      value: tripleDouble,
+      pattern: _credentialTripleSingleAssignmentPattern,
+    );
+    return _redactCredentialAssignments(
+      value: tripleSingle,
+      pattern: _credentialAssignmentPattern,
+    );
+  }
+
+  String _redactCredentialAssignments({required String value, required RegExp pattern}) {
+    return value.replaceAllMapped(
+      pattern,
+      (match) => _isCredentialName(match.group(1)!) ? " " : match.group(0)!,
+    );
+  }
+
   String _filterCredentialSpans(String value) {
     final structured = _filterYamlCredentialBlocks(
       _filterXmlCredentialElements(value),
     );
-    return structured
-        .replaceAll(_authorizationCredentialPattern, " ")
-        .replaceAll(_credentialTripleDoubleAssignmentPattern, " ")
-        .replaceAll(_credentialTripleSingleAssignmentPattern, " ")
-        .replaceAll(_credentialAssignmentPattern, " ")
+    return _filterCredentialAssignments(structured)
+        .replaceAll(_uriUserInfoPattern, " ")
         .replaceAll(_bearerCredentialPattern, " ")
         .replaceAll(_credentialLabeledSpanPattern, " ")
         .replaceAll(_credentialPrefixedSpanPattern, " ")
