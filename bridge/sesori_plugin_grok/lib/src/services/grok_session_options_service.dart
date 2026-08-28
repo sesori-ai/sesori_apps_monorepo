@@ -70,17 +70,11 @@ class GrokSessionOptionsService({
     _replaceCatalog(catalog: catalog, updateProcessDefaults: fromNewSession);
     if (sessionId != null) {
       final currentModel = catalog.currentModel;
-      _configurationTracker.setSessionOverride(
+      _setSessionSelection(
         sessionId: sessionId,
-        modelId: currentModel?.id,
-        providerId: currentModel == null ? null : _pluginId,
+        model: currentModel,
+        reasoningEffort: currentModel?.currentReasoningEffort,
       );
-      final reasoningEffort = currentModel?.currentReasoningEffort;
-      if (reasoningEffort == null) {
-        _sessionReasoningEfforts.remove(sessionId);
-      } else {
-        _sessionReasoningEfforts[sessionId] = reasoningEffort;
-      }
     }
   }
 
@@ -125,10 +119,10 @@ class GrokSessionOptionsService({
       reasoningEffort: reasoningEffort,
       timeout: _selectionTimeout,
     );
-    _configurationTracker.setSessionOverride(
+    _setSessionSelection(
       sessionId: sessionId,
-      modelId: selectedModelId,
-      providerId: _pluginId,
+      model: catalogModel,
+      reasoningEffort: reasoningEffort ?? catalogModel.currentReasoningEffort,
     );
   }
 
@@ -142,6 +136,23 @@ class GrokSessionOptionsService({
   void resetConnection() {
     _configurationTracker.clear();
     _sessionReasoningEfforts.clear();
+  }
+
+  void _setSessionSelection({
+    required String sessionId,
+    required GrokCatalogModel? model,
+    required String? reasoningEffort,
+  }) {
+    _configurationTracker.setSessionOverride(
+      sessionId: sessionId,
+      modelId: model?.id,
+      providerId: model == null ? null : _pluginId,
+    );
+    if (reasoningEffort == null) {
+      _sessionReasoningEfforts.remove(sessionId);
+    } else {
+      _sessionReasoningEfforts[sessionId] = reasoningEffort;
+    }
   }
 
   Future<void> _ensureCatalog() async {

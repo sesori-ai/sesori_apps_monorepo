@@ -105,12 +105,14 @@ void main() {
       model: null,
       variant: const PluginSessionVariant(id: "low"),
     );
+    expect(fixture.service.reasoningEffortForSession(sessionId: "s1"), "low");
     await fixture.service.applyTurnSelection(
       liveClient: _FakeAcpStdioClient(),
       sessionId: "s1",
       model: const (providerID: GrokPluginIdentity.id, modelID: "opaque/provider:model-beta"),
       variant: null,
     );
+    expect(fixture.service.reasoningEffortForSession(sessionId: "s1"), isNull);
 
     expect(api.selections, [
       (sessionId: "s1", modelId: "synthetic:model-alpha", reasoningEffort: "low"),

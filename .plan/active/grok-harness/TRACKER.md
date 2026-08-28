@@ -22,8 +22,6 @@
      package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** in PR #1160.
-   - **Evidence:** initialize-only API, typed mapping, repositories, sole-owner tracker, options service, generated output,
-     19 package tests, fatal-info analysis, LSP diagnostics, architecture approval, and the 1,500-line budget pass.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
    - **State:** not started.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
@@ -67,19 +65,10 @@
 - [x] After #1152 merged, sync to `origin/main`, publish PR #1156, and start its monitor.
 
 ## Step 3 Checklist
-
-- [x] Add typed initialize/session envelopes and regenerate source without hand edits.
-- [x] Add initialize-only catalog probing with headless-auth filtering and clean process disposal.
-- [x] Add exact `session/set_model` model/optional-effort writes with typed cause-preserving failures.
-- [x] Keep `GrokCatalogTracker` as the sole last-good catalog owner across initialize, new/load, and refresh capture.
-- [x] Expose one primary agent/provider with opaque model IDs and exact canonical effort strings.
-- [x] Cover malformed/empty/partial catalogs, default ordering, refresh retention,
-  load-default/effort isolation, stale options, effort-only fallback, selection variants, and failed writes.
-- [x] Run 19 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
-- [x] Keep the measured Step 3 change below the 1,500-line soft cap (currently 1,305 lines before tracker updates).
-- [x] Run architecture implementation review over the Step 3 branch against the Step 2 branch; approved.
-- [x] After #1156 merged, sync to `origin/main`, publish PR #1160, and start its monitor.
-
+- [x] Add typed envelopes, initialize-only probing, exact selection writes, and cause-preserving failures.
+- [x] Keep one catalog owner; expose opaque models and canonical effort strings through typed collaborators.
+- [x] Cover catalog edge cases, defaults, load isolation, stale options, selection variants, and failed writes.
+- [x] Pass 19 tests, analysis, LSP, line/diff checks, the 1,500-line target, architecture review, and PR setup.
 ## Decisions And Evidence
 
 - 2026-08-27: Initial delivery is direct CLI only. Managed install is excluded because xAI owns an official installer
