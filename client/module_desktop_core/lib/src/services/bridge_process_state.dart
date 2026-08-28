@@ -38,7 +38,7 @@ final class const BridgeProcessStarting() extends BridgeProcessState;
 final class const BridgeProcessRunning({required final int pid}) extends BridgeProcessState;
 
 /// An expected stop is in progress.
-final class const BridgeProcessStopping({required final int? pid}) extends BridgeProcessState;
+final class const BridgeProcessStopping({required final int pid}) extends BridgeProcessState;
 
 /// Another standalone or supervised bridge currently owns this machine.
 ///

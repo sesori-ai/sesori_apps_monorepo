@@ -66,6 +66,7 @@ class BridgeProcessService.forTesting({
         !_crashBackoffDelays.any((delay) => delay.isNegative),
         "crashBackoffDelays must not contain negative durations",
       ) {
+    _lastObservedAuthState = _authSession.currentState;
     _exitSubscription = _repository.exits.listen(
       _onExit,
       // ignore: no_slop_linter/prefer_required_named_parameters, Stream.listen error callbacks are positional
@@ -102,6 +103,8 @@ class BridgeProcessService.forTesting({
   Timer? _retryTimer;
   int _crashCount = 0;
   int _lifecycleGeneration = 0;
+  int _successfulAuthenticationGeneration = 0;
+  late AuthState _lastObservedAuthState;
   int? _activePid;
   DateTime? _healthySince;
   bool _disposed = false;
@@ -217,15 +220,34 @@ class BridgeProcessService.forTesting({
         controlStartAttempted: controlStartAttempted,
         childCreated: childCreated,
       );
-      _publish(_repository.isRunning ? BridgeProcessStopping(pid: _activePid) : const BridgeProcessStopped());
+      _publish(_stateAfterStartCleanup());
+    } on BridgeProcessExitedDuringStartException {
+      await _cleanUpFailedStart(
+        controlStartAttempted: controlStartAttempted,
+        childCreated: childCreated,
+      );
+      // The repository exit stream owns the resulting retry/stop policy and
+      // state. Publishing startup rollback state here would overwrite it.
+      rethrow;
     } on Object {
       await _cleanUpFailedStart(
         controlStartAttempted: controlStartAttempted,
         childCreated: childCreated,
       );
-      _publish(_repository.isRunning ? BridgeProcessStopping(pid: _activePid) : const BridgeProcessStopped());
+      _publish(_stateAfterStartCleanup());
       rethrow;
     }
+  }
+
+  BridgeProcessState _stateAfterStartCleanup() {
+    if (!_repository.isRunning) {
+      return const BridgeProcessStopped();
+    }
+    final int? pid = _repository.activePid;
+    if (pid == null) {
+      throw StateError("BridgeProcessRepository reported a running process without a PID");
+    }
+    return BridgeProcessStopping(pid: pid);
   }
 
   void _throwIfStartCancelled() {
@@ -269,18 +291,18 @@ class BridgeProcessService.forTesting({
       }
     }
 
-    final int? pid = _activePid;
-    if (pid != null || _repository.isRunning) {
-      _publish(BridgeProcessStopping(pid: pid ?? _repository.activePid));
+    final int? pid = _activePid ?? _repository.activePid;
+    if (pid != null) {
+      _publish(BridgeProcessStopping(pid: pid));
     }
     try {
       await _repository.stopExpected();
     } on Object {
       if (_repository.isRunning) {
         final int? recoveredPid = _repository.activePid ?? pid;
-        _publish(
-          recoveredPid == null ? const BridgeProcessStopping(pid: null) : BridgeProcessRunning(pid: recoveredPid),
-        );
+        if (recoveredPid != null) {
+          _publish(BridgeProcessRunning(pid: recoveredPid));
+        }
       }
       rethrow;
     }
@@ -319,6 +341,7 @@ class BridgeProcessService.forTesting({
     final bool stableRun = _wasStableRun();
     _clearRunHealth();
     final int generation = _lifecycleGeneration;
+    final int authenticationGeneration = _successfulAuthenticationGeneration;
     final Future<void> cleanup = _stopControlServerAfterExit();
     _exitCleanup = cleanup;
     unawaited(
@@ -327,6 +350,7 @@ class BridgeProcessService.forTesting({
         exit: exit,
         stableRun: stableRun,
         generation: generation,
+        authenticationGeneration: authenticationGeneration,
       ),
     );
   }
@@ -336,6 +360,7 @@ class BridgeProcessService.forTesting({
     required BridgeProcessExit? exit,
     required bool stableRun,
     required int generation,
+    required int authenticationGeneration,
   }) async {
     await cleanup;
     if (identical(_exitCleanup, cleanup)) {
@@ -348,6 +373,7 @@ class BridgeProcessService.forTesting({
       exit: exit,
       stableRun: stableRun,
       generation: generation,
+      authenticationGeneration: authenticationGeneration,
     );
   }
 
@@ -367,6 +393,7 @@ class BridgeProcessService.forTesting({
     required BridgeProcessExit? exit,
     required bool stableRun,
     required int generation,
+    required int authenticationGeneration,
   }) {
     if (stableRun) {
       _crashCount = 0;
@@ -401,6 +428,12 @@ class BridgeProcessService.forTesting({
       case BridgeSupervisedExitCode.authRequired:
         _crashCount = 0;
         _publish(const BridgeProcessLoginRequired());
+        if (_successfulAuthenticationGeneration > authenticationGeneration) {
+          _restartAutomatically(
+            generation: generation,
+            context: "Bridge start after authentication completed during exit cleanup",
+          );
+        }
         return;
       case BridgeSupervisedExitCode.bridgeContention:
         _crashCount = 0;
@@ -478,6 +511,11 @@ class BridgeProcessService.forTesting({
   }) async {
     try {
       await operation;
+    } on BridgeProcessExitedDuringStartException {
+      // The repository exit stream already owns this child and schedules its
+      // one policy action. Counting the same early exit here would consume two
+      // crash-budget entries and leave two retry timers.
+      return;
     } on Object catch (error, stackTrace) {
       _reportWarning(message: context, error: error, stackTrace: stackTrace);
       if (!_repository.isRunning && _activePid == null) {
@@ -491,6 +529,11 @@ class BridgeProcessService.forTesting({
   }
 
   void _onAuthStateChanged({required AuthState state}) {
+    final bool wasAuthenticated = _lastObservedAuthState is AuthAuthenticated;
+    _lastObservedAuthState = state;
+    if (state is AuthAuthenticated && !wasAuthenticated) {
+      _successfulAuthenticationGeneration++;
+    }
     if (state is! AuthAuthenticated ||
         _disposed ||
         _desiredState == BridgeProcessDesiredState.off ||
@@ -588,6 +631,17 @@ class BridgeProcessService.forTesting({
     } finally {
       _disposed = true;
       _cancelRetry();
+      try {
+        await _controlChannelServer.stop();
+      } on Object catch (error, stackTrace) {
+        // Disposal must preserve a stopExpected failure while still revoking
+        // the authenticated local socket as best effort.
+        _reportWarning(
+          message: "Failed to stop the bridge control server during disposal",
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
       await _authSubscription.cancel();
       await _helperConnectionSubscription.cancel();
       await _exitSubscription.cancel();

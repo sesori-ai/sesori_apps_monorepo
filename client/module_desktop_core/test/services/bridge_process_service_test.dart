@@ -206,8 +206,14 @@ void main() {
         ),
       );
 
+      await pumpEventQueue();
       expect(controlServer.stopCalls, greaterThanOrEqualTo(1));
-      expect(service.state, isA<BridgeProcessStopped>());
+      expect(
+        service.state,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", 1)
+            .having((state) => state.crashCount, "crashCount", 1),
+      );
     });
 
     test("cleanup failures never replace the original startup error", () async {
@@ -220,7 +226,26 @@ void main() {
       await expectLater(service.start(), throwsA(same(attachError)));
 
       expect(warnings, hasLength(2));
-      expect(service.state, isA<BridgeProcessStopping>());
+      expect(
+        service.state,
+        isA<BridgeProcessStopping>().having((state) => state.pid, "pid", 42),
+      );
+    });
+
+    test("disposal revokes the control server while preserving the process-stop error", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      final StateError stopError = StateError("process stop failed");
+      repository.stopError = stopError;
+      controlServer.stopError = StateError("control stop failed");
+
+      await expectLater(service.dispose(), throwsA(same(stopError)));
+
+      expect(controlServer.stopCalls, 1);
+      expect(
+        warnings,
+        contains("Failed to stop the bridge control server during disposal"),
+      );
     });
 
     test("exit 86 immediately respawns exactly once", () async {
@@ -237,6 +262,28 @@ void main() {
       expect(repository.spawnCalls, 2);
     });
 
+    test("an automatically restarted child that exits during startup consumes one crash entry", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      logTracker.onAttach = () => repository.emitExit(exitCode: 9, expected: false);
+      final Future<BridgeProcessState> retryScheduled = service.states.firstWhere(
+        (state) => state is BridgeProcessCrashRetryScheduled,
+      );
+
+      repository.emitExit(exitCode: 86, expected: false);
+      final BridgeProcessState retryState = await retryScheduled;
+
+      expect(repository.spawnCalls, 2);
+      expect(
+        retryState,
+        isA<BridgeProcessCrashRetryScheduled>()
+            .having((state) => state.exitCode, "exitCode", 9)
+            .having((state) => state.crashCount, "crashCount", 1),
+      );
+      await pumpEventQueue();
+      expect(service.state, same(retryState));
+    });
+
     test("exit 87 waits for a successful sign-in before restarting desired On", () async {
       authSession.state = _authenticatedState;
       await service.start();
@@ -251,6 +298,28 @@ void main() {
       authSession.state = const AuthState.unauthenticated();
       authSession.state = _authenticatedState;
       await pumpEventQueue();
+
+      expect(repository.spawnCalls, 2);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("an authentication completed during exit-87 cleanup still restarts desired On", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      controlServer.stopGate = Completer<void>();
+      final Future<BridgeProcessState> restarted = service.states
+          .skip(1)
+          .firstWhere(
+            (state) => state is BridgeProcessRunning,
+          );
+
+      repository.emitExit(exitCode: 87, expected: false);
+      await pumpEventQueue(times: 2);
+      authSession.state = const AuthState.unauthenticated();
+      authSession.state = _authenticatedState;
+      await pumpEventQueue(times: 2);
+      controlServer.stopGate!.complete();
+      await restarted;
 
       expect(repository.spawnCalls, 2);
       expect(service.state, isA<BridgeProcessRunning>());
@@ -618,6 +687,7 @@ class _FakeControlChannelServer() implements ControlChannelServer {
   bool isRunning = false;
   Object? startError;
   Object? stopError;
+  Completer<void>? stopGate;
 
   @override
   ValueStream<bool> get helperConnectionStream => _helperConnections.stream;
@@ -644,6 +714,10 @@ class _FakeControlChannelServer() implements ControlChannelServer {
     isRunning = false;
     if (_helperConnections.value) {
       _helperConnections.add(false);
+    }
+    final Completer<void>? gate = stopGate;
+    if (gate != null) {
+      await gate.future;
     }
     final Object? failure = stopError;
     if (failure != null) {
