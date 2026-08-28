@@ -12,6 +12,7 @@ environment:
   sdk: ^3.13.1
 
 dependencies:
+  dbus: ^0.7.15
   device_info_plus: ^13.2.0
   flutter:
     sdk: flutter
@@ -37,6 +38,7 @@ dependencies:
     path: ../../shared/sesori_shared
   theme_prego:
     path: ../module_prego
+  tray_manager: ^0.5.3
   url_launcher: ^6.3.2
 
 dev_dependencies:
@@ -51,3 +53,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/tray_icon.ico
+    - assets/tray_icon.png

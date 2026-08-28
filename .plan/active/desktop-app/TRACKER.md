@@ -12,7 +12,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 3 | 🚧 `BridgeProcessService`: authenticated spawn + control channel live | done |
 | 4 | 🚧 Exit-code state machine + prompt-answer seam | done |
 | 5 | ⚙️ Status semantics + dead control-protocol removal | done |
-| 6 | ⚙️ Tray + `BridgeControlCubit` + windowed fallback | pending |
+| 6 | ⚙️ Tray + `BridgeControlCubit` + windowed fallback | done |
 | 7 | ⚙️ Window + Prego theme + v1 contents | pending |
 | — | MT gate A: first real GUI supervision (user-run) | pending |
 | 8 | ⚙️ Single instance + last-state restore | pending |
