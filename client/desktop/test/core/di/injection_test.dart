@@ -35,7 +35,10 @@ void main() {
     expect(getIt.isRegistered<BridgeProcessService>(), isTrue);
     expect(getIt.isRegistered<ControlCommandService>(), isTrue);
     expect(getIt.isRegistered<SystemTray>(), isTrue);
+    expect(getIt.isRegistered<WindowHost>(), isTrue);
     expect(getIt.isRegistered<DesktopApplicationTerminator>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessLogRepository>(), isTrue);
+    expect(getIt.isRegistered<DesktopLogoutOrchestrator>(), isTrue);
     expect(getIt.isRegistered<BridgeControlCubit>(), isFalse);
     expect(getIt<BridgeProcessService>().state, isA<BridgeProcessStopped>());
     expect(getIt<ControlCommandService>(), isA<ControlCommandService>());

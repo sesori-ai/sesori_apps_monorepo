@@ -4,7 +4,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../home/home_placeholder.dart";
+import "../home/desktop_home.dart";
 import "../login/login_screen.dart";
 
 /// Root gate: constructs the [AuthGateCubit] and renders the surface that
@@ -13,7 +13,7 @@ class const AuthGate({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthGateCubit>(
-      create: (_) => AuthGateCubit(getIt()),
+      create: (_) => AuthGateCubit(authSession: getIt(), logoutOrchestrator: getIt()),
       child: const AuthGateView(),
     );
   }
@@ -24,16 +24,13 @@ class const AuthGate({super.key}) extends StatelessWidget {
 class const AuthGateView({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthGateCubit, AuthGateState>(
-      builder: (context, state) {
-        return switch (state) {
-          AuthGateChecking() => Scaffold(
-            body: Center(child: PregoActivityIndicator(color: Theme.of(context).colorScheme.primary)),
-          ),
-          AuthGateSignedOut() => const LoginScreen(),
-          AuthGateSignedIn(:final user) => HomePlaceholder(user: user),
-        };
-      },
-    );
+    final AuthGateState state = context.watch<AuthGateCubit>().state;
+    return switch (state) {
+      AuthGateChecking() => Scaffold(
+        body: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+      ),
+      AuthGateSignedOut() => const LoginScreen(),
+      AuthGateSignedIn(:final user) => DesktopHome(user: user),
+    };
   }
 }

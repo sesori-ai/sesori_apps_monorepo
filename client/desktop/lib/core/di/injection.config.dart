@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
@@ -29,6 +30,7 @@ import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
     as _i11;
 import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
+import 'package:sesori_desktop/core/platform/flutter_window_host.dart' as _i789;
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
@@ -78,6 +80,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i91.NoOpAttributionClient(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i316.WindowHost>(
+      () => _i789.FlutterWindowHost(),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     return this;
   }
