@@ -49,12 +49,15 @@ void main() {
           "token = '''Amber Willow'''",
           '''AWS_SECRET_ACCESS_KEY = "Compound Correct Horse"''',
           '''signing_passphrase = "SigningOrchid SecretGrove"''',
+          '''pass = "PassOrchid HiddenSpruce"''',
+          '''--pass "CliPassOrchid HiddenBirch" --bypass BypassFramework''',
           r'''{"password":"EscapedOrchid \"QuotedMeadow\" HiddenHarbor"}''',
           '''--password "CliOrchid QuotedForest HiddenLake" --framework SafeCliFramework''',
           'authorization = """AuthTriple Juniper Harbor"""',
           '''{"DATABASE_URL":"postgresql://AliceAdmin:hunter2@db.example/acme"}''',
           "server:\n  password: >-\n    YamlOrchid CopperMeadow\n    HiddenCedar\n  framework: SafeFramework",
           "users:\n  - password: |+\n      SequenceOrchid HiddenMeadow\n    framework: SequenceSafeFramework",
+          "connection:\n  password: PlainOrchid\n    ContinuedQuartz HiddenAspen\n  framework: ContinuedSafeFramework",
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -90,6 +93,10 @@ void main() {
       "Compound",
       "SigningOrchid",
       "SecretGrove",
+      "PassOrchid",
+      "HiddenSpruce",
+      "CliPassOrchid",
+      "HiddenBirch",
       "EscapedOrchid",
       "QuotedMeadow",
       "HiddenHarbor",
@@ -106,6 +113,9 @@ void main() {
       "HiddenCedar",
       "SequenceOrchid",
       "HiddenMeadow",
+      "PlainOrchid",
+      "ContinuedQuartz",
+      "HiddenAspen",
       "abcdefghijklmnopqrstuvwxyz",
       "BasicCredentialValue123",
       "aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -128,7 +138,16 @@ void main() {
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
-    expect(terms, containsAll(["SafeFramework", "SequenceSafeFramework", "SafeCliFramework"]));
+    expect(
+      terms,
+      containsAll([
+        "SafeFramework",
+        "SequenceSafeFramework",
+        "ContinuedSafeFramework",
+        "SafeCliFramework",
+        "BypassFramework",
+      ]),
+    );
   });
 
   test("keeps short symbolic language names", () {

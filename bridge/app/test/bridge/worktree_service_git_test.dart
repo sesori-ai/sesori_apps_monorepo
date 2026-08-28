@@ -160,6 +160,7 @@ void main() {
     });
 
     test("getRemoteUrl propagates an unexpected worktree discovery failure", () async {
+      gitDirectoryExists = true;
       processRunner.enqueue(
         result: _processResult(
           exitCode: 128,

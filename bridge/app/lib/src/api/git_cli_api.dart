@@ -233,33 +233,12 @@ class GitCliApi({
   }
 
   Future<bool> _isInsideGitWorkTreeForRemote({required String projectPath}) async {
-    const arguments = ["rev-parse", "--is-inside-work-tree"];
-    final ProcessResult result;
     try {
-      result = await _processRunner.run(
-        "git",
-        arguments,
-        workingDirectory: projectPath,
-        environment: const {"LC_ALL": "C"},
-      );
+      return await isInsideGitWorkTree(projectPath: projectPath);
     } on ProcessException {
-      if (!_gitPathExists(gitPath: projectPath)) {
-        return false;
-      }
+      if (!_gitPathExists(gitPath: projectPath)) return false;
       rethrow;
     }
-    if (result.exitCode == 0) {
-      return result.stdout.toString().trim() == "true";
-    }
-    if (result.stderr.toString().toLowerCase().contains("not a git repository")) {
-      return false;
-    }
-    throw ProcessException(
-      "git",
-      arguments,
-      result.stderr.toString(),
-      result.exitCode,
-    );
   }
 
   Future<bool> branchExists({

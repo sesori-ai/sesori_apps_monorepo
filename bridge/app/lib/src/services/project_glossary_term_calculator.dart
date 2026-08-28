@@ -32,8 +32,8 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _xmlOpeningElementPattern = RegExp(
     r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
   );
-  static final RegExp _yamlBlockHeaderPattern = RegExp(
-    r'''^([ \t]*)(-[ \t]+)?["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*:\s*[|>][1-9+-]*\s*(?:#.*)?\r?$''',
+  static final RegExp _yamlCredentialHeaderPattern = RegExp(
+    r'''^([ \t]*)(-[ \t]+)?["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*:\s*.*\r?$''',
   );
   static final RegExp _xmlNameAcronymBoundaryPattern = RegExp("([A-Z]+)([A-Z][a-z])");
   static final RegExp _xmlNameCamelBoundaryPattern = RegExp("([a-z0-9])([A-Z])");
@@ -69,6 +69,7 @@ class const ProjectGlossaryTermCalculator() {
   static const Set<String> _credentialNameComponents = {
     "apikey",
     "authorization",
+    "pass",
     "credential",
     "passwd",
     "password",
@@ -254,7 +255,7 @@ when with web widget widgets will windows window workspace www
     final lines = value.split("\n");
     var index = 0;
     while (index < lines.length) {
-      final header = _yamlBlockHeaderPattern.firstMatch(lines[index]);
+      final header = _yamlCredentialHeaderPattern.firstMatch(lines[index]);
       if (header == null || !_isCredentialName(header.group(3)!)) {
         filtered.add(lines[index]);
         index++;
