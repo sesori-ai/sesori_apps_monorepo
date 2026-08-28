@@ -28,9 +28,21 @@ class ProjectGlossaryScopeRepository({required final GitCliApi _gitCliApi}) {
   }
 
   String _canonicalOrigin({required GitRemoteOriginIdentity identity}) {
-    final host = identity.host.contains(":") ? "[${identity.host}]" : identity.host;
-    final authority = identity.port == null ? host : "$host:${identity.port}";
-    final slug = _caseInsensitiveSlugHosts.contains(identity.host) ? identity.slug.toLowerCase() : identity.slug;
+    var host = identity.host;
+    var port = identity.port;
+    var user = identity.user;
+    if (host == "ssh.github.com" && port == 443) {
+      host = "github.com";
+      port = null;
+      user = null;
+    } else if (host == "github.com") {
+      user = null;
+    }
+
+    final formattedHost = host.contains(":") ? "[$host]" : host;
+    final hostAndPort = port == null ? formattedHost : "$formattedHost:$port";
+    final authority = user == null ? hostAndPort : "$user@$hostAndPort";
+    final slug = _caseInsensitiveSlugHosts.contains(host) ? identity.slug.toLowerCase() : identity.slug;
     return "$authority/$slug";
   }
 }

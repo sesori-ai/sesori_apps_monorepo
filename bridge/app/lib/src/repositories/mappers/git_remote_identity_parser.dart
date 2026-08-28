@@ -5,8 +5,9 @@
 typedef GitRemoteIdentity = ({String host, String slug});
 
 /// A git remote's network origin identity. [port] is present only for an
-/// explicit non-default endpoint port.
-typedef GitRemoteOriginIdentity = ({String host, int? port, String slug});
+/// explicit non-default endpoint port. [user] retains SSH account ownership
+/// that can change how a relative repository path resolves.
+typedef GitRemoteOriginIdentity = ({String host, int? port, String slug, String? user});
 
 /// Parses a git remote URL into its forge identity ([GitRemoteIdentity]).
 ///
@@ -34,12 +35,13 @@ class const GitRemoteIdentityParser() {
     "git": 9418,
     "git+ssh": 22,
   };
+  static const Set<String> _sshSchemes = {"ssh", "git+ssh"};
 
   /// scp-like remote syntax: `[user@]host:path`. The host part must be at
   /// least two characters with no slashes — a slash means a filesystem path,
   /// and a single character before the colon is a Windows drive letter, not a
   /// host.
-  static final RegExp _scpLikeRemote = RegExp(r"^(?:[^@\s]+@)?([^:/\\]{2,}):(.+)$");
+  static final RegExp _scpLikeRemote = RegExp(r"^(?:([^@\s]+)@)?([^:/\\]{2,}):(.+)$");
 
   GitRemoteIdentity? parse({required String remoteUrl}) {
     final origin = parseOrigin(remoteUrl: remoteUrl);
@@ -63,15 +65,18 @@ class const GitRemoteIdentityParser() {
       // only ports that identify a non-default network endpoint.
       final defaultPort = _defaultPorts[uri.scheme];
       final port = uri.hasPort && uri.port != defaultPort ? uri.port : null;
-      return _originIdentity(host: uri.host, port: port, path: uri.path);
+      final userInfo = uri.userInfo;
+      final user = _sshSchemes.contains(uri.scheme) && userInfo.isNotEmpty ? userInfo.split(":").first : null;
+      return _originIdentity(host: uri.host, port: port, path: uri.path, user: user);
     }
 
     final scpMatch = _scpLikeRemote.firstMatch(url);
     if (scpMatch != null) {
       return _originIdentity(
-        host: scpMatch.group(1)!.toLowerCase(),
+        host: scpMatch.group(2)!.toLowerCase(),
         port: null,
-        path: scpMatch.group(2)!,
+        path: scpMatch.group(3)!,
+        user: scpMatch.group(1),
       );
     }
 
@@ -82,12 +87,13 @@ class const GitRemoteIdentityParser() {
     required String host,
     required int? port,
     required String path,
+    required String? user,
   }) {
     final slug = _cleanSlug(path: path);
     if (slug == null) {
       return null;
     }
-    return (host: host, port: port, slug: slug);
+    return (host: host, port: port, slug: slug, user: user);
   }
 
   String? _cleanSlug({required String path}) {

@@ -15,6 +15,7 @@ void main() {
       "git@GitHub.com:Sesori-AI/Sesori_Apps_Monorepo.git",
       "https://github.com/sesori-ai/sesori_apps_monorepo.git",
       "ssh://git@github.com:22/SESORI-AI/SESORI_APPS_MONOREPO.git",
+      "ssh://git@ssh.github.com:443/SESORI-AI/SESORI_APPS_MONOREPO.git",
     ]) {
       final repository = ProjectGlossaryScopeRepository(
         gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
@@ -47,15 +48,23 @@ void main() {
 
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:2222/org/repo.git"),
-      "code.internal:2222/org/repo",
+      "git@code.internal:2222/org/repo",
     );
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:3333/org/repo.git"),
-      "code.internal:3333/org/repo",
+      "git@code.internal:3333/org/repo",
     );
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:22/Org/Repo.git"),
-      "code.internal/Org/Repo",
+      "git@code.internal/Org/Repo",
+    );
+    expect(
+      await resolveOrigin(remoteUrl: "alice@code.internal:repo.git"),
+      "alice@code.internal/repo",
+    );
+    expect(
+      await resolveOrigin(remoteUrl: "bob@code.internal:repo.git"),
+      "bob@code.internal/repo",
     );
   });
 
