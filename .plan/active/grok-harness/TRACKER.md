@@ -3,12 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-3/9 merged; Step 4/9 verified locally and ready to publish
+- **Status:** Steps 1-3/9 merged; Step 4/9 in PR
 - **Current branch:** `grok-harness-step-4-core`
 - **Base:** `origin/main` after merged PR #1160
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
-- **Current step:** `grok-harness-step-4-core`; post-rebase correctness review approved, publish next
+- **Open PR:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
+- **Current step:** `grok-harness-step-4-core`; monitor CI and review, then advance the local Step 5 successor
 
 ## Fixed Series
 
@@ -21,7 +22,7 @@
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** merged in #1160.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
-   - **State:** verified locally; ready for PR.
+   - **State:** in PR #1169.
    - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
      analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
@@ -84,10 +85,10 @@
 - [x] Keep replay initialize validation pure and validate effort-only tuples after a stored session becomes resident.
 - [x] Remove redundant Grok cleanup/command overrides; the shared tracker and command path remain authoritative.
 - [x] Run 270 ACP tests, 42 Grok tests, six affected-package analyzers, Dart LSP diagnostics, and whitespace checks.
-- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,067 lines).
+- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,068 lines).
 - [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
 - [x] Complete the post-rebase general correctness review; final verdict approved.
-- [ ] Publish Step 4 after #1160's merge and start its PR monitor.
+- [x] Publish Step 4 as PR #1169 after #1160's merge and start its PR monitor.
 
 ## Decisions And Evidence
 
