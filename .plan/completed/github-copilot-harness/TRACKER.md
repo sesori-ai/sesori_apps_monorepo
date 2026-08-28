@@ -67,9 +67,9 @@ Plan: [PLAN.md](PLAN.md)
 Execution date: 2026-08-28.
 
 - Copilot CLI: managed `1.0.80`, with all six checked-in archive digests matching the official stable GitHub release.
-- Bridge: source-run production tree from the Step 6 branch for the full matrix;
-  targeted post-fix suites and live replay reran on merged `origin/main` at
-  `be45cf8bb4`.
+- Bridge: source-run production tree at Step 6 branch head `4f0bca7f05` for
+  the full matrix; targeted post-fix suites and live replay reran on merged
+  `origin/main` at `be45cf8bb4`.
 - Host: macOS 26.6.2, arm64; Dart 3.13.1 and Flutter 3.47.1.
 - Client: Flutter debug build on the `sesori-dev-1` iPhone 17 simulator,
   iOS 26.5; traffic traversed client → relay → isolated slot-1 bridge → Copilot.
@@ -92,7 +92,7 @@ Execution date: 2026-08-28.
 | Questions and permissions | **Pass** | A real Copilot permission exposed Once, Reject, and Always; each outcome behaved correctly, rejection prevented mutation, abort retired a pending request, and no question capability was claimed. Copilot clarification arrived as normal text, consistent with the upstream `ask_user` limitation. |
 | Attachments and images | **Partial** | The phone sent a 64×64 single-color PNG and Copilot identified it correctly. No model/account rejection was available to exercise. |
 | Tools and file changes | **Partial** | Live completed and aborted tools, permission linkage, exact workspace mutation, and the phone's one-file `+1/-0` diff passed. After #1171, one terminal live tool remained one terminal tool after cold replay; the three-message semantic multiset and one-file `+1/-0` diff were unchanged. A live read-only tool with a negative file-change observation was not exercised. |
-| Session archiving and deletion | **Partial** | Local deletion removed one session and its clean dedicated worktree; explicit re-import did not resurrect it. Standard close removed it from the public ACP catalog, so the tombstone was not challenged by a still-listed row and private retained history was not inspected. |
+| Session archiving and deletion | **Partial** | Local deletion removed one session and its clean dedicated worktree; explicit re-import did not resurrect it. Standard close removed it from the public ACP catalog. Client archive/list/detail, deletion without worktree cleanup, visible cleanup refusal, branch retention, a tombstone challenged by a still-listed row, and private retained history inspection were not exercised. |
 | Compatibility and branding | **Partial** | Automated unknown-id fallback and both theme assets passed; the phone rendered the exact GitHub Copilot name and white Primer icon in dark mode. Light-theme client rendering and an older-client/older-bridge build pair were not exercised. |
 
 Automated verification passed with no analyzer issues: 13 Copilot tests, 267

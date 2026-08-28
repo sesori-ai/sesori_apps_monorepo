@@ -221,8 +221,9 @@ malformed branded version output; live catalog cancellation and first-page
 failure; multi-page live catalog failure; a greater-than-50-message client
 pagination, continuation, and cold-reopen flow; a model/account image rejection;
 a read-only tool with a negative file-change observation; light-theme client
-branding; and direct observation of retained private Copilot history. No
-product failure remains.
+branding; client archive/list/detail; deletion without worktree cleanup;
+visible cleanup refusal; branch retention; and direct observation of retained
+private Copilot history. No product failure remains.
 
 ## Risks And Test Focus
 
