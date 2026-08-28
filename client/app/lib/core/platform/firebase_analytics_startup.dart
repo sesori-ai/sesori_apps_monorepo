@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -23,6 +25,26 @@ class const FirebaseAnalyticsStartup({required final FirebaseAnalytics _analytic
       return AnalyticsRuntimeCapability.disabled(reason: reason);
     }
 
+    return await _enableCollection();
+  }
+
+  /// Lifts the build-window suspension once [authStates] reports a signed-in
+  /// user, proving this process is a person rather than a store crawl. Only the
+  /// SDK's own measurement resumes; the process-wide runtime capability was
+  /// already published as disabled, so Sesori-defined events stay off until the
+  /// next launch.
+  void enableOnceAuthenticated({required Stream<AuthState> authStates}) {
+    unawaited(
+      authStates.firstWhere((state) => state is AuthAuthenticated).then((_) async {
+        final capability = await _enableCollection();
+        if (capability.isEnabled) {
+          logi("Firebase analytics collection enabled after authentication inside the build window");
+        }
+      }),
+    );
+  }
+
+  Future<AnalyticsRuntimeCapability> _enableCollection() async {
     try {
       await _analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,

@@ -170,15 +170,20 @@ Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
   required bool supportsFirebaseAnalytics,
   required AuthSession authSession,
 }) async {
-  final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
-      ? const AnalyticsRuntimeCapability.disabled(
-          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-        )
-      : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
-          ineligibilityReason: await _measurementIneligibilityReason(authSession: authSession),
-        );
+  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
+    return const AnalyticsRuntimeCapability.disabled(
+      reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+    );
+  }
+  final startup = FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance);
+  final capability = await startup.configure(
+    ineligibilityReason: await _measurementIneligibilityReason(authSession: authSession),
+  );
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
+    if (reason == AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated) {
+      startup.enableOnceAuthenticated(authStates: authSession.authStateStream);
+    }
   }
   return capability;
 }
@@ -198,9 +203,12 @@ Future<void> _startSingularAttribution() async {
 const _buildEpochSeconds = int.fromEnvironment("SESORI_BUILD_EPOCH_SECONDS");
 
 /// How long after compilation a store may still be crawling the binary. Play
-/// runs its pre-launch report against every track upload "subject to capacity",
-/// so this is a heuristic on Google's scheduling delay, not a contract.
-const _buildWindow = Duration(hours: 2);
+/// runs its pre-launch report against every track upload "subject to capacity"
+/// and documents results arriving up to a day later; two hours proved too
+/// short in practice, so this doubles that documented ceiling. The width only
+/// delays anonymous installs of a fresh binary: an authenticated launch, or an
+/// interactive login inside the window, reports regardless.
+const _buildWindow = Duration(hours: 48);
 
 /// Whether a binary stamped at [buildEpochSeconds] could still be under a store
 /// pre-launch crawl at [now]. A clock behind the stamp says nothing about the
@@ -216,7 +224,9 @@ bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}
 /// Play's pre-launch report is the only store process that launches the app
 /// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
 /// never sign in, so an unauthenticated launch inside the build window is
-/// treated as one. A signed-in device keeps reporting at any time.
+/// treated as one. A signed-in device keeps reporting at any time, and an
+/// interactive login inside the window lifts the SDK suspension for the rest
+/// of the process.
 Future<AnalyticsRuntimeDisabledReason?> _measurementIneligibilityReason({required AuthSession authSession}) async {
   if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
   if (defaultTargetPlatform == TargetPlatform.android &&
