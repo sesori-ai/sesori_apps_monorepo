@@ -279,8 +279,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - An accepted ACP prompt rejection returns the session to idle without a durable
   inline error containing the backend's diagnostic detail.
 - Streaming stalls, duplicates or loses parts, shows an empty user bubble,
-  orders a fast assistant envelope before its accepted user message, or orders
-  a late envelope at the wrong transcript position; the session never
+  orders a fast assistant envelope before its accepted user message, exposes a
+  permission before that user or its preceding tool card, or orders a late
+  envelope at the wrong transcript position; the session never
   returns to idle. A terminal provider failure returns to idle without showing
   its error, a harness replaces backend-provided terminal or retry error text,
   a plugin status serializes with a private discriminator and is dropped at the

@@ -91,6 +91,7 @@ abstract class AcpPlugin({
   Future<bool>? _connectFuture;
   PluginAuthenticationRequiredException? _authenticationFailure;
   StreamSubscription<AcpNotification>? _notificationSubscription;
+  StreamSubscription<AcpServerRequest>? _serverRequestSubscription;
   AcpApprovalRegistry? _approvalRegistry;
   AcpInitializeResult? _initResult;
 
@@ -120,10 +121,12 @@ abstract class AcpPlugin({
   /// decisions live on this class — the state object only holds fields.
   final Map<String, _SessionTurnState> _turnStates = {};
 
-  /// Agent updates that raced the stdin flush for an accepted existing-session
-  /// prompt. The user message cannot publish before the flush succeeds, so hold
-  /// these updates until that message has entered the event stream.
+  /// Agent updates and server requests that raced the stdin flush for an
+  /// accepted existing-session prompt. The user message cannot publish before
+  /// the flush succeeds, so hold both until that message and any preceding tool
+  /// update have entered the event stream.
   final Map<String, List<AcpNotification>> _promptWriteNotifications = {};
+  final Map<String, List<AcpServerRequest>> _promptWriteServerRequests = {};
 
   /// Shared tail used only by agents that cannot correlate sessionless server
   /// requests while multiple prompts are in flight.
@@ -353,13 +356,57 @@ abstract class AcpPlugin({
     eventMapper.map(notification).forEach(_eventBuffer.add);
   }
 
+  void _handleAgentServerRequest({required AcpServerRequest request}) {
+    final registry = _approvalRegistry;
+    if (registry == null) return;
+    final sessionId = _serverRequestSessionId(request: request);
+    // Pin sessionless attribution at receipt: another concurrent turn can
+    // dispatch before this request leaves the prompt-write buffer.
+    final routedRequest = sessionId == null
+        ? request
+        : _serverRequestWithSession(request: request, sessionId: sessionId);
+    if (sessionId != null && _isPromptFrameWriting(sessionId: sessionId)) {
+      _promptWriteServerRequests.putIfAbsent(sessionId, () => []).add(routedRequest);
+      return;
+    }
+    registry.handleServerRequest(request: routedRequest);
+  }
+
+  AcpServerRequest _serverRequestWithSession({required AcpServerRequest request, required String sessionId}) {
+    final explicitSessionId = request.params["sessionId"];
+    if (explicitSessionId is String && explicitSessionId.trim().isNotEmpty) return request;
+    return AcpServerRequest(
+      id: request.id,
+      method: request.method,
+      params: {...request.params, "sessionId": sessionId},
+    );
+  }
+
+  String? _serverRequestSessionId({required AcpServerRequest request}) {
+    final rawSessionId = request.params["sessionId"];
+    if (rawSessionId != null && rawSessionId is! String) return null;
+    final explicit = rawSessionId is String ? rawSessionId.trim() : null;
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    return activeTurnSessionId;
+  }
+
   bool _isPromptFrameWriting({required String sessionId}) =>
       _turnStates[sessionId]?.queue.any((entry) => entry.phase == _QueuedAcpPromptPhase.writing) ?? false;
 
-  void _flushPromptWriteNotifications({required String sessionId}) {
+  void _flushPromptWriteEvents({required String sessionId}) {
     final notifications = _promptWriteNotifications.remove(sessionId);
-    if (notifications == null) return;
-    notifications.forEach(handleAgentNotification);
+    notifications?.forEach(handleAgentNotification);
+    final requests = _promptWriteServerRequests.remove(sessionId);
+    final registry = _approvalRegistry;
+    if (requests == null || registry == null) return;
+    for (final request in requests) {
+      registry.handleServerRequest(request: request);
+    }
+  }
+
+  void _dropPromptWriteEvents({required String sessionId}) {
+    _promptWriteNotifications.remove(sessionId);
+    _promptWriteServerRequests.remove(sessionId);
   }
 
   /// Approval state participates in the activity summary, so invalidate that
@@ -395,7 +442,9 @@ abstract class AcpPlugin({
         _notificationSubscription = client.notifications.listen(handleAgentNotification);
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
-        registry.attach(stream: client.serverRequests);
+        _serverRequestSubscription = client.serverRequests.listen(
+          (request) => _handleAgentServerRequest(request: request),
+        );
         final initResult = await _initialize(client);
         captureLiveInitializeResult(initResult);
         _initResult = initResult;
@@ -477,11 +526,11 @@ abstract class AcpPlugin({
   }
 
   /// Detaches and disposes the live connection's collaborators (notification
-  /// subscription, command listener, approval registry, client). The fields are
-  /// cleared before the first await so a concurrent [ensureConnected] never
-  /// sees a stale connection, and each step is isolated so a failure in one
-  /// (e.g. a hung subscription) cannot skip a later one (e.g. reaping the agent
-  /// subprocess). Never throws — log and continue.
+  /// and server-request subscriptions, command listener, approval registry,
+  /// client). The fields are cleared before the first await so a concurrent
+  /// [ensureConnected] never sees a stale connection, and each step is isolated
+  /// so a failure in one (e.g. a hung subscription) cannot skip a later one
+  /// (e.g. reaping the agent subprocess). Never throws — log and continue.
   Future<void> _teardownConnection() async {
     Future<void>? notificationCancellation;
     try {
@@ -490,7 +539,15 @@ abstract class AcpPlugin({
       Log.w("[$id] failed to cancel notification subscription", e, st);
     }
     _notificationSubscription = null;
+    Future<void>? serverRequestCancellation;
+    try {
+      serverRequestCancellation = _serverRequestSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel server-request subscription", e, st);
+    }
+    _serverRequestSubscription = null;
     _promptWriteNotifications.clear();
+    _promptWriteServerRequests.clear();
     final commandListener = _commandListener;
     _commandListener = null;
     final registry = _approvalRegistry;
@@ -501,6 +558,11 @@ abstract class AcpPlugin({
       await notificationCancellation;
     } on Object catch (e, st) {
       Log.w("[$id] failed to cancel notification subscription", e, st);
+    }
+    try {
+      await serverRequestCancellation;
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel server-request subscription", e, st);
     }
     try {
       await commandListener?.dispose();
@@ -1278,7 +1340,7 @@ abstract class AcpPlugin({
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
-    eventMapper.beginTurn(sessionId, messageId: turn.messageId);
+    eventMapper.beginTurn(sessionId: sessionId, messageId: turn.messageId);
     _inFlightTurnSessions.add(sessionId);
     _lastTurnSessionId = sessionId;
     try {
@@ -1308,7 +1370,7 @@ abstract class AcpPlugin({
         refused: result.stopReason == AcpStopReason.refusal,
       );
     } on Object catch (error, stack) {
-      _promptWriteNotifications.remove(sessionId);
+      _dropPromptWriteEvents(sessionId: sessionId);
       // The phone's send already returned success, so a dispatch or later
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
@@ -1350,7 +1412,7 @@ abstract class AcpPlugin({
     required _AcpTurn turn,
   }) {
     if (!identical(_turnStates[sessionId], state)) {
-      _promptWriteNotifications.remove(sessionId);
+      _dropPromptWriteEvents(sessionId: sessionId);
       return;
     }
     if (turn is! _QueuedAcpTurn) return;
@@ -1368,7 +1430,7 @@ abstract class AcpPlugin({
       state.recordDispatchedPrompt(promptId: queuedPrompt.presentation.id);
       _emitQueueUpdate(sessionId: sessionId, state: state);
     }
-    _flushPromptWriteNotifications(sessionId: sessionId);
+    _flushPromptWriteEvents(sessionId: sessionId);
   }
 
   void _emitQueueUpdate({required String sessionId, required _SessionTurnState state}) {

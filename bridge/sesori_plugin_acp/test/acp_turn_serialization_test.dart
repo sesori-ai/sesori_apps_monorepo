@@ -341,6 +341,110 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("a permission racing the prompt flush follows its accepted user and tool", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "permission ordering");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "tool-1",
+            "kind": "execute",
+            "title": "Run command",
+            "status": "pending",
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 90,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      expect(emitted.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
+
+      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info["role"] == "user");
+      final tool = emitted.whereType<BridgeSseMessagePartUpdated>().singleWhere(
+        (event) => event.part.type == PluginMessagePartType.tool,
+      );
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(emitted.indexOf(user), lessThan(emitted.indexOf(tool)));
+      expect(emitted.indexOf(tool), lessThan(emitted.indexOf(permission)));
+
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: sessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a buffered sessionless permission keeps its writing-turn attribution", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(firstSessionId, "first session");
+      final firstPrompt = await waitForFrameCount("session/prompt", 1);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 91,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      await sendPrompt(secondSessionId, "second session");
+      final secondPrompt = await waitForFrameCount("session/prompt", 2);
+      await pump();
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(permission.sessionID, firstSessionId);
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: firstSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      respondTo(secondPrompt, {"stopReason": "end_turn"});
+    });
+
     test("a queued prompt message uses its dispatch time", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();

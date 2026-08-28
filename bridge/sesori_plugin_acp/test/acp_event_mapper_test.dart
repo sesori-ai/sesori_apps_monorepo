@@ -38,7 +38,7 @@ void main() {
     );
 
     test("agent_message_chunk emits envelope + part + delta on first chunk", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -58,7 +58,10 @@ void main() {
 
     test("accepted prompt ids keep id-less replies unique across mapper restarts", () {
       String assistantId({required AcpEventMapper target, required String promptId}) {
-        target.beginTurn("s1", messageId: AcpEventMapper.sentUserMessageId(promptId: promptId));
+        target.beginTurn(
+          sessionId: "s1",
+          messageId: AcpEventMapper.sentUserMessageId(promptId: promptId),
+        );
         final events = target.map(
           update({
             "sessionUpdate": "agent_message_chunk",
@@ -82,7 +85,7 @@ void main() {
     });
 
     test("subsequent chunks emit only a delta on the same part", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -100,7 +103,7 @@ void main() {
     });
 
     test("reasoning transition and turn final emit complete snapshots", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -147,7 +150,7 @@ void main() {
     });
 
     test("tool activity finalizes active reasoning before the turn ends", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -195,7 +198,7 @@ void main() {
     });
 
     test("tool activity finalizes active assistant text before the turn ends", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -237,7 +240,7 @@ void main() {
     });
 
     test("a first-seen tool update finalizes active id-less assistant text", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -261,7 +264,7 @@ void main() {
     });
 
     test("a tool call does not finalize an explicit assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -300,7 +303,7 @@ void main() {
     });
 
     test("forgetSession drops pending text snapshots", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -314,7 +317,7 @@ void main() {
     });
 
     test("agent message content preserves mixed text and image order", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -349,7 +352,7 @@ void main() {
     });
 
     test("message trackers persist across chunks and reset at turn boundaries", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -375,7 +378,7 @@ void main() {
         "s1-mm1-assistant-text",
       );
 
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final reset = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -395,7 +398,7 @@ void main() {
     });
 
     test("agent_thought_chunk maps to a reasoning part", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -502,7 +505,7 @@ void main() {
     });
 
     test("id-less assistant content after a tool opens a later envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final beforeTool = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -543,7 +546,7 @@ void main() {
     });
 
     test("an explicit assistant message closes the prior id-less envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final before = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -764,7 +767,7 @@ void main() {
     });
 
     test("a completed tool retains its state for a late in-turn update; beginTurn clears it", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "tool_call",
@@ -797,7 +800,7 @@ void main() {
       expect(latePart.state.output, "final");
 
       // The next turn clears the prior turn's tools to keep the cache bounded.
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final afterTurn = mapper.map(
         update({
           "sessionUpdate": "tool_call_update",
@@ -949,7 +952,7 @@ void main() {
     });
 
     test("chunks group by ACP messageId when present", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final first = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1274,7 +1277,7 @@ void main() {
           modelId: "claude-opus-4-8",
           providerId: "cursor",
         );
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1312,7 +1315,7 @@ void main() {
     );
 
     test("a classified halt notice becomes a lone error message, not assistant text", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1331,7 +1334,7 @@ void main() {
     });
 
     test("a repeated identical halt chunk does not stack duplicate error cards", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1348,7 +1351,7 @@ void main() {
     });
 
     test("a tool clears unrendered id-less state before a later halt", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       expect(
         mapper.map(
           update({
@@ -1380,7 +1383,7 @@ void main() {
     });
 
     test("id-less assistant text after a halt opens a fresh envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final before = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1414,7 +1417,7 @@ void main() {
     });
 
     test("a reasoning chunk is never classified as a halt notice", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -1428,7 +1431,7 @@ void main() {
     });
 
     test("an image-bearing halt-like message remains an assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1455,7 +1458,7 @@ void main() {
     });
 
     test("an identified halt-like text chunk can receive a later image", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final text = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1486,7 +1489,7 @@ void main() {
     });
 
     test("ordinary assistant text still streams as an assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",

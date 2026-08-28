@@ -120,8 +120,9 @@ repeat after process restart without enabling approval-bypass launch flags.
   immediately. For DeepSeek, the underlying `session/prompt` remains pending
   through turn settlement, but ACP server requests and replies continue
   concurrently on the same transport.
-- A request never appears, appears under the wrong session, or omits options the
-  backend actually offered.
+- A request never appears, appears under the wrong session, omits options the
+  backend actually offered, or races ahead of its accepted user message and
+  preceding tool card while the prompt frame is still flushing.
 - An answer does not reach the backend, arrives with a different scope than the
   user chose, or leaves the turn blocked.
 - An ACP form answer changes scalar type, uses a display label instead of the

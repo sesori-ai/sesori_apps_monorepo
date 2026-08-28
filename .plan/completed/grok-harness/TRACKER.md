@@ -165,15 +165,21 @@
 - [x] Re-run the affected live restart flow and the complete automated matrix after rebasing onto current main.
 - [x] Record privacy-safe evidence, remove disposable state, release the local-testing slot, and retire the plan.
 - [x] Publish final PR #1190 and start its monitor.
+- [x] Address #1190 review findings with required named turn parameters and prompt-write server-request ordering.
 
 ## Decisions And Evidence
 
 - 2026-08-28: Authenticated restart testing exposed one shared ACP defect: process-local fallback turn counters reused
   id-less assistant message IDs after a bridge restart, overwriting an earlier persisted answer. A second concrete race
   allowed an agent update to publish before the accepted user message while the prompt frame was still flushing. The
-  fix anchors fallback IDs to the accepted prompt identity and buffers those updates until the user message publishes.
-  Focused regressions, the complete ACP/downstream matrix, a live post-restart turn, and the final architecture review
-  all passed.
+  fix anchors fallback IDs to the accepted prompt identity and gates agent updates plus attributable server requests
+  until the user and preceding tool state publish. Focused regressions, the complete ACP/downstream matrix, a live
+  post-restart turn, and the final architecture review all passed.
+- 2026-08-28: PR #1190 review correctly required `beginTurn`'s nullable identity to remain named and required, and
+  identified that the prompt-write gate covered notifications but not the approval registry's separate server-request
+  stream. Every caller now states its identity choice, and attributable requests flush after the accepted user and
+  buffered tool updates. Deterministic slow-flush regressions cover cross-stream ordering and retain sessionless
+  attribution when another session dispatches before the first frame finishes flushing.
 - 2026-08-28: The released Grok 1.0.5 client matrix passed without a scope reduction. The authoritative YOLO-disabled
   runs exercised Once and Reject; the live requests advertised no Always action. Seven consecutive debug-only
   unrecognised-frame messages appeared only in the abandoned non-authoritative global-config launch; all six later
@@ -253,7 +259,7 @@ All required rows passed without a named reduction, so the plan is retired.
 
 | Scope | Commands | Result |
 |---|---|---|
-| Shared ACP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 272 tests |
+| Shared ACP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 274 tests |
 | Grok | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 52 tests |
 | Cursor | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 138 tests |
 | Copilot | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 13 tests |
@@ -265,7 +271,7 @@ All required rows passed without a named reduction, so the plan is retired.
 | Client workspace | `dart pub get` | Pass |
 | Prego | `dart analyze --fatal-infos`; `flutter test` | Pass: no issues; 245 tests |
 | Mobile and desktop | `dart analyze --fatal-infos` in each shell | Pass: no issues |
-| Changed Dart files | Dart LSP diagnostics | Pass: zero diagnostics across four files |
+| Changed Dart files | Dart LSP diagnostics | Pass: zero diagnostics across eight files |
 
 The final matrix ran again after rebasing onto current main. The Cursor suite's intentional missing-file case logged its
 expected `PathNotFoundException` while all 138 tests passed. Dart format 3.1.12 still crashes on the enhanced-enum
@@ -312,14 +318,17 @@ The real Grok transcript remained correct upstream, but after a bridge restart S
 showed a prior id-less assistant reply replaced by the next reply. The first divergent boundary was the shared ACP event
 mapper: fallback assistant IDs used a process-local turn counter that restarted at one. A second deterministic race
 showed an agent update could arrive while stdin flush was pending and publish before the synthetic accepted-user event.
+PR review extended that concrete race to a tool update followed by an attributable server request on the separate
+approval stream.
 
 `AcpEventMapper` now derives id-less assistant, halt, and error fallback IDs from the accepted prompt's stable user
-message ID. `AcpPlugin` buffers session updates only during the prompt-frame write, emits the accepted user first, then
-flushes the buffered updates, and drops the buffer on stale state, dispatch failure, or teardown. Two regressions cover
-mapper replacement and the flush race. A live post-restart turn then appeared and persisted as user followed by a
-separate assistant reply. There is no schema or migration; the fix prevents future overwrite/reordering. The
-deliberately
-corrupted disposable test database was removed rather than treated as production data.
+message ID. `AcpPlugin` gates session updates and server requests during the prompt-frame write, emits the accepted user
+first, flushes buffered updates before buffered requests, and drops both on stale state, dispatch failure, or teardown.
+Four regressions cover mapper replacement, the reply race, tool-before-permission ordering, and retained sessionless
+attribution. A live post-restart turn then appeared and persisted as user followed by a separate assistant reply. There
+is no schema or migration; the
+fix prevents future overwrite/reordering. The deliberately corrupted disposable test database was removed rather than
+treated as production data.
 
 ### Cleanup
 

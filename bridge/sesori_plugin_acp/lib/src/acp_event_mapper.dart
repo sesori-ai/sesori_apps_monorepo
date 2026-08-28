@@ -217,7 +217,7 @@ class AcpEventMapper({
   /// so the next batch of streamed chunks groups under a fresh message id.
   /// [messageId] is the accepted user-message identity and keeps fallback ACP
   /// assistant ids unique when a new mapper starts for an existing session.
-  void beginTurn(String sessionId, {String? messageId}) {
+  void beginTurn({required String sessionId, required String? messageId}) {
     _turnSeq[sessionId] = (_turnSeq[sessionId] ?? 0) + 1;
     if (messageId == null) {
       _turnMessageIds.remove(sessionId);
