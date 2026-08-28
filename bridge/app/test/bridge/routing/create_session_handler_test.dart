@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -100,7 +101,10 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
       );
-      handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
+      handler = CreateSessionHandler(
+        sessionCreationService: sessionCreationService,
+        invalidateRejectedSelection: _ignore,
+      );
     });
 
     tearDown(() async {
@@ -456,8 +460,10 @@ void main() {
       expect(prompt, contains("Do NOT create another worktree or working directory"));
     });
 
-    test("plugin failure is propagated and no session row is inserted", () async {
-      final failingPlugin = _ThrowingCreateSessionPlugin();
+    test("stale plugin selection invalidates options and no session row is inserted", () async {
+      final failingPlugin = _ThrowingCreateSessionPlugin(
+        error: const PluginStaleOptionsException("createSession"),
+      );
       final localRepository = singlePluginSessionRepository(
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
@@ -478,7 +484,13 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      ({String pluginId, String projectId})? invalidated;
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: localCreationService,
+        invalidateRejectedSelection: ({required String pluginId, required String projectId}) async {
+          invalidated = (pluginId: pluginId, projectId: projectId);
+        },
+      );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
@@ -500,8 +512,9 @@ void main() {
             command: null,
           ),
         ),
-        throwsA(isA<StateError>()),
+        throwsA(isA<StaleSessionPromptOptionsException>()),
       );
+      expect(invalidated, (pluginId: legacyMissingPluginId, projectId: "/repo"));
 
       final dbSession = await db.sessionDao.getSession(sessionId: "s1");
       expect(dbSession, isNull);
@@ -988,7 +1001,10 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: orderedCreationService,
+        invalidateRejectedSelection: _ignore,
+      );
 
       await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1172,7 +1188,10 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionCreationService: localCreationService,
+        invalidateRejectedSelection: _ignore,
+      );
 
       final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1198,6 +1217,8 @@ void main() {
     });
   });
 }
+
+Future<void> _ignore({required String pluginId, required String projectId}) async {}
 
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   String? lastPrepareProjectId;
@@ -1260,7 +1281,7 @@ class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {
   String get id => "opencode";
 }
 
-class _ThrowingCreateSessionPlugin() extends _OpenCodeFakeBridgePlugin {
+class _ThrowingCreateSessionPlugin({required final Object error}) extends _OpenCodeFakeBridgePlugin {
   @override
   Future<PluginSession> createSession({
     required String directory,
@@ -1271,7 +1292,7 @@ class _ThrowingCreateSessionPlugin() extends _OpenCodeFakeBridgePlugin {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
-    throw StateError("createSession failed");
+    throw error;
   }
 }
 

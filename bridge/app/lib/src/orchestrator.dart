@@ -566,7 +566,10 @@ class Orchestrator({
           sessionRepository: sessionRepository,
           prSyncService: prSyncService,
         ),
-        CreateSessionHandler(sessionCreationService: sessionCreationService),
+        CreateSessionHandler(
+        sessionCreationService: sessionCreationService,
+        invalidateRejectedSelection: sessionOptionsService.invalidateRejectedSelection,
+      ),
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher),
         MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
         UpdateSessionArchiveStatusHandler(

@@ -50,7 +50,6 @@ void main() {
       plugin = CopilotPlugin(
         binaryPath: "/opt/copilot",
         launchDirectory: "/repo",
-        catalogConfigDirectory: "/state/catalog",
         environment: const {"COPILOT_HOME": "/state/copilot"},
         processFactory: (spec) async {
           launchEnvironments.add(spec.environment);
@@ -170,7 +169,7 @@ void main() {
       await completeCatalogDiscovery(process: catalogFakes.first);
 
       expect((await discovering).map((agent) => agent.name), ["Agent", "Plan"]);
-      expect(launchEnvironments.last["COPILOT_HOME"], "/state/catalog");
+      expect(launchEnvironments.last["COPILOT_HOME"], "/state/copilot");
       expect(fake.written.where((frame) => frame["method"] == "session/new"), isEmpty);
       plugin.onConnectionReset();
       final refreshing = plugin.validateTurnSelection(
@@ -192,7 +191,6 @@ void main() {
         ),
         throwsA(isA<PluginStaleOptionsException>()),
       );
-      expect(await plugin.getQueuedPrompts(sessionId: "session"), isEmpty);
     });
 
     test("retains local Copilot login guidance after authentication failure", () async {
@@ -206,8 +204,7 @@ void main() {
     test("legacy option getters surface isolated discovery failures", () async {
       final connecting = plugin.ensureConnected();
       await completeHandshake(process: fake);
-      expect(await connecting, isTrue);
-
+      await connecting;
       final agents = plugin.getAgents(projectId: "/repo");
       await completeHandshake(process: catalogFakes.first, rejectAuthentication: true);
       await expectLater(

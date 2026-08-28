@@ -16,7 +16,6 @@ const int _setupProbeOutputLimit = 64 * 1024;
 typedef CopilotPluginFactory = CopilotPlugin Function({
   required String binaryPath,
   required String launchDirectory,
-  required String catalogConfigDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
 });
@@ -24,13 +23,11 @@ typedef CopilotPluginFactory = CopilotPlugin Function({
 CopilotPlugin _buildCopilotPlugin({
   required String binaryPath,
   required String launchDirectory,
-  required String catalogConfigDirectory,
   required Map<String, String> environment,
   required AcpProcessFactory processFactory,
 }) => CopilotPlugin(
   binaryPath: binaryPath,
   launchDirectory: launchDirectory,
-  catalogConfigDirectory: catalogConfigDirectory,
   environment: environment,
   processFactory: processFactory,
 );
@@ -189,7 +186,6 @@ final class const CopilotPluginDescriptor({
     final copilot = _buildPlugin(
       binaryPath: binaryPath,
       launchDirectory: io.Directory.current.path,
-      catalogConfigDirectory: "${host.stateDirectory}${io.Platform.pathSeparator}catalog",
       environment: const {},
       processFactory: hostProcessAcpFactory(
         processes: host.processes,

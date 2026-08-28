@@ -23,7 +23,6 @@ class CopilotPlugin._({
   factory({
     required String binaryPath,
     required String launchDirectory,
-    required String catalogConfigDirectory,
     required Map<String, String> environment,
     required AcpProcessFactory processFactory,
   }) {
@@ -34,17 +33,13 @@ class CopilotPlugin._({
       cwd: launchDirectory,
       environment: environment,
     );
-    final catalogLaunchSpec = CopilotBinary.catalogLaunchSpec(
-      liveSpec: launchSpec,
-      configDirectory: catalogConfigDirectory,
-    );
     final copilotSessionOptionsService = CopilotSessionOptionsService(
       commandTracker: commandTracker,
       configurationTracker: configurationTracker,
       repository: CopilotCatalogRepository(
         api: CopilotCatalogProbeApi(
           client: AcpStdioClient(
-            launchSpec: catalogLaunchSpec,
+            launchSpec: launchSpec,
             processFactory: processFactory,
             logTag: "copilot-catalog",
           ),
