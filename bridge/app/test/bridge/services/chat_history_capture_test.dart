@@ -392,6 +392,132 @@ void main() {
       );
     });
 
+    test("a first replay replaces semantically identical live rows with different identities", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(
+            id: "replay",
+            text: "same content",
+            createdAt: 200,
+            promptId: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(
+          id: "live",
+          text: "same content",
+          createdAt: 100,
+          promptId: "prompt-live",
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay"],
+      );
+    });
+
+    test("semantic replay matching lets imported attribution replace matching live attribution", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          MessageWithParts(
+            info: const Message.assistant(
+              id: "replay",
+              sessionID: "ses_a",
+              agent: "copilot",
+              modelID: "model-2",
+              providerID: "copilot",
+              sender: MessageSender.agent,
+              time: MessageTime(created: 200, completed: 201),
+            ),
+            parts: [_part(id: "replay-part", messageId: "replay", text: "same response")],
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: MessageWithParts(
+          info: const Message.assistant(
+            id: "live",
+            sessionID: "ses_a",
+            agent: "copilot",
+            modelID: null,
+            providerID: null,
+            sender: MessageSender.agent,
+            time: MessageTime(created: 100, completed: 101),
+          ),
+          parts: [_part(id: "live-part", messageId: "live", text: "same response")],
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      final stored = await _storedMessages(history: history, sessionId: "ses_a");
+      expect(stored.map((message) => message.info.id), const ["replay"]);
+      expect((stored.single.info as MessageAssistant).modelID, "model-2");
+    });
+
+    test("semantic replay matching preserves repeated-message multiplicity", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-1", text: "repeated", createdAt: 100, promptId: null),
+          _messageWithText(id: "replay-2", text: "repeated", createdAt: 200, promptId: null),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      for (final message in [
+        _messageWithText(id: "live-1", text: "repeated", createdAt: 100, promptId: "prompt-1"),
+        _messageWithText(id: "live-2", text: "repeated", createdAt: 200, promptId: "prompt-2"),
+        _messageWithText(id: "live-only", text: "repeated", createdAt: 300, promptId: "prompt-3"),
+      ]) {
+        await _captureMessageWithParts(history: history, message: message);
+      }
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay-1", "replay-2", "live-only"],
+      );
+    });
+
+    test("semantic replay matching compares normalized stored attachments", () async {
+      const attachment = MessageAttachment.inlineImage(
+        mime: "image/png",
+        base64: "AQID",
+        filename: "fixture.png",
+      );
+      final repository = _FakeSessionRepository(
+        transcript: [
+          MessageWithParts(
+            info: _messageAt(id: "replay", createdAt: 200),
+            parts: [_part(id: "replay-part", messageId: "replay", text: "", attachment: attachment)],
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: MessageWithParts(
+          info: _messageAt(id: "live", createdAt: 100),
+          parts: [_part(id: "live-part", messageId: "live", text: "", attachment: attachment)],
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["replay"],
+      );
+    });
+
     test("a re-import restores retained messages to timestamp order", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -639,6 +765,32 @@ MessagePart _part({
     : MessagePart.file(id: id, sessionID: "ses_a", messageID: messageId, attachment: attachment);
 
 MessageWithParts _messageWithParts({required String id}) => _messageWithPartsAt(id: id, createdAt: 1);
+
+MessageWithParts _messageWithText({
+  required String id,
+  required String text,
+  required int createdAt,
+  required String? promptId,
+}) => MessageWithParts(
+  info: Message.user(
+    promptId: promptId,
+    id: id,
+    sessionID: "ses_a",
+    agent: null,
+    time: MessageTime(created: createdAt, completed: null),
+  ),
+  parts: [_part(id: "$id-part", messageId: id, text: text)],
+);
+
+Future<void> _captureMessageWithParts({
+  required TestChatHistory history,
+  required MessageWithParts message,
+}) async {
+  await history.service.captureMessage(sessionId: "ses_a", message: message.info);
+  for (final part in message.parts) {
+    await history.service.capturePart(sessionId: "ses_a", part: part);
+  }
+}
 
 MessageWithParts _messageWithPartsAt({required String id, required int createdAt}) => MessageWithParts(
   info: _messageAt(id: id, createdAt: createdAt),

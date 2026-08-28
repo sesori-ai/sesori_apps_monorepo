@@ -57,6 +57,7 @@ class ChatHistoryRepository({
   required final ArchivedSessionStorage _archivedSessionStorage,
 }) {
   static const _archiveSchemaVersion = 1;
+  static const _semanticMatchBridgeId = "history-semantic-match";
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
@@ -358,7 +359,13 @@ class ChatHistoryRepository({
   /// an edited message rolls its session back, and a bridge that was not
   /// watching that backend sees the removal only as this gap. Keeping it would
   /// restore messages the user deleted elsewhere. A session with no completed
-  /// import has no such line to draw, so everything stored is kept.
+  /// import has no such line to draw, so stored rows are otherwise kept.
+  ///
+  /// Backend replay identities can differ from the live identities Sesori
+  /// assigned to the same visible messages. Normalized semantic matching drops
+  /// those retained duplicates up to the imported multiplicity while preserving
+  /// truly live-only rows and additional identical messages. The imported row
+  /// remains authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -375,39 +382,83 @@ class ChatHistoryRepository({
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
-    final retained = [
-      for (final row in storedRows)
-        if (!importedIds.contains(row.messageId) && (lastImportedAt == null || row.updatedAt > lastImportedAt)) row,
-    ];
+    final storedPartRows = await _chatHistoryDao.getParts(sessionId: sessionId);
+    final storedPartJsonByMessage = <String, List<String>>{};
+    for (final row in storedPartRows) {
+      storedPartJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
 
     final importedMessageRows = <HistoryMessagesTableData>[];
+    final importedPartJsonByMessage = <String, List<String>>{};
     final partRows = <HistoryPartsTableData>[];
     var seq = 0;
     for (final message in messages) {
       seq++;
+      final infoJson = jsonEncode(message.info.toJson());
       importedMessageRows.add(
         HistoryMessagesTableData(
           sessionId: sessionId,
           messageId: message.info.id,
           seq: seq,
-          infoJson: jsonEncode(message.info.toJson()),
+          infoJson: infoJson,
           updatedAt: syncedAt,
         ),
       );
       for (var index = 0; index < message.parts.length; index++) {
         final part = message.parts[index];
+        final partJson = await _encodePart(storageScope: storageScope, part: part);
+        importedPartJsonByMessage.putIfAbsent(message.info.id, () => []).add(partJson);
         partRows.add(
           HistoryPartsTableData(
             sessionId: sessionId,
             messageId: message.info.id,
             partId: part.id,
             orderIndex: index,
-            partJson: await _encodePart(storageScope: storageScope, part: part),
+            partJson: partJson,
             updatedAt: syncedAt,
           ),
         );
       }
     }
+
+    final importedSemanticCounts = <String, int>{};
+    for (var index = 0; index < messages.length; index++) {
+      final message = messages[index];
+      final key = await _semanticMessageKey(
+        sessionId: sessionId,
+        messageId: message.info.id,
+        storageScope: storageScope,
+        infoJson: importedMessageRows[index].infoJson,
+        partJsons: importedPartJsonByMessage[message.info.id] ?? const [],
+      );
+      if (key != null) importedSemanticCounts[key] = (importedSemanticCounts[key] ?? 0) + 1;
+    }
+
+    final storedSemanticOccurrences = <String, int>{};
+    final semanticallyImportedStoredIds = <String>{};
+    for (final row in storedRows) {
+      final key = await _semanticMessageKey(
+        sessionId: sessionId,
+        messageId: row.messageId,
+        storageScope: storageScope,
+        infoJson: row.infoJson,
+        partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
+      );
+      if (key == null) continue;
+      final occurrence = (storedSemanticOccurrences[key] ?? 0) + 1;
+      storedSemanticOccurrences[key] = occurrence;
+      if (occurrence <= (importedSemanticCounts[key] ?? 0)) {
+        semanticallyImportedStoredIds.add(row.messageId);
+      }
+    }
+
+    final retained = [
+      for (final row in storedRows)
+        if (!importedIds.contains(row.messageId) &&
+            !semanticallyImportedStoredIds.contains(row.messageId) &&
+            (lastImportedAt == null || row.updatedAt > lastImportedAt))
+          row,
+    ];
     final retainedCreatedAt = [
       for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
     ];
@@ -631,6 +682,52 @@ class ChatHistoryRepository({
     }
     await _chatHistoryDao.reclaimFreedPages();
     if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+  }
+
+  Future<String?> _semanticMessageKey({
+    required String sessionId,
+    required String messageId,
+    required AttachmentStorageScope storageScope,
+    required String infoJson,
+    required List<String> partJsons,
+  }) async {
+    try {
+      final info = _withoutFields(
+        source: Message.fromJson(jsonDecodeMap(infoJson)).toJson(),
+        fields: const {"id", "sessionID", "promptId", "time", "agent", "modelID", "providerID"},
+      );
+      final parts = await _rehydrateParts(
+        storageScope: storageScope,
+        partJsons: partJsons,
+        attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: _semanticMatchBridgeId),
+      );
+      return jsonEncode({
+        "info": info,
+        "parts": [
+          for (final part in parts)
+            _withoutFields(
+              source: part.toJson(),
+              fields: const {"id", "sessionID", "messageID"},
+            ),
+        ],
+      });
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
+        error,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Map<String, dynamic> _withoutFields({
+    required Map<String, dynamic> source,
+    required Set<String> fields,
+  }) {
+    final result = Map<String, dynamic>.of(source);
+    fields.forEach(result.remove);
+    return result;
   }
 
   /// The stored JSON for [part], with inline attachment bytes moved to spill
