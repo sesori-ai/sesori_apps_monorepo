@@ -40,6 +40,8 @@ dependencies:
     path: ../sesori_plugin_claude
   hermes_plugin:
     path: ../sesori_plugin_hermes
+  grok_plugin:
+    path: ../sesori_plugin_grok
   pi_plugin:
     path: ../sesori_plugin_pi
   omp_plugin:

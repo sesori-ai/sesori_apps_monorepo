@@ -8,8 +8,12 @@ void main() {
 
     expect(
       ids,
-      unorderedEquals(["opencode", "codex", "copilot", "cursor", "claude", "hermes", "pi", "omp", "deepseek"]),
+      unorderedEquals(["opencode", "codex", "copilot", "cursor", "claude", "hermes", "pi", "omp", "deepseek", "grok"]),
     );
+  });
+
+  test("OpenCode remains the preferred default", () {
+    expect(preferredDefaultPluginId, Harness.opencode.name);
   });
 
   test("every registered plugin id is a built-in Harness identity", () {

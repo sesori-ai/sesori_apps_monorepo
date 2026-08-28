@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-4/9 merged; Step 5/9 in PR
-- **Current branch:** `grok-harness-step-5-lifecycle`
-- **Base:** `origin/main` after merged PR #1169
+- **Status:** Steps 1-4/9 merged; Step 5/9 in PR; Step 6/9 implemented locally
+- **Current branch:** `grok-harness-step-6-activation`
+- **Base:** `grok-harness-step-5-lifecycle` (PR #1175)
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
 - **Open PR:** #1175 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1175>
-- **Local successor:** Step 6 starts after Step 5 publication
+- **Local successor:** `grok-harness-step-6-activation`; bridge activation under review
 
 ## Fixed Series
 
@@ -28,7 +28,7 @@
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
    - **State:** in PR #1175.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
-   - **State:** not started.
+   - **State:** implemented locally; held until #1175 merges.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
    - **State:** not started.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
@@ -104,6 +104,19 @@
 - [x] Run architecture implementation review over Step 5 against Step 4; approved with no findings.
 - [x] Commit the completed successor locally; do not publish before #1169 merges.
 - [x] Rebase onto merged #1169, reverify, publish PR #1175, and start its monitor.
+
+## Step 6 Checklist
+
+- [x] Add the Grok package dependency and register `GrokPluginDescriptor` only at the app composition point.
+- [x] Add `Harness.grok`; keep plugin IDs string-based on transport and preserve unknown-client fallbacks.
+- [x] Keep OpenCode preferred while making Grok eligible by default and startable only on demand after setup.
+- [x] Cover the exact built-in registry and namespaced `--grok-bin` CLI option.
+- [x] Update app composition/runtime inventories and reconcile missing Copilot, DeepSeek, and Grok architecture edges.
+- [x] Add no analytics event; generic plugin lifecycle outcomes remain authoritative.
+- [x] Pass app fatal-info analysis, 7 focused app tests, shared analysis, 392 shared tests, pub resolution, and LSP.
+- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 140 lines).
+- [x] Run architecture implementation review over Step 6 against Step 5; approved with no findings.
+- [x] Commit the completed successor locally; do not publish before #1175 merges.
 
 ## Decisions And Evidence
 
