@@ -3,12 +3,12 @@
 ## Status
 
 - **Plan slug:** `voice-transcription-retry`
-- **Status:** Active — Step 1/5 plan correction and publication
+- **Status:** Active — Step 3/5 client ownership migration ready for publication
 - **Plan date:** 2026-08-27
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Server repository:** `sesori-ai/sesori_auth_server`
-- **Implementation base:** apps `origin/main` at `10e9c8c4bb`; auth `origin/master` at `93b4323dca`
-- **Current branch:** `voice-retry-behavior`
+- **Implementation base:** apps `origin/main` at `746e222c42`; auth Step 2 merged as `459d2663c8`
+- **Current branch:** `plan/voice-transcription-retry/s03-core-voice-lifecycle`
 - **Delivery:** one plan PR, one additive auth-contract PR, one client ownership/layering PR, one async-retry-plus-regression-doc PR, and one verification/retirement PR
 - **External merge barrier:** apps realtime voice PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), head `b3083b7ad3`, must rebase onto the merged async-retry implementation before it may merge
 
