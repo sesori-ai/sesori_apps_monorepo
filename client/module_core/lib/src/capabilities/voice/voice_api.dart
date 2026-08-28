@@ -5,6 +5,7 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../../logging/logging.dart";
 import "voice_transcription_failure_metadata.dart";
@@ -25,6 +26,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   Future<VoiceTranscriptionApiResult> transcribe({
     required String audioFilePath,
     required String mimeType,
+    required ProjectGlossaryKey? projectGlossaryKey,
   }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
 
@@ -36,6 +38,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
       final response = await _client.postMultipart(
         uri,
         fromJson: _parseTranscript,
+        fields: projectGlossaryKey == null ? null : {"projectKey": projectGlossaryKey.value},
         createFiles: () async => [
           await http.MultipartFile.fromPath(
             "audio",

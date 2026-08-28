@@ -3,9 +3,12 @@ import "dart:async";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryKey;
 import "package:test/test.dart";
 
 class MockVoiceRepository() extends Mock implements VoiceRepository;
+
+class MockProjectRepository() extends Mock implements ProjectRepository;
 
 class MockVoiceCapture() extends Mock implements VoiceCapture;
 
@@ -13,6 +16,7 @@ class MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 
 void main() {
   late MockVoiceRepository repository;
+  late MockProjectRepository projectRepository;
   late MockVoiceCapture capture;
   late MockVoiceCaptureSession captureSession;
   late VoiceTranscriptionService service;
@@ -26,6 +30,7 @@ void main() {
 
   setUp(() {
     repository = MockVoiceRepository();
+    projectRepository = MockProjectRepository();
     capture = MockVoiceCapture();
     captureSession = MockVoiceCaptureSession();
     when(capture.createSession).thenReturn(captureSession);
@@ -44,10 +49,15 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.success(transcript: "hello"));
-    service = VoiceTranscriptionService(repository: repository, capture: capture);
-    session = service.createSession();
+    service = VoiceTranscriptionService(
+      repository: repository,
+      projectRepository: projectRepository,
+      capture: capture,
+    );
+    session = service.createSession(projectId: null);
   });
 
   test("creates one distinct platform session for each composer", () {
@@ -56,8 +66,8 @@ void main() {
     var created = 0;
     when(capture.createSession).thenAnswer((_) => created++ == 0 ? firstCapture : secondCapture);
 
-    final first = service.createSession();
-    final second = service.createSession();
+    final first = service.createSession(projectId: null);
+    final second = service.createSession(projectId: null);
 
     expect(identical(first, second), isFalse);
     expect(created, 2);
@@ -71,13 +81,88 @@ void main() {
     verify(captureSession.start).called(1);
     verify(captureSession.stop).called(1);
     verify(
-      () => repository.transcribe(audioFilePath: artifact.path, mimeType: artifact.mimeType),
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: null,
+      ),
     ).called(1);
     verify(captureSession.releaseOperation).called(1);
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
 
     await service.start(session: session);
     verify(captureSession.start).called(1);
+  });
+
+  test("forwards an available opaque project glossary key", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    when(
+      () => projectRepository.getProject(projectId: "project-1"),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        Project(
+          id: "project-1",
+          name: "Project",
+          path: "/project",
+          time: null,
+          voiceGlossaryKey: glossaryKey,
+        ),
+      ),
+    );
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
+    await Future<void>.delayed(Duration.zero);
+
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: glossaryKey,
+      ),
+    ).called(1);
+  });
+
+  test("a pending project context keeps the active interaction unscoped", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    final projectResponse = Completer<ApiResponse<Project>>();
+    when(
+      () => projectRepository.getProject(projectId: "project-1"),
+    ).thenAnswer((_) => projectResponse.future);
+    final scopedSession = service.createSession(projectId: "project-1");
+    await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
+
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+    projectResponse.complete(
+      ApiResponse.success(
+        Project(
+          id: "project-1",
+          name: "Project",
+          path: "/project",
+          time: null,
+          voiceGlossaryKey: glossaryKey,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    await service.start(session: scopedSession);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    final forwardedKeys = verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+      ),
+    ).captured;
+    expect(forwardedKeys, [null, glossaryKey]);
   });
 
   test("shares one in-flight prewarm attempt per composer session", () async {
@@ -147,9 +232,10 @@ void main() {
         () => repository.transcribe(
           audioFilePath: any(named: "audioFilePath"),
           mimeType: any(named: "mimeType"),
+          projectGlossaryKey: any(named: "projectGlossaryKey"),
         ),
       ).thenAnswer((_) async => outcome);
-      final candidateSession = service.createSession();
+      final candidateSession = service.createSession(projectId: null);
 
       await service.start(session: candidateSession);
       await expectLater(
@@ -167,6 +253,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer(
       (_) async => attempts++ == 0
@@ -185,7 +272,11 @@ void main() {
     verify(captureSession.start).called(1);
     verify(captureSession.stop).called(1);
     verify(
-      () => repository.transcribe(audioFilePath: artifact.path, mimeType: artifact.mimeType),
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: null,
+      ),
     ).called(2);
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
   });
@@ -197,6 +288,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
@@ -227,6 +319,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) {
       attempts++;
@@ -263,6 +356,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
@@ -283,6 +377,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
     when(() => captureSession.artifactExists(artifact: artifact)).thenAnswer((_) async => false);
@@ -307,6 +402,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
 
@@ -351,6 +447,7 @@ void main() {
       () => repository.transcribe(
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
+        projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) => response.future);
 

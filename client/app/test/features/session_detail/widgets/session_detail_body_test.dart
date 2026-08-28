@@ -272,7 +272,10 @@ void main() {
         providers: [
           BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
           BlocProvider<VoiceInputCubit>(
-            create: (_) => VoiceInputCubit(service: voiceTranscriptionService),
+            create: (_) => VoiceInputCubit(
+              service: voiceTranscriptionService,
+              projectId: "/project",
+            ),
           ),
         ],
         child: MaterialApp(

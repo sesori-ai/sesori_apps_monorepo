@@ -412,6 +412,7 @@ void main() {
           path: "/project-one",
           time: null,
           supportsDedicatedWorktrees: true,
+          voiceGlossaryKey: null,
         ),
       ),
     );
@@ -496,6 +497,7 @@ void main() {
           path: "/project-one",
           time: null,
           supportsDedicatedWorktrees: false,
+          voiceGlossaryKey: null,
         ),
       ),
     );
@@ -517,6 +519,7 @@ void main() {
                 path: "/project-one",
                 time: null,
                 supportsDedicatedWorktrees: true,
+                voiceGlossaryKey: null,
               ),
             );
     });
@@ -1163,6 +1166,7 @@ void main() {
           path: "/plain-folder",
           time: null,
           supportsDedicatedWorktrees: false,
+          voiceGlossaryKey: null,
         ),
       ),
     );

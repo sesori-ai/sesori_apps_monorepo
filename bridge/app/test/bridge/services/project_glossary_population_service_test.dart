@@ -139,6 +139,7 @@ final class _FakeProjectRepository() implements ProjectRepository {
       name: "Project",
       path: "/workspace/project",
       time: null,
+      voiceGlossaryKey: null,
     );
   }
 
@@ -149,6 +150,9 @@ final class _FakeProjectRepository() implements ProjectRepository {
 final class _FakeProjectGlossaryScopeService({required var ProjectGlossaryScope? scope})
     implements ProjectGlossaryScopeService {
   final List<String> projectPaths = [];
+
+  @override
+  ProjectGlossaryKey? cachedProjectKey({required String projectPath}) => null;
 
   @override
   Future<ProjectGlossaryScope?> resolve({required String projectPath}) async {

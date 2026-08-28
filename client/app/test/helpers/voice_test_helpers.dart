@@ -11,7 +11,9 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   Stream<double> amplitudeStream = const Stream<double>.empty(),
 }) {
   final session = MockVoiceTranscriptionSession();
-  when(service.createSession).thenReturn(session);
+  when(
+    () => service.createSession(projectId: any(named: "projectId")),
+  ).thenReturn(session);
   when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationStream);
   when(() => service.amplitudeStream(session: session)).thenAnswer((_) => amplitudeStream);
   when(() => service.prewarm(session: session)).thenAnswer((_) async {});

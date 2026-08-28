@@ -123,6 +123,7 @@ void main() {
             path: "/project",
             time: null,
             supportsDedicatedWorktrees: true,
+            voiceGlossaryKey: null,
           ),
         ),
       );
@@ -257,6 +258,7 @@ void main() {
                 path: "/project",
                 time: null,
                 supportsDedicatedWorktrees: true,
+                voiceGlossaryKey: null,
               ),
             ),
           );

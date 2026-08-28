@@ -6,8 +6,11 @@ import "../../logging/logging.dart";
 import "../../services/voice_transcription_service.dart";
 import "voice_input_state.dart";
 
-class VoiceInputCubit({required final VoiceTranscriptionService _service}) extends Cubit<VoiceInputState> {
-  late final VoiceTranscriptionSession _session = _service.createSession();
+class VoiceInputCubit({
+  required final VoiceTranscriptionService _service,
+  required final String? projectId,
+}) extends Cubit<VoiceInputState> {
+  late final VoiceTranscriptionSession _session = _service.createSession(projectId: projectId);
   late final StreamSubscription<void> _maxDurationSubscription;
 
   this : super(const VoiceInputState.idle()) {

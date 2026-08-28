@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../voice/project_glossary_key.dart";
+
 part "project.freezed.dart";
 
 part "project.g.dart";
@@ -64,9 +66,22 @@ sealed class Project with _$Project {
     // behavior the bridge can actually provide.
     // COMPATIBILITY 2026-07-17 (v1.5.2): Old bridges omit this capability. Default to the prior visible-toggle behavior; require the field once those bridges are unsupported.
     @Default(true) bool supportsDedicatedWorktrees,
+    // COMPATIBILITY 2026-08-28 (v1.8.2): Published older bridges omit the nullable glossary key.
+    // Remove omission-specific coverage when every supported bridge sends this field.
+    @ProjectGlossaryKeyJsonConverter() required ProjectGlossaryKey? voiceGlossaryKey,
   }) = _Project;
 
-  factory fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
+  // Invalid optional glossary context must not make the project or voice input unavailable.
+  factory fromJson(Map<String, dynamic> json) {
+    final rawGlossaryKey = json["voiceGlossaryKey"];
+    final glossaryKey = rawGlossaryKey is String
+        ? ProjectGlossaryKey.tryParse(value: rawGlossaryKey)
+        : null;
+    return _$ProjectFromJson({
+      ...json,
+      "voiceGlossaryKey": glossaryKey?.value,
+    });
+  }
 }
 
 @Freezed(fromJson: true, toJson: true)

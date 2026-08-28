@@ -509,6 +509,7 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
                             child: BlocProvider(
                               create: (_) => VoiceInputCubit(
                                 service: getIt<VoiceTranscriptionService>(),
+                                projectId: widget.projectId,
                               ),
                               child: Semantics(
                                 enabled: isComposerEnabled,

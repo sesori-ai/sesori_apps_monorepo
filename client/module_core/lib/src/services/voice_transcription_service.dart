@@ -1,9 +1,12 @@
 import "dart:async";
 
 import "package:injectable/injectable.dart";
+import "package:sesori_auth/sesori_auth.dart" show ErrorResponse, SuccessResponse;
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../logging/logging.dart";
 import "../platform/voice_capture.dart";
+import "../repositories/project_repository.dart";
 import "../repositories/voice_repository.dart";
 
 const maxRecordingDuration = Duration(minutes: 15);
@@ -12,11 +15,41 @@ const _recorderPrewarmTimeout = Duration(seconds: 2);
 @lazySingleton
 class VoiceTranscriptionService({
   required final VoiceRepository _repository,
+  required final ProjectRepository _projectRepository,
   required final VoiceCapture _capture,
 }) {
-  VoiceTranscriptionSession createSession() => VoiceTranscriptionSession._(
-    captureSession: _capture.createSession(),
-  );
+  VoiceTranscriptionSession createSession({required String? projectId}) {
+    final session = VoiceTranscriptionSession._(
+      captureSession: _capture.createSession(),
+    );
+    if (projectId != null && projectId.trim().isNotEmpty) {
+      unawaited(
+        _loadProjectGlossaryKey(
+          session: session,
+          projectId: projectId,
+        ),
+      );
+    }
+    return session;
+  }
+
+  Future<void> _loadProjectGlossaryKey({
+    required VoiceTranscriptionSession session,
+    required String projectId,
+  }) async {
+    try {
+      final response = await _projectRepository.getProject(projectId: projectId);
+      if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) return;
+      switch (response) {
+        case SuccessResponse(:final data):
+          session._availableProjectGlossaryKey = data.voiceGlossaryKey;
+        case ErrorResponse(:final error):
+          logw("Could not load optional project voice context; continuing unscoped", error);
+      }
+    } catch (error, stackTrace) {
+      logw("Could not load optional project voice context; continuing unscoped", error, stackTrace);
+    }
+  }
 
   Stream<double> amplitudeStream({required VoiceTranscriptionSession session}) =>
       session._captureSession.amplitudeStream;
@@ -64,6 +97,7 @@ class VoiceTranscriptionService({
   Future<void> _start({required VoiceTranscriptionSession session}) async {
     final generation = ++session._generation;
     session._state = const _VoiceSessionStarting();
+    session._interactionProjectGlossaryKey = session._availableProjectGlossaryKey;
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -178,6 +212,7 @@ class VoiceTranscriptionService({
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
+        projectGlossaryKey: session._interactionProjectGlossaryKey,
       );
       if (!_ownsGeneration(session: session, generation: generation)) {
         throw VoiceTranscriptionError.cancelled();
@@ -411,6 +446,8 @@ class VoiceTranscriptionSession._({required final VoiceCaptureSession _captureSe
   Future<VoiceRecordingArtifact>? _stopFuture;
   Future<void>? _cancelFuture;
   Timer? _maxDurationTimer;
+  ProjectGlossaryKey? _availableProjectGlossaryKey;
+  ProjectGlossaryKey? _interactionProjectGlossaryKey;
   int _generation = 0;
 }
 

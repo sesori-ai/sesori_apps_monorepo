@@ -101,6 +101,7 @@ class AdaptiveSessionRouterTestHarness() {
           path: "/$projectId",
           time: null,
           supportsDedicatedWorktrees: true,
+          voiceGlossaryKey: null,
         ),
       );
     });

@@ -113,6 +113,7 @@ class ProjectRepository({
       path: canonical,
       time: null,
       supportsDedicatedWorktrees: await _supportsDedicatedWorktrees(path: canonical),
+      voiceGlossaryKey: null,
     );
   }
 

@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../auth/bridge_id_provider.dart";
@@ -16,9 +17,29 @@ class ProjectGlossaryScopeService({
   static const String _bridgeLocalDomain = "sesori-local-glossary-v1\u0000";
   static const String _keyPrefix = "prj_v1_";
 
+  final Map<String, ProjectGlossaryScope> _scopeByProjectPath = {};
+
+  ProjectGlossaryKey? cachedProjectKey({required String projectPath}) {
+    if (projectPath.trim().isEmpty) return null;
+    final normalizedPath = normalizeProjectDirectory(directory: projectPath);
+    final scope = _scopeByProjectPath[normalizedPath];
+    return switch (scope) {
+      RepositoryProjectGlossaryScope(:final projectKey) => projectKey,
+      BridgeLocalProjectGlossaryScope(:final projectKey, :final bridgeId) when bridgeId == _bridgeIdProvider.bridgeId =>
+        projectKey,
+      BridgeLocalProjectGlossaryScope() => () {
+        _scopeByProjectPath.remove(normalizedPath);
+        return null;
+      }(),
+      null => null,
+    };
+  }
+
   Future<ProjectGlossaryScope?> resolve({required String projectPath}) async {
-    final identity = await _repository.resolveIdentity(projectPath: projectPath);
-    return switch (identity) {
+    if (projectPath.trim().isEmpty) return null;
+    final normalizedPath = normalizeProjectDirectory(directory: projectPath);
+    final identity = await _repository.resolveIdentity(projectPath: normalizedPath);
+    final scope = switch (identity) {
       RepositoryProjectGlossaryIdentity(:final canonicalOrigin) => ProjectGlossaryScope.repository(
         projectKey: await _calculateKey(input: "$_repositoryDomain$canonicalOrigin"),
       ),
@@ -27,6 +48,12 @@ class ProjectGlossaryScopeService({
       ),
       null => null,
     };
+    if (scope == null) {
+      _scopeByProjectPath.remove(normalizedPath);
+    } else {
+      _scopeByProjectPath[normalizedPath] = scope;
+    }
+    return scope;
   }
 
   Future<ProjectGlossaryScope?> _resolveBridgeLocal({required String normalizedAbsolutePath}) async {
