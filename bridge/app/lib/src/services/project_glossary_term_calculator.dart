@@ -33,6 +33,9 @@ class const ProjectGlossaryTermCalculator() {
   static final RegExp _xmlOpeningElementPattern = RegExp(
     r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
   );
+  static final RegExp _yamlBlockHeaderPattern = RegExp(
+    r'''^([ \t]*)["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*:\s*[|>][1-9+-]*\s*(?:#.*)?\r?$''',
+  );
   static final RegExp _xmlNameAcronymBoundaryPattern = RegExp("([A-Z]+)([A-Z][a-z])");
   static final RegExp _xmlNameCamelBoundaryPattern = RegExp("([a-z0-9])([A-Z])");
   static final RegExp _xmlNameSeparatorPattern = RegExp(r"[.:\-_]+");
@@ -228,7 +231,7 @@ when with web widget widgets will windows window workspace www
     for (final opening in _xmlOpeningElementPattern.allMatches(value)) {
       if (opening.start < cursor) continue;
       final name = opening.group(1)!;
-      if (!_isCredentialXmlName(name)) continue;
+      if (!_isCredentialName(name)) continue;
 
       filtered.write(value.substring(cursor, opening.start));
       if (opening.group(2) == "/") {
@@ -247,7 +250,38 @@ when with web widget widgets will windows window workspace www
     return filtered.toString();
   }
 
-  bool _isCredentialXmlName(String name) {
+  String _filterYamlCredentialBlocks(String value) {
+    final filtered = <String>[];
+    final lines = value.split("\n");
+    var index = 0;
+    while (index < lines.length) {
+      final header = _yamlBlockHeaderPattern.firstMatch(lines[index]);
+      if (header == null || !_isCredentialName(header.group(2)!)) {
+        filtered.add(lines[index]);
+        index++;
+        continue;
+      }
+
+      final headerIndent = header.group(1)!.length;
+      filtered.add("");
+      index++;
+      while (index < lines.length) {
+        final line = lines[index];
+        if (line.trim().isEmpty) {
+          filtered.add("");
+          index++;
+          continue;
+        }
+        final contentIndent = line.length - line.trimLeft().length;
+        if (contentIndent <= headerIndent) break;
+        filtered.add("");
+        index++;
+      }
+    }
+    return filtered.join("\n");
+  }
+
+  bool _isCredentialName(String name) {
     final components = name
         .replaceAllMapped(
           _xmlNameAcronymBoundaryPattern,
@@ -268,18 +302,23 @@ when with web widget widgets will windows window workspace www
     return false;
   }
 
-  String _filterCredentialSpans(String value) => _filterXmlCredentialElements(value)
-      .replaceAll(_authorizationCredentialPattern, " ")
-      .replaceAll(_credentialTripleDoubleAssignmentPattern, " ")
-      .replaceAll(_credentialTripleSingleAssignmentPattern, " ")
-      .replaceAll(_credentialAssignmentPattern, " ")
-      .replaceAll(_bearerCredentialPattern, " ")
-      .replaceAll(_credentialLabeledSpanPattern, " ")
-      .replaceAll(_credentialPrefixedSpanPattern, " ")
-      .replaceAllMapped(
-        _metadataSecretSpanPattern,
-        (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
-      );
+  String _filterCredentialSpans(String value) {
+    final structured = _filterYamlCredentialBlocks(
+      _filterXmlCredentialElements(value),
+    );
+    return structured
+        .replaceAll(_authorizationCredentialPattern, " ")
+        .replaceAll(_credentialTripleDoubleAssignmentPattern, " ")
+        .replaceAll(_credentialTripleSingleAssignmentPattern, " ")
+        .replaceAll(_credentialAssignmentPattern, " ")
+        .replaceAll(_bearerCredentialPattern, " ")
+        .replaceAll(_credentialLabeledSpanPattern, " ")
+        .replaceAll(_credentialPrefixedSpanPattern, " ")
+        .replaceAllMapped(
+          _metadataSecretSpanPattern,
+          (match) => _looksCredentialShaped(match.group(0)!) ? " " : match.group(0)!,
+        );
+  }
 
   void _recordTerm({
     required Map<String, _GlossaryCandidate> candidates,

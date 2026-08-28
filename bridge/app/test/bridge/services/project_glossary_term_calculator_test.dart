@@ -47,6 +47,7 @@ void main() {
           '''password = "Correct Horse Battery Staple"''',
           'password = """Topaz Riverstone\nSilverPine"""',
           "token = '''Amber Willow'''",
+          "server:\n  password: >-\n    YamlOrchid CopperMeadow\n    HiddenCedar\n  framework: SafeFramework",
           '''{"api_key":"abcdEfghijklmnopqrstuvwxyz"}''',
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
@@ -79,6 +80,9 @@ void main() {
       "SilverPine",
       "Amber",
       "Willow",
+      "YamlOrchid",
+      "CopperMeadow",
+      "HiddenCedar",
       "abcdefghijklmnopqrstuvwxyz",
       "BasicCredentialValue123",
       "aBcDeFgHiJkLmNoPqRsTuVwXyZ",
@@ -101,6 +105,7 @@ void main() {
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
+    expect(terms, contains("SafeFramework"));
   });
 
   test("keeps short symbolic language names", () {
