@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -93,6 +94,21 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
     ),
   };
 }
+
+/// Renders a raw HTML block as a code block instead of dropping it.
+///
+/// The default [md.HtmlBlockSyntax] emits a bare text node under the document
+/// root, and the Markdown widget skips text directly under the root, so a
+/// pasted HTML page or error body silently disappears from the message. Chat
+/// text is never trusted markup anyway, so showing the source is the honest
+/// rendering, and a code block keeps its whitespace and stays copyable.
+class const _LiteralHtmlBlockSyntax() extends md.HtmlBlockSyntax {
+  @override
+  md.Node parse(md.BlockParser parser) => md.Element("pre", [md.Text(super.parse(parser).textContent.trim())]);
+}
+
+/// Custom [MarkdownBody.blockSyntaxes] for session chat markdown.
+const sessionMarkdownBlockSyntaxes = <md.BlockSyntax>[_LiteralHtmlBlockSyntax()];
 
 /// Style sheet for the legal documents (terms, privacy) the backend serves as
 /// markdown: a long-form reading layout with headings, numbered clauses and the
