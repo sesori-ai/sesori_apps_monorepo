@@ -44,9 +44,11 @@ variant, and worktree mode, and creating the session with its first input.
   total provider failure is explicit so bridge-owned cache retention applies.
   The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
   before prompt dispatch, fails closed on either rejection, and records the
-  selected identity only after every requested write succeeds. Catalog reads use
-  the connected adapter without creating a session or model request; selection
-  is session-local and never writes normal `DSH_HOME` settings.
+  selected identity only after every requested write succeeds. The session
+  header resolves that opaque identity through the loaded provider catalog and
+  shows the model name when available. Catalog reads use the connected adapter
+  without creating a session or model request; selection is session-local and
+  never writes normal `DSH_HOME` settings.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -177,8 +179,9 @@ reconnect or option refresh while restoration is pending.
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
 - A DeepSeek catalog loses sound providers because one provider failed, parses
-  an opaque model ID, dispatches before both requested config writes settle, or
-  records a partially applied selection as successful.
+  an opaque model ID, exposes a catalog-resolvable opaque ID in the session
+  header, dispatches before both requested config writes settle, or records a
+  partially applied selection as successful.
 - Creation succeeds for a non-routable plugin or unknown project.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
