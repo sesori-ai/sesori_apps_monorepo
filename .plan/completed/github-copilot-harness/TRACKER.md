@@ -35,7 +35,7 @@ Plan: [PLAN.md](PLAN.md)
 - [x] **Step 7/7** — `🌱 [github-copilot-harness] docs: verify and retire the Copilot plan [step 7/7]`
   - State: completed on `github-copilot-harness/step-7-verify-retire`; the
     duplicate cold replay blocker was fixed in #1171 and targeted verification passed
-  - PR: pending
+  - PR: [#1176](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1176)
   - Evidence: see the privacy-safe matrix below; unavailable environmental variants remain recorded as accepted Partial coverage
 
 ## Decisions

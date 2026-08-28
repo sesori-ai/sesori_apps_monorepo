@@ -4,7 +4,7 @@
 
 - **Plan slug:** `github-copilot-harness`
 - **Status:** completed; Steps 1-6/7 merged (#1154, #1155, #1158, #1159,
-  #1161, #1163); the replay blocker was fixed in #1171 and Step 7 passed
+  #1161, #1163); the replay blocker was fixed in #1171 and Step 7 passed in #1176
 - **Plan date:** 2026-08-27
 - **Implementation base:** current `origin/main`
 - **Delivery:** seven PRs with the fixed titles below
