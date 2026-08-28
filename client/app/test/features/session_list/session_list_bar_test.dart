@@ -30,6 +30,7 @@ void main() {
     required SessionListState state,
     ConnectionOverlayState overlay = const ConnectionOverlayState.hidden(connected: true),
     String? projectName = "Sesori_app_monorepo",
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     when(() => cubit.state).thenReturn(state);
 
@@ -40,6 +41,10 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+            child: child!,
+          ),
           home: BlocProvider<SessionListCubit>.value(
             value: cubit,
             child: SessionListScaffold(
@@ -180,13 +185,15 @@ void main() {
     expect(find.text("sesori-ai/sesori_apps_monorepo"), findsNWidgets(2));
   });
 
-  testWidgets("last session scrolls clear of the floating new-task button", (tester) async {
+  testWidgets("last session scrolls clear of the floating new-task button at large text scales", (tester) async {
     final sessions = [
       for (var index = 0; index < 12; index++) testSession(id: "s$index", title: "Task $index"),
     ];
     await pumpScaffold(
       tester,
-      state: SessionListState.loaded(sessions: sessions, baseBranch: "main", repoSlug: "org/repo"),
+      state: SessionListState.loaded(sessions: sessions, baseBranch: "main", repoSlug: null),
+      projectName: "P",
+      textScaler: const TextScaler.linear(2.5),
     );
 
     final scrollView = tester.widget<CustomScrollView>(find.byType(CustomScrollView));
@@ -198,6 +205,7 @@ void main() {
     final newTaskButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewTask);
     expect(lastTile, findsOneWidget);
     expect(newTaskButton, findsOneWidget);
+    expect(tester.getSize(newTaskButton).height, greaterThan(80));
     expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newTaskButton).dy));
   });
 }

@@ -98,8 +98,9 @@ child sessions with titles, activity, statuses, and unseen state.
   outcome when it settles.
 - At the end of either full-screen list, the final project or session row
   scrolls above its floating creation button and the bottom safe area instead
-  of remaining obscured. The wide split-view session pane has no floating
-  action and does not reserve that clearance.
+  of remaining obscured. Session-list clearance grows with accessibility text
+  scaling when its labelled action becomes taller. The wide split-view session
+  pane has no floating action and does not reserve that clearance.
 - A pull that crossed the deeper catalog-scan threshold runs no ordinary refresh
   at all: the scan reaches the same backend and settles into a list refresh of
   its own. It stops holding the content the moment that stage fires — including
