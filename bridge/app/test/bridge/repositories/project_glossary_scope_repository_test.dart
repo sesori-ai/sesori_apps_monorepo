@@ -12,9 +12,9 @@ void main() {
 
   test("canonicalizes equivalent network remotes to one repository origin", () async {
     for (final remoteUrl in [
-      "git@GitHub.com:sesori-ai/sesori_apps_monorepo.git",
+      "git@GitHub.com:Sesori-AI/Sesori_Apps_Monorepo.git",
       "https://github.com/sesori-ai/sesori_apps_monorepo.git",
-      "ssh://git@github.com:22/sesori-ai/sesori_apps_monorepo.git",
+      "ssh://git@github.com:22/SESORI-AI/SESORI_APPS_MONOREPO.git",
     ]) {
       final repository = ProjectGlossaryScopeRepository(
         gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
@@ -31,6 +31,32 @@ void main() {
         ),
       );
     }
+  });
+
+  test("keeps non-default network ports in repository ownership", () async {
+    Future<String> resolveOrigin({required String remoteUrl}) async {
+      final repository = ProjectGlossaryScopeRepository(
+        gitCliApi: FakeGitCliApi(remoteUrl: remoteUrl),
+      );
+      final identity = await repository.resolveIdentity(projectPath: projectPath);
+      if (identity case RepositoryProjectGlossaryIdentity(:final canonicalOrigin)) {
+        return canonicalOrigin;
+      }
+      throw StateError("expected repository identity");
+    }
+
+    expect(
+      await resolveOrigin(remoteUrl: "ssh://git@code.internal:2222/org/repo.git"),
+      "code.internal:2222/org/repo",
+    );
+    expect(
+      await resolveOrigin(remoteUrl: "ssh://git@code.internal:3333/org/repo.git"),
+      "code.internal:3333/org/repo",
+    );
+    expect(
+      await resolveOrigin(remoteUrl: "ssh://git@code.internal:22/Org/Repo.git"),
+      "code.internal/Org/Repo",
+    );
   });
 
   test("uses a normalized absolute path without a network remote", () async {

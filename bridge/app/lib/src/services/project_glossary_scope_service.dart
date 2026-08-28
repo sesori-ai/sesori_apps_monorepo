@@ -31,7 +31,7 @@ class ProjectGlossaryScopeService({
 
   Future<ProjectGlossaryScope?> _resolveBridgeLocal({required String normalizedAbsolutePath}) async {
     final bridgeId = _bridgeIdProvider.bridgeId;
-    if (bridgeId == null || bridgeId.isEmpty) {
+    if (bridgeId == null) {
       return null;
     }
 

@@ -4,6 +4,10 @@
 /// forge identity or none.
 typedef GitRemoteIdentity = ({String host, String slug});
 
+/// A git remote's network origin identity. [port] is present only for an
+/// explicit non-default endpoint port.
+typedef GitRemoteOriginIdentity = ({String host, int? port, String slug});
+
 /// Parses a git remote URL into its forge identity ([GitRemoteIdentity]).
 ///
 /// Handles the shapes git remotes take in practice:
@@ -23,6 +27,13 @@ class const GitRemoteIdentityParser() {
   /// Remote-URL schemes whose path is a forge-style repository slug.
   /// `file://` is deliberately absent — a filesystem remote has no slug.
   static const Set<String> _forgeSchemes = {"http", "https", "ssh", "git", "git+ssh"};
+  static const Map<String, int> _defaultPorts = {
+    "http": 80,
+    "https": 443,
+    "ssh": 22,
+    "git": 9418,
+    "git+ssh": 22,
+  };
 
   /// scp-like remote syntax: `[user@]host:path`. The host part must be at
   /// least two characters with no slashes — a slash means a filesystem path,
@@ -31,6 +42,13 @@ class const GitRemoteIdentityParser() {
   static final RegExp _scpLikeRemote = RegExp(r"^(?:[^@\s]+@)?([^:/\\]{2,}):(.+)$");
 
   GitRemoteIdentity? parse({required String remoteUrl}) {
+    final origin = parseOrigin(remoteUrl: remoteUrl);
+    return origin == null ? null : (host: origin.host, slug: origin.slug);
+  }
+
+  /// Parses the same forge identity while retaining an explicit non-default
+  /// network port for callers whose ownership identity must not merge servers.
+  GitRemoteOriginIdentity? parseOrigin({required String remoteUrl}) {
     final url = remoteUrl.trim();
     if (url.isEmpty) {
       return null;
@@ -41,25 +59,35 @@ class const GitRemoteIdentityParser() {
       if (uri == null || !_forgeSchemes.contains(uri.scheme) || uri.host.isEmpty) {
         return null;
       }
-      // Uri already normalises the host to lowercase and excludes user info
-      // and port.
-      return _identity(host: uri.host, path: uri.path);
+      // Uri normalises the host to lowercase and excludes user info. Preserve
+      // only ports that identify a non-default network endpoint.
+      final defaultPort = _defaultPorts[uri.scheme];
+      final port = uri.hasPort && uri.port != defaultPort ? uri.port : null;
+      return _originIdentity(host: uri.host, port: port, path: uri.path);
     }
 
     final scpMatch = _scpLikeRemote.firstMatch(url);
     if (scpMatch != null) {
-      return _identity(host: scpMatch.group(1)!.toLowerCase(), path: scpMatch.group(2)!);
+      return _originIdentity(
+        host: scpMatch.group(1)!.toLowerCase(),
+        port: null,
+        path: scpMatch.group(2)!,
+      );
     }
 
     return null;
   }
 
-  GitRemoteIdentity? _identity({required String host, required String path}) {
+  GitRemoteOriginIdentity? _originIdentity({
+    required String host,
+    required int? port,
+    required String path,
+  }) {
     final slug = _cleanSlug(path: path);
     if (slug == null) {
       return null;
     }
-    return (host: host, slug: slug);
+    return (host: host, port: port, slug: slug);
   }
 
   String? _cleanSlug({required String path}) {

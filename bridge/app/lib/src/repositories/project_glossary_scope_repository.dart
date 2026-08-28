@@ -8,6 +8,7 @@ import "models/project_glossary_scope_identity.dart";
 /// key derivation. Operational Git failures remain observable to the caller.
 class ProjectGlossaryScopeRepository({required final GitCliApi _gitCliApi}) {
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
+  static const Set<String> _caseInsensitiveSlugHosts = {"github.com"};
 
   Future<ProjectGlossaryScopeIdentity?> resolveIdentity({required String projectPath}) async {
     if (projectPath.trim().isEmpty) {
@@ -16,13 +17,20 @@ class ProjectGlossaryScopeRepository({required final GitCliApi _gitCliApi}) {
 
     final normalizedPath = normalizeProjectDirectory(directory: projectPath);
     final remoteUrl = await _gitCliApi.getRemoteUrl(projectPath: normalizedPath);
-    final remoteIdentity = remoteUrl == null ? null : _remoteIdentityParser.parse(remoteUrl: remoteUrl);
-    if (remoteIdentity != null) {
+    final remoteOrigin = remoteUrl == null ? null : _remoteIdentityParser.parseOrigin(remoteUrl: remoteUrl);
+    if (remoteOrigin != null) {
       return RepositoryProjectGlossaryIdentity(
-        canonicalOrigin: "${remoteIdentity.host}/${remoteIdentity.slug}",
+        canonicalOrigin: _canonicalOrigin(identity: remoteOrigin),
       );
     }
 
     return BridgeLocalProjectGlossaryIdentity(normalizedAbsolutePath: normalizedPath);
+  }
+
+  String _canonicalOrigin({required GitRemoteOriginIdentity identity}) {
+    final host = identity.host.contains(":") ? "[${identity.host}]" : identity.host;
+    final authority = identity.port == null ? host : "$host:${identity.port}";
+    final slug = _caseInsensitiveSlugHosts.contains(identity.host) ? identity.slug.toLowerCase() : identity.slug;
+    return "$authority/$slug";
   }
 }
