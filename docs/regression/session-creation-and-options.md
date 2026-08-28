@@ -44,9 +44,11 @@ variant, and worktree mode, and creating the session with its first input.
   total provider failure is explicit so bridge-owned cache retention applies.
   The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
   before prompt dispatch, fails closed on either rejection, and records the
-  selected identity only after every requested write succeeds. Catalog reads use
-  the connected adapter without creating a session or model request; selection
-  is session-local and never writes normal `DSH_HOME` settings.
+  selected identity only after every requested write succeeds. The session
+  header resolves that opaque identity through the loaded provider catalog and
+  shows the model name when available. Catalog reads use the connected adapter
+  without creating a session or model request; selection is session-local and
+  never writes normal `DSH_HOME` settings.
 - GitHub Copilot discovers model, mode, model-specific reasoning, and slash-command
   options through a bounded isolated ACP session while retaining the user's normal
   Copilot configuration for login, settings, and BYOK. The probe closes its own
@@ -188,8 +190,9 @@ selection rejection, and authentication failure during discovery.
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
 - A DeepSeek catalog loses sound providers because one provider failed, parses
-  an opaque model ID, dispatches before both requested config writes settle, or
-  records a partially applied selection as successful.
+  an opaque model ID, exposes a catalog-resolvable opaque ID in the session
+  header, dispatches before both requested config writes settle, or records a
+  partially applied selection as successful.
 - A Copilot catalog invents an option, validates reasoning against another model,
   overlaps unlike probes, replaces a coherent cache after authentication failure,
   or accepts a stale selection before applying every requested config value.
