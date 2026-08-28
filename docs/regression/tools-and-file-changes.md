@@ -34,10 +34,11 @@ signal that a tool changed files.
   identity, bounded presenter output, terminal result/error state, and diff
   content. Presenter failure degrades to a generic bounded tool card instead of
   dropping the call or result.
-- GitHub Copilot uses the same standard ACP tool lifecycle. Exact call identity,
-  permission linkage, bounded output, terminal state, and diff content must
-  converge live and after `session/load`; backend tool names remain presentation
-  data rather than shared behavior.
+- GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
+  must be exact while the request is live. Call identity, bounded output,
+  terminal state, and diff content then converge after `session/load`; permission
+  decisions are process-local and are not part of replay. Backend tool names
+  remain presentation data rather than shared behavior.
 
 ## Regression Levels
 
@@ -54,8 +55,9 @@ signal that a tool changed files.
 Vary the tool mix per run: read-only inspection, single- and multi-file edits,
 shell-style execution, a failing tool, a sub-agent task. Alternate long,
 multi-byte, and empty output; compare live with a later reload. For Copilot,
-retain the permission decision and resulting diff alongside the same tool call
-through cold ACP replay.
+verify permission linkage against the live call, then cold-replay the resulting
+call identity, terminal tool state, bounded output, and diff without expecting
+its process-local permission decision to replay.
 
 ## Failure Signals
 
@@ -68,8 +70,9 @@ through cold ACP replay.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
-- A Copilot tool loses its permission correlation, call identity, terminal
-  status, bounded output, or diff when reopened through ACP history.
+- A Copilot tool loses permission correlation while live, or its call identity,
+  terminal status, bounded output, or diff changes when reopened through ACP
+  history.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 
@@ -78,6 +81,9 @@ through cold ACP replay.
 - Available tools, attachments, and sub-agents are backend-specific; a plugin
   that cannot produce a case is not a failure but is also not coverage.
 - Rendering needs the client; the phone is the only transcript surface.
+- ACP permission decisions and pending requests are process-local interaction
+  state. Cold replay restores the resulting tool lifecycle and diff, not the
+  earlier decision or its linkage event.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client does not tolerate an unknown message-part `type` from a newer

@@ -132,8 +132,8 @@ defaults and queued client sends coherent.
   call form-elicitation or unadvertised session-close methods to complete an
   ordinary turn.
 - GitHub Copilot runs through the same standard ACP normalization for text,
-  plans, reasoning when emitted, tools, statuses, commands, cancellation, and
-  image parts. Its complete model/mode/reasoning selection is validated before
+  reasoning when emitted, tools, statuses, commands, cancellation, and image
+  parts. Its complete model/mode/reasoning selection is validated before
   prompt acceptance and applied before dispatch. Different Copilot sessions can
   run independently; prompts within one session remain serialized.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
@@ -248,7 +248,7 @@ defaults and queued client sends coherent.
 |---|---|
 | L1 Smoke | Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
-| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. Copilot additionally covers plan updates, an exact advertised slash command, and reasoning only when its selected model emits it. A Pi custom message renders as labelled automation rather than agent output. |
+| L3 Release | Client end to end (phone), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming, composer, sending/queued feedback, and abort render; a stale selection refreshes, warns, and retries once without losing the queued prompt. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
@@ -260,9 +260,9 @@ boundary where supported or stop-and-send over ACP, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
 reopening while an entry is visible, turn length, and client count. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history
-replay, and abort after output has started. For Copilot, include prose and an
-advertised command, a plan-producing turn, tool use, a selected-option change,
-a queued follow-up cancellation, abort, and two independent sessions.
+replay, and abort after output has started. For Copilot, include prose, an
+advertised command, tool use, a selected-option change, a queued follow-up
+cancellation, abort, and two independent sessions.
 
 ## Failure Signals
 
@@ -351,7 +351,10 @@ a queued follow-up cancellation, abort, and two independent sessions.
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
 - Copilot reasoning is model/account dependent; absence is not a failure unless
-  the selected advertised configuration is known to emit reasoning.
+  the selected advertised configuration is known to emit reasoning. Standard
+  ACP plan updates currently produce only an internal todo invalidation that the
+  session client ignores and cold replay does not collect, so plan presentation
+  is not supported Copilot release coverage.
 - Untested Hermes gap (remove this entry once verified): reasoning streaming
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part

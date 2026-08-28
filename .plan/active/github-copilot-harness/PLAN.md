@@ -176,13 +176,13 @@ branding check includes Copilot.
 |---|---|---|
 | `plugin-runtime-installation.md` | Explicit/PATH/managed precedence; too-old and malformed versions; exact six-asset metadata; digest failure; install cancellation; superseded cleanup | Automated all six targets + packaged/live install on release-target bridge host |
 | `plugin-setup-and-lifecycle.md` | Missing/old/current/explicit runtime; install capability gating; configured start; local-login-required failure; enable/disable/restart; plugin-local crash/reconnect; clean shutdown | Automated + headless bridge + live plugin; release-target host and one alternate host when available |
-| `projects-and-sessions.md` | Explicit Copilot import; database-only normal reads; standard list pagination; failed/cancelled import preserves last committed catalog | Headless bridge + live plugin |
+| `projects-and-sessions.md` | Explicit Copilot import; database-only normal reads; healthy pagination exhaustion; cancellation/first-page failure preserve the catalog; later-page failure commits gathered pages non-destructively | Headless bridge + live plugin |
 | `session-creation-and-options.md` | Create with standard mode/model/reasoning/agent options actually advertised to the entitled account; stable Copilot identity; unsupported options are not invented | Client E2E + live plugin |
-| `session-turns.md` | Text, plan, reasoning when emitted, tools, statuses, queued follow-up cancellation, abort, and two independent sessions | Client E2E + live plugin |
+| `session-turns.md` | Text, reasoning when emitted, tools, statuses, exact commands, queued follow-up cancellation, abort, and two independent sessions; ACP plan updates are not client-visible | Client E2E + live plugin |
 | `session-history-and-recovery.md` | Standard load replay, bridge transcript backfill, plugin restart, bridge restart, and process replacement converge without duplicate live replay | Headless bridge + live plugin |
-| `questions-and-permissions.md` | Standard permission allow/reject/always correlation; abort cleanup; explicitly confirm no claimed `ask_user` support | Client E2E + live plugin |
+| `questions-and-permissions.md` | Once/Reject UI, Always when advertised, exact selected-or-cancelled ACP outcome, abort cleanup, and no claimed `ask_user` support | Client E2E + live plugin |
 | `attachments-and-images.md` | Advertised image reaches a vision-capable selected model; model/account rejection remains visible | Client E2E + live plugin |
-| `tools-and-file-changes.md` | Tool lifecycle, permission linkage, diffs, and bounded output normalize live and after replay | Client E2E + live plugin |
+| `tools-and-file-changes.md` | Live permission linkage plus tool lifecycle, diffs, and bounded output converging after replay; permission decisions themselves do not replay | Client E2E + live plugin |
 | `session-archiving-and-deletion.md` | Local purge plus tombstone prevents re-import while retained upstream Copilot persistence is documented | Headless bridge + live plugin |
 | Compatibility and branding | Unknown-id fallback remains intact; older client contract tolerates `copilot`; older bridge supplies no entry; exact built-in artwork/name render in both themes | Automated + client E2E for presentation claim |
 
