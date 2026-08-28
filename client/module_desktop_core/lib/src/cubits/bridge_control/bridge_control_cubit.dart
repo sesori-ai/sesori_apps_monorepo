@@ -4,12 +4,14 @@ import "package:bloc/bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../foundation/bridge_process_desired_state.dart";
 import "../../foundation/platform/desktop_application_terminator.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../foundation/platform/window_host.dart";
 import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
+import "../../services/desktop_instance_service.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
 import "../../trackers/desktop_logout_tracker.dart";
@@ -28,6 +30,7 @@ class BridgeControlCubit._create({
   required final WindowHost _windowHost,
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
+  required final DesktopInstanceService _instanceService,
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
 }) extends Cubit<BridgeControlState> {
@@ -38,6 +41,7 @@ class BridgeControlCubit._create({
     required WindowHost windowHost,
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
+    required DesktopInstanceService instanceService,
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
   }) : this._create(
@@ -47,6 +51,7 @@ class BridgeControlCubit._create({
          windowHost: windowHost,
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
+         instanceService: instanceService,
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
        );
@@ -82,6 +87,7 @@ class BridgeControlCubit._create({
   StreamSubscription<SystemTrayCommand>? _commandSubscription;
   StreamSubscription<WindowHostEvent>? _windowSubscription;
   StreamSubscription<DesktopLogoutStatus>? _logoutSubscription;
+  StreamSubscription<void>? _focusRequestSubscription;
   SystemTrayAvailability _trayAvailability = SystemTrayAvailability.initializing;
   BridgeControlActivity _activity = BridgeControlActivity.idle;
   DesktopLogoutStatus _logoutStatus = DesktopLogoutStatus.idle;
@@ -98,6 +104,7 @@ class BridgeControlCubit._create({
     _commandSubscription = _systemTray.commands.listen((command) => _onCommand(command: command));
     _windowSubscription = _windowHost.events.listen((event) => _onWindowEvent(event: event));
     _logoutSubscription = _logoutTracker.statuses.listen(_onLogoutStatus);
+    _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
 
     final SystemTrayAvailability availability;
     try {
@@ -184,15 +191,18 @@ class BridgeControlCubit._create({
     _activity = BridgeControlActivity.toggling;
     _rebuildMenu();
     try {
-      switch (_toggleTarget(
+      final BridgeProcessDesiredState target = _toggleTarget(
         processState: _processService.state,
         desiredState: _processService.desiredState,
-      )) {
-        case BridgeProcessDesiredState.on:
-          await _processService.start();
-        case BridgeProcessDesiredState.off:
-          await _processService.stop();
-      }
+      );
+      final Future<void> operation = switch (target) {
+        BridgeProcessDesiredState.on => _processService.start(),
+        BridgeProcessDesiredState.off => _processService.stop(),
+      };
+      await Future.wait(<Future<void>>[
+        operation,
+        _writeDesiredStateBestEffort(state: target),
+      ]);
     } on Object catch (error, stackTrace) {
       logw("Bridge tray lifecycle command failed", error, stackTrace);
     } finally {
@@ -252,6 +262,7 @@ class BridgeControlCubit._create({
       return;
     }
 
+    await _writeDesiredStateBestEffort(state: BridgeProcessDesiredState.off);
     try {
       await _systemTray.dispose();
     } on Object catch (error, stackTrace) {
@@ -263,6 +274,14 @@ class BridgeControlCubit._create({
       logw("Failed to dispose the desktop window host during quit", error, stackTrace);
     }
     _applicationTerminator.terminate(exitCode: 0);
+  }
+
+  Future<void> _writeDesiredStateBestEffort({required BridgeProcessDesiredState state}) async {
+    try {
+      await _instanceService.writeBridgeDesiredState(state: state);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to persist the desktop bridge desired state", error, stackTrace);
+    }
   }
 
   void _rebuildMenu({bool syncTray = true}) {
@@ -384,6 +403,7 @@ class BridgeControlCubit._create({
 
   @override
   Future<void> close() async {
+    await _focusRequestSubscription?.cancel();
     await _logoutSubscription?.cancel();
     await _windowSubscription?.cancel();
     await _commandSubscription?.cancel();

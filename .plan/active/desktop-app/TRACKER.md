@@ -15,7 +15,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 6 | ⚙️ Tray + `BridgeControlCubit` + windowed fallback | done |
 | 7 | ⚙️ Window + Prego theme + v1 contents | done |
 | — | MT gate A: first real GUI supervision (user-run) | pending |
-| 8 | ⚙️ Single instance + last-state restore | pending |
+| 8 | ⚙️ Single instance + last-state restore | done |
 | 9 | ⚙️ Autostart + hidden boot | pending |
 | 10 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
 | 11 | ⚙️ Logout coordination + offline unregister fallback | pending |

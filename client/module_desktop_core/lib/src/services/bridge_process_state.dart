@@ -2,11 +2,6 @@ import "dart:async";
 
 import "../trackers/bridge_process_log_tracker.dart";
 
-/// The user's in-memory intent for the supervised bridge.
-// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors.
-// ignore: use_primary_constructors
-enum BridgeProcessDesiredState { off, on }
-
 /// Lifecycle state published by `BridgeProcessService`.
 sealed class const BridgeProcessState();
 

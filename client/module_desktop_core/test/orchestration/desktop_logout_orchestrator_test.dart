@@ -8,15 +8,21 @@ import "package:test/test.dart";
 void main() {
   late _MockBridgeProcessService processService;
   late _MockAuthSession authSession;
+  late _MockDesktopInstanceService instanceService;
   late DesktopLogoutTracker logoutTracker;
   late DesktopLogoutOrchestrator orchestrator;
 
   setUp(() {
     processService = _MockBridgeProcessService();
     authSession = _MockAuthSession();
+    instanceService = _MockDesktopInstanceService();
     logoutTracker = DesktopLogoutTracker();
+    when(
+      () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
+    ).thenAnswer((_) async {});
     orchestrator = DesktopLogoutOrchestrator(
       processService: processService,
+      instanceService: instanceService,
       logoutTracker: logoutTracker,
       authSession: authSession,
     );
@@ -29,12 +35,15 @@ void main() {
   test("stops the supervised helper before clearing the local session", () async {
     final List<String> operations = <String>[];
     when(() => processService.stop()).thenAnswer((_) async => operations.add("stop"));
+    when(
+      () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
+    ).thenAnswer((_) async => operations.add("persist"));
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async => operations.add("logout"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["stop", "logout"]);
+    expect(operations, <String>["stop", "persist", "logout"]);
   });
 
   test("keeps controls locked through token clearing and shares concurrent logout", () async {
@@ -61,6 +70,7 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.bridgeStopFailed);
+    verifyNever(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off));
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
@@ -78,3 +88,5 @@ void main() {
 class _MockBridgeProcessService() extends Mock implements BridgeProcessService;
 
 class _MockAuthSession() extends Mock implements AuthSession;
+
+class _MockDesktopInstanceService() extends Mock implements DesktopInstanceService;

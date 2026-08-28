@@ -6,6 +6,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 
+import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/control_channel_server.dart";
 import "../foundation/platform/bridge_executable_path_resolver.dart";
 import "../repositories/bridge_process_repository.dart";
@@ -757,11 +758,11 @@ final class const _BridgeProcessStartCancelled() implements Exception;
 enum _BridgeStartupExitClaim({required final bool ownsRecovery}) {
   none(ownsRecovery: false),
   expected(ownsRecovery: false),
-  unexpected(ownsRecovery: true);
+  unexpected(ownsRecovery: true),
 }
 
 enum _BridgeCrashSource({required final String retryContext}) {
   processExit(retryContext: "Bridge restart after unexpected exit"),
   exitObservation(retryContext: "Bridge restart after exit observer error"),
-  automaticStart(retryContext: "Bridge retry after automatic startup failure");
+  automaticStart(retryContext: "Bridge retry after automatic startup failure"),
 }

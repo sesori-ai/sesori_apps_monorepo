@@ -1,7 +1,9 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../foundation/bridge_process_desired_state.dart";
 import "../services/bridge_process_service.dart";
+import "../services/desktop_instance_service.dart";
 import "../trackers/desktop_logout_tracker.dart";
 
 /// Result of the interim device-local desktop logout sequence.
@@ -19,10 +21,12 @@ enum DesktopLogoutOutcome() {
 @lazySingleton
 class DesktopLogoutOrchestrator({
   required final BridgeProcessService processService,
+  required final DesktopInstanceService instanceService,
   required final DesktopLogoutTracker logoutTracker,
   required final AuthSession authSession,
 }) {
   final BridgeProcessService _processService = processService;
+  final DesktopInstanceService _instanceService = instanceService;
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
@@ -51,6 +55,12 @@ class DesktopLogoutOrchestrator({
     } on Object catch (error, stackTrace) {
       logw("Desktop logout stopped because the supervised bridge could not stop", error, stackTrace);
       return DesktopLogoutOutcome.bridgeStopFailed;
+    }
+
+    try {
+      await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to persist bridge Off during desktop logout", error, stackTrace);
     }
 
     try {

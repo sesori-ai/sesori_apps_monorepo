@@ -17,6 +17,9 @@ import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
     as _i570;
 import 'package:sesori_desktop_core/src/api/control_channel_api.dart' as _i639;
+import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i828;
+import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
+    as _i155;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -27,16 +30,22 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
+import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
+    as _i455;
 import 'package:sesori_desktop_core/src/repositories/bridge_process_log_repository.dart'
     as _i1072;
 import 'package:sesori_desktop_core/src/repositories/bridge_process_repository.dart'
     as _i209;
 import 'package:sesori_desktop_core/src/repositories/control_command_repository.dart'
     as _i171;
+import 'package:sesori_desktop_core/src/repositories/desktop_instance_repository.dart'
+    as _i210;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
 import 'package:sesori_desktop_core/src/services/control_command_service.dart'
     as _i175;
+import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
+    as _i494;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
     as _i866;
 import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
@@ -76,6 +85,19 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
     );
+    gh.lazySingleton<_i828.DesktopInstanceApi>(
+      () => _i828.DesktopInstanceApi(
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i155.DesktopInstanceStorage>(
+      () => _i155.DesktopInstanceStorage(
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
+    );
     gh.lazySingleton<_i21.ControlMessageDispatcher>(
       () => _i21.ControlMessageDispatcher(
         server: gh<_i464.ControlChannelServer>(),
@@ -95,6 +117,12 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i210.DesktopInstanceRepository>(
+      () => _i210.DesktopInstanceRepository(
+        api: gh<_i828.DesktopInstanceApi>(),
+        storage: gh<_i155.DesktopInstanceStorage>(),
+      ),
+    );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
@@ -108,6 +136,11 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i570.BridgeProcessLogStorage>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i494.DesktopInstanceService>(
+      () => _i494.DesktopInstanceService(
+        repository: gh<_i210.DesktopInstanceRepository>(),
+      ),
     );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(
@@ -129,8 +162,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.DesktopLogoutOrchestrator>(
       () => _i165.DesktopLogoutOrchestrator(
         processService: gh<_i765.BridgeProcessService>(),
+        instanceService: gh<_i494.DesktopInstanceService>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
         authSession: gh<_i948.AuthSession>(),
+      ),
+    );
+    gh.lazySingleton<_i455.DesktopStartupOrchestrator>(
+      () => _i455.DesktopStartupOrchestrator(
+        instanceService: gh<_i494.DesktopInstanceService>(),
+        processService: gh<_i765.BridgeProcessService>(),
       ),
     );
     return this;

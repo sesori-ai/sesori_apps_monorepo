@@ -1,0 +1,46 @@
+import "package:mocktail/mocktail.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:test/test.dart";
+
+void main() {
+  late _MockDesktopInstanceRepository repository;
+  late DesktopInstanceService service;
+
+  setUp(() {
+    repository = _MockDesktopInstanceRepository();
+    service = DesktopInstanceService(repository: repository);
+  });
+
+  test("a successful lock claim owns the primary launch", () async {
+    when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => true);
+
+    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.primary);
+    verifyNever(() => repository.signalPrimary());
+  });
+
+  test("a live owner is activated and the second launch stays secondary", () async {
+    when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => false);
+    when(() => repository.signalPrimary()).thenAnswer((_) async => true);
+
+    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivated);
+  });
+
+  test("reclaims the lock when the owner exits during activation", () async {
+    int claims = 0;
+    when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => ++claims == 2);
+    when(() => repository.signalPrimary()).thenAnswer((_) async => false);
+
+    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.primary);
+    expect(claims, 2);
+  });
+
+  test("never starts a duplicate when a live lock has a broken activation channel", () async {
+    when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => false);
+    when(() => repository.signalPrimary()).thenAnswer((_) async => false);
+
+    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivationFailed);
+    verify(() => repository.tryAcquirePrimary()).called(2);
+  });
+}
+
+class _MockDesktopInstanceRepository() extends Mock implements DesktopInstanceRepository;

@@ -1,0 +1,45 @@
+import "package:injectable/injectable.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+
+import "../foundation/bridge_process_desired_state.dart";
+import "../repositories/desktop_instance_repository.dart";
+
+/// Result of the Layer-3 ownership decision for this desktop launch.
+enum DesktopInstanceLaunchDisposition() {
+  primary,
+  secondaryActivated,
+  secondaryActivationFailed,
+}
+
+/// Layer-3 desktop instance ownership and last-state service.
+///
+/// Bridge lifecycle restoration stays in `DesktopStartupOrchestrator`; this
+/// service never depends on the peer `BridgeProcessService`.
+@lazySingleton
+class DesktopInstanceService._create({required final DesktopInstanceRepository _repository}) {
+  new({required DesktopInstanceRepository repository}) : this._create(repository: repository);
+
+  Stream<void> get focusRequests => _repository.focusRequests;
+
+  Future<DesktopInstanceLaunchDisposition> claimLaunch() async {
+    if (await _repository.tryAcquirePrimary()) {
+      return DesktopInstanceLaunchDisposition.primary;
+    }
+    if (await _repository.signalPrimary()) {
+      return DesktopInstanceLaunchDisposition.secondaryActivated;
+    }
+    // The owner may have exited while this launch was trying to signal it.
+    // One fresh lock attempt provides stale-lock recovery without allowing two
+    // live owners when the activation channel itself is unhealthy.
+    if (await _repository.tryAcquirePrimary()) {
+      return DesktopInstanceLaunchDisposition.primary;
+    }
+    logw("Another desktop instance owns the lock but could not be activated");
+    return DesktopInstanceLaunchDisposition.secondaryActivationFailed;
+  }
+
+  Future<BridgeProcessDesiredState> readBridgeDesiredState() => _repository.readBridgeDesiredState();
+
+  Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) =>
+      _repository.writeBridgeDesiredState(state: state);
+}

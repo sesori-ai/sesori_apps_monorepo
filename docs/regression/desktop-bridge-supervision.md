@@ -9,7 +9,14 @@ and keep native close/quit behavior safe.
 ## Required Behavior
 
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
-  supervision even while signed out.
+  supervision even while signed out. Exactly one process owns the desktop
+  instance lock and activation listener.
+- A second launch signals the owner, exits without another tray/helper, and
+  restores/focuses the owner's window. A killed owner releases the OS lock;
+  stale activation metadata cannot block the next launch.
+- Desired bridge On/Off state persists under desktop-owned application data.
+  Startup restores last-On through the process service after the dispatcher is
+  ready; signed-out restore reaches login-required without spawning a helper.
 - On a proven tray host, native close hides the window immediately, including
   during bridge lifecycle work, and Open restores and focuses it. Without a
   usable tray host, close defers safe Quit until active lifecycle work settles
@@ -35,7 +42,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, and signed-in supervision rendering. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop refusal to exit, On/Off recovery, diagnostics launch, and helper-stop-before-local-logout. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop refusal to exit, On/Off recovery, diagnostics launch, and helper-stop-before-local-logout; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -43,13 +50,18 @@ and keep native close/quit behavior safe.
 ## Exploration Guidance
 
 Vary signed-in versus signed-out startup, tray present versus absent, bridge On
-versus Off, and whether close occurs during a lifecycle transition. Exercise
+versus Off, second launch while visible/hidden, owner crash with stale metadata,
+and whether close occurs during a lifecycle transition. Exercise
 both clean and failed helper teardown before Quit or sign-out. Kill the helper
 at different handshake phases and inspect the status and bounded recent output.
 
 ## Failure Signals
 
 - No tray or command subscriptions until a signed-in screen reads the cubit.
+- A second process creates another tray/helper, fails to focus the owner, or a
+  killed owner leaves a lock that bricks future launches.
+- Desired Off restores On, last-On never restores, startup bypasses auth gating,
+  or bridge restore begins before the control dispatcher owns its event stream.
 - Close hides the only surface when no tray host exists, ignores a close during
   lifecycle work, Open shows without focusing, or native close bypasses teardown.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
@@ -63,8 +75,9 @@ at different handshake phases and inspect the status and bounded recent output.
 
 ## Known Limitations
 
-- The current development shell starts visible and is not yet single-instance;
-  hidden login startup and activation ownership are later plan slices.
+- The current development shell still starts visible; hidden login startup is a
+  later plan slice. Single-instance activation already focuses a hidden owner
+  once hidden startup is introduced.
 - Device-local sign-out stops the helper but does not yet perform persisted
   bridge-registration deletion; coordinated unregister/offline fallback remains
   a later plan slice.
