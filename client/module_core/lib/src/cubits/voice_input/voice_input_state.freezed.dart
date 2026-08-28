@@ -208,6 +208,236 @@ as bool,
 /// @nodoc
 
 
+class VoiceInputRetryPending implements VoiceInputState {
+  const VoiceInputRetryPending({required this.error});
+  
+
+ final  VoiceTranscriptionError error;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VoiceInputRetryPendingCopyWith<VoiceInputRetryPending> get copyWith => _$VoiceInputRetryPendingCopyWithImpl<VoiceInputRetryPending>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryPending&&(identical(other.error, error) || other.error == error));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,error);
+
+@override
+String toString() {
+  return 'VoiceInputState.retryPending(error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $VoiceInputRetryPendingCopyWith<$Res> implements $VoiceInputStateCopyWith<$Res> {
+  factory $VoiceInputRetryPendingCopyWith(VoiceInputRetryPending value, $Res Function(VoiceInputRetryPending) _then) = _$VoiceInputRetryPendingCopyWithImpl;
+@useResult
+$Res call({
+ VoiceTranscriptionError error
+});
+
+
+
+
+}
+/// @nodoc
+class _$VoiceInputRetryPendingCopyWithImpl<$Res>
+    implements $VoiceInputRetryPendingCopyWith<$Res> {
+  _$VoiceInputRetryPendingCopyWithImpl(this._self, this._then);
+
+  final VoiceInputRetryPending _self;
+  final $Res Function(VoiceInputRetryPending) _then;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+  return _then(VoiceInputRetryPending(
+error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionError,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class VoiceInputRetrying implements VoiceInputState {
+  const VoiceInputRetrying({required this.previousError});
+  
+
+ final  VoiceTranscriptionError previousError;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VoiceInputRetryingCopyWith<VoiceInputRetrying> get copyWith => _$VoiceInputRetryingCopyWithImpl<VoiceInputRetrying>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetrying&&(identical(other.previousError, previousError) || other.previousError == previousError));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,previousError);
+
+@override
+String toString() {
+  return 'VoiceInputState.retrying(previousError: $previousError)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $VoiceInputRetryingCopyWith<$Res> implements $VoiceInputStateCopyWith<$Res> {
+  factory $VoiceInputRetryingCopyWith(VoiceInputRetrying value, $Res Function(VoiceInputRetrying) _then) = _$VoiceInputRetryingCopyWithImpl;
+@useResult
+$Res call({
+ VoiceTranscriptionError previousError
+});
+
+
+
+
+}
+/// @nodoc
+class _$VoiceInputRetryingCopyWithImpl<$Res>
+    implements $VoiceInputRetryingCopyWith<$Res> {
+  _$VoiceInputRetryingCopyWithImpl(this._self, this._then);
+
+  final VoiceInputRetrying _self;
+  final $Res Function(VoiceInputRetrying) _then;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? previousError = null,}) {
+  return _then(VoiceInputRetrying(
+previousError: null == previousError ? _self.previousError : previousError // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionError,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class VoiceInputRetryCancelling implements VoiceInputState {
+  const VoiceInputRetryCancelling({required this.previousError});
+  
+
+ final  VoiceTranscriptionError previousError;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$VoiceInputRetryCancellingCopyWith<VoiceInputRetryCancelling> get copyWith => _$VoiceInputRetryCancellingCopyWithImpl<VoiceInputRetryCancelling>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryCancelling&&(identical(other.previousError, previousError) || other.previousError == previousError));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,previousError);
+
+@override
+String toString() {
+  return 'VoiceInputState.retryCancelling(previousError: $previousError)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $VoiceInputRetryCancellingCopyWith<$Res> implements $VoiceInputStateCopyWith<$Res> {
+  factory $VoiceInputRetryCancellingCopyWith(VoiceInputRetryCancelling value, $Res Function(VoiceInputRetryCancelling) _then) = _$VoiceInputRetryCancellingCopyWithImpl;
+@useResult
+$Res call({
+ VoiceTranscriptionError previousError
+});
+
+
+
+
+}
+/// @nodoc
+class _$VoiceInputRetryCancellingCopyWithImpl<$Res>
+    implements $VoiceInputRetryCancellingCopyWith<$Res> {
+  _$VoiceInputRetryCancellingCopyWithImpl(this._self, this._then);
+
+  final VoiceInputRetryCancelling _self;
+  final $Res Function(VoiceInputRetryCancelling) _then;
+
+/// Create a copy of VoiceInputState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? previousError = null,}) {
+  return _then(VoiceInputRetryCancelling(
+previousError: null == previousError ? _self.previousError : previousError // ignore: cast_nullable_to_non_nullable
+as VoiceTranscriptionError,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class VoiceInputDiscarding implements VoiceInputState {
+  const VoiceInputDiscarding();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputDiscarding);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'VoiceInputState.discarding()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+
+
 class VoiceInputCompleted implements VoiceInputState {
   const VoiceInputCompleted({required this.transcript});
   

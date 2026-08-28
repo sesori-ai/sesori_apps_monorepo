@@ -14,6 +14,14 @@ sealed class VoiceInputState with _$VoiceInputState {
 
   const factory transcribing({required bool limitReached}) = VoiceInputTranscribing;
 
+  const factory retryPending({required VoiceTranscriptionError error}) = VoiceInputRetryPending;
+
+  const factory retrying({required VoiceTranscriptionError previousError}) = VoiceInputRetrying;
+
+  const factory retryCancelling({required VoiceTranscriptionError previousError}) = VoiceInputRetryCancelling;
+
+  const factory discarding() = VoiceInputDiscarding;
+
   const factory completed({required String transcript}) = VoiceInputCompleted;
 
   const factory startFailed({required VoiceTranscriptionError error}) = VoiceInputStartFailed;

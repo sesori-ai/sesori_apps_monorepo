@@ -35,6 +35,9 @@ void main() {
     when(captureSession.stop).thenAnswer((_) async => artifact);
     when(captureSession.cancel).thenAnswer((_) async {});
     when(captureSession.releaseOperation).thenAnswer((_) async {});
+    when(
+      () => captureSession.artifactExists(artifact: any(named: "artifact")),
+    ).thenAnswer((_) async => true);
     when(() => captureSession.deleteArtifact(artifact: any(named: "artifact"))).thenAnswer((_) async {});
     when(captureSession.close).thenAnswer((_) async {});
     when(
@@ -130,11 +133,11 @@ void main() {
     );
   });
 
-  test("maps every repository outcome to the existing typed service errors", () async {
+  test("maps terminal repository outcomes and deletes their artifacts", () async {
     final outcomes = <VoiceTranscriptionOutcome, Type>{
       const VoiceTranscriptionOutcome.notAuthenticated(): NotAuthenticatedVoiceError,
-      const VoiceTranscriptionOutcome.serverFailure(statusCode: 503): ServerVoiceError,
-      const VoiceTranscriptionOutcome.networkFailure(): NetworkVoiceError,
+      const VoiceTranscriptionOutcome.terminalServerFailure(statusCode: 503): ServerVoiceError,
+      const VoiceTranscriptionOutcome.unexpectedFailure(): RecordingFailedError,
       const VoiceTranscriptionOutcome.emptyTranscript(): EmptyTranscriptError,
     };
 
@@ -146,13 +149,147 @@ void main() {
           mimeType: any(named: "mimeType"),
         ),
       ).thenAnswer((_) async => outcome);
+      final candidateSession = service.createSession();
 
-      await service.start(session: session);
+      await service.start(session: candidateSession);
       await expectLater(
-        service.stopAndTranscribe(session: session),
+        service.stopAndTranscribe(session: candidateSession),
         throwsA(predicate<Object>((error) => error.runtimeType == errorType)),
       );
     }
+
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(outcomes.length);
+  });
+
+  test("retains a local network failure and retries the exact artifact without recording again", () async {
+    var attempts = 0;
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer(
+      (_) async => attempts++ == 0
+          ? const VoiceTranscriptionOutcome.networkFailure()
+          : const VoiceTranscriptionOutcome.success(transcript: "retried"),
+    );
+
+    await service.start(session: session);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    verifyNever(() => captureSession.deleteArtifact(artifact: artifact));
+
+    expect(await service.retry(session: session), "retried");
+    verify(captureSession.start).called(1);
+    verify(captureSession.stop).called(1);
+    verify(
+      () => repository.transcribe(audioFilePath: artifact.path, mimeType: artifact.mimeType),
+    ).called(2);
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+  });
+
+  test("manual retry cancellation returns to retry-pending with the artifact retained", () async {
+    final retryResponse = Completer<VoiceTranscriptionOutcome>();
+    var attempts = 0;
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer((_) {
+      attempts++;
+      if (attempts == 1) {
+        return Future.value(
+          const VoiceTranscriptionOutcome.retryableServerFailure(statusCode: 503),
+        );
+      }
+      if (attempts == 2) return retryResponse.future;
+      return Future.value(const VoiceTranscriptionOutcome.success(transcript: "eventual"));
+    });
+
+    await service.start(session: session);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<RetryableServerVoiceError>()),
+    );
+
+    final cancelledRetry = service.retry(session: session);
+    await Future<void>.delayed(Duration.zero);
+    await service.cancel(session: session);
+    retryResponse.complete(const VoiceTranscriptionOutcome.success(transcript: "stale"));
+    await expectLater(cancelledRetry, throwsA(isA<TranscriptionCancelledError>()));
+    verifyNever(() => captureSession.deleteArtifact(artifact: artifact));
+
+    expect(await service.retry(session: session), "eventual");
+    verify(captureSession.start).called(1);
+    verify(captureSession.stop).called(1);
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+  });
+
+  test("discard deletes a retained artifact and returns the session to idle", () async {
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
+
+    await service.start(session: session);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    await service.discard(session: session);
+
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+    await service.start(session: session);
+    verify(captureSession.start).called(2);
+  });
+
+  test("a missing retained artifact is terminal and clears retry ownership", () async {
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
+    when(() => captureSession.artifactExists(artifact: artifact)).thenAnswer((_) async => false);
+
+    await service.start(session: session);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    await expectLater(
+      service.retry(session: session),
+      throwsA(isA<MissingRecordingArtifactError>()),
+    );
+
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+    await service.start(session: session);
+    verify(captureSession.start).called(2);
+  });
+
+  test("closing a retry-pending session deletes its retained artifact", () async {
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
+
+    await service.start(session: session);
+    await expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    service.invalidate(session: session);
+    await service.close(session: session);
+
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+    verify(captureSession.close).called(1);
   });
 
   test("cancellation waits for an in-flight recorder stop instead of stopping twice", () async {
@@ -195,7 +332,7 @@ void main() {
     response.complete(const VoiceTranscriptionOutcome.success(transcript: "stale"));
 
     await expectLater(transcription, throwsA(isA<TranscriptionCancelledError>()));
-    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(2);
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
     verify(captureSession.releaseOperation).called(1);
     await service.cancel(session: session);
   });

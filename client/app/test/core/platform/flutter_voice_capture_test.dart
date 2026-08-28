@@ -233,7 +233,9 @@ void main() {
     verify(wakeLockService.acquire).called(1);
 
     await session.releaseOperation();
+    expect(await session.artifactExists(artifact: artifact), isTrue);
     await session.deleteArtifact(artifact: artifact);
+    expect(await session.artifactExists(artifact: artifact), isFalse);
     expect(File(recordingPath).existsSync(), isFalse);
     verify(wakeLockLease.release).called(1);
     await session.close();

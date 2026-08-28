@@ -3,12 +3,12 @@
 ## Status
 
 - **Plan slug:** `voice-transcription-retry`
-- **Status:** Active — Step 3/5 client ownership migration in review
+- **Status:** Active — Step 3/5 in review; Step 4/5 retained retry implemented locally
 - **Plan date:** 2026-08-27
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Server repository:** `sesori-ai/sesori_auth_server`
 - **Implementation base:** apps `origin/main` at `746e222c42`; auth Step 2 merged as `459d2663c8`
-- **Current branch:** `plan/voice-transcription-retry/s03-core-voice-lifecycle`
+- **Current branch:** `plan/voice-transcription-retry/s04-retain-retry-async-recordings`
 - **Delivery:** one plan PR, one additive auth-contract PR, one client ownership/layering PR, one async-retry-plus-regression-doc PR, and one verification/retirement PR
 - **External merge barrier:** apps realtime voice PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), head `b3083b7ad3`, must rebase onto the merged async-retry implementation before it may merge
 
@@ -331,10 +331,12 @@ No database field, route, transport field, cache, setting, or job becomes obsole
 | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | Publish this reviewed/corrected plan and tracker only |
 | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | Add authoritative booleans, quota classification, and explicit public compatibility policy; update realtime plan/tracker |
 | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-4,200 | Add platform/session boundary, HTTP API/repository layering, lazy service, VoiceInputCubit, DI/codegen, and behavior-preserving tests |
-| 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 700-1,250 | Add retained-artifact lifecycle, Retry/discard UI, localization/codegen, regression contract, and focused tests |
+| 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-1,900 | Add retained-artifact lifecycle, Retry/discard UI, localization/codegen, regression contract, and focused tests |
 | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Run/record required L4 async matrix and retire only after it passes |
 
 Other implementation PRs retain the 1,500-line soft cap. On 2026-08-27, the code-informed Step 3 candidate measured roughly 3,300 touched lines including about 977 deletions of the legacy service and its tests. The user explicitly approved keeping that ownership migration in one cohesive PR; splitting it would require a temporary duplicate lifecycle or compatibility wrapper that the architecture intentionally removes. The final Step 3 budget is 2,800–4,200 lines, including the architecture review's session-safe wake-lock lease plus PR-review fixes for typed native causes, stop/cancel/disposal serialization, in-flight stop cancellation, post-start rollback, composer-scoped ownership on both conditional composer surfaces, coordinated native prewarm, and collision-resistant concurrent recording paths.
+
+Step 4 is a cohesive 1,400–1,900-line exception to the normal implementation soft cap because its typed DTO/state and localization generators contribute committed output, while retained lifecycle, reachable Retry/Discard ownership, focused coverage, and the regression contract must land together. Splitting would temporarily retain audio without a complete user decision path or publish UI against an unauthoritative failure contract.
 
 The existing PR #918 is an external merge-barrier action owned by the realtime plan, not a sixth PR in this series. Between Steps 4 and 5 it must rebase onto the merged Step 4 SHA, adopt the new platform/service/session/Cubit ownership, preserve async retry tests, update its own mode-specific regression contract and auth-hosted PLAN/TRACKER checkpoint, and return to mergeable CI-green state.
 

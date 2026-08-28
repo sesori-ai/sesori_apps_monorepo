@@ -1470,6 +1470,169 @@ void main() {
     ]);
   });
 
+  testWidgets("retryable failure keeps persistent Retry and Discard until eventual success", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) async => "retried words");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_discard")), findsOneWidget);
+    verifyNever(cubit.reportVoiceTranscriptionCompleted);
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("retried words"), findsOneWidget);
+    expect(find.text("Recording saved"), findsNothing);
+    verify(() => voiceTranscriptionService.retry(session: voiceSession)).called(1);
+    verify(cubit.reportVoiceTranscriptionCompleted).called(1);
+  });
+
+  testWidgets("sending other content discards a retained recording before submission", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(
+      () => cubit.sendMessage(
+        text: "send instead",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("Recording saved"), findsOneWidget);
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "send instead");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pumpAndSettle();
+
+    verifyInOrder([
+      () => voiceTranscriptionService.discard(session: voiceSession),
+      () => cubit.sendMessage(
+        text: "send instead",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ]);
+    expect(find.text("Recording saved"), findsNothing);
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+  });
+
+  testWidgets("cancelling a manual retry restores persistent saved-recording actions", (tester) async {
+    final retryCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pump();
+    expect(find.byTooltip("Cancel transcription"), findsOneWidget);
+    await tester.tap(find.byTooltip("Cancel transcription"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await tester.pump();
+    expect(find.text("Recording saved"), findsOneWidget);
+  });
+
+  testWidgets("Discard removes the persistent saved-recording actions", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.retryableServerError(statusCode: 503),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("Recording saved"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("voice_saved_discard")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsNothing);
+    verify(() => voiceTranscriptionService.discard(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.retry(session: voiceSession));
+  });
+
+  testWidgets("terminal transcription failure never offers saved-recording Retry", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.serverError(statusCode: 400),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pump();
+
+    expect(find.text("Transcription failed. Record again or type instead."), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+    expect(find.byKey(const Key("voice_saved_discard")), findsNothing);
+  });
+
+  testWidgets("missing saved recording clears Retry and explains the terminal outcome", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.missingRecording(),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text("The saved recording is no longer available. Record again or type instead."),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+  });
+
   testWidgets("crossing into and out of the cancel target gives one tick at each boundary", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});

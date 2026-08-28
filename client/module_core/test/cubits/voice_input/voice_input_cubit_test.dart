@@ -24,7 +24,9 @@ void main() {
     when(() => service.prewarm(session: session)).thenAnswer((_) async {});
     when(() => service.start(session: session)).thenAnswer((_) async {});
     when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => "hello");
+    when(() => service.retry(session: session)).thenAnswer((_) async => "retried");
     when(() => service.cancel(session: session)).thenAnswer((_) async {});
+    when(() => service.discard(session: session)).thenAnswer((_) async {});
     when(() => service.invalidate(session: session)).thenReturn(null);
     when(() => service.close(session: session)).thenAnswer((_) async {});
   });
@@ -76,7 +78,7 @@ void main() {
   );
 
   blocTest<VoiceInputCubit, VoiceInputState>(
-    "maps a transcription transport failure into transcription-specific state",
+    "maps a local transport failure into persistent retry-pending state",
     setUp: () {
       when(() => service.stopAndTranscribe(session: session)).thenThrow(VoiceTranscriptionError.networkError());
     },
@@ -89,12 +91,87 @@ void main() {
       const VoiceInputState.starting(),
       const VoiceInputState.recording(),
       const VoiceInputState.transcribing(limitReached: false),
-      isA<VoiceInputTranscriptionFailed>().having(
+      isA<VoiceInputRetryPending>().having(
         (state) => state.error,
         "error",
         isA<NetworkVoiceError>(),
       ),
     ],
+  );
+
+  blocTest<VoiceInputCubit, VoiceInputState>(
+    "retries a retained recording and completes normally",
+    setUp: () {
+      when(() => service.stopAndTranscribe(session: session)).thenThrow(
+        VoiceTranscriptionError.retryableServerError(statusCode: 503),
+      );
+    },
+    build: () => VoiceInputCubit(service: service),
+    act: (cubit) async {
+      await cubit.startRecording();
+      await cubit.stopAndTranscribe(limitReached: false);
+      await cubit.retry();
+    },
+    expect: () => [
+      const VoiceInputState.starting(),
+      const VoiceInputState.recording(),
+      const VoiceInputState.transcribing(limitReached: false),
+      isA<VoiceInputRetryPending>(),
+      isA<VoiceInputRetrying>(),
+      const VoiceInputState.completed(transcript: "retried"),
+    ],
+    verify: (_) => verify(() => service.retry(session: session)).called(1),
+  );
+
+  blocTest<VoiceInputCubit, VoiceInputState>(
+    "keeps terminal transcription failures out of retry-pending",
+    setUp: () {
+      when(() => service.stopAndTranscribe(session: session)).thenThrow(
+        VoiceTranscriptionError.serverError(statusCode: 400),
+      );
+    },
+    build: () => VoiceInputCubit(service: service),
+    act: (cubit) async {
+      await cubit.startRecording();
+      await cubit.stopAndTranscribe(limitReached: false);
+    },
+    expect: () => [
+      const VoiceInputState.starting(),
+      const VoiceInputState.recording(),
+      const VoiceInputState.transcribing(limitReached: false),
+      isA<VoiceInputTranscriptionFailed>(),
+    ],
+  );
+
+  test("cancelling a manual retry returns to retry-pending", () async {
+    final retryCompleter = Completer<String>();
+    when(() => service.stopAndTranscribe(session: session)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+    await cubit.startRecording();
+    await cubit.stopAndTranscribe(limitReached: false);
+
+    final retry = cubit.retry();
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<VoiceInputRetrying>());
+    await cubit.cancel();
+    expect(cubit.state, isA<VoiceInputRetryPending>());
+
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await retry;
+    expect(cubit.state, isA<VoiceInputRetryPending>());
+  });
+
+  blocTest<VoiceInputCubit, VoiceInputState>(
+    "discards a retained recording and returns to idle",
+    seed: () => VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()),
+    build: () => VoiceInputCubit(service: service),
+    act: (cubit) => cubit.discard(),
+    expect: () => const [VoiceInputState.discarding(), VoiceInputState.idle()],
+    verify: (_) => verify(() => service.discard(session: session)).called(1),
   );
 
   test("maximum duration auto-stops through the Cubit with its reason preserved", () async {

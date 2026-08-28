@@ -1249,13 +1249,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceTranscribing => 'Transcribing...';
 
   @override
+  String get voiceRecordingSaved => 'Recording saved';
+
+  @override
+  String get voiceRetry => 'Retry';
+
+  @override
+  String get voiceDiscard => 'Discard';
+
+  @override
   String get voiceErrorPermission => 'Microphone permission is required for voice input';
 
   @override
   String get voiceErrorRecording => 'Recording failed. Please try again.';
 
   @override
-  String get voiceErrorTranscription => 'Transcription failed. Please try again.';
+  String get voiceErrorTranscription => 'Transcription failed. Record again or type instead.';
+
+  @override
+  String get voiceErrorSavedRecordingMissing =>
+      'The saved recording is no longer available. Record again or type instead.';
 
   @override
   String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';

@@ -257,6 +257,16 @@ final class _FlutterVoiceCaptureSession({
   }
 
   @override
+  Future<bool> artifactExists({required VoiceRecordingArtifact artifact}) {
+    try {
+      return Future.value(File(artifact.path).existsSync());
+    } catch (error, stackTrace) {
+      logw("Failed to inspect retained voice recording", error, stackTrace);
+      return Future.value(false);
+    }
+  }
+
+  @override
   Future<void> deleteArtifact({required VoiceRecordingArtifact artifact}) async {
     if (_currentPath == artifact.path) _currentPath = null;
     await _deletePath(path: artifact.path);

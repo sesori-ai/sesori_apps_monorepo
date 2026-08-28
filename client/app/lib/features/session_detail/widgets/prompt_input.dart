@@ -22,7 +22,9 @@ import "composer_options_accordion.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
-enum _VoicePresentation() { idle, recording, transcribing }
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
+// ignore: use_primary_constructors
+enum _VoicePresentation { idle, recording, transcribing }
 
 typedef _RecordingPointer = ({int id, Offset position});
 
@@ -33,39 +35,41 @@ sealed class const _VoiceGesturePresentation();
 final class const _VoiceIdle() extends _VoiceGesturePresentation;
 
 final class const _VoiceStarting({
-    required final int id,
-    required final ComposerSurfaceLayout pinnedLayout,
-    required final bool releaseRequested,
-    required final _RecordingPointer? pointer,
-    required final bool cancelTargetEngaged,
-  }) extends _VoiceGesturePresentation;
+  required final int id,
+  required final ComposerSurfaceLayout pinnedLayout,
+  required final bool releaseRequested,
+  required final _RecordingPointer? pointer,
+  required final bool cancelTargetEngaged,
+}) extends _VoiceGesturePresentation;
 
 final class const _VoiceRecording({
-    required final int id,
-    required final ComposerSurfaceLayout pinnedLayout,
-    required final bool minimumDurationReached,
-    required final _RecordingPointer? pointer,
-    required final bool cancelTargetEngaged,
-  }) extends _VoiceGesturePresentation;
+  required final int id,
+  required final ComposerSurfaceLayout pinnedLayout,
+  required final bool minimumDurationReached,
+  required final _RecordingPointer? pointer,
+  required final bool cancelTargetEngaged,
+}) extends _VoiceGesturePresentation;
 
 final class const _VoiceTranscribing({
-    required final int id,
-    required final ComposerSurfaceLayout? pinnedLayout,
-  }) extends _VoiceGesturePresentation;
+  required final int id,
+  required final ComposerSurfaceLayout? pinnedLayout,
+}) extends _VoiceGesturePresentation;
 
 final class const _VoiceCancelling() extends _VoiceGesturePresentation;
 
-enum _PasteImageResult() { noImage, handled, stale }
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
+// ignore: use_primary_constructors
+enum _PasteImageResult { noImage, handled, stale }
 
 final class _ComposerPasteAction({
-    required final Future<void> Function({
-      required TextEditingValue initialValue,
-      required FutureOr<void> Function() onTextPaste,
-      required VoidCallback? onImagePasted,
-    }) _pasteImageOrText,
-    required final TextEditingController _controller,
-  }) extends Action<PasteTextIntent> {
-
+  required final Future<void> Function({
+    required TextEditingValue initialValue,
+    required FutureOr<void> Function() onTextPaste,
+    required VoidCallback? onImagePasted,
+  })
+  _pasteImageOrText,
+  required final TextEditingController _controller,
+}) extends Action<PasteTextIntent> {
   @override
   Object? invoke(PasteTextIntent intent) {
     // callingAction is available only during this synchronous override call,
@@ -98,38 +102,43 @@ typedef PromptSubmitCallback = void Function({
 });
 
 class const PromptInput({
-    super.key,
-    required final bool isBusy,
-    /// Whether the session already has (or has queued) messages. Drives the
+  super.key,
+  required final bool isBusy,
+
+  /// Whether the session already has (or has queued) messages. Drives the
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
   required final bool hasMessages,
-    required final PromptSubmitCallback onSend,
-    required final VoidCallback onVoiceTranscriptionCompleted,
-    required final ValueChanged<ComposerDraft> onDraftChanged,
-    required final VoidCallback onDraftCleared,
-    required final VoidCallback onAbort,
-    required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
-    required final Widget? composerHeader,
-    required final List<CommandInfo> availableCommands,
-    required final CommandInfo? stagedCommand,
-    required final ValueChanged<CommandInfo> onCommandSelected,
-    required final VoidCallback onCommandCleared,
-    /// Whether this composer offers image attachments. Null keeps already staged
+  required final PromptSubmitCallback onSend,
+  required final VoidCallback onVoiceTranscriptionCompleted,
+  required final ValueChanged<ComposerDraft> onDraftChanged,
+  required final VoidCallback onDraftCleared,
+  required final VoidCallback onAbort,
+  required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
+  required final Widget? composerHeader,
+  required final List<CommandInfo> availableCommands,
+  required final CommandInfo? stagedCommand,
+  required final ValueChanged<CommandInfo> onCommandSelected,
+  required final VoidCallback onCommandCleared,
+
+  /// Whether this composer offers image attachments. Null keeps already staged
   /// images while current bridge capability is being resolved.
   required final bool? attachmentsSupported,
-    /// Stable identity used only to detect when this widget state is reused for
+
+  /// Stable identity used only to detect when this widget state is reused for
   /// another composer. Persistence remains owned by the parent Cubit.
-    required final String draftIdentity,
-    /// One-shot identity for restoring a failed submission when sending and
+  required final String draftIdentity,
+
+  /// One-shot identity for restoring a failed submission when sending and
   /// failure are coalesced before this composer can unmount.
-    required final Key? restorationKey,
-    required final ComposerDraft initialDraft,
-    required final List<ComposerAttachment> initialAttachments,
-    required final VoidCallback onInitialAttachmentsConsumed,
-    /// Optional widget rendered inside the composer, above the text-field row.
+  required final Key? restorationKey,
+  required final ComposerDraft initialDraft,
+  required final List<ComposerAttachment> initialAttachments,
+  required final VoidCallback onInitialAttachmentsConsumed,
+
+  /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header,
-  }) extends StatefulWidget {
+}) extends StatefulWidget {
   @override
   State<PromptInput> createState() => _PromptInputState();
 }
@@ -315,13 +324,15 @@ class _PromptInputState() extends State<PromptInput> {
   _VoicePresentation get _voicePresentation => switch (_renderedVoiceState) {
     VoiceInputStarting() when _releaseRequestedWhileStarting => _VoicePresentation.idle,
     VoiceInputStarting() || VoiceInputRecording() => _VoicePresentation.recording,
-    VoiceInputTranscribing() => _VoicePresentation.transcribing,
+    VoiceInputTranscribing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
     VoiceInputIdle() ||
+    VoiceInputRetryPending() ||
+    VoiceInputRetryCancelling() ||
+    VoiceInputDiscarding() ||
     VoiceInputCompleted() ||
     VoiceInputStartFailed() ||
     VoiceInputTranscriptionFailed() ||
-    VoiceInputCancelling() =>
-      _VoicePresentation.idle,
+    VoiceInputCancelling() => _VoicePresentation.idle,
   };
 
   bool get _hasSendableContent {
@@ -358,34 +369,35 @@ class _PromptInputState() extends State<PromptInput> {
     });
   }
 
-  void _handleSend() {
+  void _handleSend() => unawaited(_submitComposer());
+
+  Future<void> _submitComposer() async {
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
     if (attachments.isNotEmpty && widget.attachmentsSupported != true) return;
-    if (stagedCommand != null) {
-      if (attachments.isNotEmpty) {
-        // The bridge's command paths read only the text part, so images sent
-        // with a command would silently vanish. Refuse the combination and
-        // keep both staged for the user to untangle.
-        _showComposerNotice(context.loc.sessionDetailAttachmentsNotWithCommands);
-        return;
-      }
-      widget.onSend(
-        draft: _draftCalculator.trim(draft: _draft),
-        command: stagedCommand.name,
-        attachments: attachments,
-      );
-      widget.onCommandCleared();
-    } else {
-      final submission = _draftCalculator.trim(draft: _draft);
-      if (submission.text.isEmpty && attachments.isEmpty) return;
-      widget.onSend(
-        draft: submission,
-        command: null,
-        attachments: attachments,
-      );
+    if (stagedCommand != null && attachments.isNotEmpty) {
+      // The bridge's command paths read only the text part, so images sent
+      // with a command would silently vanish. Refuse the combination and
+      // keep both staged for the user to untangle.
+      _showComposerNotice(context.loc.sessionDetailAttachmentsNotWithCommands);
+      return;
     }
+
+    final submission = _draftCalculator.trim(draft: _draft);
+    if (stagedCommand == null && submission.text.isEmpty && attachments.isEmpty) return;
+
+    if (_voiceCubit.state is VoiceInputRetryPending) {
+      await _voiceCubit.discard();
+      if (!mounted) return;
+    }
+
+    widget.onSend(
+      draft: submission,
+      command: stagedCommand?.name,
+      attachments: attachments,
+    );
+    if (stagedCommand != null) widget.onCommandCleared();
 
     _pasteGeneration++;
     if (_attachments.isNotEmpty) {
@@ -406,8 +418,7 @@ class _PromptInputState() extends State<PromptInput> {
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     final draftChanged = oldWidget.draftIdentity != widget.draftIdentity;
-    final restorationRequested =
-        widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
+    final restorationRequested = widget.restorationKey != null && oldWidget.restorationKey != widget.restorationKey;
     final stagedCommandChanged = oldWidget.stagedCommand?.name != widget.stagedCommand?.name;
     if (oldWidget.attachmentsSupported != widget.attachmentsSupported) {
       _pasteGeneration++;
@@ -438,7 +449,7 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Future<void> _handleRecordStart({required _RecordingPointer? pointer}) async {
-    if (_voiceInteraction is! _VoiceIdle) return;
+    if (_voiceInteraction is! _VoiceIdle || _voiceCubit.state is! VoiceInputIdle) return;
     // Fire before recorder startup or rebuilding so touch-down feels immediate.
     unawaited(_playHapticFeedback(play: HapticFeedback.lightImpact));
     final interactionId = ++_latestVoiceInteractionId;
@@ -489,19 +500,20 @@ class _PromptInputState() extends State<PromptInput> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final activeInteraction = _voiceInteraction;
-      if (activeInteraction case _VoiceRecording(:final id, pointer: final pointer?)
-          when id == interactionId) {
+      if (activeInteraction case _VoiceRecording(:final id, pointer: final pointer?) when id == interactionId) {
         _handleRecordDragUpdate(globalPosition: pointer.position);
       }
     });
     _minimumRecordingDurationTimer = Timer(_minimumRecordingDuration, () {
       final activeInteraction = _voiceInteraction;
-      if (activeInteraction case _VoiceRecording(
-        :final id,
-        :final pinnedLayout,
-        :final pointer,
-        :final cancelTargetEngaged,
-      ) when id == interactionId) {
+      if (activeInteraction
+          case _VoiceRecording(
+            :final id,
+            :final pinnedLayout,
+            :final pointer,
+            :final cancelTargetEngaged,
+          )
+          when id == interactionId) {
         _voiceInteraction = _VoiceRecording(
           id: id,
           pinnedLayout: pinnedLayout,
@@ -529,26 +541,30 @@ class _PromptInputState() extends State<PromptInput> {
         :final releaseRequested,
         pointer: final pointer?,
         :final cancelTargetEngaged,
-      ) when pointer.id == event.pointer => _VoiceStarting(
-        id: id,
-        pinnedLayout: pinnedLayout,
-        releaseRequested: releaseRequested,
-        pointer: (id: pointer.id, position: event.position),
-        cancelTargetEngaged: cancelTargetEngaged,
-      ),
+      )
+          when pointer.id == event.pointer =>
+        _VoiceStarting(
+          id: id,
+          pinnedLayout: pinnedLayout,
+          releaseRequested: releaseRequested,
+          pointer: (id: pointer.id, position: event.position),
+          cancelTargetEngaged: cancelTargetEngaged,
+        ),
       _VoiceRecording(
         :final id,
         :final pinnedLayout,
         :final minimumDurationReached,
         pointer: final pointer?,
         :final cancelTargetEngaged,
-      ) when pointer.id == event.pointer => _VoiceRecording(
-        id: id,
-        pinnedLayout: pinnedLayout,
-        minimumDurationReached: minimumDurationReached,
-        pointer: (id: pointer.id, position: event.position),
-        cancelTargetEngaged: cancelTargetEngaged,
-      ),
+      )
+          when pointer.id == event.pointer =>
+        _VoiceRecording(
+          id: id,
+          pinnedLayout: pinnedLayout,
+          minimumDurationReached: minimumDurationReached,
+          pointer: (id: pointer.id, position: event.position),
+          cancelTargetEngaged: cancelTargetEngaged,
+        ),
       _VoiceStarting() ||
       _VoiceRecording() ||
       _VoiceIdle() ||
@@ -563,11 +579,7 @@ class _PromptInputState() extends State<PromptInput> {
     final pointer = switch (_voiceInteraction) {
       _VoiceStarting(pointer: final pointer?) => pointer,
       _VoiceRecording(pointer: final pointer?) => pointer,
-      _VoiceStarting() ||
-      _VoiceRecording() ||
-      _VoiceIdle() ||
-      _VoiceTranscribing() ||
-      _VoiceCancelling() => null,
+      _VoiceStarting() || _VoiceRecording() || _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => null,
     };
     if (pointer?.id != event.pointer) return;
     _handleRecordDragUpdate(globalPosition: event.position);
@@ -578,25 +590,27 @@ class _PromptInputState() extends State<PromptInput> {
         :final pinnedLayout,
         :final releaseRequested,
         :final cancelTargetEngaged,
-      ) => _VoiceStarting(
-        id: id,
-        pinnedLayout: pinnedLayout,
-        releaseRequested: releaseRequested,
-        pointer: null,
-        cancelTargetEngaged: cancelTargetEngaged,
-      ),
+      ) =>
+        _VoiceStarting(
+          id: id,
+          pinnedLayout: pinnedLayout,
+          releaseRequested: releaseRequested,
+          pointer: null,
+          cancelTargetEngaged: cancelTargetEngaged,
+        ),
       _VoiceRecording(
         :final id,
         :final pinnedLayout,
         :final minimumDurationReached,
         :final cancelTargetEngaged,
-      ) => _VoiceRecording(
-        id: id,
-        pinnedLayout: pinnedLayout,
-        minimumDurationReached: minimumDurationReached,
-        pointer: null,
-        cancelTargetEngaged: cancelTargetEngaged,
-      ),
+      ) =>
+        _VoiceRecording(
+          id: id,
+          pinnedLayout: pinnedLayout,
+          minimumDurationReached: minimumDurationReached,
+          pointer: null,
+          cancelTargetEngaged: cancelTargetEngaged,
+        ),
       _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => interaction,
     };
     unawaited(_handleRecordEnd());
@@ -624,25 +638,27 @@ class _PromptInputState() extends State<PromptInput> {
           :final pinnedLayout,
           :final releaseRequested,
           :final pointer,
-        ) => _VoiceStarting(
-          id: id,
-          pinnedLayout: pinnedLayout,
-          releaseRequested: releaseRequested,
-          pointer: pointer,
-          cancelTargetEngaged: nextCancelTargetEngaged,
-        ),
+        ) =>
+          _VoiceStarting(
+            id: id,
+            pinnedLayout: pinnedLayout,
+            releaseRequested: releaseRequested,
+            pointer: pointer,
+            cancelTargetEngaged: nextCancelTargetEngaged,
+          ),
         _VoiceRecording(
           :final id,
           :final pinnedLayout,
           :final minimumDurationReached,
           :final pointer,
-        ) => _VoiceRecording(
-          id: id,
-          pinnedLayout: pinnedLayout,
-          minimumDurationReached: minimumDurationReached,
-          pointer: pointer,
-          cancelTargetEngaged: nextCancelTargetEngaged,
-        ),
+        ) =>
+          _VoiceRecording(
+            id: id,
+            pinnedLayout: pinnedLayout,
+            minimumDurationReached: minimumDurationReached,
+            pointer: pointer,
+            cancelTargetEngaged: nextCancelTargetEngaged,
+          ),
         _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => interaction,
       };
       unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
@@ -733,10 +749,17 @@ class _PromptInputState() extends State<PromptInput> {
     switch (state) {
       case VoiceInputIdle():
         if (_voiceInteraction is _VoiceCancelling) _resetVoicePresentation();
-      case VoiceInputStarting() || VoiceInputRecording() || VoiceInputCancelling():
+      case VoiceInputStarting() ||
+          VoiceInputRecording() ||
+          VoiceInputRetrying() ||
+          VoiceInputRetryCancelling() ||
+          VoiceInputDiscarding() ||
+          VoiceInputCancelling():
         return;
       case VoiceInputTranscribing(:final limitReached):
         _showTranscribingPresentation(limitReached: limitReached);
+      case VoiceInputRetryPending():
+        _resetVoicePresentation();
       case VoiceInputCompleted(:final transcript):
         _handleCompletedTranscription(transcript: transcript);
         _voiceCubit.acknowledgeOutcome();
@@ -799,7 +822,8 @@ class _PromptInputState() extends State<PromptInput> {
   void _handleVoiceTranscriptionFailure({required VoiceTranscriptionError error}) {
     final message = switch (error) {
       NotAuthenticatedVoiceError() => context.loc.voiceErrorNotAuthenticated,
-      NetworkVoiceError() => context.loc.voiceErrorNetwork,
+      MissingRecordingArtifactError() => context.loc.voiceErrorSavedRecordingMissing,
+      NetworkVoiceError() || RetryableServerVoiceError() => context.loc.voiceRecordingSaved,
       MicrophonePermissionDeniedError() ||
       RecordingFailedError() ||
       NotRecordingError() ||
@@ -808,6 +832,25 @@ class _PromptInputState() extends State<PromptInput> {
       TranscriptionCancelledError() => context.loc.voiceErrorTranscription,
     };
     _showComposerNotice(message, variant: PregoPopupAlertsNotificationsVariant.error);
+    _resetVoicePresentation();
+  }
+
+  Future<void> _retrySavedRecording() async {
+    if (_voiceCubit.state is! VoiceInputRetryPending) return;
+    final interactionId = ++_latestVoiceInteractionId;
+    _updateComposerState(
+      update: () => _voiceInteraction = _VoiceTranscribing(
+        id: interactionId,
+        pinnedLayout: _restingLayout,
+      ),
+    );
+    await _voiceCubit.retry();
+  }
+
+  Future<void> _discardSavedRecording() async {
+    if (_voiceCubit.state is! VoiceInputRetryPending) return;
+    _playDismissFeedback();
+    await _voiceCubit.discard();
     _resetVoicePresentation();
   }
 
@@ -1076,10 +1119,15 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// The strip above the input container: the composer header (agent/model
   /// pills) or the staged-command chip normally, replaced by the floating
-  /// "Release to transcribe" / "Release to cancel" helper while recording.
+  /// recording helper or persistent saved-recording actions.
   Widget _buildComposerTopSlot(BuildContext context) {
     final Widget child;
-    if (_voicePresentation == _VoicePresentation.recording) {
+    if (_renderedVoiceState is VoiceInputRetryPending) {
+      child = KeyedSubtree(
+        key: const ValueKey("saved-recording-actions"),
+        child: _buildSavedRecordingActions(context),
+      );
+    } else if (_voicePresentation == _VoicePresentation.recording) {
       child = KeyedSubtree(key: const ValueKey("release-hint"), child: _buildReleaseHint(context));
     } else {
       final headerChild = switch (widget.stagedCommand) {
@@ -1109,6 +1157,41 @@ class _PromptInputState() extends State<PromptInput> {
       curve: _morphCurve,
       alignment: Alignment.bottomCenter,
       child: AnimatedSwitcher(duration: _morphDuration, child: child),
+    );
+  }
+
+  Widget _buildSavedRecordingActions(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 2),
+      child: Row(
+        spacing: PregoSpacing.sm,
+        children: [
+          Expanded(
+            child: Text(
+              loc.voiceRecordingSaved,
+              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+          ),
+          PregoButtonsSolid(
+            key: const Key("voice_saved_discard"),
+            label: loc.voiceDiscard,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: _discardSavedRecording,
+          ),
+          PregoButtonsSolid(
+            key: const Key("voice_saved_retry"),
+            label: loc.voiceRetry,
+            leadingIcon: TablerRegular.refresh,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: _retrySavedRecording,
+          ),
+        ],
+      ),
     );
   }
 
@@ -1426,8 +1509,7 @@ class _PromptInputState() extends State<PromptInput> {
           unawaited(
             _pasteImageOrText(
               initialValue: initialValue,
-              onTextPaste:
-                  existingPasteCallback ?? () => editableTextState.pasteText(SelectionChangedCause.toolbar),
+              onTextPaste: existingPasteCallback ?? () => editableTextState.pasteText(SelectionChangedCause.toolbar),
               onImagePasted: editableTextState.hideToolbar,
             ),
           );

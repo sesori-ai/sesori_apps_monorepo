@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -6,6 +7,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
 import "../../logging/logging.dart";
+import "voice_transcription_failure_metadata.dart";
 
 /// Timeout for the transcription upload request.
 const _uploadTimeout = Duration(seconds: 30);
@@ -20,7 +22,10 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
   ///
   /// [mimeType] is sent as the file's content-type so the server can forward
   /// it to the transcription model (e.g. `"audio/mp4"` for m4a/AAC).
-  Future<ApiResponse<String>> transcribe({required String audioFilePath, required String mimeType}) async {
+  Future<VoiceTranscriptionApiResult> transcribe({
+    required String audioFilePath,
+    required String mimeType,
+  }) async {
     final uri = Uri.parse("$authBaseUrl/voice/transcribe");
 
     try {
@@ -28,7 +33,7 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
       // Future (TimeoutException, SocketException, HandshakeException) are
       // caught by the handlers below. Without the await, the Future's failure
       // escapes this try/catch and propagates to the caller unwrapped.
-      return await _client.postMultipart(
+      final response = await _client.postMultipart(
         uri,
         fromJson: _parseTranscript,
         createFiles: () async => [
@@ -40,15 +45,55 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
         ],
         timeout: _uploadTimeout,
       );
+      return switch (response) {
+        SuccessResponse(:final data) => VoiceTranscriptionApiResult.success(transcript: data),
+        ErrorResponse(:final error) => VoiceTranscriptionApiResult.failure(
+          error: error,
+          retryable: _parseRetryable(error: error),
+        ),
+      };
     } on TimeoutException catch (error, stackTrace) {
       loge("Transcription upload timed out", error, stackTrace);
-      return ApiResponse.error(ApiError.dartHttpClient(error));
+      return VoiceTranscriptionApiResult.failure(
+        error: ApiError.dartHttpClient(error),
+        retryable: null,
+      );
     } on SocketException catch (error, stackTrace) {
       loge("Transcription API socket error", error, stackTrace);
-      return ApiResponse.error(ApiError.dartHttpClient(error));
+      return VoiceTranscriptionApiResult.failure(
+        error: ApiError.dartHttpClient(error),
+        retryable: null,
+      );
     } on HandshakeException catch (error, stackTrace) {
       loge("Transcription API TLS handshake failed", error, stackTrace);
-      return ApiResponse.error(ApiError.dartHttpClient(error));
+      return VoiceTranscriptionApiResult.failure(
+        error: ApiError.dartHttpClient(error),
+        retryable: null,
+      );
+    }
+  }
+
+  static bool? _parseRetryable({required ApiError error}) {
+    final rawError = switch (error) {
+      NonSuccessCodeError(:final rawErrorString) => rawErrorString,
+      JsonParsingError() ||
+      DartHttpClientError() ||
+      GenericError() ||
+      NotAuthenticatedError() ||
+      EmptyResponseError() => null,
+    };
+    if (rawError == null) return null;
+
+    try {
+      final decoded = jsonDecode(rawError);
+      // ignore: no_slop_linter/prefer_specific_type, JSON object boundary before typed Freezed parsing
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException("Transcription failure body is not a JSON object");
+      }
+      return VoiceTranscriptionFailureMetadata.fromJson(decoded).retryable;
+    } catch (error, stackTrace) {
+      logw("Failed to parse transcription retryability metadata", error, stackTrace);
+      return null;
     }
   }
 
@@ -64,3 +109,19 @@ class VoiceApi(final AuthenticatedHttpApiClient _client) {
     throw const FormatException("Missing or empty 'text' field in transcription response");
   }
 }
+
+sealed class const VoiceTranscriptionApiResult() {
+  const factory success({required String transcript}) = VoiceTranscriptionApiSuccess;
+
+  const factory failure({
+    required ApiError error,
+    required bool? retryable,
+  }) = VoiceTranscriptionApiFailure;
+}
+
+final class const VoiceTranscriptionApiSuccess({required final String transcript}) extends VoiceTranscriptionApiResult;
+
+final class const VoiceTranscriptionApiFailure({
+  required final ApiError error,
+  required final bool? retryable,
+}) extends VoiceTranscriptionApiResult;

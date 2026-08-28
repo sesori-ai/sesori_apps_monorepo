@@ -17,7 +17,9 @@ MockVoiceTranscriptionSession stubVoiceTranscriptionService({
   when(() => service.prewarm(session: session)).thenAnswer((_) async {});
   when(() => service.start(session: session)).thenAnswer((_) async {});
   when(() => service.stopAndTranscribe(session: session)).thenAnswer((_) async => "");
+  when(() => service.retry(session: session)).thenAnswer((_) async => "");
   when(() => service.cancel(session: session)).thenAnswer((_) async {});
+  when(() => service.discard(session: session)).thenAnswer((_) async {});
   when(() => service.invalidate(session: session)).thenReturn(null);
   when(() => service.close(session: session)).thenAnswer((_) async {});
   return session;

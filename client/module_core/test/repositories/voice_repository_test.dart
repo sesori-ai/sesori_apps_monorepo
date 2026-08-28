@@ -19,14 +19,19 @@ void main() {
         audioFilePath: any(named: "audioFilePath"),
         mimeType: any(named: "mimeType"),
       ),
-    ).thenAnswer((_) async => ApiResponse.success("hello"));
+    ).thenAnswer(
+      (_) async => const VoiceTranscriptionApiResult.success(transcript: "hello"),
+    );
 
     final outcome = await repository.transcribe(
       audioFilePath: "/tmp/voice.m4a",
       mimeType: "audio/mp4",
     );
 
-    expect(outcome, isA<VoiceTranscriptionSuccess>().having((value) => value.transcript, "transcript", "hello"));
+    expect(
+      outcome,
+      isA<VoiceTranscriptionSuccess>().having((value) => value.transcript, "transcript", "hello"),
+    );
     verify(
       () => api.transcribe(
         audioFilePath: "/tmp/voice.m4a",
@@ -35,12 +40,54 @@ void main() {
     ).called(1);
   });
 
-  test("maps every current API failure without leaking transport types upward", () async {
+  test("maps authoritative true separately from false, omitted, and malformed metadata", () async {
+    final cases = <({VoiceTranscriptionApiResult result, Type outcomeType})>[
+      (
+        result: VoiceTranscriptionApiResult.failure(
+          error: ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null),
+          retryable: true,
+        ),
+        outcomeType: VoiceTranscriptionRetryableServerFailure,
+      ),
+      (
+        result: VoiceTranscriptionApiResult.failure(
+          error: ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null),
+          retryable: false,
+        ),
+        outcomeType: VoiceTranscriptionTerminalServerFailure,
+      ),
+      (
+        result: VoiceTranscriptionApiResult.failure(
+          error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null),
+          retryable: null,
+        ),
+        outcomeType: VoiceTranscriptionTerminalServerFailure,
+      ),
+    ];
+
+    for (final candidate in cases) {
+      reset(api);
+      when(
+        () => api.transcribe(
+          audioFilePath: any(named: "audioFilePath"),
+          mimeType: any(named: "mimeType"),
+        ),
+      ).thenAnswer((_) async => candidate.result);
+
+      final outcome = await repository.transcribe(
+        audioFilePath: "/tmp/voice.m4a",
+        mimeType: "audio/mp4",
+      );
+
+      expect(outcome.runtimeType, candidate.outcomeType);
+    }
+  });
+
+  test("maps every non-server API failure without leaking transport types upward", () async {
     final cases = <ApiError, Type>{
       ApiError.notAuthenticated(): VoiceTranscriptionNotAuthenticated,
-      ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "unavailable"): VoiceTranscriptionServerFailure,
       ApiError.dartHttpClient(Exception("offline")): VoiceTranscriptionNetworkFailure,
-      ApiError.generic(): VoiceTranscriptionNetworkFailure,
+      ApiError.generic(): VoiceTranscriptionUnexpectedFailure,
       ApiError.jsonParsing("bad json"): VoiceTranscriptionEmptyTranscript,
       ApiError.emptyResponse(): VoiceTranscriptionEmptyTranscript,
     };
@@ -52,7 +99,9 @@ void main() {
           audioFilePath: any(named: "audioFilePath"),
           mimeType: any(named: "mimeType"),
         ),
-      ).thenAnswer((_) async => ApiResponse<String>.error(error));
+      ).thenAnswer(
+        (_) async => VoiceTranscriptionApiResult.failure(error: error, retryable: null),
+      );
 
       final outcome = await repository.transcribe(
         audioFilePath: "/tmp/voice.m4a",
@@ -60,9 +109,6 @@ void main() {
       );
 
       expect(outcome.runtimeType, outcomeType);
-      if (outcome case VoiceTranscriptionServerFailure(:final statusCode)) {
-        expect(statusCode, 503);
-      }
     }
   });
 }

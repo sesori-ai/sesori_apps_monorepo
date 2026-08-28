@@ -42,7 +42,14 @@ void main() {
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
-      expect(result, ApiResponse.success("transcribed text"));
+      expect(
+        result,
+        isA<VoiceTranscriptionApiSuccess>().having(
+          (success) => success.transcript,
+          "transcript",
+          "transcribed text",
+        ),
+      );
 
       final captured = verify(
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
@@ -69,8 +76,12 @@ void main() {
       expect(captured[3], const Duration(seconds: 30));
     });
 
-    test("API error: propagates error returned by postMultipart", () async {
+    test("API error: parses authoritative retryability from the failure body", () async {
       final audioPath = await createAudioPath();
+      final apiError = ApiError.nonSuccessCode(
+        errorCode: 502,
+        rawErrorString: '{"error":"transcription_provider_error","retryable":true}',
+      );
       when(
         () => mockAuthenticatedHttpApiClient.postMultipart<String>(
           any(),
@@ -78,20 +89,55 @@ void main() {
           createFiles: any(named: "createFiles"),
           timeout: any(named: "timeout"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.error(
-          ApiError.nonSuccessCode(errorCode: 502, rawErrorString: "bad gateway"),
-        ),
-      );
+      ).thenAnswer((_) async => ApiResponse.error(apiError));
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
       expect(
         result,
-        ApiResponse<String>.error(
-          ApiError.nonSuccessCode(errorCode: 502, rawErrorString: "bad gateway"),
-        ),
+        isA<VoiceTranscriptionApiFailure>()
+            .having((failure) => failure.error, "error", apiError)
+            .having((failure) => failure.retryable, "retryable", isTrue),
       );
+    });
+
+    test("API error: treats false, omitted, and malformed retryability as typed metadata", () async {
+      final audioPath = await createAudioPath();
+      final cases = <String, bool?>{
+        '{"error":"bad_request","retryable":false}': false,
+        '{"error":"internal_server_error"}': null,
+        '{"error":"internal_server_error","retryable":"yes"}': null,
+      };
+
+      for (final MapEntry(key: body, value: expectedRetryable) in cases.entries) {
+        reset(mockAuthenticatedHttpApiClient);
+        when(
+          () => mockAuthenticatedHttpApiClient.postMultipart<String>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            createFiles: any(named: "createFiles"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.error(
+            ApiError.nonSuccessCode(errorCode: 500, rawErrorString: body),
+          ),
+        );
+
+        final result = await voiceApi.transcribe(
+          audioFilePath: audioPath,
+          mimeType: "audio/mp4",
+        );
+
+        expect(
+          result,
+          isA<VoiceTranscriptionApiFailure>().having(
+            (failure) => failure.retryable,
+            "retryable",
+            expectedRetryable,
+          ),
+        );
+      }
     });
 
     test("timeout: maps TimeoutException to dartHttpClient error", () async {
@@ -113,8 +159,14 @@ void main() {
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
-      expect(result.toString(), contains("dartHttpClient"));
-      expect(result.toString(), contains("TimeoutException"));
+      expect(
+        result,
+        isA<VoiceTranscriptionApiFailure>().having(
+          (failure) => failure.error,
+          "error",
+          isA<DartHttpClientError>(),
+        ),
+      );
     });
 
     test("socket error: maps SocketException to dartHttpClient error", () async {
@@ -132,8 +184,14 @@ void main() {
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
-      expect(result.toString(), contains("dartHttpClient"));
-      expect(result.toString(), contains("SocketException"));
+      expect(
+        result,
+        isA<VoiceTranscriptionApiFailure>().having(
+          (failure) => failure.error,
+          "error",
+          isA<DartHttpClientError>(),
+        ),
+      );
     });
 
     test("parse error: propagates jsonParsing error from client", () async {
@@ -149,7 +207,12 @@ void main() {
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
-      expect(result, ApiResponse<String>.error(ApiError.jsonParsing("not json")));
+      expect(
+        result,
+        isA<VoiceTranscriptionApiFailure>()
+            .having((failure) => failure.error, "error", ApiError.jsonParsing("not json"))
+            .having((failure) => failure.retryable, "retryable", isNull),
+      );
     });
 
     test("handshake error: maps HandshakeException to dartHttpClient error", () async {
@@ -167,8 +230,14 @@ void main() {
 
       final result = await voiceApi.transcribe(audioFilePath: audioPath, mimeType: "audio/mp4");
 
-      expect(result.toString(), contains("dartHttpClient"));
-      expect(result.toString(), contains("HandshakeException"));
+      expect(
+        result,
+        isA<VoiceTranscriptionApiFailure>().having(
+          (failure) => failure.error,
+          "error",
+          isA<DartHttpClientError>(),
+        ),
+      );
     });
   });
 }

@@ -11,15 +11,29 @@ class VoiceRepository({required final VoiceApi _api}) {
   }) async {
     final response = await _api.transcribe(audioFilePath: audioFilePath, mimeType: mimeType);
     return switch (response) {
-      SuccessResponse(:final data) => VoiceTranscriptionOutcome.success(transcript: data),
-      ErrorResponse(:final error) => _mapError(error: error),
+      VoiceTranscriptionApiSuccess(:final transcript) => VoiceTranscriptionOutcome.success(
+        transcript: transcript,
+      ),
+      VoiceTranscriptionApiFailure(:final error, :final retryable) => _mapError(
+        error: error,
+        retryable: retryable,
+      ),
     };
   }
 
-  VoiceTranscriptionOutcome _mapError({required ApiError error}) => switch (error) {
+  VoiceTranscriptionOutcome _mapError({
+    required ApiError error,
+    required bool? retryable,
+  }) => switch (error) {
     NotAuthenticatedError() => const VoiceTranscriptionOutcome.notAuthenticated(),
-    NonSuccessCodeError(:final errorCode) => VoiceTranscriptionOutcome.serverFailure(statusCode: errorCode),
-    DartHttpClientError() || GenericError() => const VoiceTranscriptionOutcome.networkFailure(),
+    NonSuccessCodeError(:final errorCode) when retryable ?? false => VoiceTranscriptionOutcome.retryableServerFailure(
+      statusCode: errorCode,
+    ),
+    // COMPATIBILITY 2026-08-28 (v1.8.2): Older auth servers can omit retryability.
+    // Retire when every supported auth server returns a boolean for every transcribe failure.
+    NonSuccessCodeError(:final errorCode) => VoiceTranscriptionOutcome.terminalServerFailure(statusCode: errorCode),
+    DartHttpClientError() => const VoiceTranscriptionOutcome.networkFailure(),
+    GenericError() => const VoiceTranscriptionOutcome.unexpectedFailure(),
     JsonParsingError() || EmptyResponseError() => const VoiceTranscriptionOutcome.emptyTranscript(),
   };
 }
@@ -29,9 +43,13 @@ sealed class const VoiceTranscriptionOutcome() {
 
   const factory notAuthenticated() = VoiceTranscriptionNotAuthenticated;
 
-  const factory serverFailure({required int statusCode}) = VoiceTranscriptionServerFailure;
+  const factory retryableServerFailure({required int statusCode}) = VoiceTranscriptionRetryableServerFailure;
+
+  const factory terminalServerFailure({required int statusCode}) = VoiceTranscriptionTerminalServerFailure;
 
   const factory networkFailure() = VoiceTranscriptionNetworkFailure;
+
+  const factory unexpectedFailure() = VoiceTranscriptionUnexpectedFailure;
 
   const factory emptyTranscript() = VoiceTranscriptionEmptyTranscript;
 }
@@ -40,8 +58,14 @@ final class const VoiceTranscriptionSuccess({required final String transcript}) 
 
 final class const VoiceTranscriptionNotAuthenticated() extends VoiceTranscriptionOutcome;
 
-final class const VoiceTranscriptionServerFailure({required final int statusCode}) extends VoiceTranscriptionOutcome;
+final class const VoiceTranscriptionRetryableServerFailure({required final int statusCode})
+    extends VoiceTranscriptionOutcome;
+
+final class const VoiceTranscriptionTerminalServerFailure({required final int statusCode})
+    extends VoiceTranscriptionOutcome;
 
 final class const VoiceTranscriptionNetworkFailure() extends VoiceTranscriptionOutcome;
+
+final class const VoiceTranscriptionUnexpectedFailure() extends VoiceTranscriptionOutcome;
 
 final class const VoiceTranscriptionEmptyTranscript() extends VoiceTranscriptionOutcome;

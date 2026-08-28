@@ -15,6 +15,8 @@ abstract interface class VoiceCaptureSession() {
 
   Future<void> releaseOperation();
 
+  Future<bool> artifactExists({required VoiceRecordingArtifact artifact});
+
   Future<void> deleteArtifact({required VoiceRecordingArtifact artifact});
 
   Future<void> close();

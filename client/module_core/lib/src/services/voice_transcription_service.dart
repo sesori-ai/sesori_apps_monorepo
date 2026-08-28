@@ -102,28 +102,78 @@ class VoiceTranscriptionService({
 
     _cancelMaxDurationTimer(session: session);
     final generation = session._generation;
-    VoiceRecordingArtifact? artifact;
+    late final VoiceRecordingArtifact artifact;
 
     try {
+      final stopFuture = session._captureSession.stop();
+      session._stopFuture = stopFuture;
+      session._state = const _VoiceSessionStopping();
       try {
-        final stopFuture = session._captureSession.stop();
-        session._stopFuture = stopFuture;
-        session._state = const _VoiceSessionStopping();
-        try {
-          artifact = await stopFuture;
-        } finally {
-          if (identical(session._stopFuture, stopFuture)) session._stopFuture = null;
-        }
-      } on VoiceCaptureError catch (error) {
-        await session._captureSession.cancel();
-        throw VoiceTranscriptionError.recordingFailed(innerError: error);
+        artifact = await stopFuture;
+      } finally {
+        if (identical(session._stopFuture, stopFuture)) session._stopFuture = null;
       }
+    } on VoiceCaptureError catch (error) {
+      await session._captureSession.cancel();
+      _restoreIdleAfterFailure(session: session, generation: generation);
+      throw VoiceTranscriptionError.recordingFailed(innerError: error);
+    }
 
-      if (!_ownsGeneration(session: session, generation: generation)) {
-        throw VoiceTranscriptionError.cancelled();
-      }
-      session._state = _VoiceSessionTranscribing(artifact: artifact);
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      await session._captureSession.deleteArtifact(artifact: artifact);
+      throw VoiceTranscriptionError.cancelled();
+    }
 
+    session._state = _VoiceSessionInitialTranscribing(artifact: artifact);
+    return await _transcribeArtifact(
+      session: session,
+      artifact: artifact,
+      generation: generation,
+      releaseCaptureOperation: true,
+    );
+  }
+
+  Future<String> retry({required VoiceTranscriptionSession session}) async {
+    final pending = session._state;
+    if (pending is! _VoiceSessionRetryPending) {
+      throw VoiceTranscriptionError.missingRecording();
+    }
+
+    final artifact = pending.artifact;
+    final generation = ++session._generation;
+    session._state = _VoiceSessionRetryTranscribing(artifact: artifact);
+
+    bool artifactExists;
+    try {
+      artifactExists = await session._captureSession.artifactExists(artifact: artifact);
+    } catch (error, stackTrace) {
+      logw("Failed to inspect retained voice recording", error, stackTrace);
+      artifactExists = false;
+    }
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      throw VoiceTranscriptionError.cancelled();
+    }
+    if (!artifactExists) {
+      await session._captureSession.deleteArtifact(artifact: artifact);
+      session._state = const _VoiceSessionIdle();
+      throw VoiceTranscriptionError.missingRecording();
+    }
+
+    return await _transcribeArtifact(
+      session: session,
+      artifact: artifact,
+      generation: generation,
+      releaseCaptureOperation: false,
+    );
+  }
+
+  Future<String> _transcribeArtifact({
+    required VoiceTranscriptionSession session,
+    required VoiceRecordingArtifact artifact,
+    required int generation,
+    required bool releaseCaptureOperation,
+  }) async {
+    try {
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
         mimeType: artifact.mimeType,
@@ -135,20 +185,44 @@ class VoiceTranscriptionService({
       return switch (outcome) {
         VoiceTranscriptionSuccess(:final transcript) => transcript,
         VoiceTranscriptionNotAuthenticated() => throw VoiceTranscriptionError.notAuthenticated(),
-        VoiceTranscriptionServerFailure(:final statusCode) => throw VoiceTranscriptionError.serverError(
+        VoiceTranscriptionRetryableServerFailure(:final statusCode) => _retainAndThrow(
+          session: session,
+          artifact: artifact,
+          error: VoiceTranscriptionError.retryableServerError(statusCode: statusCode),
+        ),
+        VoiceTranscriptionTerminalServerFailure(:final statusCode) => throw VoiceTranscriptionError.serverError(
           statusCode: statusCode,
         ),
-        VoiceTranscriptionNetworkFailure() => throw VoiceTranscriptionError.networkError(),
+        VoiceTranscriptionNetworkFailure() => _retainAndThrow(
+          session: session,
+          artifact: artifact,
+          error: VoiceTranscriptionError.networkError(),
+        ),
+        VoiceTranscriptionUnexpectedFailure() => throw VoiceTranscriptionError.recordingFailed(innerError: outcome),
         VoiceTranscriptionEmptyTranscript() => throw VoiceTranscriptionError.emptyTranscript(),
       };
     } finally {
       final ownsGeneration = _ownsGeneration(session: session, generation: generation);
-      if (ownsGeneration) await session._captureSession.releaseOperation();
-      if (artifact != null) {
-        await session._captureSession.deleteArtifact(artifact: artifact);
+      if (ownsGeneration) {
+        try {
+          if (releaseCaptureOperation) await session._captureSession.releaseOperation();
+        } finally {
+          if (session._state is! _VoiceSessionRetryPending) {
+            await session._captureSession.deleteArtifact(artifact: artifact);
+            session._state = const _VoiceSessionIdle();
+          }
+        }
       }
-      if (ownsGeneration) session._state = const _VoiceSessionIdle();
     }
+  }
+
+  Never _retainAndThrow({
+    required VoiceTranscriptionSession session,
+    required VoiceRecordingArtifact artifact,
+    required VoiceTranscriptionError error,
+  }) {
+    session._state = _VoiceSessionRetryPending(artifact: artifact);
+    throw error;
   }
 
   Future<void> cancel({required VoiceTranscriptionSession session}) {
@@ -163,13 +237,14 @@ class VoiceTranscriptionService({
   }
 
   Future<void> _cancel({required VoiceTranscriptionSession session}) async {
-    if (session._state is _VoiceSessionIdle ||
-        session._state is _VoiceSessionClosing ||
-        session._state is _VoiceSessionDisposed) {
+    final state = session._state;
+    if (state is _VoiceSessionIdle ||
+        state is _VoiceSessionRetryPending ||
+        state is _VoiceSessionClosing ||
+        state is _VoiceSessionDisposed) {
       return;
     }
 
-    final state = session._state;
     final generation = ++session._generation;
     _cancelMaxDurationTimer(session: session);
 
@@ -190,15 +265,29 @@ class VoiceTranscriptionService({
         if (artifact != null) {
           await session._captureSession.deleteArtifact(artifact: artifact);
         }
-      case _VoiceSessionTranscribing(:final artifact):
+      case _VoiceSessionInitialTranscribing(:final artifact):
         await session._captureSession.releaseOperation();
         await session._captureSession.deleteArtifact(artifact: artifact);
-      case _VoiceSessionIdle() || _VoiceSessionClosing() || _VoiceSessionDisposed():
+      case _VoiceSessionRetryTranscribing(:final artifact):
+        if (_ownsGeneration(session: session, generation: generation)) {
+          session._state = _VoiceSessionRetryPending(artifact: artifact);
+        }
+        return;
+      case _VoiceSessionIdle() || _VoiceSessionRetryPending() || _VoiceSessionClosing() || _VoiceSessionDisposed():
         return;
     }
     if (_ownsGeneration(session: session, generation: generation)) {
       session._state = const _VoiceSessionIdle();
     }
+  }
+
+  Future<void> discard({required VoiceTranscriptionSession session}) async {
+    final state = session._state;
+    if (state is! _VoiceSessionRetryPending) return;
+
+    session._generation++;
+    await session._captureSession.deleteArtifact(artifact: state.artifact);
+    session._state = const _VoiceSessionIdle();
   }
 
   void invalidate({required VoiceTranscriptionSession session}) {
@@ -207,7 +296,16 @@ class VoiceTranscriptionService({
 
     session._generation++;
     _cancelMaxDurationTimer(session: session);
-    session._state = const _VoiceSessionClosing();
+    session._state = switch (state) {
+      _VoiceSessionInitialTranscribing(:final artifact) ||
+      _VoiceSessionRetryTranscribing(:final artifact) ||
+      _VoiceSessionRetryPending(:final artifact) => _VoiceSessionClosingWithArtifact(artifact: artifact),
+      _VoiceSessionIdle() ||
+      _VoiceSessionStarting() ||
+      _VoiceSessionRecording() ||
+      _VoiceSessionStopping() => const _VoiceSessionClosingWithoutArtifact(),
+      _VoiceSessionClosing() || _VoiceSessionDisposed() => throw StateError("Voice session already closing"),
+    };
   }
 
   Future<void> close({required VoiceTranscriptionSession session}) async {
@@ -252,6 +350,21 @@ class VoiceTranscriptionService({
       } catch (error, stackTrace) {
         logw("Voice recording cancellation settled with an error during disposal", error, stackTrace);
       }
+    }
+
+    final retainedArtifact = switch (session._state) {
+      _VoiceSessionClosingWithArtifact(:final artifact) => artifact,
+      _VoiceSessionClosingWithoutArtifact() || _VoiceSessionDisposed() => null,
+      _VoiceSessionIdle() ||
+      _VoiceSessionStarting() ||
+      _VoiceSessionRecording() ||
+      _VoiceSessionStopping() ||
+      _VoiceSessionInitialTranscribing() ||
+      _VoiceSessionRetryTranscribing() ||
+      _VoiceSessionRetryPending() => null,
+    };
+    if (retainedArtifact != null) {
+      await session._captureSession.deleteArtifact(artifact: retainedArtifact);
     }
 
     try {
@@ -317,10 +430,21 @@ final class const _VoiceSessionRecording() extends _VoiceSessionState;
 
 final class const _VoiceSessionStopping() extends _VoiceSessionState;
 
-final class const _VoiceSessionTranscribing({required final VoiceRecordingArtifact artifact})
+final class const _VoiceSessionInitialTranscribing({required final VoiceRecordingArtifact artifact})
     extends _VoiceSessionState;
 
-final class const _VoiceSessionClosing() extends _VoiceSessionState;
+final class const _VoiceSessionRetryPending({required final VoiceRecordingArtifact artifact})
+    extends _VoiceSessionState;
+
+final class const _VoiceSessionRetryTranscribing({required final VoiceRecordingArtifact artifact})
+    extends _VoiceSessionState;
+
+sealed class const _VoiceSessionClosing() extends _VoiceSessionState;
+
+final class const _VoiceSessionClosingWithoutArtifact() extends _VoiceSessionClosing;
+
+final class const _VoiceSessionClosingWithArtifact({required final VoiceRecordingArtifact artifact})
+    extends _VoiceSessionClosing;
 
 final class const _VoiceSessionDisposed() extends _VoiceSessionState;
 
@@ -333,11 +457,15 @@ sealed class const VoiceTranscriptionError._(final String message) implements Ex
 
   factory notAuthenticated() = NotAuthenticatedVoiceError._;
 
+  factory retryableServerError({required int statusCode}) = RetryableServerVoiceError._;
+
   factory serverError({required int statusCode}) = ServerVoiceError._;
 
   factory emptyTranscript() = EmptyTranscriptError._;
 
   factory networkError() = NetworkVoiceError._;
+
+  factory missingRecording() = MissingRecordingArtifactError._;
 
   factory cancelled() = TranscriptionCancelledError._;
 
@@ -362,6 +490,10 @@ final class const NotAuthenticatedVoiceError._() extends VoiceTranscriptionError
   this : super._("Not authenticated");
 }
 
+final class const RetryableServerVoiceError._({required final int statusCode}) extends VoiceTranscriptionError {
+  this : super._("Retryable server error ($statusCode)");
+}
+
 final class const ServerVoiceError._({required final int statusCode}) extends VoiceTranscriptionError {
   this : super._("Server error ($statusCode)");
 }
@@ -372,6 +504,10 @@ final class const EmptyTranscriptError._() extends VoiceTranscriptionError {
 
 final class const NetworkVoiceError._() extends VoiceTranscriptionError {
   this : super._("Network error");
+}
+
+final class const MissingRecordingArtifactError._() extends VoiceTranscriptionError {
+  this : super._("Saved recording is no longer available");
 }
 
 final class const TranscriptionCancelledError._() extends VoiceTranscriptionError {

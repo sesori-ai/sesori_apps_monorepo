@@ -5,10 +5,10 @@
 - **Plan slug:** `voice-transcription-retry`
 - **Apps base:** `origin/main` at `746e222c42`
 - **Auth Step 2:** PR [#77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8`
-- **Current branch:** `plan/voice-transcription-retry/s03-core-voice-lifecycle`
-- **Series state:** Steps 1–2 merged; Step 3 apps PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open and monitored
-- **Current step:** 3/5 ownership migration in review
-- **Next action:** monitor Step 3 while implementing Step 4 locally
+- **Current branch:** `plan/voice-transcription-retry/s04-retain-retry-async-recordings`
+- **Series state:** Steps 1–2 merged; Step 3 apps PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open and monitored; Step 4 implemented locally
+- **Current step:** 3/5 ownership migration in review, with 4/5 retained retry one step ahead locally
+- **Next action:** monitor Step 3 and complete Step 4 architecture review before its merge-forward/publication
 - **External merge barrier:** realtime apps PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), current head `b3083b7ad3`, must rebase onto merged Step 4 before it may merge
 
 ## Locked Product Decisions
@@ -62,8 +62,8 @@
 |---|---|---|---|---:|---|
 | [x] | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) merged as `bd7ad4bc` |
 | [x] | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | [PR #77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8` |
-| [ ] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-4,200 | [PR #1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open; 4,176 changed lines, architecture approved, eleven review findings addressed, final verification passing |
-| [ ] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 700-1,250 | Blocked on Step 3 |
+| [x] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-4,200 | [PR #1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) merged as `41f9ac9d`; 4,176 changed lines, architecture approved, eleven review findings addressed |
+| [ ] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 1,400-1,900 | Ready to publish at 1,878 changed lines; second architecture review approved and final verification passing |
 | [ ] | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Blocked on Step 4 and #918 rebase checkpoint |
 
 ## Step 1 Checklist
@@ -111,14 +111,15 @@
 
 ## Step 4 Checklist
 
-- [ ] Add typed generated auth failure metadata and repository true/false/omitted/malformed mapping.
-- [ ] Add retry-pending to the sealed service-session/Cubit lifecycle and exact artifact disposition.
-- [ ] Add localized Retry/discard/saved/terminal/missing-artifact composer presentation.
-- [ ] Preserve cancellation generations, wake lock, amplitude, max duration, draft spans, focus, and one completion event.
-- [ ] Prove voice-first/text-first behavior, old-server omission fallback, and manual-retry cancellation returning to retry-pending with the artifact retained.
-- [ ] Update `docs/regression/voice-input.md` in the same production PR; remove stale every-exit-deletes behavior.
-- [ ] Add no realtime dual-capture/retry behavior or unshipped realtime claims.
-- [ ] Run codegen/localization, focused/downstream tests, strict analysis, and architecture implementation review.
+- [x] Add typed generated auth failure metadata and repository true/false/omitted/malformed mapping.
+- [x] Add retry-pending to the sealed service-session/Cubit lifecycle and exact artifact disposition.
+- [x] Add localized Retry/discard/saved/terminal/missing-artifact composer presentation.
+- [x] Preserve cancellation generations, wake lock, amplitude, max duration, draft spans, focus, and one completion event.
+- [x] Prove voice-first/text-first behavior, old-server omission fallback, and manual-retry cancellation returning to retry-pending with the artifact retained.
+- [x] Update `docs/regression/voice-input.md` in the same production PR; remove stale every-exit-deletes behavior.
+- [x] Add no realtime dual-capture/retry behavior or unshipped realtime claims.
+- [x] Route valid send-time abandonment through Cubit → Service discard while refused submissions retain audio; document duplicate-work/quota risk.
+- [x] Complete the second/final architecture implementation review; approved with no findings after first-pass corrections.
 
 ## PR #918 Rebase Checkpoint
 
@@ -160,8 +161,8 @@
 - **Step 1 commits:** `620cb5c6c` (plan), tracker records, `c55a0846b` (review round 1), and `830ba2e8d` (review round 2)
 - **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), merged as `bd7ad4bc374d959309154d2a30697d698ec56970`
 - **Step 2 server verification:** PR #77 merged as `459d2663c8`; format/lint/build/circular-dependency checks pass, focused provider/policy suites pass, full Node suite passed 941 with one skipped before the route-level review follow-up, route/service follow-up passes 51/51, and architecture implementation review approved with no findings
-- **Step 3 ownership migration:** PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162), 4,176 changed lines; synchronized with apps `origin/main` at `746e222c42`; codegen and module_core/app strict analysis pass, along with 26 focused core tests, 17 platform/path tests, 86 composer tests, and 59 new-session/routing tests; architecture approved, then eleven PR review findings were addressed across typed causes, stop/cancel/disposal serialization, in-flight stop cancellation, post-start rollback, both conditional composer lifetimes, adapter-owned and time-bounded native prewarm/activity coordination, and concurrent path uniqueness
-- **Step 4 client retry verification:** pending
+- **Step 3 ownership migration:** PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) merged as `41f9ac9dcb`, 4,176 changed lines; synchronized with apps `origin/main` at `746e222c42`; codegen and module_core/app strict analysis pass, along with 26 focused core tests, 17 platform/path tests, 86 composer tests, and 59 new-session/routing tests; architecture approved, then eleven PR review findings were addressed across typed causes, stop/cancel/disposal serialization, in-flight stop cancellation, post-start rollback, both conditional composer lifetimes, adapter-owned and time-bounded native prewarm/activity coordination, and concurrent path uniqueness
+- **Step 4 client retry verification:** local candidate is 1,878 changed lines; module_core/app strict analysis, generated DTO/state/localization output, 37 focused API/repository/service/Cubit tests, 17 platform/path tests, 92 composer tests, and 59 affected new-session/routing tests pass; first architecture review rejected send-time abandonment/docs, both findings were fixed, and the second/final review approved with no findings
 - **Step 4 regression reconciliation:** pending with implementation
 - **Step 5 L4 evidence:** pending
 - **Final disposition:** active
