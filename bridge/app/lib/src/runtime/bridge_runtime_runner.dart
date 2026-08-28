@@ -58,7 +58,6 @@ import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
-import "../foundation/process_group_isolation.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
@@ -179,7 +178,6 @@ class const BridgeRuntimeRunner._() {
   static Future<int> run({
     required BridgeCliOptions options,
     required Map<String, PluginConfig> pluginConfigs,
-    required ProcessGroupIsolation processGroupIsolation,
   }) async {
     final startAbortController = StartAbortController();
     PluginRuntime? pluginRuntime;
@@ -364,12 +362,6 @@ class const BridgeRuntimeRunner._() {
     );
 
     try {
-      if (options.isSupervised) {
-        // The desktop force-stop path targets this group atomically, including
-        // backend processes forked after any earlier process-table observation.
-        processGroupIsolation.isolateCurrentProcess();
-      }
-
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.

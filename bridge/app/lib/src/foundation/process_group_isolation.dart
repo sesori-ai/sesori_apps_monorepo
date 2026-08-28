@@ -23,11 +23,12 @@ final class const ProcessGroupIsolationException({required final int errorCode})
 
 /// Establishes the supervised bridge as a POSIX process-group leader.
 ///
-/// Every normally spawned backend inherits this group, allowing the desktop
-/// owner to terminate the complete live group rather than relying on a racy
-/// process-table snapshot. Windows uses `taskkill /T` at the desktop boundary
-/// and therefore requires no helper-side setup. Standalone bridge runs never
-/// invoke this primitive.
+/// The supervised CLI invokes this before sleep prevention or any other
+/// long-lived child starts. Those children inherit the group, allowing the
+/// desktop owner to terminate the complete live group rather than relying on a
+/// racy process-table snapshot. Windows uses `taskkill /T` at the desktop
+/// boundary and therefore requires no helper-side setup. Standalone bridge runs
+/// never invoke this primitive.
 class ProcessGroupIsolation.forTesting({
   required final bool _isWindows,
   required final PosixProcessGroupSetter _setProcessGroup,

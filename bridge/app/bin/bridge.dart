@@ -172,6 +172,12 @@ class RunCommand() extends cli.Command<void> {
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
 
+    if (options.isSupervised) {
+      // Establish ownership before sleep prevention or any other long-lived
+      // child starts, so the desktop can terminate the complete live group.
+      ProcessGroupIsolation().isolateCurrentProcess();
+    }
+
     if (!options.isSupervised) {
       final banner = BridgeStartupBannerFormatter(
         out: stdout,
@@ -208,7 +214,6 @@ class RunCommand() extends cli.Command<void> {
     final exitCode = await BridgeRuntimeRunner.run(
       options: options,
       pluginConfigs: pluginConfigs,
-      processGroupIsolation: ProcessGroupIsolation(),
     );
     await sleepPreventionService.dispose();
     exit(exitCode);

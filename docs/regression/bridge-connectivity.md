@@ -43,7 +43,8 @@ explicit restart, and the connection states the app presents.
   exits 0 without unregistering, and cannot be reclassified as auth-required when
   teardown cancels an in-flight bootstrap token request.
 - The supervised bridge leads a dedicated POSIX process group before starting
-  backends; force-stop signals that complete live group atomically. Windows uses
+  sleep prevention or any other long-lived child; force-stop signals that
+  complete live group atomically. Windows uses
   `taskkill /T /F` for the equivalent descendant-tree guarantee.
 - Desktop supervision continuously drains both helper pipes with malformed-UTF-8
   tolerance, bounds partial lines and pending persistence, retains the latest 200
