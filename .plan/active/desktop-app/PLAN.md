@@ -136,7 +136,10 @@ client/desktop ──────────┼→ module_app_ui → module_cor
 ## Steps
 
 Sizes are soft-capped at 1,500 changed lines; steps 1, 14, 17, 18 record
-expected overages (mechanical deletions/moves) below.
+expected overages (mechanical deletions/moves) below. Any step that ships or
+materially changes user-facing behavior updates the directly affected
+`docs/regression/` feature document in the same PR; step 21 is final
+reconciliation only, never the first write.
 
 ### M1 — Supervision core (desktop-only; no mobile risk)
 
@@ -157,14 +160,20 @@ process API (spawn/kill/exit stream/stdout+stderr streams; non-positive-PID
 guard), Layer 2 `BridgeProcessRepository` — the **single Layer-2 boundary over
 the process API**: spawn, graceful-signal/kill, exit stream, raw stdio
 hand-off, the expected-exit marker, and the atomic expected-stop operation
-(mark + signal together). Services never call the process API directly
+(mark + graceful signal together, with a bounded grace deadline and a kill
+fallback that preserves the marker — a helper that hangs in teardown can
+never block Off/Quit or leave an orphan). Services never call the process API
+directly
 (mirrors the `AppUpdater → AppUpdateApi → AppUpdateRepository` precedent in
 this package's docs). Plus Layer 2
 `BridgeProcessLogTracker` (drains child pipes — an undrained pipe blocks the
 child — keeps a last-N ring buffer as snapshot/stream) over Layer 1
 `BridgeProcessLogStorage` (append + size-capped rotation under desktop-owned
-app data; a storage write failure is caught+logged by the tracker and never
-stops the drain). Pure Dart, fully unit-tested.
+app data; on POSIX the log directory is 0700 and files 0600, preserved across
+rotation/replacement — helper output carries paths/identifiers/errors,
+mirroring the bridge's data-directory hardening; a storage write failure is
+caught+logged by the tracker and never stops the drain). Pure Dart, fully
+unit-tested.
 
 **Step 3 — 🚧 `BridgeProcessService` (Layer 3): the channel comes alive.**
 Collaborators (all lower-layer): `BridgeProcessRepository` (all process
@@ -174,7 +183,10 @@ for authenticated-spawn gating (signed-out start → login-required state, no
 spawn). Starts the control server per spawn (fresh secret/port), spawns the
 bridge through the repository with `--control-url` + secret via stdin,
 attaches the log tracker, observes the repository's exit stream. Clean stop =
-the repository's atomic expected-stop. Bridge
+the repository's atomic expected-stop. The shell bootstrap resolves and starts
+the delivered `ControlMessageDispatcher` (the single long-lived inbound
+subscription to `ControlChannelServer.events`) before any spawn — without it
+the helper's first `token_request` goes unread. Bridge
 binary resolution for dev builds (explicit configured path with a
 repo-sensible default); bundled-layout resolution is distribution-plan scope.
 First real GUI↔helper handshake since the prior plan's wire verification.
@@ -186,7 +198,7 @@ other→bounded backoff → give-up surfacing recent log lines. A helper asked t
 restart that never exits is killed+respawned after a grace window (covers the
 known teardown-hang gap). Adds **`ControlCommandService`** (Layer 3): the
 single owner of GUI→helper sends (`prompt_response` here;
-`unregister_and_exit` in step 10) over `ControlChannelServer`, clearing
+`unregister_and_exit` in step 11) over `ControlChannelServer`, clearing
 answered prompts from `BridgePromptTracker` — cubits never touch the Layer-4
 dispatcher, and the dispatcher stays inbound-only. Includes hidden-boot render
 policy: contention during a silent autostart surfaces as state, never a modal.
@@ -234,7 +246,7 @@ crash give-up with recent log lines), open-logs affordance. Creates
 > respawn, no orphaned backend processes · terminal CLI coexistence
 > (single-live prompt behavior intact; CLI stays logged in).
 
-### M3 — Daily-driver hardening (desktop-only except step 11)
+### M3 — Daily-driver hardening (desktop-only except steps 10–11, which touch mobile-shared auth/core seams)
 
 **Step 8 — ⚙️ Autostart + hidden boot.** `LaunchAtLogin` adapter +
 registration with `--hidden`; hidden launch → tray-only, but hidden boot
@@ -250,7 +262,17 @@ the first; stale-lock recovery after a GUI crash. Layer-4
 `DesktopStartupOrchestrator` composes instance + process services to restore a
 last-on bridge behind the auth gate (no same-layer service deps).
 
-**Step 10 — ⚙️ Logout coordination + offline unregister fallback.** Add
+**Step 10 — 🚧 `module_auth` logout/rejection hardening (approved refactor
+R1).** A logout generation checked before any async persist/emit (kills the
+restore-after-logout re-save race), and `/auth/refresh` 4xx-rejection
+distinguished from transport failure (revoked sessions emit `unauthenticated`
+reactively; offline stays silent). Remove `AuthGateCubit`'s documented
+unconditional post-fence re-clear workaround. Mobile-shared: mobile login /
+refresh / logout regression is this step's test focus. Ordered **before** the
+logout orchestrator so step 11 can call `logoutCurrentDevice()` directly
+without re-creating the cubit's fence.
+
+**Step 11 — ⚙️ Logout coordination + offline unregister fallback.** Add
 `deleteBridge(id)` to `module_core` `BridgeApi`/`BridgeRepository`
 (`DELETE /auth/bridges/:bridgeId`; 404 = success) — mobile-shared, mobile
 stays green. **Establish GUI-side `bridgeId` persistence (C8):** a Layer-1
@@ -261,24 +283,19 @@ dead helper still knows what to delete. **`DesktopLogoutOrchestrator`**
 (Layer 4) composes `ControlCommandService` (`unregister_and_exit` send),
 `BridgeProcessService` (bounded wait → kill if needed), `BridgeRepository.
 deleteBridge` (dead/absent-helper fallback using the persisted id), and
-`AuthSession.logoutCurrentDevice()`. Every network step is best-effort with a
-bounded timeout; logout always completes offline, then clears local tokens
-only (never account-wide).
-
-**Step 11 — 🚧 `module_auth` logout/rejection hardening (approved refactor
-R1).** A logout generation checked before any async persist/emit (kills the
-restore-after-logout re-save race), and `/auth/refresh` 4xx-rejection
-distinguished from transport failure (revoked sessions emit `unauthenticated`
-reactively; offline stays silent). Remove `AuthGateCubit`'s documented
-unconditional post-fence re-clear workaround. Mobile-shared: mobile login /
-refresh / logout regression is this step's test focus.
+`AuthSession.logoutCurrentDevice()` (safe against late restores per step 10).
+Every network step is best-effort with a bounded timeout; logout always
+completes offline, then clears local tokens only (never account-wide).
 
 **Step 12 — ⚙️ Supervised E2E + harness retirement.** Automated integration:
 spawn a real (locally built) helper → handshake → token pull → helper
 authenticates against a fake relay → restart 86 → respawn → logout →
 unregister — deterministic in desktop CI (ephemeral ports, temp dirs,
-always-kill cleanup). Delete `bridge/app/tool/dev_control_host.dart` (the real
-GUI + this suite supersede it).
+always-kill cleanup). The desktop CI job builds the helper itself, and the
+`desktop-ci.yml` path filter gains the bridge control/protocol sources and
+build inputs it exercises — a bridge-only control regression must trigger
+this suite, not skip it. Delete `bridge/app/tool/dev_control_host.dart` (the
+real GUI + this suite supersede it).
 
 > **MT gate B — daily driver (user-run, after step 12).** macOS primary
 > (Windows/Linux dev-build smoke as machines allow): autostart reboot →
@@ -293,10 +310,11 @@ GUI + this suite supersede it).
 ### M4 — Cockpit
 
 **Step 13 — ⚙️ Desktop becomes a relay client.** Register the missing
-`module_core` prerequisites in the desktop shell (`RelayCryptoService`,
-no-op `FailureReporter` — a real reporter is a distribution-plan decision —
-and the route/notification seams as the resolved object graph actually
-requires); resolve `ConnectionService`; window shows truthful relay-client
+`module_core` prerequisites in the desktop shell (`RelayCryptoService`, a
+**log-backed** `FailureReporter` — recovered failures whose only record is
+`recordFailure` must stay observable in local logs; remote crash reporting
+remains a distribution-plan decision — and the route/notification seams as
+the resolved object graph actually requires); resolve `ConnectionService`; window shows truthful relay-client
 connection state alongside supervision status (control channel and relay
 client coexist; no second reconnect driver).
 
@@ -359,7 +377,9 @@ around the cockpit.
 
 ### Lifecycle closeout
 
-**Step 21 — 🌿 Regression documentation reconciliation.** Complete
+**Step 21 — 🌿 Regression documentation reconciliation.** Final pass over the
+per-step updates (each behavior-shipping step already updated its own docs):
+complete
 `docs/regression/desktop-bridge-supervision.md`; add desktop-client platform
 scope to the affected feature docs (expected: account-and-onboarding,
 plugin-setup-and-lifecycle, plugin-runtime-installation, projects-and-sessions,
@@ -402,7 +422,7 @@ essence); expected-exit marker (`BridgeProcessRepository` — distinguishes
 intended stops from crashes); log ring buffer + rotating file (crash
 diagnosis; pipe-drain necessity); single-instance lock + persisted
 autostart/last-on prefs (daily-driver behavior); GUI-persisted `bridgeId`
-copy (offline unregister, C8 — `BridgeIdStore` + tracker write, step 10);
+copy (offline unregister, C8 — `BridgeIdStore` + tracker write, step 11);
 `module_auth` logout generation (R1 — closes a real race). Deliberately
 **not** added: per-plugin control DTOs, a loopback data transport, a
 GUI-crash watchdog (C6 trade), a second reconnect driver, any token-push path
@@ -415,7 +435,7 @@ provisioning UI on the control channel, and any multi-bridge machinery.
 - Step 5: delete dead control protocol (`provisionProgress`, `restart`,
   `tokenUpdate`, `ControlProvisionNotifier`, mirror DTOs, bridge receiver
   paths, client dispatcher branches).
-- Step 11: delete `AuthGateCubit`'s post-fence re-clear workaround.
+- Step 10: delete `AuthGateCubit`'s post-fence re-clear workaround.
 - Step 12: delete `bridge/app/tool/dev_control_host.dart`.
 - Steps 14–19: moved code is deleted at origin in the same PR (no dual copies).
 

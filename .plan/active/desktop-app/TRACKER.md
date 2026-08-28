@@ -17,8 +17,8 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | — | MT gate A: first real GUI supervision (user-run) | pending |
 | 8 | ⚙️ Autostart + hidden boot | pending |
 | 9 | ⚙️ Single instance + last-state restore | pending |
-| 10 | ⚙️ Logout coordination + offline unregister fallback | pending |
-| 11 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
+| 10 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
+| 11 | ⚙️ Logout coordination + offline unregister fallback | pending |
 | 12 | ⚙️ Supervised E2E suite + dev-harness retirement | pending |
 | — | MT gate B: daily driver (user-run) | pending |
 | 13 | ⚙️ Desktop relay-client enablement | pending |

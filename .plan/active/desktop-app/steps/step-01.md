@@ -51,6 +51,14 @@ step, named `ControlCommandService`/`DesktopLogoutOrchestrator`, `tokenUpdate`
 deletion, `DesktopInstanceStorage` Layer 1, `module_prego` theme-assembly
 ownership) — all applied to PLAN.md before this PR.
 
+A Codex bot review round on the PR raised seven plan findings, all assessed
+valid and applied: 0700/0600 helper-log modes, dispatcher start ownership in
+step 3, grace→kill in the expected-stop operation, steps 10/11 swapped so the
+`module_auth` hardening precedes the logout orchestrator, bridge paths +
+helper build in the step-12 E2E CI gate, log-backed (not no-op) desktop
+`FailureReporter`, and per-step regression-doc updates with step 21 as
+reconciliation only.
+
 ## Verification
 
 `dart analyze app` in `bridge/` clean after the docstring edits. Docs-only
