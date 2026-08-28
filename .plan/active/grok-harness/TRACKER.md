@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-6/9 merged; Step 7/9 in PR #1179; Step 8/9 implemented locally
+- **Status:** Steps 1-7/9 merged; Step 8/9 verified and ready to publish
 - **Current branch:** `grok-harness-step-8-regression`
-- **Base:** `grok-harness-step-7-branding` (PR #1179)
+- **Base:** `origin/main` after merged PR #1179
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1177 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1177>
-- **Open PR:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
-- **Local successor:** `grok-harness-step-8-regression`; regression reconciliation under verification
+- **Merged predecessor:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
+- **Open PR:** none; Step 8 publication is next
+- **Local successor:** none; Step 9 starts after Step 8 publication
 
 ## Fixed Series
 
@@ -30,9 +30,9 @@
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
    - **State:** merged in #1177.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
-   - **State:** in PR #1179.
+   - **State:** merged in #1179.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
-   - **State:** implemented locally; held until #1179 merges.
+   - **State:** rebased onto merged #1179 and verified; ready to publish.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
    - **State:** not started.
 
@@ -146,9 +146,11 @@
 - [x] Keep `plugin-runtime-installation.md` unchanged because Grok has no managed install.
 - [x] Add no production code, transport/persistence shape, analytics, or unrelated historical-gap changes.
 - [x] Validate headings, tables, source paths, plan coverage, line width, and Git whitespace.
-- [x] Keep the measured Step 8 change below the 1,500-line soft cap (currently 218 lines).
+- [x] Keep the measured Step 8 change below the 1,500-line soft cap (currently 226 lines).
 - [x] Skip architecture review because this step changes regression documentation only.
 - [x] Commit the completed successor locally; do not publish before #1179 merges.
+- [x] Rebase onto merged #1179 and repeat focused documentation validation.
+- [ ] Publish Step 8 and start its PR monitor.
 
 ## Decisions And Evidence
 
