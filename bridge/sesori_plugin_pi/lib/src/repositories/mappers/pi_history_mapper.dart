@@ -141,9 +141,6 @@ final class PiHistoryMapper({
     required String? variant,
     required Set<_PiHistoryWarning> warnings,
   }) {
-    if (message.stopReason == PiAssistantStopReason.error && message.errorMessage != null) {
-      Log.w("[pi] assistant response failed", _PiAssistantFailureDiagnostic(detail: message.errorMessage!));
-    }
     final parts = <PluginMessagePart>[];
     for (var index = 0; index < message.content.length; index++) {
       switch (message.content[index]) {
@@ -776,11 +773,6 @@ final class _MappedToolResult({
 final class _ImageBudget() {
   int candidates = 0;
   int decodedBytes = 0;
-}
-
-final class const _PiAssistantFailureDiagnostic({required final String detail}) implements Exception {
-  @override
-  String toString() => "Pi assistant response failed: $detail";
 }
 
 enum _PiHistoryWarning(final String message) {
