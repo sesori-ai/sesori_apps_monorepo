@@ -156,6 +156,7 @@ class AcpEventMapper({
     _sessionProject.remove(sessionId);
     _sessionSnapshots.remove(sessionId);
     _turnSeq.remove(sessionId);
+    _turnMessageIds.remove(sessionId);
     _startedParts.remove(sessionId);
     _contentTrackers.remove(sessionId);
     _textPartAccumulators.remove(sessionId);
@@ -187,6 +188,11 @@ class AcpEventMapper({
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
 
+  /// Stable user-message identity for the current dispatched turn. Unlike the
+  /// process-local turn counter, this survives an agent or bridge restart via
+  /// the client's prompt id and cannot overwrite an earlier id-less reply.
+  final Map<String, String> _turnMessageIds = {};
+
   /// Per-session part ids whose envelope/part has already been emitted in the
   /// current turn. Scoped per session and pruned on [beginTurn] so it cannot
   /// grow without bound across a long-running session.
@@ -209,8 +215,15 @@ class AcpEventMapper({
 
   /// Advance the turn counter for [sessionId]. Call before `session/prompt`
   /// so the next batch of streamed chunks groups under a fresh message id.
-  void beginTurn(String sessionId) {
+  /// [messageId] is the accepted user-message identity and keeps fallback ACP
+  /// assistant ids unique when a new mapper starts for an existing session.
+  void beginTurn({required String sessionId, required String? messageId}) {
     _turnSeq[sessionId] = (_turnSeq[sessionId] ?? 0) + 1;
+    if (messageId == null) {
+      _turnMessageIds.remove(sessionId);
+    } else {
+      _turnMessageIds[sessionId] = messageId;
+    }
     // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
@@ -232,7 +245,7 @@ class AcpEventMapper({
     required String message,
   }) => BridgeSseMessageUpdated(
     info: shared.Message.error(
-      id: "$sessionId-t${_turn(sessionId)}-error",
+      id: "${_fallbackTurnMessageId(sessionId)}-error",
       sessionID: sessionId,
       agent: pluginId,
       modelID: modelForSession(sessionId: sessionId),
@@ -267,6 +280,9 @@ class AcpEventMapper({
   }
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
+
+  String _fallbackTurnMessageId(String sessionId) =>
+      _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
@@ -812,7 +828,7 @@ class AcpEventMapper({
     return (
       messageId: hasAcpMessageId
           ? "$sessionId-m$acpMessageId-${role.name}"
-          : "$sessionId-t${_turn(sessionId)}-${role.name}$fallbackSuffix",
+          : "${_fallbackTurnMessageId(sessionId)}-${role.name}$fallbackSuffix",
       hasAcpMessageId: hasAcpMessageId,
     );
   }
@@ -828,7 +844,7 @@ class AcpEventMapper({
     required String message,
     required PluginMessageTime? time,
   }) {
-    final messageId = "$sessionId-t${_turn(sessionId)}-halt";
+    final messageId = "${_fallbackTurnMessageId(sessionId)}-halt";
     final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
     if (!started.add(messageId)) return const [];
     // Any id-less assistant envelope opened earlier this turn is abandoned: the
@@ -997,7 +1013,7 @@ class AcpEventMapper({
   }
 
   String _currentIdlessAssistantMessageId(String sessionId) =>
-      "$sessionId-t${_turn(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
+      "${_fallbackTurnMessageId(sessionId)}-${_ChunkRole.assistant.name}-a${_idlessAssistantSeq[sessionId] ?? 0}";
 
   BridgeSseMessageUpdated _toolEnvelope({
     required String sessionId,

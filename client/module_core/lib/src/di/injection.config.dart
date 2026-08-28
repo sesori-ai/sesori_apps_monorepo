@@ -14,6 +14,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_auth/sesori_auth.dart' as _i442;
 import 'package:sesori_dart_core/src/api/analytics_api.dart' as _i727;
+import 'package:sesori_dart_core/src/api/analytics_release_cutoff_api.dart'
+    as _i649;
 import 'package:sesori_dart_core/src/api/attribution_api.dart' as _i556;
 import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/bridge_settings_api.dart' as _i415;
@@ -51,6 +53,8 @@ import 'package:sesori_dart_core/src/foundation/models/product_analytics/analyti
     as _i684;
 import 'package:sesori_dart_core/src/foundation/platform/analytics_client.dart'
     as _i791;
+import 'package:sesori_dart_core/src/foundation/platform/analytics_release_cutoff_source.dart'
+    as _i345;
 import 'package:sesori_dart_core/src/foundation/platform/attachment_thumbnail_storage.dart'
     as _i894;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
@@ -65,6 +69,8 @@ import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
 import 'package:sesori_dart_core/src/platform/route_source.dart' as _i366;
 import 'package:sesori_dart_core/src/platform/voice_capture.dart' as _i359;
+import 'package:sesori_dart_core/src/repositories/analytics_release_cutoff_repository.dart'
+    as _i672;
 import 'package:sesori_dart_core/src/repositories/analytics_repository.dart'
     as _i274;
 import 'package:sesori_dart_core/src/repositories/appearance_store.dart'
@@ -252,6 +258,11 @@ extension GetItInjectableX on _i174.GetIt {
         routeSource: gh<_i366.RouteSource>(),
       ),
     );
+    gh.lazySingleton<_i649.AnalyticsReleaseCutoffApi>(
+      () => _i649.AnalyticsReleaseCutoffApi(
+        source: gh<_i345.AnalyticsReleaseCutoffSource>(),
+      ),
+    );
     gh.lazySingleton<_i107.VoiceRepository>(
       () => _i107.VoiceRepository(
         api: gh<_i176.VoiceApi>(),
@@ -334,6 +345,11 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i458.NotificationPreferencesRepository>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i672.AnalyticsReleaseCutoffRepository>(
+      () => _i672.AnalyticsReleaseCutoffRepository(
+        api: gh<_i649.AnalyticsReleaseCutoffApi>(),
+      ),
     );
     gh.lazySingleton<_i101.ForegroundNotificationDispatcher>(
       () => _i101.ForegroundNotificationDispatcher(

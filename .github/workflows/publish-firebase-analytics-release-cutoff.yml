@@ -1,0 +1,75 @@
+name: Publish Firebase Analytics Release Cutoff
+
+# The store-production environment must define these variables for GitHub OIDC:
+# - FIREBASE_WORKLOAD_IDENTITY_PROVIDER
+# - FIREBASE_REMOTE_CONFIG_SERVICE_ACCOUNT
+# The service account needs Firebase Remote Config Admin for project sesori-ai.
+on:
+  workflow_call:
+    inputs:
+      build_number:
+        description: "Android build number successfully submitted to production"
+        type: string
+        required: true
+
+run-name: "analytics cutoff · build ${{ inputs.build_number }}"
+
+jobs:
+  publish:
+    name: Publish build ${{ inputs.build_number }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: store-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify the immutable build tag
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$BUILD_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::Build number must be a positive integer, got '$BUILD_NUMBER'"
+            exit 1
+          fi
+
+          git fetch --tags --force
+          internal_tag="$(git tag --list "v*-internal.${BUILD_NUMBER}" | head -1)"
+          legacy_tag="build-${BUILD_NUMBER}"
+          if [[ -n "$internal_tag" ]]; then
+            echo "Verified ${internal_tag}"
+          elif git rev-parse -q --verify "refs/tags/${legacy_tag}" >/dev/null; then
+            echo "Verified ${legacy_tag}"
+          else
+            echo "::error::No v*-internal.${BUILD_NUMBER} or ${legacy_tag} tag exists"
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.FIREBASE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.FIREBASE_REMOTE_CONFIG_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - name: Publish Remote Config cutoff
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          FIREBASE_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/publish_firebase_analytics_release_cutoff.py \
+            --project-id sesori-ai \
+            --build-number "$BUILD_NUMBER" | tee /tmp/analytics-cutoff-result.txt
+          {
+            echo "## Firebase Analytics release cutoff"
+            echo ""
+            echo "- **Build**: ${BUILD_NUMBER}"
+            echo "- **Result**: $(cat /tmp/analytics-cutoff-result.txt)"
+          } >> "$GITHUB_STEP_SUMMARY"

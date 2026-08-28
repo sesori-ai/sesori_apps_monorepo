@@ -96,6 +96,11 @@ child sessions with titles, activity, statuses, and unseen state.
   platform, releasing an ordinary pull while its refresh is pending keeps the
   pane content displaced and its Cupertino indicator visible, and reports the
   outcome when it settles.
+- At the end of either full-screen list, the final project or session row
+  scrolls above its floating creation button and the bottom safe area instead
+  of remaining obscured. Session-list clearance grows with accessibility text
+  scaling when its labelled action becomes taller. The wide split-view session
+  pane has no floating action and does not reserve that clearance.
 - A pull that crossed the deeper catalog-scan threshold runs no ordinary refresh
   at all: the scan reaches the same backend and settles into a list refresh of
   its own. It stops holding the content the moment that stage fires — including
@@ -245,6 +250,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
   pull indicator until the operation completes.
+- The final row in a full-screen project or session list remains behind its
+  floating creation button when scrolled to the end, or the wide pane gains an
+  unnecessary matching gap.
 - A pull that started a scan comes to rest an indicator's height below the top
   before collapsing, rather than settling to the top in one movement.
 - A scan offered for a harness the bridge will not import from, a pull
@@ -314,6 +322,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/app/test/core/widgets/catalog_scan_row_test.dart`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
+  `client/app/test/features/session_list/session_list_bar_test.dart`, and
   `client/app/test/features/session_list/session_list_panel_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`

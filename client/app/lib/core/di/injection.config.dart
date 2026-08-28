@@ -14,6 +14,7 @@ import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
 import 'package:firebase_core/firebase_core.dart' as _i982;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
 import 'package:firebase_messaging/firebase_messaging.dart' as _i892;
+import 'package:firebase_remote_config/firebase_remote_config.dart' as _i627;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
@@ -43,12 +44,16 @@ import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_a
     as _i178;
 import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart'
     as _i901;
+import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart'
+    as _i1005;
 import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart'
     as _i52;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
     as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
+import 'package:sesori_mobile/core/platform/firebase_analytics_release_cutoff_source.dart'
+    as _i425;
 import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
@@ -178,9 +183,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.enabledFirebaseCrashlytics,
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i627.FirebaseRemoteConfig>(
+      () => firebaseRegisterModule.enabledFirebaseRemoteConfig,
+      registerFor: {_firebaseEnabled},
+    );
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.enabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
+      () => _i1005.NoOpAnalyticsReleaseCutoffSource(),
+      registerFor: {_firebaseDisabled},
     );
     gh.lazySingleton<_i178.FirebaseMessagingStaticAdapter>(
       () => firebaseRegisterModule.disabledFirebaseMessagingStaticAdapter,
@@ -263,6 +276,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i902.DeepLinkService>(
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
+      () => _i425.FirebaseAnalyticsReleaseCutoffSource(
+        remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i681.SingularAttributionClient(

@@ -2,14 +2,14 @@
 
 ## Current State
 
-- **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-7/9 merged; Step 8/9 in PR #1181
-- **Current branch:** `grok-harness-step-8-regression`
-- **Base:** `origin/main` after merged PR #1179
+- **Plan:** `.plan/completed/grok-harness/PLAN.md`
+- **Status:** completed through Step 9/9 and retired on 2026-08-28; every required row passed without reduction
+- **Current branch:** `grok-harness-step-9-verify-retire`
+- **Base:** `origin/main` at `cb9baa91dd`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
-- **Open PR:** #1181 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1181>
-- **Local successor:** Step 9 starts after this tracker update is published
+- **Merged predecessor:** #1181 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1181>
+- **Open PR:** #1190 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1190>
+- **Next action:** review and merge the final retirement PR
 
 ## Fixed Series
 
@@ -32,9 +32,9 @@
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
    - **State:** merged in #1179.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
-   - **State:** in PR #1181.
+   - **State:** merged in #1181.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
-   - **State:** not started.
+   - **State:** verification and retirement complete in PR #1190.
 
 ## Step 1 Checklist
 
@@ -151,9 +151,43 @@
 - [x] Commit the completed successor locally; do not publish before #1179 merges.
 - [x] Rebase onto merged #1179 and repeat focused documentation validation.
 - [x] Publish Step 8 as PR #1181 and start its monitor.
+- [x] Merge Step 8 with all required checks passing.
+
+## Step 9 Checklist
+
+- [x] Rebase the final step onto merged #1181 and current `origin/main`.
+- [x] Run the required Git-scoped architecture review over Steps 2-7; approved with no findings.
+- [x] Run a final architecture review over the verification-discovered persisted-identity fix; approved with no
+  findings.
+- [x] Run the final package, app, shared, and client analyzer/test matrix.
+- [x] Exercise every required L1-L3 Grok row with an authenticated released CLI and iOS simulator client.
+- [x] Fix the live-discovered ACP restart identity and accepted-user ordering defect with deterministic regressions.
+- [x] Re-run the affected live restart flow and the complete automated matrix after rebasing onto current main.
+- [x] Record privacy-safe evidence, remove disposable state, release the local-testing slot, and retire the plan.
+- [x] Publish final PR #1190 and start its monitor.
+- [x] Address all #1190 review findings across named identity, prompt-write cancellation, and tool correlation.
 
 ## Decisions And Evidence
 
+- 2026-08-28: Authenticated restart testing exposed one shared ACP defect: process-local fallback turn counters reused
+  id-less assistant message IDs after a bridge restart, overwriting an earlier persisted answer. A second concrete race
+  allowed an agent update to publish before the accepted user message while the prompt frame was still flushing. The
+  fix anchors fallback IDs to the accepted prompt identity and gates agent updates plus attributable server requests
+  until the user and preceding tool state publish. Focused regressions, the complete ACP/downstream matrix, a live
+  post-restart turn, and the final architecture review all passed.
+- 2026-08-28: PR #1190 review correctly required `beginTurn`'s nullable identity to remain named and required, and
+  identified that the prompt-write gate covered notifications but not the approval registry's separate server-request
+  stream. Every caller now states its identity choice, and attributable requests flush after the accepted user and
+  buffered tool updates. Deterministic slow-flush regressions cover cross-stream ordering and retain sessionless
+  attribution when another session dispatches before the first frame finishes flushing.
+- 2026-08-28: Follow-up #1190 review found that abort could precede buffered-request registration and that heuristic
+  session stamping could override Cursor's exact top-level tool-call correlation. Aborted write buffers now register
+  then cancel their requests in one flush, and exact mapped or buffered tool ownership wins without injecting a
+  session. Focused regressions cover both flows with concurrent sessions.
+- 2026-08-28: The released Grok 1.0.5 client matrix passed without a scope reduction. The authoritative YOLO-disabled
+  runs exercised Once and Reject; the live requests advertised no Always action. Seven consecutive debug-only
+  unrecognised-frame messages appeared only in the abandoned non-authoritative global-config launch; all six later
+  isolated bridge runs recorded none and showed no protocol loss.
 - 2026-08-28: Repeated substantive feedback exposed an incomplete parser/selection invariant matrix. The PR was removed
   from readiness and the monitor paused while hostile wire, state-transition, and general-correctness audits ran.
 - 2026-08-28: The consolidated correction masks irrelevant envelope branches, preserves valid catalog siblings,
@@ -201,4 +235,115 @@ Step 9 must record:
 - privacy-safe live evidence, first divergent boundary for failures, and cleanup;
 - `Pass`, `Partial`, `Fail`, `Blocked`, or `Not run` for every matrix row.
 
-The plan stays active unless all required rows pass or the user explicitly accepts a named reduction in `PLAN.md`.
+All required rows passed without a named reduction, so the plan is retired.
+
+## Step 9 Final Evidence
+
+### Release Boundary
+
+- **Grok runtime:** stable `1.0.5` build `5115b46bc909` from the user-installed `grok` on PATH.
+- **Bridge host:** Apple silicon (`arm64`), macOS 26.6.2; live source bridge at `ed10b6f04a` on main
+  `9395494962`. The identical fix was then rebased onto main `cb9baa91dd` and the automated matrix reran.
+- **Client:** source debug build at `5efede9afc`; iPhone 17 simulator named `sesori-dev-2` on iOS 26.5. The intervening
+  commits were documentation or unrelated code; the final current-source client analyzers and Prego suite also passed.
+- **Account capability:** one locally authenticated credential-backed account exposed at least two selectable models
+  and three reasoning-effort values. No account or model identifier is recorded.
+- **Permission posture:** the authoritative runs used an isolated home with bridge YOLO mode disabled. The process
+  retained Grok's normal ask mode and the exact no-auto-update/no-leader launch policy.
+- **Privacy:** committed evidence records versions, bounded capability/count outcomes, statuses, and build identifiers
+  only. It contains no credentials, account/model identifiers, prompts, transcripts, private paths, or protocol frames.
+
+### Architecture Review
+
+- **Pass:** the required Git-scoped review of Steps 2-7 found no architecture issues and returned `OK`.
+- **Pass:** the final review of the verification-discovered persisted identity and event-ordering fix found no issues
+  in identity ownership, lifecycle cleanup, the generic ACP boundary, or compatibility and returned `OK`.
+
+### Automated Matrix
+
+| Scope | Commands | Result |
+|---|---|---|
+| Shared ACP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 275 tests |
+| Grok | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 52 tests |
+| Cursor | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 139 tests |
+| Copilot | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 13 tests |
+| DeepSeek | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 41 tests |
+| Hermes | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 39 tests |
+| OMP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 53 tests |
+| Bridge app | `dart analyze --fatal-infos`; two focused test files | Pass: no issues; 7 tests |
+| Shared contracts | `dart analyze`; `dart test` | Pass: no issues; 393 tests |
+| Client workspace | `dart pub get` | Pass |
+| Prego | `dart analyze --fatal-infos`; `flutter test` | Pass: no issues; 245 tests |
+| Mobile and desktop | `dart analyze --fatal-infos` in each shell | Pass: no issues |
+| Changed Dart files | Dart LSP diagnostics | Pass: zero diagnostics across nine files |
+
+The final matrix ran again after rebasing onto current main. The Cursor suite's intentional missing-file case logged its
+expected `PathNotFoundException` while all 138 tests passed. Dart format 3.1.12 still crashes on the enhanced-enum
+source shape in `acp_event_mapper.dart`; analyzer, focused tests, the full suites, LSP, and whitespace validation are
+the formatting/compile authorities for this file.
+
+### L3 Retirement Matrix
+
+- **Setup and lifecycle — Pass.** Deterministic probes covered missing, malformed, below-floor, PATH, and authoritative
+  explicit binaries. The client showed Grok available, enabled, branded, versioned, and without managed-install
+  controls. Live on-demand start, initialize-only refresh, child crash recovery, bridge restart, and owned shutdown all
+  completed.
+- **Projects and sessions — Pass.** Explicit live import scanned two projects and two sessions; unchanged and
+  post-delete scans added zero sessions. Ordinary listing/history reads used bridge state, and every imported row
+  retained `grok` attribution.
+- **Creation and options — Pass.** The client exposed the bounded multi-model/three-effort catalog, created sessions
+  with changed model/effort selections, and retained the exact selected tuple through cold load and restart. Automated
+  stale, refresh, default, and failed-write cases passed.
+- **Turns — Pass.** Text, reasoning, tools, status, idle completion, early/late stop, stop-and-send, visible process
+  failure, and two simultaneous sessions were exercised. A post-fix fast reply persisted after its accepted user
+  message.
+- **History and recovery — Pass.** An external session imported, replayed, continued, and grew to 57 messages; paging
+  crossed the 50-message first page. Cold reopen, process replacement, plugin restart, and bridge restart retained
+  content and exact option attribution. The live-discovered restart overwrite was fixed and reverified.
+- **Questions and permissions — Pass.** Real ask-mode execution requests appeared under the correct session/tool with
+  only the advertised `Once` and `Reject` actions and no `Always`. Reject produced a visible tool failure; Once
+  completed the exact tool. Later abort/process cleanup left no stale request, and deterministic ACP/Grok cleanup
+  coverage passed.
+- **Tools and file changes — Pass.** A live mutation produced the expected one-line content, completed tool card, and
+  file-change surface. Execution and mutation tools, running/done/failed states, cancellation, bounded output, and
+  replay identity were observed. The disposable file was removed.
+- **Archiving and deletion — Pass.** A Grok session archived from the list, remained readable, showed the permanent
+  read-only state, and exposed no composer. A separate running session deleted only after its long command was
+  cancelled; no child command survived. Its local row/history disappeared, one tombstone remained, the upstream
+  directory and prompt remained, and exhausted explicit imports before and after bridge restart scanned the catalog
+  while adding zero sessions.
+- **Compatibility and presentation — Pass.** The current client rendered the built-in name and official theme artwork.
+  Automated light/dark and unknown-ID fallback coverage passed; transport IDs remain strings and no wire field or
+  database migration was added.
+
+### First Divergent Boundary And Fix
+
+The real Grok transcript remained correct upstream, but after a bridge restart Sesori's `/session/messages` response
+showed a prior id-less assistant reply replaced by the next reply. The first divergent boundary was the shared ACP event
+mapper: fallback assistant IDs used a process-local turn counter that restarted at one. A second deterministic race
+showed an agent update could arrive while stdin flush was pending and publish before the synthetic accepted-user event.
+PR review extended that concrete race to a tool update followed by an attributable server request on the separate
+approval stream.
+
+`AcpEventMapper` now derives id-less assistant, halt, and error fallback IDs from the accepted prompt's stable user
+message ID. `AcpPlugin` gates session updates and server requests during the prompt-frame write, emits the accepted user
+first, flushes buffered updates before buffered requests, and drops both on stale state, dispatch failure, or teardown.
+An abort marks the writing buffer so its requests are registered and cancelled together; exact tool-call ownership is
+preserved instead of being replaced by active-turn attribution. Six regressions cover mapper replacement, the reply
+race, tool-before-permission ordering, retained sessionless attribution, abort settlement, and Cursor tool correlation.
+A live post-restart turn then appeared and persisted as user followed by a separate assistant reply. There is no schema
+or migration; the
+fix prevents future overwrite/reordering. The deliberately corrupted disposable test database was removed rather than
+treated as production data.
+
+### Cleanup
+
+- Stopped every source bridge and Grok child; port 9972 is free.
+- Shut down only the owned `sesori-dev-2` simulator and retained the device for later slot-2 reuse.
+- Removed the disposable workspace probe, temporary opaque-ID files, isolated Grok home, archive, and intentionally
+  corrupted slot database. Preserved only the slot's dev login token and bridge identity as directed by the testing
+  skill.
+- Left the real user Grok and Sesori configuration unchanged; authoritative permission evidence came only from the
+  isolated YOLO-disabled home.
+- Retained the Git worktree and branch, removed no source branch, and moved this passing plan to
+  `.plan/completed/grok-harness/`.

@@ -21,6 +21,25 @@ class const SessionListScaffold({
   required final VoidCallback onNewSession,
   required final VoidCallback? onBack,
 }) extends StatelessWidget {
+  static const double _newTaskButtonBaseClearance = 96;
+
+  /// The default reservation matches the project list's spacing. The xl
+  /// button's label stays on one line, but its line box grows under accessibility
+  /// text scaling, so add that growth without increasing the default gap.
+  static double _newTaskButtonClearance({required BuildContext context}) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final textStyle = context.prego.textTheme.textMd.bold;
+    final fontSize = textStyle.fontSize;
+    if (fontSize == null) return bottomInset + _newTaskButtonBaseClearance;
+
+    final heightMultiplier = textStyle.height ?? 1;
+    final unscaledLabelHeight = fontSize * heightMultiplier;
+    final scaledLabelHeight = MediaQuery.textScalerOf(context).scale(fontSize) * heightMultiplier;
+    final labelGrowth = scaledLabelHeight > unscaledLabelHeight ? scaledLabelHeight - unscaledLabelHeight : 0.0;
+
+    return bottomInset + _newTaskButtonBaseClearance + labelGrowth;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -85,6 +104,11 @@ class const SessionListScaffold({
           onSessionTap: onSessionTap,
           sessionMenuEntries: sessionMenuEntries,
         ),
+        if (state is SessionListLoaded && state.sessions.isNotEmpty)
+          // Clear the floating new-task button and the home indicator.
+          SliverToBoxAdapter(
+            child: SizedBox(height: _newTaskButtonClearance(context: context)),
+          ),
       ],
     );
   }

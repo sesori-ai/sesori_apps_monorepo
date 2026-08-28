@@ -34,6 +34,9 @@ signal that a tool changed files.
   identity, bounded presenter output, terminal result/error state, and diff
   content. Presenter failure degrades to a generic bounded tool card instead of
   dropping the call or result.
+- Cursor's fire-and-forget tool extensions preserve their top-level tool-call
+  correlation before falling back to the active turn, including while another
+  session is in flight.
 - GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
   must be exact while the request is live. Call identity, bounded output,
   terminal state, and diff content then converge after `session/load`; permission
@@ -76,6 +79,8 @@ one permission-gated mutation and one repeated terminal update.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
+- A Cursor tool extension with an originating call ID is attributed to a
+  different concurrently active session.
 - A Copilot tool loses permission correlation while live, or its call identity,
   terminal status, bounded output, or diff changes when reopened through ACP
   history.

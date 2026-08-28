@@ -78,6 +78,7 @@ dependencies:
   firebase_analytics: ^12.4.6
   firebase_crashlytics: ^5.2.7
   firebase_messaging: ^16.5.0
+  firebase_remote_config: ^6.5.6
   singular_flutter_sdk: ^1.9.0
   flutter_local_notifications: ^22.3.0
   flutter_svg: ^2.3.0

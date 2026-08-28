@@ -33,6 +33,7 @@ export "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthProvid
 
 // API
 export "src/api/analytics_api.dart";
+export "src/api/analytics_release_cutoff_api.dart";
 export "src/api/attribution_api.dart";
 export "src/api/bridge_settings_api.dart";
 export "src/api/client/relay_http_client.dart";
@@ -111,6 +112,7 @@ export "src/foundation/models/product_analytics/installation_analytics_event.dar
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
 export "src/foundation/platform/analytics_client.dart";
+export "src/foundation/platform/analytics_release_cutoff_source.dart";
 export "src/foundation/platform/attachment_thumbnail_storage.dart";
 export "src/foundation/platform/attribution_client.dart";
 export "src/foundation/platform/image_clipboard.dart";
@@ -131,6 +133,7 @@ export "src/platform/route_dispatcher.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
 export "src/platform/voice_capture.dart";
+export "src/repositories/analytics_release_cutoff_repository.dart";
 export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/attribution_repository.dart";
@@ -139,6 +142,7 @@ export "src/repositories/chat_input_mode_store.dart";
 export "src/repositories/composer_draft_repository.dart";
 export "src/repositories/legal_repository.dart";
 export "src/repositories/message_image_repository.dart";
+export "src/repositories/models/analytics_release_cutoff.dart";
 export "src/repositories/models/bridge_settings_result.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/repo_provider.dart";
