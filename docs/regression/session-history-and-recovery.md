@@ -31,13 +31,18 @@ reconnect or restart.
   before the next prompt without duplicating replay into the live stream. Sesori
   uses the public protocol and never reads Copilot credential or history files.
 - Messages visible live but absent from the backend's replay remain visible
-  after a stale re-read. They rejoin at their recorded creation time while
-  preserving relative order, so a catalog re-import cannot move old rows to the
-  newest edge. A message a backend replay once contained is the opposite case:
-  its later absence is a removal, so a re-read drops it. That is how a session
-  rolled back outside Sesori — an edited message in the backend's own client,
-  with no removal events reaching this bridge — stops showing the messages it
-  replaced.
+  after a stale re-read unless replay contains the same normalized message in
+  the same nearest-distinct visible-message context under a different identity. In that
+  case, replay replaces the live row up to replay's multiplicity; equal content
+  in another ordered context and additional repeated occurrences remain. The
+  comparison ignores identity, time, and agent/model attribution, normalizes
+  spilled attachments, and keeps replay metadata authoritative. Other retained
+  rows rejoin at their recorded creation time while preserving relative order,
+  so a catalog re-import cannot move old rows to the newest edge. A message a
+  backend replay once contained is the opposite case: its later absence is a
+  removal, so a re-read drops it. That is how a session rolled back outside
+  Sesori — an edited message in the backend's own client, with no removal events
+  reaching this bridge — stops showing the messages it replaced.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -89,7 +94,7 @@ reconnect or restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot additionally replaces its ACP process, reloads the same session, and converges standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -115,9 +120,11 @@ image parts converge by their own rules.
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
-- A stale re-read moves an older retained message to the newest edge, or keeps
-  showing a message the backend removed — a rolled-back turn reappearing above
-  the edited one that replaced it.
+- A stale re-read moves an older retained message to the newest edge, keeps a
+  second copy of one visible message solely because replay changed its identity,
+  collapses equal content from a different ordered context or beyond replay's
+  multiplicity, or keeps showing a message the backend removed — a rolled-back
+  turn reappearing above the edited one that replaced it.
 - A released database row or audit file is rejected because a known message-part
   payload omitted variant-specific data, or a decoded known variant still carries
   null variant data.
