@@ -111,6 +111,7 @@ class GrokPlugin._({
     required PluginSessionVariant? variant,
     required String? agent,
   }) async => _grokSessionOptionsService.validateTurnSelection(
+    operation: operation,
     model: model,
     variant: variant,
     agent: agent,

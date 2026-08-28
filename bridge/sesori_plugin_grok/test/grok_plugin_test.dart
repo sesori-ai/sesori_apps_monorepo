@@ -497,7 +497,13 @@ void main() {
             agent: selection.agent,
             model: selection.model,
           ),
-          throwsA(isA<PluginStaleOptionsException>()),
+          throwsA(
+            isA<PluginStaleOptionsException>().having(
+              (error) => error.operation,
+              "operation",
+              "sendPrompt",
+            ),
+          ),
         );
       }
       expect(fake.written.where((frame) => frame["method"] == GrokAcpApi.sessionSetModelMethod), isEmpty);

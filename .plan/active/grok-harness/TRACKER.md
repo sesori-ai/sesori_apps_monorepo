@@ -86,7 +86,7 @@
 - [x] Materialize replay with one complete selection tuple; expose no externally mutable collector selection fields.
 - [x] Remove redundant Grok cleanup/command overrides; the shared tracker and command path remain authoritative.
 - [x] Run 270 ACP, 42 Grok, and 41 DeepSeek tests plus affected-package analyzers, LSP, and whitespace checks.
-- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,135 lines).
+- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,143 lines).
 - [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
 - [x] Complete the post-rebase general correctness review; final verdict approved.
 - [x] Publish Step 4 as PR #1169 after #1160's merge and start its PR monitor.

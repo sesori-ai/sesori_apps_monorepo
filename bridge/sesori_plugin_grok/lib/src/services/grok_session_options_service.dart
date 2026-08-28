@@ -81,27 +81,28 @@ class GrokSessionOptionsService({
   }
 
   void validateTurnSelection({
+    required String operation,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
   }) {
     if (agent != null && agent.isNotEmpty && agent != _pluginId) {
-      throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+      throw PluginStaleOptionsException(
+        operation,
         message: "Grok no longer offers the requested agent",
       );
     }
     if (model != null && model.providerID != _pluginId) {
-      throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+      throw PluginStaleOptionsException(
+        operation,
         message: "Grok no longer offers the requested provider",
       );
     }
     final catalog = _catalogTracker.snapshot;
     final requestedModel = model == null ? null : catalog?.modelById(id: model.modelID);
     if (model != null && requestedModel == null) {
-      throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+      throw PluginStaleOptionsException(
+        operation,
         message: "Grok no longer offers the requested model",
       );
     }
@@ -115,8 +116,8 @@ class GrokSessionOptionsService({
         requestedModel?.reasoningEfforts.contains(effort) ??
         (model == null && (catalog?.models.any((candidate) => candidate.reasoningEfforts.contains(effort)) ?? false));
     if (!offersEffort) {
-      throw const PluginStaleOptionsException(
-        GrokSessionConfigRepository.selectionOperation,
+      throw PluginStaleOptionsException(
+        operation,
         message: "Grok no longer offers the requested reasoning effort",
       );
     }
