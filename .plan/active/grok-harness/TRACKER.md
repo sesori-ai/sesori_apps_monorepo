@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-6/9 merged; Step 7/9 in PR #1179
-- **Current branch:** `grok-harness-step-7-branding`
-- **Base:** `origin/main` after merged PR #1177
+- **Status:** Steps 1-6/9 merged; Step 7/9 in PR #1179; Step 8/9 implemented locally
+- **Current branch:** `grok-harness-step-8-regression`
+- **Base:** `grok-harness-step-7-branding` (PR #1179)
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1177 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1177>
 - **Open PR:** #1179 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1179>
-- **Local successor:** Step 8 starts after this tracker update is published
+- **Local successor:** `grok-harness-step-8-regression`; regression reconciliation under verification
 
 ## Fixed Series
 
@@ -32,7 +32,7 @@
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
    - **State:** in PR #1179.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
-   - **State:** not started.
+   - **State:** implemented locally; held until #1179 merges.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
    - **State:** not started.
 
@@ -135,6 +135,20 @@
 - [x] Commit the completed successor locally; do not publish before #1177 merges.
 - [x] Rebase onto merged #1177 and repeat focused verification.
 - [x] Publish Step 7 as PR #1179 and start its monitor.
+
+## Step 8 Checklist
+
+- [x] Reconcile all eight affected regression contracts named by the plan.
+- [x] Record Grok setup, branding, import, exact options, turns, replay, permissions, tools, archive, and deletion.
+- [x] Extend each affected level matrix through the complete authoritative Grok boundary without duplicating behavior.
+- [x] Add Grok-specific exploration, material failure signals, honest limitations, and owning source paths.
+- [x] Keep `attachments-and-images.md` unchanged because Grok advertises no image capability.
+- [x] Keep `plugin-runtime-installation.md` unchanged because Grok has no managed install.
+- [x] Add no production code, transport/persistence shape, analytics, or unrelated historical-gap changes.
+- [x] Validate headings, tables, source paths, plan coverage, line width, and Git whitespace.
+- [x] Keep the measured Step 8 change below the 1,500-line soft cap (currently 218 lines).
+- [x] Skip architecture review because this step changes regression documentation only.
+- [x] Commit the completed successor locally; do not publish before #1179 merges.
 
 ## Decisions And Evidence
 

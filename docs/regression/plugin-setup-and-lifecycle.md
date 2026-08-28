@@ -76,8 +76,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   NousResearch logo, Pi as `Pi` with its official glyph, and Oh My Pi as `Oh My Pi`
   with its official icon. DeepSeek renders as `DeepSeek` with its official
   theme-independent brand-blue whale mark. GitHub Copilot renders with its
-  Primer interface icon in black or white for the active theme. Surfaces without
-  recognized metadata retain the generic icon and raw-id fallback.
+  Primer interface icon in black or white for the active theme. Grok renders as
+  `Grok Build` with xAI's dark mark on light UI and light mark on dark UI.
+  Surfaces without recognized metadata retain the generic icon and raw-id
+  fallback.
 - Harnesses start on demand unless eager; a transient one may suspend after a confirmed
   idle window and a resident one never does, and idle timeouts survive restart. With no
   configured default or per-harness override, every harness uses the bridge's 45-minute
@@ -157,9 +159,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
-| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Client end to end; every harness declaring the relevant capability must pass. |
+| L3 Release | The management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
-| L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` as an unknown raw-id/generic-icon harness without decode failure, while an older bridge simply supplies no Copilot entry to a newer client. Live plugin and client end to end as each entry requires. |
+| L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
 
@@ -172,7 +174,8 @@ timeouts, and sessions afterwards. For Copilot, vary missing, malformed, too-old
 compatible PATH, managed, and explicit runtimes; authenticated and unauthenticated
 normal configuration; owned-process exit; and bridge restart. For Grok, vary
 missing, malformed, too-old, current PATH, and authoritative explicit binaries;
-headless and interactive-only authentication; owned-process exit; and restart.
+headless and interactive-only authentication; catalog refresh; enable/disable;
+owned-process exit; and restart.
 
 ## Failure Signals
 
@@ -214,6 +217,8 @@ headless and interactive-only authentication; owned-process exit; and restart.
   an explicit path to PATH, performs login or ACP work during inspection, offers
   managed installation, launches with leader/auto-update attachment enabled, or
   leaves another harness unavailable after Grok exits.
+- A recognized Grok entry renders the raw ID or generic icon, swaps its supplied
+  light/dark marks, or an unknown plugin ID stops using the generic fallback.
 
 ## Known Limitations
 
@@ -223,7 +228,10 @@ headless and interactive-only authentication; owned-process exit; and restart.
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
-  disable leaves work interrupted. Copilot exposes local recovery guidance only;
+  disable leaves work interrupted. Grok installation, updates, interactive login,
+  API-key, enterprise, and custom-model configuration remain local and out of
+  band; readiness proves only the CLI version, not service entitlement. Copilot
+  exposes local recovery guidance only;
   Sesori neither implements its terminal-auth flow nor reads its credential store.
   Copilot CLI is an upstream public preview and still requires eligible GitHub
   Copilot access; entitlement and service availability are not install success.
@@ -250,6 +258,7 @@ headless and interactive-only authentication; owned-process exit; and restart.
 - `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_grok/lib/src/grok_plugin_impl.dart` and `grok_plugin_test.dart`
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
-- `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, and the
-  harness settings screen
+- `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, the
+  Grok marks and `client/module_prego/BRAND_ASSETS.md`, and the harness settings
+  screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites
