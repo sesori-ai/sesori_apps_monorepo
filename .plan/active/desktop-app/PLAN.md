@@ -300,6 +300,8 @@ coordination) — bridge on/off, status (relay /
 registration / plugin health / session count / takeover / login-required /
 crash give-up with recent log lines), open-logs affordance. Creates
 `docs/regression/desktop-bridge-supervision.md`.
+*Overage: ~1.7k changed lines after review-driven logout serialization,
+close-request preservation, empty-log preparation, and focused coverage.*
 
 > **MT gate A — first real GUI supervision (user-run, after step 7).** Dev
 > build on macOS: browser login (interstitial names the desktop device;

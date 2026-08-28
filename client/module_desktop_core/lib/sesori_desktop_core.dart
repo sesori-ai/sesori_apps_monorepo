@@ -32,3 +32,4 @@ export "src/trackers/bridge_control_status.dart";
 export "src/trackers/bridge_process_log_tracker.dart";
 export "src/trackers/bridge_prompt_tracker.dart";
 export "src/trackers/bridge_status_tracker.dart";
+export "src/trackers/desktop_logout_tracker.dart";

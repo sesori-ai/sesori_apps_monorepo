@@ -20,6 +20,20 @@ void main() {
       }
     });
 
+    test("prepares an empty active log before any helper output exists", () async {
+      final BridgeProcessLogStorage storage = BridgeProcessLogStorage.forTesting(
+        applicationSupportDirectory: applicationSupportDirectory,
+        maxFileBytes: 12,
+        isWindows: true,
+        setPermissions: _noOpPermissionSetter,
+      );
+
+      final File current = File(await storage.logFilePath);
+
+      expect(current.existsSync(), isTrue);
+      expect(current.readAsStringSync(), isEmpty);
+    });
+
     test("appends under desktop app data and rotates before the size cap", () async {
       final BridgeProcessLogStorage storage = BridgeProcessLogStorage.forTesting(
         applicationSupportDirectory: applicationSupportDirectory,

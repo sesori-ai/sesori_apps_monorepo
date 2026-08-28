@@ -12,6 +12,7 @@ import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
+import "../../trackers/desktop_logout_tracker.dart";
 import "bridge_control_state.dart";
 
 /// Layer-4 owner of desktop bridge tray/window controls and lifecycle commands.
@@ -27,6 +28,7 @@ class BridgeControlCubit._create({
   required final WindowHost _windowHost,
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
+  required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
 }) extends Cubit<BridgeControlState> {
   new({
@@ -36,6 +38,7 @@ class BridgeControlCubit._create({
     required WindowHost windowHost,
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
+    required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
   }) : this._create(
          processService: processService,
@@ -44,6 +47,7 @@ class BridgeControlCubit._create({
          windowHost: windowHost,
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
+         logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
        );
 
@@ -55,9 +59,13 @@ class BridgeControlCubit._create({
             processState: _processService.state,
             desiredState: _processService.desiredState,
             status: _statusTracker.status,
-            activity: BridgeControlActivity.idle,
+            activity: _logoutTracker.status.locksBridgeControls
+                ? BridgeControlActivity.signingOut
+                : BridgeControlActivity.idle,
           ),
-          activity: BridgeControlActivity.idle,
+          activity: _logoutTracker.status.locksBridgeControls
+              ? BridgeControlActivity.signingOut
+              : BridgeControlActivity.idle,
           statusLabel: _statusLabel(processState: _processService.state, status: _statusTracker.status),
           processState: _processService.state,
           desiredState: _processService.desiredState,
@@ -73,8 +81,11 @@ class BridgeControlCubit._create({
   StreamSubscription<BridgeControlStatus>? _statusSubscription;
   StreamSubscription<SystemTrayCommand>? _commandSubscription;
   StreamSubscription<WindowHostEvent>? _windowSubscription;
+  StreamSubscription<DesktopLogoutStatus>? _logoutSubscription;
   SystemTrayAvailability _trayAvailability = SystemTrayAvailability.initializing;
   BridgeControlActivity _activity = BridgeControlActivity.idle;
+  DesktopLogoutStatus _logoutStatus = DesktopLogoutStatus.idle;
+  bool _quitAfterActivity = false;
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -86,6 +97,7 @@ class BridgeControlCubit._create({
     _statusSubscription = _statusTracker.statusStream.listen((_) => _rebuildMenu());
     _commandSubscription = _systemTray.commands.listen((command) => _onCommand(command: command));
     _windowSubscription = _windowHost.events.listen((event) => _onWindowEvent(event: event));
+    _logoutSubscription = _logoutTracker.statuses.listen(_onLogoutStatus);
 
     final SystemTrayAvailability availability;
     try {
@@ -117,11 +129,11 @@ class BridgeControlCubit._create({
       case SystemTrayCommand.openWindow:
         unawaited(showWindow());
       case SystemTrayCommand.toggleBridge:
-        if (!_activity.locksCommands) {
+        if (!_controlsLocked) {
           unawaited(toggleBridge());
         }
       case SystemTrayCommand.quit:
-        if (!_activity.locksCommands) {
+        if (!_controlsLocked) {
           unawaited(quit());
         }
     }
@@ -130,18 +142,45 @@ class BridgeControlCubit._create({
   void _onWindowEvent({required WindowHostEvent event}) {
     switch (event) {
       case WindowHostEvent.closeRequested:
-        if (_activity.locksCommands) {
-          return;
-        }
         if (_trayAvailability.isAvailable) {
           unawaited(hideWindow());
-        } else {
-          unawaited(quit());
+          return;
+        }
+        if (_logoutStatus.locksBridgeControls) {
+          _quitAfterActivity = true;
+          return;
+        }
+        switch (_activity) {
+          case BridgeControlActivity.idle:
+            unawaited(quit());
+          case BridgeControlActivity.toggling:
+            _quitAfterActivity = true;
+          case BridgeControlActivity.signingOut:
+            _quitAfterActivity = true;
+          case BridgeControlActivity.quitting:
+            return;
         }
     }
   }
 
+  void _onLogoutStatus(DesktopLogoutStatus status) {
+    _logoutStatus = status;
+    _rebuildMenu();
+    if (!status.locksBridgeControls && _activity == BridgeControlActivity.idle && _quitAfterActivity) {
+      _quitAfterActivity = false;
+      _onWindowEvent(event: WindowHostEvent.closeRequested);
+    }
+  }
+
+  bool get _controlsLocked => _activity.locksCommands || _logoutTracker.status.locksBridgeControls;
+
+  BridgeControlActivity get _presentationActivity =>
+      _logoutStatus.locksBridgeControls ? BridgeControlActivity.signingOut : _activity;
+
   Future<void> toggleBridge() async {
+    if (_controlsLocked) {
+      return;
+    }
     _activity = BridgeControlActivity.toggling;
     _rebuildMenu();
     try {
@@ -160,6 +199,10 @@ class BridgeControlCubit._create({
       if (!isClosed) {
         _activity = BridgeControlActivity.idle;
         _rebuildMenu();
+        if (_quitAfterActivity) {
+          _quitAfterActivity = false;
+          _onWindowEvent(event: WindowHostEvent.closeRequested);
+        }
       }
     }
   }
@@ -193,6 +236,9 @@ class BridgeControlCubit._create({
   }
 
   Future<void> quit() async {
+    if (_controlsLocked) {
+      return;
+    }
     _activity = BridgeControlActivity.quitting;
     _rebuildMenu();
     try {
@@ -226,17 +272,18 @@ class BridgeControlCubit._create({
     final BridgeProcessState processState = _processService.state;
     final BridgeProcessDesiredState desiredState = _processService.desiredState;
     final BridgeControlStatus controlStatus = _statusTracker.status;
+    final BridgeControlActivity activity = _presentationActivity;
     final SystemTrayMenu menu = _buildMenu(
       processState: processState,
       desiredState: desiredState,
       status: controlStatus,
-      activity: _activity,
+      activity: activity,
     );
     emit(
       BridgeControlState(
         trayAvailability: _trayAvailability,
         menu: menu,
-        activity: _activity,
+        activity: activity,
         statusLabel: _statusLabel(processState: processState, status: controlStatus),
         processState: processState,
         desiredState: desiredState,
@@ -337,6 +384,7 @@ class BridgeControlCubit._create({
 
   @override
   Future<void> close() async {
+    await _logoutSubscription?.cancel();
     await _windowSubscription?.cancel();
     await _commandSubscription?.cancel();
     await _statusSubscription?.cancel();

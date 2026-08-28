@@ -26,6 +26,7 @@ class const SesoriDesktopApp({super.key}) extends StatelessWidget {
           windowHost: getIt(),
           applicationTerminator: getIt(),
           logRepository: getIt(),
+          logoutTracker: getIt(),
           urlLauncher: getIt(),
         );
         unawaited(cubit.initialize());

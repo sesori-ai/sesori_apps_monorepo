@@ -6,6 +6,7 @@ import "../../trackers/bridge_control_status.dart";
 enum BridgeControlActivity({required final bool locksCommands}) {
   idle(locksCommands: false),
   toggling(locksCommands: true),
+  signingOut(locksCommands: true),
   quitting(locksCommands: true),
 }
 

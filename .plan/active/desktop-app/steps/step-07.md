@@ -8,17 +8,19 @@ Date: 2026-08-28.
   adapter. Native initialization runs before `runApp`, installs close
   interception, sizes/centers the visible window, and emits typed close events.
 - Extended `BridgeControlCubit` as the shared tray/window owner: tray Open
-  restores and focuses the window; close hides only with a proven tray host;
-  no-tray close uses the same expected-stop-before-exit path as tray Quit.
+  restores and focuses the window; close hides immediately with a proven tray,
+  while no-tray close defers safe Quit until lifecycle work settles.
 - Exposed one reactive window state for process, desired/toggle action,
   control/registration/relay/plugin/session status, and crash give-up output.
   Failed starts and stops remain directly retryable from both surfaces.
 - Added a Layer-2 log-resource repository and Open Logs action through the
-  existing platform `UrlLauncher`; the shell never reads Layer-1 storage.
+  existing platform `UrlLauncher`; Layer-1 prepares the empty owner-only file
+  even before first helper output, and the shell never reads storage directly.
 - Added `DesktopLogoutOrchestrator` as the named Layer-4 cross-service owner.
-  It expected-stops the helper before local token clearing and refuses logout
-  when stop fails. `AuthGateCubit` delegates while retaining its temporary
-  in-flight-restore fence until step 10 hardens auth generations.
+  It marks a Layer-2 logout tracker so all lifecycle surfaces stay locked from
+  expected stop through local token clearing, shares concurrent logout calls,
+  and refuses logout when stop fails. `AuthGateCubit` delegates while retaining
+  its temporary in-flight-restore fence until step 10 hardens auth generations.
 - Added Prego-owned light/dark `ThemeData` assembly and adopted it in desktop.
 - Replaced the signed-in placeholder with account, On/Off, detailed status,
   active sessions, recent crash output, Open Logs, and coordinated sign-out.
@@ -31,23 +33,25 @@ desktop supervision window and safe tray-first close/open behavior.
 
 ## Architecture implementation review
 
-Approved 2026-08-28 with B-Client applied and no findings. The review confirmed
-WindowHost/platform-interface direction, pre-render native initialization,
-BridgeControlCubit cohesion, Layer-2 log mapping, Layer-4 logout ownership,
-Prego theme ownership, shell-only rendering, and dumb adapter boundaries.
+Approved twice on 2026-08-28 with B-Client applied and no findings. The final
+review confirmed the review-driven Layer-2 logout tracker is the correct seam
+between independent Layer-4 owners, while close deferral stays in the cubit and
+empty-log preparation stays Layer 1. The initial review also confirmed window,
+theme, shell-rendering, DI, and dumb-adapter boundaries.
 
 ## Verification
 
-- `client/module_desktop_core`: analysis clean; all 125 tests passed.
+- `client/module_desktop_core`: analysis clean; all 130 tests passed.
 - `client/module_prego`: analysis clean; all 247 tests passed.
 - `client/desktop`: analysis clean; all 32 tests passed.
 - `client/app`: downstream analysis clean after the shared Prego addition.
 - Desktop-core and desktop Injectable output regenerated; Flutter platform
   registration and workspace lock regenerated with Dart 3.13.2.
 - macOS debug application build passed with `window_manager` integration.
-- Dart LSP: 0 diagnostics across 26 affected non-generated Dart files.
+- Dart LSP: 0 diagnostics across 26 initial and 9 feedback-affected Dart files.
 - `git diff --check` — clean.
-- Change size: 1,443 text changed lines, under the 1,500-line soft cap.
+- Change size: about 1.7k text changed lines; the review-driven lifecycle fixes
+  account for the documented soft-cap overage.
 
 ## Remaining manual gate
 

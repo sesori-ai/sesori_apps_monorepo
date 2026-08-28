@@ -14,6 +14,7 @@ void main() {
     late _FakeWindowHost windowHost;
     late _FakeDesktopApplicationTerminator applicationTerminator;
     late _FakeBridgeProcessLogRepository logRepository;
+    late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
     late BridgeControlCubit cubit;
 
@@ -24,6 +25,7 @@ void main() {
       windowHost = _FakeWindowHost();
       applicationTerminator = _FakeDesktopApplicationTerminator();
       logRepository = _FakeBridgeProcessLogRepository();
+      logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
       cubit = BridgeControlCubit(
         processService: processService,
@@ -32,6 +34,7 @@ void main() {
         windowHost: windowHost,
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
+        logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
       );
     });
@@ -42,6 +45,7 @@ void main() {
       statusTracker.dispose();
       await systemTray.disposeFake();
       await windowHost.disposeFake();
+      await logoutTracker.dispose();
     });
 
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
@@ -103,6 +107,62 @@ void main() {
       await pumpEventQueue(times: 2);
       expect(windowHost.hideCalls, 1);
       expect(applicationTerminator.exitCodes, isEmpty);
+    });
+
+    test("tray-backed close hides while a lifecycle operation is pending", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue();
+
+      expect(cubit.state.activity, BridgeControlActivity.toggling);
+      expect(windowHost.hideCalls, 1);
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 2);
+    });
+
+    test("no-tray close waits for a lifecycle operation before safe Quit", () async {
+      systemTray.availability = SystemTrayAvailability.unavailable;
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue();
+      expect(applicationTerminator.exitCodes, isEmpty);
+
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 3);
+      expect(processService.stopCalls, 2);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+    });
+
+    test("logout status locks lifecycle controls until local auth clears", () async {
+      await cubit.initialize();
+
+      logoutTracker.markInProgress();
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+
+      expect(cubit.state.activity, BridgeControlActivity.signingOut);
+      expect(processService.startCalls, 0);
+
+      logoutTracker.markIdle();
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+      expect(processService.startCalls, 1);
     });
 
     test("native close safely quits instead of hiding without a tray host", () async {

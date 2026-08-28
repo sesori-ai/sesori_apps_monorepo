@@ -47,10 +47,14 @@ class BridgeProcessLogStorage.forTesting({
   bool _directoryPrepared = false;
   bool _currentFilePrepared = false;
 
-  /// The active helper log path used by the later desktop "open logs" action.
+  /// Prepares and returns the active helper log used by desktop "Open Logs".
   Future<String> get logFilePath async {
     final Directory root = await _applicationSupportDirectory.resolve();
-    return path.join(root.path, _logsDirectoryName, _currentFileName);
+    final Directory logsDirectory = Directory(path.join(root.path, _logsDirectoryName));
+    final File currentFile = File(path.join(logsDirectory.path, _currentFileName));
+    await _prepareDirectory(directory: logsDirectory);
+    await _prepareFile(file: currentFile);
+    return currentFile.path;
   }
 
   /// Appends one logical line, serializing concurrent stdout/stderr writes and

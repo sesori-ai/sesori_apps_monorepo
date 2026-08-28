@@ -10,9 +10,10 @@ and keep native close/quit behavior safe.
 
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
   supervision even while signed out.
-- On a proven tray host, native close hides the window and Open restores and
-  focuses it. Without a usable tray host, close performs safe Quit instead of
-  leaving an invisible process.
+- On a proven tray host, native close hides the window immediately, including
+  during bridge lifecycle work, and Open restores and focuses it. Without a
+  usable tray host, close defers safe Quit until active lifecycle work settles
+  instead of dropping the request or leaving an invisible process.
 - Quit expected-stops the supervised helper before disposing native surfaces or
   terminating the desktop process. A failed stop leaves the app alive.
 - Window and tray On/Off actions share one serialized owner. A failed start or
@@ -21,10 +22,12 @@ and keep native close/quit behavior safe.
 - The signed-in window shows account, process/control status, registration,
   relay state, plugin health, active-session count, takeover/login-required
   states, and recent output after crash give-up.
-- Open Logs resolves the rotating log path through the desktop log repository
-  and delegates it to the system default application.
-- Device-local sign-out expected-stops the helper before clearing local tokens.
-  If helper stop fails, authentication remains intact; other devices are never
+- Open Logs prepares the owner-only active log through Layer-1 storage, then
+  resolves it through the desktop log repository and delegates it to the system
+  default application, including before the helper emits its first line.
+- Device-local sign-out locks every bridge lifecycle surface, expected-stops the
+  helper, and keeps controls locked until local tokens finish clearing. If
+  helper stop fails, authentication remains intact; other devices are never
   logged out.
 
 ## Regression Levels
@@ -47,14 +50,15 @@ at different handshake phases and inspect the status and bounded recent output.
 ## Failure Signals
 
 - No tray or command subscriptions until a signed-in screen reads the cubit.
-- Close hides the only surface when no tray host exists, Open shows without
-  focusing, or a native close bypasses helper teardown.
-- Quit or sign-out clears auth or exits while a supervised helper remains alive.
+- Close hides the only surface when no tray host exists, ignores a close during
+  lifecycle work, Open shows without focusing, or native close bypasses teardown.
+- Quit or sign-out clears auth or exits while a supervised helper remains alive,
+  or an On command can race between logout's helper stop and token clearing.
 - A failed On/Off action presents or executes the opposite operation instead of
   retrying the failed action.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
-  recent crash output is absent, or Open Logs bypasses the owned rotating path.
+  recent crash output is absent, or Open Logs targets a nonexistent/bypassed file.
 - The desktop theme lacks Prego colors, typography, or design-system extension.
 
 ## Known Limitations

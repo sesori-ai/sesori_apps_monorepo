@@ -1,7 +1,7 @@
 /// Events emitted by the dumb native-window adapter.
-// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors.
-// ignore: use_primary_constructors
-enum WindowHostEvent { closeRequested }
+enum WindowHostEvent() {
+  closeRequested,
+}
 
 /// Layer-0 capability for the desktop application's native window.
 ///

@@ -43,6 +43,8 @@ import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
     as _i686;
 import 'package:sesori_desktop_core/src/trackers/bridge_status_tracker.dart'
     as _i227;
+import 'package:sesori_desktop_core/src/trackers/desktop_logout_tracker.dart'
+    as _i786;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -62,6 +64,10 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i227.BridgeStatusTracker>(
       () => _i227.BridgeStatusTracker(),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i786.DesktopLogoutTracker>(
+      () => _i786.DesktopLogoutTracker(),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i570.BridgeProcessLogStorage>(
@@ -123,6 +129,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.DesktopLogoutOrchestrator>(
       () => _i165.DesktopLogoutOrchestrator(
         processService: gh<_i765.BridgeProcessService>(),
+        logoutTracker: gh<_i786.DesktopLogoutTracker>(),
         authSession: gh<_i948.AuthSession>(),
       ),
     );
