@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-4/9 merged; Step 5/9 in PR; Step 6/9 implemented locally
+- **Status:** Steps 1-5/9 merged; Step 6/9 in PR
 - **Current branch:** `grok-harness-step-6-activation`
-- **Base:** `grok-harness-step-5-lifecycle` (PR #1175)
+- **Base:** `origin/main` after merged PR #1175
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1169 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1169>
-- **Open PR:** #1175 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1175>
-- **Local successor:** `grok-harness-step-6-activation`; bridge activation under review
+- **Merged predecessor:** #1175 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1175>
+- **Open PR:** #1177 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1177>
+- **Local successor:** Step 7 starts after Step 6 publication
 
 ## Fixed Series
 
@@ -26,9 +26,9 @@
    - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
      analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
-   - **State:** in PR #1175.
+   - **State:** merged in #1175.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
-   - **State:** implemented locally; held until #1175 merges.
+   - **State:** in PR #1177.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
    - **State:** not started.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
@@ -114,9 +114,10 @@
 - [x] Update app composition/runtime inventories and reconcile missing Copilot, DeepSeek, and Grok architecture edges.
 - [x] Add no analytics event; generic plugin lifecycle outcomes remain authoritative.
 - [x] Pass app fatal-info analysis, 7 focused app tests, shared analysis, 392 shared tests, pub resolution, and LSP.
-- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 140 lines).
+- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 141 lines).
 - [x] Run architecture implementation review over Step 6 against Step 5; approved with no findings.
 - [x] Commit the completed successor locally; do not publish before #1175 merges.
+- [x] Rebase onto merged #1175, reverify, publish PR #1177, and start its monitor.
 
 ## Decisions And Evidence
 
