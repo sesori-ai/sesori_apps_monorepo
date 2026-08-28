@@ -23,7 +23,7 @@ lib/src/
 ├── push/                      Subsystem — push notification delivery
 ├── server/                    Subsystem — single-live-bridge enforcement, startup mutex, plugin host
 ├── updater/                   Subsystem — in-place update
-├── control/                   Subsystem — desktop control channel
+├── control/                   Desktop control channel (part of the core layered app, not a self-contained subsystem)
 ├── models/                    Bridge-wide config models
 └── persistence/               Bridge-wide diagnostics persistence
 

@@ -5,7 +5,7 @@ control-channel orchestration, tray/window state, and desktop cubits. Zero
 Flutter SDK dependency — testable with plain `dart test`. `client/desktop` is
 the only production consumer; `module_core` must NEVER depend on this package.
 
-## Target Package Structure (built out phase by phase — see docs/desktop/PLAN.md §6)
+## Target Package Structure (built out step by step — see `.plan/active/desktop-app/PLAN.md`)
 
 ```
 lib/src/

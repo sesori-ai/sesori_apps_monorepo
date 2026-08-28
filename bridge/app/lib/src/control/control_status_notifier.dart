@@ -14,7 +14,8 @@ import "../foundation/relay_client.dart";
 /// `ControlChannelClient.send` directly.
 ///
 /// Observed triggers — all push-based, no timers:
-/// - plugin health: the replay-latest `BridgePlugin.status` lifecycle stream;
+/// - plugin health: the lifecycle service's ordered per-plugin metadata
+///   snapshots, reduced to the aggregate control health state;
 /// - relay connection state: [RelayClient.connectionState];
 /// - registration success: the auth-subsystem `registrations` stream, mapped
 ///   to a `registered{bridgeId}` push so the GUI can persist a readable copy

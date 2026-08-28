@@ -4,7 +4,7 @@ The desktop app shell (macOS/Windows/Linux). It wires DI, owns presentation
 (window/tray composition), and implements concrete platform adapters. ALL
 desktop business logic lives in `module_desktop_core` — never here.
 
-## Target Package Structure (built out phase by phase — see docs/desktop/PLAN.md)
+## Target Package Structure (built out step by step — see `.plan/active/desktop-app/PLAN.md`)
 
 ```
 lib/
