@@ -230,6 +230,9 @@ defaults and queued client sends coherent.
   rail and subtle queued outline carry the transient state, with the outline
   change animated when reduced motion is not requested. A turn started on one
   client is visible to every other client of that bridge.
+- User and assistant message text containing a raw HTML block renders that
+  markup as a literal code block, so a pasted page or error body stays visible
+  and copyable instead of being swallowed by the Markdown renderer.
 - Live message envelopes render in transcript timestamp order even when events
   arrive out of order; late envelopes append after existing envelopes with the
   same timestamp rather than reordering an established turn. Finalized parts
@@ -308,7 +311,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   queued bubble and its dispatched message render simultaneously. Submitted text disappears while
   bridge acceptance or backend startup is still pending, or queued feedback
   uses a visually unrelated or composer-pinned surface, or renders authored
-  Markdown as literal syntax.
+  Markdown as literal syntax. Message text that embeds a raw HTML block loses
+  everything from the first block-level tag onward.
 - A stale-option rejection retains the rejected cache row, waits on an
   unrelated options discovery before answering, remains silent, drops the
   staged prompt, changes FIFO order or prompt identity, refreshes and retries

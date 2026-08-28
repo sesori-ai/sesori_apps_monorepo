@@ -89,6 +89,7 @@ class const UserMessageBubble({
                     semanticLabel: alt,
                   ),
                   styleSheet: buildUserMessageMarkdownStyleSheet(prego: prego),
+                  blockSyntaxes: sessionMarkdownBlockSyntaxes,
                   builders: buildSessionMarkdownBuilders(
                     highlightEnabled: true,
                     copyTooltip: context.loc.sessionDetailCopy,

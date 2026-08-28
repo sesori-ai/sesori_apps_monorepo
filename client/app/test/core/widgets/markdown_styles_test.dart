@@ -1,5 +1,8 @@
+import "dart:convert";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
+import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -46,6 +49,26 @@ void main() {
     expect(styleSheet.strong?.color, prego.colors.textBrandPrimary);
     expect(styleSheet.listBullet?.color, prego.colors.textBrandPrimary);
     expect(styleSheet.code?.color, prego.colors.textBrandPrimary);
+  });
+
+  test("sessionMarkdownBlockSyntaxes keeps raw HTML visible as a code block", () {
+    const message = "Pi assistant response failed: <html>\n"
+        "  <head>\n"
+        "    <style>body{font-family:Arial}</style>\n"
+        "  </head>\n"
+        "  <body><p>Error 520</p></body>\n"
+        "</html>";
+
+    final nodes = md.Document(
+      blockSyntaxes: sessionMarkdownBlockSyntaxes,
+      extensionSet: md.ExtensionSet.gitHubFlavored,
+      encodeHtml: false,
+    ).parseLines(const LineSplitter().convert(message));
+
+    final html = nodes.whereType<md.Element>().where((node) => node.tag == "pre").single;
+    expect(html.textContent, contains("<head>"));
+    expect(html.textContent, contains("Error 520"));
+    expect(html.textContent, contains("</html>"));
   });
 
   test("Markdown links launch absolute web and email URLs", () async {
