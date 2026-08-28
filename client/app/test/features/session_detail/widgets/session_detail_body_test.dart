@@ -1498,11 +1498,17 @@ void main() {
     verify(cubit.reportVoiceTranscriptionCompleted).called(1);
   });
 
-  testWidgets("sending other content discards a retained recording before submission", (tester) async {
+  testWidgets("sending other content serializes discard before submission", (tester) async {
+    final discardCompleter = Completer<void>();
+    final calls = <String>[];
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
       VoiceTranscriptionError.networkError(),
     );
+    when(() => voiceTranscriptionService.discard(session: voiceSession)).thenAnswer((_) {
+      calls.add("discard");
+      return discardCompleter.future;
+    });
     when(
       () => cubit.sendMessage(
         text: "send instead",
@@ -1510,7 +1516,7 @@ void main() {
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       ),
-    ).thenAnswer((_) async {});
+    ).thenAnswer((_) async => calls.add("send"));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1524,19 +1530,72 @@ void main() {
     await tester.enterText(find.byType(EditableText), "send instead");
     await tester.pump();
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    expect(calls, ["discard"]);
 
-    verifyInOrder([
-      () => voiceTranscriptionService.discard(session: voiceSession),
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(calls, ["discard"], reason: "a second send must not bypass the in-flight discard");
+
+    discardCompleter.complete();
+    await tester.pumpAndSettle();
+    expect(calls, ["discard", "send"]);
+    verify(
       () => cubit.sendMessage(
         text: "send instead",
         command: null,
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       ),
-    ]);
+    ).called(1);
     expect(find.text("Recording saved"), findsNothing);
     expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+  });
+
+  testWidgets("sending other content cancels and discards an active retry", (tester) async {
+    final retryCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
+    when(
+      () => cubit.sendMessage(
+        text: "replace retry",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "replace retry");
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pumpAndSettle();
+
+    verifyInOrder([
+      () => voiceTranscriptionService.cancel(session: voiceSession),
+      () => voiceTranscriptionService.discard(session: voiceSession),
+      () => cubit.sendMessage(
+        text: "replace retry",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ]);
+    expect(find.text("Recording saved"), findsNothing);
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await tester.pump();
+    expect(find.text("replace retry"), findsNothing);
   });
 
   testWidgets("cancelling a manual retry restores persistent saved-recording actions", (tester) async {

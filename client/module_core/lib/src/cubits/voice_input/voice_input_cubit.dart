@@ -138,7 +138,9 @@ class VoiceInputCubit({required final VoiceTranscriptionService _service}) exten
   }
 
   Future<void> discard() async {
+    if (state is VoiceInputRetrying) await cancel();
     if (state is! VoiceInputRetryPending) return;
+
     emit(const VoiceInputState.discarding());
     try {
       await _service.discard(session: _session);

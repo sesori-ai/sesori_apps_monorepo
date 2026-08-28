@@ -28,7 +28,8 @@ transcription endpoint are external.
   without starting the recorder again; repeated retryable failures keep the same artifact.
 - A server response with `retryable: false`, omitted/malformed retryability, authentication failure, empty transcript,
   missing artifact, success, explicit discard, a valid submission of other composer content, initial cancellation, or
-  composer disposal attempts deletion and shows no Retry action. A refused/invalid submission retains the recording.
+  composer disposal attempts deletion and shows no Retry action. A valid submission cancels any active manual retry
+  before deletion and is serialized so it cannot send twice; a refused/invalid submission retains the recording.
   Deletion remains best-effort and logs failures.
 - Text is inserted for review, never auto-sent. The draft tracks voice-origin spans, so a message retaining one counts
   as voice-assisted input.
@@ -42,7 +43,7 @@ transcription endpoint are external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin, fake recorder and HTTP client: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation. |
+| L2 Routine | Automated, mobile client, no plugin, fake recorder and HTTP client: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation. |
 | L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
 | L4 Extended | Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
@@ -59,8 +60,9 @@ interruptions such as a call.
 - The composer stays in a recording or transcribing state after error, cancel, or disposal, or a cancelled transcript
   appears in a later interaction.
 - A retryable async failure loses the artifact or lacks persistent Retry/Discard controls; a terminal/unknown failure
-  exposes Retry; a manual retry invokes the recorder; a retry cancellation deletes the saved recording; cleanup is
-  not attempted on terminal paths; a deletion failure is unlogged; or the wake lock stays held.
+  exposes Retry; a manual retry invokes the recorder; a retry cancellation deletes the saved recording; send-time
+  abandonment duplicates a submission or lets a retry finish into the cleared composer; cleanup is not attempted on
+  terminal paths; a deletion failure is unlogged; or the wake lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
 - Any audio, transcript, or prompt content reaches logs or analytics.

@@ -173,6 +173,7 @@ class VoiceTranscriptionService({
     required int generation,
     required bool releaseCaptureOperation,
   }) async {
+    VoiceTranscriptionError? retainedFailure;
     try {
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
@@ -182,47 +183,40 @@ class VoiceTranscriptionService({
         throw VoiceTranscriptionError.cancelled();
       }
 
-      return switch (outcome) {
-        VoiceTranscriptionSuccess(:final transcript) => transcript,
-        VoiceTranscriptionNotAuthenticated() => throw VoiceTranscriptionError.notAuthenticated(),
-        VoiceTranscriptionRetryableServerFailure(:final statusCode) => _retainAndThrow(
-          session: session,
-          artifact: artifact,
-          error: VoiceTranscriptionError.retryableServerError(statusCode: statusCode),
-        ),
-        VoiceTranscriptionTerminalServerFailure(:final statusCode) => throw VoiceTranscriptionError.serverError(
-          statusCode: statusCode,
-        ),
-        VoiceTranscriptionNetworkFailure() => _retainAndThrow(
-          session: session,
-          artifact: artifact,
-          error: VoiceTranscriptionError.networkError(),
-        ),
-        VoiceTranscriptionUnexpectedFailure() => throw VoiceTranscriptionError.recordingFailed(innerError: outcome),
-        VoiceTranscriptionEmptyTranscript() => throw VoiceTranscriptionError.emptyTranscript(),
-      };
+      switch (outcome) {
+        case VoiceTranscriptionSuccess(:final transcript):
+          return transcript;
+        case VoiceTranscriptionNotAuthenticated():
+          throw VoiceTranscriptionError.notAuthenticated();
+        case VoiceTranscriptionRetryableServerFailure(:final statusCode):
+          retainedFailure = VoiceTranscriptionError.retryableServerError(statusCode: statusCode);
+          throw retainedFailure;
+        case VoiceTranscriptionTerminalServerFailure(:final statusCode):
+          throw VoiceTranscriptionError.serverError(statusCode: statusCode);
+        case VoiceTranscriptionNetworkFailure():
+          retainedFailure = VoiceTranscriptionError.networkError();
+          throw retainedFailure;
+        case VoiceTranscriptionUnexpectedFailure():
+          throw VoiceTranscriptionError.recordingFailed(innerError: outcome);
+        case VoiceTranscriptionEmptyTranscript():
+          throw VoiceTranscriptionError.emptyTranscript();
+      }
     } finally {
-      final ownsGeneration = _ownsGeneration(session: session, generation: generation);
-      if (ownsGeneration) {
+      if (_ownsGeneration(session: session, generation: generation)) {
         try {
           if (releaseCaptureOperation) await session._captureSession.releaseOperation();
         } finally {
-          if (session._state is! _VoiceSessionRetryPending) {
-            await session._captureSession.deleteArtifact(artifact: artifact);
-            session._state = const _VoiceSessionIdle();
+          if (_ownsGeneration(session: session, generation: generation)) {
+            if (retainedFailure == null) {
+              await session._captureSession.deleteArtifact(artifact: artifact);
+              session._state = const _VoiceSessionIdle();
+            } else {
+              session._state = _VoiceSessionRetryPending(artifact: artifact);
+            }
           }
         }
       }
     }
-  }
-
-  Never _retainAndThrow({
-    required VoiceTranscriptionSession session,
-    required VoiceRecordingArtifact artifact,
-    required VoiceTranscriptionError error,
-  }) {
-    session._state = _VoiceSessionRetryPending(artifact: artifact);
-    throw error;
   }
 
   Future<void> cancel({required VoiceTranscriptionSession session}) {

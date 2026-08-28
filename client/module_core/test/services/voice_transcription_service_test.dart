@@ -190,6 +190,36 @@ void main() {
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
   });
 
+  test("cancellation during capture release cannot strand a retained artifact", () async {
+    final releaseCompleter = Completer<void>();
+    when(captureSession.releaseOperation).thenAnswer((_) => releaseCompleter.future);
+    when(
+      () => repository.transcribe(
+        audioFilePath: any(named: "audioFilePath"),
+        mimeType: any(named: "mimeType"),
+      ),
+    ).thenAnswer((_) async => const VoiceTranscriptionOutcome.networkFailure());
+
+    await service.start(session: session);
+    final transcription = expectLater(
+      service.stopAndTranscribe(session: session),
+      throwsA(isA<NetworkVoiceError>()),
+    );
+    await Future<void>.delayed(Duration.zero);
+    verify(captureSession.releaseOperation).called(1);
+
+    final cancelling = service.cancel(session: session);
+    await Future<void>.delayed(Duration.zero);
+    verify(captureSession.releaseOperation).called(1);
+    releaseCompleter.complete();
+    await cancelling;
+    await transcription;
+
+    verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
+    await service.start(session: session);
+    verify(captureSession.start).called(2);
+  });
+
   test("manual retry cancellation returns to retry-pending with the artifact retained", () async {
     final retryResponse = Completer<VoiceTranscriptionOutcome>();
     var attempts = 0;

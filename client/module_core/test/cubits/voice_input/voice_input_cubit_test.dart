@@ -165,6 +165,32 @@ void main() {
     expect(cubit.state, isA<VoiceInputRetryPending>());
   });
 
+  test("discard cancels an active retry before deleting its artifact", () async {
+    final retryCompleter = Completer<String>();
+    when(() => service.stopAndTranscribe(session: session)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
+    final cubit = VoiceInputCubit(service: service);
+    addTearDown(cubit.close);
+    await cubit.startRecording();
+    await cubit.stopAndTranscribe(limitReached: false);
+
+    final retry = cubit.retry();
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, isA<VoiceInputRetrying>());
+    await cubit.discard();
+
+    expect(cubit.state, const VoiceInputState.idle());
+    verifyInOrder([
+      () => service.cancel(session: session),
+      () => service.discard(session: session),
+    ]);
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await retry;
+    expect(cubit.state, const VoiceInputState.idle());
+  });
+
   blocTest<VoiceInputCubit, VoiceInputState>(
     "discards a retained recording and returns to idle",
     seed: () => VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()),

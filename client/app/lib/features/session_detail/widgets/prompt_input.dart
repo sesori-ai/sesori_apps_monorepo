@@ -155,6 +155,7 @@ class _PromptInputState() extends State<PromptInput> {
   late ComposerDraft _draft;
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
+  bool _isSubmitting = false;
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -372,6 +373,8 @@ class _PromptInputState() extends State<PromptInput> {
   void _handleSend() => unawaited(_submitComposer());
 
   Future<void> _submitComposer() async {
+    if (_isSubmitting) return;
+
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
@@ -387,30 +390,36 @@ class _PromptInputState() extends State<PromptInput> {
     final submission = _draftCalculator.trim(draft: _draft);
     if (stagedCommand == null && submission.text.isEmpty && attachments.isEmpty) return;
 
-    if (_voiceCubit.state is VoiceInputRetryPending) {
-      await _voiceCubit.discard();
-      if (!mounted) return;
-    }
+    _isSubmitting = true;
+    try {
+      final voiceState = _voiceCubit.state;
+      if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
+        await _voiceCubit.discard();
+        if (!mounted) return;
+      }
 
-    widget.onSend(
-      draft: submission,
-      command: stagedCommand?.name,
-      attachments: attachments,
-    );
-    if (stagedCommand != null) widget.onCommandCleared();
+      widget.onSend(
+        draft: submission,
+        command: stagedCommand?.name,
+        attachments: attachments,
+      );
+      if (stagedCommand != null) widget.onCommandCleared();
 
-    _pasteGeneration++;
-    if (_attachments.isNotEmpty) {
-      setState(_attachments.clear);
-    }
-    _controller.clear();
-    widget.onDraftCleared();
-    // Keep the keyboard up across a send only where it was already part of
-    // the flow: always in text-first, and in voice-first when the field was
-    // focused. Sending a reviewed voice transcript stays keyboard-free — the
-    // composer collapses back to its hold-to-talk pill.
-    if (!_isVoiceFirst || wasFocused) {
-      _focusNode.requestFocus();
+      _pasteGeneration++;
+      if (_attachments.isNotEmpty) {
+        setState(_attachments.clear);
+      }
+      _controller.clear();
+      widget.onDraftCleared();
+      // Keep the keyboard up across a send only where it was already part of
+      // the flow: always in text-first, and in voice-first when the field was
+      // focused. Sending a reviewed voice transcript stays keyboard-free — the
+      // composer collapses back to its hold-to-talk pill.
+      if (!_isVoiceFirst || wasFocused) {
+        _focusNode.requestFocus();
+      }
+    } finally {
+      _isSubmitting = false;
     }
   }
 
