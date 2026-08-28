@@ -145,7 +145,7 @@ materially changes user-facing behavior updates the directly affected
 `docs/regression/` feature document in the same PR; step 21 is final
 reconciliation only, never the first write.
 
-### M1 — Supervision core (desktop-only; no mobile risk)
+### M1 — Supervision core (supervision stack only; no mobile risk — step 2 touches `sesori_shared`/bridge for the `shutdown` command)
 
 **Step 1 — 🌿 Raise plan; supersede and delete the old desktop plan** *(this
 PR)*. Add `.plan/active/desktop-app/` (PLAN.md, TRACKER.md). Delete
@@ -166,10 +166,14 @@ the process API**: spawn, graceful-signal/kill, exit stream, raw stdio
 hand-off, the expected-exit marker, and the atomic expected-stop operation
 (mark + graceful stop together, with a bounded grace deadline and a kill
 fallback that preserves the marker — a helper that hangs in teardown can
-never block Off/Quit or leave an orphan). The graceful half is the
-control-channel `shutdown` command (step 5) — Windows has no catchable
-SIGTERM, so a signal cannot be the primary mechanism; a POSIX signal remains
-the secondary path when the channel is down. The **whole atomic operation
+never block Off/Quit or leave an orphan). The graceful half is a
+control-channel `shutdown` command **added by this step** (sealed
+`ControlMessage.shutdown` in `sesori_shared` + the bridge dispatcher route to
+the graceful exit-0 path — `unregister_and_exit` minus the unregister),
+because Windows has no catchable SIGTERM, so a signal cannot be the primary
+mechanism; a POSIX signal remains the secondary path when the channel is
+down. The contract must exist before the repository consumes it, so the
+protocol addition lives here, not in step 5. The **whole atomic operation
 lives in the repository**, which sends the `shutdown` frame itself over the
 injected control seam (the same blessed direct-seam pattern the delivered
 dispatcher and bridge-side services use): mark, send, bounded wait, kill-tree
@@ -250,11 +254,9 @@ rule leaves `ControlPluginHealthState.unavailable` unreachable (the mapper
 emits only healthy/degraded; `unknown` stays the init/forward-parse fallback),
 so that variant and its client/test branches are deleted too. The dev harness
 itself survives until step 12 — step 5 only updates its affected branches.
-One **addition** alongside the deletions: `ControlMessage.shutdown`
-(GUI→helper supervision command; the bridge dispatcher routes it to the
-graceful exit-0 path — `unregister_and_exit` minus the unregister), because
-Windows offers no catchable SIGTERM and the expected-stop's graceful half
-must work on every OS.
+(The `ControlMessage.shutdown` supervision command was added in step 2, where
+its first consumer lives; this step is deletions plus the semantics fix
+only.)
 Also bridge-side: **verify with a test — no new mechanism** — that the
 existing shutdown-coordinator backstop covers the supervised restart path:
 exit 86 is latched at handoff, the coordinator arms at shutdown-request, and
@@ -268,7 +270,9 @@ halves live in this repo.
 **Step 6 — ⚙️ Tray.** `SystemTray` Layer-0 interface + `tray_manager` shell
 adapter (dumb: renders a menu model, emits clicks); Layer-4
 `BridgeControlCubit` consumes `BridgeProcessService` + trackers, builds the
-menu (status line, session count, On/Off, Open, Quit), and drives the tray.
+menu (status line, session count, On/Off, Quit — the Open item arrives with
+step 7's `WindowHost`, since the dumb tray has no legal window collaborator
+before it), and drives the tray.
 Tray unavailable → windowed fallback (C10 — on Linux availability means
 positive StatusNotifier-host evidence, since init succeeds invisibly on stock
 GNOME); Quit = expected-stop then exit, no orphan.
@@ -387,15 +391,21 @@ real GUI + this suite supersede it).
 **Step 13 — ⚙️ Desktop becomes a relay client.** Register the missing
 `module_core` prerequisites in the desktop shell (`RelayCryptoService`, a
 **log-backed** `FailureReporter` — recovered failures whose only record is
-`recordFailure` must stay observable in local logs; remote crash reporting
+`recordFailure` must stay observable in local logs, under a privacy-safe
+contract: error, stack trace, event type, and operation context are retained
+while payload-bearing information arguments are sanitized, since SSE property
+values can carry prompt/transcript/source content; remote crash reporting
 remains a distribution-plan decision — and the route/notification seams as
 the resolved object graph actually requires); resolve `ConnectionService`; window shows truthful relay-client
 connection state alongside supervision status (control channel and relay
-client coexist; no second reconnect driver). The desktop root also provides
-the shared connection UI wiring the shared screens assume — a
-`ConnectionOverlayCubit` (and the `ConnectionBanner` host) above the desktop
-router, mirroring mobile's root wiring — so the first shared screen in step
-15 cannot throw on a missing provider.
+client coexist; no second reconnect driver). The desktop root also starts the
+root provider/listener stack the shared screens assume, mirroring mobile's
+root wiring: `ConnectionOverlayCubit` (+ `ConnectionBanner` host) and
+`SseToastCubit` (+ toast listener — backend `tui.toast.show` guidance must
+not be silently consumed). **Standing rule for every cockpit slice
+(15–19):** the slice that first renders a screen also wires, at the desktop
+root, every root-level provider/listener that screen watches — a moved
+screen may never land ahead of its root wiring.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
@@ -404,7 +414,10 @@ converges on the `module_prego` theme-assembly helper from step 7 (~70-file
 mechanical import churn). The **desktop shell also wires the package here**:
 dependency, `localizationsDelegates` + `supportedLocales` on its root app —
 `context.loc` throws without them, and step 15's shared screens are the first
-desktop consumers. Desktop CI path filters
+desktop consumers — plus the **desktop router skeleton** over the
+`module_core` route definitions (replacing the bare `home: AuthGate()`), so
+each slice in 15–19 extends routes as its screens land and step 20 is final
+composition, not the first router. Desktop CI path filters
 gain `client/module_app_ui/**`; mobile CI gains the package's analyze/test.
 *Overage: mechanical move churn.*
 
@@ -417,8 +430,11 @@ progress, harness login, idle policy, catalog rescan. The moved surface's
 logout action becomes an **injected strategy**: mobile keeps the direct
 `SettingsCubit.logout()` behavior; desktop routes it through
 `DesktopLogoutOrchestrator` so cockpit sign-out never bypasses helper
-stop/unregister. **This delivers desktop onboarding.** Mobile behavior
-unchanged.
+stop/unregister. Per the step-13 standing rule, this slice wires the
+app-wide preference cubits its screens watch (`AppearanceCubit` above the
+`MaterialApp` — theming must react — and `ChatInputModeCubit`, each with its
+persisted startup read). **This delivers desktop onboarding.** Mobile
+behavior unchanged.
 
 **Step 16 — 🚧 Project list + session list slice + desktop offline strategy.**
 Decouple and move both lists (incl. `session_split`). Bridge-offline /
@@ -455,8 +471,8 @@ on mobile must be regression-clean. *Overage: move churn.*
 **Step 19 — ⚙️ Diffs + new-session slice.** Decouple and move
 `session_diffs` + `new_session` (worktree options included).
 
-**Step 20 — ⚙️ Desktop cockpit composition.** Desktop router over the shared
-screens (`module_core` route definitions; desktop-owned composition), window
+**Step 20 — ⚙️ Desktop cockpit composition.** Final composition over the
+slice-built router (the skeleton landed in step 14): window
 navigation (sidebar/split composition from the adaptive screens), keyboard
 basics (Enter-to-send vs newline, Esc dismissal, text selection), and the
 supervision surfaces (login-required, crash give-up, takeover) integrated
@@ -489,7 +505,10 @@ remove stale references.
 
 **Step 22 — 🌿 Coverage run, retirement, distribution handoff.** Run the
 recorded coverage (below), record results in the tracker, move the plan to
-`.plan/completed/desktop-app/`, and initiate the `desktop-distribution`
+`.plan/completed/desktop-app/` — **repointing every live reference step 1
+created** (ROADMAP/VISION/client docs/workflow comments: historical links to
+the completed path, active-workstream links to the distribution successor) —
+and initiate the `desktop-distribution`
 follow-up plan (all-platform packaging/signing/updates; its decisions are
 discussed then — inputs: C11, the bundled-layout/runtime-ownership question,
 release-pipeline gating, per-OS signing/update mechanics preserved in git
