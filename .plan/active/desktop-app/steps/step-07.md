@@ -47,7 +47,7 @@ Prego theme ownership, shell-only rendering, and dumb adapter boundaries.
 - macOS debug application build passed with `window_manager` integration.
 - Dart LSP: 0 diagnostics across 26 affected non-generated Dart files.
 - `git diff --check` — clean.
-- Change size: 1,458 text changed lines, under the 1,500-line soft cap.
+- Change size: 1,443 text changed lines, under the 1,500-line soft cap.
 
 ## Remaining manual gate
 
