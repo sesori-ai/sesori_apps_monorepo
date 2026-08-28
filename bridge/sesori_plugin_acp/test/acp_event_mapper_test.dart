@@ -56,6 +56,31 @@ void main() {
       expect(delta.field, "text");
     });
 
+    test("accepted prompt ids keep id-less replies unique across mapper restarts", () {
+      String assistantId({required AcpEventMapper target, required String promptId}) {
+        target.beginTurn("s1", messageId: AcpEventMapper.sentUserMessageId(promptId: promptId));
+        final events = target.map(
+          update({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "reply"},
+          }),
+        );
+        return shared.Message.fromJson(events.whereType<BridgeSseMessageUpdated>().single.info).id;
+      }
+
+      final beforeRestart = assistantId(target: mapper, promptId: "prompt-one");
+      final replacementMapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
+      final afterRestart = assistantId(target: replacementMapper, promptId: "prompt-two");
+
+      expect(beforeRestart, "prompt-one-user-assistant-a0");
+      expect(afterRestart, "prompt-two-user-assistant-a0");
+      expect(afterRestart, isNot(beforeRestart));
+    });
+
     test("subsequent chunks emit only a delta on the same part", () {
       mapper.beginTurn("s1");
       mapper.map(

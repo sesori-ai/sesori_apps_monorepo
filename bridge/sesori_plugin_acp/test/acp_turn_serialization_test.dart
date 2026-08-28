@@ -305,6 +305,42 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("agent output racing the prompt flush follows the accepted user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "ordered prompt");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "fast reply"},
+          },
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSseMessageUpdated>().length < 2; i++) {
+        await pump();
+      }
+
+      final messages = emitted.whereType<BridgeSseMessageUpdated>().toList();
+      expect(messages.map((event) => event.info["role"]), ["user", "assistant"]);
+      expect(messages.first.info["promptId"], promptId);
+      expect(messages.last.info["id"], "$promptId-user-assistant-a0");
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a queued prompt message uses its dispatch time", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();

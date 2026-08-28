@@ -120,6 +120,11 @@ abstract class AcpPlugin({
   /// decisions live on this class — the state object only holds fields.
   final Map<String, _SessionTurnState> _turnStates = {};
 
+  /// Agent updates that raced the stdin flush for an accepted existing-session
+  /// prompt. The user message cannot publish before the flush succeeds, so hold
+  /// these updates until that message has entered the event stream.
+  final Map<String, List<AcpNotification>> _promptWriteNotifications = {};
+
   /// Shared tail used only by agents that cannot correlate sessionless server
   /// requests while multiple prompts are in flight.
   Future<void> _processTurnTail = Future<void>.value();
@@ -340,8 +345,21 @@ abstract class AcpPlugin({
         _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
         return;
       }
+      if (sid is String && _isPromptFrameWriting(sessionId: sid)) {
+        _promptWriteNotifications.putIfAbsent(sid, () => []).add(notification);
+        return;
+      }
     }
     eventMapper.map(notification).forEach(_eventBuffer.add);
+  }
+
+  bool _isPromptFrameWriting({required String sessionId}) =>
+      _turnStates[sessionId]?.queue.any((entry) => entry.phase == _QueuedAcpPromptPhase.writing) ?? false;
+
+  void _flushPromptWriteNotifications({required String sessionId}) {
+    final notifications = _promptWriteNotifications.remove(sessionId);
+    if (notifications == null) return;
+    notifications.forEach(handleAgentNotification);
   }
 
   /// Approval state participates in the activity summary, so invalidate that
@@ -472,6 +490,7 @@ abstract class AcpPlugin({
       Log.w("[$id] failed to cancel notification subscription", e, st);
     }
     _notificationSubscription = null;
+    _promptWriteNotifications.clear();
     final commandListener = _commandListener;
     _commandListener = null;
     final registry = _approvalRegistry;
@@ -1259,7 +1278,7 @@ abstract class AcpPlugin({
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
-    eventMapper.beginTurn(sessionId);
+    eventMapper.beginTurn(sessionId, messageId: turn.messageId);
     _inFlightTurnSessions.add(sessionId);
     _lastTurnSessionId = sessionId;
     try {
@@ -1289,6 +1308,7 @@ abstract class AcpPlugin({
         refused: result.stopReason == AcpStopReason.refusal,
       );
     } on Object catch (error, stack) {
+      _promptWriteNotifications.remove(sessionId);
       // The phone's send already returned success, so a dispatch or later
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
@@ -1329,7 +1349,10 @@ abstract class AcpPlugin({
     required _SessionTurnState state,
     required _AcpTurn turn,
   }) {
-    if (!identical(_turnStates[sessionId], state)) return;
+    if (!identical(_turnStates[sessionId], state)) {
+      _promptWriteNotifications.remove(sessionId);
+      return;
+    }
     if (turn is! _QueuedAcpTurn) return;
     final queuedPrompt = turn.queuedPrompt;
     eventMapper
@@ -1345,6 +1368,7 @@ abstract class AcpPlugin({
       state.recordDispatchedPrompt(promptId: queuedPrompt.presentation.id);
       _emitQueueUpdate(sessionId: sessionId, state: state);
     }
+    _flushPromptWriteNotifications(sessionId: sessionId);
   }
 
   void _emitQueueUpdate({required String sessionId, required _SessionTurnState state}) {
