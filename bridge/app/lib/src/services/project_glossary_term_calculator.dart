@@ -23,7 +23,11 @@ class const ProjectGlossaryTermCalculator() {
   );
   static final RegExp _credentialAssignmentPattern = RegExp(
     r'''["']?([A-Za-z_][A-Za-z0-9_.:-]*)["']?\s*[:=]\s*'''
-    r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
+    r'''(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\r\n,;}\]]+)''',
+  );
+  static final RegExp _credentialOptionPattern = RegExp(
+    r'''--([A-Za-z][A-Za-z0-9_-]*)[ \t]+'''
+    r'''(?:"(?:\\.|[^"\\\r\n])*"|'(?:\\.|[^'\\\r\n])*'|[^\s,;]+)''',
   );
   static final RegExp _xmlOpeningElementPattern = RegExp(
     r'''<([A-Za-z_][A-Za-z0-9_.:-]*)(?:\s[^<>]*?)?\s*(/?)>''',
@@ -68,6 +72,7 @@ class const ProjectGlossaryTermCalculator() {
     "credential",
     "passwd",
     "password",
+    "passphrase",
     "pwd",
     "secret",
     "token",
@@ -318,11 +323,21 @@ when with web widget widgets will windows window workspace www
     );
   }
 
+  String _filterCredentialOptions(String value) {
+    return value.replaceAllMapped(
+      _credentialOptionPattern,
+      (match) => _isCredentialName(match.group(1)!) ? " " : match.group(0)!,
+    );
+  }
+
   String _filterCredentialSpans(String value) {
     final structured = _filterYamlCredentialBlocks(
       _filterXmlCredentialElements(value),
     );
-    return _filterCredentialAssignments(structured)
+    final options = _filterCredentialOptions(
+      _filterCredentialAssignments(structured),
+    );
+    return options
         .replaceAll(_uriUserInfoPattern, " ")
         .replaceAll(_bearerCredentialPattern, " ")
         .replaceAll(_credentialLabeledSpanPattern, " ")

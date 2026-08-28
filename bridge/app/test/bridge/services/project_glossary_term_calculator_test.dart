@@ -48,6 +48,9 @@ void main() {
           'password = """Topaz Riverstone\nSilverPine"""',
           "token = '''Amber Willow'''",
           '''AWS_SECRET_ACCESS_KEY = "Compound Correct Horse"''',
+          '''signing_passphrase = "SigningOrchid SecretGrove"''',
+          r'''{"password":"EscapedOrchid \"QuotedMeadow\" HiddenHarbor"}''',
+          '''--password "CliOrchid QuotedForest HiddenLake" --framework SafeCliFramework''',
           'authorization = """AuthTriple Juniper Harbor"""',
           '''{"DATABASE_URL":"postgresql://AliceAdmin:hunter2@db.example/acme"}''',
           "server:\n  password: >-\n    YamlOrchid CopperMeadow\n    HiddenCedar\n  framework: SafeFramework",
@@ -85,6 +88,14 @@ void main() {
       "Amber",
       "Willow",
       "Compound",
+      "SigningOrchid",
+      "SecretGrove",
+      "EscapedOrchid",
+      "QuotedMeadow",
+      "HiddenHarbor",
+      "CliOrchid",
+      "QuotedForest",
+      "HiddenLake",
       "AuthTriple",
       "Juniper",
       "Harbor",
@@ -117,7 +128,7 @@ void main() {
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }
-    expect(terms, containsAll(["SafeFramework", "SequenceSafeFramework"]));
+    expect(terms, containsAll(["SafeFramework", "SequenceSafeFramework", "SafeCliFramework"]));
   });
 
   test("keeps short symbolic language names", () {
