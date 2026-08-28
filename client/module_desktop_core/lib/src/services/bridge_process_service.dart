@@ -115,6 +115,7 @@ class BridgeProcessService.forTesting({
   BridgeProcessExit? _pendingStartupExit;
   int? _activePid;
   DateTime? _healthySince;
+  bool _stableRuntimeReached = false;
   bool _startupExitPolicyClaimed = false;
   bool _disposed = false;
   BridgeProcessDesiredState _desiredState = BridgeProcessDesiredState.off;
@@ -192,6 +193,7 @@ class BridgeProcessService.forTesting({
     _publish(const BridgeProcessStarting());
     bool controlStartAttempted = false;
     bool childCreated = false;
+    int? spawnedPid;
     try {
       controlStartAttempted = true;
       await _controlChannelServer.start();
@@ -204,14 +206,19 @@ class BridgeProcessService.forTesting({
         environment: null,
       );
       childCreated = true;
+      spawnedPid = streams.pid;
       _activePid = streams.pid;
       _authenticationGenerationAtSpawn = _successfulAuthenticationGeneration;
       _healthySince = null;
+      _stableRuntimeReached = false;
       final BridgeProcessExit? pendingStartupExit = _pendingStartupExit;
       _pendingStartupExit = null;
       if (pendingStartupExit?.pid == streams.pid) {
         _beginExitCleanup(exit: pendingStartupExit);
-        throw BridgeProcessExitedDuringStartException(pid: streams.pid);
+        throw BridgeProcessExitedDuringStartException(
+          pid: streams.pid,
+          innerCause: null,
+        );
       }
       _throwIfStartCannotContinue(pid: streams.pid);
 
@@ -244,11 +251,18 @@ class BridgeProcessService.forTesting({
       // A claimed repository exit already owns its deliberate/crash policy;
       // otherwise the startup fallback above prevents desired On from stalling.
       rethrow;
-    } on Object {
+    } on Object catch (error, stackTrace) {
       await _cleanUpFailedStart(
         controlStartAttempted: controlStartAttempted,
         childCreated: childCreated,
       );
+      final int? pid = spawnedPid;
+      if (_startupExitPolicyClaimed && pid != null) {
+        throw BridgeProcessExitedDuringStartException(
+          pid: pid,
+          innerCause: AsyncError(error, stackTrace),
+        );
+      }
       _publish(_stateAfterStartCleanup());
       rethrow;
     }
@@ -274,7 +288,10 @@ class BridgeProcessService.forTesting({
   void _throwIfStartCannotContinue({required int pid}) {
     _throwIfStartCancelled();
     if (_activePid != pid || !_repository.isRunning) {
-      throw BridgeProcessExitedDuringStartException(pid: pid);
+      throw BridgeProcessExitedDuringStartException(
+        pid: pid,
+        innerCause: null,
+      );
     }
   }
 
@@ -569,7 +586,15 @@ class BridgeProcessService.forTesting({
   }) async {
     try {
       await operation;
-    } on BridgeProcessExitedDuringStartException {
+    } on BridgeProcessExitedDuringStartException catch (error) {
+      final AsyncError? innerCause = error.innerCause;
+      if (innerCause != null) {
+        _reportWarning(
+          message: "Bridge startup failed after its process exit was already claimed",
+          error: innerCause.error,
+          stackTrace: innerCause.stackTrace,
+        );
+      }
       // The repository exit stream already owns this child and schedules its
       // one policy action. Counting the same early exit here would consume two
       // crash-budget entries and leave two retry timers.
@@ -607,6 +632,7 @@ class BridgeProcessService.forTesting({
 
   void _onHelperConnectionChanged({required bool connected}) {
     if (!connected) {
+      _stableRuntimeReached = _stableRuntimeReached || _currentHealthyIntervalIsStable();
       _healthySince = null;
       return;
     }
@@ -615,7 +641,9 @@ class BridgeProcessService.forTesting({
     }
   }
 
-  bool _wasStableRun() {
+  bool _wasStableRun() => _stableRuntimeReached || _currentHealthyIntervalIsStable();
+
+  bool _currentHealthyIntervalIsStable() {
     final DateTime? healthySince = _healthySince;
     if (healthySince == null) {
       return false;
@@ -627,6 +655,7 @@ class BridgeProcessService.forTesting({
   void _clearRunHealth() {
     _authenticationGenerationAtSpawn = 0;
     _healthySince = null;
+    _stableRuntimeReached = false;
   }
 
   void _cancelRetry() {

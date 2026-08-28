@@ -287,10 +287,13 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
-    test("an automatically restarted child that exits during startup consumes one crash entry", () async {
+    test("a claimed exit followed by broken-pipe startup failure consumes one crash entry", () async {
       authSession.state = _authenticatedState;
       await service.start();
-      logTracker.onAttach = () => repository.emitExit(exitCode: 9, expected: false);
+      when(streams.stdin.flush).thenAnswer((_) {
+        repository.emitExit(exitCode: 9, expected: false);
+        return Future<void>.error(StateError("broken pipe"));
+      });
       final Future<BridgeProcessState> retryScheduled = service.states.firstWhere(
         (state) => state is BridgeProcessCrashRetryScheduled,
       );
@@ -307,6 +310,7 @@ void main() {
       );
       await pumpEventQueue();
       expect(service.state, same(retryState));
+      expect(warnings, contains("Bridge startup failed after its process exit was already claimed"));
     });
 
     test("an exit emitted before spawn returns is claimed by exactly one retry policy", () async {
@@ -514,6 +518,8 @@ void main() {
       statusTracker.markHelperConnected();
       await pumpEventQueue(times: 2);
       now = now.add(const Duration(minutes: 6));
+      statusTracker.markHelperDisconnected();
+      await pumpEventQueue(times: 2);
       repository.emitExit(exitCode: 21, expected: false);
       await pumpEventQueue();
 

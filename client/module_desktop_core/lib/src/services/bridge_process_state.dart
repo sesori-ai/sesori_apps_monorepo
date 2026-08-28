@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "../trackers/bridge_process_log_tracker.dart";
 
 /// The user's in-memory intent for the supervised bridge.
@@ -46,7 +48,10 @@ final class BridgeProcessCrashGiveUp({
 }
 
 /// The child exited after spawn but before startup could complete.
-final class const BridgeProcessExitedDuringStartException({required final int pid}) implements Exception {
+final class const BridgeProcessExitedDuringStartException({
+  required final int pid,
+  required final AsyncError? innerCause,
+}) implements Exception {
   @override
   String toString() => "BridgeProcessExitedDuringStartException: bridge process $pid exited during startup";
 }
