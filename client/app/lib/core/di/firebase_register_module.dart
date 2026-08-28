@@ -2,6 +2,7 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:injectable/injectable.dart";
 
 import "../platform/firebase/firebase_messaging_static_adapter.dart";
@@ -34,6 +35,10 @@ abstract class FirebaseRegisterModule() {
   @firebaseEnabledEnvironment
   @lazySingleton
   FirebaseCrashlytics get enabledFirebaseCrashlytics => FirebaseCrashlytics.instance;
+
+  @firebaseEnabledEnvironment
+  @lazySingleton
+  FirebaseRemoteConfig get enabledFirebaseRemoteConfig => FirebaseRemoteConfig.instance;
 
   @firebaseEnabledEnvironment
   @lazySingleton

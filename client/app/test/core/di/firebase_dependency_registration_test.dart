@@ -2,11 +2,13 @@ import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
+import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_android_analytics_release_cutoff_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
@@ -31,8 +33,16 @@ void main() {
 
   test("disabled Firebase environment binds the interfaces to no-ops", () {
     expect(getIt<AnalyticsClient>(), isA<NoOpAnalyticsClient>());
+    expect(
+      getIt<AndroidAnalyticsReleaseCutoffSource>(),
+      isA<NoOpAndroidAnalyticsReleaseCutoffSource>(),
+    );
     expect(getIt<FailureReporter>(), isA<NoOpFailureReporter>());
     expect(getIt<PushMessagingSource>(), isA<NoOpPushMessagingSource>());
+    expect(
+      getIt<AndroidAnalyticsReleaseCutoffRepository>(),
+      isA<AndroidAnalyticsReleaseCutoffRepository>(),
+    );
   });
 
   test("Singular attribution resolves independently of Firebase", () {
@@ -42,13 +52,14 @@ void main() {
   });
 
   test("disabled Firebase environment registers no FlutterFire SDK object", () {
-    // The app talks to Firebase only through the three interfaces above, so a
-    // build without the SDK has nothing to stand in for these. Registering
-    // substitutes for them is what this step removed; keep it removed.
+    // The app talks to Firebase only through module-core interfaces, so a build
+    // without the SDK has nothing to stand in for these. Keep SDK objects out of
+    // the disabled environment while retaining the explicit no-op adapters.
     expect(getIt.isRegistered<FirebaseApp>(), isFalse);
     expect(getIt.isRegistered<FirebaseMessaging>(), isFalse);
     expect(getIt.isRegistered<FirebaseAnalytics>(), isFalse);
     expect(getIt.isRegistered<FirebaseCrashlytics>(), isFalse);
+    expect(getIt.isRegistered<FirebaseRemoteConfig>(), isFalse);
   });
 
   test("the static messaging adapter still resolves, because startup always uses it", () async {
