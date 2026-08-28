@@ -21,8 +21,13 @@ reaches the backend so the turn continues.
   exposing prompt/default content in diagnostics.
 - Pi extension `select`, `confirm`, `input`, and `editor` dialogs map to one
   single-select, Yes/No, or custom-answer question and return the exact Pi value,
-  confirmation, or cancellation shape. Editor answers replace the full value;
-  a bounded labelled prefill excerpt never implies that omitted text is retained.
+  confirmation, or cancellation shape. For select, input, and editor dialogs,
+  Pi's title is the user-facing prompt, so it remains fully readable in the
+  scrollable question body instead of the ellipsized sheet heading. Confirm
+  dialogs preserve their distinct title and message, while input hints and
+  editor guidance remain visible with the prompt. Editor answers replace the full
+  value; a bounded labelled prefill excerpt never implies that omitted text is
+  retained.
 - Pi mirrors upstream dialog expiry to retire the card, owns editor expiry,
   rejects pending cards on process/session cleanup, indexes imported children
   under their top-most display root and owning worktree project, and does not
@@ -82,7 +87,7 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor exact replies and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
@@ -112,9 +117,11 @@ capability surfaces do not claim questions.
   user chose, or leaves the turn blocked.
 - An ACP form answer changes scalar type, uses a display label instead of the
   backend value, reaches the wrong session, or remains pending after abort.
-- A Pi dialog loses multiline input, silently retains truncated editor prefill,
-  replies with the wrong wire variant, survives timeout/process cleanup, or
-  appears outside its imported display root or owning project.
+- A Pi select, input, or editor dialog leaves its user-facing prompt only in the
+  ellipsized sheet heading, or any Pi dialog loses its confirm message, input
+  hint, multiline input, or editor guidance; silently retains truncated editor
+  prefill; replies with the wrong wire variant; survives timeout/process cleanup;
+  or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
   scope, accepts custom plan-review input, or survives abort/process cleanup.
 - A resolved request stays visible, keeps suppressing notifications, or returns

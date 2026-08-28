@@ -45,13 +45,16 @@ void main() {
     await processes.dispose();
   });
 
-  test("maps dialogs, indexes imported scope, and sends exact reply variants", () async {
+  test("maps dialog prompts into the body and sends exact reply variants", () async {
+    const selectPrompt =
+        "Which implementation approach should Sesori use for this change?\n\n"
+        "Compare the trade-offs before choosing the final direction.";
     await service.handleRequest(
       ownerSessionId: "child",
       processGeneration: processes.generation,
       request: const PiSelectDialogRequest(
         id: "select-wire",
-        title: "Choose",
+        title: selectPrompt,
         options: ["one", "two"],
         timeoutMs: null,
         raw: {},
@@ -60,6 +63,8 @@ void main() {
     final select = service.getPendingQuestions(sessionId: "root").single;
     expect(select.sessionID, "child");
     expect(select.displaySessionId, "root");
+    expect(select.questions.single.header, "Pi extension");
+    expect(select.questions.single.question, selectPrompt);
     expect(select.questions.single.options.map((option) => option.label), ["one", "two"]);
     expect(service.getProjectQuestions(projectId: projectId).single.id, select.id);
 
@@ -79,13 +84,15 @@ void main() {
       processGeneration: processes.generation,
       request: const PiConfirmDialogRequest(
         id: "confirm-wire",
-        title: null,
-        message: "Proceed?",
+        title: "Confirm change",
+        message: "Continue with the selected implementation?",
         timeoutMs: null,
         raw: {},
       ),
     );
     final confirm = service.getPendingQuestions(sessionId: "child").single;
+    expect(confirm.questions.single.header, "Confirm change");
+    expect(confirm.questions.single.question, "Continue with the selected implementation?");
     service.replyToQuestion(
       questionId: confirm.id,
       sessionId: "child",
@@ -100,13 +107,18 @@ void main() {
       processGeneration: processes.generation,
       request: const PiInputDialogRequest(
         id: "input-wire",
-        title: null,
-        placeholder: "Value",
+        title: "What value should be used?",
+        placeholder: "For example, staging",
         timeoutMs: null,
         raw: {},
       ),
     );
     final input = service.getPendingQuestions(sessionId: "child").single;
+    expect(input.questions.single.header, "Pi extension");
+    expect(
+      input.questions.single.question,
+      "What value should be used?\n\nInput hint: For example, staging",
+    );
     service.replyToQuestion(
       questionId: input.id,
       sessionId: "child",
@@ -123,13 +135,19 @@ void main() {
       processGeneration: processes.generation,
       request: PiEditorDialogRequest(
         id: "editor-wire",
-        title: "Edit",
+        title: "Replace the complete deployment notes without dropping any omitted lines.",
         prefill: _repeat("x", 600),
         raw: const {},
       ),
     );
     final editor = service.getPendingQuestions(sessionId: "child").single;
-    final prompt = editor.questions.single.question;
+    final question = editor.questions.single;
+    final prompt = question.question;
+    expect(question.header, "Editor");
+    expect(
+      prompt,
+      startsWith("Replace the complete deployment notes without dropping any omitted lines.\n\n"),
+    );
     expect(prompt, contains("complete replacement"));
     expect(prompt, contains("Prefill was truncated"));
     expect(prompt, isNot(contains(_repeat("x", 501))));
