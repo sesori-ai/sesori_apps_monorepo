@@ -112,9 +112,10 @@
 - [x] Keep OpenCode preferred while making Grok eligible by default and startable only on demand after setup.
 - [x] Cover the exact built-in registry and namespaced `--grok-bin` CLI option.
 - [x] Update app composition/runtime inventories and reconcile missing Copilot, DeepSeek, and Grok architecture edges.
+- [x] Record activation-specific Grok setup/auth/lifecycle regression behavior; Step 8 retains full reconciliation.
 - [x] Add no analytics event; generic plugin lifecycle outcomes remain authoritative.
 - [x] Pass app fatal-info analysis, 7 focused app tests, shared analysis, 392 shared tests, pub resolution, and LSP.
-- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 141 lines).
+- [x] Keep the measured Step 6 change below the 1,500-line soft cap (currently 172 lines).
 - [x] Run architecture implementation review over Step 6 against Step 5; approved with no findings.
 - [x] Commit the completed successor locally; do not publish before #1175 merges.
 - [x] Rebase onto merged #1175, reverify, publish PR #1177, and start its monitor.
