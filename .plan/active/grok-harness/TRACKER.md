@@ -3,12 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-2/9 merged; Step 3/9 verified and ready for PR
+- **Status:** Steps 1-2/9 merged; Step 3/9 in PR
 - **Current branch:** `grok-harness-step-3-models`
 - **Base:** `origin/main`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
-- **Current step:** `grok-harness-step-3-models`; model/effort collaborators verified and ready to publish
+- **Open PR:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
+- **Current step:** `grok-harness-step-3-models`; model/effort collaborators verified and under review
 
 ## Fixed Series
 
@@ -20,7 +21,7 @@
    - **Evidence:** workspace package, launch spec, typed model-state DTOs, synthetic protocol fixtures, generated output,
      package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
-   - **State:** verified locally and ready to open.
+   - **State:** in PR #1160.
    - **Evidence:** initialize-only API, typed mapping, repositories, sole-owner tracker, options service, generated output,
      18 package tests, fatal-info analysis, LSP diagnostics, architecture approval, and the 1,500-line budget pass.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
@@ -76,7 +77,7 @@
 - [x] Run 18 package tests, fatal-info analysis, Dart LSP diagnostics, line-width checks, and `git diff --check`.
 - [x] Keep the measured Step 3 change below the 1,500-line soft cap (currently 1,305 lines before tracker updates).
 - [x] Run architecture implementation review over the Step 3 branch against the Step 2 branch; approved.
-- [x] Commit the completed successor locally; do not publish before #1156 merges.
+- [x] After #1156 merged, sync to `origin/main`, publish PR #1160, and start its monitor.
 
 ## Decisions And Evidence
 
