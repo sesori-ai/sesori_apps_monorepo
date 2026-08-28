@@ -28,9 +28,9 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   /// with a remaining budget (the scratch catalog/cleanup leases) cannot
   /// overrun it by a second full timeout on the auth round trip.
   ///
-  /// [authMethodId] names the method to authenticate with; `null` picks the
-  /// first advertised non-terminal method, because the headless bridge can
-  /// never complete an interactive terminal flow.
+  /// [authMethodId] names the method to authenticate with. When it is `null`,
+  /// the first advertised non-terminal method allowed by [authMethodAllowlist]
+  /// is selected. A `null` allowlist preserves the unrestricted stock behavior.
   ///
   /// Throws [StateError] when the agent negotiates a protocol version other
   /// than v1 (it could not understand our v1-shaped `session/*` calls),
@@ -41,6 +41,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required bool formElicitation,
     required Map<String, dynamic>? capabilityMeta,
     required String? authMethodId,
+    required Set<String>? authMethodAllowlist,
     required Duration timeout,
   }) async {
     final deadline = Stopwatch()..start();
@@ -62,7 +63,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       );
     }
     if (!init.requiresAuth) return init;
-    final methodId = authMethodId ?? _firstNonTerminalAuthMethod(init);
+    final methodId = authMethodId ?? _firstNonTerminalAuthMethod(init: init, allowlist: authMethodAllowlist);
     if (methodId == null) {
       throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
@@ -195,9 +196,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   static Map<String, dynamic> _asJson(Object? raw) =>
       raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
 
-  static String? _firstNonTerminalAuthMethod(AcpInitializeResult init) {
+  static String? _firstNonTerminalAuthMethod({
+    required AcpInitializeResult init,
+    required Set<String>? allowlist,
+  }) {
     for (final method in init.authMethods) {
-      if (method.type != AcpAuthMethodType.terminal) return method.id;
+      if (method.type != AcpAuthMethodType.terminal && (allowlist == null || allowlist.contains(method.id))) {
+        return method.id;
+      }
     }
     return null;
   }

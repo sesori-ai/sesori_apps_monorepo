@@ -27,7 +27,7 @@ import "repositories/acp_session_config_repository.dart";
 ///
 /// Every policy and behavior hook has a stock-ACP default, so a compliant agent
 /// needs only identity, launch spec, and trackers. A harness overrides what
-/// differs: protocol policies ([authMethodId], [initializeCapabilityMeta],
+/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
@@ -186,6 +186,10 @@ abstract class AcpPlugin({
   /// never complete an interactive terminal flow (see [AcpAgentApi.initialize]).
   String? get authMethodId => null;
 
+  /// Optional allowlist applied when [authMethodId] is `null`. The stock
+  /// behavior accepts every advertised non-terminal method.
+  Set<String>? get authMethodAllowlist => null;
+
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
   Map<String, dynamic>? get initializeCapabilityMeta => null;
@@ -255,6 +259,11 @@ abstract class AcpPlugin({
     required bool fromNewSession,
   }) {}
 
+  /// Session-local variant stamped on replayed assistant messages after
+  /// [captureSessionConfig] observes the `session/load` result. Base ACP has no
+  /// variant state; harnesses with a session-specific variant may override.
+  String? replayVariantForSession({required String sessionId}) => null;
+
   Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,
@@ -279,9 +288,13 @@ abstract class AcpPlugin({
     required String? agent,
   }) async {}
 
-  /// Validates harness-specific initialize metadata after standard ACP parsing
-  /// and before the connection becomes available to session operations.
+  /// Validates harness-specific initialize metadata for live and replay
+  /// connections without mutating live process state.
   void validateInitializeResult(AcpInitializeResult result) {}
+
+  /// Captures initialize-owned state only for the live connection. Replay uses
+  /// a separate process and must not replace live process defaults.
+  void captureLiveInitializeResult(AcpInitializeResult result) {}
 
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
@@ -365,7 +378,9 @@ abstract class AcpPlugin({
         final registry = buildApprovalRegistry(client);
         _approvalRegistry = registry;
         registry.attach(stream: client.serverRequests);
-        _initResult = await _initialize(client);
+        final initResult = await _initialize(client);
+        captureLiveInitializeResult(initResult);
+        _initResult = initResult;
         _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);
         return true;
@@ -401,6 +416,7 @@ abstract class AcpPlugin({
       formElicitation: supportsFormElicitation,
       capabilityMeta: initializeCapabilityMeta,
       authMethodId: authMethodId,
+      authMethodAllowlist: authMethodAllowlist,
       timeout: AcpAgentApi.defaultRequestTimeout,
     );
     validateInitializeResult(result);
@@ -1581,7 +1597,7 @@ abstract class AcpPlugin({
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
-    );
+    )..variant = replayVariantForSession(sessionId: sessionId);
     StreamSubscription<AcpNotification>? sub;
     AcpCommandListener? commandListener;
     List<BridgeSseEvent>? deferredCommandRefresh;
@@ -1668,6 +1684,7 @@ abstract class AcpPlugin({
       flushDeferredCommandRefresh();
       collector.modelId = eventMapper.modelForSession(sessionId: sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId: sessionId);
+      collector.variant = replayVariantForSession(sessionId: sessionId);
       return collector.build();
     } on PluginAuthenticationRequiredException {
       flushDeferredCommandRefresh();

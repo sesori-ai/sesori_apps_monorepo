@@ -18,8 +18,8 @@ class AcpReplayCollector({
   required final String sessionId,
   required final String agentId,
 
-  /// Model/provider stamped on replayed assistant messages. Mutable so the
-  /// plugin can set the loaded session's real model after `session/load`
+  /// Model/provider/variant stamped on replayed assistant messages. Mutable so the
+  /// plugin can set the loaded session's real selection after `session/load`
   /// returns its catalog (the collector is created before the load runs).
   var String? modelId,
   var String? providerId,
@@ -39,6 +39,7 @@ class AcpReplayCollector({
 }) {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
+  String? variant;
   final List<_Draft> _drafts = [];
   int _seq = 0;
   bool _hasUserDraft = false;
@@ -232,7 +233,7 @@ class AcpReplayCollector({
             agent: agentId,
             modelID: modelId,
             providerID: providerId,
-            variant: null,
+            variant: variant,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,
@@ -340,7 +341,7 @@ class AcpReplayCollector({
       agent: agentId,
       modelID: modelId,
       providerID: providerId,
-      variant: null,
+      variant: variant,
       sender: PluginMessageSender.agent,
       time: draft.time,
     );

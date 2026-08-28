@@ -50,6 +50,10 @@ class GrokSessionOptionsService({
     return _options().providers;
   }
 
+  void validateInitializeResult({required AcpInitializeResult result}) {
+    _catalogRepository.mapInitializeResult(result: result);
+  }
+
   void captureInitializeResult({required AcpInitializeResult result}) {
     _replaceCatalog(
       catalog: _catalogRepository.mapInitializeResult(result: result),
@@ -72,6 +76,48 @@ class GrokSessionOptionsService({
         modelId: currentModel?.id,
         providerId: currentModel == null ? null : _pluginId,
         variantId: currentModel?.currentReasoningEffort,
+      );
+    }
+  }
+
+  void validateTurnSelection({
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) {
+    if (agent != null && agent.isNotEmpty && agent != _pluginId) {
+      throw const PluginStaleOptionsException(
+        GrokSessionConfigRepository.selectionOperation,
+        message: "Grok no longer offers the requested agent",
+      );
+    }
+    if (model != null && model.providerID != _pluginId) {
+      throw const PluginStaleOptionsException(
+        GrokSessionConfigRepository.selectionOperation,
+        message: "Grok no longer offers the requested provider",
+      );
+    }
+    final catalog = _catalogTracker.snapshot;
+    final requestedModel = model == null ? null : catalog?.modelById(id: model.modelID);
+    if (model != null && requestedModel == null) {
+      throw const PluginStaleOptionsException(
+        GrokSessionConfigRepository.selectionOperation,
+        message: "Grok no longer offers the requested model",
+      );
+    }
+    final effort = variant?.id;
+    if (effort == null) return;
+    // A stored session is not loaded yet when prevalidation runs, so an
+    // effort-only request has no authoritative model tuple until the resident
+    // load. Admit values from any current model here; applyTurnSelection
+    // validates the exact loaded-session tuple before prompt dispatch.
+    final offersEffort =
+        requestedModel?.reasoningEfforts.contains(effort) ??
+        (model == null && (catalog?.models.any((candidate) => candidate.reasoningEfforts.contains(effort)) ?? false));
+    if (!offersEffort) {
+      throw const PluginStaleOptionsException(
+        GrokSessionConfigRepository.selectionOperation,
+        message: "Grok no longer offers the requested reasoning effort",
       );
     }
   }
@@ -137,8 +183,6 @@ class GrokSessionOptionsService({
 
   String? reasoningEffortForSession({required String sessionId}) =>
       _configurationTracker.snapshotForSession(sessionId: sessionId).variantId;
-
-  void forgetSession({required String sessionId}) => _configurationTracker.forgetSession(sessionId: sessionId);
 
   void resetConnection() => _configurationTracker.clear();
 

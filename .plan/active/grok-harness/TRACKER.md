@@ -3,13 +3,12 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-2/9 merged; Step 3/9 in PR and held for consolidated correctness audit
-- **Current branch:** `grok-harness-step-3-models`
-- **Base:** `origin/main`
+- **Status:** Steps 1-3/9 merged; Step 4/9 verified locally and ready to publish
+- **Current branch:** `grok-harness-step-4-core`
+- **Base:** `origin/main` after merged PR #1160
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
-- **Merged predecessor:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
-- **Open PR:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
-- **Current step:** `grok-harness-step-3-models`; consolidated correctness audit approved, update ready to publish
+- **Merged predecessor:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
+- **Current step:** `grok-harness-step-4-core`; post-rebase correctness review approved, publish next
 
 ## Fixed Series
 
@@ -20,9 +19,11 @@
    - **State:** merged in #1156.
    - **Evidence:** workspace package, launch spec, typed fixtures/codegen, tests/analyzer, LSP, and budget.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
-   - **State:** in PR #1160.
+   - **State:** merged in #1160.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
-   - **State:** not started.
+   - **State:** verified locally; ready for PR.
+   - **Evidence:** generic auth allowlist, Grok plugin composition, 270 ACP tests, 42 Grok tests, affected-package
+     analyzers, LSP diagnostics, two architecture approvals, and the 1,500-line budget pass.
 5. `⚙️ [grok-harness] feat(grok): add direct-CLI setup and lifecycle [step 5/9]`
    - **State:** not started.
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
@@ -70,6 +71,23 @@
 - [x] Pass 267 ACP and 27 Grok tests, analysis, LSP, line/diff checks, and two architecture reviews.
 - [x] Accept 1,821 lines: audit-required boundary/transition coverage takes precedence over the soft cap.
 - [x] Complete hostile wire, state-invariant, and post-fix general correctness reviews; final verdict approved.
+
+## Step 4 Checklist
+
+- [x] Add an optional generic advertised-auth allowlist while preserving every existing ACP default.
+- [x] Cover allowed, interactive-only, and rejected allowlisted authentication outcomes.
+- [x] Compose `GrokPlugin` over the shared ACP mapper, trackers, transport, and Step 3 collaborators.
+- [x] Wire live initialize/new/load capture, exact pre-turn selection, one provider, commands, and connection reset.
+- [x] Enable stop-and-send and fail-closed selection without Grok-specific permission or event machinery.
+- [x] Cover identity validation, two sessions, accepted-send timing, cancellation, reasoning/tools, permissions, close,
+  reconnect, disposal, stale prevalidation, loaded-effort replay, and selection failure; retain history suppression.
+- [x] Keep replay initialize validation pure and validate effort-only tuples after a stored session becomes resident.
+- [x] Remove redundant Grok cleanup/command overrides; the shared tracker and command path remain authoritative.
+- [x] Run 270 ACP tests, 42 Grok tests, six affected-package analyzers, Dart LSP diagnostics, and whitespace checks.
+- [x] Keep the measured Step 4 change below the 1,500-line soft cap (currently 1,067 lines).
+- [x] Run initial and final architecture implementation reviews over Step 4 against Step 3; both approved.
+- [x] Complete the post-rebase general correctness review; final verdict approved.
+- [ ] Publish Step 4 after #1160's merge and start its PR monitor.
 
 ## Decisions And Evidence
 

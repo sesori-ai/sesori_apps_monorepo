@@ -22,6 +22,7 @@ class CopilotCatalogProbeApi({required final AcpStdioClient _client}) {
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: CopilotBinary.acpAuthMethodId,
+      authMethodAllowlist: null,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
   }

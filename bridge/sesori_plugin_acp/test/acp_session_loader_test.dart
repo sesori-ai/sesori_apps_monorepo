@@ -401,26 +401,29 @@ void main() {
       expect(toolPart.state.title, isNull);
     });
 
-    test("stamps replayed assistant messages with the loaded session model", () {
+    test("stamps replayed assistant messages with the loaded session selection", () {
       final collector =
           AcpReplayCollector(
-            sessionId: "s1",
-            agentId: "Cursor",
-            modelId: "claude-opus-4-8",
-            providerId: "cursor",
-            initialUserMessageId: null,
-            messageIdOverride: null,
-            messageTimeResolver: null,
-            haltClassifier: null,
-          )..consume(
-            upd({
-              "sessionUpdate": "agent_message_chunk",
-              "content": {"type": "text", "text": "hi"},
-            }),
-          );
+              sessionId: "s1",
+              agentId: "Cursor",
+              modelId: "claude-opus-4-8",
+              providerId: "cursor",
+              initialUserMessageId: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+            )
+            ..variant = "high"
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "hi"},
+              }),
+            );
       final assistant = collector.build().single.info as PluginMessageAssistant;
       expect(assistant.modelID, "claude-opus-4-8");
       expect(assistant.providerID, "cursor");
+      expect(assistant.variant, "high");
     });
 
     test("a messageId change splits consecutive same-role chunks into two messages", () {

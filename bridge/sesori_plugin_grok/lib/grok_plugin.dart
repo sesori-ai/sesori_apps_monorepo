@@ -4,3 +4,4 @@
 // ACP machinery. Production composition lands in later grok-harness steps.
 export "src/grok_binary.dart";
 export "src/grok_identity.dart";
+export "src/grok_plugin_impl.dart";
