@@ -35,6 +35,23 @@ void main() {
     expect(mapper.providerForSession(sessionId: "session"), "provider");
   });
 
+  test("configuration tracker keeps explicit null variant distinct from no session override", () {
+    final tracker = AcpSessionConfigurationTracker()
+      ..setProcessSelection(modelId: "default-model", providerId: "provider", variantId: "high")
+      ..setSessionSelection(
+        sessionId: "session",
+        modelId: "plain-model",
+        providerId: "provider",
+        variantId: null,
+      );
+
+    expect(tracker.snapshotForSession(sessionId: "session").variantId, isNull);
+    tracker.forgetSession(sessionId: "session");
+    expect(tracker.snapshotForSession(sessionId: "session").variantId, "high");
+    tracker.clear();
+    expect(tracker.processDefaults.variantId, isNull);
+  });
+
   test("ACP aggregate becomes complete after an authoritative command snapshot", () {
     final configurationTracker = AcpSessionConfigurationTracker()
       ..setProcessDefaults(modelId: "model", providerId: "provider");

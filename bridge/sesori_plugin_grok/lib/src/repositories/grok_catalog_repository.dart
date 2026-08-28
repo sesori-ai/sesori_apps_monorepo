@@ -14,7 +14,7 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
   );
 
   GrokModelCatalog mapInitializeResult({required AcpInitializeResult result}) {
-    final envelope = GrokModelStateEnvelopeDto.fromJson(result.raw);
+    final envelope = GrokModelStateEnvelopeDto.fromJson({...result.raw, "models": null});
     final metadata = envelope.metadata;
     if (metadata?.grokShell != true) throw StateError("ACP initialize result is not from Grok Build");
     final state = metadata?.modelState;
@@ -23,7 +23,7 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
   }
 
   GrokModelCatalog? mapSessionResult({required AcpNewSessionResult result}) {
-    final state = GrokModelStateEnvelopeDto.fromJson(result.raw).models;
+    final state = GrokModelStateEnvelopeDto.fromJson({...result.raw, "_meta": null}).models;
     return state == null ? null : _mapState(state: state);
   }
 
@@ -43,8 +43,11 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
         GrokCatalogModel(
           id: id,
           name: name == null || name.isEmpty ? id : name,
-          reasoningEfforts: efforts,
-          currentReasoningEffort: currentEffort != null && efforts.contains(currentEffort) ? currentEffort : null,
+          reasoningEfforts: efforts.values,
+          defaultReasoningEffort: efforts.defaultValue,
+          currentReasoningEffort: currentEffort != null && efforts.values.contains(currentEffort)
+              ? currentEffort
+              : null,
         ),
       );
     }
@@ -57,7 +60,9 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
     );
   }
 
-  List<String> _reasoningEfforts({required List<GrokReasoningEffortOptionDto> options}) {
+  ({List<String> values, String? defaultValue}) _reasoningEfforts({
+    required List<GrokReasoningEffortOptionDto> options,
+  }) {
     final values = <String>[];
     String? defaultValue;
     for (final option in options) {
@@ -68,6 +73,6 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
     }
     final defaultIndex = defaultValue == null ? -1 : values.indexOf(defaultValue);
     if (defaultIndex > 0) values.insert(0, values.removeAt(defaultIndex));
-    return List.unmodifiable(values);
+    return (values: List.unmodifiable(values), defaultValue: defaultValue);
   }
 }

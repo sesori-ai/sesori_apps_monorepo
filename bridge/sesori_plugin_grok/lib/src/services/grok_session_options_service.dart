@@ -92,8 +92,20 @@ class GrokSessionOptionsService({
     final catalog = _catalogTracker.snapshot;
     final current = _configurationTracker.snapshotForSession(sessionId: sessionId);
     final currentModelId = current.modelId;
-    final trackedModel = currentModelId == null ? null : catalog?.modelById(id: currentModelId);
-    final catalogModel = model == null ? trackedModel ?? catalog?.defaultModel : catalog?.modelById(id: model.modelID);
+    GrokCatalogModel? catalogModel;
+    if (model != null) {
+      catalogModel = catalog?.modelById(id: model.modelID);
+    } else if (currentModelId != null) {
+      catalogModel = catalog?.modelById(id: currentModelId);
+      if (catalogModel == null) {
+        throw const PluginStaleOptionsException(
+          GrokSessionConfigRepository.selectionOperation,
+          message: "Grok no longer offers the session's selected model",
+        );
+      }
+    } else {
+      catalogModel = catalog?.defaultModel;
+    }
     if (catalogModel == null) {
       throw const PluginStaleOptionsException(
         GrokSessionConfigRepository.selectionOperation,
@@ -108,8 +120,6 @@ class GrokSessionOptionsService({
       );
     }
     final selectedModelId = catalogModel.id;
-    if (selectedModelId == current.modelId && reasoningEffort == null) return;
-
     await _configRepository.setSelection(
       liveClient: liveClient,
       sessionId: sessionId,
@@ -121,7 +131,7 @@ class GrokSessionOptionsService({
       sessionId: sessionId,
       modelId: selectedModelId,
       providerId: _pluginId,
-      variantId: reasoningEffort ?? catalogModel.currentReasoningEffort,
+      variantId: reasoningEffort ?? catalogModel.defaultReasoningEffort,
     );
   }
 
@@ -157,9 +167,9 @@ class GrokSessionOptionsService({
     final configuredModelId = processDefaults.modelId;
     final selected = configuredModelId == null ? null : catalog?.modelById(id: configuredModelId);
     final defaultModel = selected ?? catalog?.defaultModel;
-    final processDefaultReasoningEffort = defaultModel?.reasoningEfforts.contains(processDefaults.variantId) ?? false
+    final processDefaultReasoningEffort = selected?.reasoningEfforts.contains(processDefaults.variantId) ?? false
         ? processDefaults.variantId
-        : null;
+        : defaultModel?.defaultReasoningEffort;
     return PluginSessionOptions(
       agents: [
         PluginAgent(

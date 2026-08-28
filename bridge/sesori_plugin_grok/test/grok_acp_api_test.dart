@@ -52,6 +52,42 @@ void main() {
     expect(fake.written.where((frame) => frame["method"] == AcpMethods.authenticate), isEmpty);
   });
 
+  test("catalog probe preserves an advertised authentication rejection", () async {
+    final fake = FakeAcpProcess();
+    addTearDown(fake.close);
+    final api = _api(processFactory: (_) async => fake);
+
+    final probing = api.probeCatalog(cwd: "/repo", timeout: const Duration(seconds: 2));
+    final initialize = await _waitForFrame(fake: fake, method: AcpMethods.initialize);
+    fake.emit({
+      "jsonrpc": "2.0",
+      "id": initialize["id"],
+      "result": _initializeResult(
+        authMethods: const [
+          {"id": "cached_token", "name": "Cached token"},
+        ],
+      ),
+    });
+    final authenticate = await _waitForFrame(fake: fake, method: AcpMethods.authenticate);
+    fake.emit({
+      "jsonrpc": "2.0",
+      "id": authenticate["id"],
+      "error": {"code": -32000, "message": "Rejected"},
+    });
+
+    await expectLater(
+      probing,
+      throwsA(
+        isA<PluginAuthenticationRequiredException>().having(
+          (error) => error.cause,
+          "cause",
+          isA<AcpRpcException>(),
+        ),
+      ),
+    );
+    expect(await fake.exitCode, -15);
+  });
+
   test("setModel sends exact model and optional reasoning metadata", () async {
     final fake = FakeAcpProcess();
     final client = AcpStdioClient(

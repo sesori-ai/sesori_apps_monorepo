@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-2/9 merged; Step 3/9 in PR
+- **Status:** Steps 1-2/9 merged; Step 3/9 in PR and held for consolidated correctness audit
 - **Current branch:** `grok-harness-step-3-models`
 - **Base:** `origin/main`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1156 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1156>
 - **Open PR:** #1160 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1160>
-- **Current step:** `grok-harness-step-3-models`; model/effort collaborators verified and under review
+- **Current step:** `grok-harness-step-3-models`; consolidated correctness audit approved, update ready to publish
 
 ## Fixed Series
 
@@ -18,8 +18,7 @@
    - **Evidence:** architecture-approved plan; released-binary facts, titles, paths, and whitespace passed.
 2. `🌿 [grok-harness] feat(grok): scaffold the Grok plugin package [step 2/9]`
    - **State:** merged in #1156.
-   - **Evidence:** workspace package, launch spec, typed model-state DTOs, synthetic protocol fixtures, generated output,
-     package tests/analyzer, LSP diagnostics, and the 1,500-line budget pass.
+   - **Evidence:** workspace package, launch spec, typed fixtures/codegen, tests/analyzer, LSP, and budget.
 3. `⚙️ [grok-harness] feat(grok): expose models and reasoning effort [step 3/9]`
    - **State:** in PR #1160.
 4. `⚙️ [grok-harness] feat(grok): compose ACP sessions and turns [step 4/9]`
@@ -66,11 +65,21 @@
 
 ## Step 3 Checklist
 - [x] Add typed envelopes, initialize-only probing, exact selection writes, and cause-preserving failures.
-- [x] Keep catalog and session selection behind one tracker each; expose opaque models and canonical effort values.
-- [x] Cover catalog edge cases, defaults, load isolation, stale options, selection variants, and failed writes.
-- [x] Pass 19 tests, analysis, LSP, line/diff checks, the 1,500-line target, two architecture reviews, and PR setup.
+- [x] Keep catalog and selection state in their trackers; preserve opaque models and canonical effort values.
+- [x] Cover hostile wire siblings, tuple fallbacks, default reset, stale tracked state, and failed writes.
+- [x] Pass 267 ACP and 27 Grok tests, analysis, LSP, line/diff checks, and two architecture reviews.
+- [x] Accept 1,821 lines: audit-required boundary/transition coverage takes precedence over the soft cap.
+- [x] Complete hostile wire, state-invariant, and post-fix general correctness reviews; final verdict approved.
+
 ## Decisions And Evidence
 
+- 2026-08-28: Repeated substantive feedback exposed an incomplete parser/selection invariant matrix. The PR was removed
+  from readiness and the monitor paused while hostile wire, state-transition, and general-correctness audits ran.
+- 2026-08-28: The consolidated correction masks irrelevant envelope branches, preserves valid catalog siblings,
+  rejects malformed owned containers, rejects stale tracked models, keeps model/effort as one tuple, and distinguishes
+  explicit model-default reset from omitted selection. Official Grok source confirms a bare model switch resolves that
+  model's declared default effort; explicit effort remains an override. Malformed optional effort lists remain fail-soft
+  by plan: preserve the model with no variants, while malformed catalog/model containers reject.
 - 2026-08-27: Initial delivery is direct CLI only. Managed install is excluded because xAI owns an official installer
   and self-update channel; Sesori has no current need to duplicate that lifecycle.
 - 2026-08-27: Grok launches without yolo/always-approve, with leader attachment and auto-update disabled.

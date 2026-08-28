@@ -20,6 +20,7 @@ void main() {
       "opaque/provider:model-beta",
     ]);
     expect(catalog.models.first.reasoningEfforts, ["high", "low"]);
+    expect(catalog.models.first.defaultReasoningEffort, "high");
     expect(catalog.models.first.currentReasoningEffort, "high");
     expect(catalog.models.last.reasoningEfforts, isEmpty);
   });
@@ -55,7 +56,116 @@ void main() {
     expect(catalog.models.single.id, "opaque:model");
     expect(catalog.models.single.name, "opaque:model");
     expect(catalog.models.single.reasoningEfforts, ["medium"]);
+    expect(catalog.models.single.defaultReasoningEffort, "medium");
     expect(catalog.models.single.currentReasoningEffort, isNull);
+  });
+
+  test("ignores malformed irrelevant envelope branches", () {
+    final initialize = _fixture(name: "initialize.json")..["models"] = 7;
+    expect(
+      repository.mapInitializeResult(result: AcpInitializeResult.fromJson(initialize)).currentModel?.id,
+      "synthetic:model-alpha",
+    );
+
+    final initializeMetadata = initialize["_meta"] as Map<String, dynamic>;
+    final session = AcpNewSessionResult.fromJson({
+      "sessionId": "s1",
+      "models": initializeMetadata["modelState"],
+      "_meta": 7,
+    });
+    expect(repository.mapSessionResult(result: session)?.currentModel?.id, "synthetic:model-alpha");
+  });
+
+  test("retains valid models while sanitizing malformed siblings and optional fields", () {
+    final result = AcpNewSessionResult.fromJson({
+      "sessionId": "s1",
+      "models": {
+        "currentModelId": 7,
+        "availableModels": [
+          7,
+          {1: "non-string key"},
+          {"modelId": 7, "name": "Invalid identity"},
+          {"modelId": "plain", "name": 7, "description": false, "_meta": "invalid"},
+          {
+            "modelId": "unsupported",
+            "_meta": {
+              "supportsReasoningEffort": "invalid",
+              "reasoningEfforts": [
+                {"value": "low", "default": true},
+              ],
+            },
+          },
+          {
+            "modelId": "reasoning",
+            "name": "Reasoning",
+            "_meta": {
+              "supportsReasoningEffort": true,
+              "reasoningEffort": 7,
+              "reasoningEfforts": [
+                {1: "non-string key", "value": "xhigh"},
+                {"value": 7, "default": true},
+                {"value": "low", "default": true},
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    final catalog = repository.mapSessionResult(result: result)!;
+    expect(catalog.currentModel, isNull);
+    expect(catalog.models.map((model) => model.id), ["plain", "unsupported", "reasoning"]);
+    expect(catalog.models.first.name, "plain");
+    expect(catalog.models.take(2).every((model) => model.reasoningEfforts.isEmpty), isTrue);
+    expect(catalog.models.last.reasoningEfforts, ["low"]);
+    expect(catalog.models.last.defaultReasoningEffort, "low");
+    expect(catalog.models.last.currentReasoningEffort, isNull);
+  });
+
+  test("preserves a selected model when its optional effort container is malformed", () {
+    const modelState = {
+      "currentModelId": "opaque:model",
+      "availableModels": [
+        {
+          "modelId": "opaque:model",
+          "name": "Opaque model",
+          "_meta": {
+            "supportsReasoningEffort": true,
+            "reasoningEffort": "high",
+            "reasoningEfforts": "invalid",
+          },
+        },
+      ],
+    };
+    final catalogs = [
+      repository.mapInitializeResult(
+        result: AcpInitializeResult.fromJson({
+          "protocolVersion": 1,
+          "_meta": {"grokShell": true, "modelState": modelState},
+        }),
+      ),
+      repository.mapSessionResult(
+        result: AcpNewSessionResult.fromJson({"sessionId": "s1", "models": modelState}),
+      )!,
+    ];
+
+    for (final catalog in catalogs) {
+      expect(catalog.currentModel?.id, "opaque:model");
+      expect(catalog.models.single.reasoningEfforts, isEmpty);
+      expect(catalog.models.single.defaultReasoningEffort, isNull);
+      expect(catalog.models.single.currentReasoningEffort, isNull);
+    }
+  });
+
+  test("rejects a malformed available-models container without replacing it with empty", () {
+    final result = AcpNewSessionResult.fromJson({
+      "sessionId": "s1",
+      "models": {"currentModelId": null, "availableModels": "invalid"},
+    });
+    expect(
+      () => repository.mapSessionResult(result: result),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test("accepts an explicit empty catalog but rejects missing Grok identity", () {

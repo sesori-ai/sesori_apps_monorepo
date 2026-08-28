@@ -3,6 +3,7 @@ class GrokCatalogModel({
   required final String id,
   required final String name,
   required List<String> reasoningEfforts,
+  required final String? defaultReasoningEffort,
   required final String? currentReasoningEffort,
 }) {
   final List<String> reasoningEfforts = List.unmodifiable(reasoningEfforts);
