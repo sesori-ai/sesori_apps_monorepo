@@ -8,8 +8,8 @@
 - **Base:** `origin/main` at `cb9baa91dd`
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1181 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1181>
-- **Open PR:** pending publication of Step 9
-- **Next action:** publish, review, and merge the final retirement PR
+- **Open PR:** #1190 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1190>
+- **Next action:** review and merge the final retirement PR
 
 ## Fixed Series
 
@@ -34,7 +34,7 @@
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
    - **State:** merged in #1181.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
-   - **State:** verification and retirement complete; final PR pending publication.
+   - **State:** verification and retirement complete in PR #1190.
 
 ## Step 1 Checklist
 
@@ -164,6 +164,7 @@
 - [x] Fix the live-discovered ACP restart identity and accepted-user ordering defect with deterministic regressions.
 - [x] Re-run the affected live restart flow and the complete automated matrix after rebasing onto current main.
 - [x] Record privacy-safe evidence, remove disposable state, release the local-testing slot, and retire the plan.
+- [x] Publish final PR #1190 and start its monitor.
 
 ## Decisions And Evidence
 
