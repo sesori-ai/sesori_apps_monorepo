@@ -150,6 +150,7 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [Pi](https://github.com/badlogic/pi-mono) | Native JSONL RPC integration. |
 | [Oh My Pi](https://github.com/can1357/oh-my-pi) | ACP-based integration. |
 | [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) | ACP-based integration through Sesori's managed adapter. |
+| [Grok Build](https://x.ai/cli) | ACP-based integration with xAI's user-installed CLI. |
 
 Every integration ships enabled by default — pick your assistant when you start a session, and run several at once on the same Bridge.
 
@@ -184,6 +185,32 @@ Every integration ships enabled by default — pick your assistant when you star
   and approval behavior is ask; only open projects whose code you trust.
 - **Login:** provider setup and login happen locally through DeepSeek Harness;
   Sesori does not expose provider credentials to phone clients.
+
+</details>
+
+<details>
+<summary><strong>Grok Build notes</strong></summary>
+
+- **Install:** install Grok Build through [xAI's official CLI](https://x.ai/cli).
+  Sesori requires version `1.0.5` or newer and uses `grok` from your PATH by
+  default. Point `--grok-bin <path>` at a specific binary to make it
+  authoritative. Sesori does not install or update Grok.
+- **Authentication:** sign in locally with `grok login` or configure a supported
+  API key, enterprise account, or custom model. Credentials stay on the bridge
+  machine and are never sent to phone clients.
+- **Permissions:** Sesori runs a dedicated no-leader ACP process with in-process
+  update checks disabled and Grok's normal ask mode. It never enables
+  `--always-approve` or `--yolo`; supported
+  permission requests remain available on connected clients.
+- **Models and reasoning:** selectable model IDs and reasoning effort values come
+  directly from Grok and are sent back unchanged before a turn.
+- **Content:** initial support accepts text and embedded context. Grok does not
+  currently advertise image prompt support through ACP, so image attachments
+  are unavailable for this harness.
+- **Sessions and deletion:** persisted Grok sessions can be imported and
+  continued. Deleting one from Sesori closes the live session and removes
+  Sesori's catalog/transcript, but the upstream row remains in Grok storage
+  because ACP exposes close rather than delete.
 
 </details>
 

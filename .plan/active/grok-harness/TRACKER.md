@@ -3,13 +3,13 @@
 ## Current State
 
 - **Plan:** `.plan/active/grok-harness/PLAN.md`
-- **Status:** Steps 1-5/9 merged; Step 6/9 in PR
-- **Current branch:** `grok-harness-step-6-activation`
-- **Base:** `origin/main` after merged PR #1175
+- **Status:** Steps 1-5/9 merged; Step 6/9 in PR; Step 7/9 implemented locally
+- **Current branch:** `grok-harness-step-7-branding`
+- **Base:** `grok-harness-step-6-activation` (PR #1177)
 - **Architecture plan review:** approved 2026-08-27 after catalog ownership and auth-policy corrections
 - **Merged predecessor:** #1175 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1175>
 - **Open PR:** #1177 — <https://github.com/sesori-ai/sesori_apps_monorepo/pull/1177>
-- **Local successor:** Step 7 starts after Step 6 publication
+- **Local successor:** `grok-harness-step-7-branding`; client branding and support notes under verification
 
 ## Fixed Series
 
@@ -30,7 +30,7 @@
 6. `⚙️ [grok-harness] feat(bridge): activate Grok Build [step 6/9]`
    - **State:** in PR #1177.
 7. `🌿 [grok-harness] feat(client): brand Grok Build [step 7/9]`
-   - **State:** not started.
+   - **State:** implemented locally; held until #1177 merges.
 8. `🌱 [grok-harness] docs: reconcile Grok regression coverage [step 8/9]`
    - **State:** not started.
 9. `⚙️ [grok-harness] test: verify Grok and retire the plan [step 9/9]`
@@ -119,6 +119,20 @@
 - [x] Run architecture implementation review over Step 6 against Step 5; approved with no findings.
 - [x] Commit the completed successor locally; do not publish before #1175 merges.
 - [x] Rebase onto merged #1175, reverify, publish PR #1177, and start its monitor.
+
+## Step 7 Checklist
+
+- [x] Source both theme marks byte-for-byte from xAI's official asset package and record archive/file hashes.
+- [x] Reject scripts, external references, and metadata; preserve the supplied black/white artwork without alteration.
+- [x] Map `Harness.grok` to theme-appropriate marks and the `Grok Build` name while retaining generic fallback.
+- [x] Cover light/dark mapping, display name, exact geometry, theme contrast, safety, and unknown IDs.
+- [x] Document the supported harness, 1.0.5 floor, official install, explicit path, local auth, ask mode, text-only
+  prompts, model/reasoning selection, import, and retained upstream rows after local deletion.
+- [x] Add no analytics event; existing generic plugin lifecycle outcomes remain sufficient.
+- [x] Pass client pub resolution, 245 Prego tests, fatal-info analysis for Prego/mobile/desktop, LSP, and SVG checks.
+- [x] Keep the measured Step 7 change below the 1,500-line soft cap (currently 108 lines).
+- [x] Skip architecture review because this is localized presentation, static assets, tests, and documentation only.
+- [x] Commit the completed successor locally; do not publish before #1177 merges.
 
 ## Decisions And Evidence
 

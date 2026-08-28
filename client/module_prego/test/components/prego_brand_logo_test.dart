@@ -22,6 +22,10 @@ SvgAssetLoader _loaderOf(WidgetTester tester) =>
 List<String> _pathElements(String svg) =>
     RegExp(r"<path\b[^>]*>").allMatches(svg).map((match) => match.group(0)!).toList();
 
+List<String> _pathData(String svg) => RegExp(
+  r'<path\b[^>]*\bd="([^"]+)"',
+).allMatches(svg).map((match) => match.group(1)!).toList();
+
 void main() {
   for (final mapping in <({String pluginId, String lightAsset, String darkAsset})>[
     (
@@ -69,6 +73,11 @@ void main() {
       lightAsset: "assets/svgs/brands/deepseek.svg",
       darkAsset: "assets/svgs/brands/deepseek.svg",
     ),
+    (
+      pluginId: Harness.grok.name,
+      lightAsset: "assets/svgs/brands/grok_light.svg",
+      darkAsset: "assets/svgs/brands/grok_dark.svg",
+    ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
       await tester.pumpWidget(_harness(logo: PregoBrandLogo(pluginId: mapping.pluginId, color: null)));
@@ -113,6 +122,7 @@ void main() {
     expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), "DeepSeek");
+    expect(PregoBrandLogo.displayNameFor(Harness.grok.name), "Grok Build");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 
@@ -140,6 +150,20 @@ void main() {
     final artwork = File("assets/svgs/brands/deepseek.svg").readAsStringSync();
 
     expect(artwork, contains('fill="#4D6BFE"'));
+  });
+
+  test("Grok artwork keeps the official geometry and theme contrast", () {
+    final light = File("assets/svgs/brands/grok_light.svg").readAsStringSync();
+    final dark = File("assets/svgs/brands/grok_dark.svg").readAsStringSync();
+
+    expect(_pathData(dark), _pathData(light));
+    expect(light, contains('fill="#0A0A0A"'));
+    expect(dark, contains('fill="white"'));
+    for (final artwork in [light, dark]) {
+      expect(artwork, isNot(contains("<script")));
+      expect(artwork, isNot(contains("href=")));
+      expect(artwork, isNot(contains("<metadata")));
+    }
   });
 
   testWidgets("forwards size and keeps the mark decorative", (tester) async {
