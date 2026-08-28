@@ -49,6 +49,8 @@ void main() {
           "Authorization: Bearer abcDefghijklmnopqrstuvwxyz",
           "Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==",
           '''{"Authorization":"CustomScheme customCredentialValue123"}''',
+          '''<server><password>CorrectHorse</password><credential value="AttributeSecretValue"/></server>''',
+          "<api-key>Azure Falcon Battery</api-key>",
           "AcmeCompiler appears again without exposing credentials.",
         ],
       ),
@@ -73,6 +75,11 @@ void main() {
       "abcDefghijklmnopqrstuvwxyz",
       "QWxhZGRpbjpvcGVuIHNlc2FtZQ",
       "customCredentialValue123",
+      "CorrectHorse",
+      "AttributeSecretValue",
+      "Azure",
+      "Falcon",
+      "Battery",
     ]) {
       expect(terms, isNot(contains(credentialFragment)));
     }

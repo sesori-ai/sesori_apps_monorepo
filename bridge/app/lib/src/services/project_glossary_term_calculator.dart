@@ -20,6 +20,11 @@ class const ProjectGlossaryTermCalculator() {
     r'''(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
   );
+  static final RegExp _credentialXmlElementPattern = RegExp(
+    r'''<(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)\b[^>]*'''
+    r'''(?:/>|>[\s\S]*?</(?:password|passwd|pwd|secret|api[_-]?key|token|credential|authorization)\s*>)''',
+    caseSensitive: false,
+  );
   static final RegExp _authorizationCredentialPattern = RegExp(
     r'''["']?authorization["']?\s*[:=]\s*(?:["'][^"'\r\n]*["']|[^\r\n,;}\]]+)''',
     caseSensitive: false,
@@ -197,6 +202,7 @@ when with web widget widgets will windows window workspace www
   }
 
   String _filterCredentialSpans(String value) => value
+      .replaceAll(_credentialXmlElementPattern, " ")
       .replaceAll(_authorizationCredentialPattern, " ")
       .replaceAll(_credentialAssignmentPattern, " ")
       .replaceAll(_bearerCredentialPattern, " ")
