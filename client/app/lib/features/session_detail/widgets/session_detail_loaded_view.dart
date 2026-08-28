@@ -282,7 +282,13 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
     );
     if (widget.readOnly) return content;
     return BlocProvider(
-      create: (_) => VoiceInputCubit(service: getIt<VoiceTranscriptionService>()),
+      create: (_) {
+        final service = getIt<VoiceTranscriptionService>();
+        return VoiceInputCubit(
+          service: service,
+          session: service.createSession(projectId: widget.projectId),
+        );
+      },
       child: content,
     );
   }

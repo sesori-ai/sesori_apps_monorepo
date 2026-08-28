@@ -1,24 +1,36 @@
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/services/current_project_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   late _FakeProjectRepository repository;
+  late _FakeProjectGlossaryScopeTracker scopeTracker;
   late CurrentProjectService service;
 
   setUp(() {
     repository = _FakeProjectRepository();
-    service = CurrentProjectService(projectRepository: repository);
+    scopeTracker = _FakeProjectGlossaryScopeTracker();
+    service = CurrentProjectService(
+      projectRepository: repository,
+      projectGlossaryScopeTracker: scopeTracker,
+    );
     addTearDown(service.dispose);
   });
 
-  test("publishes the authoritative id after a successful load", () async {
+  test("publishes the authoritative id and cached glossary key after a successful load", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    scopeTracker.cachedKey = glossaryKey;
     final loadedProjectId = service.loadedProjectIds.first;
 
     final project = await service.getCurrentProject(projectId: "requested-id");
 
     expect(project.id, "authoritative-id");
+    expect(project.voiceGlossaryKey, glossaryKey);
+    expect(scopeTracker.projectPaths, ["/workspace/project"]);
     expect(await loadedProjectId, "authoritative-id");
   });
 
@@ -48,7 +60,22 @@ final class _FakeProjectRepository() implements ProjectRepository {
       name: "Project",
       path: "/workspace/project",
       time: null,
+      voiceGlossaryKey: null,
     );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _FakeProjectGlossaryScopeTracker() implements ProjectGlossaryScopeTracker {
+  ProjectGlossaryKey? cachedKey;
+  final List<String> projectPaths = [];
+
+  @override
+  ProjectGlossaryKey? projectKeyFor({required String projectPath}) {
+    projectPaths.add(projectPath);
+    return cachedKey;
   }
 
   @override

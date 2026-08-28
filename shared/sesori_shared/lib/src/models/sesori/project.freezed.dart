@@ -326,7 +326,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 /// @nodoc
 mixin _$Project {
 
- String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges; bool get directoryMissing; bool get supportsDedicatedWorktrees;
+ String get id; String? get name; String get path; ProjectTime? get time; bool get hasUnseenChanges; bool get directoryMissing; bool get supportsDedicatedWorktrees;@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey? get voiceGlossaryKey;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -339,16 +339,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, voiceGlossaryKey) || other.voiceGlossaryKey == voiceGlossaryKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees,voiceGlossaryKey);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees, voiceGlossaryKey: $voiceGlossaryKey)';
 }
 
 
@@ -359,7 +359,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees,@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey? voiceGlossaryKey
 });
 
 
@@ -376,7 +376,7 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,Object? voiceGlossaryKey = freezed,}) {
   return _then(Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -385,7 +385,8 @@ as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,voiceGlossaryKey: freezed == voiceGlossaryKey ? _self.voiceGlossaryKey : voiceGlossaryKey // ignore: cast_nullable_to_non_nullable
+as ProjectGlossaryKey?,
   ));
 }
 /// Create a copy of Project
@@ -409,7 +410,7 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true});
+  const _Project({required this.id, required this.name, this.path = "", required this.time, this.hasUnseenChanges = false, this.directoryMissing = false, this.supportsDedicatedWorktrees = true, @ProjectGlossaryKeyJsonConverter() required this.voiceGlossaryKey});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
@@ -419,6 +420,7 @@ class _Project implements Project {
 @override@JsonKey() final  bool hasUnseenChanges;
 @override@JsonKey() final  bool directoryMissing;
 @override@JsonKey() final  bool supportsDedicatedWorktrees;
+@override@ProjectGlossaryKeyJsonConverter() final  ProjectGlossaryKey? voiceGlossaryKey;
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
@@ -433,16 +435,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, voiceGlossaryKey) || other.voiceGlossaryKey == voiceGlossaryKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees);
+int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees,voiceGlossaryKey);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees)';
+  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees, voiceGlossaryKey: $voiceGlossaryKey)';
 }
 
 
@@ -453,7 +455,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees
+ String id, String? name, String path, ProjectTime? time, bool hasUnseenChanges, bool directoryMissing, bool supportsDedicatedWorktrees,@ProjectGlossaryKeyJsonConverter() ProjectGlossaryKey? voiceGlossaryKey
 });
 
 
@@ -470,7 +472,7 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? path = null,Object? time = freezed,Object? hasUnseenChanges = null,Object? directoryMissing = null,Object? supportsDedicatedWorktrees = null,Object? voiceGlossaryKey = freezed,}) {
   return _then(_Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -479,7 +481,8 @@ as String,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_
 as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
 as bool,directoryMissing: null == directoryMissing ? _self.directoryMissing : directoryMissing // ignore: cast_nullable_to_non_nullable
 as bool,supportsDedicatedWorktrees: null == supportsDedicatedWorktrees ? _self.supportsDedicatedWorktrees : supportsDedicatedWorktrees // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,voiceGlossaryKey: freezed == voiceGlossaryKey ? _self.voiceGlossaryKey : voiceGlossaryKey // ignore: cast_nullable_to_non_nullable
+as ProjectGlossaryKey?,
   ));
 }
 

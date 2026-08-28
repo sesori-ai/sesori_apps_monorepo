@@ -90,7 +90,7 @@ import 'package:sesori_dart_core/src/repositories/notification_preferences_repos
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
-    as _i680;
+    as _i679;
 import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
@@ -153,7 +153,7 @@ import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
 import 'package:sesori_dart_core/src/services/voice_transcription_service.dart'
-    as _i679;
+    as _i680;
 import 'package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart'
     as _i895;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -246,12 +246,6 @@ extension GetItInjectableX on _i174.GetIt {
         localNotificationClient: gh<_i1037.LocalNotificationClient>(),
         routeDispatcher: gh<_i951.RouteDispatcher>(),
         routeSource: gh<_i366.RouteSource>(),
-      ),
-    );
-    gh.lazySingleton<_i679.VoiceTranscriptionService>(
-      () => _i679.VoiceTranscriptionService(
-        repository: gh<_i107.VoiceRepository>(),
-        capture: gh<_i359.VoiceCapture>(),
       ),
     );
     gh.lazySingleton<_i973.AndroidAnalyticsReleaseCutoffApi>(
@@ -451,8 +445,8 @@ extension GetItInjectableX on _i174.GetIt {
         attachmentThumbnailStorage: gh<_i894.AttachmentThumbnailStorage>(),
       ),
     );
-    gh.lazySingleton<_i680.PermissionRepository>(
-      () => _i680.PermissionRepository(api: gh<_i231.PermissionApi>()),
+    gh.lazySingleton<_i679.PermissionRepository>(
+      () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
@@ -483,6 +477,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i74.NewSessionOptionsService(
         sessionRepository: gh<_i7.SessionRepository>(),
         defaultModelSelector: gh<_i895.DefaultModelSelector>(),
+      ),
+    );
+    gh.lazySingleton<_i680.VoiceTranscriptionService>(
+      () => _i680.VoiceTranscriptionService(
+        repository: gh<_i107.VoiceRepository>(),
+        projectRepository: gh<_i80.ProjectRepository>(),
+        capture: gh<_i359.VoiceCapture>(),
       ),
     );
     gh.lazySingleton<_i110.PluginManagementService>(

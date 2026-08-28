@@ -30,7 +30,10 @@ void main() {
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt.isRegistered<DesktopApplicationSupportDirectory>(), isTrue);
+    expect(getIt.isRegistered<BridgeExecutablePathResolver>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessService>(), isTrue);
+    expect(getIt<BridgeProcessService>().state, isA<BridgeProcessStopped>());
   });
 
   test("desktop bootstrap leaves the mobile thumbnail cache unbound and unresolved", () {

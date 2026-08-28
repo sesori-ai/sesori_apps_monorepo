@@ -151,6 +151,7 @@ import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_glossary_population_service.dart";
 import "services/project_glossary_scope_service.dart";
+import "services/project_glossary_scope_tracker.dart";
 import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
@@ -351,7 +352,18 @@ class Orchestrator({
       prSyncService: prSyncService,
       settingsService: pullRequestRefreshSettingsService,
     );
-    final currentProjectService = CurrentProjectService(projectRepository: projectRepository);
+    final projectGlossaryScopeTracker = ProjectGlossaryScopeTracker(
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
+    final projectGlossaryScopeService = ProjectGlossaryScopeService(
+      repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
+      bridgeIdProvider: _bridgeRegistrationService,
+      scopeTracker: projectGlossaryScopeTracker,
+    );
+    final currentProjectService = CurrentProjectService(
+      projectRepository: projectRepository,
+      projectGlossaryScopeTracker: projectGlossaryScopeTracker,
+    );
     final sesoriServerApi = SesoriServerApi(
       authBackendUrl: config.authBackendURL,
       client: _httpClient,
@@ -360,10 +372,7 @@ class Orchestrator({
     );
     final projectGlossaryPopulationService = ProjectGlossaryPopulationService(
       projectRepository: projectRepository,
-      scopeService: ProjectGlossaryScopeService(
-        repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
-        bridgeIdProvider: _bridgeRegistrationService,
-      ),
+      scopeService: projectGlossaryScopeService,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,
         filesystemApi: const FilesystemApi(),

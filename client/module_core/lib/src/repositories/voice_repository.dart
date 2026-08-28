@@ -1,5 +1,6 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
 import "../capabilities/voice/voice_api.dart";
 
@@ -8,8 +9,13 @@ class VoiceRepository({required final VoiceApi _api}) {
   Future<VoiceTranscriptionOutcome> transcribe({
     required String audioFilePath,
     required String mimeType,
+    required ProjectGlossaryKey? projectGlossaryKey,
   }) async {
-    final response = await _api.transcribe(audioFilePath: audioFilePath, mimeType: mimeType);
+    final response = await _api.transcribe(
+      audioFilePath: audioFilePath,
+      mimeType: mimeType,
+      projectGlossaryKey: projectGlossaryKey,
+    );
     return switch (response) {
       VoiceTranscriptionApiSuccess(:final transcript) => VoiceTranscriptionOutcome.success(
         transcript: transcript,

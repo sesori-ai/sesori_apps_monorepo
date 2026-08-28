@@ -53,6 +53,7 @@ void main() {
         name: "A",
         path: "/moved/a",
         time: ProjectTime(created: 1, updated: 2),
+        voiceGlossaryKey: null,
       );
       final restored = Project.fromJson(original.toJson());
 
@@ -78,6 +79,37 @@ void main() {
       });
 
       expect(project.supportsDedicatedWorktrees, isTrue);
+    });
+
+    test("decodes and serializes a valid opaque voice glossary key", () {
+      const value = "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ";
+
+      final project = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+        "voiceGlossaryKey": value,
+      });
+
+      expect(project.voiceGlossaryKey, ProjectGlossaryKey.parse(value: value));
+      expect(project.toJson()["voiceGlossaryKey"], value);
+    });
+
+    test("missing or invalid voice glossary context degrades to null", () {
+      final missing = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+      });
+      final invalid = Project.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "time": null,
+        "voiceGlossaryKey": "/raw/project/path",
+      });
+
+      expect(missing.voiceGlossaryKey, isNull);
+      expect(invalid.voiceGlossaryKey, isNull);
     });
 
     test("ProjectTime ignores the removed initialized field", () {

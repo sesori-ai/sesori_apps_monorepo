@@ -36,7 +36,11 @@ class PublishCutoffTest(unittest.TestCase):
 
     def test_release_workflow_requires_the_cutoff_after_android_production_submission(self) -> None:
         workflow = Path(".github/workflows/submit-release.yml").read_text()
+        publisher_workflow = Path(
+            ".github/workflows/publish-firebase-analytics-release-cutoff.yml"
+        ).read_text()
 
+        self.assertNotIn("workflow_dispatch:", publisher_workflow)
         self.assertIn("publish-analytics-release-cutoff:", workflow)
         self.assertIn("needs: [resolve, submit-android]", workflow)
         self.assertIn(

@@ -16,6 +16,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
+    as _i964;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
@@ -58,6 +60,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
+    );
+    gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
+      () => _i964.DesktopBridgeExecutablePathResolver(),
     );
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i91.NoOpAttributionClient(),

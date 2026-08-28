@@ -84,6 +84,25 @@ void main() {
     expect(publicationRepository.operations, isEmpty);
   });
 
+  test("coalesces concurrent population requests for the same project", () async {
+    final getStarted = Completer<void>();
+    final releaseGet = Completer<void>();
+    publicationRepository
+      ..getStarted = getStarted
+      ..releaseGet = releaseGet;
+
+    final first = service.populate(projectId: "project-1");
+    await getStarted.future;
+    final second = service.populate(projectId: "project-1");
+
+    expect(identical(first, second), isTrue);
+    releaseGet.complete();
+    await Future.wait([first, second]);
+
+    expect(projectRepository.requestedProjectIds, ["project-1"]);
+    expect(publicationRepository.operations, ["get"]);
+  });
+
   test("serializes concurrent population requests", () async {
     final getStarted = Completer<void>();
     final releaseGet = Completer<void>();
@@ -139,6 +158,7 @@ final class _FakeProjectRepository() implements ProjectRepository {
       name: "Project",
       path: "/workspace/project",
       time: null,
+      voiceGlossaryKey: null,
     );
   }
 

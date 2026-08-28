@@ -11,12 +11,6 @@ on:
         description: "Android build number successfully submitted to production"
         type: string
         required: true
-  workflow_dispatch:
-    inputs:
-      build_number:
-        description: "Android build number successfully submitted to production"
-        type: string
-        required: true
 
 run-name: "analytics cutoff · build ${{ inputs.build_number }}"
 
