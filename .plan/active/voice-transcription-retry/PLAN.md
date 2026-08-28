@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `voice-transcription-retry`
-- **Status:** Active — Step 3/5 client ownership migration ready for publication
+- **Status:** Active — Step 3/5 client ownership migration in review
 - **Plan date:** 2026-08-27
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Server repository:** `sesori-ai/sesori_auth_server`

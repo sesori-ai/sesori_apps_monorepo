@@ -6,9 +6,9 @@
 - **Apps base:** `origin/main` at `746e222c42`
 - **Auth Step 2:** PR [#77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8`
 - **Current branch:** `plan/voice-transcription-retry/s03-core-voice-lifecycle`
-- **Series state:** Steps 1–2 merged; Step 3 synchronized, verified, and ready for publication
-- **Current step:** 3/5 ownership migration
-- **Next action:** open and monitor the Step 3 PR, then begin Step 4 locally
+- **Series state:** Steps 1–2 merged; Step 3 apps PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open and monitored
+- **Current step:** 3/5 ownership migration in review
+- **Next action:** monitor Step 3 while implementing Step 4 locally
 - **External merge barrier:** realtime apps PR [#918](https://github.com/sesori-ai/sesori_apps_monorepo/pull/918), current head `b3083b7ad3`, must rebase onto merged Step 4 before it may merge
 
 ## Locked Product Decisions
@@ -62,7 +62,7 @@
 |---|---|---|---|---:|---|
 | [x] | 1/5 | apps | `🌱 [voice-transcription-retry] Plan async voice transcription retries [step 1/5]` | 500-700 | [PR #1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144) merged as `bd7ad4bc` |
 | [x] | 2/5 | auth | `⚙️ [voice-transcription-retry] Mark async transcription failures retryable [step 2/5]` | 500-950 | [PR #77](https://github.com/sesori-ai/sesori_auth_server/pull/77) merged as `459d2663c8` |
-| [ ] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-3,700 | Synchronized with `746e222c42`; architecture approved and final verification passing; ready for PR |
+| [ ] | 3/5 | apps | `🚧 [voice-transcription-retry] Move voice lifecycle into client core [step 3/5]` | 2,800-3,700 | [PR #1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162) open; 3,688 changed lines, architecture approved, final verification passing |
 | [ ] | 4/5 | apps | `⚙️ [voice-transcription-retry] Retain and retry async voice recordings [step 4/5]` | 700-1,250 | Blocked on Step 3 |
 | [ ] | 5/5 | apps | `🌿 [voice-transcription-retry] Verify async voice retries and retire plan [step 5/5]` | 60-180 | Blocked on Step 4 and #918 rebase checkpoint |
 
@@ -160,7 +160,7 @@
 - **Step 1 commits:** `620cb5c6c` (plan), tracker records, `c55a0846b` (review round 1), and `830ba2e8d` (review round 2)
 - **Step 1 PR:** [#1144](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1144), merged as `bd7ad4bc374d959309154d2a30697d698ec56970`
 - **Step 2 server verification:** PR #77 merged as `459d2663c8`; format/lint/build/circular-dependency checks pass, focused provider/policy suites pass, full Node suite passed 941 with one skipped before the route-level review follow-up, route/service follow-up passes 51/51, and architecture implementation review approved with no findings
-- **Step 3 ownership migration:** synchronized with apps `origin/main` at `746e222c42`; codegen and module_core/app strict analysis pass, along with 23 focused core tests, 9 wake-lock/platform-adapter tests, 85 composer tests, and 58 new-session/routing tests; first review's wake-lock isolation finding was fixed and the second architecture review approved with no findings
+- **Step 3 ownership migration:** PR [#1162](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1162), 3,688 changed lines; synchronized with apps `origin/main` at `746e222c42`; codegen and module_core/app strict analysis pass, along with 23 focused core tests, 9 wake-lock/platform-adapter tests, 85 composer tests, and 58 new-session/routing tests; first review's wake-lock isolation finding was fixed and the second architecture review approved with no findings
 - **Step 4 client retry verification:** pending
 - **Step 4 regression reconciliation:** pending with implementation
 - **Step 5 L4 evidence:** pending
