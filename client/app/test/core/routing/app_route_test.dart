@@ -143,9 +143,8 @@ void main() {
 
   group("flat routes", () {
     test("splash route builds SplashScreen", () {
-      final page = AppRouteDef.splash.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(page, isA<MaterialPage<void>>());
-      expect((page as MaterialPage<void>).child, isA<SplashScreen>());
+      final widget = AppRouteDef.splash.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(widget, isA<SplashScreen>());
     });
 
     test("login route builds LoginScreen behind a fade transition page", () {
@@ -159,9 +158,8 @@ void main() {
     });
 
     test("projects route builds ProjectListScreen", () {
-      final page = AppRouteDef.projects.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(page, isA<MaterialPage<void>>());
-      expect((page as MaterialPage<void>).child, isA<ProjectListScreen>());
+      final widget = AppRouteDef.projects.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(widget, isA<ProjectListScreen>());
     });
 
     // A CupertinoPage, so the bottom-up modal slide is the same on Android,
@@ -184,11 +182,8 @@ void main() {
         children.map((route) => route.path),
         equals(["notifications", "harnesses", "profile"]),
       );
-      final notificationsPage = children[0].pageBuilder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-      ) as MaterialPage<void>;
-      expect(notificationsPage.child, isA<NotificationSettingsScreen>());
+      final notificationsWidget = children[0].builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(notificationsWidget, isA<NotificationSettingsScreen>());
       // Harnesses rise as a modal from the new-session harness menu and push
       // in from the settings list, so the route builds its own page per
       // presentation instead of taking the default push for both.
@@ -208,11 +203,8 @@ void main() {
         HarnessSettingsPresentation.pushed,
       );
       expect(children[1].routes, isEmpty);
-      final profilePage = children[2].pageBuilder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-      ) as MaterialPage<void>;
-      expect(profilePage.child, isA<ProfileScreen>());
+      final profileWidget = children[2].builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(profileWidget, isA<ProfileScreen>());
       expect(
         _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
         AppRouteDef.settingsNotifications.path,
@@ -228,11 +220,10 @@ void main() {
     });
 
     test("newSession route builds NewSessionScreen", () {
-      final page = AppRouteDef.newSession.toGoRoute().pageBuilder!(
+      final widget = AppRouteDef.newSession.toGoRoute().builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}, queryParameters: {"name": "Project One"}),
-      ) as MaterialPage<void>;
-      final widget = page.child;
+      );
       expect(widget, isA<NewSessionScreen>());
       expect((widget as NewSessionScreen).projectId, "proj-42");
       expect(widget.projectName, "Project One");
@@ -240,33 +231,6 @@ void main() {
   });
 
   group("buildAppRoutes", () {
-    test("every route provides an explicit standalone page", () {
-      void expectExplicitPages(List<RouteBase> routes) {
-        for (final route in routes) {
-          switch (route) {
-            case GoRoute(:final pageBuilder, :final routes):
-              expect(
-                pageBuilder,
-                isNotNull,
-                reason: "GoRoute ${route.path} must not rely on go_router's legacy MaterialApp detection",
-              );
-              expectExplicitPages(routes);
-            case ShellRoute(:final pageBuilder, :final routes):
-              expect(
-                pageBuilder,
-                isNotNull,
-                reason: "ShellRoute must not rely on go_router's legacy MaterialApp detection",
-              );
-              expectExplicitPages(routes);
-            default:
-              throw StateError("Unsupported route type ${route.runtimeType}");
-          }
-        }
-      }
-
-      expectExplicitPages(buildAppRoutes());
-    });
-
     test("explicit route table covers every AppRouteDef exactly once", () {
       final routes = buildAppRoutes();
       final registeredPaths = _collectAbsoluteRoutePaths(routes: routes);
@@ -328,15 +292,14 @@ void main() {
       addTearDown(() => getIt.unregister<ProjectViewingService>());
 
       final shell = _sessionShellRoute();
-      final page = shell.pageBuilder!(
+      final widget = shell.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"name": "My Project"},
         ),
         const SizedBox(),
-      ) as MaterialPage<void>;
-      final widget = page.child;
+      );
 
       expect(widget, isA<SessionListCubitProvider>());
       final provider = widget as SessionListCubitProvider;
