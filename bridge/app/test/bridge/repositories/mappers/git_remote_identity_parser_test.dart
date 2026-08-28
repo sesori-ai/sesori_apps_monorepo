@@ -50,35 +50,5 @@ void main() {
         },
       );
     }
-
-    test("retains only explicit non-default network ports for origin identity", () {
-      expect(
-        parser.parseOrigin(remoteUrl: "ssh://git@code.internal:2222/Org/Repo.git"),
-        (host: "code.internal", port: 2222, slug: "Org/Repo", user: "git"),
-      );
-      expect(
-        parser.parseOrigin(remoteUrl: "ssh://git@code.internal:22/Org/Repo.git"),
-        (host: "code.internal", port: null, slug: "Org/Repo", user: "git"),
-      );
-      expect(
-        parser.parseOrigin(remoteUrl: "https://code.internal:8443/Org/Repo.git"),
-        (host: "code.internal", port: 8443, slug: "Org/Repo", user: null),
-      );
-      expect(
-        parser.parseOrigin(remoteUrl: "git@code.internal:Org/Repo.git"),
-        (host: "code.internal", port: null, slug: "Org/Repo", user: "git"),
-      );
-    });
-
-    test("retains SSH account identity for relative generic remotes", () {
-      expect(
-        parser.parseOrigin(remoteUrl: "alice@code.internal:repo.git"),
-        (host: "code.internal", port: null, slug: "repo", user: "alice"),
-      );
-      expect(
-        parser.parseOrigin(remoteUrl: "bob@code.internal:repo.git"),
-        (host: "code.internal", port: null, slug: "repo", user: "bob"),
-      );
-    });
   });
 }

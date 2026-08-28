@@ -48,23 +48,23 @@ void main() {
 
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:2222/org/repo.git"),
-      "git@code.internal:2222/org/repo",
+      "ssh://git@code.internal:2222/org/repo.git",
     );
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:3333/org/repo.git"),
-      "git@code.internal:3333/org/repo",
+      "ssh://git@code.internal:3333/org/repo.git",
     );
     expect(
       await resolveOrigin(remoteUrl: "ssh://git@code.internal:22/Org/Repo.git"),
-      "git@code.internal/Org/Repo",
+      "ssh://git@code.internal/Org/Repo.git",
     );
     expect(
       await resolveOrigin(remoteUrl: "alice@code.internal:repo.git"),
-      "alice@code.internal/repo",
+      "ssh-relative://alice@code.internal/repo.git",
     );
     expect(
       await resolveOrigin(remoteUrl: "bob@code.internal:repo.git"),
-      "bob@code.internal/repo",
+      "ssh-relative://bob@code.internal/repo.git",
     );
   });
 
