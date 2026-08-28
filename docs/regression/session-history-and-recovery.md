@@ -25,6 +25,11 @@ reconnect or restart.
   per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; assistant
   IDs use the deterministic ACP projection.
+- GitHub Copilot history uses standard ACP `session/load` on a dedicated
+  short-lived connection. Replayed updates backfill the bridge transcript, while
+  reopening a prior session after plugin, process, or bridge restart loads it
+  before the next prompt without duplicating replay into the live stream. Sesori
+  uses the public protocol and never reads Copilot credential or history files.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. They rejoin at their recorded creation time while
   preserving relative order, so a catalog re-import cannot move old rows to the
@@ -86,7 +91,7 @@ reconnect or restart.
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
 | L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
-| L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
+| L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot additionally replaces its ACP process, reloads the same session, and converges standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
@@ -94,7 +99,9 @@ reconnect or restart.
 Vary transcript size relative to page size and how far back you page. Vary the
 disruption: stop the plugin, restart the bridge, drop the client link briefly and
 then beyond the replay window, or advance the session from the backend's own CLI
-between reads. Vary root versus child sessions and content types, since tool and
+between reads. For Copilot, compare ordinary reopen, plugin restart, bridge
+restart, and forced ACP process replacement for the same imported session. Vary
+root versus child sessions and content types, since tool and
 image parts converge by their own rules.
 
 ## Failure Signals
@@ -122,6 +129,8 @@ image parts converge by their own rules.
   `agent_end` marks the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
+- A Copilot restart prompts before `session/load`, duplicates replay as new live
+  output, or reads private history files instead of the ACP replay boundary.
 
 ## Known Limitations
 
@@ -139,5 +148,5 @@ image parts converge by their own rules.
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; Pi session process repository,
-storage API, and history mapper; shared pagination cursor; client detail load
-service and cubit.
+storage API, and history mapper; shared ACP session loader and Copilot plugin;
+shared pagination cursor; client detail load service and cubit.

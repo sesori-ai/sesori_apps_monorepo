@@ -47,6 +47,14 @@ variant, and worktree mode, and creating the session with its first input.
   selected identity only after every requested write succeeds. Catalog reads use
   the connected adapter without creating a session or model request; selection
   is session-local and never writes normal `DSH_HOME` settings.
+- GitHub Copilot discovers model, mode, model-specific reasoning, and slash-command
+  options through a bounded isolated ACP session while retaining the user's normal
+  Copilot configuration for login, settings, and BYOK. The probe closes its own
+  session and process. Equivalent probes coalesce, probes for different selected
+  models serialize, and only the selected model's returned reasoning catalog can
+  validate a turn. A stale model, mode, or reasoning value fails before prompt
+  acceptance, invalidates that selection, and refreshes without inventing an
+  option Copilot did not advertise. A catalog with no mode remains usable.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -142,7 +150,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. |
+| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -157,7 +165,10 @@ matching-remote, colliding, and rollback-failing branches while confirming the
 directory stays fixed and title application does not wait for branch refinement.
 For launch behavior, vary in-route versus background completion, success versus
 definitive rejection versus response loss, navigation before completion, and
-reconnect or option refresh while restoration is pending.
+reconnect or option refresh while restoration is pending. For Copilot, vary the
+account's default and explicit model/mode/reasoning choices, a model change whose
+reasoning catalog differs, no advertised mode, an exact slash command, stale
+selection rejection, and authentication failure during discovery.
 
 ## Failure Signals
 
@@ -179,6 +190,9 @@ reconnect or option refresh while restoration is pending.
 - A DeepSeek catalog loses sound providers because one provider failed, parses
   an opaque model ID, dispatches before both requested config writes settle, or
   records a partially applied selection as successful.
+- A Copilot catalog invents an option, validates reasoning against another model,
+  overlaps unlike probes, replaces a coherent cache after authentication failure,
+  or accepts a stale selection before applying every requested config value.
 - Creation succeeds for a non-routable plugin or unknown project.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
@@ -197,6 +211,9 @@ reconnect or option refresh while restoration is pending.
 - Client end-to-end coverage is phone-only; the desktop shell cannot create.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
+- Copilot's ACP catalog probe closes its scratch session, but the pinned CLI has
+  no deletion method; low-impact upstream history residue can remain in the
+  user's normal Copilot home.
 
 ## Sources
 
@@ -207,6 +224,8 @@ reconnect or option refresh while restoration is pending.
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
 - DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/`,
   `lib/src/services/`, and package tests
+- Copilot: `bridge/sesori_plugin_copilot/lib/src/services/`,
+  `lib/src/repositories/`, and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
 - Client: `client/module_core/lib/src/services/new_session_options_service.dart`

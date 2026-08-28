@@ -21,12 +21,13 @@ Plan: [PLAN.md](PLAN.md)
   - PR: [#1159](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1159)
   - Evidence: 13 package tests pass; analyzer reports no issues; all six official `1.0.80` asset names and SHA-256 digests match the GitHub release API; architecture implementation review passed
 - [ ] **Step 5/7** — `⚙️ [github-copilot-harness] feat(app): activate and brand GitHub Copilot [step 5/7]`
-  - State: implemented and verified locally on `github-copilot-harness/step-5-activate`; ready for review
-  - PR: pending
+  - State: in review
+  - PR: [#1161](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1161)
   - Evidence: bridge app analyzer and 6 focused registration/CLI tests pass; shared analyzer and 8 plugin-identity compatibility tests pass; module_prego analyzer and 24 branding/fallback tests pass; downstream mobile analyzer reports no issues; architecture implementation review passed
 - [ ] **Step 6/7** — `🌱 [github-copilot-harness] docs: document Copilot regression coverage [step 6/7]`
-  - State: not started
+  - State: implemented and verified locally on `github-copilot-harness/step-6-regression-docs`; waiting for Step 5 to merge
   - PR: pending
+  - Evidence: all 10 affected feature documents define Copilot behavior, level boundaries, exploration, failure signals, limitations, and sources; required headings and L1-L5 tables are intact; `git diff --check` passes
 - [ ] **Step 7/7** — `🌱 [github-copilot-harness] docs: verify and retire the Copilot plan [step 7/7]`
   - State: not started
   - PR: pending
