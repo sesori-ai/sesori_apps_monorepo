@@ -1,13 +1,10 @@
 import "package:web_socket_channel/web_socket_channel.dart";
 
-sealed class RealtimeVoiceOpenException implements Exception {
-  // ignore: use_primary_constructors, unnecessary_type_name_in_constructor, explicit fields keep the taxonomy readable
-  const RealtimeVoiceOpenException({required this.cause, required this.httpStatus});
-
+sealed class const RealtimeVoiceOpenException({
   // ignore: no_slop_linter/prefer_specific_type, caught transport failures may be any object
-  final Object? cause;
-  final int? httpStatus;
-}
+  required final Object? cause,
+  required final int? httpStatus,
+}) implements Exception;
 
 final class const RealtimeVoiceOpenAuthenticationException({required super.cause, required super.httpStatus})
     extends RealtimeVoiceOpenException;
