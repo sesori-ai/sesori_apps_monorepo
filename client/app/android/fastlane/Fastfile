@@ -249,20 +249,12 @@ platform :android do
   # not from the fastlane folder. Output lands at
   # client/app/build/app/outputs/bundle/release/app-release.aab thanks to the
   # build dir redirect in client/app/android/build.gradle.kts.
-  # SESORI_BUILD_EPOCH_SECONDS lets the app keep analytics off for 48 hours
-  # after compilation, when an unauthenticated launch is almost certainly Play's
-  # pre-launch crawl rather than a person; a login lifts the gate immediately.
-  # submit_android promotes this exact binary, so the stamp travels to
-  # production unchanged: promoting inside those 48 hours hides unauthenticated
-  # first launches for what is left of them. Nothing enforces a delay; it is an
-  # accepted trade for a stable count.
   private_lane :_flutter_build_appbundle do |options|
     build_number = options[:build_number]
     flutter_root = File.expand_path(File.join("..", ".."), Dir.pwd)
     Dir.chdir(flutter_root) do
       with_singular_dart_defines do |singular_defines_path|
         sh "flutter build appbundle --release --build-number=#{build_number} " \
-           "--dart-define=SESORI_BUILD_EPOCH_SECONDS=#{Time.now.utc.to_i} " \
            "--dart-define-from-file=#{Shellwords.escape(singular_defines_path)}"
       end
     end

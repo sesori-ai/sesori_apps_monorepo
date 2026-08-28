@@ -55,8 +55,9 @@ flutter run
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release
 builds using the required compile-time credentials. Debug/profile builds and unsupported platforms remain disabled.
-An unauthenticated Android launch inside the Play pre-launch window defers startup; successful interactive
-authentication starts Singular before reporting its conversion events, while crawlers that never authenticate stay off.
+An unauthenticated Android build newer than the latest production submission in Firebase Remote Config defers startup;
+successful interactive authentication starts Singular before reporting its conversion events, while crawlers that never
+authenticate stay off.
 
 Keep credentials outside Git. Create a local JSON file such as:
 

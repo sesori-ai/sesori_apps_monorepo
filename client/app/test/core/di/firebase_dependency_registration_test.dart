@@ -5,12 +5,14 @@ import "package:firebase_messaging/firebase_messaging.dart";
 import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
+import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
 import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -21,8 +23,11 @@ void main() {
   setUp(() async {
     await configureDependencies(
       firebaseEnabled: false,
-      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => const AnalyticsRuntimeBootstrap(
+        capability: AnalyticsRuntimeCapability.disabled(
+          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        ),
+        crawlGate: AnalyticsStoreCrawlGate.allow,
       ),
     );
   });
@@ -38,11 +43,13 @@ void main() {
       isA<NoOpAnalyticsReleaseCutoffSource>(),
     );
     expect(getIt<FailureReporter>(), isA<NoOpFailureReporter>());
+    expect(getIt<InstalledAppBuildSource>(), isA<PackageInfoInstalledAppBuildSource>());
     expect(getIt<PushMessagingSource>(), isA<NoOpPushMessagingSource>());
     expect(
       getIt<AnalyticsReleaseCutoffRepository>(),
       isA<AnalyticsReleaseCutoffRepository>(),
     );
+    expect(getIt<AnalyticsCrawlGateService>(), isA<AnalyticsCrawlGateService>());
   });
 
   test("Singular attribution resolves independently of Firebase", () {

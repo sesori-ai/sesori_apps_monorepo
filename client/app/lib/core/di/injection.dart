@@ -3,33 +3,38 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "analytics_runtime_bootstrap.dart";
 import "firebase_register_module.dart";
 import "injection.config.dart";
 
 final getIt = GetIt.instance;
 
-// 3-phase DI initialization order:
+// 3-phase DI registration order:
 //   1. getIt.init()                  — Flutter platform deps (SecureStorage, http.Client, etc.)
 //   2. configureAuthDependencies(…)  — Auth deps (AuthManager, interface bindings, etc.)
 //   3. configureCoreDependencies(…)  — Core deps (ConnectionService, VoiceApi, etc.)
 //
-// The analytics runtime capability depends on the stored auth session, so it is
-// resolved after phase 2 and registered before phase 3. Every consumer of it is
-// a lazy singleton, so nothing reads it earlier.
+// Core registrations are lazy. Resolve only the crawl-gate service after phase
+// 3, then register the resulting analytics capability before any capability
+// consumer is instantiated.
 @InjectableInit()
-Future<void> configureDependencies({
+Future<AnalyticsStoreCrawlGate> configureDependencies({
   required bool firebaseEnabled,
-  required Future<AnalyticsRuntimeCapability> Function({required AuthSession authSession})
-  createAnalyticsRuntimeCapability,
+  required Future<AnalyticsRuntimeBootstrap> Function({
+    required AnalyticsCrawlGateService crawlGateService,
+  })
+  createAnalyticsRuntimeBootstrap,
 }) async {
   getIt.init(
     environment: firebaseEnabled ? firebaseEnabledEnvironmentName : firebaseDisabledEnvironmentName,
   );
 
   configureAuthDependencies(getIt);
-  getIt.registerSingleton<AnalyticsRuntimeCapability>(
-    await createAnalyticsRuntimeCapability(authSession: getIt<AuthSession>()),
-  );
   configureCoreDependencies(getIt);
+  final bootstrap = await createAnalyticsRuntimeBootstrap(
+    crawlGateService: getIt<AnalyticsCrawlGateService>(),
+  );
+  getIt.registerSingleton<AnalyticsRuntimeCapability>(bootstrap.capability);
   getIt<MessageThumbnailCacheService>();
+  return bootstrap.crawlGate;
 }

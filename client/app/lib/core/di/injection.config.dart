@@ -77,6 +77,9 @@ import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
+import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
+    as _i186;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
@@ -124,6 +127,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
+    gh.lazySingleton<_i1024.PackageInfoClient>(
+      () => _i1024.PackageInfoClient(),
+    );
     gh.lazySingleton<_i748.PasteboardClient>(() => _i748.PasteboardClient());
     gh.lazySingleton<_i1019.SharePlusClient>(() => _i1019.SharePlusClient());
     gh.lazySingleton<_i776.SingularStaticAdapter>(
@@ -157,6 +163,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
+    );
+    gh.lazySingleton<_i948.InstalledAppBuildSource>(
+      () => _i186.PackageInfoInstalledAppBuildSource(
+        packageInfoClient: gh<_i1024.PackageInfoClient>(),
+      ),
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),

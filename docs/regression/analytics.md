@@ -34,19 +34,19 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
   the current ETag, rejects regressions, and treats an equal value as an idempotent no-op. Publication failure blocks
   stable tagging rather than silently leaving the cutoff stale.
 - Firebase Analytics collection defaults off at native startup and is enabled only after consent in an eligible release
-  process. Debug/profile runs emit neither automatic nor Sesori-defined analytics events. The release lanes stamp each
-  binary with its build time; for 48 hours after that stamp an unauthenticated Android launch keeps the SDK's own
-  collection suspended as a possible Play pre-launch crawl, while a device with a locally valid session reports at any
-  time. The Sesori runtime stays operational during the suspension: pre-authentication events are accepted but
-  discarded by the suspended SDK, and a server-confirmed interactive authentication lifts the suspension before the
-  one-time login outcome events are logged, so `login_attempt_completed` and the account outcome still report from
-  inside the window. The window is a heuristic on Play's crawl scheduling, so a late crawl can still register as an
-  install, and a build promoted to production inside its window discards pre-authentication events of unauthenticated
-  launches for the remainder; the L5 pre-launch check measures the crawl residue.
+  process. Debug/profile runs emit neither automatic nor Sesori-defined analytics events. An unauthenticated Android
+  release build newer than the production-submission cutoff keeps the SDK's own collection suspended as a possible
+  Play pre-launch crawl; a build at or below the cutoff, or any device with a locally valid session, reports. A missing,
+  invalid, throttled, or failed cutoff fetch fails open so control-plane failure cannot suppress real users. The Sesori
+  runtime stays operational during suspension: pre-authentication events are accepted but discarded by the suspended
+  SDK, and a server-confirmed interactive authentication lifts the suspension before the one-time login outcome events
+  are logged. Logged-in testing builds therefore report intentionally. Crawls of a production-submitted build and
+  crawls admitted by fail-open behavior can still register; the L5 pre-launch check measures that residue.
 - Singular starts only on Android/iOS, in the same eligible release-build population, with required credentials
-  injected outside Git. An unauthenticated Android launch inside the Play crawl window arms startup but defers it until
-  a successful interactive authentication reports its first conversion event; a crawler that never authenticates
-  remains off. Startup and event reporting are best-effort and must not block the app. The configuration limits
+  injected outside Git. An unauthenticated Android build newer than the production-submission cutoff arms startup but
+  defers it until a successful interactive authentication reports its first conversion event; a crawler that never
+  authenticates remains off. Startup and event reporting are best-effort and must not block the app. The configuration
+  limits
   advertising identifiers and partner data sharing, removes Android advertising-ID permissions, and sets no custom
   user ID, custom events, deep-link handler, or uninstall token. The Basic Usage Analytics preference does not claim
   to control this separate attribution scope.
@@ -65,10 +65,10 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, the build-window predicate, release-lane build stamp, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration plus standard-event mapping with fake adapters. |
-| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; and Singular registration-before-login only for server-confirmed account creation. |
+| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration plus standard-event mapping with fake adapters. |
+| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; and Singular registration-before-login only for server-confirmed account creation. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
-| L5 Full | Release build against the real analytics properties: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, a Play pre-launch report producing no Firebase or Singular rows inside the build window, Singular install/session attribution and standard login/registration events observed without an advertising ID, custom user identity, or event attributes, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
+| L5 Full | Release build against the real analytics properties and Firebase Remote Config: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, an ahead-of-production Play pre-launch report producing no Firebase or Singular rows while the cutoff fetch succeeds, the production submission workflow publishing its exact build cutoff, Singular install/session attribution and standard login/registration events observed without an advertising ID, custom user identity, or event attributes, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
 
 ## Exploration Guidance
 
@@ -88,15 +88,16 @@ account against a real property.
   status, omits the status-appropriate event, adds parameters beyond pinned `method` and shared schema, marks recurring
   `login` as a GA4 key event, or treats installation-level `sign_up` as the canonical account-registration count.
 - An account-linked event is emitted while unknown, disabled, unauthenticated, or in a debug or profile build.
-- Any automatic or Sesori-defined event reaches Firebase from a debug/profile process, or from a release process
-  inside its build window before a server-confirmed interactive authentication.
+- Any automatic or Sesori-defined event reaches Firebase from a debug/profile process, or from an unauthenticated
+  eligible Android release build newer than a successfully fetched production-submission cutoff.
 - Disable is delayed, reported saved while sync failed, or lost across restart or logout; enable activates before
   server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen.
 - Automatic screen reporting is observed, a failure blocks a product outcome, or copy overclaims.
-- Singular starts in debug/profile/unsupported builds or before successful interactive authentication during the gated
-  Android crawl window; requests an advertising-ID permission, sets a custom user identity, sends custom events,
+- Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an
+  unauthenticated Android build is newer than a successfully fetched production-submission cutoff; requests an
+  advertising-ID permission, sets a custom user identity, sends custom events,
   attaches authentication-event attributes, broadens partner sharing, omits login after successful interactive
   authentication, reports registration
   without a server-confirmed `created` status, or reports either event for a non-interactive or unsuccessful flow.
@@ -105,9 +106,10 @@ account against a real property.
 
 - The vendor SDK, property, warehouse, and dashboards are external; their correctness is never passed from client
   evidence. SDK acceptance is not delivery: a missing upstream row may be sampling, latency, retention, or exclusion.
-- Firebase's Active users report counts active app instances, not authenticated Sesori accounts. Internal release
-  installs still appear there, and account-less `sign_up`/`login` outcomes can include internal/test traffic; use the
-  auth export for registration counts and curated account-keyed reporting for product user counts.
+- Firebase's Active users report counts active app instances, not authenticated Sesori accounts. Logged-in testing
+  builds report intentionally, and cutoff-fetch failures fail open, so internal/test traffic can still appear there.
+  Account-less `sign_up`/`login` outcomes can also include that traffic; use the auth export for registration counts and
+  curated account-keyed reporting for product user counts.
 - The preference governs account-linked events here and server reporting only, and a remote change applies on the next
   authenticated generation, process start, or explicit settings action. It does not stop Singular install/session
   attribution. Warehouse rollout remains an active plan.
@@ -122,7 +124,8 @@ account against a real property.
 `.github/scripts/test_publish_firebase_analytics_release_cutoff.py`; production contracts under
 `client/module_core/lib/src/foundation/models/product_analytics/`; cutoff publication lives in
 `.github/workflows/submit-release.yml`, `.github/workflows/publish-firebase-analytics-release-cutoff.yml`, and
-`.github/scripts/publish_firebase_analytics_release_cutoff.py`; account-outcome dispatch lives in
-`client/module_core/lib/src/services/installation_analytics_service.dart`; Firebase delivery lives in
-`client/app/lib/core/platform/firebase_analytics_client.dart`; Singular startup and delivery live under
+`.github/scripts/publish_firebase_analytics_release_cutoff.py`; crawl policy lives in
+`client/module_core/lib/src/services/analytics_crawl_gate_service.dart`; account-outcome dispatch lives in
+`client/module_core/lib/src/services/installation_analytics_service.dart`; Firebase cutoff access and delivery live
+under `client/app/lib/core/platform/`; Singular startup and delivery live under
 `client/app/lib/core/platform/singular/` and `client/app/lib/core/platform/singular_attribution_startup.dart`.

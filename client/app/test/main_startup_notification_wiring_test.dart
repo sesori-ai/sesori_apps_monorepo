@@ -21,9 +21,14 @@ void main() {
     final startupStarted = Completer<void>();
     final allowStartupFinish = Completer<void>();
 
-    Future<void> configureDependencies() async => events.add("configureDependencies");
+    Future<AnalyticsStoreCrawlGate> configureDependencies() async {
+      events.add("configureDependencies");
+      return AnalyticsStoreCrawlGate.suspend;
+    }
 
-    Future<void> startSingularAttribution() async => events.add("singularAttribution");
+    Future<void> startSingularAttribution({required AnalyticsStoreCrawlGate crawlGate}) async {
+      events.add("singularAttribution.${crawlGate.name}");
+    }
 
     void initializeDeepLinks() => events.add("deepLinks");
 
@@ -67,7 +72,7 @@ void main() {
 
     expect(events, [
       "configureDependencies",
-      "singularAttribution",
+      "singularAttribution.suspend",
       "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
@@ -86,7 +91,7 @@ void main() {
       events,
       [
         "configureDependencies",
-        "singularAttribution",
+        "singularAttribution.suspend",
         "deepLinks",
         "productAnalytics",
         "analyticsRoutes",
@@ -104,9 +109,12 @@ void main() {
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: false,
-      configureDependenciesFn: () async => events.add("configureDependencies"),
-      startSingularAttributionFn: () async {
-        events.add("singularAttribution");
+      configureDependenciesFn: () async {
+        events.add("configureDependencies");
+        return AnalyticsStoreCrawlGate.allow;
+      },
+      startSingularAttributionFn: ({required crawlGate}) async {
+        events.add("singularAttribution.${crawlGate.name}");
         throw StateError("startup failed");
       },
       initializeDeepLinks: () => events.add("deepLinks"),
@@ -120,7 +128,7 @@ void main() {
 
     expect(events, [
       "configureDependencies",
-      "singularAttribution",
+      "singularAttribution.allow",
       "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
