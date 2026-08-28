@@ -2,6 +2,7 @@ import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/repositories/models/project_glossary_scope_identity.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_scope_repository.dart";
 import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -20,10 +21,6 @@ void main() {
       "projectKey": "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
     });
     expect(scope?.toJson().toString(), isNot(contains("/private/repository/path")));
-    expect(
-      service.cachedProjectKey(projectPath: "/private/repository/path"),
-      scope?.projectKey,
-    );
   });
 
   test("derives a bridge-owned local scope from normalized path", () async {
@@ -42,25 +39,6 @@ void main() {
       "bridgeId": "br_bridge0001",
     });
     expect(scope?.toJson().toString(), isNot(contains("/tmp/projects/sesori")));
-  });
-
-  test("invalidates a cached local scope when the registered bridge changes", () async {
-    final bridgeIdProvider = _FakeBridgeIdProvider(bridgeId: "br_bridge0001");
-    final service = ProjectGlossaryScopeService(
-      repository: _FakeProjectGlossaryScopeRepository(
-        identity: const BridgeLocalProjectGlossaryIdentity(
-          normalizedAbsolutePath: "/tmp/projects/sesori",
-        ),
-      ),
-      bridgeIdProvider: bridgeIdProvider,
-    );
-
-    final scope = await service.resolve(projectPath: "/tmp/projects/sesori");
-    expect(service.cachedProjectKey(projectPath: "/tmp/projects/sesori"), scope?.projectKey);
-
-    bridgeIdProvider.bridgeId = "br_bridge0002";
-
-    expect(service.cachedProjectKey(projectPath: "/tmp/projects/sesori"), isNull);
   });
 
   test("returns no local scope before bridge registration", () async {
@@ -85,9 +63,11 @@ ProjectGlossaryScopeService _service({
   required ProjectGlossaryScopeIdentity? identity,
   required String? bridgeId,
 }) {
+  final bridgeIdProvider = _FakeBridgeIdProvider(bridgeId: bridgeId);
   return ProjectGlossaryScopeService(
     repository: _FakeProjectGlossaryScopeRepository(identity: identity),
-    bridgeIdProvider: _FakeBridgeIdProvider(bridgeId: bridgeId),
+    bridgeIdProvider: bridgeIdProvider,
+    scopeTracker: ProjectGlossaryScopeTracker(bridgeIdProvider: bridgeIdProvider),
   );
 }
 

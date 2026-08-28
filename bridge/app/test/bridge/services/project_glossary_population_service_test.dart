@@ -152,9 +152,6 @@ final class _FakeProjectGlossaryScopeService({required var ProjectGlossaryScope?
   final List<String> projectPaths = [];
 
   @override
-  ProjectGlossaryKey? cachedProjectKey({required String projectPath}) => null;
-
-  @override
   Future<ProjectGlossaryScope?> resolve({required String projectPath}) async {
     projectPaths.add(projectPath);
     return scope;

@@ -6,34 +6,18 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../auth/bridge_id_provider.dart";
 import "../repositories/models/project_glossary_scope_identity.dart";
 import "../repositories/project_glossary_scope_repository.dart";
+import "project_glossary_scope_tracker.dart";
 
 /// Derives the exact opaque auth scope for a local project without exposing its
 /// network origin or filesystem path outside the bridge.
 class ProjectGlossaryScopeService({
   required final ProjectGlossaryScopeRepository _repository,
   required final BridgeIdProvider _bridgeIdProvider,
+  required final ProjectGlossaryScopeTracker _scopeTracker,
 }) {
   static const String _repositoryDomain = "sesori-repo-glossary-v1\u0000";
   static const String _bridgeLocalDomain = "sesori-local-glossary-v1\u0000";
   static const String _keyPrefix = "prj_v1_";
-
-  final Map<String, ProjectGlossaryScope> _scopeByProjectPath = {};
-
-  ProjectGlossaryKey? cachedProjectKey({required String projectPath}) {
-    if (projectPath.trim().isEmpty) return null;
-    final normalizedPath = normalizeProjectDirectory(directory: projectPath);
-    final scope = _scopeByProjectPath[normalizedPath];
-    return switch (scope) {
-      RepositoryProjectGlossaryScope(:final projectKey) => projectKey,
-      BridgeLocalProjectGlossaryScope(:final projectKey, :final bridgeId) when bridgeId == _bridgeIdProvider.bridgeId =>
-        projectKey,
-      BridgeLocalProjectGlossaryScope() => () {
-        _scopeByProjectPath.remove(normalizedPath);
-        return null;
-      }(),
-      null => null,
-    };
-  }
 
   Future<ProjectGlossaryScope?> resolve({required String projectPath}) async {
     if (projectPath.trim().isEmpty) return null;
@@ -48,11 +32,7 @@ class ProjectGlossaryScopeService({
       ),
       null => null,
     };
-    if (scope == null) {
-      _scopeByProjectPath.remove(normalizedPath);
-    } else {
-      _scopeByProjectPath[normalizedPath] = scope;
-    }
+    _scopeTracker.record(projectPath: normalizedPath, scope: scope);
     return scope;
   }
 

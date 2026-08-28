@@ -1,20 +1,20 @@
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/services/current_project_service.dart";
-import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   late _FakeProjectRepository repository;
-  late _FakeProjectGlossaryScopeService scopeService;
+  late _FakeProjectGlossaryScopeTracker scopeTracker;
   late CurrentProjectService service;
 
   setUp(() {
     repository = _FakeProjectRepository();
-    scopeService = _FakeProjectGlossaryScopeService();
+    scopeTracker = _FakeProjectGlossaryScopeTracker();
     service = CurrentProjectService(
       projectRepository: repository,
-      projectGlossaryScopeService: scopeService,
+      projectGlossaryScopeTracker: scopeTracker,
     );
     addTearDown(service.dispose);
   });
@@ -23,14 +23,14 @@ void main() {
     final glossaryKey = ProjectGlossaryKey.parse(
       value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
     );
-    scopeService.cachedKey = glossaryKey;
+    scopeTracker.cachedKey = glossaryKey;
     final loadedProjectId = service.loadedProjectIds.first;
 
     final project = await service.getCurrentProject(projectId: "requested-id");
 
     expect(project.id, "authoritative-id");
     expect(project.voiceGlossaryKey, glossaryKey);
-    expect(scopeService.projectPaths, ["/workspace/project"]);
+    expect(scopeTracker.projectPaths, ["/workspace/project"]);
     expect(await loadedProjectId, "authoritative-id");
   });
 
@@ -68,12 +68,12 @@ final class _FakeProjectRepository() implements ProjectRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _FakeProjectGlossaryScopeService() implements ProjectGlossaryScopeService {
+final class _FakeProjectGlossaryScopeTracker() implements ProjectGlossaryScopeTracker {
   ProjectGlossaryKey? cachedKey;
   final List<String> projectPaths = [];
 
   @override
-  ProjectGlossaryKey? cachedProjectKey({required String projectPath}) {
+  ProjectGlossaryKey? projectKeyFor({required String projectPath}) {
     projectPaths.add(projectPath);
     return cachedKey;
   }
