@@ -66,9 +66,9 @@
 
 ## Step 3 Checklist
 - [x] Add typed envelopes, initialize-only probing, exact selection writes, and cause-preserving failures.
-- [x] Keep one catalog owner; expose opaque models and canonical effort strings through typed collaborators.
+- [x] Keep catalog and session selection behind one tracker each; expose opaque models and canonical effort values.
 - [x] Cover catalog edge cases, defaults, load isolation, stale options, selection variants, and failed writes.
-- [x] Pass 19 tests, analysis, LSP, line/diff checks, the 1,500-line target, architecture review, and PR setup.
+- [x] Pass 19 tests, analysis, LSP, line/diff checks, the 1,500-line target, two architecture reviews, and PR setup.
 ## Decisions And Evidence
 
 - 2026-08-27: Initial delivery is direct CLI only. Managed install is excluded because xAI owns an official installer

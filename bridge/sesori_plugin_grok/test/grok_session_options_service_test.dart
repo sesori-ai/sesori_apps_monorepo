@@ -15,7 +15,6 @@ void main() {
   test("discovers and reuses one Grok provider with exact reasoning values", () async {
     final api = _FakeGrokAcpApi()..probes.add(() async => _initializeResult());
     final fixture = _service(api: api);
-
     final first = await fixture.service.getSessionOptions(
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
@@ -27,7 +26,6 @@ void main() {
     expect(provider.models.first.variants, ["high", "low"]);
     expect(options.agents.single.model?.variant, "high");
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-
     await fixture.service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     expect(api.probeCount, 1);
   });
@@ -37,7 +35,6 @@ void main() {
       ..probes.add(() async => _initializeResult())
       ..probes.add(() => Future.error(StateError("refresh failed")));
     final fixture = _service(api: api);
-
     await fixture.service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
     expect(
       await fixture.service.getSessionOptions(discoveryMode: PluginSessionOptionsDiscoveryMode.refresh),
@@ -49,13 +46,11 @@ void main() {
     expect((reused as PluginSessionOptionsDiscoveryObserved).options.providers.providers, hasLength(1));
     expect(api.probeCount, 2);
   });
-
   test("initialize, new, and load captures replace catalog without load changing process defaults", () async {
     final fixture = _service(api: _FakeGrokAcpApi());
     fixture.service.captureInitializeResult(result: _initializeResult());
     expect(fixture.catalogTracker.snapshot?.currentModel?.id, "synthetic:model-alpha");
     expect((await fixture.service.listAgents()).single.model?.variant, "high");
-
     final loaded = _jsonFixture(name: "initialize.json");
     final loadedMeta = loaded["_meta"] as Map<String, dynamic>;
     final loadedModelState = loadedMeta["modelState"] as Map<String, dynamic>;
@@ -77,7 +72,6 @@ void main() {
     );
     expect((await fixture.service.listAgents()).single.model?.variant, "high");
     expect(fixture.service.reasoningEffortForSession(sessionId: "loaded-session"), isNull);
-
     loadedModelState["currentModelId"] = "synthetic:model-alpha";
     fixture.service.captureSessionConfig(
       result: AcpNewSessionResult.fromJson({"sessionId": "reasoning-session", "models": loadedModelState}),
@@ -98,7 +92,6 @@ void main() {
     final api = _FakeGrokAcpApi();
     final fixture = _service(api: api);
     fixture.service.captureInitializeResult(result: _initializeResult());
-
     await fixture.service.applyTurnSelection(
       liveClient: _FakeAcpStdioClient(),
       sessionId: "s1",

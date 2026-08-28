@@ -21,9 +21,6 @@ class GrokSessionOptionsService({
 }) {
   static const Duration _selectionTimeout = Duration(seconds: 30);
 
-  String? _processDefaultReasoningEffort;
-  final Map<String, String> _sessionReasoningEfforts = {};
-
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) async {
@@ -70,10 +67,11 @@ class GrokSessionOptionsService({
     _replaceCatalog(catalog: catalog, updateProcessDefaults: fromNewSession);
     if (sessionId != null) {
       final currentModel = catalog.currentModel;
-      _setSessionSelection(
+      _configurationTracker.setSessionSelection(
         sessionId: sessionId,
-        model: currentModel,
-        reasoningEffort: currentModel?.currentReasoningEffort,
+        modelId: currentModel?.id,
+        providerId: currentModel == null ? null : _pluginId,
+        variantId: currentModel?.currentReasoningEffort,
       );
     }
   }
@@ -119,41 +117,20 @@ class GrokSessionOptionsService({
       reasoningEffort: reasoningEffort,
       timeout: _selectionTimeout,
     );
-    _setSessionSelection(
+    _configurationTracker.setSessionSelection(
       sessionId: sessionId,
-      model: catalogModel,
-      reasoningEffort: reasoningEffort ?? catalogModel.currentReasoningEffort,
+      modelId: selectedModelId,
+      providerId: _pluginId,
+      variantId: reasoningEffort ?? catalogModel.currentReasoningEffort,
     );
   }
 
-  String? reasoningEffortForSession({required String sessionId}) => _sessionReasoningEfforts[sessionId];
+  String? reasoningEffortForSession({required String sessionId}) =>
+      _configurationTracker.snapshotForSession(sessionId: sessionId).variantId;
 
-  void forgetSession({required String sessionId}) {
-    _configurationTracker.forgetSession(sessionId: sessionId);
-    _sessionReasoningEfforts.remove(sessionId);
-  }
+  void forgetSession({required String sessionId}) => _configurationTracker.forgetSession(sessionId: sessionId);
 
-  void resetConnection() {
-    _configurationTracker.clear();
-    _sessionReasoningEfforts.clear();
-  }
-
-  void _setSessionSelection({
-    required String sessionId,
-    required GrokCatalogModel? model,
-    required String? reasoningEffort,
-  }) {
-    _configurationTracker.setSessionOverride(
-      sessionId: sessionId,
-      modelId: model?.id,
-      providerId: model == null ? null : _pluginId,
-    );
-    if (reasoningEffort == null) {
-      _sessionReasoningEfforts.remove(sessionId);
-    } else {
-      _sessionReasoningEfforts[sessionId] = reasoningEffort;
-    }
-  }
+  void resetConnection() => _configurationTracker.clear();
 
   Future<void> _ensureCatalog() async {
     if (_catalogTracker.snapshot != null) return;
@@ -167,21 +144,21 @@ class GrokSessionOptionsService({
     _catalogTracker.replaceCatalog(catalog: catalog);
     if (!updateProcessDefaults) return;
     final current = catalog.currentModel;
-    _processDefaultReasoningEffort = current?.currentReasoningEffort;
-    _configurationTracker.setProcessDefaults(
+    _configurationTracker.setProcessSelection(
       modelId: current?.id,
       providerId: current == null ? null : _pluginId,
+      variantId: current?.currentReasoningEffort,
     );
   }
 
   PluginSessionOptions _options() {
     final catalog = _catalogTracker.snapshot;
-    final configuredModelId = _configurationTracker.processDefaults.modelId;
+    final processDefaults = _configurationTracker.processDefaults;
+    final configuredModelId = processDefaults.modelId;
     final selected = configuredModelId == null ? null : catalog?.modelById(id: configuredModelId);
     final defaultModel = selected ?? catalog?.defaultModel;
-    final processDefaultReasoningEffort =
-        defaultModel?.reasoningEfforts.contains(_processDefaultReasoningEffort) ?? false
-        ? _processDefaultReasoningEffort
+    final processDefaultReasoningEffort = defaultModel?.reasoningEfforts.contains(processDefaults.variantId) ?? false
+        ? processDefaults.variantId
         : null;
     return PluginSessionOptions(
       agents: [
