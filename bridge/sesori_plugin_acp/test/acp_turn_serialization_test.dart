@@ -402,6 +402,45 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("aborting a writing turn settles its buffered permission after the flush", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "cancel permission");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 92,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      await plugin.abortSession(sessionId: sessionId);
+      flush.complete();
+      for (var i = 0; i < 20 && !fake.written.any((frame) => frame["id"] == 92); i++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      final cancellation = emitted.whereType<BridgeSsePermissionReplied>().single;
+      expect(emitted.indexOf(permission), lessThan(emitted.indexOf(cancellation)));
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 92);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a buffered sessionless permission keeps its writing-turn attribution", () async {
       await connect();
       final firstSessionId = await createSession(cwd, "s1");

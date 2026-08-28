@@ -165,7 +165,7 @@
 - [x] Re-run the affected live restart flow and the complete automated matrix after rebasing onto current main.
 - [x] Record privacy-safe evidence, remove disposable state, release the local-testing slot, and retire the plan.
 - [x] Publish final PR #1190 and start its monitor.
-- [x] Address #1190 review findings with required named turn parameters and prompt-write server-request ordering.
+- [x] Address all #1190 review findings across named identity, prompt-write cancellation, and tool correlation.
 
 ## Decisions And Evidence
 
@@ -180,6 +180,10 @@
   stream. Every caller now states its identity choice, and attributable requests flush after the accepted user and
   buffered tool updates. Deterministic slow-flush regressions cover cross-stream ordering and retain sessionless
   attribution when another session dispatches before the first frame finishes flushing.
+- 2026-08-28: Follow-up #1190 review found that abort could precede buffered-request registration and that heuristic
+  session stamping could override Cursor's exact top-level tool-call correlation. Aborted write buffers now register
+  then cancel their requests in one flush, and exact mapped or buffered tool ownership wins without injecting a
+  session. Focused regressions cover both flows with concurrent sessions.
 - 2026-08-28: The released Grok 1.0.5 client matrix passed without a scope reduction. The authoritative YOLO-disabled
   runs exercised Once and Reject; the live requests advertised no Always action. Seven consecutive debug-only
   unrecognised-frame messages appeared only in the abandoned non-authoritative global-config launch; all six later
@@ -259,9 +263,9 @@ All required rows passed without a named reduction, so the plan is retired.
 
 | Scope | Commands | Result |
 |---|---|---|
-| Shared ACP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 274 tests |
+| Shared ACP | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 275 tests |
 | Grok | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 52 tests |
-| Cursor | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 138 tests |
+| Cursor | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 139 tests |
 | Copilot | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 13 tests |
 | DeepSeek | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 41 tests |
 | Hermes | `dart analyze --fatal-infos`; `dart test` | Pass: no issues; 39 tests |
@@ -271,7 +275,7 @@ All required rows passed without a named reduction, so the plan is retired.
 | Client workspace | `dart pub get` | Pass |
 | Prego | `dart analyze --fatal-infos`; `flutter test` | Pass: no issues; 245 tests |
 | Mobile and desktop | `dart analyze --fatal-infos` in each shell | Pass: no issues |
-| Changed Dart files | Dart LSP diagnostics | Pass: zero diagnostics across eight files |
+| Changed Dart files | Dart LSP diagnostics | Pass: zero diagnostics across nine files |
 
 The final matrix ran again after rebasing onto current main. The Cursor suite's intentional missing-file case logged its
 expected `PathNotFoundException` while all 138 tests passed. Dart format 3.1.12 still crashes on the enhanced-enum
@@ -324,9 +328,11 @@ approval stream.
 `AcpEventMapper` now derives id-less assistant, halt, and error fallback IDs from the accepted prompt's stable user
 message ID. `AcpPlugin` gates session updates and server requests during the prompt-frame write, emits the accepted user
 first, flushes buffered updates before buffered requests, and drops both on stale state, dispatch failure, or teardown.
-Four regressions cover mapper replacement, the reply race, tool-before-permission ordering, and retained sessionless
-attribution. A live post-restart turn then appeared and persisted as user followed by a separate assistant reply. There
-is no schema or migration; the
+An abort marks the writing buffer so its requests are registered and cancelled together; exact tool-call ownership is
+preserved instead of being replaced by active-turn attribution. Six regressions cover mapper replacement, the reply
+race, tool-before-permission ordering, retained sessionless attribution, abort settlement, and Cursor tool correlation.
+A live post-restart turn then appeared and persisted as user followed by a separate assistant reply. There is no schema
+or migration; the
 fix prevents future overwrite/reordering. The deliberately corrupted disposable test database was removed rather than
 treated as production data.
 

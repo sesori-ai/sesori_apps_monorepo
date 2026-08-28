@@ -127,6 +127,7 @@ abstract class AcpPlugin({
   /// update have entered the event stream.
   final Map<String, List<AcpNotification>> _promptWriteNotifications = {};
   final Map<String, List<AcpServerRequest>> _promptWriteServerRequests = {};
+  final Set<String> _cancelledPromptWriteSessions = {};
 
   /// Shared tail used only by agents that cannot correlate sessionless server
   /// requests while multiple prompts are in flight.
@@ -359,10 +360,12 @@ abstract class AcpPlugin({
   void _handleAgentServerRequest({required AcpServerRequest request}) {
     final registry = _approvalRegistry;
     if (registry == null) return;
-    final sessionId = _serverRequestSessionId(request: request);
-    // Pin sessionless attribution at receipt: another concurrent turn can
-    // dispatch before this request leaves the prompt-write buffer.
-    final routedRequest = sessionId == null
+    final attribution = _serverRequestAttribution(request: request);
+    final sessionId = attribution.sessionId;
+    // Pin heuristic sessionless attribution at receipt: another concurrent turn
+    // can dispatch before this request leaves the prompt-write buffer. Preserve
+    // exact tool correlation so a harness mapper can resolve its owning turn.
+    final routedRequest = sessionId == null || attribution.fromTool
         ? request
         : _serverRequestWithSession(request: request, sessionId: sessionId);
     if (sessionId != null && _isPromptFrameWriting(sessionId: sessionId)) {
@@ -382,12 +385,28 @@ abstract class AcpPlugin({
     );
   }
 
-  String? _serverRequestSessionId({required AcpServerRequest request}) {
+  ({String? sessionId, bool fromTool}) _serverRequestAttribution({required AcpServerRequest request}) {
     final rawSessionId = request.params["sessionId"];
-    if (rawSessionId != null && rawSessionId is! String) return null;
+    if (rawSessionId != null && rawSessionId is! String) return (sessionId: null, fromTool: false);
     final explicit = rawSessionId is String ? rawSessionId.trim() : null;
-    if (explicit != null && explicit.isNotEmpty) return explicit;
-    return activeTurnSessionId;
+    if (explicit != null && explicit.isNotEmpty) return (sessionId: explicit, fromTool: false);
+    final toolSessionId = _serverRequestToolSessionId(request: request);
+    if (toolSessionId != null) return (sessionId: toolSessionId, fromTool: true);
+    return (sessionId: activeTurnSessionId, fromTool: false);
+  }
+
+  String? _serverRequestToolSessionId({required AcpServerRequest request}) {
+    final rawToolCallId = request.params["toolCallId"];
+    if (rawToolCallId is! String || rawToolCallId.isEmpty) return null;
+    final mapped = eventMapper.sessionIdForToolCallId(toolCallId: rawToolCallId);
+    if (mapped != null) return mapped;
+    for (final entry in _promptWriteNotifications.entries) {
+      for (final notification in entry.value) {
+        final update = notification.params["update"];
+        if (update is Map && update["toolCallId"] == rawToolCallId) return entry.key;
+      }
+    }
+    return null;
   }
 
   bool _isPromptFrameWriting({required String sessionId}) =>
@@ -398,15 +417,20 @@ abstract class AcpPlugin({
     notifications?.forEach(handleAgentNotification);
     final requests = _promptWriteServerRequests.remove(sessionId);
     final registry = _approvalRegistry;
-    if (requests == null || registry == null) return;
-    for (final request in requests) {
-      registry.handleServerRequest(request: request);
+    if (requests != null && registry != null) {
+      for (final request in requests) {
+        registry.handleServerRequest(request: request);
+      }
+    }
+    if (_cancelledPromptWriteSessions.remove(sessionId)) {
+      registry?.cancelForSession(sessionId: sessionId);
     }
   }
 
   void _dropPromptWriteEvents({required String sessionId}) {
     _promptWriteNotifications.remove(sessionId);
     _promptWriteServerRequests.remove(sessionId);
+    _cancelledPromptWriteSessions.remove(sessionId);
   }
 
   /// Approval state participates in the activity summary, so invalidate that
@@ -548,6 +572,7 @@ abstract class AcpPlugin({
     _serverRequestSubscription = null;
     _promptWriteNotifications.clear();
     _promptWriteServerRequests.clear();
+    _cancelledPromptWriteSessions.clear();
     final commandListener = _commandListener;
     _commandListener = null;
     final registry = _approvalRegistry;
@@ -1077,6 +1102,7 @@ abstract class AcpPlugin({
 
   void _cancelActiveTurnForQueuedInput({required String sessionId}) {
     if (!cancelsActiveTurnForQueuedInput || !_inFlightTurnSessions.contains(sessionId)) return;
+    if (_isPromptFrameWriting(sessionId: sessionId)) _cancelledPromptWriteSessions.add(sessionId);
     _client?.notify(
       method: AcpMethods.sessionCancel,
       params: {"sessionId": sessionId},
@@ -1537,6 +1563,7 @@ abstract class AcpPlugin({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
     }
+    if (_isPromptFrameWriting(sessionId: sessionId)) _cancelledPromptWriteSessions.add(sessionId);
     final client = _client;
     if (client == null) return;
     client.notify(
