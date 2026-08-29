@@ -1,3 +1,4 @@
+import "../../foundation/bridge_process_desired_state.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../services/bridge_process_state.dart";
 import "../../trackers/bridge_control_status.dart";

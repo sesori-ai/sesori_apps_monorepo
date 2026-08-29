@@ -15,5 +15,10 @@ void main() {
     expect(getIt.isRegistered<ControlChannelApi>(), isTrue);
     expect(getIt.isRegistered<ControlCommandRepository>(), isTrue);
     expect(getIt.isRegistered<ControlCommandService>(), isTrue);
+    expect(getIt.isRegistered<DesktopInstanceApi>(), isTrue);
+    expect(getIt.isRegistered<DesktopInstanceStorage>(), isTrue);
+    expect(getIt.isRegistered<DesktopInstanceRepository>(), isTrue);
+    expect(getIt.isRegistered<DesktopInstanceService>(), isTrue);
+    expect(getIt.isRegistered<DesktopStartupOrchestrator>(), isTrue);
   });
 }
