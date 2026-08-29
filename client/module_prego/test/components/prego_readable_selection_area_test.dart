@@ -7,7 +7,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
-  testWidgets("copy preserves block and list boundaries", (tester) async {
+  testWidgets("copy uses one newline regardless of visual block spacing", (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -33,7 +33,7 @@ void main() {
                 ),
                 SizedBox(height: 8),
                 Row(mainAxisSize: MainAxisSize.min, children: [Text("•"), SizedBox(width: 8), Text("item one")]),
-                SizedBox(height: 8),
+                SizedBox(height: 32),
                 Row(mainAxisSize: MainAxisSize.min, children: [Text("•"), SizedBox(width: 8), Text("item two")]),
               ],
             ),
@@ -45,7 +45,7 @@ void main() {
 
     expect(
       await _copyAll(tester: tester),
-      "Heading\n\nFirst paragraph.\n\nSecond bold paragraph.\n\n• item one\n\n• item two",
+      "Heading\nFirst paragraph.\nSecond bold paragraph.\n• item one\n• item two",
     );
   });
 
@@ -101,7 +101,7 @@ void main() {
     await gesture.up();
     await tester.pump();
 
-    expect(await _copySelection(tester: tester), "paragraph.\n\nSecond");
+    expect(await _copySelection(tester: tester), "paragraph.\nSecond");
   });
 }
 

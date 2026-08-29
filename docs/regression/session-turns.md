@@ -234,10 +234,11 @@ defaults and queued client sends coherent.
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.
 - Selecting across user, assistant, or reasoning text copies the rendered
-  content with readable structure: visually separated Markdown blocks retain
-  line breaks, and same-line fragments such as a list bullet and its text retain
-  a separating space. Partial selections spanning blocks preserve the same
-  boundaries instead of running adjacent paragraphs together.
+  content with readable structure: each transition between vertically stacked
+  Markdown blocks contributes exactly one line break regardless of their visual
+  spacing, while same-line fragments such as a list bullet and its text retain a
+  separating space. Partial selections spanning blocks preserve the same
+  boundary instead of joining paragraphs or adding empty lines.
 - Live message envelopes render in transcript timestamp order even when events
   arrive out of order; late envelopes append after existing envelopes with the
   same timestamp rather than reordering an established turn. Finalized parts
@@ -324,8 +325,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   without a bound, or leaves a corrected selection on a variant the picker does
   not display.
 - Copied chat text runs headings, paragraphs, list bullets, table cells, or
-  separate message parts together without whitespace matching their visual
-  separation.
+  separate message parts together, or inserts empty lines based on their visual
+  spacing instead of one structural line break.
 - A cold Pi process exposes a stale default model or thinking level to startup
   extensions instead of the pending turn's selection, or a cold follow-up wakes
   the process but times out in pre-prompt automatic compaction before reaching
@@ -358,8 +359,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 ## Known Limitations
 
 - Flutter's selection and clipboard APIs expose selected content as plain text
-  only, so chat copy preserves document structure but not Markdown styling such
-  as bold or italics (`flutter/flutter#104206`).
+  only, so chat copy preserves document structure but not Markdown styling or
+  metadata such as bold, italics, and hyperlink destinations
+  (`flutter/flutter#104206`).
 - L3 and above need live backends; an omitted plugin is partial coverage, and
   client end-to-end coverage is phone-only.
 - Session-detail refresh behavior is under active investigation, so refresh

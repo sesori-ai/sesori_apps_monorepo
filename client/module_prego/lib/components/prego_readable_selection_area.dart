@@ -1,7 +1,7 @@
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
-/// A selection area that preserves the visual separation between text widgets
+/// A selection area that preserves structural boundaries between text widgets
 /// when copying across them.
 class const PregoReadableSelectionArea({super.key, required final Widget child}) extends StatefulWidget {
   @override
@@ -30,7 +30,6 @@ class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionAre
 
 class _ReadableSelectionContainerDelegate() extends StaticSelectionContainerDelegate {
   static const _sameLineTolerance = 3.0;
-  static const _blankLineGap = 4.0;
 
   @override
   SelectedContent? getSelectedContent() {
@@ -80,7 +79,7 @@ class _ReadableSelectionContainerDelegate() extends StaticSelectionContainerDele
     final verticalGap = currentBounds.top - previousBounds.bottom;
     if (verticalGap >= -_sameLineTolerance) {
       if (previousText.endsWith("\n") || currentText.startsWith("\n")) return "";
-      return verticalGap > _blankLineGap ? "\n\n" : "\n";
+      return "\n";
     }
     if (currentBounds.left > previousBounds.right - 1 &&
         !_endsWithInlineWhitespace(text: previousText) &&
