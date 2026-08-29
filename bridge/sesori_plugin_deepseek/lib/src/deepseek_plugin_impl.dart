@@ -28,6 +28,9 @@ class DeepSeekPlugin({
       );
 
   @override
+  bool get cancelsActiveTurnForQueuedInput => true;
+
+  @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) => DeepSeekApprovalRegistry(
     client: client,
     emit: emitActivityEvent,
