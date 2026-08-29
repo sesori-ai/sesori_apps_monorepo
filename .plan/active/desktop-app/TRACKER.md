@@ -13,7 +13,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 4 | 🚧 Exit-code state machine + prompt-answer seam | done |
 | 5 | ⚙️ Status semantics + dead control-protocol removal | done |
 | 6 | ⚙️ Tray + `BridgeControlCubit` + windowed fallback | done |
-| 7 | ⚙️ Window + Prego theme + v1 contents | pending |
+| 7 | ⚙️ Window + Prego theme + v1 contents | done |
 | — | MT gate A: first real GUI supervision (user-run) | pending |
 | 8 | ⚙️ Single instance + last-state restore | pending |
 | 9 | ⚙️ Autostart + hidden boot | pending |

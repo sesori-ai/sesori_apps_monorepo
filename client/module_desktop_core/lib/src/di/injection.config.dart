@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
@@ -24,6 +25,10 @@ import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_pa
     as _i961;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_support_directory.dart'
     as _i695;
+import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
+    as _i165;
+import 'package:sesori_desktop_core/src/repositories/bridge_process_log_repository.dart'
+    as _i1072;
 import 'package:sesori_desktop_core/src/repositories/bridge_process_repository.dart'
     as _i209;
 import 'package:sesori_desktop_core/src/repositories/control_command_repository.dart'
@@ -38,6 +43,8 @@ import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
     as _i686;
 import 'package:sesori_desktop_core/src/trackers/bridge_status_tracker.dart'
     as _i227;
+import 'package:sesori_desktop_core/src/trackers/desktop_logout_tracker.dart'
+    as _i786;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -57,6 +64,10 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i227.BridgeStatusTracker>(
       () => _i227.BridgeStatusTracker(),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i786.DesktopLogoutTracker>(
+      () => _i786.DesktopLogoutTracker(),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i570.BridgeProcessLogStorage>(
@@ -87,6 +98,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
+    gh.lazySingleton<_i1072.BridgeProcessLogRepository>(
+      () => _i1072.BridgeProcessLogRepository(
+        storage: gh<_i570.BridgeProcessLogStorage>(),
+      ),
+    );
     gh.lazySingleton<_i866.BridgeProcessLogTracker>(
       () => _i866.BridgeProcessLogTracker(
         storage: gh<_i570.BridgeProcessLogStorage>(),
@@ -109,6 +125,13 @@ extension GetItInjectableX on _i174.GetIt {
         executablePathResolver: gh<_i961.BridgeExecutablePathResolver>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i165.DesktopLogoutOrchestrator>(
+      () => _i165.DesktopLogoutOrchestrator(
+        processService: gh<_i765.BridgeProcessService>(),
+        logoutTracker: gh<_i786.DesktopLogoutTracker>(),
+        authSession: gh<_i948.AuthSession>(),
+      ),
     );
     return this;
   }

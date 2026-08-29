@@ -17,6 +17,7 @@ lib/src/
 ├── trackers/                # Layer 2 — reactive state derived from events (status, prompts, helper logs)
 ├── services/                # Layer 3 — bridge_process_service, desktop_instance_service, desktop_update_service
 ├── control/                 # Layer 4 — control_message_dispatcher (writes DOWN into trackers/token seam)
+├── orchestration/           # Layer 4 — named cross-service workflow owners (desktop logout, ...)
 ├── cubits/                  # Layer 4 — desktop state management (bridge_control, ...)
 └── di/                      # @InjectableInit configureDesktopCoreDependencies
 ```

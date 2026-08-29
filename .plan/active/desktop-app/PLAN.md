@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 6/22 (tray + bridge control cubit)
+- **Status:** Active — step 7/22 (window host + supervision controls)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -300,6 +300,8 @@ coordination) — bridge on/off, status (relay /
 registration / plugin health / session count / takeover / login-required /
 crash give-up with recent log lines), open-logs affordance. Creates
 `docs/regression/desktop-bridge-supervision.md`.
+*Overage: ~1.7k changed lines after review-driven logout serialization,
+close-request preservation, empty-log preparation, and focused coverage.*
 
 > **MT gate A — first real GUI supervision (user-run, after step 7).** Dev
 > build on macOS: browser login (interstitial names the desktop device;

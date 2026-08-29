@@ -151,6 +151,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
 - [Design catalog](design-catalog.md)
+- [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Navigation transitions](navigation-transitions.md)
 - [Notifications](notifications.md)

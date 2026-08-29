@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,19 +11,31 @@ void main() {
     late _FakeBridgeProcessService processService;
     late BridgeStatusTracker statusTracker;
     late _FakeSystemTray systemTray;
+    late _FakeWindowHost windowHost;
     late _FakeDesktopApplicationTerminator applicationTerminator;
+    late _FakeBridgeProcessLogRepository logRepository;
+    late DesktopLogoutTracker logoutTracker;
+    late _FakeUrlLauncher urlLauncher;
     late BridgeControlCubit cubit;
 
     setUp(() {
       processService = _FakeBridgeProcessService();
       statusTracker = BridgeStatusTracker();
       systemTray = _FakeSystemTray();
+      windowHost = _FakeWindowHost();
       applicationTerminator = _FakeDesktopApplicationTerminator();
+      logRepository = _FakeBridgeProcessLogRepository();
+      logoutTracker = DesktopLogoutTracker();
+      urlLauncher = _FakeUrlLauncher();
       cubit = BridgeControlCubit(
         processService: processService,
         statusTracker: statusTracker,
         systemTray: systemTray,
+        windowHost: windowHost,
         applicationTerminator: applicationTerminator,
+        logRepository: logRepository,
+        logoutTracker: logoutTracker,
+        urlLauncher: urlLauncher,
       );
     });
 
@@ -31,6 +44,8 @@ void main() {
       await processService.disposeFake();
       statusTracker.dispose();
       await systemTray.disposeFake();
+      await windowHost.disposeFake();
+      await logoutTracker.dispose();
     });
 
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
@@ -38,6 +53,7 @@ void main() {
 
       expect(cubit.state.trayAvailability, SystemTrayAvailability.available);
       expect(_textLabels(menu: systemTray.menus.last), containsAll(<String>["Bridge: Off", "Active sessions: 0"]));
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.openWindow).label, "Open Sesori");
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
 
       statusTracker.markHelperConnected();
@@ -78,6 +94,93 @@ void main() {
 
       expect(cubit.state.trayAvailability, SystemTrayAvailability.unavailable);
       expect(applicationTerminator.exitCodes, isEmpty);
+    });
+
+    test("Open and native close route through the window host when the tray is available", () async {
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.openWindow);
+      await pumpEventQueue(times: 2);
+      expect(windowHost.showCalls, 1);
+
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue(times: 2);
+      expect(windowHost.hideCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+    });
+
+    test("tray-backed close hides while a lifecycle operation is pending", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue();
+
+      expect(cubit.state.activity, BridgeControlActivity.toggling);
+      expect(windowHost.hideCalls, 1);
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 2);
+    });
+
+    test("no-tray close waits for a lifecycle operation before safe Quit", () async {
+      systemTray.availability = SystemTrayAvailability.unavailable;
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue();
+      expect(applicationTerminator.exitCodes, isEmpty);
+
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 3);
+      expect(processService.stopCalls, 2);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+    });
+
+    test("logout status locks lifecycle controls until local auth clears", () async {
+      await cubit.initialize();
+
+      logoutTracker.markInProgress();
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+
+      expect(cubit.state.activity, BridgeControlActivity.signingOut);
+      expect(processService.startCalls, 0);
+
+      logoutTracker.markIdle();
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+      expect(processService.startCalls, 1);
+    });
+
+    test("native close safely quits instead of hiding without a tray host", () async {
+      systemTray.availability = SystemTrayAvailability.unavailable;
+      await cubit.initialize();
+
+      windowHost.emit(event: WindowHostEvent.closeRequested);
+      await pumpEventQueue(times: 2);
+
+      expect(processService.stopCalls, 1);
+      expect(windowHost.hideCalls, 0);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+    });
+
+    test("Open Logs launches the repository-owned local file URI", () async {
+      await cubit.openLogs();
+
+      expect(urlLauncher.launched, <Uri>[Uri.file("/tmp/sesori/bridge.log")]);
     });
 
     test("toggle commands drive desired On and Off through the process service", () async {
@@ -153,6 +256,7 @@ void main() {
       await pumpEventQueue(times: 2);
 
       expect(systemTray.disposeCalls, 1);
+      expect(windowHost.disposeCalls, 1);
       expect(applicationTerminator.exitCodes, <int>[0]);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
     });
@@ -278,6 +382,55 @@ class _FakeSystemTray() implements SystemTray {
   }
 
   Future<void> disposeFake() => _commands.close();
+}
+
+class _FakeWindowHost() implements WindowHost {
+  final StreamController<WindowHostEvent> _events = StreamController<WindowHostEvent>.broadcast(sync: true);
+  int showCalls = 0;
+  int hideCalls = 0;
+  int disposeCalls = 0;
+
+  @override
+  Stream<WindowHostEvent> get events => _events.stream;
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> show() async {
+    showCalls++;
+  }
+
+  @override
+  Future<void> hide() async {
+    hideCalls++;
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+
+  void emit({required WindowHostEvent event}) {
+    _events.add(event);
+  }
+
+  Future<void> disposeFake() => _events.close();
+}
+
+class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
+  @override
+  Future<Uri> get logFileUri async => Uri.file("/tmp/sesori/bridge.log");
+}
+
+class _FakeUrlLauncher() implements UrlLauncher {
+  final List<Uri> launched = <Uri>[];
+
+  @override
+  Future<bool> launch(Uri url, {UrlLaunchMode mode = UrlLaunchMode.externalApp}) async {
+    launched.add(url);
+    return true;
+  }
 }
 
 class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminator {

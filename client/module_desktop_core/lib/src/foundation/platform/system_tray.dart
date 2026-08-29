@@ -2,11 +2,12 @@
 enum SystemTrayAvailability({required final bool isAvailable}) {
   initializing(isAvailable: false),
   available(isAvailable: true),
-  unavailable(isAvailable: false);
+  unavailable(isAvailable: false),
 }
 
 /// Commands emitted by the dumb platform tray adapter.
 enum SystemTrayCommand({required final String key}) {
+  openWindow(key: "open_window"),
   toggleBridge(key: "toggle_bridge"),
   quit(key: "quit");
 

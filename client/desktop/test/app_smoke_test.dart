@@ -35,6 +35,8 @@ void main() {
     getIt.registerLazySingleton<SystemTray>(() => systemTray);
     getIt.unregister<DesktopApplicationTerminator>();
     getIt.registerLazySingleton<DesktopApplicationTerminator>(_FakeApplicationTerminator.new);
+    getIt.unregister<WindowHost>();
+    getIt.registerLazySingleton<WindowHost>(_FakeWindowHost.new);
 
     await tester.pumpWidget(const SesoriDesktopApp());
     await tester.pump();
@@ -60,6 +62,23 @@ class _UnavailableSystemTray() implements SystemTray {
 
   @override
   Future<void> setMenu({required SystemTrayMenu menu}) async {}
+
+  @override
+  Future<void> dispose() async {}
+}
+
+class _FakeWindowHost() implements WindowHost {
+  @override
+  Stream<WindowHostEvent> get events => const Stream<WindowHostEvent>.empty();
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> show() async {}
+
+  @override
+  Future<void> hide() async {}
 
   @override
   Future<void> dispose() async {}

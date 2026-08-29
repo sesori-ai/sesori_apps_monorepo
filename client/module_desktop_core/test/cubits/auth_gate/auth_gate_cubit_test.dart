@@ -9,6 +9,8 @@ import "package:test/test.dart";
 
 class _MockAuthSession() extends Mock implements AuthSession;
 
+class _MockDesktopLogoutOrchestrator() extends Mock implements DesktopLogoutOrchestrator;
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -18,15 +20,25 @@ const AuthUser _user = AuthUser(
 
 void main() {
   late _MockAuthSession authSession;
+  late _MockDesktopLogoutOrchestrator logoutOrchestrator;
   late BehaviorSubject<AuthState> authStates;
 
   setUp(() {
     authSession = _MockAuthSession();
+    logoutOrchestrator = _MockDesktopLogoutOrchestrator();
     authStates = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
     when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStates.value);
     when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => false);
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    when(() => logoutOrchestrator.logoutCurrentDevice()).thenAnswer((_) async {
+      try {
+        await authSession.logoutCurrentDevice();
+        return DesktopLogoutOutcome.completed;
+      } on Object {
+        return DesktopLogoutOutcome.localSessionClearFailed;
+      }
+    });
   });
 
   tearDown(() async {
@@ -34,7 +46,10 @@ void main() {
   });
 
   Future<AuthGateCubit> pumpCubit() async {
-    final AuthGateCubit cubit = AuthGateCubit(authSession);
+    final AuthGateCubit cubit = AuthGateCubit(
+      authSession: authSession,
+      logoutOrchestrator: logoutOrchestrator,
+    );
     addTearDown(cubit.close);
     // Let the async restore-and-subscribe bootstrap settle.
     await pumpEventQueue();
@@ -89,7 +104,10 @@ void main() {
       return true;
     });
 
-    final AuthGateCubit cubit = AuthGateCubit(authSession);
+    final AuthGateCubit cubit = AuthGateCubit(
+      authSession: authSession,
+      logoutOrchestrator: logoutOrchestrator,
+    );
     addTearDown(cubit.close);
     final List<AuthGateState> emitted = <AuthGateState>[];
     final StreamSubscription<AuthGateState> subscription = cubit.stream.listen(emitted.add);
@@ -117,7 +135,10 @@ void main() {
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {
       authStates.add(const AuthState.unauthenticated());
     });
-    final AuthGateCubit cubit = AuthGateCubit(authSession);
+    final AuthGateCubit cubit = AuthGateCubit(
+      authSession: authSession,
+      logoutOrchestrator: logoutOrchestrator,
+    );
     addTearDown(cubit.close);
     await pumpEventQueue();
     expect(cubit.state, const AuthGateState.signedIn(user: null));
@@ -149,7 +170,8 @@ void main() {
       authStates.add(const AuthState.unauthenticated());
     });
     final AuthGateCubit cubit = AuthGateCubit(
-      authSession,
+      authSession: authSession,
+      logoutOrchestrator: logoutOrchestrator,
       signOutRestoreFence: const Duration(milliseconds: 20),
     );
     addTearDown(cubit.close);
@@ -184,7 +206,8 @@ void main() {
       authStates.add(const AuthState.unauthenticated());
     });
     final AuthGateCubit cubit = AuthGateCubit(
-      authSession,
+      authSession: authSession,
+      logoutOrchestrator: logoutOrchestrator,
       signOutRestoreFence: const Duration(milliseconds: 20),
     );
     addTearDown(cubit.close);

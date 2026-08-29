@@ -4,21 +4,31 @@ import "package:bloc/bloc.dart";
 import "package:meta/meta.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../../orchestration/desktop_logout_orchestrator.dart";
 import "auth_gate_state.dart";
 
 /// Desktop sign-in gate: maps the auth session's state stream into the
-/// signed-in/out truth the desktop window (and later the tray menu, logout
-/// flow, and bridge-spawn auth gating) renders.
+/// signed-in/out truth the desktop window and bridge-spawn auth gating render.
 ///
 /// On construction it restores a locally persisted session (local-only, no
 /// network — the startup posture mobile's splash uses), then tracks live
 /// transitions. Mid-login states do not flip the gate: the login surface owns
 /// its own progress UI.
-class AuthGateCubit(
-  final AuthSession _authSession, {
-  @visibleForTesting final Duration _signOutRestoreFence = const Duration(seconds: 5),
+class AuthGateCubit._create({
+  required final AuthSession _authSession,
+  required final DesktopLogoutOrchestrator _logoutOrchestrator,
+  @visibleForTesting required final Duration _signOutRestoreFence,
 }) extends Cubit<AuthGateState> {
-  // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
+  new({
+    required AuthSession authSession,
+    required DesktopLogoutOrchestrator logoutOrchestrator,
+    @visibleForTesting Duration signOutRestoreFence = const Duration(seconds: 5),
+  }) : this._create(
+         authSession: authSession,
+         logoutOrchestrator: logoutOrchestrator,
+         signOutRestoreFence: signOutRestoreFence,
+       );
+
   this : super(const AuthGateState.checking()) {
     unawaited(_restoreAndSubscribe());
   }
@@ -87,9 +97,9 @@ class AuthGateCubit(
     }
   }
 
-  /// Device-local sign-out (clears local tokens only; other devices stay
-  /// signed in). The coordinated bridge-unregister logout flow builds on top
-  /// of this later.
+  /// Coordinated device-local sign-out. The logout owner stops the supervised
+  /// helper before clearing local tokens; step 11 extends that same owner with
+  /// unregister handling.
   Future<void> signOut() async {
     // Fence on the startup user recovery: its /auth/me completion re-emits
     // authenticated, which must land BEFORE logout's unauthenticated — never
@@ -101,29 +111,23 @@ class AuthGateCubit(
       } on TimeoutException {
         // Pathologically slow restore: proceed with the sign-out rather than
         // blocking the user — but the hung restore can still re-emit
-        // authenticated when it finally lands, so re-run the local logout
+        // authenticated when it finally lands, so re-run coordinated logout
         // after it settles: sign-out always wins eventually.
-        logw("Background session restore still pending at sign-out; re-clearing when it settles");
+        logw("Background session restore still pending at sign-out; retrying logout when it settles");
         // Deliberately UNCONDITIONAL: the settling restore's own token
         // refresh can re-persist tokens after the logout, and the auth layer
         // has no logout generation, so no local check can distinguish them
         // from a fresh sign-in. A fresh sign-in completing inside this
         // pathological window is bounced once — visible and recoverable —
         // which beats a silently undone sign-out.
-        unawaited(pending.whenComplete(_clearSessionBestEffort));
+        unawaited(pending.whenComplete(_logoutBestEffort));
       }
     }
-    await _clearSessionBestEffort();
+    await _logoutBestEffort();
   }
 
-  Future<void> _clearSessionBestEffort() async {
-    try {
-      await _authSession.logoutCurrentDevice();
-    } on Object catch (error, stackTrace) {
-      // Local-only operation; a failure leaves the session as-is and the gate
-      // unchanged, so surface it in the log.
-      logw("Device-local sign-out failed", error, stackTrace);
-    }
+  Future<void> _logoutBestEffort() async {
+    await _logoutOrchestrator.logoutCurrentDevice();
   }
 
   void _onAuthState(AuthState authState) {
