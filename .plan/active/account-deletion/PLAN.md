@@ -14,17 +14,21 @@ or bypass the existing keyed-data deletion pipeline.
 ## Confirmed Product Decisions
 
 - The user schedules deletion through an authenticated API with an exact typed
-  confirmation body.
+  confirmation plus a client-generated UUID operation ID that is reused only
+  for retries of that user action.
 - The grace period is 24 hours.
 - Scheduling revokes refresh sessions, registered bridges, and notification
   delivery. Existing stateless access tokens may remain valid for their existing
   maximum of 15 minutes; no new per-request user lookup is added solely to close
-  that accepted window.
+  that accepted window. Existing bridge revocation semantics remove bridge-local
+  glossary scopes during grace, while repository scopes remain until finalization.
 - The account remains recoverable during the grace period. A **successful
   credential sign-in**, not merely a sign-in attempt or refresh request,
   atomically cancels deletion before the deadline and issues new tokens.
 - Scheduling the same account again is idempotent and does not extend its
-  original deadline.
+  original deadline. Access tokens carry the issuing token version only so the
+  scheduling route can reject a delayed pre-cancellation call after successful
+  sign-in; other authenticated routes remain stateless until token expiry.
 - At the deadline, cancellation closes and deletion becomes irreversible. The
   user-facing claim is that deletion **begins after 24 hours**, not that every
   provider, warehouse, retained backup, or legally retained record disappears
@@ -99,15 +103,18 @@ or bypass the existing keyed-data deletion pipeline.
 
 Production ownership stays `Route -> AccountDeletionService -> repositories`:
 
-- `src/types/account-deletion.ts` defines `AccountDeletionState` and typed
-  pending/finalizing/completed domain variants.
+- `src/types/account-deletion.ts` defines `AccountDeletionState`, closed session-
+  cleanup state, and typed pending/finalizing/completed domain variants.
 - `src/models/documents.ts` adds the optional discriminated
   `User.accountDeletion` subdocument. Absence means no request and needs no
   backfill.
-- `src/models/api.ts` adds a strict
-  `scheduleAccountDeletionBodySchema = z.object({confirmation:
-  z.literal("DELETE")}).strict()` and the typed pending response with an ISO UTC
-  `scheduledFor`.
+- `src/models/api.ts` adds a strict scheduling body containing exact
+  `confirmation: "DELETE"` and UUID `operationId`, plus the typed pending
+  response with ISO UTC `scheduledFor` and closed session-cleanup status.
+- `src/models/jwt.ts`, `src/services/token-service.ts`, and auth middleware add
+  the issuing `tokenVersion` to access-token claims. No common middleware lookup
+  is added: only account-deletion scheduling compares the claim with the current
+  User when creating an absent request.
 - `src/repositories/user-repo.ts` owns every atomic state transition and returns
   parsed domain outcomes. It also owns the due-state index access; routes and
   services never assemble Mongo filters.
@@ -131,9 +138,14 @@ Production ownership stays `Route -> AccountDeletionService -> repositories`:
   metadata/rehashes or signs tokens. New OAuth users retain the current
   insert-or-find plus `UserRepository.create` race handling. Refresh-token flow
   is unchanged and cannot cancel deletion.
-- `src/db/mongo-db-accessor.ts` adds an index beginning with
-  `accountDeletion.state`, then `accountDeletion.scheduledFor` and `_id`, for
-  bounded due scans.
+- `src/services/pending-auth-store.ts`, `src/routes/auth/provider-callback.ts`,
+  `src/routes/auth/session-status.ts`, and their typed API models preserve a
+  closed account-deletion-in-progress failure through browser OAuth. The callback
+  records that reason separately from generic provider exchange failures, renders
+  HTTP 410, and the client-visible status poll returns the same typed 410.
+- `src/db/mongo-db-accessor.ts` adds three state-prefixed indexes for the bounded
+  worker lanes: pending session cleanup, pending `scheduledFor`, and finalizing
+  `nextAttemptAt`, each ending in `_id` for deterministic pagination.
 - `src/index.ts`, `src/server.ts`, and test helpers construct and register the
   service/route. Focused tests live under `tests/repositories/user-repo.test.ts`,
   `tests/services/account-deletion-service.test.ts`,
@@ -142,11 +154,21 @@ Production ownership stays `Route -> AccountDeletionService -> repositories`:
 
 `AccountDeletionService.schedule` first calls the one atomic user-repository
 operation that creates the pending request and increments `tokenVersion` only
-on the absent-to-pending transition. It then calls existing
-`BridgeService.revokeAllForUser` and `DeviceTokenRepository.deleteAllForUser`.
-A partial side-effect failure is observable and retryable: the repeated request
-returns the original deadline/request and reruns idempotent revocation without
-extending the grace period or incrementing the token version again.
+on the absent-to-pending transition. An absent-to-pending write requires the
+access token's issuing version to equal the current User; an already-pending
+request remains idempotently readable. This rejects a delayed pre-cancellation
+call after successful sign-in without blocking a genuine new request made with
+the newly issued token.
+
+The service then attempts existing `BridgeService.revokeAllForUser` and
+`DeviceTokenRepository.deleteAllForUser` independently. The pending variant
+starts with session cleanup pending and changes to completed only when both
+succeed. A partial failure is logged without identifiers, remains durable for
+the Step 3 worker, and still returns a successful scheduled response with the
+cleanup status; the client must never present a committed deletion as failed.
+A repeated same-action request reuses its operation ID, returns the original
+deadline/request, and reruns cleanup without extending the grace period or
+incrementing the token version again.
 
 ### Auth finalization and account-owned cleanup (Step 3)
 
@@ -159,17 +181,21 @@ extending the grace period or incrementing the token version again.
   `suppress-product-analytics-export.ts` and the new worker; the web server does
   not receive BigQuery credentials.
 - `src/scripts/process-due-account-deletions.ts` is the bounded scheduled entry
-  point. It reads at most the configured 1-100 users, processes them
-  sequentially, continues after one user's sanitized failure, emits only
-  aggregate counts/failure kinds, and exits non-zero when work remains
-  retryable. `package.json` exposes the command and `README.md` documents the
-  externally overlap-skipped schedule.
-- `UserRepository.findAccountDeletionWorkBatch` returns sorted pending-due and
-  finalizing users. `beginAccountDeletionFinalization` atomically changes only a
-  pending request whose database deadline is due into finalizing;
-  `completeAccountDeletion` changes only the same request ID from finalizing to
-  completed. A finalizing record is deliberately resumable after process
-  failure and never cancellable.
+  point. Its fixed total capacity is split between pending session-cleanup,
+  newly due, and finalizing-retry lanes so one poison record cannot consume all
+  progress. It processes users sequentially, continues after one sanitized
+  failure, emits only aggregate counts/failure kinds, and exits non-zero when
+  work remains retryable. `package.json` exposes the command and `README.md`
+  documents the externally overlap-skipped schedule.
+- `UserRepository` exposes separate bounded, indexed queries for pending session
+  cleanup, pending-due finalization, and eligible finalizing retries. A
+  successful attempt updates session cleanup to completed. A due claim changes
+  only pending-at/after-deadline to finalizing and sets `startedAt` plus
+  `nextAttemptAt`. Before each finalization attempt, one atomic operation moves
+  `nextAttemptAt` forward by the fixed retry interval; retries sort by
+  `nextAttemptAt, _id`, so a persistent failure rotates behind later eligible
+  work and a crash becomes eligible again. `completeAccountDeletion` changes
+  only the same request ID from finalizing to completed.
 - Add repository-owned, `userId`-filtered idempotent deletion methods:
   `OAuthAccountRepository.deleteAllForUser`,
   `PasswordAccountRepository.deleteAllForUser`,
@@ -221,6 +247,15 @@ request service`:
   point. Its batch limit is closed and bounded, overlap is disabled by the
   deployment, and any retryable target produces a non-zero result after the
   rest of the page has been attempted.
+- Production capacity is a blocking Step 4 deliverable, not a temporary drill
+  instruction. The current 2 GiB per-principal query quota cannot run the
+  observed 8-10 GiB fixed aggregate rebuild. Before enabling the processor,
+  rerun production dry-runs, record request and sweep byte ceilings, set the
+  dedicated privacy principal's daily quota to at least 2.5 times
+  `(request ceiling × maximum scheduled requests/day) + sweep ceiling`, and
+  bound command cadence/limit to that same budget. If the approved quota cannot
+  satisfy this formula, Step 4 must slim the authoritative rebuild before
+  deployment; automatic deletion cannot ship on a permanently retrying path.
 - `privacy_deletion/privacy_deletion_test.dart`, a focused batch-service test,
   `docs/privacy-deletion.md`, and `docs/reference/full-runbook.md` cover the new
   command and preserve the separate recurring tombstone sweep.
@@ -236,7 +271,8 @@ No new queue/table/status is introduced: the existing handoff target and its
   destructive response.
 - `client/module_core/lib/src/api/account_deletion_api.dart` owns the strict wire
   request/response Freezed models and maps authenticated transport to a closed
-  success/timeout/failure result.
+  success/timeout/failure result. One UUID operation ID is generated per user
+  action above the transport and reused across only that action's retry.
 - `client/module_core/lib/src/repositories/models/account_deletion.dart` owns the
   domain deadline/result; `account_deletion_repository.dart` maps API variants
   without exposing transport errors.
@@ -251,13 +287,15 @@ No new queue/table/status is introduced: the existing handoff target and its
   `AccountLogoutService` instead of orchestrating those three collaborators
   inline. Its externally visible success/failure behavior remains unchanged.
 - `client/module_core/lib/src/services/account_deletion_service.dart` depends
-  only on `AccountDeletionRepository` and `AccountLogoutService`. Its
-  `schedule({required String userId})` receives the current account ID from the
-  cubit, schedules through the repository's generation-guarded call, and only
-  after server success invokes the shared logout service with the account-
-  deletion reason. It never clears local state when the scheduling request
-  itself fails. Retrying uncertain post-response local cleanup is safe because
-  the server deadline is idempotent.
+  only on `AccountDeletionRepository` and `AccountLogoutService`. Its schedule
+  receives the current account ID and action operation ID, calls the generation-
+  guarded repository, and only after server success invokes the shared logout
+  service with the account-deletion reason. Server success and local logout are
+  separate sealed outcomes: a local failure still returns the authoritative
+  deadline plus `localCleanupRequired`, and `retryLocalLogout` retries only the
+  shared local pipeline without calling the authenticated scheduling endpoint.
+  It never clears local state when scheduling itself fails and never loses a
+  committed deadline because secure-storage cleanup partially failed.
 - Module exports, injectable configuration, and focused API/repository/logout-
   service/account-deletion-service tests are generated/updated in this step. No
   UI invokes account deletion yet, so deploying the additive feature foundation
@@ -268,13 +306,15 @@ No new queue/table/status is introduced: the existing handoff target and its
 - `client/module_core/lib/src/cubits/settings/settings_cubit.dart` continues to
   consume `AccountLogoutService` for ordinary logout and additionally receives
   `AccountDeletionService`; `settings_state.dart` adds a sealed deletion action
-  with idle/in-progress/success(deadline)/failure variants. The cubit passes its
-  current authenticated account ID to the deletion service and never reaches an
-  API or repository.
+  with idle/in-progress/scheduled(deadline, local-cleanup state)/schedule-failure
+  variants. The cubit passes its current authenticated account ID and one UUID
+  operation ID to the deletion service and never reaches an API or repository.
 - `client/app/lib/features/settings/profile_screen.dart` adds the destructive
   row, exact confirmation sheet, busy/failure handling, and the server deadline
-  success message before routing to sign-in. Existing `context.watch` and
-  listener patterns remain.
+  success message before routing to sign-in. If only local cleanup failed, the
+  message keeps the deadline visible and offers a local-cleanup-only retry rather
+  than resubmitting deletion. Existing `context.watch` and listener patterns
+  remain.
 - `client/app/lib/features/login/login_screen.dart` adds only generic recovery
   copy when appropriate to the flow: a successful sign-in during the 24-hour
   grace cancels deletion. It does not need or infer the server deadline.
@@ -292,20 +332,25 @@ No new queue/table/status is introduced: the existing handoff target and its
 
 ### 1. Schedule
 
-1. An authenticated client submits the exact confirmation required by the new
-   account-deletion endpoint.
+1. An authenticated client submits exact confirmation plus one UUID operation
+   ID for the user action. The access-token claim supplies its issuing token
+   version; the route never accepts a client-supplied account ID/version.
 2. `UserRepository.scheduleAccountDeletion` uses one Mongo update pipeline and
-   database `$$NOW` to create pending `{state, requestId, requestedAt,
-   scheduledFor}` and increment `tokenVersion`. `scheduledFor` is exactly
-   `$$NOW + 24 hours`. The pipeline preserves an existing pending subdocument
-   and token version, so concurrent/retried requests return one winner without
-   extending the deadline.
-3. Only after the pending state is durable, `AccountDeletionService` reruns
-   idempotent bridge revocation and device-token deletion. The response returns
-   the fixed database deadline so the client can explain the grace period before
-   clearing local credentials.
-4. No permanent analytics suppression, identity deletion, glossary deletion, or
-   warehouse handoff happens during the reversible grace period.
+   database `$$NOW` to create pending `{state, requestId, operationId,
+   requestedAt, scheduledFor, sessionCleanupState}` and increment `tokenVersion`.
+   `scheduledFor` is exactly `$$NOW + 24 hours`. Creating an absent request
+   requires the access claim's version to match the User; an existing pending
+   request remains idempotent. A delayed pre-cancellation call therefore cannot
+   recreate deletion after successful sign-in, while a new post-sign-in token
+   can schedule a genuine new request immediately.
+3. Only after pending state is durable, `AccountDeletionService` attempts bridge
+   revocation and device-token deletion independently. Complete cleanup is
+   marked atomically; partial failure leaves cleanup pending for server-owned
+   worker retry but still returns the committed database deadline/status.
+4. No permanent analytics suppression, identity deletion, repository-scope
+   glossary deletion, or warehouse handoff happens during the reversible grace
+   period. Bridge-local scopes are removed by the deliberately reused bridge-
+   revocation contract.
 
 ### 2. Cancel by successful sign-in
 
@@ -334,8 +379,9 @@ cancellation registry.
 ### 3. Finalize account-owned service data
 
 A dedicated, idempotent scheduled command under the approved privacy identity
-loads a bounded page of pending-due and already-finalizing users. It does not run
-inside an API request and does not use an in-process 24-hour timer.
+loads separately bounded pending-cleanup, pending-due, and eligible-finalizing
+lanes. It does not run inside an API request and does not use an in-process
+24-hour timer.
 
 For each user it first obtains/resumes the atomic `finalizing` variant, then:
 
@@ -350,10 +396,11 @@ For each user it first obtains/resumes the atomic `finalizing` variant, then:
    suppression tombstone required by auth export and delayed-upload protection.
 
 A handoff or cleanup failure leaves the user finalizing and therefore
-observable/resumable in the next bounded run. The same stable request ID and
-idempotent repository deletes make retries safe. Finalization never returns to
-pending and must not erase the source tombstone to make a failed analytics run
-appear clean.
+observable/resumable after `nextAttemptAt`. Moving that eligibility forward
+before each attempt rotates persistent failures behind later records instead of
+starving the bounded page. The same stable request ID and idempotent repository
+deletes make retries safe. Finalization never returns to pending and must not
+erase the source tombstone to make a failed analytics run appear clean.
 
 ### 4. Complete analytics erasure
 
@@ -389,23 +436,31 @@ operator-selected SQL or table list is introduced.
 exact discriminated variants rather than nullable coordination fields:
 
 - absence of `User.accountDeletion`: no deletion request;
-- `pending`: non-null `requestId`, `requestedAt`, and `scheduledFor`;
-- `finalizing`: those same values plus non-null `startedAt`;
+- `pending`: non-null server `requestId`, client UUID `operationId`,
+  `requestedAt`, `scheduledFor`, and closed session-cleanup state;
+- `finalizing`: the same identity/deadline values plus non-null `startedAt` and
+  retry-eligibility `nextAttemptAt`;
 - `completed`: non-null `requestId` and `completedAt`.
 
 All dates are persisted BSON dates and validated as finite. Request IDs use the
 existing `productAnalyticsDeletionRequestIdSchema`; the service creates an
 `account_deletion_<UUID>` candidate, while the atomic schedule operation chooses
-and preserves one candidate under concurrent calls.
+and preserves one candidate under concurrent calls. The client operation ID is
+validated separately and is never used as the cross-account warehouse key.
 
 `UserRepository` is the sole state owner:
 
-- `scheduleAccountDeletion` uses database `$$NOW`, writes absent-to-pending, and
+- `scheduleAccountDeletion` uses database `$$NOW`, requires the issuing token
+  version only for absent-to-pending, writes one operation/request, and
   increments token version once;
+- `markAccountDeletionSessionCleanupCompleted` closes immediate cleanup only
+  after both side effects succeed;
 - `cancelPendingAccountDeletionForSignIn` unsets only pending-before-deadline;
-- `findAccountDeletionWorkBatch` returns sorted pending-due/finalizing work with
-  a hard limit;
+- separate bounded queries serve pending cleanup, newly due, and eligible
+  finalizing retry lanes;
 - `beginAccountDeletionFinalization` atomically claims pending-due work;
+- `claimAccountDeletionFinalizationAttempt` moves `nextAttemptAt` before work so
+  failed records rotate and crashes become retryable;
 - `completeAccountDeletion` requires finalizing plus the same request ID and
   writes the completed tombstone only after handoff and cleanup succeed.
 
@@ -455,32 +510,36 @@ The fixed series slug is `account-deletion` and the total is nine PRs.
    documentation-only and has no runtime dependency.
 2. **`🚧 [account-deletion] Schedule deletion and cancel on sign-in [step 2/9]`** —
    auth server. Implement the Step 2 files/classes listed under Concrete
-   Implementation Ownership: typed User state, `UserRepository` transitions,
-   `AccountDeletionService`, authenticated route, OAuth/password mutation
-   ordering, index, composition, and focused tests. It deploys safely while no
-   released client calls the additive route.
+   Implementation Ownership: typed User/cleanup state, access-token version
+   fence, operation-ID request, `UserRepository` transitions,
+   `AccountDeletionService`, authenticated route, closed browser/native/password
+   deadline errors, index, composition, and focused tests. It deploys safely
+   while no released client calls the additive route.
 3. **`🚨 [account-deletion] Finalize due account data [step 3/9]`** — auth
    server. Implement `AccountDeletionFinalizerService`, the shared approved
-   privacy runtime, the bounded command, and repository-owned cleanup methods
-   listed above. It depends on Step 2 persistence but is operationally inert
-   until its external schedule is enabled.
+   privacy runtime, separately bounded cleanup/due/finalizing lanes, fair retry
+   eligibility, and repository-owned cleanup methods listed above. It depends
+   on Step 2 persistence but is operationally inert until its external schedule
+   is enabled.
 4. **`🚨 [account-deletion] Automate privacy target processing [step 4/9]`** —
    analytics platform. Implement `loadProcessableRequestIds` through
    API/repository, `PrivacyDeletionBatchService`, shared runtime composition,
-   scheduled command, tests, and runbook updates. It reuses current targets and
-   can deploy before any account-generated handoff exists.
+   scheduled command, sustainable quota/cadence enforcement, tests, and runbook
+   updates. It reuses current targets and can deploy before any account-
+   generated handoff exists, but cannot be enabled under the current 2 GiB quota.
 5. **`⚙️ [account-deletion] Add client account deletion domain [step 5/9]`** —
    monorepo. Implement `postForUser`, `AccountDeletionApi`, repository models/
-   mapper, shared `AccountLogoutService`, `AccountDeletionService`, ordinary-
-   logout SettingsCubit migration, DI/exports, code generation, and focused
-   tests. It depends on the additive Step 2 route; ordinary logout retains its
-   behavior and no account-deletion UI is exposed.
+   mapper, one-action operation ID, shared `AccountLogoutService`, sealed server-
+   schedule/local-cleanup outcomes, `AccountDeletionService` local-only retry,
+   ordinary-logout SettingsCubit migration, DI/exports, code generation, and
+   focused tests. It depends on the additive Step 2 route; ordinary logout
+   retains its behavior and no account-deletion UI is exposed.
 6. **`🚧 [account-deletion] Add account deletion recovery UX [step 6/9]`** —
    monorepo. Add the deletion SettingsCubit state/consumer call through
-   `AccountDeletionService`, profile confirmation and exact deadline result,
-   fixed recovery messaging, localization/codegen, and widget/cubit tests. It
-   depends on Step 5 and remains release-gated until both scheduled jobs are
-   operational.
+   `AccountDeletionService`, profile confirmation, exact deadline result,
+   local-cleanup-only retry, fixed recovery messaging, localization/codegen, and
+   widget/cubit tests. It depends on Step 5 and remains release-gated until both
+   scheduled jobs and sustainable analytics quota are operational.
 7. **`🌿 [account-deletion] Publish deletion and glossary disclosures [step 7/9]`** —
    auth server. Update `assets/legal/privacy.md` and `terms.md`; record the
    reviewed no-change outcome for `cookies.md`; validate legal route rendering
@@ -522,13 +581,15 @@ property/datasets, and app accounts. Do not use production user data.
 
 The matrix must prove:
 
-1. scheduling stores one immutable 24-hour deadline, revokes refresh sessions,
-   bridges, and device tokens, and does not delete data during grace;
-2. a successful OAuth/password/native sign-in before the deadline atomically
-   cancels deletion and issues valid new tokens; refresh and failed sign-in do
-   not cancel;
-3. at/after the deadline sign-in cannot cancel, and repeated finalizer runs are
-   idempotent;
+1. scheduling stores one immutable 24-hour deadline, fences stale access-token
+   calls with token version plus operation ID, and never reports a committed
+   schedule as failed when bridge/device cleanup needs server retry; repository
+   glossary data remains during grace while revoked bridge-local scopes go;
+2. a successful browser OAuth/password/native sign-in before the deadline
+   atomically cancels deletion and issues valid new tokens; refresh and failed
+   sign-in do not cancel, and browser status preserves the typed 410 after due;
+3. at/after the deadline sign-in cannot cancel, repeated finalizer runs are
+   idempotent, and persistent failures rotate without starving later due users;
 4. every target user's glossary scope and all other declared account-owned
    operational rows are gone while a second user's same-shaped records survive;
 5. login identities are removed and a later sign-up creates a new account rather
@@ -539,7 +600,8 @@ The matrix must prove:
 7. a delayed keyed upload is removed by the recurring sweep and does not
    repopulate reporting;
 8. identifier-free reporting remains queryable and reconciled after aggregate
-   rebuild;
+   rebuild, with production dry-run bytes and the dedicated quota/cadence formula
+   proving the automated processor can finish rather than retry forever;
 9. an automatic-only installation that cannot be linked follows the documented
    retention limitation rather than being falsely reported as deleted;
 10. released older clients and bridges continue normal operation because the
@@ -555,8 +617,9 @@ current packaged bridge plus one older public bridge for revocation compatibilit
 1. Deploy auth scheduling before exposing the client action.
 2. Deploy and drill the due-account finalizer and analytics target processor.
 3. Publish legal updates.
-4. Enable client UI only after both jobs are scheduled, monitored, and have
-   completed the non-production destructive drill.
+4. Enable client UI only after both jobs are scheduled, monitored, the dedicated
+   analytics quota/cadence capacity gate passes, and the non-production
+   destructive drill completes.
 5. Monitor pending age, retryable target count, finalizer failures, and privacy
    sweep freshness using bounded aggregate diagnostics only.
 
@@ -567,11 +630,14 @@ pending request, source tombstone, warehouse exclusion, or scheduled cleanup.
 
 New durable mutable parts:
 
-1. one account-deletion variant on the existing User document;
-2. one stable privacy request ID/deadline per pending account;
-3. existing analytics deletion target/exclusion rows, reused rather than
+1. one account-deletion variant on the existing User document, including closed
+   session-cleanup and finalization retry-eligibility fields;
+2. one stable privacy request ID/deadline and one client operation ID per pending
+   account;
+3. one issuing token-version claim in access tokens, read only by scheduling;
+4. existing analytics deletion target/exclusion rows, reused rather than
    duplicated;
-4. one scheduled auth finalizer and one scheduled analytics target processor.
+5. one scheduled auth finalizer and one scheduled analytics target processor.
 
 No new per-user timers, process-local cancellation maps, access-token blacklist,
 account-to-installation map, arbitrary aggregate command, operator-selected table
@@ -595,14 +661,17 @@ becomes due. All such tokens have expired before destructive finalization.
 
 ## Material Risks
 
-- **Irreversible cancellation race:** controlled by one server-time predicate;
+- **Irreversible cancellation race:** controlled by database-time predicates;
   login cancels only strictly before the deadline, finalization processes only
-  at/after it.
+  at/after it, and issuing token version prevents a delayed pre-cancellation
+  scheduling call from recreating the request.
 - **Partial cross-system deletion:** controlled through permanent source
   suppression first, stable request IDs, idempotent jobs, retryable states, and
   completion only after warehouse verification.
-- **Analytics distortion:** direct aggregate edits are forbidden; fixed
-  authoritative transforms rebuild from remaining keyed sources.
+- **Analytics distortion/capacity:** direct aggregate edits are forbidden;
+  fixed authoritative transforms rebuild from remaining keyed sources, and the
+  measured quota/cadence gate prevents a known 2 GiB quota from turning every
+  automatic deletion into a retry.
 - **Data recreation:** refresh and bridge sessions are revoked at schedule time,
   and their 15-minute access-token window expires long before the 24-hour due
   time.
