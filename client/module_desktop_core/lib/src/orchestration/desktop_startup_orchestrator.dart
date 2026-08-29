@@ -37,14 +37,14 @@ class DesktopStartupOrchestrator._create({
   }
 
   Future<void> restoreBridgeDesiredState() async {
-    final BridgeProcessDesiredState desiredState;
+    final BridgeProcessDesiredState? desiredState;
     try {
-      desiredState = await _instanceService.readBridgeDesiredState();
+      desiredState = await _instanceService.readBridgeDesiredStateForRestore();
     } on Object catch (error, stackTrace) {
       logw("Failed to read the desktop bridge's last desired state", error, stackTrace);
       return;
     }
-    if (desiredState == BridgeProcessDesiredState.off) {
+    if (desiredState == null || desiredState == BridgeProcessDesiredState.off) {
       return;
     }
     try {

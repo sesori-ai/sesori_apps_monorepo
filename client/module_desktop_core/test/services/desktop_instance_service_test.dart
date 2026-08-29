@@ -48,6 +48,21 @@ void main() {
     verify(() => repository.tryAcquirePrimary()).called(2);
   });
 
+  test("a newer persisted intent cancels an in-flight startup restore read", () async {
+    final Completer<BridgeProcessDesiredState> stateRead = Completer<BridgeProcessDesiredState>();
+    when(() => repository.readBridgeDesiredState()).thenAnswer((_) => stateRead.future);
+    when(
+      () => repository.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
+    ).thenAnswer((_) async {});
+
+    final Future<BridgeProcessDesiredState?> restore = service.readBridgeDesiredStateForRestore();
+    final Future<void> persistOff = service.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    stateRead.complete(BridgeProcessDesiredState.on);
+
+    expect(await restore, isNull);
+    await persistOff;
+  });
+
   test("serializes desired-state writes in request order", () async {
     final Completer<void> onWrite = Completer<void>();
     final List<BridgeProcessDesiredState> writes = <BridgeProcessDesiredState>[];

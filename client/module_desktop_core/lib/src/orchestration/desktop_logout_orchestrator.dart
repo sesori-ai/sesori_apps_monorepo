@@ -50,6 +50,7 @@ class DesktopLogoutOrchestrator({
   }
 
   Future<DesktopLogoutOutcome> _performLogout() async {
+    _instanceService.cancelPendingBridgeRestore();
     try {
       await _processService.stop();
     } on Object catch (error, stackTrace) {

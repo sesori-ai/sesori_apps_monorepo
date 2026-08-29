@@ -251,6 +251,7 @@ class BridgeControlCubit._create({
     }
     _activity = BridgeControlActivity.quitting;
     _rebuildMenu();
+    _instanceService.cancelPendingBridgeRestore();
     try {
       await _processService.stop();
     } on Object catch (error, stackTrace) {

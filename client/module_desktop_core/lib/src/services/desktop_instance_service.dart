@@ -20,6 +20,7 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
   new({required DesktopInstanceRepository repository}) : this._create(repository: repository);
 
   Future<void> _pendingDesiredStateWrite = Future<void>.value();
+  int _restoreGeneration = 0;
 
   Stream<void> get focusRequests => _repository.focusRequests;
 
@@ -40,9 +41,20 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
     return DesktopInstanceLaunchDisposition.secondaryActivationFailed;
   }
 
-  Future<BridgeProcessDesiredState> readBridgeDesiredState() => _repository.readBridgeDesiredState();
+  /// Reads persisted intent only while no newer user action invalidates it.
+  Future<BridgeProcessDesiredState?> readBridgeDesiredStateForRestore() async {
+    final int generation = _restoreGeneration;
+    final BridgeProcessDesiredState state = await _repository.readBridgeDesiredState();
+    return generation == _restoreGeneration ? state : null;
+  }
+
+  /// Prevents an in-flight startup read from applying stale desired On.
+  void cancelPendingBridgeRestore() {
+    _restoreGeneration++;
+  }
 
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) {
+    cancelPendingBridgeRestore();
     final Future<void> previousWrite = _pendingDesiredStateWrite;
     final Future<void> operation = _writeBridgeDesiredStateAfter(
       previousWrite: previousWrite,

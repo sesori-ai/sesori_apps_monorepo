@@ -32,8 +32,9 @@ void main() {
     await logoutTracker.dispose();
   });
 
-  test("stops the supervised helper before clearing the local session", () async {
+  test("cancels startup restore before stopping the helper and clearing the local session", () async {
     final List<String> operations = <String>[];
+    when(() => instanceService.cancelPendingBridgeRestore()).thenAnswer((_) => operations.add("cancel"));
     when(() => processService.stop()).thenAnswer((_) async => operations.add("stop"));
     when(
       () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
@@ -43,7 +44,7 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["stop", "persist", "logout"]);
+    expect(operations, <String>["cancel", "stop", "persist", "logout"]);
   });
 
   test("keeps controls locked through token clearing and shares concurrent logout", () async {
@@ -70,6 +71,7 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.bridgeStopFailed);
+    verify(() => instanceService.cancelPendingBridgeRestore()).called(1);
     verifyNever(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off));
     verifyNever(() => authSession.logoutCurrentDevice());
   });

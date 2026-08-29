@@ -265,6 +265,7 @@ void main() {
       systemTray.emit(command: SystemTrayCommand.quit);
       await pumpEventQueue(times: 2);
 
+      expect(instanceService.cancelRestoreCalls, 1);
       expect(processService.stopCalls, 1);
       expect(applicationTerminator.exitCodes, isEmpty);
       expect(systemTray.disposeCalls, 0);
@@ -444,9 +445,15 @@ class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
 class _FakeDesktopInstanceService() implements DesktopInstanceService {
   final StreamController<void> _focusRequests = StreamController<void>.broadcast(sync: true);
   final List<BridgeProcessDesiredState> writes = <BridgeProcessDesiredState>[];
+  int cancelRestoreCalls = 0;
 
   @override
   Stream<void> get focusRequests => _focusRequests.stream;
+
+  @override
+  void cancelPendingBridgeRestore() {
+    cancelRestoreCalls++;
+  }
 
   @override
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) async {

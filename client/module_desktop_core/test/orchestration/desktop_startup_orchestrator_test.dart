@@ -37,7 +37,9 @@ void main() {
   });
 
   test("restores a persisted desired On through the process service", () async {
-    when(() => instanceService.readBridgeDesiredState()).thenAnswer((_) async => BridgeProcessDesiredState.on);
+    when(
+      () => instanceService.readBridgeDesiredStateForRestore(),
+    ).thenAnswer((_) async => BridgeProcessDesiredState.on);
     when(() => processService.start()).thenAnswer((_) async {});
 
     await orchestrator.restoreBridgeDesiredState();
@@ -46,7 +48,17 @@ void main() {
   });
 
   test("persisted desired Off performs no bridge lifecycle work", () async {
-    when(() => instanceService.readBridgeDesiredState()).thenAnswer((_) async => BridgeProcessDesiredState.off);
+    when(
+      () => instanceService.readBridgeDesiredStateForRestore(),
+    ).thenAnswer((_) async => BridgeProcessDesiredState.off);
+
+    await orchestrator.restoreBridgeDesiredState();
+
+    verifyNever(() => processService.start());
+  });
+
+  test("a canceled stale state read performs no bridge lifecycle work", () async {
+    when(() => instanceService.readBridgeDesiredStateForRestore()).thenAnswer((_) async => null);
 
     await orchestrator.restoreBridgeDesiredState();
 
@@ -54,7 +66,9 @@ void main() {
   });
 
   test("a state-read failure leaves startup usable and performs no spawn", () async {
-    when(() => instanceService.readBridgeDesiredState()).thenThrow(const FileSystemException("unavailable"));
+    when(
+      () => instanceService.readBridgeDesiredStateForRestore(),
+    ).thenThrow(const FileSystemException("unavailable"));
 
     await orchestrator.restoreBridgeDesiredState();
 
