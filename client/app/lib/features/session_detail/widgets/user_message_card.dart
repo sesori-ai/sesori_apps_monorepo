@@ -5,7 +5,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
-import "../../../core/widgets/readable_selection_area.dart";
 import "attachment_collection_widget.dart";
 import "text_part_widget.dart" show MarkdownMessageImage;
 
@@ -78,7 +77,7 @@ class const UserMessageBubble({
           children: [
             ...attachments,
             if (markdown != null)
-              ReadableSelectionArea(
+              PregoReadableSelectionArea(
                 child: MarkdownBody(
                   data: markdown,
                   selectable: false,

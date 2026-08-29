@@ -3,12 +3,12 @@ import "package:material_ui/material_ui.dart";
 
 /// A selection area that preserves the visual separation between text widgets
 /// when copying across them.
-class const ReadableSelectionArea({super.key, required final Widget child}) extends StatefulWidget {
+class const PregoReadableSelectionArea({super.key, required final Widget child}) extends StatefulWidget {
   @override
-  State<ReadableSelectionArea> createState() => _ReadableSelectionAreaState();
+  State<PregoReadableSelectionArea> createState() => _PregoReadableSelectionAreaState();
 }
 
-class _ReadableSelectionAreaState() extends State<ReadableSelectionArea> {
+class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea> {
   final _selectionDelegate = _ReadableSelectionContainerDelegate();
 
   @override

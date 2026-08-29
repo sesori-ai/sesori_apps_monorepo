@@ -9,7 +9,6 @@ import "package:http/testing.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/widgets/readable_selection_area.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/attachment_collection_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
@@ -169,7 +168,7 @@ void main() {
     );
 
     expect(find.byType(SelectionArea), findsOneWidget);
-    expect(find.byType(ReadableSelectionArea), findsOneWidget);
+    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     expect(find.byType(MarkdownBody), findsNWidgets(2));
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();

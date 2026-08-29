@@ -9,7 +9,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
-import "../../../core/widgets/readable_selection_area.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "scroll_follow_tracker.dart";
@@ -162,7 +161,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
             // stays visible behind it.
             padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16 + bottomSafe),
             children: [
-              ReadableSelectionArea(
+              PregoReadableSelectionArea(
                 child: MarkdownBody(
                   data: data.text,
                   selectable: false,

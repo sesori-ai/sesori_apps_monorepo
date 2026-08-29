@@ -2,20 +2,40 @@ import "dart:ui" show PointerDeviceKind;
 
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
-import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_mobile/core/widgets/readable_selection_area.dart";
+import "package:theme_prego/module_prego.dart";
 
 void main() {
-  testWidgets("copy preserves Markdown block and list boundaries", (tester) async {
+  testWidgets("copy preserves block and list boundaries", (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: ReadableSelectionArea(
-            child: MarkdownBody(
-              data: "# Heading\n\nFirst paragraph.\n\nSecond **bold** paragraph.\n\n- item one\n- item two",
-              selectable: false,
+          body: PregoReadableSelectionArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Heading"),
+                SizedBox(height: 8),
+                Text("First paragraph."),
+                SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: "Second "),
+                      TextSpan(
+                        text: "bold",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(text: " paragraph."),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+                Row(mainAxisSize: MainAxisSize.min, children: [Text("•"), SizedBox(width: 8), Text("item one")]),
+                SizedBox(height: 8),
+                Row(mainAxisSize: MainAxisSize.min, children: [Text("•"), SizedBox(width: 8), Text("item two")]),
+              ],
             ),
           ),
         ),
@@ -33,7 +53,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: ReadableSelectionArea(
+          body: PregoReadableSelectionArea(
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [Text("•"), SizedBox(width: 8), Text("item")],
@@ -53,7 +73,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: ReadableSelectionArea(
+          body: PregoReadableSelectionArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
