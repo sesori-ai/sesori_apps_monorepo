@@ -21,9 +21,10 @@ Date: 2026-08-28.
   whether to continue building UI. The primary starts the control dispatcher,
   then last-On restoration delegates to the existing auth-gated process service.
 - `BridgeControlCubit` consumes owner focus requests and persists On/Off/Quit;
-  coordinated logout persists Off after successful helper stop. All persistence
-  requests serialize through the singleton instance service so logout Off cannot
-  be overwritten by a pending toggle On write. Persisted startup reads carry an
+  coordinated logout persists Off before helper stop and token clearing. A
+  persistence failure blocks the lifecycle action instead of reporting success.
+  All persistence requests serialize through the singleton instance service so a
+  pending toggle On cannot overwrite logout Off. Persisted startup reads carry an
   intent generation; Off writes, Quit, and logout synchronously invalidate a
   pending stale-On restore before stopping the helper.
 - Added real subprocess tests for activation and kill recovery plus storage,
@@ -45,13 +46,14 @@ layer direction, startup composition, disposal, and Step-9 scope separation.
 
 ## Verification
 
-- `client/module_desktop_core`: analysis clean; all 151 tests passed.
+- `client/module_desktop_core`: analysis clean; all 154 tests passed.
 - `client/desktop`: analysis clean; all 32 tests passed.
 - Focused Step-8 suite covers cross-process activation, killed-owner lock
   recovery, activation failure, persistence, layer delegation, auth-gated
-  restore, stale-restore cancellation, focus, logout/quit Off persistence, and DI.
+  restore, stale-restore cancellation, persistence-failure refusal, focus,
+  logout/quit Off persistence, and DI.
 - Desktop-core Injectable output regenerated with the final layer ownership.
 - macOS debug application build passed with the new startup composition.
 - Dart LSP: 0 diagnostics across 25 affected non-generated Dart files.
 - `git diff --check` — clean.
-- Change size: 1,180 text changed lines, under the 1,500-line soft cap.
+- Change size: 1,256 text changed lines, under the 1,500-line soft cap.

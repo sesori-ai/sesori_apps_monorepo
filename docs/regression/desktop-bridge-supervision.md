@@ -23,9 +23,10 @@ and keep native close/quit behavior safe.
   instead of dropping the request or leaving an invisible process.
 - Quit expected-stops the supervised helper before disposing native surfaces or
   terminating the desktop process. A failed stop leaves the app alive.
-- Window and tray On/Off actions share one serialized owner. A failed start or
-  stop leaves the next action targeted at retrying that failed operation while
-  preserving authoritative desired state.
+- Window and tray On/Off actions share one serialized owner. Intent is durable
+  before lifecycle work begins: a persistence failure leaves the helper and
+  session unchanged, while a failed start or stop leaves the next action
+  targeted at retrying that failed operation.
 - The signed-in window shows account, process/control status, registration,
   relay state, plugin health, active-session count, takeover/login-required
   states, and recent output after crash give-up.
@@ -42,7 +43,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, and signed-in supervision rendering. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop refusal to exit, On/Off recovery, diagnostics launch, and helper-stop-before-local-logout; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, and durable-Off-before-local-logout; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |

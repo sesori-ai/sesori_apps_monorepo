@@ -195,14 +195,11 @@ class BridgeControlCubit._create({
         processState: _processService.state,
         desiredState: _processService.desiredState,
       );
-      final Future<void> operation = switch (target) {
+      await _instanceService.writeBridgeDesiredState(state: target);
+      await switch (target) {
         BridgeProcessDesiredState.on => _processService.start(),
         BridgeProcessDesiredState.off => _processService.stop(),
       };
-      await Future.wait(<Future<void>>[
-        operation,
-        _writeDesiredStateBestEffort(state: target),
-      ]);
     } on Object catch (error, stackTrace) {
       logw("Bridge tray lifecycle command failed", error, stackTrace);
     } finally {
@@ -253,17 +250,20 @@ class BridgeControlCubit._create({
     _rebuildMenu();
     _instanceService.cancelPendingBridgeRestore();
     try {
+      await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    } on Object catch (error, stackTrace) {
+      logw("Desktop quit stopped because bridge Off could not be persisted", error, stackTrace);
+      _markQuitFailed();
+      return;
+    }
+    try {
       await _processService.stop();
     } on Object catch (error, stackTrace) {
       logw("Desktop quit stopped because the supervised bridge could not stop", error, stackTrace);
-      if (!isClosed) {
-        _activity = BridgeControlActivity.idle;
-        _rebuildMenu();
-      }
+      _markQuitFailed();
       return;
     }
 
-    await _writeDesiredStateBestEffort(state: BridgeProcessDesiredState.off);
     try {
       await _systemTray.dispose();
     } on Object catch (error, stackTrace) {
@@ -277,11 +277,10 @@ class BridgeControlCubit._create({
     _applicationTerminator.terminate(exitCode: 0);
   }
 
-  Future<void> _writeDesiredStateBestEffort({required BridgeProcessDesiredState state}) async {
-    try {
-      await _instanceService.writeBridgeDesiredState(state: state);
-    } on Object catch (error, stackTrace) {
-      logw("Failed to persist the desktop bridge desired state", error, stackTrace);
+  void _markQuitFailed() {
+    if (!isClosed) {
+      _activity = BridgeControlActivity.idle;
+      _rebuildMenu();
     }
   }
 

@@ -232,6 +232,28 @@ void main() {
       expect(processService.stopCalls, 0);
     });
 
+    test("failed Off persistence leaves the helper running and the toggle retryable", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      instanceService.writeError = StateError("application support is read-only");
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
+      expect(processService.stopCalls, 0);
+      expect(processService.desiredState, BridgeProcessDesiredState.on);
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
+
+      instanceService.writeError = null;
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue(times: 2);
+      expect(processService.stopCalls, 1);
+    });
+
     test("a failed stop leaves the next toggle targeted at retrying stop", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
@@ -252,6 +274,25 @@ void main() {
       await pumpEventQueue(times: 2);
       expect(processService.stopCalls, 2);
       expect(processService.startCalls, 0);
+    });
+
+    test("Quit leaves the app and helper running when Off cannot be persisted", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      instanceService.writeError = StateError("application support is read-only");
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.quit);
+      await pumpEventQueue(times: 2);
+
+      expect(instanceService.cancelRestoreCalls, 1);
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
+      expect(processService.stopCalls, 0);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(systemTray.disposeCalls, 0);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
     });
 
     test("Quit terminates only after expected bridge stop completes", () async {
@@ -446,6 +487,7 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
   final StreamController<void> _focusRequests = StreamController<void>.broadcast(sync: true);
   final List<BridgeProcessDesiredState> writes = <BridgeProcessDesiredState>[];
   int cancelRestoreCalls = 0;
+  Object? writeError;
 
   @override
   Stream<void> get focusRequests => _focusRequests.stream;
@@ -458,6 +500,10 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
   @override
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) async {
     writes.add(state);
+    final Object? error = writeError;
+    if (error != null) {
+      throw error;
+    }
   }
 
   void emitFocusRequest() {

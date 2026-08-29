@@ -9,6 +9,7 @@ import "../trackers/desktop_logout_tracker.dart";
 /// Result of the interim device-local desktop logout sequence.
 enum DesktopLogoutOutcome() {
   completed,
+  desiredStatePersistenceFailed,
   bridgeStopFailed,
   localSessionClearFailed,
 }
@@ -52,16 +53,17 @@ class DesktopLogoutOrchestrator({
   Future<DesktopLogoutOutcome> _performLogout() async {
     _instanceService.cancelPendingBridgeRestore();
     try {
+      await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    } on Object catch (error, stackTrace) {
+      logw("Desktop logout stopped because bridge Off could not be persisted", error, stackTrace);
+      return DesktopLogoutOutcome.desiredStatePersistenceFailed;
+    }
+
+    try {
       await _processService.stop();
     } on Object catch (error, stackTrace) {
       logw("Desktop logout stopped because the supervised bridge could not stop", error, stackTrace);
       return DesktopLogoutOutcome.bridgeStopFailed;
-    }
-
-    try {
-      await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
-    } on Object catch (error, stackTrace) {
-      logw("Failed to persist bridge Off during desktop logout", error, stackTrace);
     }
 
     try {

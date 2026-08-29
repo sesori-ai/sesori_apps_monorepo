@@ -44,7 +44,7 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["cancel", "stop", "persist", "logout"]);
+    expect(operations, <String>["cancel", "persist", "stop", "logout"]);
   });
 
   test("keeps controls locked through token clearing and shares concurrent logout", () async {
@@ -65,6 +65,18 @@ void main() {
     expect(logoutTracker.status, DesktopLogoutStatus.idle);
   });
 
+  test("does not stop the helper or clear authentication when Off cannot be persisted", () async {
+    when(
+      () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
+    ).thenThrow(StateError("application support is read-only"));
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.desiredStatePersistenceFailed);
+    verifyNever(() => processService.stop());
+    verifyNever(() => authSession.logoutCurrentDevice());
+  });
+
   test("does not clear authentication when the helper cannot stop", () async {
     when(() => processService.stop()).thenThrow(StateError("helper remained alive"));
 
@@ -72,7 +84,7 @@ void main() {
 
     expect(outcome, DesktopLogoutOutcome.bridgeStopFailed);
     verify(() => instanceService.cancelPendingBridgeRestore()).called(1);
-    verifyNever(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off));
+    verify(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off)).called(1);
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
