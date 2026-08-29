@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../../core/widgets/readable_selection_area.dart";
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
 import "reasoning_part_card.dart";
@@ -22,7 +23,7 @@ class const AssistantMessageCard({
   Widget build(BuildContext context) {
     return Padding(
       padding: contentPadding,
-      child: SelectionArea(
+      child: ReadableSelectionArea(
         child: Column(
           crossAxisAlignment: .start,
           children: [
