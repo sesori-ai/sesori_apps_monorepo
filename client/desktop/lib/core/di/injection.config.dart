@@ -33,6 +33,8 @@ import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
 import 'package:sesori_desktop/core/platform/flutter_window_host.dart' as _i789;
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
+import 'package:sesori_desktop/core/platform/macos_legacy_keychain_client.dart'
+    as _i435;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
@@ -54,6 +56,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
+      () => _i435.MacOsLegacyKeychainClient(),
+    );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),
     );
@@ -63,9 +68,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
-    );
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(),
     );
@@ -85,6 +87,12 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
+    gh.lazySingleton<_i948.SecureStorage>(
+      () => _i757.DesktopSecureStorageAdapter(
+        storage: gh<_i558.FlutterSecureStorage>(),
+        macOsKeychainClient: gh<_i435.MacOsLegacyKeychainClient>(),
+      ),
+    );
     return this;
   }
 }
