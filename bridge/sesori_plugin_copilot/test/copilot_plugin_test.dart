@@ -130,6 +130,7 @@ void main() {
       expect(CopilotPluginIdentity.id, "copilot");
       expect(CopilotPluginIdentity.displayName, "GitHub Copilot");
       expect(plugin.id, CopilotPluginIdentity.id);
+      expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.launchSpec.command, "/opt/copilot");
       expect(plugin.launchSpec.args, ["--no-auto-update", "--acp"]);
       expect(plugin.launchSpec.cwd, "/repo");
@@ -302,6 +303,66 @@ void main() {
           ),
         ),
       );
+    });
+
+    test("a busy follow-up cancels before replacement prompt dispatch", () async {
+      final connecting = plugin.ensureConnected();
+      await completeHandshake(process: fake);
+      expect(await connecting, isTrue);
+
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final sessionNew = await waitForFrame(process: fake, method: "session/new");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": sessionNew["id"],
+        "result": {"sessionId": "session-1"},
+      });
+      await creating;
+
+      await plugin.sendPrompt(
+        sessionId: "session-1",
+        promptId: "prompt-1",
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final first = await waitForFrame(process: fake, method: "session/prompt");
+      await plugin.sendPrompt(
+        sessionId: "session-1",
+        promptId: "prompt-2",
+        parts: const [PluginPromptPart.text(text: "replacement")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final cancel = await waitForFrame(process: fake, method: "session/cancel");
+      expect(cancel["params"], {"sessionId": "session-1"});
+      expect(fake.written.where((frame) => frame["method"] == "session/prompt"), hasLength(1));
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": first["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+      final replacement = await waitForFrame(process: fake, method: "session/prompt");
+      expect(((replacement["params"] as Map)["prompt"] as List).single, {
+        "type": "text",
+        "text": "replacement",
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": replacement["id"],
+        "result": {"stopReason": "end_turn"},
+      });
     });
   });
 }
