@@ -11,9 +11,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies();
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
-  final DesktopInstanceLaunchDisposition disposition = await startupOrchestrator.claimLaunch();
-  if (disposition != DesktopInstanceLaunchDisposition.primary) {
-    getIt<DesktopApplicationTerminator>().terminate(exitCode: 0);
+  if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
   }
 

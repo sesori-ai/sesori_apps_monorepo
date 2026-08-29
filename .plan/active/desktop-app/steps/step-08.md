@@ -16,11 +16,14 @@ Date: 2026-08-28.
 - Added the Layer-2 aggregate repository and Layer-3 instance service. The
   service owns lock → activate → one recovery claim → secondary-failure policy;
   a live lock with a broken activation channel can never create a duplicate.
-- Added `DesktopStartupOrchestrator`: main claims ownership before native window
-  setup, secondaries terminate, the primary starts the control dispatcher, and
-  last-On restoration then delegates to the existing auth-gated process service.
+- Added `DesktopStartupOrchestrator`: it owns primary-claim and secondary-exit
+  policy before native window setup; the narrow shell bootstrap only decides
+  whether to continue building UI. The primary starts the control dispatcher,
+  then last-On restoration delegates to the existing auth-gated process service.
 - `BridgeControlCubit` consumes owner focus requests and persists On/Off/Quit;
-  coordinated logout persists Off after successful helper stop.
+  coordinated logout persists Off after successful helper stop. All persistence
+  requests serialize through the singleton instance service so logout Off cannot
+  be overwritten by a pending toggle On write.
 - Added real subprocess tests for activation and kill recovery plus storage,
   repository, service, startup, focus, logout, and DI coverage.
 - Hidden/autostart behavior remains intentionally deferred to step 9. No
@@ -40,7 +43,7 @@ layer direction, startup composition, disposal, and Step-9 scope separation.
 
 ## Verification
 
-- `client/module_desktop_core`: analysis clean; all 147 tests passed.
+- `client/module_desktop_core`: analysis clean; all 149 tests passed.
 - `client/desktop`: analysis clean; all 32 tests passed.
 - Focused Step-8 suite covers cross-process activation, killed-owner lock
   recovery, activation failure, persistence, layer delegation, auth-gated
@@ -49,4 +52,4 @@ layer direction, startup composition, disposal, and Step-9 scope separation.
 - macOS debug application build passed with the new startup composition.
 - Dart LSP: 0 diagnostics across 25 affected non-generated Dart files.
 - `git diff --check` — clean.
-- Change size: 997 text changed lines, under the 1,500-line soft cap.
+- Change size: 1,093 text changed lines, under the 1,500-line soft cap.

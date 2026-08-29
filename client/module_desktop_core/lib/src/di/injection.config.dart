@@ -28,6 +28,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_pa
     as _i961;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_support_directory.dart'
     as _i695;
+import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
+    as _i746;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
 import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
@@ -171,6 +173,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i455.DesktopStartupOrchestrator(
         instanceService: gh<_i494.DesktopInstanceService>(),
         processService: gh<_i765.BridgeProcessService>(),
+        applicationTerminator: gh<_i746.DesktopApplicationTerminator>(),
       ),
     );
     return this;

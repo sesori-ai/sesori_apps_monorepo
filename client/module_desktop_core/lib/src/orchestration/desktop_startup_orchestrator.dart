@@ -2,6 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../foundation/bridge_process_desired_state.dart";
+import "../foundation/platform/desktop_application_terminator.dart";
 import "../services/bridge_process_service.dart";
 import "../services/desktop_instance_service.dart";
 
@@ -10,11 +11,30 @@ import "../services/desktop_instance_service.dart";
 class DesktopStartupOrchestrator._create({
   required final DesktopInstanceService _instanceService,
   required final BridgeProcessService _processService,
+  required final DesktopApplicationTerminator _applicationTerminator,
 }) {
-  new({required DesktopInstanceService instanceService, required BridgeProcessService processService})
-    : this._create(instanceService: instanceService, processService: processService);
+  new({
+    required DesktopInstanceService instanceService,
+    required BridgeProcessService processService,
+    required DesktopApplicationTerminator applicationTerminator,
+  }) : this._create(
+         instanceService: instanceService,
+         processService: processService,
+         applicationTerminator: applicationTerminator,
+       );
 
-  Future<DesktopInstanceLaunchDisposition> claimLaunch() => _instanceService.claimLaunch();
+  /// Claims the primary process role and terminates every secondary launch.
+  ///
+  /// The shell only needs to know whether it should continue constructing UI;
+  /// instance-arbitration outcomes and exit policy stay owned here.
+  Future<bool> preparePrimaryLaunch() async {
+    final DesktopInstanceLaunchDisposition disposition = await _instanceService.claimLaunch();
+    if (disposition == DesktopInstanceLaunchDisposition.primary) {
+      return true;
+    }
+    _applicationTerminator.terminate(exitCode: 0);
+    return false;
+  }
 
   Future<void> restoreBridgeDesiredState() async {
     final BridgeProcessDesiredState desiredState;

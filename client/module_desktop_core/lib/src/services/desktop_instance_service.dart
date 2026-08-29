@@ -19,6 +19,8 @@ enum DesktopInstanceLaunchDisposition() {
 class DesktopInstanceService._create({required final DesktopInstanceRepository _repository}) {
   new({required DesktopInstanceRepository repository}) : this._create(repository: repository);
 
+  Future<void> _pendingDesiredStateWrite = Future<void>.value();
+
   Stream<void> get focusRequests => _repository.focusRequests;
 
   Future<DesktopInstanceLaunchDisposition> claimLaunch() async {
@@ -40,6 +42,35 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
 
   Future<BridgeProcessDesiredState> readBridgeDesiredState() => _repository.readBridgeDesiredState();
 
-  Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) =>
-      _repository.writeBridgeDesiredState(state: state);
+  Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) {
+    final Future<void> previousWrite = _pendingDesiredStateWrite;
+    final Future<void> operation = _writeBridgeDesiredStateAfter(
+      previousWrite: previousWrite,
+      state: state,
+    );
+    _pendingDesiredStateWrite = _observeDesiredStateWrite(operation: operation);
+    return operation;
+  }
+
+  Future<void> _writeBridgeDesiredStateAfter({
+    required Future<void> previousWrite,
+    required BridgeProcessDesiredState state,
+  }) async {
+    try {
+      await previousWrite;
+    } on Object {
+      // A failed write must not prevent the next explicit intent from being
+      // persisted. The original caller retains the previous error.
+    }
+    await _repository.writeBridgeDesiredState(state: state);
+  }
+
+  Future<void> _observeDesiredStateWrite({required Future<void> operation}) async {
+    try {
+      await operation;
+    } on Object {
+      // The operation returned to its caller retains the persistence error.
+      // This observer only leaves a completed serialization tail.
+    }
+  }
 }

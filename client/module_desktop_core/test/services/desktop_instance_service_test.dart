@@ -1,8 +1,14 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:test/test.dart";
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(BridgeProcessDesiredState.off);
+  });
+
   late _MockDesktopInstanceRepository repository;
   late DesktopInstanceService service;
 
@@ -40,6 +46,29 @@ void main() {
 
     expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivationFailed);
     verify(() => repository.tryAcquirePrimary()).called(2);
+  });
+
+  test("serializes desired-state writes in request order", () async {
+    final Completer<void> onWrite = Completer<void>();
+    final List<BridgeProcessDesiredState> writes = <BridgeProcessDesiredState>[];
+    when(() => repository.writeBridgeDesiredState(state: any(named: "state"))).thenAnswer((invocation) {
+      final BridgeProcessDesiredState state = invocation.namedArguments[#state]! as BridgeProcessDesiredState;
+      writes.add(state);
+      return state == BridgeProcessDesiredState.on ? onWrite.future : Future<void>.value();
+    });
+
+    final Future<void> persistOn = service.writeBridgeDesiredState(state: BridgeProcessDesiredState.on);
+    final Future<void> persistOff = service.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
+
+    onWrite.complete();
+    await Future.wait(<Future<void>>[persistOn, persistOff]);
+    expect(writes, <BridgeProcessDesiredState>[
+      BridgeProcessDesiredState.on,
+      BridgeProcessDesiredState.off,
+    ]);
   });
 }
 

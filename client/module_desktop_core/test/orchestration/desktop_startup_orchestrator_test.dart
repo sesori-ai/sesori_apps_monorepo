@@ -7,23 +7,33 @@ import "package:test/test.dart";
 void main() {
   late _MockDesktopInstanceService instanceService;
   late _MockBridgeProcessService processService;
+  late _MockDesktopApplicationTerminator applicationTerminator;
   late DesktopStartupOrchestrator orchestrator;
 
   setUp(() {
     instanceService = _MockDesktopInstanceService();
     processService = _MockBridgeProcessService();
+    applicationTerminator = _MockDesktopApplicationTerminator();
     orchestrator = DesktopStartupOrchestrator(
       instanceService: instanceService,
       processService: processService,
+      applicationTerminator: applicationTerminator,
     );
   });
 
-  test("returns the instance service's launch ownership decision", () async {
+  test("lets only the primary launch continue to UI construction", () async {
+    when(() => instanceService.claimLaunch()).thenAnswer((_) async => DesktopInstanceLaunchDisposition.primary);
+
+    expect(await orchestrator.preparePrimaryLaunch(), isTrue);
+    verifyNever(() => applicationTerminator.terminate(exitCode: any(named: "exitCode")));
+  });
+
+  test("terminates a secondary launch before UI construction", () async {
     when(() => instanceService.claimLaunch()).thenAnswer(
       (_) async => DesktopInstanceLaunchDisposition.secondaryActivated,
     );
-
-    expect(await orchestrator.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivated);
+    expect(await orchestrator.preparePrimaryLaunch(), isFalse);
+    verify(() => applicationTerminator.terminate(exitCode: 0)).called(1);
   });
 
   test("restores a persisted desired On through the process service", () async {
@@ -55,3 +65,5 @@ void main() {
 class _MockDesktopInstanceService() extends Mock implements DesktopInstanceService;
 
 class _MockBridgeProcessService() extends Mock implements BridgeProcessService;
+
+class _MockDesktopApplicationTerminator() extends Mock implements DesktopApplicationTerminator;
