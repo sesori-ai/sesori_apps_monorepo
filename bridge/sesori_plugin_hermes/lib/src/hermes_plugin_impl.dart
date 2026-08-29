@@ -31,9 +31,6 @@ class HermesPlugin({
       );
 
   @override
-  bool get cancelsActiveTurnForQueuedInput => true;
-
-  @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
     required String? sessionId,

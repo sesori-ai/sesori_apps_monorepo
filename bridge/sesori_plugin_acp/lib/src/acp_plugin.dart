@@ -25,7 +25,7 @@ import "repositories/acp_session_config_repository.dart";
 /// so the bridge derives the project list from [listAllSessions] and owns all
 /// project/session persistence itself; the plugin stores nothing on disk.
 ///
-/// Every policy and behavior hook has a stock-ACP default, so a compliant agent
+/// Every policy and behavior hook has a bridge-safe default, so a compliant agent
 /// needs only identity, launch spec, and trackers. A harness overrides what
 /// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
@@ -188,7 +188,7 @@ abstract class AcpPlugin({
   /// enumeration; reset on respawn since a replacement process may comply.
   bool _bareSessionListUnsupported = false;
 
-  // --- Protocol policies (stock-ACP defaults; override what differs) ---
+  // --- Protocol policies (bridge-safe defaults; override what differs) ---
 
   /// Auth method id to call if the agent reports it requires auth. `null`
   /// picks the first advertised non-terminal method — the headless bridge can
@@ -213,10 +213,14 @@ abstract class AcpPlugin({
 
   /// Whether accepting another input should cancel this session's active turn.
   ///
-  /// Harnesses use this for stop-and-send behavior when they cannot steer an
-  /// active turn. The shared adapter queues the new input, sends the standard
-  /// ACP cancel, and dispatches the input only after cancellation settles.
-  bool get cancelsActiveTurnForQueuedInput => false;
+  /// Every production harness must deliver busy-session follow-ups immediately,
+  /// either through native steering or this stop-and-send fallback. ACP v1 has
+  /// no standard steering method, so the shared default queues the new input,
+  /// sends the standard ACP cancel, and dispatches only after cancellation
+  /// settles. Override with `false` only when the concrete plugin supplies a
+  /// different immediate active-turn delivery path; inheriting the turn queue
+  /// while returning `false` is not valid production behavior.
+  bool get cancelsActiveTurnForQueuedInput => true;
 
   /// Whether a turn must stop when its requested selection cannot be applied.
   /// Fail closed by default: a prompt should not silently run on a model/mode

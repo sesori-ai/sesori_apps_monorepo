@@ -148,10 +148,13 @@ defaults and queued client sends coherent.
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
   never sends overlapping prompt requests. It does define `session/cancel`:
-  Cursor, Hermes, DeepSeek, Copilot, and Grok therefore implement active-turn
-  follow-ups as stop-and-send, immediately cancelling the active turn and
+  the shared ACP plugin therefore defaults every harness to active-turn
+  stop-and-send, immediately cancelling the active turn and
   dispatching the queued input after cancellation settles. Further already-queued
-  inputs retain FIFO order. Their
+  inputs retain FIFO order. A concrete plugin may disable that fallback only when
+  it supplies another immediate active-turn delivery path; natural-completion
+  queueing is not valid production behavior. Cursor, Hermes, DeepSeek, Copilot,
+  Grok, and OMP use the shared fallback. Their
   synthetic user transcript message is published only after its frame flushes
   successfully to the agent's stdin. A prompt rejected after that dispatch
   renders a durable inline error, preserving the agent's diagnostic detail
@@ -160,8 +163,7 @@ defaults and queued client sends coherent.
   attachment-only prompts. Initial projection contains only normalized
   user-visible text plus those images; injected context, local paths, and URLs
   remain absent. OMP runs different sessions concurrently because its permission
-  and form requests carry explicit session IDs. OMP uses the same stop-and-send
-  sequence for its ACP server's replacement semantics.
+  and form requests carry explicit session IDs.
 - DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
   completion, and bounded warning errors through standard ACP plus its narrow
   status extension. Retry and compaction-start notifications are validated but

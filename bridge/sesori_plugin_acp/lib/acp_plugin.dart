@@ -9,8 +9,11 @@
 // Adding an ACP harness:
 //  1. An `XxxBinary` with the launch spec (binary + `acp` args) and any fixed
 //     handshake policy (auth method id, capability meta).
-//  2. A subclass of AcpPlugin. Every policy and hook has a stock-ACP default;
+//  2. A subclass of AcpPlugin. Every policy and hook has a bridge-safe default;
 //     override only what the agent does differently (see the AcpPlugin doc).
+//     Busy-session follow-ups default to stop-and-send because ACP has no
+//     standard steering method. Never disable that fallback unless the concrete
+//     plugin supplies another immediate active-turn delivery path.
 //     The composer builds one AcpSessionConfigurationTracker + AcpCommandTracker
 //     and shares them between the AcpEventMapper (subclass the mapper only for
 //     `xxx/*` notification extensions), the neutral AcpSessionOptionsService,

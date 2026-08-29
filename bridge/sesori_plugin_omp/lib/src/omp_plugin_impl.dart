@@ -115,9 +115,6 @@ class OmpPlugin._({
   bool get supportsFormElicitation => true;
 
   @override
-  bool get cancelsActiveTurnForQueuedInput => true;
-
-  @override
   void captureSessionConfig(
     AcpNewSessionResult result, {
     required String? sessionId,

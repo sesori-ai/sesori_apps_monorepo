@@ -84,9 +84,6 @@ class GrokPlugin._({
       : "Run `grok login` or configure a headless Grok credential locally, then retry.";
 
   @override
-  bool get cancelsActiveTurnForQueuedInput => true;
-
-  @override
   void validateInitializeResult(AcpInitializeResult result) =>
       _grokSessionOptionsService.validateInitializeResult(result: result);
 
