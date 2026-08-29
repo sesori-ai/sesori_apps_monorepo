@@ -77,7 +77,7 @@ class const UserMessageBubble({
           children: [
             ...attachments,
             if (markdown != null)
-              SelectionArea(
+              PregoReadableSelectionArea(
                 child: MarkdownBody(
                   data: markdown,
                   selectable: false,

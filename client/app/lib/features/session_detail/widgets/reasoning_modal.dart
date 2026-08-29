@@ -161,7 +161,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
             // stays visible behind it.
             padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16 + bottomSafe),
             children: [
-              SelectionArea(
+              PregoReadableSelectionArea(
                 child: MarkdownBody(
                   data: data.text,
                   selectable: false,

@@ -168,6 +168,7 @@ void main() {
     );
 
     expect(find.byType(SelectionArea), findsOneWidget);
+    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     expect(find.byType(MarkdownBody), findsNWidgets(2));
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();

@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
@@ -22,7 +23,7 @@ class const AssistantMessageCard({
   Widget build(BuildContext context) {
     return Padding(
       padding: contentPadding,
-      child: SelectionArea(
+      child: PregoReadableSelectionArea(
         child: Column(
           crossAxisAlignment: .start,
           children: [
