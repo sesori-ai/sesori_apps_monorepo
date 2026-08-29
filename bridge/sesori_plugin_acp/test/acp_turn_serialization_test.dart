@@ -759,7 +759,7 @@ void main() {
       expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
     });
 
-    test("a second prompt on one session dispatches only after the first turn completes", () async {
+    test("active-turn follow-ups cancel before replacement dispatch", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
@@ -768,13 +768,15 @@ void main() {
       expect(busyCount(), 1);
 
       final secondPromptId = await sendPrompt(sessionId, "second");
+      final cancel = await waitForFrame("session/cancel");
+      expect(cancel["params"], {"sessionId": sessionId});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
       expect(
         frames("session/prompt"),
         hasLength(1),
-        reason: "the second prompt must wait for the first turn to complete",
+        reason: "the second prompt must wait for cancellation to settle",
       );
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
       expect(
@@ -785,7 +787,7 @@ void main() {
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
 
-      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      respondTo(firstPrompt, {"stopReason": "cancelled"});
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       expect((secondPrompt["params"] as Map)["sessionId"], sessionId);
       await pump();
@@ -926,7 +928,11 @@ void main() {
       await sendPrompt(sessionId, "queued");
 
       await plugin.abortSession(sessionId: sessionId);
-      expect(frames("session/cancel"), hasLength(1));
+      expect(
+        frames("session/cancel"),
+        hasLength(2),
+        reason: "the queued follow-up and explicit abort each cancel the active turn",
+      );
 
       // The agent honours the cancel by ending the in-flight turn.
       respondTo(firstPrompt, {"stopReason": "cancelled"});
