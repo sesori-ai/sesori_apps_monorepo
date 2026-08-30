@@ -823,7 +823,10 @@ class AuthManager(
       if (!_isCurrentGeneration(generation: generation)) {
         return null;
       }
-      if (response.statusCode >= 400 && response.statusCode < 500) {
+      // The auth server uses 401 for an invalid or revoked refresh token.
+      // Other 4xx responses (for example 408/429 from a gateway) are not
+      // proof that the persisted credentials are invalid.
+      if (response.statusCode == 401) {
         await _handleDefinitiveRefreshRejection(generation: generation);
         return null;
       }

@@ -313,6 +313,22 @@ void main() {
       expect(states.last, const AuthState.unauthenticated());
     });
 
+    test("keeps credentials for a non-definitive refresh 4xx response", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "still-valid-refresh-token");
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("{}", 429));
+
+      expect(await authManager.getFreshAccessToken(), isNull);
+      verifyNever(mockTokenStorage.clearTokens);
+      expect(authManager.currentState, isA<AuthInitial>());
+    });
+
     test("a rejected refresh cannot be restored by a new manager", () async {
       final _MemorySecureStorage storage = _MemorySecureStorage();
       final TokenStorageService tokenStorage = TokenStorageService(storage);

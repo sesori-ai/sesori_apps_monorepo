@@ -16,10 +16,11 @@ Date: 2026-08-30.
 - Fenced both `/auth/me` restore paths, including the no-refresh local restore
   path. A restored user is saved and emitted only while its generation remains
   current.
-- Distinguished definitive `/auth/refresh` 4xx rejection from transport and
-  server failures. A rejection clears persisted tokens and the cached user
-  before emitting `unauthenticated`; offline/transport and non-definitive
-  server failures remain non-destructive.
+- Distinguished definitive `/auth/refresh` rejection (the auth server's 401
+  invalid/revoked response) from transport and other server failures. A
+  rejection clears persisted tokens and the cached user before emitting
+  `unauthenticated`; offline, transport, and non-definitive server failures
+  remain non-destructive.
 - Removed `AuthGateCubit`'s temporary timeout and unconditional post-fence
   re-clear workaround. It now delegates sign-out directly to
   `DesktopLogoutOrchestrator`; auth-generation ownership remains in
@@ -41,8 +42,8 @@ that delegates coordinated logout.
 ## Verification
 
 - `client/module_auth`: `dart analyze --fatal-infos` clean; full suite passed
-  (105 tests), including refresh-rejection relaunch and login/restore/refresh
-  race coverage.
+  (106 tests), including refresh-rejection relaunch, transient-4xx handling,
+  and login/restore/refresh race coverage.
 - `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full suite
   passed (155 tests), including direct sign-out delegation while restore is
   pending.
