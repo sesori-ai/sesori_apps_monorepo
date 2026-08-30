@@ -93,7 +93,8 @@ class const PregoActivityIndicator({
   }
 
   Widget _indicator({required double? value}) {
-    // The approved wrapper owns the Flutter fallback on non-iOS platforms.
+    // The approved wrapper owns the Flutter fallback for platforms without a
+    // native renderer and for static reduced-motion states.
     // ignore: no_slop_linter/avoid_flutter_spinners
     return CircularProgressIndicator(
       value: value,
