@@ -85,5 +85,30 @@ void main() {
         isA<ErrorResponse<BridgesListResponse>>().having((r) => r.error, "error", isA<NonSuccessCodeError>()),
       );
     });
+
+    test("deleteBridge DELETEs an encoded bridge path", () async {
+      when(
+        () => mockClient.delete<void>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+
+      final response = await api.deleteBridge(bridgeId: "br weird/../id?x=1");
+
+      expect(response, isA<SuccessResponse<void>>());
+      verify(
+        () => mockClient.delete<void>(
+          Uri.parse("$authBaseUrl/auth/bridges/br%20weird%2F..%2Fid%3Fx%3D1"),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).called(1);
+    });
   });
 }

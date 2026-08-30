@@ -2,11 +2,15 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../support/bridge_id_storage.dart";
+
 void main() {
   late BridgeStatusTracker tracker;
+  late MemoryBridgeIdStorage storage;
 
   setUp(() {
-    tracker = BridgeStatusTracker();
+    storage = MemoryBridgeIdStorage();
+    tracker = BridgeStatusTracker(bridgeIdStorage: storage);
     addTearDown(tracker.dispose);
   });
 
@@ -32,9 +36,10 @@ void main() {
     expect(tracker.status.activeSessionCount, 3);
   });
 
-  test("disconnect resets status to the baseline but retains bridgeId", () {
+  test("disconnect resets status to the baseline but retains bridgeId", () async {
     tracker.markHelperConnected();
     tracker.handleRegistered(bridgeId: "bridge-1");
+    await pumpEventQueue();
     tracker.applyStatus(
       status: const ControlStatus(
         relay: ControlRelayConnectionState.connected,
@@ -83,14 +88,39 @@ void main() {
     expect(tracker.status.activeSessionCount, 0);
   });
 
-  test("a late registered frame is still recorded while offline", () {
+  test("a late registered frame is still recorded while offline", () async {
     tracker.handleRegistered(bridgeId: "bridge-late");
+    await pumpEventQueue();
 
     expect(tracker.status.bridgeId, "bridge-late");
+    expect(storage.bridgeId, "bridge-late");
   });
 
-  test("writes after dispose are ignored instead of throwing", () {
-    final BridgeStatusTracker disposed = BridgeStatusTracker()..dispose();
+  test("initializes its bridge id from persisted storage", () async {
+    storage.bridgeId = "bridge-persisted";
+    await tracker.initialize();
+
+    expect(tracker.status.bridgeId, "bridge-persisted");
+  });
+
+  test("clears only the bridge id it deleted", () async {
+    tracker.handleRegistered(bridgeId: "bridge-current");
+    await pumpEventQueue();
+
+    await tracker.clearBridgeId(bridgeId: "bridge-other");
+    expect(storage.bridgeId, "bridge-current");
+    expect(tracker.status.bridgeId, "bridge-current");
+
+    await tracker.clearBridgeId(bridgeId: "bridge-current");
+    expect(storage.bridgeId, isNull);
+    expect(tracker.status.bridgeId, isNull);
+  });
+
+  test("writes after dispose are ignored instead of throwing", () async {
+    final BridgeStatusTracker disposed = BridgeStatusTracker(
+      bridgeIdStorage: MemoryBridgeIdStorage(),
+    );
+    await disposed.dispose();
 
     expect(disposed.markHelperConnected, returnsNormally);
     expect(disposed.markHelperDisconnected, returnsNormally);

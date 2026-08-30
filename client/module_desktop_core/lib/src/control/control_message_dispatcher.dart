@@ -28,10 +28,14 @@ class ControlMessageDispatcher({
   /// connection its request arrived on and dropped when that changes.
   int _connectionEpoch = 0;
 
-  void start() {
+  Future<void> start() async {
     if (_eventSubscription != null) {
       throw StateError("ControlMessageDispatcher is already started");
     }
+    // Seed persisted bridge identity before any helper can be spawned. The
+    // server is newly created for this desktop process, so no live frame can
+    // arrive during this startup read.
+    await _statusTracker.initialize();
     // ONE ordered stream for lifecycle + frames: a status frame can never be
     // processed on the wrong side of the connect/disconnect it belongs to.
     _eventSubscription = _server.events.listen(_onEvent);

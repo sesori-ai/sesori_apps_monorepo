@@ -8,11 +8,14 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../support/bridge_id_storage.dart";
+
 class _MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
 
 void main() {
   late ControlChannelServer server;
   late _MockAuthTokenProvider tokenProvider;
+  late MemoryBridgeIdStorage bridgeIdStorage;
   late BridgeStatusTracker statusTracker;
   late BridgePromptTracker promptTracker;
   late ControlMessageDispatcher dispatcher;
@@ -21,7 +24,8 @@ void main() {
     server = ControlChannelServer();
     await server.start();
     tokenProvider = _MockAuthTokenProvider();
-    statusTracker = BridgeStatusTracker();
+    bridgeIdStorage = MemoryBridgeIdStorage();
+    statusTracker = BridgeStatusTracker(bridgeIdStorage: bridgeIdStorage);
     promptTracker = BridgePromptTracker();
     dispatcher = ControlMessageDispatcher(
       server: server,
@@ -29,11 +33,11 @@ void main() {
       statusTracker: statusTracker,
       promptTracker: promptTracker,
     );
-    dispatcher.start();
+    await dispatcher.start();
     addTearDown(() async {
       await dispatcher.dispose();
       await server.dispose();
-      statusTracker.dispose();
+      await statusTracker.dispose();
       promptTracker.dispose();
     });
   });
@@ -121,8 +125,10 @@ void main() {
 
     sendFromHelper(helper, const ControlMessage.registered(bridgeId: "bridge-9"));
     await statusTracker.statusStream.firstWhere((status) => status.bridgeId != null);
+    await pumpEventQueue();
 
     expect(statusTracker.status.bridgeId, "bridge-9");
+    expect(bridgeIdStorage.bridgeId, "bridge-9");
   });
 
   test("prompt requests land in the prompt tracker", () async {

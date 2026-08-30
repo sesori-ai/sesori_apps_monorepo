@@ -1,7 +1,11 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../api/bridge_id_storage.dart";
 import "bridge_control_status.dart";
 
 /// Holds the supervised bridge's status as stream + snapshot.
@@ -11,12 +15,38 @@ import "bridge_control_status.dart";
 /// the offline baseline before any helper connects, so the v1 UI can render
 /// "bridge off" without a control channel.
 @lazySingleton
-class BridgeStatusTracker() {
+class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
+  final BridgeIdStorage _bridgeIdStorage = bridgeIdStorage;
   final BehaviorSubject<BridgeControlStatus> _status = BehaviorSubject.seeded(BridgeControlStatus.offline);
+  Future<void>? _initialization;
+  Future<void> _bridgeIdMutationTail = Future<void>.value();
 
   ValueStream<BridgeControlStatus> get statusStream => _status.stream;
 
   BridgeControlStatus get status => _status.value;
+
+  /// Loads the last registration id before helper lifecycle work begins.
+  /// Repeated callers share the same startup read.
+  Future<void> initialize() {
+    final Future<void>? existing = _initialization;
+    if (existing != null) {
+      return existing;
+    }
+    final Future<void> operation = _loadPersistedBridgeId();
+    _initialization = operation;
+    return operation;
+  }
+
+  Future<void> _loadPersistedBridgeId() async {
+    try {
+      final String? bridgeId = await _bridgeIdStorage.read();
+      if (bridgeId != null && !_status.isClosed && status.bridgeId == null) {
+        _status.add(status.copyWith(bridgeId: bridgeId));
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to restore the desktop bridge registration id", error, stackTrace);
+    }
+  }
 
   /// A helper completed the control-channel handshake. Health/relay fields
   /// keep their current values until the helper's first `status` push lands.
@@ -61,16 +91,49 @@ class BridgeStatusTracker() {
   ///
   /// Deliberately NOT gated on `helperOnline`: the id is retained across
   /// disconnects anyway, and a late-processed `registered` frame carries
-  /// exactly the value worth keeping.
+  /// exactly the value worth keeping. Writes are serialized so a rapid
+  /// re-registration cannot leave an older id on disk after a newer event.
   void handleRegistered({required String bridgeId}) {
     if (_status.isClosed) {
       return;
     }
     _status.add(status.copyWith(bridgeId: bridgeId));
+    unawaited(_queueBridgeIdMutation(action: () => _bridgeIdStorage.write(bridgeId: bridgeId)));
+  }
+
+  /// Removes the persisted id after the server confirms deletion. If a newer
+  /// registration arrived while the delete was in flight, its id is left
+  /// untouched.
+  Future<void> clearBridgeId({required String bridgeId}) {
+    return _queueBridgeIdMutation(
+      action: () async {
+        if (_status.isClosed || status.bridgeId != bridgeId) {
+          return;
+        }
+        await _bridgeIdStorage.clear();
+        if (!_status.isClosed && status.bridgeId == bridgeId) {
+          _status.add(status.copyWith(bridgeId: null));
+        }
+      },
+    );
+  }
+
+  Future<void> _queueBridgeIdMutation({required Future<void> Function() action}) {
+    final Future<void> operation = _bridgeIdMutationTail.then((_) => action());
+    _bridgeIdMutationTail = _observeBridgeIdMutation(operation: operation);
+    return operation;
+  }
+
+  Future<void> _observeBridgeIdMutation({required Future<void> operation}) async {
+    try {
+      await operation;
+    } on Object catch (error, stackTrace) {
+      logw("Failed to persist the desktop bridge registration id", error, stackTrace);
+    }
   }
 
   @disposeMethod
-  void dispose() {
-    _status.close();
+  Future<void> dispose() async {
+    await _status.close();
   }
 }

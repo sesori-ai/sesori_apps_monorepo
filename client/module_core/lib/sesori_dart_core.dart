@@ -35,6 +35,7 @@ export "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthProvid
 export "src/api/analytics_api.dart";
 export "src/api/analytics_release_cutoff_api.dart";
 export "src/api/attribution_api.dart";
+export "src/api/bridge_api.dart";
 export "src/api/bridge_settings_api.dart";
 export "src/api/client/relay_http_client.dart";
 export "src/api/filesystem_api.dart";
@@ -134,6 +135,7 @@ export "src/repositories/analytics_release_cutoff_repository.dart";
 export "src/repositories/analytics_repository.dart";
 export "src/repositories/appearance_store.dart";
 export "src/repositories/attribution_repository.dart";
+export "src/repositories/bridge_repository.dart";
 export "src/repositories/bridge_settings_repository.dart";
 export "src/repositories/chat_input_mode_store.dart";
 export "src/repositories/composer_draft_repository.dart";

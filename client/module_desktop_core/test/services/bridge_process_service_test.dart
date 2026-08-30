@@ -9,6 +9,8 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../support/bridge_id_storage.dart";
+
 void main() {
   group("BridgeProcessService", () {
     late _ProcessStreamsFixture streams;
@@ -26,7 +28,7 @@ void main() {
       streams = _ProcessStreamsFixture(pid: 42);
       repository = _FakeBridgeProcessRepository(streams: streams.value);
       logTracker = _FakeBridgeProcessLogTracker();
-      statusTracker = BridgeStatusTracker();
+      statusTracker = BridgeStatusTracker(bridgeIdStorage: MemoryBridgeIdStorage());
       controlServer = _FakeControlChannelServer();
       authSession = _FakeAuthSession(initialState: const AuthState.unauthenticated());
       executablePathResolver = _FakeBridgeExecutablePathResolver(path: "/repo/bridge");
@@ -80,7 +82,7 @@ void main() {
       await service.dispose();
       await repository.disposeFake();
       await authSession.disposeFake();
-      statusTracker.dispose();
+      await statusTracker.dispose();
     });
 
     test("signed-out start enters login-required without starting infrastructure", () async {
@@ -644,7 +646,9 @@ void main() {
     final _FakeBridgeProcessRepository repository = _FakeBridgeProcessRepository(streams: streams.value);
     final _FakeBridgeProcessLogTracker logTracker = _FakeBridgeProcessLogTracker();
     final ControlChannelServer server = ControlChannelServer();
-    final BridgeStatusTracker statusTracker = BridgeStatusTracker();
+    final BridgeStatusTracker statusTracker = BridgeStatusTracker(
+      bridgeIdStorage: MemoryBridgeIdStorage(),
+    );
     final BridgePromptTracker promptTracker = BridgePromptTracker();
     final ControlMessageDispatcher dispatcher = ControlMessageDispatcher(
       server: server,
@@ -672,13 +676,13 @@ void main() {
       await service.dispose();
       await dispatcher.dispose();
       await server.dispose();
-      statusTracker.dispose();
+      await statusTracker.dispose();
       promptTracker.dispose();
       await repository.disposeFake();
       await authSession.disposeFake();
     });
 
-    dispatcher.start();
+    await dispatcher.start();
     await service.start();
     socket = await WebSocket.connect(
       server.url.toString(),
