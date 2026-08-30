@@ -7,6 +7,7 @@ void main() {
     final GetIt getIt = GetIt.asNewInstance();
 
     expect(() => configureDesktopCoreDependencies(getIt), returnsNormally);
+    expect(getIt.isRegistered<BridgeIdStorage>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessApi>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessRepository>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
@@ -20,5 +21,6 @@ void main() {
     expect(getIt.isRegistered<DesktopInstanceRepository>(), isTrue);
     expect(getIt.isRegistered<DesktopInstanceService>(), isTrue);
     expect(getIt.isRegistered<DesktopStartupOrchestrator>(), isTrue);
+    expect(getIt.isRegistered<DesktopLogoutOrchestrator>(), isTrue);
   });
 }

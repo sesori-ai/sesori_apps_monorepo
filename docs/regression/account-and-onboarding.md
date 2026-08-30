@@ -16,10 +16,11 @@ participates.
   cleared on logout; the connection follows logout. Startup reads stored tokens
   once before deciding whether validation or a fresh login is needed. Logout
   fences in-flight login, refresh, and restore results, so none can re-save
-  credentials or emit authenticated after local sign-out. A definitive
-  `/auth/refresh` 4xx rejection clears persisted tokens and user data before
-  emitting unauthenticated, while transport/server failures leave credentials
-  intact. Standalone bridge logout remains clean and idempotent when tokens are
+  credentials or emit authenticated after local sign-out. The auth server's
+  definitive `/auth/refresh` 401 invalid/revoked response clears persisted
+  tokens and user data before emitting unauthenticated; non-definitive 4xx,
+  transport, and other server failures leave credentials intact. Standalone
+  bridge logout remains clean and idempotent when tokens are
   already absent or the saved authentication session has expired. Non-sandboxed
   macOS desktop builds use the classic default Keychain without requiring a
   provisioned Data Protection Keychain access group.

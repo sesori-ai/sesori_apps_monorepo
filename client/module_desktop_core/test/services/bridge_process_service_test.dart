@@ -9,6 +9,8 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../support/bridge_id_storage.dart";
+
 void main() {
   group("BridgeProcessService", () {
     late _ProcessStreamsFixture streams;
@@ -26,9 +28,9 @@ void main() {
       streams = _ProcessStreamsFixture(pid: 42);
       repository = _FakeBridgeProcessRepository(streams: streams.value);
       logTracker = _FakeBridgeProcessLogTracker();
-      statusTracker = BridgeStatusTracker();
       controlServer = _FakeControlChannelServer();
       authSession = _FakeAuthSession(initialState: const AuthState.unauthenticated());
+      statusTracker = BridgeStatusTracker(bridgeIdStorage: MemoryBridgeIdStorage());
       executablePathResolver = _FakeBridgeExecutablePathResolver(path: "/repo/bridge");
       now = DateTime.utc(2026, 8, 28);
       warnings = <String>[];
@@ -80,7 +82,7 @@ void main() {
       await service.dispose();
       await repository.disposeFake();
       await authSession.disposeFake();
-      statusTracker.dispose();
+      await statusTracker.dispose();
     });
 
     test("signed-out start enters login-required without starting infrastructure", () async {
@@ -119,6 +121,19 @@ void main() {
 
       expect(repository.stopCalls, 1);
       expect(controlServer.stopCalls, 1);
+      expect(service.state, isA<BridgeProcessStopped>());
+    });
+
+    test("unregister stop waits without sending a competing repository shutdown", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.emitExpectedExitOnStop = true;
+
+      await service.stopAfterUnregister();
+
+      expect(repository.stopAfterCommandCalls, 1);
+      expect(repository.stopCalls, 0);
+      expect(controlServer.stopCalls, greaterThanOrEqualTo(1));
       expect(service.state, isA<BridgeProcessStopped>());
     });
 
@@ -644,15 +659,18 @@ void main() {
     final _FakeBridgeProcessRepository repository = _FakeBridgeProcessRepository(streams: streams.value);
     final _FakeBridgeProcessLogTracker logTracker = _FakeBridgeProcessLogTracker();
     final ControlChannelServer server = ControlChannelServer();
-    final BridgeStatusTracker statusTracker = BridgeStatusTracker();
+    final _FakeAuthSession authSession = _FakeAuthSession(initialState: _authenticatedState);
+    final BridgeStatusTracker statusTracker = BridgeStatusTracker(
+      bridgeIdStorage: MemoryBridgeIdStorage(),
+    );
     final BridgePromptTracker promptTracker = BridgePromptTracker();
     final ControlMessageDispatcher dispatcher = ControlMessageDispatcher(
       server: server,
       tokenProvider: _FakeAuthTokenProvider(),
+      authSession: authSession,
       statusTracker: statusTracker,
       promptTracker: promptTracker,
     );
-    final _FakeAuthSession authSession = _FakeAuthSession(initialState: _authenticatedState);
     final BridgeProcessService service = BridgeProcessService.forTesting(
       repository: repository,
       logTracker: logTracker,
@@ -672,13 +690,13 @@ void main() {
       await service.dispose();
       await dispatcher.dispose();
       await server.dispose();
-      statusTracker.dispose();
+      await statusTracker.dispose();
       promptTracker.dispose();
       await repository.disposeFake();
       await authSession.disposeFake();
     });
 
-    dispatcher.start();
+    await dispatcher.start();
     await service.start();
     socket = await WebSocket.connect(
       server.url.toString(),
@@ -740,6 +758,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   final StreamController<BridgeProcessExit> _exits = StreamController<BridgeProcessExit>.broadcast(sync: true);
   int spawnCalls = 0;
   int stopCalls = 0;
+  int stopAfterCommandCalls = 0;
   String? executable;
   List<String>? arguments;
   Object? spawnError;
@@ -781,6 +800,24 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   @override
   Future<void> stopExpected() async {
     stopCalls++;
+    final Object? failure = stopError;
+    if (failure != null) {
+      throw failure;
+    }
+    if (emitExpectedExitOnStop) {
+      emitExit(exitCode: 0, expected: true);
+      return;
+    }
+    _isRunning = false;
+    _activePid = null;
+  }
+
+  @override
+  Future<void> stopExpectedAfterCommand() async {
+    if (!_isRunning) {
+      return;
+    }
+    stopAfterCommandCalls++;
     final Object? failure = stopError;
     if (failure != null) {
       throw failure;

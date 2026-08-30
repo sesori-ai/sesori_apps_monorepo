@@ -29,7 +29,7 @@ Future<void> main(List<String> arguments) async {
   }
   // The dispatcher must own the control event stream before any service can
   // spawn a helper, or its first bootstrap token request could go unread.
-  getIt<ControlMessageDispatcher>().start();
+  await getIt<ControlMessageDispatcher>().start();
   runApp(SesoriDesktopApp(hiddenLaunch: hiddenLaunch));
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
 }

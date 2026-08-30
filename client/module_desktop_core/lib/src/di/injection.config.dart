@@ -13,6 +13,7 @@
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
+import 'package:sesori_desktop_core/src/api/bridge_id_storage.dart' as _i73;
 import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
     as _i570;
@@ -73,13 +74,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i686.BridgePromptTracker(),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i227.BridgeStatusTracker>(
-      () => _i227.BridgeStatusTracker(),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i786.DesktopLogoutTracker>(
       () => _i786.DesktopLogoutTracker(),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i73.BridgeIdStorage>(
+      () => _i73.BridgeIdStorage(
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
     );
     gh.lazySingleton<_i570.BridgeProcessLogStorage>(
       () => _i570.BridgeProcessLogStorage(
@@ -100,12 +103,9 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i695.DesktopApplicationSupportDirectory>(),
       ),
     );
-    gh.lazySingleton<_i21.ControlMessageDispatcher>(
-      () => _i21.ControlMessageDispatcher(
-        server: gh<_i464.ControlChannelServer>(),
-        tokenProvider: gh<_i948.AuthTokenProvider>(),
-        statusTracker: gh<_i227.BridgeStatusTracker>(),
-        promptTracker: gh<_i686.BridgePromptTracker>(),
+    gh.lazySingleton<_i227.BridgeStatusTracker>(
+      () => _i227.BridgeStatusTracker(
+        bridgeIdStorage: gh<_i73.BridgeIdStorage>(),
       ),
       dispose: (i) => i.dispose(),
     );
@@ -124,6 +124,16 @@ extension GetItInjectableX on _i174.GetIt {
         api: gh<_i828.DesktopInstanceApi>(),
         storage: gh<_i155.DesktopInstanceStorage>(),
       ),
+    );
+    gh.lazySingleton<_i21.ControlMessageDispatcher>(
+      () => _i21.ControlMessageDispatcher(
+        server: gh<_i464.ControlChannelServer>(),
+        tokenProvider: gh<_i948.AuthTokenProvider>(),
+        authSession: gh<_i948.AuthSession>(),
+        statusTracker: gh<_i227.BridgeStatusTracker>(),
+        promptTracker: gh<_i686.BridgePromptTracker>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
@@ -164,7 +174,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i165.DesktopLogoutOrchestrator>(
       () => _i165.DesktopLogoutOrchestrator(
         processService: gh<_i765.BridgeProcessService>(),
+        controlCommandService: gh<_i175.ControlCommandService>(),
         instanceService: gh<_i494.DesktopInstanceService>(),
+        bridgeRepository: gh<_i948.BridgeRepository>(),
+        statusTracker: gh<_i227.BridgeStatusTracker>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
         authSession: gh<_i948.AuthSession>(),
       ),

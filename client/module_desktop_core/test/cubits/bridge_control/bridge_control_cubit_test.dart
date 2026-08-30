@@ -6,6 +6,8 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../support/bridge_id_storage.dart";
+
 void main() {
   group("BridgeControlCubit", () {
     late _FakeBridgeProcessService processService;
@@ -22,7 +24,7 @@ void main() {
 
     setUp(() {
       processService = _FakeBridgeProcessService();
-      statusTracker = BridgeStatusTracker();
+      statusTracker = BridgeStatusTracker(bridgeIdStorage: MemoryBridgeIdStorage());
       systemTray = _FakeSystemTray();
       windowHost = _FakeWindowHost();
       applicationTerminator = _FakeDesktopApplicationTerminator();
@@ -49,7 +51,7 @@ void main() {
     tearDown(() async {
       await cubit.close();
       await processService.disposeFake();
-      statusTracker.dispose();
+      await statusTracker.dispose();
       await systemTray.disposeFake();
       await windowHost.disposeFake();
       await instanceService.disposeFake();

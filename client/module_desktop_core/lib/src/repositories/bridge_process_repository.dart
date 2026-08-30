@@ -125,12 +125,39 @@ class BridgeProcessRepository.forTesting({
     return active.stopFuture ??= _runStopExpected(active: active);
   }
 
+  /// Marks the current child as expected and waits for a shutdown command that
+  /// was already sent by another owner, without sending a competing shutdown.
+  ///
+  /// The unregister-and-exit logout command owns the helper's graceful request.
+  /// This path keeps the token service alive until that command's unregister
+  /// request has completed, while retaining the same bounded force-kill
+  /// fallback if the helper does not exit.
+  Future<void> stopExpectedAfterCommand() {
+    final _ActiveBridgeProcess? active = _active;
+    if (active == null) {
+      return Future<void>.value();
+    }
+    return active.stopFuture ??= _runStopExpectedAfterCommand(active: active);
+  }
+
   Future<void> _runStopExpected({required _ActiveBridgeProcess active}) async {
     try {
       await _stopExpected(active: active);
     } on Object {
       // Keep concurrent callers on one atomic stop attempt, but do not let one
       // failed platform command permanently poison future Off/Quit retries.
+      if (identical(_active, active)) {
+        active.stopFuture = null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _runStopExpectedAfterCommand({required _ActiveBridgeProcess active}) async {
+    try {
+      active.expected = true;
+      await _waitForExitOrForceKill(active: active);
+    } on Object {
       if (identical(_active, active)) {
         active.stopFuture = null;
       }
@@ -160,6 +187,10 @@ class BridgeProcessRepository.forTesting({
       return;
     }
 
+    await _waitForExitOrForceKill(active: active);
+  }
+
+  Future<void> _waitForExitOrForceKill({required _ActiveBridgeProcess active}) async {
     try {
       await active.handle.exitCode.timeout(_gracefulShutdownTimeout);
     } on TimeoutException {

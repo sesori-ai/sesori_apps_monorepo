@@ -31,6 +31,15 @@ void main() {
       expect(promptTracker.prompts, isEmpty);
     });
 
+    test("sends unregister_and_exit without requiring a pending prompt", () {
+      service.unregisterAndExit();
+
+      expect(
+        api.sentMessages,
+        <ControlMessage>[const ControlMessage.unregisterAndExit()],
+      );
+    });
+
     test("retains the prompt when the connected helper cannot accept the frame", () {
       promptTracker.addPrompt(prompt: _prompt);
       const ControlHelperNotConnectedException sendError = ControlHelperNotConnectedException();

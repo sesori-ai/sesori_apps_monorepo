@@ -33,4 +33,14 @@ class ControlCommandService({
     _repository.answerPrompt(id: prompt.id, accepted: accepted);
     _promptTracker.removePrompt(id: prompt.id);
   }
+
+  /// Asks the live helper to unregister its server-side bridge and exit.
+  ///
+  /// The helper owns its own bounded unregister attempt; callers still stop
+  /// the process through the process-service boundary because the control
+  /// channel may be unavailable or the helper may disappear before handling
+  /// this.
+  void unregisterAndExit() {
+    _repository.unregisterAndExit();
+  }
 }
