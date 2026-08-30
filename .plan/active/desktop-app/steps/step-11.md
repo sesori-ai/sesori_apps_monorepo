@@ -16,22 +16,22 @@ and local logout sequencing.
 
 ## Architecture implementation review
 
-The Step 11 architecture implementation review approved the changes with no
-findings. It confirmed the API → repository → service boundaries, focused
-`BridgeIdStorage` ownership, dispatcher-before-restore startup ordering, and
-`DesktopLogoutOrchestrator` lifecycle ownership.
+The initial Step 11 architecture implementation review approved the original
+implementation with no findings. A second review after the Codex follow-up
+also approved the account-bound persistence record, owner-checked deletion,
+and expected-stop-after-command path with no findings.
 
 ## Verification
 
 - `client/module_core`: `dart analyze --fatal-infos` clean; full suite passed (1,463 tests), including bridge deletion and 404-idempotence coverage.
-- `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full suite passed (165 tests), including account-bound persisted registration, dispatcher startup, command routing, expected-stop teardown, and logout ordering/fallback coverage.
+- `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full suite passed (171 tests), including account-bound persisted registration, dispatcher startup, command routing, expected-stop teardown, and logout ordering/fallback coverage.
 - `client/desktop`: `flutter analyze --fatal-infos` clean; full suite passed (49 tests).
 - `client/app`: `flutter analyze --fatal-infos` clean; full suite passed (913 tests), confirming the shared module-core extension leaves mobile green.
-- `dart run build_runner build` completed successfully for `module_desktop_core` and regenerated its DI config.
+- `dart pub get` and `dart run build_runner build` completed successfully for `module_desktop_core`; the typed persisted-registration model and DI config were regenerated.
 - `git diff --check` clean.
 
 ## Handoff
 
 Step 10 merged in PR #1212. The successor branch is rebased onto the merged
-`origin/main` and is ready to publish as the next plan-series PR. MT gate B
-remains the user-run daily-driver checkpoint after Step 12.
+`origin/main`, and the implementation plus both architecture reviews are
+complete. MT gate B remains the user-run daily-driver checkpoint after Step 12.
