@@ -22,7 +22,7 @@ void main() {
     debugDefaultTargetPlatformOverride = platform;
   }
 
-  testWidgets("uses the Flutter Android spinner without a platform view", (tester) async {
+  testWidgets("uses the native Android spinner without scheduling Flutter animation", (tester) async {
     usePlatform(TargetPlatform.android);
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(
@@ -36,13 +36,9 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
-      tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
-      isNull,
-    );
-    expect(find.byType(AndroidView), findsNothing);
-    expect(find.byType(PlatformViewLink), findsNothing);
-    expect(tester.hasRunningAnimations, isTrue);
+    expect(find.byType(PlatformViewLink), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.hasRunningAnimations, isFalse);
 
     final data = tester.getSemantics(find.byType(PregoActivityIndicator)).getSemanticsData();
     expect(data.role, SemanticsRole.loadingSpinner);
@@ -67,24 +63,24 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets("uses the Flutter macOS spinner without a platform view", (tester) async {
+  testWidgets("uses the native macOS spinner without scheduling Flutter animation", (tester) async {
     usePlatform(TargetPlatform.macOS);
     await tester.pumpWidget(
       wrap(const PregoActivityIndicator(color: color)),
     );
 
-    expect(
-      tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
-      isNull,
-    );
-    expect(find.byType(AppKitView), findsNothing);
-    expect(tester.hasRunningAnimations, isTrue);
+    final platformView = tester.widget<AppKitView>(find.byType(AppKitView));
+    expect(platformView.viewType, "sesori/native-activity-indicator");
+    expect(platformView.creationParams, color.toARGB32());
+    expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.hasRunningAnimations, isFalse);
 
     debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets("gives a loosely constrained Flutter spinner a 36 pixel square", (tester) async {
-    usePlatform(TargetPlatform.android);
+    usePlatform(TargetPlatform.linux);
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
