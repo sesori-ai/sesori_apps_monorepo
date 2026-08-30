@@ -6,10 +6,14 @@ Date: 2026-08-30.
 
 - Added the pure-Dart Layer-0 `LaunchAtLogin` capability and a desktop shell
   adapter. macOS writes/removes a single per-user LaunchAgent plist, Linux
-  writes/removes a single XDG autostart desktop entry, and Windows owns one
+  writes/removes a single XDG autostart desktop entry (honoring
+  `XDG_CONFIG_HOME`), and Windows owns one
   `HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run` value. Each
   registration launches the current desktop executable with `--hidden`; repeat
   enable operations are idempotent and disable removes stale registrations.
+  macOS disable removes the plist without booting out the currently running
+  app, so disabling autostart cannot terminate the app before coordinated
+  bridge shutdown completes.
   The adapter owns these small OS registrations directly because the available
   `launch_at_startup` macOS backend does not forward launch arguments and would
   add an extra Swift package integration for this dev-build step.
@@ -40,10 +44,10 @@ fallback ownership, and DI boundaries.
   passed (45 tests).
 - `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full pure
   Dart suite passed (157 tests).
-- Adapter tests cover macOS plist content/hidden argument, loaded-agent
-  unloading, Linux XDG content/idempotence, stale registrations, and Windows
-  registry command behavior; launch-argument parsing and hidden-window fallback
-  are covered separately.
+- Adapter tests cover macOS plist content/hidden argument and safe removal,
+  Linux XDG content/idempotence and `XDG_CONFIG_HOME`, stale registrations,
+  and Windows registry command/error behavior; launch-argument parsing and
+  hidden-window fallback are covered separately.
 - Clean macOS application build passed.
 - Manual reboot/login Gate B coverage remains pending; the user-run gate will
   verify hidden tray startup, disable persistence, and no-tray visible fallback.

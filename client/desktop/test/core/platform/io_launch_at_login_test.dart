@@ -17,15 +17,14 @@ void main() {
     });
 
     test("macOS writes one launch agent with the hidden argument and removes it", () async {
-      final _FakeMacOSLaunchctl launchctl = _FakeMacOSLaunchctl(loaded: false);
       final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
         isMacOS: true,
         isWindows: false,
         isLinux: false,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori & Tools.app/Contents/MacOS/Sesori",
-        userId: "501",
-        runProcess: launchctl.run,
+        runProcess: _unusedProcessRunner,
       );
 
       await launchAtLogin.enable();
@@ -44,25 +43,20 @@ void main() {
       expect(await launchAtLogin.isEnabled(), isFalse);
     });
 
-    test("macOS unloads a loaded launch agent before deleting its registration", () async {
-      final _FakeMacOSLaunchctl launchctl = _FakeMacOSLaunchctl(loaded: true);
+    test("macOS disables login without booting out the current app", () async {
       final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
         isMacOS: true,
         isWindows: false,
         isLinux: false,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori",
-        userId: "501",
-        runProcess: launchctl.run,
+        runProcess: _unusedProcessRunner,
       );
 
       await launchAtLogin.enable();
       await launchAtLogin.disable();
 
-      expect(launchctl.commands, <List<String>>[
-        <String>["print", "gui/501/com.sesori.desktop"],
-        <String>["bootout", "gui/501/com.sesori.desktop"],
-      ]);
       expect(await launchAtLogin.isEnabled(), isFalse);
     });
 
@@ -72,8 +66,8 @@ void main() {
         isWindows: false,
         isLinux: true,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori Desktop",
-        userId: "501",
         runProcess: _unusedProcessRunner,
       );
 
@@ -92,6 +86,30 @@ void main() {
       expect(await launchAtLogin.isEnabled(), isFalse);
     });
 
+    test("Linux honors XDG_CONFIG_HOME for autostart registration", () async {
+      final String xdgConfigHome = "${temporaryDirectory.path}/xdg-config";
+      final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
+        isMacOS: false,
+        isWindows: false,
+        isLinux: true,
+        homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: xdgConfigHome,
+        executablePath: "${temporaryDirectory.path}/Sesori",
+        runProcess: _unusedProcessRunner,
+      );
+
+      await launchAtLogin.enable();
+
+      expect(
+        File("$xdgConfigHome/autostart/com.sesori.desktop.desktop").existsSync(),
+        isTrue,
+      );
+      expect(
+        File("${temporaryDirectory.path}/.config/autostart/com.sesori.desktop.desktop").existsSync(),
+        isFalse,
+      );
+    });
+
     test("a stale file is disabled until enable replaces its executable", () async {
       final File registration = File(
         "${temporaryDirectory.path}/.config/autostart/com.sesori.desktop.desktop",
@@ -103,8 +121,8 @@ void main() {
         isWindows: false,
         isLinux: true,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori",
-        userId: "501",
         runProcess: _unusedProcessRunner,
       );
 
@@ -121,8 +139,8 @@ void main() {
         isWindows: true,
         isLinux: false,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: r"C:\Program Files\Sesori\Sesori.exe",
-        userId: "501",
         runProcess: registry.run,
       );
 
@@ -132,6 +150,23 @@ void main() {
       expect(registry.deleteCalls, 1);
     });
 
+    test("Windows surfaces registry query failures", () async {
+      final _FakeWindowsRegistry registry = _FakeWindowsRegistry(queryError: true);
+      final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
+        isMacOS: false,
+        isWindows: true,
+        isLinux: false,
+        homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
+        executablePath: r"C:\Program Files\Sesori\Sesori.exe",
+        runProcess: registry.run,
+      );
+
+      await expectLater(launchAtLogin.isEnabled(), throwsA(isA<ProcessException>()));
+      await expectLater(launchAtLogin.disable(), throwsA(isA<ProcessException>()));
+      expect(registry.deleteCalls, 0);
+    });
+
     test("Windows owns one Run value containing the hidden argument", () async {
       final _FakeWindowsRegistry registry = _FakeWindowsRegistry();
       final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
@@ -139,8 +174,8 @@ void main() {
         isWindows: true,
         isLinux: false,
         homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
         executablePath: r"C:\Program Files\Sesori\Sesori.exe",
-        userId: "501",
         runProcess: registry.run,
       );
 
@@ -163,20 +198,7 @@ void main() {
 Future<ProcessResult> _unusedProcessRunner({required String executable, required List<String> arguments}) =>
     throw StateError("The process runner must not be used");
 
-class _FakeMacOSLaunchctl({required final bool loaded}) {
-  final List<List<String>> commands = <List<String>>[];
-
-  Future<ProcessResult> run({required String executable, required List<String> arguments}) async {
-    expect(executable, "launchctl");
-    commands.add(arguments);
-    if (arguments.first == "print") {
-      return ProcessResult(1, loaded ? 0 : 113, "", loaded ? "" : "Could not find service");
-    }
-    return ProcessResult(1, 0, "", "");
-  }
-}
-
-class _FakeWindowsRegistry() {
+class _FakeWindowsRegistry({final bool queryError = false}) {
   String? value;
   int addCalls = 0;
   int deleteCalls = 0;
@@ -185,8 +207,16 @@ class _FakeWindowsRegistry() {
     expect(executable, "reg.exe");
     switch (arguments.first) {
       case "QUERY":
+        if (queryError) {
+          return ProcessResult(1, 1, "", "ERROR: Access is denied.");
+        }
         final String? stored = value;
-        return ProcessResult(1, stored == null ? 1 : 0, stored == null ? "" : "REG_SZ    $stored", "");
+        return ProcessResult(
+          1,
+          stored == null ? 1 : 0,
+          stored == null ? "" : "REG_SZ    $stored",
+          stored == null ? "ERROR: The system was unable to find the specified registry key or value." : "",
+        );
       case "ADD":
         addCalls++;
         value = arguments[arguments.indexOf("/d") + 1];

@@ -25,8 +25,8 @@ class IoLaunchAtLogin.forTesting({
   required final bool _isWindows,
   required final bool _isLinux,
   required final String _homeDirectory,
+  required final String? _xdgConfigHome,
   required final String _executablePath,
-  required final String _userId,
   required final LaunchAtLoginProcessRunner _runProcess,
 }) implements LaunchAtLogin {
   new()
@@ -35,8 +35,8 @@ class IoLaunchAtLogin.forTesting({
         isWindows: Platform.isWindows,
         isLinux: Platform.isLinux,
         homeDirectory: _resolveUserHomeDirectory(),
+        xdgConfigHome: Platform.environment["XDG_CONFIG_HOME"]?.trim(),
         executablePath: Platform.resolvedExecutable,
-        userId: Platform.isMacOS ? _resolveUserId() : "",
         runProcess: ({required String executable, required List<String> arguments}) =>
             Process.run(executable, arguments),
       );
@@ -50,7 +50,9 @@ class IoLaunchAtLogin.forTesting({
 
   File get _macOsRegistration => File(path.join(_homeDirectory, "Library", "LaunchAgents", "$_registrationId.plist"));
 
-  File get _linuxRegistration => File(path.join(_homeDirectory, ".config", "autostart", "$_registrationId.desktop"));
+  File get _linuxRegistration => File(
+    path.join(_xdgConfigHome ?? path.join(_homeDirectory, ".config"), "autostart", "$_registrationId.desktop"),
+  );
 
   @override
   Future<bool> isEnabled() async {
@@ -86,7 +88,7 @@ class IoLaunchAtLogin.forTesting({
   @override
   Future<void> disable() async {
     if (_isMacOS) {
-      await _disableMacOS();
+      _deleteRegistration(file: _macOsRegistration);
       return;
     }
     if (_isLinux) {
@@ -163,12 +165,32 @@ class IoLaunchAtLogin.forTesting({
 
   Future<bool> _isWindowsEnabled() async {
     final ProcessResult result = await _queryWindows();
-    return result.exitCode == 0 && result.stdout.toString().contains(_windowsCommand);
+    if (result.exitCode != 0) {
+      if (_isMissingWindowsValue(result: result)) {
+        return false;
+      }
+      _requireSuccess(
+        executable: "reg.exe",
+        arguments: <String>["QUERY", _windowsRunKey, "/v", _appName],
+        result: result,
+      );
+    }
+    return result.stdout.toString().contains(_windowsCommand);
   }
 
   Future<bool> _windowsValueExists() async {
     final ProcessResult result = await _queryWindows();
-    return result.exitCode == 0;
+    if (result.exitCode != 0) {
+      if (_isMissingWindowsValue(result: result)) {
+        return false;
+      }
+      _requireSuccess(
+        executable: "reg.exe",
+        arguments: <String>["QUERY", _windowsRunKey, "/v", _appName],
+        result: result,
+      );
+    }
+    return true;
   }
 
   Future<void> _enableWindows() async {
@@ -199,30 +221,13 @@ class IoLaunchAtLogin.forTesting({
     _requireSuccess(executable: "reg.exe", arguments: arguments, result: result);
   }
 
-  Future<void> _disableMacOS() async {
-    final File registration = _macOsRegistration;
-    if (!registration.existsSync()) {
-      return;
-    }
-    if (await _isMacOSLoaded()) {
-      final List<String> arguments = <String>["bootout", "gui/$_userId/$_registrationId"];
-      final ProcessResult result = await _runProcess(executable: "launchctl", arguments: arguments);
-      _requireSuccess(executable: "launchctl", arguments: arguments, result: result);
-    }
-    _deleteRegistration(file: registration);
-  }
-
-  Future<bool> _isMacOSLoaded() async {
-    final List<String> arguments = <String>["print", "gui/$_userId/$_registrationId"];
-    final ProcessResult result = await _runProcess(executable: "launchctl", arguments: arguments);
-    if (result.exitCode == 0) {
-      return true;
-    }
-    if (result.exitCode == 113 || result.stderr.toString().contains("Could not find service")) {
+  static bool _isMissingWindowsValue({required ProcessResult result}) {
+    if (result.exitCode != 1) {
       return false;
     }
-    _requireSuccess(executable: "launchctl", arguments: arguments, result: result);
-    return false;
+    final String output = "${result.stdout}\n${result.stderr}".toLowerCase();
+    return output.contains("unable to find the specified registry") ||
+        output.contains("cannot find the file specified");
   }
 
   void _requireSuccess({
@@ -241,18 +246,6 @@ class IoLaunchAtLogin.forTesting({
       stderr.isNotEmpty ? stderr : stdout,
       result.exitCode,
     );
-  }
-
-  static String _resolveUserId() {
-    final ProcessResult result = Process.runSync("id", <String>["-u"]);
-    if (result.exitCode != 0) {
-      throw ProcessException("id", const <String>["-u"], result.stderr.toString(), result.exitCode);
-    }
-    final String userId = result.stdout.toString().trim();
-    if (userId.isEmpty) {
-      throw StateError("Cannot register launch at login because the user id is unavailable");
-    }
-    return userId;
   }
 
   static String _resolveUserHomeDirectory() {
