@@ -19,6 +19,7 @@ class FlutterSystemTray.forTesting({
   required final TrayManager _manager,
   required final bool _isLinux,
   required final bool _isWindows,
+  required final bool _isMacOS,
   required final LinuxStatusNotifierHostProbe _linuxHostProbe,
 }) with TrayListener implements SystemTray {
   new()
@@ -26,6 +27,7 @@ class FlutterSystemTray.forTesting({
         manager: trayManager,
         isLinux: Platform.isLinux,
         isWindows: Platform.isWindows,
+        isMacOS: Platform.isMacOS,
         linuxHostProbe: _hasLinuxStatusNotifierHost,
       );
 
@@ -58,7 +60,13 @@ class FlutterSystemTray.forTesting({
     _manager.addListener(this);
     _listenerRegistered = true;
     try {
-      await _manager.setIcon(_isWindows ? _windowsIconPath : _pngIconPath);
+      await _manager.setIcon(
+        _isWindows ? _windowsIconPath : _pngIconPath,
+        // macOS template images are recolored by the system for light/dark
+        // menu bars. The asset is therefore a transparent monochrome mark,
+        // not a precomposited square icon.
+        isTemplate: _isMacOS,
+      );
       _trayCreated = true;
       await _manager.setContextMenu(_toPlatformMenu(menu: menu));
       return SystemTrayAvailability.available;
@@ -106,6 +114,15 @@ class FlutterSystemTray.forTesting({
 
   @override
   void onTrayIconMouseDown() {
+    _openContextMenu();
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    _openContextMenu();
+  }
+
+  void _openContextMenu() {
     unawaited(_showContextMenu());
   }
 

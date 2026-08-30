@@ -20,6 +20,7 @@ void main() {
     when(() => manager.waitUntilReadyToShow(any())).thenAnswer((_) async {});
     when(manager.show).thenAnswer((_) async {});
     when(manager.focus).thenAnswer((_) async {});
+    when(() => manager.setSkipTaskbar(any())).thenAnswer((_) async {});
     when(manager.hide).thenAnswer((_) async {});
   });
 
@@ -59,9 +60,11 @@ void main() {
     await host.hide();
 
     verifyInOrder(<void Function()>[
+      () => manager.setSkipTaskbar(false),
       () => manager.show(),
       () => manager.focus(),
       () => manager.hide(),
+      () => manager.setSkipTaskbar(true),
     ]);
   });
 

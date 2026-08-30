@@ -13,8 +13,11 @@ void main() {
 
   setUp(() {
     manager = _MockTrayManager();
-    when(() => manager.setIcon(any())).thenAnswer((_) async {});
+    when(
+      () => manager.setIcon(any(), isTemplate: any(named: "isTemplate")),
+    ).thenAnswer((_) async {});
     when(() => manager.setContextMenu(any())).thenAnswer((_) async {});
+    when(manager.popUpContextMenu).thenAnswer((_) async {});
     when(manager.destroy).thenAnswer((_) async {});
   });
 
@@ -23,6 +26,7 @@ void main() {
       manager: manager,
       isLinux: true,
       isWindows: false,
+      isMacOS: false,
       linuxHostProbe: () async => false,
     );
     addTearDown(tray.dispose);
@@ -31,7 +35,9 @@ void main() {
 
     expect(availability, SystemTrayAvailability.unavailable);
     verifyNever(() => manager.addListener(tray));
-    verifyNever(() => manager.setIcon(any()));
+    verifyNever(
+      () => manager.setIcon(any(), isTemplate: any(named: "isTemplate")),
+    );
   });
 
   test("renders typed menu entries and emits typed commands", () async {
@@ -39,6 +45,7 @@ void main() {
       manager: manager,
       isLinux: true,
       isWindows: false,
+      isMacOS: false,
       linuxHostProbe: () async => true,
     );
     addTearDown(tray.dispose);
@@ -50,7 +57,9 @@ void main() {
 
     expect(availability, SystemTrayAvailability.available);
     verify(() => manager.addListener(tray)).called(1);
-    verify(() => manager.setIcon("assets/tray_icon.png")).called(1);
+    verify(
+      () => manager.setIcon("assets/tray_icon.png", isTemplate: false),
+    ).called(1);
     expect(renderedMenu.items, hasLength(3));
     expect(renderedMenu.items![0].label, "Bridge: Off");
     expect(renderedMenu.items![0].disabled, isTrue);
@@ -60,20 +69,58 @@ void main() {
     expect(await command, SystemTrayCommand.toggleBridge);
   });
 
+  test("opens the same context menu for left and right icon clicks", () async {
+    final FlutterSystemTray tray = FlutterSystemTray.forTesting(
+      manager: manager,
+      isLinux: false,
+      isWindows: false,
+      isMacOS: true,
+      linuxHostProbe: () async => throw StateError("must not probe"),
+    );
+    addTearDown(tray.dispose);
+
+    await tray.initialize(menu: _menu);
+    tray.onTrayIconMouseDown();
+    tray.onTrayIconRightMouseDown();
+    await Future<void>.delayed(Duration.zero);
+
+    verify(manager.popUpContextMenu).called(2);
+  });
+
   test("uses the bundled ICO asset on Windows and disposes the native tray", () async {
     final FlutterSystemTray tray = FlutterSystemTray.forTesting(
       manager: manager,
       isLinux: false,
       isWindows: true,
+      isMacOS: false,
       linuxHostProbe: () async => throw StateError("must not probe"),
     );
 
     await tray.initialize(menu: _menu);
     await tray.dispose();
 
-    verify(() => manager.setIcon("assets/tray_icon.ico")).called(1);
+    verify(
+      () => manager.setIcon("assets/tray_icon.ico", isTemplate: false),
+    ).called(1);
     verify(() => manager.removeListener(tray)).called(1);
     verify(manager.destroy).called(1);
+  });
+
+  test("uses a macOS template icon for automatic light/dark recoloring", () async {
+    final FlutterSystemTray tray = FlutterSystemTray.forTesting(
+      manager: manager,
+      isLinux: false,
+      isWindows: false,
+      isMacOS: true,
+      linuxHostProbe: () async => throw StateError("must not probe"),
+    );
+    addTearDown(tray.dispose);
+
+    await tray.initialize(menu: _menu);
+
+    verify(
+      () => manager.setIcon("assets/tray_icon.png", isTemplate: true),
+    ).called(1);
   });
 }
 

@@ -14,7 +14,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 5 | ⚙️ Status semantics + dead control-protocol removal | done |
 | 6 | ⚙️ Tray + `BridgeControlCubit` + windowed fallback | done |
 | 7 | ⚙️ Window + Prego theme + v1 contents | done |
-| — | MT gate A: first real GUI supervision (user-run) | pending |
+| — | MT gate A: first real GUI supervision (user-run) | done |
 | 8 | ⚙️ Single instance + last-state restore | done |
 | 9 | ⚙️ Autostart + hidden boot | pending |
 | 10 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
@@ -32,3 +32,16 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
+
+## MT Gate A — accepted 2026-08-30
+
+The user accepted the macOS manual gate after browser login/session restore,
+15-minute token expiry/refresh without supervised-helper `token.json` writes,
+helper `kill -9` recovery, curl-triggered supervised restart/exit 86,
+signed-out startup, bridge Off/On, phone restart, and the fresh-build window
+close → tray Open flow. Tray `Active sessions: 0` while no session has active
+work is expected. Phone session round-trip and standalone CLI coexistence were
+not separately re-reported in the final check; the user explicitly accepted
+the available gate coverage as sufficient.
+
+The next plan slice is Step 9 (autostart + hidden boot).

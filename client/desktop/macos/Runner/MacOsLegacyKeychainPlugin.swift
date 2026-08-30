@@ -1,11 +1,13 @@
 import FlutterMacOS
 import Security
 
-/// Classic default-Keychain storage for non-provisioned desktop builds.
+/// Classic Keychain storage for non-provisioned desktop builds.
 ///
-/// The query deliberately omits Data Protection, accessibility, and
+/// The SecItem queries deliberately omit Data Protection, accessibility, and
 /// synchronizable attributes because those require a provisioned
-/// keychain-access-group entitlement on macOS.
+/// keychain-access-group entitlement on macOS. Without a keychain selector,
+/// SecItemAdd uses the user's default keychain and the same query also finds
+/// credentials written by the former explicit-default-keychain path.
 final class MacOsLegacyKeychainPlugin {
   private static let channelName = "com.sesori.desktop/legacy-keychain"
   private static let service = "com.sesori.desktop"
@@ -86,9 +88,8 @@ final class MacOsLegacyKeychainPlugin {
   }
 
   private static func read(key: String) throws -> String? {
-    let keychain = try defaultKeychain()
     var result: CFTypeRef?
-    var query = matchingQuery(key: key, keychain: keychain)
+    var query = baseQuery(key: key)
     query[kSecReturnData] = true
     query[kSecMatchLimit] = kSecMatchLimitOne
     let status = SecItemCopyMatching(query as CFDictionary, &result)
@@ -106,14 +107,12 @@ final class MacOsLegacyKeychainPlugin {
   }
 
   private static func write(key: String, value: String) throws {
-    let keychain = try defaultKeychain()
     let data = Data(value.utf8)
-    let query = matchingQuery(key: key, keychain: keychain)
+    let query = baseQuery(key: key)
     let attributes = [kSecValueData: data] as CFDictionary
     let updateStatus = SecItemUpdate(query as CFDictionary, attributes)
     if updateStatus == errSecItemNotFound {
-      var newItem = baseQuery(key: key)
-      newItem[kSecUseKeychain] = keychain
+      var newItem = query
       newItem[kSecValueData] = data
       let addStatus = SecItemAdd(newItem as CFDictionary, nil)
       if addStatus == errSecDuplicateItem {
@@ -127,8 +126,7 @@ final class MacOsLegacyKeychainPlugin {
   }
 
   private static func delete(key: String) throws {
-    let keychain = try defaultKeychain()
-    let status = SecItemDelete(matchingQuery(key: key, keychain: keychain) as CFDictionary)
+    let status = SecItemDelete(baseQuery(key: key) as CFDictionary)
     if status != errSecItemNotFound {
       try requireSuccess(status: status)
     }
@@ -142,21 +140,6 @@ final class MacOsLegacyKeychainPlugin {
     ]
   }
 
-  private static func matchingQuery(key: String, keychain: SecKeychain) -> [CFString: Any] {
-    var query = baseQuery(key: key)
-    query[kSecMatchSearchList] = [keychain]
-    return query
-  }
-
-  private static func defaultKeychain() throws -> SecKeychain {
-    var keychain: SecKeychain?
-    try requireSuccess(status: SecKeychainCopyDefault(&keychain))
-    guard let keychain else {
-      throw KeychainOperationError.defaultKeychainUnavailable
-    }
-    return keychain
-  }
-
   private static func requireSuccess(status: OSStatus) throws {
     if status != errSecSuccess {
       throw KeychainOperationError.status(status)
@@ -167,7 +150,6 @@ final class MacOsLegacyKeychainPlugin {
 private enum KeychainOperationError: Error {
   case invalidValue
   case invalidData
-  case defaultKeychainUnavailable
   case status(OSStatus)
 
   var flutterError: FlutterError {
@@ -182,12 +164,6 @@ private enum KeychainOperationError: Error {
       return FlutterError(
         code: "invalid_keychain_data",
         message: "The Keychain value is not valid UTF-8",
-        details: nil
-      )
-    case .defaultKeychainUnavailable:
-      return FlutterError(
-        code: "keychain_unavailable",
-        message: "The default macOS Keychain is unavailable",
         details: nil
       )
     case .status(let status):

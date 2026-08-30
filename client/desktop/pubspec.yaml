@@ -55,5 +55,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    # Canonical transparent monochrome mark; PNG/ICO are the runtime formats.
+    - assets/tray_icon.svg
     - assets/tray_icon.ico
     - assets/tray_icon.png

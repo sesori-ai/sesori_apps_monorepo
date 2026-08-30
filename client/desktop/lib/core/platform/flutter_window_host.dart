@@ -69,6 +69,9 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
   @override
   Future<void> show() async {
     _ensureInitialized();
+    // On macOS this restores NSApplication's regular activation policy, which
+    // puts the app back in the Dock before the window is shown.
+    await _manager.setSkipTaskbar(false);
     await _manager.show();
     await _manager.focus();
   }
@@ -77,6 +80,9 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
   Future<void> hide() async {
     _ensureInitialized();
     await _manager.hide();
+    // On macOS this switches to the accessory activation policy: the tray
+    // remains available while the hidden window disappears from the Dock.
+    await _manager.setSkipTaskbar(true);
   }
 
   @override
