@@ -122,6 +122,17 @@ class BridgeProcessRepository.forTesting({
     if (active == null) {
       return Future<void>.value();
     }
+    final Future<void>? existing = active.stopFuture;
+    if (existing != null) {
+      // A logout-owned wait can be upgraded when command delivery fails. The
+      // active operation remains the single owner of teardown; this only
+      // wakes it so it can send the ordinary shutdown fallback.
+      if (active.stopMode == _BridgeStopMode.afterCommand) {
+        requestExpectedShutdown();
+      }
+      return existing;
+    }
+    active.stopMode = _BridgeStopMode.ordinary;
     return active.stopFuture ??= _runStopExpected(active: active);
   }
 
@@ -131,13 +142,32 @@ class BridgeProcessRepository.forTesting({
   /// The unregister-and-exit logout command owns the helper's graceful request.
   /// This path keeps the token service alive until that command's unregister
   /// request has completed, while retaining the same bounded force-kill
-  /// fallback if the helper does not exit.
+  /// fallback if the helper does not exit. If delivery later fails, callers
+  /// can invoke [requestExpectedShutdown] to upgrade this same wait.
   Future<void> stopExpectedAfterCommand() {
     final _ActiveBridgeProcess? active = _active;
     if (active == null) {
       return Future<void>.value();
     }
+    final Future<void>? existing = active.stopFuture;
+    if (existing != null) {
+      return existing;
+    }
+    active.stopMode = _BridgeStopMode.afterCommand;
+    active.shutdownFallback ??= Completer<void>();
     return active.stopFuture ??= _runStopExpectedAfterCommand(active: active);
+  }
+
+  /// Wakes an after-command stop so it can send the ordinary shutdown
+  /// fallback. This is synchronous by design: the process repository retains
+  /// ownership of the in-flight stop future and never starts a second teardown.
+  void requestExpectedShutdown() {
+    final _ActiveBridgeProcess? active = _active;
+    final Completer<void>? fallback = active?.shutdownFallback;
+    if (active?.stopMode != _BridgeStopMode.afterCommand || fallback == null || fallback.isCompleted) {
+      return;
+    }
+    fallback.complete();
   }
 
   Future<void> _runStopExpected({required _ActiveBridgeProcess active}) async {
@@ -156,7 +186,20 @@ class BridgeProcessRepository.forTesting({
   Future<void> _runStopExpectedAfterCommand({required _ActiveBridgeProcess active}) async {
     try {
       active.expected = true;
-      await _waitForExitOrForceKill(active: active);
+      final Completer<void> fallback = active.shutdownFallback ??= Completer<void>();
+      final _AfterCommandStopTrigger trigger;
+      try {
+        trigger = await Future.any<_AfterCommandStopTrigger>(<Future<_AfterCommandStopTrigger>>[
+          active.handle.exitCode.then((_) => _AfterCommandStopTrigger.exited),
+          fallback.future.then((_) => _AfterCommandStopTrigger.shutdownRequested),
+        ]).timeout(_gracefulShutdownTimeout);
+      } on TimeoutException {
+        await _forceKillAndWait(active: active);
+        return;
+      }
+      if (trigger == _AfterCommandStopTrigger.shutdownRequested) {
+        await _stopExpected(active: active);
+      }
     } on Object {
       if (identical(_active, active)) {
         active.stopFuture = null;
@@ -259,7 +302,13 @@ class BridgeProcessRepository.forTesting({
   }
 }
 
+enum _BridgeStopMode() { ordinary, afterCommand }
+
+enum _AfterCommandStopTrigger() { exited, shutdownRequested }
+
 class _ActiveBridgeProcess({required final BridgeProcessApiHandle handle}) {
   bool expected = false;
   Future<void>? stopFuture;
+  _BridgeStopMode? stopMode;
+  Completer<void>? shutdownFallback;
 }
