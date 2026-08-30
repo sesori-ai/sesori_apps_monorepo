@@ -241,14 +241,30 @@ Future<void> _writeDiagnostics({
         'relay protocol error: ${relay.protocolError}',
       ].join('\n'),
     );
-    await File(p.join(directory.path, 'failure.txt')).writeAsString('$error\n$stackTrace\n');
+    await File(p.join(directory.path, 'failure.txt')).writeAsString(
+      _redactDiagnostic(
+        '$error\n$stackTrace',
+        secrets: <String>[
+          if (firstControl case final control?) control.secret,
+          if (secondControl case final control?) control.secret,
+        ],
+      ),
+    );
   } on Object catch (diagnosticError, diagnosticStackTrace) {
     // Artifact collection must never replace the original assertion failure.
     stderr.writeln('Could not write supervised E2E diagnostics: $diagnosticError\n$diagnosticStackTrace');
   }
 }
 
-String _redactDiagnostic(String value) => value.replaceAll(_accessToken, '<redacted-token>');
+String _redactDiagnostic(String value, {Iterable<String> secrets = const <String>[]}) {
+  var redacted = value.replaceAll(_accessToken, '<redacted-token>');
+  for (final String secret in secrets) {
+    if (secret.isNotEmpty) {
+      redacted = redacted.replaceAll(secret, '<redacted-control-secret>');
+    }
+  }
+  return redacted;
+}
 
 class _HelperProcess({
   required final Process process,
@@ -308,22 +324,22 @@ class _HelperProcess({
       }
     }
 
-    process.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) => recordLine(line: line, destination: output));
-    process.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) => recordLine(line: line, destination: errors));
-
-    // The helper reads exactly one secret line before opening the supervised
-    // control connection. Pipe observers are attached first so an immediate
-    // startup failure is never hidden by a broken-pipe write.
-    process.stdin.writeln(control.secret);
-    await process.stdin.flush();
-
     try {
+      process.stdout
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) => recordLine(line: line, destination: output));
+      process.stderr
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen((line) => recordLine(line: line, destination: errors));
+
+      // The helper reads exactly one secret line before opening the supervised
+      // control connection. Pipe observers are attached first so an immediate
+      // startup failure is never hidden by a broken-pipe write.
+      process.stdin.writeln(control.secret);
+      await process.stdin.flush();
+
       final _HelperProcess helper = _HelperProcess(
         process: process,
         debugUrl: debugUrl.future.timeout(
