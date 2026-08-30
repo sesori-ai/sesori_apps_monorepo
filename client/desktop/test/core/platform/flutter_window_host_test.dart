@@ -28,7 +28,7 @@ void main() {
     final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
     addTearDown(host.dispose);
 
-    await host.initialize();
+    await host.initialize(hidden: false);
     final WindowOptions options =
         verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
     final Future<WindowHostEvent> event = host.events.first;
@@ -38,6 +38,7 @@ void main() {
       () => manager.ensureInitialized(),
       () => manager.addListener(host),
       () => manager.setPreventClose(true),
+      () => manager.setSkipTaskbar(false),
       () => manager.show(),
       () => manager.focus(),
     ]);
@@ -47,10 +48,21 @@ void main() {
     expect(await event, WindowHostEvent.closeRequested);
   });
 
+  test("hidden initialization never shows or focuses the window", () async {
+    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
+    addTearDown(host.dispose);
+
+    await host.initialize(hidden: true);
+
+    verify(() => manager.setSkipTaskbar(true)).called(1);
+    verifyNever(manager.show);
+    verifyNever(manager.focus);
+  });
+
   test("show focuses the restored window and hide delegates to the plugin", () async {
     final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
     addTearDown(host.dispose);
-    await host.initialize();
+    await host.initialize(hidden: false);
     clearInteractions(manager);
     when(manager.show).thenAnswer((_) async {});
     when(manager.focus).thenAnswer((_) async {});
@@ -72,7 +84,7 @@ void main() {
     final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
     when(() => manager.waitUntilReadyToShow(any())).thenThrow(StateError("native window unavailable"));
 
-    await expectLater(host.initialize(), throwsStateError);
+    await expectLater(host.initialize(hidden: false), throwsStateError);
 
     verify(() => manager.removeListener(host)).called(1);
     verify(() => manager.setPreventClose(false)).called(1);
@@ -81,7 +93,7 @@ void main() {
 
   test("dispose removes its listener and restores native close behavior", () async {
     final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
-    await host.initialize();
+    await host.initialize(hidden: false);
 
     await host.dispose();
 

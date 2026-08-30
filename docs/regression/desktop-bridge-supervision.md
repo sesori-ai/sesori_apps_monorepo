@@ -19,6 +19,12 @@ and keep native close/quit behavior safe.
 - Desired bridge On/Off state persists under desktop-owned application data.
   Startup restores last-On through the process service after the dispatcher is
   ready; signed-out restore reaches login-required without spawning a helper.
+  Launch at login is an idempotent per-user registration that starts the app
+  with `--hidden`; disabling it removes the registration rather than merely
+  flipping an in-app flag.
+- A `--hidden` launch stays tray-only when the tray is proven available. If the
+  tray is unavailable or fails to initialize, the window is shown so the app
+  remains reachable.
 - On a proven tray host, native close hides the window immediately, including
   during bridge lifecycle work, removes the macOS app from the Dock while it is
   hidden, and Open restores/focuses it and returns it to the Dock. Without a
@@ -70,6 +76,9 @@ at different handshake phases and inspect the status and bounded recent output.
   killed owner leaves a lock that bricks future launches.
 - Desired Off restores On, last-On never restores, startup bypasses auth gating,
   or bridge restore begins before the control dispatcher owns its event stream.
+- Repeated launch-at-login enables create duplicate registrations, disabling
+  leaves a stale login item, `--hidden` startup hides the app without a usable
+  tray, or a normal manual launch unexpectedly starts hidden.
 - Close hides the only surface when no tray host exists, ignores a close during
   lifecycle work, Open shows without focusing, native close bypasses teardown,
   or the macOS tray icon has an opaque background/wrong light-dark treatment,
@@ -97,6 +106,9 @@ at different handshake phases and inspect the status and bounded recent output.
   authorization prompt per existing credential item; this is macOS item ACL
   behavior and is separate from the entitlement workaround. Stable signing for
   distributed builds belongs to the later desktop-distribution plan.
+- Login registration is owned by the current desktop executable path. A
+  development build moved or rebuilt at a different path must be re-enabled;
+  packaged-path migration belongs to the later desktop-distribution plan.
 
 ## Sources
 

@@ -11,7 +11,7 @@ import "features/auth_gate/auth_gate.dart";
 /// Root widget of the Sesori desktop app.
 ///
 /// Owns the eager desktop bridge controller, Prego themes, and sign-in gate.
-class const SesoriDesktopApp({super.key}) extends StatelessWidget {
+class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) extends StatelessWidget {
   static const String _appTitle = "Sesori";
 
   @override
@@ -29,6 +29,8 @@ class const SesoriDesktopApp({super.key}) extends StatelessWidget {
           instanceService: getIt(),
           logoutTracker: getIt(),
           urlLauncher: getIt(),
+          launchAtLogin: getIt(),
+          hiddenLaunch: hiddenLaunch,
         );
         unawaited(cubit.initialize());
         return cubit;

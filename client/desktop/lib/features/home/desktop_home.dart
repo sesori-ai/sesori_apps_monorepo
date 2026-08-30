@@ -66,6 +66,10 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
                           label: "Active sessions",
                           value: state.controlStatus.activeSessionCount.toString(),
                         ),
+                        _StatusRow(
+                          label: "Launch at login",
+                          value: state.launchAtLoginEnabled ? "On" : "Off",
+                        ),
                         SizedBox(height: context.prego.spacing.xl),
                         Wrap(
                           spacing: context.prego.spacing.md,
@@ -77,6 +81,14 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
                                 state.toggleTarget == BridgeProcessDesiredState.off
                                     ? "Turn Bridge Off"
                                     : "Turn Bridge On",
+                              ),
+                            ),
+                            OutlinedButton(
+                              onPressed: state.activity.locksCommands
+                                  ? null
+                                  : () => unawaited(controls.toggleLaunchAtLogin()),
+                              child: Text(
+                                state.launchAtLoginEnabled ? "Disable Launch at Login" : "Enable Launch at Login",
                               ),
                             ),
                             OutlinedButton(

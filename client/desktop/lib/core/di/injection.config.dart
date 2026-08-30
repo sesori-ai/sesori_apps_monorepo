@@ -33,6 +33,7 @@ import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
 import 'package:sesori_desktop/core/platform/flutter_window_host.dart' as _i789;
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
+import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
 import 'package:sesori_desktop/core/platform/macos_legacy_keychain_client.dart'
     as _i435;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
@@ -71,6 +72,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(),
     );
+    gh.lazySingleton<_i316.LaunchAtLogin>(() => _i122.IoLaunchAtLogin());
     gh.lazySingleton<_i316.SystemTray>(
       () => _i81.FlutterSystemTray(),
       dispose: (i) => i.dispose(),

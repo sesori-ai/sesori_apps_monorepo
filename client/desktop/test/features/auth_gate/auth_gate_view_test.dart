@@ -38,6 +38,7 @@ void main() {
         processState: const BridgeProcessStopped(),
         desiredState: BridgeProcessDesiredState.off,
         toggleTarget: BridgeProcessDesiredState.on,
+        launchAtLoginEnabled: false,
         controlStatus: BridgeControlStatus.offline,
       ),
     );

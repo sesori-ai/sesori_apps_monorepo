@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — MT gate A accepted; step 9/22 next (autostart + hidden boot)
+- **Status:** Active — step 9/22 in progress (autostart + hidden boot)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`

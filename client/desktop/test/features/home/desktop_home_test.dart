@@ -23,6 +23,7 @@ void main() {
     bridgeControlCubit = _MockBridgeControlCubit();
     authGateCubit = _MockAuthGateCubit();
     when(() => bridgeControlCubit.toggleBridge()).thenAnswer((_) async {});
+    when(() => bridgeControlCubit.toggleLaunchAtLogin()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.openLogs()).thenAnswer((_) async {});
     when(() => authGateCubit.signOut()).thenAnswer((_) async {});
   });
@@ -72,12 +73,16 @@ void main() {
     expect(find.text("Healthy"), findsOneWidget);
     expect(find.text("2"), findsOneWidget);
     expect(find.text("Turn Bridge Off"), findsOneWidget);
+    expect(find.text("Launch at login"), findsOneWidget);
+    expect(find.text("Enable Launch at Login"), findsOneWidget);
 
     await tester.tap(find.text("Turn Bridge Off"));
+    await tester.tap(find.text("Enable Launch at Login"));
     await tester.tap(find.text("Open Logs"));
     await tester.tap(find.text("Sign out"));
 
     verify(() => bridgeControlCubit.toggleBridge()).called(1);
+    verify(() => bridgeControlCubit.toggleLaunchAtLogin()).called(1);
     verify(() => bridgeControlCubit.openLogs()).called(1);
     verify(() => authGateCubit.signOut()).called(1);
   });
@@ -123,6 +128,7 @@ BridgeControlState _state({
   toggleTarget: desiredState == BridgeProcessDesiredState.on
       ? BridgeProcessDesiredState.off
       : BridgeProcessDesiredState.on,
+  launchAtLoginEnabled: false,
   controlStatus: status,
 );
 
