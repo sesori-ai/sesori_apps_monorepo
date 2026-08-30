@@ -51,7 +51,12 @@ void main() {
     final List<String> operations = <String>[];
     when(() => instanceService.cancelPendingBridgeRestore()).thenAnswer((_) => operations.add("cancel"));
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) => operations.add("unregister"));
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async => operations.add("stop"));
+    when(() => processService.requestStopForLogout()).thenReturn(
+      BridgeProcessStopRequest(
+        mode: BridgeProcessStopMode.unregister,
+        completion: Future<void>(() => operations.add("stop")),
+      ),
+    );
     when(
       () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
     ).thenAnswer((_) async => operations.add("persist"));
@@ -60,7 +65,7 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["cancel", "persist", "stop", "unregister", "logout"]);
+    expect(operations, <String>["cancel", "persist", "unregister", "stop", "logout"]);
   });
 
   test("unregisters through the helper, then confirms deletion before local logout", () async {
@@ -68,7 +73,12 @@ void main() {
     statusTracker.handleRegistered(bridgeId: "bridge-1", accountId: _userA.id);
     await pumpEventQueue();
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) => operations.add("unregister"));
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async => operations.add("stop"));
+    when(() => processService.requestStopForLogout()).thenReturn(
+      BridgeProcessStopRequest(
+        mode: BridgeProcessStopMode.unregister,
+        completion: Future<void>(() => operations.add("stop")),
+      ),
+    );
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-1")).thenAnswer((_) async {
       operations.add("delete");
       return ApiResponse.success(null);
@@ -78,16 +88,57 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["stop", "unregister", "delete", "logout"]);
+    expect(operations, <String>["unregister", "stop", "delete", "logout"]);
     expect(bridgeIdStorage.bridgeId, isNull);
     expect(statusTracker.status.bridgeId, isNull);
+  });
+
+  test("falls back to ordinary shutdown when unregister delivery fails", () async {
+    final List<String> operations = <String>[];
+    statusTracker.handleRegistered(bridgeId: "bridge-delivery-failed", accountId: _userA.id);
+    await pumpEventQueue();
+    when(() => processService.requestStopForLogout()).thenReturn(
+      BridgeProcessStopRequest(
+        mode: BridgeProcessStopMode.unregister,
+        completion: Future<void>(() => operations.add("stop")),
+      ),
+    );
+    when(() => controlCommandService.unregisterAndExit()).thenThrow(const ControlHelperNotConnectedException());
+    when(() => processService.fallbackStopAfterUnregisterFailure()).thenAnswer((_) async => operations.add("fallback"));
+    when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-delivery-failed")).thenAnswer((_) async {
+      operations.add("delete");
+      return ApiResponse.success(null);
+    });
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async => operations.add("logout"));
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    expect(operations, <String>["fallback", "stop", "delete", "logout"]);
+    verify(() => processService.fallbackStopAfterUnregisterFailure()).called(1);
+  });
+
+  test("joins an ordinary stop without sending a late unregister command", () async {
+    final List<String> operations = <String>[];
+    when(() => processService.requestStopForLogout()).thenReturn(
+      BridgeProcessStopRequest(
+        mode: BridgeProcessStopMode.ordinary,
+        completion: Future<void>(() => operations.add("stop")),
+      ),
+    );
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async => operations.add("logout"));
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    expect(operations, <String>["stop", "logout"]);
+    verifyNever(() => controlCommandService.unregisterAndExit());
   });
 
   test("attempts GUI deletion even when the helper stop fails", () async {
     statusTracker.handleRegistered(bridgeId: "bridge-stuck", accountId: _userA.id);
     await pumpEventQueue();
-    when(() => controlCommandService.unregisterAndExit()).thenThrow(const ControlHelperNotConnectedException());
-    when(() => processService.stopAfterUnregister()).thenThrow(StateError("helper remained alive"));
+    when(() => processService.requestStopForLogout()).thenThrow(StateError("helper remained alive"));
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-stuck")).thenAnswer((_) async {
       return ApiResponse.success(null);
     });
@@ -104,7 +155,7 @@ void main() {
     statusTracker.handleRegistered(bridgeId: "bridge-offline", accountId: _userA.id);
     await pumpEventQueue();
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-offline")).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
@@ -120,12 +171,32 @@ void main() {
     expect(bridgeIdStorage.bridgeId, "bridge-offline");
   });
 
+  test("deletes a registration for a verified token-only signed-in session", () async {
+    statusTracker.handleRegistered(bridgeId: "bridge-token-only", accountId: _userA.id);
+    await pumpEventQueue();
+    when(() => authSession.currentState).thenReturn(const AuthState.initial());
+    when(() => authSession.getCurrentUser()).thenAnswer((_) async => _userA);
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
+    when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
+    when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-token-only")).thenAnswer((_) async {
+      return ApiResponse.success(null);
+    });
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    verify(() => authSession.getCurrentUser()).called(1);
+    verify(() => bridgeRepository.deleteBridge(bridgeId: "bridge-token-only")).called(1);
+    expect(bridgeIdStorage.registration, isNull);
+  });
+
   test("does not submit or clear a persisted registration owned by another account", () async {
     statusTracker.handleRegistered(bridgeId: "bridge-account-a", accountId: _userA.id);
     await pumpEventQueue();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userB));
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
@@ -139,7 +210,7 @@ void main() {
 
   test("keeps controls locked through token clearing and shares concurrent logout", () async {
     final Completer<void> tokenClear = Completer<void>();
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) => tokenClear.future);
 
     final Future<DesktopLogoutOutcome> first = orchestrator.logoutCurrentDevice();
@@ -148,7 +219,7 @@ void main() {
 
     expect(identical(first, second), isTrue);
     expect(logoutTracker.status, DesktopLogoutStatus.inProgress);
-    verify(() => processService.stopAfterUnregister()).called(1);
+    verify(() => processService.requestStopForLogout()).called(1);
 
     tokenClear.complete();
     expect(await first, DesktopLogoutOutcome.completed);
@@ -163,31 +234,30 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.desiredStatePersistenceFailed);
-    verifyNever(() => processService.stopAfterUnregister());
+    verifyNever(() => processService.requestStopForLogout());
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
   test("does not clear authentication when the helper cannot stop", () async {
-    when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
-    when(() => processService.stopAfterUnregister()).thenThrow(StateError("helper remained alive"));
+    when(() => processService.requestStopForLogout()).thenThrow(StateError("helper remained alive"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.bridgeStopFailed);
     verify(() => instanceService.cancelPendingBridgeRestore()).called(1);
     verify(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off)).called(1);
-    verify(() => controlCommandService.unregisterAndExit()).called(1);
+    verifyNever(() => controlCommandService.unregisterAndExit());
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
   test("reports a local-session failure after a successful helper stop", () async {
-    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenThrow(StateError("secure storage unavailable"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
-    verify(() => processService.stopAfterUnregister()).called(1);
+    verify(() => processService.requestStopForLogout()).called(1);
   });
 }
 
@@ -200,6 +270,11 @@ class _MockBridgeRepository() extends Mock implements BridgeRepository;
 class _MockAuthSession() extends Mock implements AuthSession;
 
 class _MockDesktopInstanceService() extends Mock implements DesktopInstanceService;
+
+BridgeProcessStopRequest _unregisterStopRequest() => BridgeProcessStopRequest(
+  mode: BridgeProcessStopMode.unregister,
+  completion: Future<void>.value(),
+);
 
 const AuthUser _userA = AuthUser(
   id: "account-a",

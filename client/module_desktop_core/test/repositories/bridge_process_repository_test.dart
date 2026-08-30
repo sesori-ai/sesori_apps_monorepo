@@ -83,6 +83,24 @@ void main() {
       expect(processApi.killedTreePids, isEmpty);
     });
 
+    test("an external command delivery failure can upgrade the same wait to shutdown", () async {
+      await _spawn(repository);
+      final Future<BridgeProcessExit> exit = repository.exits.first;
+      controlServer.onSend = () {
+        fixture.exitCode.complete(0);
+      };
+
+      final Future<void> stopping = repository.stopExpectedAfterCommand();
+      repository.requestExpectedShutdown();
+      await stopping;
+
+      final ControlMessage message = ControlMessage.fromJson(jsonDecodeMap(controlServer.sentFrames.single));
+      expect(message, const ControlMessage.shutdown());
+      expect(processApi.gracefulSignalPids, isEmpty);
+      expect(processApi.killedTreePids, isEmpty);
+      expect((await exit).expected, isTrue);
+    });
+
     test("external shutdown command is force-killed after the graceful deadline", () async {
       await _spawn(repository);
       final Future<BridgeProcessExit> exit = repository.exits.first;

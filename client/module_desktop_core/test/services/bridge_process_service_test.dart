@@ -129,12 +129,49 @@ void main() {
       await service.start();
       repository.emitExpectedExitOnStop = true;
 
-      await service.stopAfterUnregister();
+      final BridgeProcessStopRequest stopRequest = service.requestStopForLogout();
+      expect(stopRequest.mode, BridgeProcessStopMode.unregister);
+      await stopRequest.completion;
 
       expect(repository.stopAfterCommandCalls, 1);
       expect(repository.stopCalls, 0);
       expect(controlServer.stopCalls, greaterThanOrEqualTo(1));
       expect(service.state, isA<BridgeProcessStopped>());
+    });
+
+    test("logout joins an ordinary stop already in flight without sending unregister", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.stopGate = Completer<void>();
+
+      final Future<void> ordinaryStop = service.stop();
+      await pumpEventQueue();
+
+      final BridgeProcessStopRequest logoutStop = service.requestStopForLogout();
+      expect(logoutStop.mode, BridgeProcessStopMode.ordinary);
+      expect(logoutStop.shouldSendUnregister, isFalse);
+
+      repository.stopGate!.complete();
+      await ordinaryStop;
+      await logoutStop.completion;
+      expect(repository.stopCalls, 1);
+      expect(repository.stopAfterCommandCalls, 0);
+    });
+
+    test("delivery failure upgrades an unregister stop to the ordinary fallback", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      repository.stopAfterCommandGate = Completer<void>();
+
+      final BridgeProcessStopRequest logoutStop = service.requestStopForLogout();
+      await pumpEventQueue();
+      final Future<void> fallbackStop = service.fallbackStopAfterUnregisterFailure();
+
+      expect(repository.expectedShutdownRequests, 1);
+      repository.stopAfterCommandGate!.complete();
+      await fallbackStop;
+      await logoutStop.completion;
+      expect(repository.stopAfterCommandCalls, 1);
     });
 
     test("control-channel loss tears down the channel and schedules a bounded retry", () async {
@@ -759,6 +796,9 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   int spawnCalls = 0;
   int stopCalls = 0;
   int stopAfterCommandCalls = 0;
+  int expectedShutdownRequests = 0;
+  Completer<void>? stopGate;
+  Completer<void>? stopAfterCommandGate;
   String? executable;
   List<String>? arguments;
   Object? spawnError;
@@ -800,6 +840,10 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   @override
   Future<void> stopExpected() async {
     stopCalls++;
+    final Completer<void>? gate = stopGate;
+    if (gate != null) {
+      await gate.future;
+    }
     final Object? failure = stopError;
     if (failure != null) {
       throw failure;
@@ -818,6 +862,10 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
       return;
     }
     stopAfterCommandCalls++;
+    final Completer<void>? gate = stopAfterCommandGate;
+    if (gate != null) {
+      await gate.future;
+    }
     final Object? failure = stopError;
     if (failure != null) {
       throw failure;
@@ -828,6 +876,11 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
     }
     _isRunning = false;
     _activePid = null;
+  }
+
+  @override
+  void requestExpectedShutdown() {
+    expectedShutdownRequests++;
   }
 
   void emitExit({required int exitCode, required bool expected}) {

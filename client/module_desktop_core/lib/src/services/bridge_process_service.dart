@@ -22,6 +22,25 @@ typedef BridgeProcessWarningReporter = void Function({
   required StackTrace stackTrace,
 });
 
+enum BridgeProcessStopMode() {
+  ordinary,
+  unregister,
+}
+
+/// The stop operation selected by the logout orchestrator.
+///
+/// A pre-existing ordinary stop owns its shutdown request, so logout must not
+/// send `unregister_and_exit` after joining it. A newly claimed unregister stop
+/// reserves the no-competing-shutdown path until its command is delivered (or
+/// explicitly falls back).
+@immutable
+class const BridgeProcessStopRequest({
+  required final BridgeProcessStopMode mode,
+  required final Future<void> completion,
+}) {
+  bool get shouldSendUnregister => mode == BridgeProcessStopMode.unregister;
+}
+
 /// Layer-3 owner of authenticated helper spawn, restart policy, and teardown.
 ///
 /// It coordinates only lower layers: the process repository owns every raw
@@ -106,6 +125,7 @@ class BridgeProcessService.forTesting({
 
   Future<void>? _startFuture;
   Future<void>? _stopFuture;
+  BridgeProcessStopMode? _stopMode;
   Future<void>? _exitCleanup;
   Timer? _retryTimer;
   int _crashCount = 0;
@@ -136,20 +156,52 @@ class BridgeProcessService.forTesting({
   }
 
   /// Requests Off, cancels any delayed retry, and expected-stops the child.
+  ///
+  /// An unregister-owned stop remains the sole teardown owner when one is
+  /// already in flight; the logout orchestrator explicitly requests the
+  /// ordinary fallback only when command delivery fails.
   Future<void> stop() {
     _ensureNotDisposed();
     _beginManualAction(desiredState: BridgeProcessDesiredState.off);
     return _requestStop(requestShutdown: true);
   }
 
-  /// Requests Off and waits for an already-sent helper command to terminate
-  /// the child. Unlike [stop], this never sends a competing shutdown frame.
-  /// Logout uses it after sending `unregister_and_exit`, so the helper can
-  /// finish its authenticated unregister before its token service is disposed.
-  Future<void> stopAfterUnregister() {
+  /// Claims the helper stop for the coordinated logout sequence.
+  ///
+  /// The returned mode tells the caller whether it owns delivery of
+  /// `unregister_and_exit`. If an ordinary stop already owns the child, logout
+  /// joins that operation and must not send a late unregister command.
+  BridgeProcessStopRequest requestStopForLogout() {
     _ensureNotDisposed();
     _beginManualAction(desiredState: BridgeProcessDesiredState.off);
-    return _requestStop(requestShutdown: false);
+    final Future<void>? existing = _stopFuture;
+    if (existing != null) {
+      return BridgeProcessStopRequest(
+        mode: _stopMode ?? BridgeProcessStopMode.ordinary,
+        completion: existing,
+      );
+    }
+    final Future<void> operation = _requestStop(requestShutdown: false);
+    return BridgeProcessStopRequest(
+      mode: BridgeProcessStopMode.unregister,
+      completion: operation,
+    );
+  }
+
+  /// Switches an unregister-owned stop to the ordinary expected-stop fallback
+  /// after its command could not be delivered.
+  Future<void> fallbackStopAfterUnregisterFailure() {
+    _ensureNotDisposed();
+    _beginManualAction(desiredState: BridgeProcessDesiredState.off);
+    final Future<void>? existing = _stopFuture;
+    if (existing == null) {
+      return _requestStop(requestShutdown: true);
+    }
+    if (_stopMode == BridgeProcessStopMode.unregister) {
+      _stopMode = BridgeProcessStopMode.ordinary;
+      _repository.requestExpectedShutdown();
+    }
+    return existing;
   }
 
   void _beginManualAction({required BridgeProcessDesiredState desiredState}) {
@@ -311,7 +363,8 @@ class BridgeProcessService.forTesting({
     if (existing != null) {
       return existing;
     }
-    final Future<void> operation = _stop(requestShutdown: requestShutdown);
+    _stopMode = requestShutdown ? BridgeProcessStopMode.ordinary : BridgeProcessStopMode.unregister;
+    final Future<void> operation = _stop();
     _stopFuture = operation;
     unawaited(_clearStopWhenComplete(operation: operation));
     return operation;
@@ -326,11 +379,12 @@ class BridgeProcessService.forTesting({
     } finally {
       if (identical(_stopFuture, operation)) {
         _stopFuture = null;
+        _stopMode = null;
       }
     }
   }
 
-  Future<void> _stop({required bool requestShutdown}) async {
+  Future<void> _stop() async {
     final Future<void>? pendingStart = _startFuture;
     if (pendingStart != null) {
       try {
@@ -346,10 +400,10 @@ class BridgeProcessService.forTesting({
       _publish(BridgeProcessStopping(pid: pid));
     }
     try {
-      if (requestShutdown) {
-        await _repository.stopExpected();
-      } else {
+      if (_stopMode == BridgeProcessStopMode.unregister) {
         await _repository.stopExpectedAfterCommand();
+      } else {
+        await _repository.stopExpected();
       }
     } on Object {
       if (_repository.isRunning) {
