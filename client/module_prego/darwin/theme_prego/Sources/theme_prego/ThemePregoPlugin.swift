@@ -167,11 +167,16 @@ private struct ColorComponents {
     init(color: NSColor) {
       super.init(frame: .zero)
 
+      // The Flutter wrapper owns the loading-spinner semantics; hide both the
+      // container and the native indicator from VoiceOver.
       setAccessibilityElement(false)
+      indicator.setAccessibilityElement(false)
       indicator.style = .spinning
       indicator.isIndeterminate = true
       indicator.isDisplayedWhenStopped = true
       indicator.translatesAutoresizingMaskIntoConstraints = false
+      // Content filters only apply to a layer-backed view.
+      indicator.wantsLayer = true
       // NSProgressIndicator has no tint API; a monochrome content filter
       // recolours the spinner to the requested colour.
       if let filter = CIFilter(name: "CIColorMonochrome"), let ciColor = CIColor(color: color) {
@@ -204,6 +209,20 @@ private struct ColorComponents {
         name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
         object: nil
       )
+    }
+
+    override func layout() {
+      super.layout()
+      let minDimension = min(bounds.width, bounds.height)
+      guard minDimension > 0 else { return }
+      // A spinning NSProgressIndicator draws at its control size rather than
+      // its frame; pick the largest size that fits so small consumers (16px
+      // inline rows and buttons) neither clip nor overflow.
+      let fitting: NSControl.ControlSize =
+        minDimension >= 32 ? .regular : minDimension >= 16 ? .small : .mini
+      if indicator.controlSize != fitting {
+        indicator.controlSize = fitting
+      }
     }
 
     override func viewDidMoveToWindow() {

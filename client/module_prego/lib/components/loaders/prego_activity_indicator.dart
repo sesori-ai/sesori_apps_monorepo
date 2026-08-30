@@ -54,7 +54,12 @@ class const PregoActivityIndicator({
       TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => null,
     };
 
-    return nativeView ?? _indicator(value: null);
+    if (nativeView == null) {
+      return _indicator(value: null);
+    }
+    // Native views consume creationParams only at creation, so a colour change
+    // (a theme switch while a spinner is visible) must recreate the view.
+    return KeyedSubtree(key: ValueKey(color.toARGB32()), child: nativeView);
   }
 
   /// Forced hybrid composition, not the default texture-layer mode: a texture
@@ -62,32 +67,35 @@ class const PregoActivityIndicator({
   /// the whole raster pipeline hot, while a real Android view animates on
   /// RenderThread and lets an otherwise-static Flutter scene schedule nothing.
   Widget _androidIndicator() {
-    // PlatformViewLink calls onCreatePlatformView before surfaceFactory, so the
-    // typed controller can be captured instead of downcasting the surface
-    // callback's PlatformViewController parameter.
-    late final ExpensiveAndroidViewController viewController;
     return PlatformViewLink(
       viewType: _nativeViewType,
+      // The surface must derive the controller from its parameter: the link's
+      // state calls surfaceFactory on every rebuild with the one controller
+      // onCreatePlatformView returned, so a captured local would be a fresh
+      // uninitialized closure variable after any rebuild.
       surfaceFactory: (context, controller) {
-        return AndroidViewSurface(
-          controller: viewController,
-          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-          hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+        if (controller case final AndroidViewController androidViewController) {
+          return AndroidViewSurface(
+            controller: androidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+          );
+        }
+        throw StateError(
+          "Android platform view controller of unexpected type: ${controller.runtimeType.toString()}",
         );
       },
       onCreatePlatformView: (params) {
-        viewController = PlatformViewsService.initExpensiveAndroidView(
+        return PlatformViewsService.initExpensiveAndroidView(
           id: params.id,
           viewType: params.viewType,
           layoutDirection: TextDirection.ltr,
           creationParams: color.toARGB32(),
           creationParamsCodec: const StandardMessageCodec(),
           onFocus: () => params.onFocusChanged(true),
-        );
-        viewController
+        )
           ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
           ..create();
-        return viewController;
       },
     );
   }
