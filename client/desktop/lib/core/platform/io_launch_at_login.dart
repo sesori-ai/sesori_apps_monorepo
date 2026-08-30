@@ -4,6 +4,7 @@ import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:win32_registry/win32_registry.dart";
 
 import "desktop_launch_arguments.dart";
 
@@ -12,6 +13,9 @@ typedef LaunchAtLoginProcessRunner = Future<ProcessResult> Function({
   required String executable,
   required List<String> arguments,
 });
+
+@visibleForTesting
+typedef LaunchAtLoginWindowsValueReader = String? Function();
 
 /// Per-user login registration for the three desktop platforms.
 ///
@@ -27,6 +31,7 @@ class IoLaunchAtLogin.forTesting({
   required final String _homeDirectory,
   required final String? _xdgConfigHome,
   required final String _executablePath,
+  required final LaunchAtLoginWindowsValueReader _windowsValueReader,
   required final LaunchAtLoginProcessRunner _runProcess,
 }) implements LaunchAtLogin {
   new()
@@ -37,6 +42,7 @@ class IoLaunchAtLogin.forTesting({
         homeDirectory: _resolveUserHomeDirectory(),
         xdgConfigHome: Platform.environment["XDG_CONFIG_HOME"]?.trim(),
         executablePath: Platform.resolvedExecutable,
+        windowsValueReader: _readWindowsRegistryValue,
         runProcess: ({required String executable, required List<String> arguments}) =>
             Process.run(executable, arguments),
       );
@@ -47,6 +53,7 @@ class IoLaunchAtLogin.forTesting({
   static const String _appName = "Sesori";
   static const String _registrationId = "com.sesori.desktop";
   static const String _windowsRunKey = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+  static const String _windowsRunSubKey = r"Software\Microsoft\Windows\CurrentVersion\Run";
 
   File get _macOsRegistration => File(path.join(_homeDirectory, "Library", "LaunchAgents", "$_registrationId.plist"));
 
@@ -160,38 +167,9 @@ class IoLaunchAtLogin.forTesting({
     }
   }
 
-  Future<ProcessResult> _queryWindows() =>
-      _runProcess(executable: "reg.exe", arguments: <String>["QUERY", _windowsRunKey, "/v", _appName]);
+  Future<bool> _isWindowsEnabled() async => _windowsValueReader() == _windowsCommand;
 
-  Future<bool> _isWindowsEnabled() async {
-    final ProcessResult result = await _queryWindows();
-    if (result.exitCode != 0) {
-      if (_isMissingWindowsValue(result: result)) {
-        return false;
-      }
-      _requireSuccess(
-        executable: "reg.exe",
-        arguments: <String>["QUERY", _windowsRunKey, "/v", _appName],
-        result: result,
-      );
-    }
-    return result.stdout.toString().contains(_windowsCommand);
-  }
-
-  Future<bool> _windowsValueExists() async {
-    final ProcessResult result = await _queryWindows();
-    if (result.exitCode != 0) {
-      if (_isMissingWindowsValue(result: result)) {
-        return false;
-      }
-      _requireSuccess(
-        executable: "reg.exe",
-        arguments: <String>["QUERY", _windowsRunKey, "/v", _appName],
-        result: result,
-      );
-    }
-    return true;
-  }
+  Future<bool> _windowsValueExists() async => _windowsValueReader() != null;
 
   Future<void> _enableWindows() async {
     if (await _isWindowsEnabled()) {
@@ -221,15 +199,6 @@ class IoLaunchAtLogin.forTesting({
     _requireSuccess(executable: "reg.exe", arguments: arguments, result: result);
   }
 
-  static bool _isMissingWindowsValue({required ProcessResult result}) {
-    if (result.exitCode != 1) {
-      return false;
-    }
-    final String output = "${result.stdout}\n${result.stderr}".toLowerCase();
-    return output.contains("unable to find the specified registry") ||
-        output.contains("cannot find the file specified");
-  }
-
   void _requireSuccess({
     required String executable,
     required List<String> arguments,
@@ -247,6 +216,10 @@ class IoLaunchAtLogin.forTesting({
       result.exitCode,
     );
   }
+
+  // Use the native API so missing values are identified by stable status codes,
+  // rather than localized reg.exe diagnostics.
+  static String? _readWindowsRegistryValue() => CURRENT_USER.getString(_appName, path: _windowsRunSubKey);
 
   static String _resolveUserHomeDirectory() {
     final List<String> keys = Platform.isWindows
@@ -269,5 +242,5 @@ class IoLaunchAtLogin.forTesting({
       .replaceAll("'", "&apos;");
 
   static String _desktopEntryQuote(String value) =>
-      '"${value.replaceAll(r"\", r"\\").replaceAll('"', r'\"').replaceAll(r"$", r"\$").replaceAll("`", r"\`")}"';
+      '"${value.replaceAll(r"\", r"\\").replaceAll('"', r'\"').replaceAll(r"$", r"\$").replaceAll("`", r"\`").replaceAll("%", "%%")}"';
 }

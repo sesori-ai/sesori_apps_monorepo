@@ -13,7 +13,9 @@ Date: 2026-08-30.
   enable operations are idempotent and disable removes stale registrations.
   macOS disable removes the plist without booting out the currently running
   app, so disabling autostart cannot terminate the app before coordinated
-  bridge shutdown completes.
+  bridge shutdown completes. Windows reads the owned value through the native
+  registry API so missing-value handling is independent of localized
+  `reg.exe` diagnostics, and Linux escapes desktop-entry percent field codes.
   The adapter owns these small OS registrations directly because the available
   `launch_at_startup` macOS backend does not forward launch arguments and would
   add an extra Swift package integration for this dev-build step.
@@ -45,9 +47,10 @@ fallback ownership, and DI boundaries.
 - `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full pure
   Dart suite passed (157 tests).
 - Adapter tests cover macOS plist content/hidden argument and safe removal,
-  Linux XDG content/idempotence and `XDG_CONFIG_HOME`, stale registrations,
-  and Windows registry command/error behavior; launch-argument parsing and
-  hidden-window fallback are covered separately.
-- Clean macOS application build passed.
+  Linux XDG content/idempotence, `XDG_CONFIG_HOME`, and percent field-code
+  escaping, stale registrations, and Windows registry value/error behavior;
+  launch-argument parsing and hidden-window fallback are covered separately.
+- The full desktop Flutter suite passed (48 tests), and a clean macOS
+  application build passed, including explicit LaunchAgent argument forwarding.
 - Manual reboot/login Gate B coverage remains pending; the user-run gate will
   verify hidden tray startup, disable persistence, and no-tray visible fallback.

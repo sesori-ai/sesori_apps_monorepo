@@ -24,6 +24,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori & Tools.app/Contents/MacOS/Sesori",
+        windowsValueReader: _unusedWindowsValueReader,
         runProcess: _unusedProcessRunner,
       );
 
@@ -51,6 +52,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori",
+        windowsValueReader: _unusedWindowsValueReader,
         runProcess: _unusedProcessRunner,
       );
 
@@ -68,6 +70,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori Desktop",
+        windowsValueReader: _unusedWindowsValueReader,
         runProcess: _unusedProcessRunner,
       );
 
@@ -95,6 +98,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: xdgConfigHome,
         executablePath: "${temporaryDirectory.path}/Sesori",
+        windowsValueReader: _unusedWindowsValueReader,
         runProcess: _unusedProcessRunner,
       );
 
@@ -110,6 +114,27 @@ void main() {
       );
     });
 
+    test("Linux escapes percent field codes in autostart paths", () async {
+      final String executablePath = "${temporaryDirectory.path}/Sesori %f";
+      final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
+        isMacOS: false,
+        isWindows: false,
+        isLinux: true,
+        homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: null,
+        executablePath: executablePath,
+        windowsValueReader: _unusedWindowsValueReader,
+        runProcess: _unusedProcessRunner,
+      );
+
+      await launchAtLogin.enable();
+
+      final File registration = File(
+        "${temporaryDirectory.path}/.config/autostart/com.sesori.desktop.desktop",
+      );
+      expect(await registration.readAsString(), contains('Exec="${temporaryDirectory.path}/Sesori %%f" "--hidden"'));
+    });
+
     test("a stale file is disabled until enable replaces its executable", () async {
       final File registration = File(
         "${temporaryDirectory.path}/.config/autostart/com.sesori.desktop.desktop",
@@ -123,6 +148,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: "${temporaryDirectory.path}/Sesori",
+        windowsValueReader: _unusedWindowsValueReader,
         runProcess: _unusedProcessRunner,
       );
 
@@ -141,6 +167,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: r"C:\Program Files\Sesori\Sesori.exe",
+        windowsValueReader: registry.readValue,
         runProcess: registry.run,
       );
 
@@ -151,7 +178,7 @@ void main() {
     });
 
     test("Windows surfaces registry query failures", () async {
-      final _FakeWindowsRegistry registry = _FakeWindowsRegistry(queryError: true);
+      final _FakeWindowsRegistry registry = _FakeWindowsRegistry();
       final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
         isMacOS: false,
         isWindows: true,
@@ -159,11 +186,12 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: r"C:\Program Files\Sesori\Sesori.exe",
+        windowsValueReader: _throwingWindowsValueReader,
         runProcess: registry.run,
       );
 
-      await expectLater(launchAtLogin.isEnabled(), throwsA(isA<ProcessException>()));
-      await expectLater(launchAtLogin.disable(), throwsA(isA<ProcessException>()));
+      await expectLater(launchAtLogin.isEnabled(), throwsA(isA<StateError>()));
+      await expectLater(launchAtLogin.disable(), throwsA(isA<StateError>()));
       expect(registry.deleteCalls, 0);
     });
 
@@ -176,6 +204,7 @@ void main() {
         homeDirectory: temporaryDirectory.path,
         xdgConfigHome: null,
         executablePath: r"C:\Program Files\Sesori\Sesori.exe",
+        windowsValueReader: registry.readValue,
         runProcess: registry.run,
       );
 
@@ -198,25 +227,20 @@ void main() {
 Future<ProcessResult> _unusedProcessRunner({required String executable, required List<String> arguments}) =>
     throw StateError("The process runner must not be used");
 
-class _FakeWindowsRegistry({final bool queryError = false}) {
+String? _unusedWindowsValueReader() => throw StateError("The Windows registry reader must not be used");
+
+String? _throwingWindowsValueReader() => throw StateError("The Windows registry query failed");
+
+class _FakeWindowsRegistry() {
   String? value;
   int addCalls = 0;
   int deleteCalls = 0;
 
+  String? readValue() => value;
+
   Future<ProcessResult> run({required String executable, required List<String> arguments}) async {
     expect(executable, "reg.exe");
     switch (arguments.first) {
-      case "QUERY":
-        if (queryError) {
-          return ProcessResult(1, 1, "", "ERROR: Access is denied.");
-        }
-        final String? stored = value;
-        return ProcessResult(
-          1,
-          stored == null ? 1 : 0,
-          stored == null ? "" : "REG_SZ    $stored",
-          stored == null ? "ERROR: The system was unable to find the specified registry key or value." : "",
-        );
       case "ADD":
         addCalls++;
         value = arguments[arguments.indexOf("/d") + 1];

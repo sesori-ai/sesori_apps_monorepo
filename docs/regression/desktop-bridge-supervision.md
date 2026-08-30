@@ -94,9 +94,6 @@ at different handshake phases and inspect the status and bounded recent output.
 
 ## Known Limitations
 
-- The current development shell still starts visible; hidden login startup is a
-  later plan slice. Single-instance activation already focuses a hidden owner
-  once hidden startup is introduced.
 - Device-local sign-out stops the helper but does not yet perform persisted
   bridge-registration deletion; coordinated unregister/offline fallback remains
   a later plan slice.
