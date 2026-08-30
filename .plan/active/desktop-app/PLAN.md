@@ -562,7 +562,7 @@ provisioning UI on the control channel, and any multi-bridge machinery.
 - Step 5: delete dead control protocol (`provisionProgress`, `restart`,
   `tokenUpdate`, `ControlProvisionNotifier`, mirror DTOs, bridge receiver
   paths, client dispatcher branches).
-- Step 10: delete `AuthGateCubit`'s post-fence re-clear workaround.
+- Step 10: deleted `AuthGateCubit`'s post-fence re-clear workaround.
 - Step 12: delete `bridge/app/tool/dev_control_host.dart`.
 - Steps 14–19: moved code is deleted at origin in the same PR (no dual copies).
 

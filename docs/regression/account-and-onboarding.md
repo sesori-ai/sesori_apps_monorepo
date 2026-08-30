@@ -14,11 +14,15 @@ participates.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
   cleared on logout; the connection follows logout. Startup reads stored tokens
-  once before deciding whether validation or a fresh login is needed. Standalone
-  bridge logout remains clean and idempotent when tokens are already absent or
-  the saved authentication session has expired. Non-sandboxed macOS desktop
-  builds use the classic default Keychain without requiring a provisioned
-  Data Protection Keychain access group.
+  once before deciding whether validation or a fresh login is needed. Logout
+  fences in-flight login, refresh, and restore results, so none can re-save
+  credentials or emit authenticated after local sign-out. A definitive
+  `/auth/refresh` 4xx rejection clears persisted tokens and user data before
+  emitting unauthenticated, while transport/server failures leave credentials
+  intact. Standalone bridge logout remains clean and idempotent when tokens are
+  already absent or the saved authentication session has expired. Non-sandboxed
+  macOS desktop builds use the classic default Keychain without requiring a
+  provisioned Data Protection Keychain access group.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
@@ -37,9 +41,9 @@ participates.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Signed-in launch restores the local session and reaches Projects with no network work at splash; the macOS desktop adapter routes secure storage through its classic-Keychain client; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
-| L2 Routine | One provider through sign-in and logout on the release-target client platform, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. |
+| L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. |
 | L3 Release | Every sign-in option on the release-target client platform, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. Client end to end plus relay integration; no plugin. |
-| L4 Extended | Background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, withheld push registration, delayed status check, second mobile platform. Client end to end where the app observes it, headless where the bridge owns it. |
+| L4 Extended | Background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
 
 ## Exploration Guidance
@@ -53,8 +57,10 @@ the prompt and a reused one when testing suppression.
 
 - Splash doing network work, or routing a valid session to sign-in.
 - A recoverable interruption surfacing as terminal, or a real failure as silent.
-- Tokens surviving logout, a logged-out app holding a live connection, or macOS
-  OAuth completion failing with a missing Keychain entitlement (`-34018`).
+- Tokens surviving logout, an in-flight login/refresh/restore re-saving tokens or
+  emitting authenticated after logout, a rejected refresh leaving credentials
+  restorable after relaunch, a transport failure clearing a usable session, or
+  macOS OAuth completion failing with a missing Keychain entitlement (`-34018`).
 - The prompt appearing before readiness, after a failed start, on an account that
   already has the app, or driving repeated status requests.
 - Relay availability or key exchange waiting on push registration or the check.
