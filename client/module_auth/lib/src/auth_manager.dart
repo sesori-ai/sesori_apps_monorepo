@@ -425,17 +425,36 @@ class AuthManager(
         (requireOwnership && !_ownsOAuthSession(generation: generation, sessionToken: sessionToken))) {
       return false;
     }
-    await _oAuthStorage.clearPkceVerifier();
+
+    Object? firstCleanupError;
+    StackTrace? firstCleanupStackTrace;
+
+    Future<void> attemptCleanup({required Future<void> Function() action}) async {
+      try {
+        await action();
+      } catch (error, stackTrace) {
+        firstCleanupError ??= error;
+        firstCleanupStackTrace ??= stackTrace;
+      }
+    }
+
+    await attemptCleanup(action: _oAuthStorage.clearPkceVerifier);
     if (!_isCurrentGeneration(generation: generation) ||
         (requireOwnership && !_ownsOAuthSession(generation: generation, sessionToken: sessionToken))) {
       return false;
     }
-    await _oAuthStorage.clearAuthProvider();
+
+    await attemptCleanup(action: _oAuthStorage.clearAuthProvider);
     if (!_isCurrentGeneration(generation: generation) ||
         (requireOwnership && !_ownsOAuthSession(generation: generation, sessionToken: sessionToken))) {
       return false;
     }
-    await _oAuthStorage.clearOAuthSession();
+
+    await attemptCleanup(action: _oAuthStorage.clearOAuthSession);
+    final Object? cleanupError = firstCleanupError;
+    if (cleanupError != null) {
+      Error.throwWithStackTrace(cleanupError, firstCleanupStackTrace ?? StackTrace.current);
+    }
     return true;
   }
 
@@ -789,9 +808,12 @@ class AuthManager(
       return Future<String?>.value(null);
     }
     final Future<String?>? activeRefresh = _activeRefresh;
-    if (activeRefresh != null) {
-      return _activeRefreshGeneration == generation ? activeRefresh : Future<String?>.value(null);
+    if (activeRefresh != null && _activeRefreshGeneration == generation) {
+      return activeRefresh;
     }
+    // A refresh from an older auth generation may be stuck in an HTTP client
+    // indefinitely. Detach it rather than making a new account wait for an
+    // operation whose result is already fenced from persistence.
 
     late final Future<String?> refresh;
     refresh = _doRefreshAndPersist(generation: generation).whenComplete(() {

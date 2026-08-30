@@ -12,7 +12,8 @@ Date: 2026-08-30.
 - Added a private mutation lock around credential/user persistence, OAuth
   cleanup, and auth-state emission. Every awaited write is followed by a
   generation/ownership check; a superseded token result clears any tokens it
-  managed to write before it returns.
+  managed to write before it returns. Refresh singleflight is scoped to the
+  auth generation, so a new account is not blocked by a stale pending request.
 - Fenced both `/auth/me` restore paths, including the no-refresh local restore
   path. A restored user is saved and emitted only while its generation remains
   current.
@@ -21,6 +22,9 @@ Date: 2026-08-30.
   rejection clears persisted tokens and the cached user before emitting
   `unauthenticated`; offline, transport, and non-definitive server failures
   remain non-destructive.
+- Terminal OAuth cleanup attempts PKCE, provider, and persisted-session removal
+  independently, while retaining the generation/ownership fence so an older
+  flow cannot clear a newer flow's state.
 - Removed `AuthGateCubit`'s temporary timeout and unconditional post-fence
   re-clear workaround. It now delegates sign-out directly to
   `DesktopLogoutOrchestrator`; auth-generation ownership remains in
@@ -42,8 +46,9 @@ that delegates coordinated logout.
 ## Verification
 
 - `client/module_auth`: `dart analyze --fatal-infos` clean; full suite passed
-  (106 tests), including refresh-rejection relaunch, transient-4xx handling,
-  and login/restore/refresh race coverage.
+  (108 tests), including refresh-rejection relaunch, transient-4xx handling,
+  generation-scoped refresh, OAuth cleanup failure, and
+  login/restore/refresh race coverage.
 - `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full suite
   passed (155 tests), including direct sign-out delegation while restore is
   pending.

@@ -283,6 +283,85 @@ void main() {
   });
 
   group("refresh fencing", () {
+    test("starts a new refresh when a prior generation refresh is still pending", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "pending-refresh-token");
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Completer<http.Response> staleResponse = Completer<http.Response>();
+      final Completer<http.Response> currentResponse = Completer<http.Response>();
+      var refreshCalls = 0;
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) {
+        refreshCalls += 1;
+        return refreshCalls == 1 ? staleResponse.future : currentResponse.future;
+      });
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "new-login-access-token",
+            "refreshToken": "new-login-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+            "accountStatus": "existing",
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "new-login-access-token",
+          refreshToken: "new-login-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+
+      final Future<String?> staleRefresh = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+      expect(refreshCalls, 1);
+
+      await authManager.logoutCurrentDevice();
+      expect(
+        (await authManager.loginWithEmail(email: "test@example.com", password: "correct-password")).user,
+        user,
+      );
+
+      final Future<String?> currentRefresh = authManager.getFreshAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+      expect(refreshCalls, 2);
+
+      currentResponse.complete(http.Response("{}", 401));
+      expect(await currentRefresh, isNull);
+
+      // The old request can finish much later, but its result belongs to the
+      // superseded generation and must not affect the new account.
+      staleResponse.complete(http.Response("{}", 200));
+      expect(await staleRefresh, isNull);
+
+      verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).called(2);
+      verify(mockTokenStorage.clearTokens).called(2);
+    });
+
     test("clears local credentials before emitting unauthenticated on refresh rejection", () async {
       when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
       when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "revoked-refresh-token");
@@ -1041,6 +1120,41 @@ void main() {
           body: null,
         ),
       ).called(1);
+    });
+
+    test("clears the persisted OAuth session when temporary cleanup fails", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-cleanup-failure",
+            "userCode": "CLEAN",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) async => http.Response(jsonEncode({"status": "denied"}), 200));
+      when(mockOAuthStorage.clearPkceVerifier).thenThrow(StateError("PKCE cleanup failed"));
+      when(mockOAuthStorage.clearAuthProvider).thenThrow(StateError("provider cleanup failed"));
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+
+      verify(mockOAuthStorage.clearPkceVerifier).called(1);
+      verify(mockOAuthStorage.clearAuthProvider).called(1);
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
     test("pollForResult sends the same session token only in status headers", () async {
