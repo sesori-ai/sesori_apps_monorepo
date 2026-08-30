@@ -10,7 +10,9 @@ and keep native close/quit behavior safe.
 
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
   supervision even while signed out. Exactly one process owns the desktop
-  instance lock and activation listener.
+  instance lock and activation listener. The macOS tray uses the transparent
+  monochrome Sesori mark as a template image so the system renders it legibly
+  in both light and dark menu bars.
 - A second launch signals the owner, exits without another tray/helper, and
   restores/focuses the owner's window. A killed owner releases the OS lock;
   stale activation metadata cannot block the next launch.
@@ -18,9 +20,13 @@ and keep native close/quit behavior safe.
   Startup restores last-On through the process service after the dispatcher is
   ready; signed-out restore reaches login-required without spawning a helper.
 - On a proven tray host, native close hides the window immediately, including
-  during bridge lifecycle work, and Open restores and focuses it. Without a
+  during bridge lifecycle work, removes the macOS app from the Dock while it is
+  hidden, and Open restores/focuses it and returns it to the Dock. Without a
   usable tray host, close defers safe Quit until active lifecycle work settles
   instead of dropping the request or leaving an invisible process.
+- Primary and secondary (right/trackpad) clicks on the tray icon open the same
+  typed context menu. The macOS Dock icon is the shared Sesori Icon Composer
+  asset used by the main client, not the Flutter starter icon.
 - Quit expected-stops the supervised helper before disposing native surfaces or
   terminating the desktop process. A failed stop leaves the app alive.
 - Window and tray On/Off actions share one serialized owner. Intent is durable
@@ -64,7 +70,9 @@ at different handshake phases and inspect the status and bounded recent output.
 - Desired Off restores On, last-On never restores, startup bypasses auth gating,
   or bridge restore begins before the control dispatcher owns its event stream.
 - Close hides the only surface when no tray host exists, ignores a close during
-  lifecycle work, Open shows without focusing, or native close bypasses teardown.
+  lifecycle work, Open shows without focusing, native close bypasses teardown,
+  or the macOS tray icon has an opaque background/wrong light-dark treatment,
+  the Dock still shows a hidden window, or secondary tray clicks do nothing.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
   or an On command can race between logout's helper stop and token clearing.
 - A failed On/Off action presents or executes the opposite operation instead of
@@ -84,6 +92,10 @@ at different handshake phases and inspect the status and bounded recent output.
   a later plan slice.
 - Real Linux StatusNotifier and Windows tray/window appearance require host
   smoke coverage; automated tests prove translation and fallback behavior.
+- Non-provisioned/ad-hoc macOS development builds may show one Keychain
+  authorization prompt per existing credential item; this is macOS item ACL
+  behavior and is separate from the entitlement workaround. Stable signing for
+  distributed builds belongs to the later desktop-distribution plan.
 
 ## Sources
 
