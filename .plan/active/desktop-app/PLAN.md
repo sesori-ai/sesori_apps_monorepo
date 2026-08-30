@@ -356,7 +356,7 @@ refresh / logout regression is this step's test focus. Ordered **before** the
 logout orchestrator so step 11 can call `logoutCurrentDevice()` directly
 without re-creating the cubit's fence.
 
-**Step 11 — ⚙️ Logout coordination + offline unregister fallback.** Add
+**Step 11 — 🚧 Logout coordination + offline unregister fallback.** Add
 `deleteBridge(id)` to `module_core` `BridgeApi`/`BridgeRepository`
 (`DELETE /auth/bridges/:bridgeId`; 404 = success) — mobile-shared, mobile
 stays green. **Establish GUI-side `bridgeId` persistence (C8):** a Layer-1

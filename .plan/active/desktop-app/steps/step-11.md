@@ -1,4 +1,4 @@
-# Step 11 — Logout coordination + offline unregister fallback
+# Step 11 — 🚧 Logout coordination + offline unregister fallback
 
 Date: 2026-08-30.
 

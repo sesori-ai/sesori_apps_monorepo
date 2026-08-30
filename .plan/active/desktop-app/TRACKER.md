@@ -18,7 +18,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 8 | ⚙️ Single instance + last-state restore | done |
 | 9 | ⚙️ Autostart + hidden boot | done |
 | 10 | 🚧 `module_auth` logout/rejection hardening (R1) | done |
-| 11 | ⚙️ Logout coordination + offline unregister fallback | in-progress |
+| 11 | 🚧 Logout coordination + offline unregister fallback | in-progress |
 | 12 | ⚙️ Supervised E2E suite + dev-harness retirement | pending |
 | — | MT gate B: daily driver (user-run) | pending |
 | 13 | ⚙️ Desktop relay-client enablement | pending |
