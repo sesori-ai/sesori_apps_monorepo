@@ -12,9 +12,19 @@ import "../support/bridge_id_storage.dart";
 
 class _MockAuthTokenProvider() extends Mock implements AuthTokenProvider;
 
+class _MockAuthSession() extends Mock implements AuthSession;
+
+const AuthUser _user = AuthUser(
+  id: "account-a",
+  provider: AuthProvider.github,
+  providerUserId: "github-a",
+  providerUsername: "account-a",
+);
+
 void main() {
   late ControlChannelServer server;
   late _MockAuthTokenProvider tokenProvider;
+  late _MockAuthSession authSession;
   late MemoryBridgeIdStorage bridgeIdStorage;
   late BridgeStatusTracker statusTracker;
   late BridgePromptTracker promptTracker;
@@ -24,12 +34,15 @@ void main() {
     server = ControlChannelServer();
     await server.start();
     tokenProvider = _MockAuthTokenProvider();
+    authSession = _MockAuthSession();
+    when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _user));
     bridgeIdStorage = MemoryBridgeIdStorage();
     statusTracker = BridgeStatusTracker(bridgeIdStorage: bridgeIdStorage);
     promptTracker = BridgePromptTracker();
     dispatcher = ControlMessageDispatcher(
       server: server,
       tokenProvider: tokenProvider,
+      authSession: authSession,
       statusTracker: statusTracker,
       promptTracker: promptTracker,
     );
@@ -128,7 +141,20 @@ void main() {
     await pumpEventQueue();
 
     expect(statusTracker.status.bridgeId, "bridge-9");
-    expect(bridgeIdStorage.bridgeId, "bridge-9");
+    expect(bridgeIdStorage.registration?.bridgeId, "bridge-9");
+    expect(bridgeIdStorage.registration?.accountId, "account-a");
+    expect(statusTracker.registeredBridge?.accountId, "account-a");
+  });
+
+  test("does not persist a registration when no account is authenticated", () async {
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
+    final WebSocket helper = await connectHelper();
+
+    sendFromHelper(helper, const ControlMessage.registered(bridgeId: "unowned-bridge"));
+    await pumpEventQueue(times: 2);
+
+    expect(statusTracker.status.bridgeId, isNull);
+    expect(bridgeIdStorage.registration, isNull);
   });
 
   test("prompt requests land in the prompt tracker", () async {

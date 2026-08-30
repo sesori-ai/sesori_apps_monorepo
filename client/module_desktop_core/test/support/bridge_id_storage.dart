@@ -5,25 +5,36 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 /// In-memory bridge-id storage for pure-Dart tracker/service tests.
 class MemoryBridgeIdStorage extends BridgeIdStorage {
   // ignore: use_primary_constructors, unnecessary_type_name_in_constructor, the test double needs a fixed super argument
-  MemoryBridgeIdStorage({String? initialBridgeId})
-    : bridgeId = initialBridgeId,
+  MemoryBridgeIdStorage({BridgeRegistrationRecord? initialRegistration})
+    : registration = initialRegistration,
       super(
         applicationSupportDirectory: _UnusedApplicationSupportDirectory(),
       );
 
-  String? bridgeId;
+  BridgeRegistrationRecord? registration;
+
+  String? get bridgeId => registration?.bridgeId;
+
+  set bridgeId(String? value) {
+    registration = value == null
+        ? null
+        : BridgeRegistrationRecord(
+            bridgeId: value,
+            accountId: "account-a",
+          );
+  }
 
   @override
-  Future<String?> read() async => bridgeId;
+  Future<BridgeRegistrationRecord?> read() async => registration;
 
   @override
-  Future<void> write({required String bridgeId}) async {
-    this.bridgeId = bridgeId;
+  Future<void> write({required BridgeRegistrationRecord registration}) async {
+    this.registration = registration;
   }
 
   @override
   Future<void> clear() async {
-    bridgeId = null;
+    registration = null;
   }
 }
 

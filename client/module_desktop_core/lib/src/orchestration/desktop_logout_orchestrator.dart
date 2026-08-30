@@ -3,6 +3,7 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../api/bridge_registration_record.dart";
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/control_channel_server.dart";
 import "../services/bridge_process_service.dart";
@@ -23,8 +24,8 @@ enum DesktopLogoutOutcome() {
 ///
 /// The supervised helper must unregister/stop while the GUI still has an
 /// authenticated session. The GUI then retries deletion using its persisted
-/// bridge id before clearing local credentials; callers remain unaware of the
-/// sequence.
+/// account-bound bridge registration before clearing local credentials; callers
+/// remain unaware of the sequence.
 @lazySingleton
 class DesktopLogoutOrchestrator({
   required final BridgeProcessService processService,
@@ -75,6 +76,20 @@ class DesktopLogoutOrchestrator({
 
     bool bridgeStopped = false;
     try {
+      // Mark the child as expected and begin waiting before sending the
+      // unregister command. The process-service path deliberately sends no
+      // competing shutdown frame, so the helper's token service stays alive
+      // until its authenticated unregister attempt has finished.
+      Future<void>? bridgeStop;
+      AsyncError? bridgeStopError;
+      try {
+        bridgeStop = _processService.stopAfterUnregister();
+      } on Object catch (error, stackTrace) {
+        // Still attempt the helper command when the local stop operation could
+        // not be started; the GUI deletion below remains the fallback.
+        bridgeStopError = AsyncError(error, stackTrace);
+      }
+
       // The helper's own unregister path is deliberately unacknowledged and
       // best-effort. A missing socket is expected when the helper is already
       // dead; the GUI deletion below is the durable fallback in either case.
@@ -86,7 +101,14 @@ class DesktopLogoutOrchestrator({
         logw("Failed to send the supervised bridge unregister command", error, stackTrace);
       }
 
-      await _processService.stop();
+      if (bridgeStopError case final AsyncError failure) {
+        Error.throwWithStackTrace(failure.error, failure.stackTrace);
+      }
+      if (bridgeStop case final Future<void> operation) {
+        await operation;
+      } else {
+        throw StateError("Desktop bridge stop operation was not created");
+      }
       bridgeStopped = true;
     } on Object catch (error, stackTrace) {
       logw("Desktop logout stopped because the supervised bridge could not stop", error, stackTrace);
@@ -113,14 +135,23 @@ class DesktopLogoutOrchestrator({
   }
 
   Future<void> _deleteRegisteredBridge() async {
-    final String? bridgeId = _statusTracker.status.bridgeId;
-    if (bridgeId == null) {
+    final BridgeRegistrationRecord? registration = _statusTracker.registeredBridge;
+    if (registration == null) {
+      return;
+    }
+
+    final AuthState authState = _authSession.currentState;
+    if (authState is! AuthAuthenticated || authState.user.id != registration.accountId) {
+      // The record may belong to an earlier account that logged out while
+      // offline. Never submit its id with the current account's bearer token,
+      // and retain it so the owning account can retry later.
+      logd("Skipping desktop bridge deletion because its owner is not signed in");
       return;
     }
 
     final ApiResponse<void> response;
     try {
-      response = await _bridgeRepository.deleteBridge(bridgeId: bridgeId).timeout(_bridgeDeletionTimeout);
+      response = await _bridgeRepository.deleteBridge(bridgeId: registration.bridgeId).timeout(_bridgeDeletionTimeout);
     } on Object catch (error, stackTrace) {
       logw("Failed to unregister the desktop bridge; continuing local logout", error, stackTrace);
       return;
@@ -129,7 +160,7 @@ class DesktopLogoutOrchestrator({
     switch (response) {
       case SuccessResponse():
         try {
-          await _statusTracker.clearBridgeId(bridgeId: bridgeId);
+          await _statusTracker.clearBridgeId(registration: registration);
         } on Object catch (error, stackTrace) {
           // The server-side registration is already gone. Retain the local id
           // for a future retry if its cleanup cannot be persisted now.

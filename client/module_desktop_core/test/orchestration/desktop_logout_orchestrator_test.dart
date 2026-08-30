@@ -23,6 +23,7 @@ void main() {
     controlCommandService = _MockControlCommandService();
     bridgeRepository = _MockBridgeRepository();
     authSession = _MockAuthSession();
+    when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     instanceService = _MockDesktopInstanceService();
     bridgeIdStorage = MemoryBridgeIdStorage();
     statusTracker = BridgeStatusTracker(bridgeIdStorage: bridgeIdStorage);
@@ -50,7 +51,7 @@ void main() {
     final List<String> operations = <String>[];
     when(() => instanceService.cancelPendingBridgeRestore()).thenAnswer((_) => operations.add("cancel"));
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) => operations.add("unregister"));
-    when(() => processService.stop()).thenAnswer((_) async => operations.add("stop"));
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async => operations.add("stop"));
     when(
       () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
     ).thenAnswer((_) async => operations.add("persist"));
@@ -59,15 +60,15 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["cancel", "persist", "unregister", "stop", "logout"]);
+    expect(operations, <String>["cancel", "persist", "stop", "unregister", "logout"]);
   });
 
   test("unregisters through the helper, then confirms deletion before local logout", () async {
     final List<String> operations = <String>[];
-    statusTracker.handleRegistered(bridgeId: "bridge-1");
+    statusTracker.handleRegistered(bridgeId: "bridge-1", accountId: _userA.id);
     await pumpEventQueue();
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) => operations.add("unregister"));
-    when(() => processService.stop()).thenAnswer((_) async => operations.add("stop"));
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async => operations.add("stop"));
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-1")).thenAnswer((_) async {
       operations.add("delete");
       return ApiResponse.success(null);
@@ -77,16 +78,16 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["unregister", "stop", "delete", "logout"]);
+    expect(operations, <String>["stop", "unregister", "delete", "logout"]);
     expect(bridgeIdStorage.bridgeId, isNull);
     expect(statusTracker.status.bridgeId, isNull);
   });
 
   test("attempts GUI deletion even when the helper stop fails", () async {
-    statusTracker.handleRegistered(bridgeId: "bridge-stuck");
+    statusTracker.handleRegistered(bridgeId: "bridge-stuck", accountId: _userA.id);
     await pumpEventQueue();
     when(() => controlCommandService.unregisterAndExit()).thenThrow(const ControlHelperNotConnectedException());
-    when(() => processService.stop()).thenThrow(StateError("helper remained alive"));
+    when(() => processService.stopAfterUnregister()).thenThrow(StateError("helper remained alive"));
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-stuck")).thenAnswer((_) async {
       return ApiResponse.success(null);
     });
@@ -100,10 +101,10 @@ void main() {
   });
 
   test("continues local logout when GUI deletion is offline", () async {
-    statusTracker.handleRegistered(bridgeId: "bridge-offline");
+    statusTracker.handleRegistered(bridgeId: "bridge-offline", accountId: _userA.id);
     await pumpEventQueue();
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
-    when(() => processService.stop()).thenAnswer((_) async {});
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
     when(() => bridgeRepository.deleteBridge(bridgeId: "bridge-offline")).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );
@@ -119,9 +120,26 @@ void main() {
     expect(bridgeIdStorage.bridgeId, "bridge-offline");
   });
 
+  test("does not submit or clear a persisted registration owned by another account", () async {
+    statusTracker.handleRegistered(bridgeId: "bridge-account-a", accountId: _userA.id);
+    await pumpEventQueue();
+    when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userB));
+    when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    verifyNever(() => bridgeRepository.deleteBridge(bridgeId: "bridge-account-a"));
+    verify(() => authSession.logoutCurrentDevice()).called(1);
+    expect(bridgeIdStorage.registration?.bridgeId, "bridge-account-a");
+    expect(bridgeIdStorage.registration?.accountId, _userA.id);
+  });
+
   test("keeps controls locked through token clearing and shares concurrent logout", () async {
     final Completer<void> tokenClear = Completer<void>();
-    when(() => processService.stop()).thenAnswer((_) async {});
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) => tokenClear.future);
 
     final Future<DesktopLogoutOutcome> first = orchestrator.logoutCurrentDevice();
@@ -130,7 +148,7 @@ void main() {
 
     expect(identical(first, second), isTrue);
     expect(logoutTracker.status, DesktopLogoutStatus.inProgress);
-    verify(() => processService.stop()).called(1);
+    verify(() => processService.stopAfterUnregister()).called(1);
 
     tokenClear.complete();
     expect(await first, DesktopLogoutOutcome.completed);
@@ -145,13 +163,13 @@ void main() {
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.desiredStatePersistenceFailed);
-    verifyNever(() => processService.stop());
+    verifyNever(() => processService.stopAfterUnregister());
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
   test("does not clear authentication when the helper cannot stop", () async {
     when(() => controlCommandService.unregisterAndExit()).thenAnswer((_) {});
-    when(() => processService.stop()).thenThrow(StateError("helper remained alive"));
+    when(() => processService.stopAfterUnregister()).thenThrow(StateError("helper remained alive"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
@@ -163,13 +181,13 @@ void main() {
   });
 
   test("reports a local-session failure after a successful helper stop", () async {
-    when(() => processService.stop()).thenAnswer((_) async {});
+    when(() => processService.stopAfterUnregister()).thenAnswer((_) async {});
     when(() => authSession.logoutCurrentDevice()).thenThrow(StateError("secure storage unavailable"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
-    verify(() => processService.stop()).called(1);
+    verify(() => processService.stopAfterUnregister()).called(1);
   });
 }
 
@@ -182,3 +200,17 @@ class _MockBridgeRepository() extends Mock implements BridgeRepository;
 class _MockAuthSession() extends Mock implements AuthSession;
 
 class _MockDesktopInstanceService() extends Mock implements DesktopInstanceService;
+
+const AuthUser _userA = AuthUser(
+  id: "account-a",
+  provider: AuthProvider.github,
+  providerUserId: "github-a",
+  providerUsername: "account-a",
+);
+
+const AuthUser _userB = AuthUser(
+  id: "account-b",
+  provider: AuthProvider.github,
+  providerUserId: "github-b",
+  providerUsername: "account-b",
+);

@@ -363,15 +363,17 @@ stays green. **Establish GUI-side `bridgeId` persistence (C8):** a Layer-1
 desktop-owned `BridgeIdStorage` (step-2 storage pattern) written by
 `BridgeStatusTracker` on the `registered` event down the existing
 dispatcher→tracker path, seeded from disk at startup so a GUI relaunch with a
-dead helper still knows what to delete. **`DesktopLogoutOrchestrator`**
-(extending the step-7 orchestrator) composes `ControlCommandService`
-(`unregister_and_exit` send), `BridgeProcessService` (bounded wait → kill if
-needed), `BridgeRepository.deleteBridge` — attempted **always**, not only for
-a dead helper: the helper's own unregister failure is swallowed by design and
-unacknowledged, so the idempotent persisted-id deletion (404 = success) is
-what actually guarantees no leaked registration — and
-`AuthSession.logoutCurrentDevice()` (safe against late restores per step 10).
-Every network step is best-effort with a bounded timeout; logout always
+dead helper still knows what to delete. Persist the owning account together
+with the id; a later account must never submit or clear an earlier account's
+offline retry handle. **`DesktopLogoutOrchestrator`** (extending the step-7
+orchestrator) composes `ControlCommandService` (`unregister_and_exit` send),
+`BridgeProcessService`'s expected-stop-after-command path (bounded wait → kill
+if needed, without a competing shutdown), `BridgeRepository.deleteBridge` —
+attempted **always**, not only for a dead helper: the helper's own unregister
+failure is swallowed by design and unacknowledged, so the idempotent persisted
+delete (404 = success) is what actually guarantees no leaked registration —
+and `AuthSession.logoutCurrentDevice()` (safe against late restores per step
+10). Every network step is best-effort with a bounded timeout; logout always
 completes offline, then clears local tokens only (never account-wide).
 
 **Step 12 — ⚙️ Supervised E2E + harness retirement.** Automated integration:

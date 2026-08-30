@@ -68,6 +68,36 @@ void main() {
       expect(processApi.killedTreePids, isEmpty);
     });
 
+    test("waits for an external shutdown command without sending another frame", () async {
+      await _spawn(repository);
+      final Future<BridgeProcessExit> exit = repository.exits.first;
+
+      final Future<void> stopping = repository.stopExpectedAfterCommand();
+
+      expect(controlServer.sentFrames, isEmpty);
+      fixture.exitCode.complete(0);
+      await stopping;
+
+      expect(await exit, const BridgeProcessExit(pid: 123, exitCode: 0, expected: true));
+      expect(processApi.gracefulSignalPids, isEmpty);
+      expect(processApi.killedTreePids, isEmpty);
+    });
+
+    test("external shutdown command is force-killed after the graceful deadline", () async {
+      await _spawn(repository);
+      final Future<BridgeProcessExit> exit = repository.exits.first;
+      processApi.onKill = () {
+        fixture.exitCode.complete(-9);
+      };
+
+      await repository.stopExpectedAfterCommand();
+
+      expect(controlServer.sentFrames, isEmpty);
+      expect(processApi.gracefulSignalPids, isEmpty);
+      expect(processApi.killedTreePids, [123]);
+      expect(await exit, const BridgeProcessExit(pid: 123, exitCode: -9, expected: true));
+    });
+
     test("channel loss falls back to POSIX graceful signal", () async {
       await _spawn(repository);
       final Future<BridgeProcessExit> exit = repository.exits.first;

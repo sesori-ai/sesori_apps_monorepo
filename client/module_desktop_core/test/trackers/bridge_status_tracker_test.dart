@@ -38,7 +38,7 @@ void main() {
 
   test("disconnect resets status to the baseline but retains bridgeId", () async {
     tracker.markHelperConnected();
-    tracker.handleRegistered(bridgeId: "bridge-1");
+    tracker.handleRegistered(bridgeId: "bridge-1", accountId: "account-a");
     await pumpEventQueue();
     tracker.applyStatus(
       status: const ControlStatus(
@@ -89,31 +89,62 @@ void main() {
   });
 
   test("a late registered frame is still recorded while offline", () async {
-    tracker.handleRegistered(bridgeId: "bridge-late");
+    tracker.handleRegistered(bridgeId: "bridge-late", accountId: "account-a");
     await pumpEventQueue();
 
     expect(tracker.status.bridgeId, "bridge-late");
     expect(storage.bridgeId, "bridge-late");
   });
 
-  test("initializes its bridge id from persisted storage", () async {
-    storage.bridgeId = "bridge-persisted";
+  test("initializes its bridge id and owner from persisted storage", () async {
+    const BridgeRegistrationRecord registration = BridgeRegistrationRecord(
+      bridgeId: "bridge-persisted",
+      accountId: "account-a",
+    );
+    storage.registration = registration;
     await tracker.initialize();
 
     expect(tracker.status.bridgeId, "bridge-persisted");
+    expect(tracker.registeredBridge, registration);
   });
 
   test("clears only the bridge id it deleted", () async {
-    tracker.handleRegistered(bridgeId: "bridge-current");
+    tracker.handleRegistered(bridgeId: "bridge-current", accountId: "account-a");
     await pumpEventQueue();
 
-    await tracker.clearBridgeId(bridgeId: "bridge-other");
+    await tracker.clearBridgeId(
+      registration: const BridgeRegistrationRecord(
+        bridgeId: "bridge-other",
+        accountId: "account-a",
+      ),
+    );
     expect(storage.bridgeId, "bridge-current");
     expect(tracker.status.bridgeId, "bridge-current");
 
-    await tracker.clearBridgeId(bridgeId: "bridge-current");
+    await tracker.clearBridgeId(
+      registration: const BridgeRegistrationRecord(
+        bridgeId: "bridge-current",
+        accountId: "account-a",
+      ),
+    );
     expect(storage.bridgeId, isNull);
     expect(tracker.status.bridgeId, isNull);
+  });
+
+  test("does not clear a record with a different owning account", () async {
+    tracker.handleRegistered(bridgeId: "bridge-owned", accountId: "account-a");
+    await pumpEventQueue();
+
+    await tracker.clearBridgeId(
+      registration: const BridgeRegistrationRecord(
+        bridgeId: "bridge-owned",
+        accountId: "account-b",
+      ),
+    );
+
+    expect(storage.registration?.bridgeId, "bridge-owned");
+    expect(storage.registration?.accountId, "account-a");
+    expect(tracker.registeredBridge?.accountId, "account-a");
   });
 
   test("writes after dispose are ignored instead of throwing", () async {
@@ -134,7 +165,10 @@ void main() {
       ),
       returnsNormally,
     );
-    expect(() => disposed.handleRegistered(bridgeId: "x"), returnsNormally);
+    expect(
+      () => disposed.handleRegistered(bridgeId: "x", accountId: "account-a"),
+      returnsNormally,
+    );
   });
 
   test("the stream pushes every write to subscribers", () async {

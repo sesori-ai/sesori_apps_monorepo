@@ -125,6 +125,16 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i155.DesktopInstanceStorage>(),
       ),
     );
+    gh.lazySingleton<_i21.ControlMessageDispatcher>(
+      () => _i21.ControlMessageDispatcher(
+        server: gh<_i464.ControlChannelServer>(),
+        tokenProvider: gh<_i948.AuthTokenProvider>(),
+        authSession: gh<_i948.AuthSession>(),
+        statusTracker: gh<_i227.BridgeStatusTracker>(),
+        promptTracker: gh<_i686.BridgePromptTracker>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
@@ -143,15 +153,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i494.DesktopInstanceService(
         repository: gh<_i210.DesktopInstanceRepository>(),
       ),
-    );
-    gh.lazySingleton<_i21.ControlMessageDispatcher>(
-      () => _i21.ControlMessageDispatcher(
-        server: gh<_i464.ControlChannelServer>(),
-        tokenProvider: gh<_i948.AuthTokenProvider>(),
-        statusTracker: gh<_i227.BridgeStatusTracker>(),
-        promptTracker: gh<_i686.BridgePromptTracker>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(

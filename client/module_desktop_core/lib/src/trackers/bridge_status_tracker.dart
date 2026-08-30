@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/bridge_id_storage.dart";
+import "../api/bridge_registration_record.dart";
 import "bridge_control_status.dart";
 
 /// Holds the supervised bridge's status as stream + snapshot.
@@ -20,12 +21,18 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
   final BehaviorSubject<BridgeControlStatus> _status = BehaviorSubject.seeded(BridgeControlStatus.offline);
   Future<void>? _initialization;
   Future<void> _bridgeIdMutationTail = Future<void>.value();
+  BridgeRegistrationRecord? _registeredBridge;
 
   ValueStream<BridgeControlStatus> get statusStream => _status.stream;
 
   BridgeControlStatus get status => _status.value;
 
-  /// Loads the last registration id before helper lifecycle work begins.
+  /// The last bridge registration observed by this desktop, including the
+  /// account that owns the server-side record. It is retained while offline so
+  /// logout can safely decide whether the current account may delete it.
+  BridgeRegistrationRecord? get registeredBridge => _registeredBridge;
+
+  /// Loads the last registration and owner before helper lifecycle work begins.
   /// Repeated callers share the same startup read.
   Future<void> initialize() {
     final Future<void>? existing = _initialization;
@@ -39,9 +46,10 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
 
   Future<void> _loadPersistedBridgeId() async {
     try {
-      final String? bridgeId = await _bridgeIdStorage.read();
-      if (bridgeId != null && !_status.isClosed && status.bridgeId == null) {
-        _status.add(status.copyWith(bridgeId: bridgeId));
+      final BridgeRegistrationRecord? registration = await _bridgeIdStorage.read();
+      if (registration != null && !_status.isClosed && status.bridgeId == null) {
+        _registeredBridge = registration;
+        _status.add(status.copyWith(bridgeId: registration.bridgeId));
       }
     } on Object catch (error, stackTrace) {
       logw("Failed to restore the desktop bridge registration id", error, stackTrace);
@@ -91,44 +99,70 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
   ///
   /// Deliberately NOT gated on `helperOnline`: the id is retained across
   /// disconnects anyway, and a late-processed `registered` frame carries
-  /// exactly the value worth keeping. Writes are serialized so a rapid
-  /// re-registration cannot leave an older id on disk after a newer event.
-  void handleRegistered({required String bridgeId}) {
+  /// exactly the value worth keeping. The dispatcher supplies the currently
+  /// authenticated account so an offline retry handle cannot be reused by a
+  /// different account. Writes are serialized so a rapid re-registration
+  /// cannot leave an older record on disk after a newer event.
+  void handleRegistered({required String bridgeId, required String accountId}) {
     if (_status.isClosed) {
       return;
     }
+    final BridgeRegistrationRecord registration = BridgeRegistrationRecord(
+      bridgeId: bridgeId,
+      accountId: accountId,
+    );
+    _registeredBridge = registration;
     _status.add(status.copyWith(bridgeId: bridgeId));
-    unawaited(_queueBridgeIdMutation(action: () => _bridgeIdStorage.write(bridgeId: bridgeId)));
-  }
-
-  /// Removes the persisted id after the server confirms deletion. If a newer
-  /// registration arrived while the delete was in flight, its id is left
-  /// untouched.
-  Future<void> clearBridgeId({required String bridgeId}) {
-    return _queueBridgeIdMutation(
-      action: () async {
-        if (_status.isClosed || status.bridgeId != bridgeId) {
-          return;
-        }
-        await _bridgeIdStorage.clear();
-        if (!_status.isClosed && status.bridgeId == bridgeId) {
-          _status.add(status.copyWith(bridgeId: null));
-        }
-      },
+    unawaited(
+      _queueBridgeIdMutation(
+        action: () => _bridgeIdStorage.write(registration: registration),
+        reportFailure: true,
+      ),
     );
   }
 
-  Future<void> _queueBridgeIdMutation({required Future<void> Function() action}) {
+  /// Removes the persisted record after the server confirms deletion. If a
+  /// newer registration arrived while the delete was in flight, its record is
+  /// left untouched. The caller supplies the full record so an account mismatch
+  /// cannot clear another account's retry handle.
+  Future<void> clearBridgeId({required BridgeRegistrationRecord registration}) {
+    return _queueBridgeIdMutation(
+      action: () async {
+        if (_status.isClosed || _registeredBridge != registration) {
+          return;
+        }
+        await _bridgeIdStorage.clear();
+        if (!_status.isClosed && _registeredBridge == registration) {
+          _registeredBridge = null;
+          _status.add(status.copyWith(bridgeId: null));
+        }
+      },
+      reportFailure: false,
+    );
+  }
+
+  Future<void> _queueBridgeIdMutation({
+    required Future<void> Function() action,
+    required bool reportFailure,
+  }) {
     final Future<void> operation = _bridgeIdMutationTail.then((_) => action());
-    _bridgeIdMutationTail = _observeBridgeIdMutation(operation: operation);
+    _bridgeIdMutationTail = _observeBridgeIdMutation(
+      operation: operation,
+      reportFailure: reportFailure,
+    );
     return operation;
   }
 
-  Future<void> _observeBridgeIdMutation({required Future<void> operation}) async {
+  Future<void> _observeBridgeIdMutation({
+    required Future<void> operation,
+    required bool reportFailure,
+  }) async {
     try {
       await operation;
     } on Object catch (error, stackTrace) {
-      logw("Failed to persist the desktop bridge registration id", error, stackTrace);
+      if (reportFailure) {
+        logw("Failed to persist the desktop bridge registration id", error, stackTrace);
+      }
     }
   }
 

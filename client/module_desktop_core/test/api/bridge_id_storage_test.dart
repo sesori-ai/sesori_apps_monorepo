@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as path;
@@ -25,13 +26,17 @@ void main() {
     expect(await storage.read(), isNull);
   });
 
-  test("persists the bridge id under desktop-owned application data", () async {
-    await storage.write(bridgeId: "br_abc123");
+  test("persists the bridge id and owning account under desktop-owned application data", () async {
+    const BridgeRegistrationRecord registration = BridgeRegistrationRecord(
+      bridgeId: "br_abc123",
+      accountId: "account-a",
+    );
+    await storage.write(registration: registration);
 
-    expect(await storage.read(), "br_abc123");
+    expect(await storage.read(), registration);
     expect(
-      File(path.join(root.path, "desktop-instance", "bridge-id")).readAsStringSync(),
-      "br_abc123",
+      jsonDecode(File(path.join(root.path, "desktop-instance", "bridge-id")).readAsStringSync()),
+      <String, String>{"bridgeId": "br_abc123", "accountId": "account-a"},
     );
   });
 
@@ -45,7 +50,12 @@ void main() {
 
   test("clear is idempotent", () async {
     await storage.clear();
-    await storage.write(bridgeId: "br_to_clear");
+    await storage.write(
+      registration: const BridgeRegistrationRecord(
+        bridgeId: "br_to_clear",
+        accountId: "account-a",
+      ),
+    );
     await storage.clear();
     await storage.clear();
 

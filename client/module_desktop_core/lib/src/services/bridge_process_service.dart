@@ -139,7 +139,17 @@ class BridgeProcessService.forTesting({
   Future<void> stop() {
     _ensureNotDisposed();
     _beginManualAction(desiredState: BridgeProcessDesiredState.off);
-    return _requestStop();
+    return _requestStop(requestShutdown: true);
+  }
+
+  /// Requests Off and waits for an already-sent helper command to terminate
+  /// the child. Unlike [stop], this never sends a competing shutdown frame.
+  /// Logout uses it after sending `unregister_and_exit`, so the helper can
+  /// finish its authenticated unregister before its token service is disposed.
+  Future<void> stopAfterUnregister() {
+    _ensureNotDisposed();
+    _beginManualAction(desiredState: BridgeProcessDesiredState.off);
+    return _requestStop(requestShutdown: false);
   }
 
   void _beginManualAction({required BridgeProcessDesiredState desiredState}) {
@@ -296,12 +306,12 @@ class BridgeProcessService.forTesting({
     }
   }
 
-  Future<void> _requestStop() {
+  Future<void> _requestStop({required bool requestShutdown}) {
     final Future<void>? existing = _stopFuture;
     if (existing != null) {
       return existing;
     }
-    final Future<void> operation = _stop();
+    final Future<void> operation = _stop(requestShutdown: requestShutdown);
     _stopFuture = operation;
     unawaited(_clearStopWhenComplete(operation: operation));
     return operation;
@@ -320,7 +330,7 @@ class BridgeProcessService.forTesting({
     }
   }
 
-  Future<void> _stop() async {
+  Future<void> _stop({required bool requestShutdown}) async {
     final Future<void>? pendingStart = _startFuture;
     if (pendingStart != null) {
       try {
@@ -336,7 +346,11 @@ class BridgeProcessService.forTesting({
       _publish(BridgeProcessStopping(pid: pid));
     }
     try {
-      await _repository.stopExpected();
+      if (requestShutdown) {
+        await _repository.stopExpected();
+      } else {
+        await _repository.stopExpectedAfterCommand();
+      }
     } on Object {
       if (_repository.isRunning) {
         final int? recoveredPid = _repository.activePid ?? pid;

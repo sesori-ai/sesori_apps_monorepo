@@ -12,13 +12,14 @@ import "../trackers/bridge_status_tracker.dart";
 /// Single inbound consumer of helper→GUI control messages.
 ///
 /// Decodes each frame once and writes strictly DOWNWARD: token requests are
-/// answered from the auth seam, status/registered land in the status tracker,
-/// prompts land in the prompt tracker. It never touches cubits or UI — those
-/// read the same trackers.
+/// answered from the auth seam, status/registered land in the status tracker
+/// (with the current account owner), prompts land in the prompt tracker. It
+/// never touches cubits or UI — those read the same trackers.
 @lazySingleton
 class ControlMessageDispatcher({
   required final ControlChannelServer _server,
   required final AuthTokenProvider _tokenProvider,
+  required final AuthSession _authSession,
   required final BridgeStatusTracker _statusTracker,
   required final BridgePromptTracker _promptTracker,
 }) {
@@ -73,7 +74,15 @@ class ControlMessageDispatcher({
       case ControlStatus():
         _statusTracker.applyStatus(status: message);
       case ControlRegistered(:final bridgeId):
-        _statusTracker.handleRegistered(bridgeId: bridgeId);
+        final AuthState authState = _authSession.currentState;
+        if (authState is AuthAuthenticated) {
+          _statusTracker.handleRegistered(
+            bridgeId: bridgeId,
+            accountId: authState.user.id,
+          );
+        } else {
+          logw("Ignoring a bridge registration received without an authenticated account");
+        }
       case ControlPromptRequest():
         _promptTracker.addPrompt(prompt: message);
       case ControlTokenResponse() || ControlPromptResponse() || ControlShutdown() || ControlUnregisterAndExit():

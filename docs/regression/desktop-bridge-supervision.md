@@ -47,20 +47,21 @@ and keep native close/quit behavior safe.
   resolves it through the desktop log repository and delegates it to the system
   default application, including before the helper emits its first line.
 - Device-local sign-out locks every bridge lifecycle surface, asks the live
-  helper to `unregister_and_exit`, expected-stops it, and independently
-  deletes the GUI's persisted bridge registration id (404 is already success).
-  The delete attempt has a bounded timeout and is best-effort offline; a
-  confirmed deletion clears the local id, while an unconfirmed deletion keeps
-  it for a later retry. Local tokens are cleared only after a successful helper
-  stop; if stop fails, authentication remains intact. Other devices are never
-  logged out.
+  helper to `unregister_and_exit`, waits for that command's expected exit
+  without sending a competing shutdown, and independently deletes the GUI's
+  persisted account-bound bridge registration (404 is already success). The
+  delete attempt has a bounded timeout and is best-effort offline; a confirmed
+  deletion clears the local record, while an unconfirmed deletion keeps it for
+  a later retry. A different account never submits or clears the record. Local
+  tokens are cleared only after a successful helper stop; if stop fails,
+  authentication remains intact. Other devices are never logged out.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, and signed-in supervision rendering. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, persisted bridge-id restart, 404-idempotent deletion, and offline deletion failure; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, and offline deletion failure; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -89,10 +90,11 @@ at different handshake phases and inspect the status and bounded recent output.
   the Dock still shows a hidden window, or secondary tray clicks do nothing.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
   or an On command can race between logout's helper stop and token clearing.
-- Sign-out fails to send the helper unregister command, skips the persisted-id
-  fallback, loses the id across a GUI relaunch, blocks indefinitely on an
-  offline auth server, or clears the id/auth state before deletion/teardown is
-  ordered.
+- Sign-out fails to send the helper unregister command, pre-empts it with a
+  competing shutdown, skips the persisted-id fallback, loses the account-bound
+  record across a GUI relaunch, submits one account's id with another
+  account's token, blocks indefinitely on an offline auth server, or clears
+  the record/auth state before deletion/teardown is ordered.
 - A failed On/Off action presents or executes the opposite operation instead of
   retrying the failed action.
 - Window and tray disagree on desired state, status, or active-session count.
