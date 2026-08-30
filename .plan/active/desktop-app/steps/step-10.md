@@ -59,7 +59,7 @@ that delegates coordinated logout.
 - Dart LSP reported zero diagnostics across all changed Dart files.
 - `git diff --check` clean.
 
-## Remaining
+## Completed handoff
 
-Step 10 is implementation-complete and awaits its plan-series PR review and
-merge. MT gate B remains the user-run daily-driver checkpoint after Step 12.
+Step 10 merged in PR #1212 on 2026-08-30. MT gate B remains the user-run
+daily-driver checkpoint after Step 12.

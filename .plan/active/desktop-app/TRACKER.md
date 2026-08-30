@@ -17,8 +17,8 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | — | MT gate A: first real GUI supervision (user-run) | done |
 | 8 | ⚙️ Single instance + last-state restore | done |
 | 9 | ⚙️ Autostart + hidden boot | done |
-| 10 | 🚧 `module_auth` logout/rejection hardening (R1) | in-progress |
-| 11 | ⚙️ Logout coordination + offline unregister fallback | pending |
+| 10 | 🚧 `module_auth` logout/rejection hardening (R1) | done |
+| 11 | ⚙️ Logout coordination + offline unregister fallback | in-progress |
 | 12 | ⚙️ Supervised E2E suite + dev-harness retirement | pending |
 | — | MT gate B: daily driver (user-run) | pending |
 | 13 | ⚙️ Desktop relay-client enablement | pending |
@@ -44,4 +44,6 @@ work is expected. Phone session round-trip and standalone CLI coexistence were
 not separately re-reported in the final check; the user explicitly accepted
 the available gate coverage as sufficient.
 
-The next plan slice is Step 10 (`module_auth` logout/rejection hardening).
+Step 10 merged in PR #1212 on 2026-08-30. Step 11 is now the active
+implementation slice; its successor branch was prepared locally while Step 10
+was under review.
