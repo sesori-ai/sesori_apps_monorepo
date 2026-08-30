@@ -42,9 +42,23 @@ runner; the terminal `status` aggregator includes the new job.
 
 ## Verification
 
-Pending final branch verification and CI.
+- `bridge`: `dart pub get` completed; the native bundled helper was built with
+  `dart build cli -o build/cli` on macOS.
+- `bridge/app`: `dart analyze --fatal-infos` clean; full suite passed (2,777
+  tests), including the required real supervised E2E test.
+- `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full suite
+  passed (177 tests), including the carried stop-mode and token-only-session
+  fixes.
+- `client/desktop`: `flutter analyze --fatal-infos` clean; full suite passed
+  (49 tests).
+- `client/app`: `flutter analyze --fatal-infos` clean; full suite passed (913
+  tests).
+- `actionlint .github/workflows/desktop-ci.yml` and Dart LSP diagnostics for
+  changed source/test files are clean; `git diff --check` is clean.
+- Native three-OS CI verification remains pending until the Step 12 PR runs.
 
 ## Handoff
 
-After the Step 12 PR is merged, the user-run MT gate B daily-driver matrix is
-the next checkpoint. The plan remains active until that gate is recorded.
+The Step 12 implementation is ready for its PR. After it is merged, the
+user-run MT gate B daily-driver matrix is the next checkpoint. The plan remains
+active until that gate is recorded.
