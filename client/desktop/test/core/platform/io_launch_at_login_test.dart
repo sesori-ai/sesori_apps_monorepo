@@ -114,6 +114,26 @@ void main() {
       );
     });
 
+    test("Linux treats an empty XDG_CONFIG_HOME as unset", () async {
+      final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(
+        isMacOS: false,
+        isWindows: false,
+        isLinux: true,
+        homeDirectory: temporaryDirectory.path,
+        xdgConfigHome: "  ",
+        executablePath: "${temporaryDirectory.path}/Sesori",
+        windowsValueReader: _unusedWindowsValueReader,
+        runProcess: _unusedProcessRunner,
+      );
+
+      await launchAtLogin.enable();
+
+      expect(
+        File("${temporaryDirectory.path}/.config/autostart/com.sesori.desktop.desktop").existsSync(),
+        isTrue,
+      );
+    });
+
     test("Linux escapes percent field codes in autostart paths", () async {
       final String executablePath = "${temporaryDirectory.path}/Sesori %f";
       final IoLaunchAtLogin launchAtLogin = IoLaunchAtLogin.forTesting(

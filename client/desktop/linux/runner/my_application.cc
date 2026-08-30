@@ -10,13 +10,28 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  gboolean hidden_launch;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 
+static constexpr char kHiddenLaunchArgument[] = "--hidden";
+
+static gboolean has_hidden_launch_argument(char** arguments) {
+  for (char** argument = arguments; argument != nullptr && *argument != nullptr;
+       ++argument) {
+    if (g_strcmp0(*argument, kHiddenLaunchArgument) == 0) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
-  gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+  if (!self->hidden_launch) {
+    gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+  }
 }
 
 // Implements GApplication::activate.
@@ -67,7 +82,7 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
-  // Show the window when Flutter renders.
+  // Show the window when Flutter renders unless this is a hidden login launch.
   // Requires the view to be realized so we can start rendering.
   g_signal_connect_swapped(view, "first-frame", G_CALLBACK(first_frame_cb),
                            self);
@@ -85,6 +100,7 @@ static gboolean my_application_local_command_line(GApplication* application,
   MyApplication* self = MY_APPLICATION(application);
   // Strip out the first argument as it is the binary name.
   self->dart_entrypoint_arguments = g_strdupv(*arguments + 1);
+  self->hidden_launch = has_hidden_launch_argument(self->dart_entrypoint_arguments);
 
   g_autoptr(GError) error = nullptr;
   if (!g_application_register(application, nullptr, &error)) {
@@ -133,7 +149,9 @@ static void my_application_class_init(MyApplicationClass* klass) {
   G_OBJECT_CLASS(klass)->dispose = my_application_dispose;
 }
 
-static void my_application_init(MyApplication* self) {}
+static void my_application_init(MyApplication* self) {
+  self->hidden_launch = FALSE;
+}
 
 MyApplication* my_application_new() {
   // Set the program name to the application ID, which helps various systems
@@ -142,7 +160,7 @@ MyApplication* my_application_new() {
   // the application to be recognized beyond its binary name.
   g_set_prgname(APPLICATION_ID);
 
-  return MY_APPLICATION(g_object_new(my_application_get_type(),
-                                     "application-id", APPLICATION_ID, "flags",
-                                     G_APPLICATION_NON_UNIQUE, nullptr));
+  return MY_APPLICATION(g_object_new(
+      my_application_get_type(), "application-id", APPLICATION_ID, "flags",
+      G_APPLICATION_NON_UNIQUE, nullptr));
 }

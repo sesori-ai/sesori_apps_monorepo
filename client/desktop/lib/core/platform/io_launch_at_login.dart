@@ -58,8 +58,13 @@ class IoLaunchAtLogin.forTesting({
   File get _macOsRegistration => File(path.join(_homeDirectory, "Library", "LaunchAgents", "$_registrationId.plist"));
 
   File get _linuxRegistration => File(
-    path.join(_xdgConfigHome ?? path.join(_homeDirectory, ".config"), "autostart", "$_registrationId.desktop"),
+    path.join(_linuxConfigHome, "autostart", "$_registrationId.desktop"),
   );
+
+  String get _linuxConfigHome {
+    final String? configuredHome = _xdgConfigHome?.trim();
+    return configuredHome == null || configuredHome.isEmpty ? path.join(_homeDirectory, ".config") : configuredHome;
+  }
 
   @override
   Future<bool> isEnabled() async {

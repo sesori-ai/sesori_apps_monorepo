@@ -28,7 +28,10 @@ Date: 2026-08-30.
   shows it when tray initialization is unavailable or fails. Normal launches
   remain visible.
 - Extended the native window capability with an explicit initial visibility
-  parameter and regenerated desktop Injectable output.
+  parameter and regenerated desktop Injectable output. The macOS, Linux, and
+  Windows native runners now preserve the hidden launch through their first
+  Flutter frame instead of revealing the window before Dart can apply the
+  tray-only policy.
 
 No database or relay/control-wire impact. Login registration is per-user OS
 state and is separate from the desktop-owned bridge desired-state file.
@@ -43,14 +46,15 @@ fallback ownership, and DI boundaries.
 ## Verification
 
 - `client/desktop`: `flutter analyze --fatal-infos` clean; full Flutter suite
-  passed (45 tests).
+  passed (49 tests).
 - `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full pure
   Dart suite passed (157 tests).
 - Adapter tests cover macOS plist content/hidden argument and safe removal,
   Linux XDG content/idempotence, `XDG_CONFIG_HOME`, and percent field-code
   escaping, stale registrations, and Windows registry value/error behavior;
   launch-argument parsing and hidden-window fallback are covered separately.
-- The full desktop Flutter suite passed (48 tests), and a clean macOS
-  application build passed, including explicit LaunchAgent argument forwarding.
+- A clean macOS application build passed, including explicit LaunchAgent
+  argument forwarding. Linux/Windows native-runner compilation is covered by
+  the desktop CI matrix on their respective hosts.
 - Manual reboot/login Gate B coverage remains pending; the user-run gate will
   verify hidden tray startup, disable persistence, and no-tray visible fallback.
