@@ -83,7 +83,7 @@
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		A539CC2F2F76D2F200475A64 /* Sesori.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = Sesori.icon; path = ../../app/ios/Sesori.icon; sourceTree = SOURCE_ROOT; };
+		A539CC2F2F76D2F200475A64 /* Sesori.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; name = Sesori.icon; path = Sesori.icon; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

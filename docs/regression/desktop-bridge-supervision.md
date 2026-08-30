@@ -25,8 +25,9 @@ and keep native close/quit behavior safe.
   usable tray host, close defers safe Quit until active lifecycle work settles
   instead of dropping the request or leaving an invisible process.
 - Primary and secondary (right/trackpad) clicks on the tray icon open the same
-  typed context menu. The macOS Dock icon is the shared Sesori Icon Composer
-  asset used by the main client, not the Flutter starter icon.
+  typed context menu. The macOS Dock icon is a desktop-owned copy of the
+  Sesori Icon Composer asset used by the main client, not the Flutter starter
+  icon; keeping the copy local preserves independent shell builds.
 - Quit expected-stops the supervised helper before disposing native surfaces or
   terminating the desktop process. A failed stop leaves the app alive.
 - Window and tray On/Off actions share one serialized owner. Intent is durable
