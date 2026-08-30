@@ -14,6 +14,13 @@ No database or new wire-contract change; the auth deletion endpoint and
 `unregister_and_exit` protocol already existed. The change adds GUI persistence
 and local logout sequencing.
 
+## Architecture implementation review
+
+The Step 11 architecture implementation review approved the changes with no
+findings. It confirmed the API → repository → service boundaries, focused
+`BridgeIdStorage` ownership, dispatcher-before-restore startup ordering, and
+`DesktopLogoutOrchestrator` lifecycle ownership.
+
 ## Verification
 
 - `client/module_core`: `dart analyze --fatal-infos` clean; full suite passed (1,463 tests), including bridge deletion and 404-idempotence coverage.
