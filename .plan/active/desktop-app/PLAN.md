@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 9/22 in progress (autostart + hidden boot)
+- **Status:** Active — step 12/22 in progress (supervised E2E + harness retirement)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -44,10 +44,11 @@ current `main`:
   `ControlUnregisterService`, `ControlStatusNotifier`, `BridgeIdStorage`,
   `ControlChannelLossListener`, `BridgeSupervisedExitCode { restart(86),
   authRequired(87), bridgeContention(88) }`, self-update disabled when
-  supervised, mode-agnostic single-live precedence, relay takeover close code
-  4007, and the `tool/dev_control_host.dart` harness. Wired once at
-  `bridge/app/lib/src/runtime/bridge_runtime_runner.dart`; 107 control tests
-  pass. End-to-end manually verified in the prior plan's MT-1.
+  supervised, mode-agnostic single-live precedence, and relay takeover close
+  code 4007. Wired once at
+  `bridge/app/lib/src/runtime/bridge_runtime_runner.dart`; the supervised E2E
+  suite exercises the real helper path in CI. End-to-end manually verified in
+  the prior plan's MT-1.
 - **Client desktop packages (partial, dormant).** `client/desktop` (shell:
   platform adapters, login via shared `LoginCubit`, `AuthGate`) and
   `client/module_desktop_core` (`ControlChannelServer`,
@@ -369,14 +370,16 @@ offline retry handle. **`DesktopLogoutOrchestrator`** (extending the step-7
 orchestrator) composes `ControlCommandService` (`unregister_and_exit` send),
 `BridgeProcessService`'s expected-stop-after-command path (bounded wait → kill
 if needed, without a competing shutdown), `BridgeRepository.deleteBridge` —
-attempted **always**, not only for a dead helper: the helper's own unregister
-failure is swallowed by design and unacknowledged, so the idempotent persisted
-delete (404 = success) is what actually guarantees no leaked registration —
+attempted whenever the persisted record's owner is verified as the current
+account (including token-only local restore); an owner mismatch or unverified
+token remains fail-closed. The helper's own unregister failure is swallowed by
+design and unacknowledged, so the idempotent persisted delete (404 = success)
+is what actually guarantees no leaked registration —
 and `AuthSession.logoutCurrentDevice()` (safe against late restores per step
 10). Every network step is best-effort with a bounded timeout; logout always
 completes offline, then clears local tokens only (never account-wide).
 
-**Step 12 — ⚙️ Supervised E2E + harness retirement.** Automated integration:
+**Step 12 — 🚧 Supervised E2E + harness retirement.** Automated integration:
 spawn a real (locally built) helper → handshake → token pull → helper
 authenticates against a fake relay → restart 86 → respawn → logout →
 unregister — deterministic in desktop CI (ephemeral ports, temp dirs,
@@ -387,7 +390,17 @@ production services). The desktop CI job builds the helper itself, and the
 `desktop-ci.yml` path filter gains the bridge control/protocol sources and
 build inputs it exercises — a bridge-only control regression must trigger
 this suite, not skip it. Delete `bridge/app/tool/dev_control_host.dart` (the
-real GUI + this suite supersede it).
+real GUI + this suite supersede it). The suite lives in
+`bridge/app/test/integration/supervised_e2e_test.dart`, uses the bundled helper
+built on each runner, disables non-essential plugins through an isolated config,
+and drives restart through the existing `/global/restart` debug route rather
+than reviving a removed control message. CI runs the native bundle and test on
+macOS, Windows, and Linux; failure diagnostics are uploaded without bearer
+credentials or control secrets.
+
+The first Step 12 commit also carries the post-merge Step 11 lifecycle fixes:
+logout stop-mode ownership, immediate ordinary-shutdown fallback when unregister
+cannot be delivered, and `/auth/me` verification for token-only local sessions.
 
 > **MT gate B — daily driver (user-run, after step 12).** macOS primary
 > (Windows/Linux dev-build smoke as machines allow): autostart reboot →

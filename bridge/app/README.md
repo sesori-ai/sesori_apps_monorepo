@@ -366,6 +366,19 @@ The crypto and protocol types live in `sesori_shared`, shared with the Flutter m
 dart test
 ```
 
+The supervised end-to-end test launches the native bundled helper against
+loopback fake auth, relay, and control services. Build the bundle first, then
+run the test in required mode:
+
+```bash
+dart build cli -o build/cli
+SESORI_E2E_REQUIRED=1 dart test test/integration/supervised_e2e_test.dart
+```
+
+Without a built helper, the integration test is skipped for ordinary local
+package test runs; desktop CI builds it natively on macOS, Windows, and Linux
+and sets required mode.
+
 ## License
 
 This package is source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`).

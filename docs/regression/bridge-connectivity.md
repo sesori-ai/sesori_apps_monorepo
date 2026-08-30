@@ -40,6 +40,10 @@ explicit restart, and the connection states the app presents.
   pulls, reports aggregate status, resolves prompts, unregisters, and accepts clean
   shutdown; loss of its owner exits after the grace period without orphaning backend
   processes. Restart intent is authoritative only through the child exit sentinel.
+  The desktop persists the registered bridge ID with its account owner, restores it
+  before supervision, and performs idempotent GUI-side deletion only after owner
+  verification; token-only local sessions are verified through `/auth/me` when
+  connectivity is available.
 - Aggregate plugin health is degraded iff any eligible plugin is degraded or failed;
   dormant, not-installed, and zero-eligible snapshots are healthy because eligibility
   is independent from runtime residency. The wire emits healthy/degraded while unknown
@@ -85,7 +89,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, aggregate status, unregister, restart sentinels, normal shutdown during token bootstrap, owner loss, and POSIX/Windows orphan cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -119,6 +123,10 @@ the bridge starts, how many clients are present, and whether restart is explicit
   the helper, the control secret appearing in argv, a first token request going
   unread, an unsolicited token write bypassing pull correlation, or a failed spawn
   leaving its server or child alive and blocking retry.
+- A persisted bridge ID being submitted with a different account, token-only local
+  sign-out skipping a verifiable owner, a late unregister following an ordinary
+  shutdown, or an undelivered unregister leaving the helper waiting for an avoidable
+  full graceful deadline.
 - A dormant, not-installed, or zero-eligible plugin snapshot degrading aggregate
   health; or one eligible degraded/failed plugin still reporting healthy.
 - Exit 86 spawning twice, exit 87 retrying before auth changes, exit 88 entering
@@ -135,7 +143,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - The relay does not acknowledge bridge auth, so local readiness is the strongest
   available claim.
 - Takeover backoff is minutes-order and jittered; the full curve belongs at L4 or above.
-- The desktop shell is not shipped; supervised control is covered with a headless harness.
+- The real supervised helper E2E suite uses fake loopback auth/relay/control services;
+  it validates outbound relay authentication and local control sequencing, but does
+  not claim production-service or server-side JWT coverage.
 - Relay capacity and provider outages are out of scope.
 
 ## Sources
@@ -143,4 +153,5 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Bridge orchestrator, relay, key exchange, server ownership, auth, sleep, and control code.
 - Client relay and connection-overlay capabilities and their owning tests.
 - Bridge orchestrator, `client_test.dart`, `key_exchange_test.dart`, sleep, and control suites.
+- `bridge/app/test/integration/supervised_e2e_test.dart` (native helper + fake auth/relay/control).
 - Historical: `.plan/completed/relay-request-concurrency/`
