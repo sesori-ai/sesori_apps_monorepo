@@ -40,6 +40,7 @@ dependencies:
     path: ../module_prego
   tray_manager: ^0.5.3
   url_launcher: ^6.3.2
+  win32_registry: ^3.0.3
   window_manager: ^0.5.2
 
 dev_dependencies:

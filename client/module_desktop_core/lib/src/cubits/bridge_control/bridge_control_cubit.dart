@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/bridge_process_desired_state.dart";
 import "../../foundation/platform/desktop_application_terminator.dart";
+import "../../foundation/platform/launch_at_login.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../foundation/platform/window_host.dart";
 import "../../repositories/bridge_process_log_repository.dart";
@@ -21,8 +22,9 @@ import "bridge_control_state.dart";
 ///
 /// Platform adapters only render [SystemTrayMenu], emit typed events, and
 /// perform native window operations. This cubit derives presentation from
-/// Layer-2/3 snapshots, sequences On/Off, and exits only after expected bridge
-/// teardown succeeds.
+/// Layer-2/3 snapshots, sequences bridge and launch-at-login actions, applies
+/// hidden-startup tray fallback, and exits only after expected bridge teardown
+/// succeeds.
 class BridgeControlCubit._create({
   required final BridgeProcessService _processService,
   required final BridgeStatusTracker _statusTracker,
@@ -33,6 +35,8 @@ class BridgeControlCubit._create({
   required final DesktopInstanceService _instanceService,
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
+  required final LaunchAtLogin _launchAtLogin,
+  required final bool _hiddenLaunch,
 }) extends Cubit<BridgeControlState> {
   new({
     required BridgeProcessService processService,
@@ -44,6 +48,8 @@ class BridgeControlCubit._create({
     required DesktopInstanceService instanceService,
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
+    required LaunchAtLogin launchAtLogin,
+    required bool hiddenLaunch,
   }) : this._create(
          processService: processService,
          statusTracker: statusTracker,
@@ -54,6 +60,8 @@ class BridgeControlCubit._create({
          instanceService: instanceService,
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
+         launchAtLogin: launchAtLogin,
+         hiddenLaunch: hiddenLaunch,
        );
 
   this
@@ -67,6 +75,7 @@ class BridgeControlCubit._create({
             activity: _logoutTracker.status.locksBridgeControls
                 ? BridgeControlActivity.signingOut
                 : BridgeControlActivity.idle,
+            launchAtLoginEnabled: false,
           ),
           activity: _logoutTracker.status.locksBridgeControls
               ? BridgeControlActivity.signingOut
@@ -78,6 +87,7 @@ class BridgeControlCubit._create({
             processState: _processService.state,
             desiredState: _processService.desiredState,
           ),
+          launchAtLoginEnabled: false,
           controlStatus: _statusTracker.status,
         ),
       );
@@ -92,6 +102,7 @@ class BridgeControlCubit._create({
   BridgeControlActivity _activity = BridgeControlActivity.idle;
   DesktopLogoutStatus _logoutStatus = DesktopLogoutStatus.idle;
   bool _quitAfterActivity = false;
+  bool _launchAtLoginEnabled = false;
   bool _initialized = false;
 
   Future<void> initialize() async {
@@ -106,6 +117,8 @@ class BridgeControlCubit._create({
     _logoutSubscription = _logoutTracker.statuses.listen(_onLogoutStatus);
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
 
+    await _loadLaunchAtLoginState();
+
     final SystemTrayAvailability availability;
     try {
       availability = await _systemTray.initialize(menu: state.menu);
@@ -114,6 +127,7 @@ class BridgeControlCubit._create({
       if (!isClosed) {
         _trayAvailability = SystemTrayAvailability.unavailable;
         _rebuildMenu(syncTray: false);
+        await _showWindowForUnavailableHiddenLaunch();
       }
       return;
     }
@@ -126,6 +140,9 @@ class BridgeControlCubit._create({
       logw("System tray host is unavailable; keeping the desktop window visible");
     }
     _rebuildMenu(syncTray: false);
+    if (!availability.isAvailable) {
+      await _showWindowForUnavailableHiddenLaunch();
+    }
     if (availability.isAvailable) {
       await _setMenu(menu: state.menu);
     }
@@ -138,6 +155,10 @@ class BridgeControlCubit._create({
       case SystemTrayCommand.toggleBridge:
         if (!_controlsLocked) {
           unawaited(toggleBridge());
+        }
+      case SystemTrayCommand.toggleLaunchAtLogin:
+        if (!_controlsLocked) {
+          unawaited(toggleLaunchAtLogin());
         }
       case SystemTrayCommand.quit:
         if (!_controlsLocked) {
@@ -164,6 +185,8 @@ class BridgeControlCubit._create({
             _quitAfterActivity = true;
           case BridgeControlActivity.signingOut:
             _quitAfterActivity = true;
+          case BridgeControlActivity.configuringLaunchAtLogin:
+            _quitAfterActivity = true;
           case BridgeControlActivity.quitting:
             return;
         }
@@ -180,6 +203,23 @@ class BridgeControlCubit._create({
   }
 
   bool get _controlsLocked => _activity.locksCommands || _logoutTracker.status.locksBridgeControls;
+
+  Future<void> _loadLaunchAtLoginState() async {
+    try {
+      _launchAtLoginEnabled = await _launchAtLogin.isEnabled();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to read the desktop launch-at-login state", error, stackTrace);
+    }
+    if (!isClosed) {
+      _rebuildMenu(syncTray: false);
+    }
+  }
+
+  Future<void> _showWindowForUnavailableHiddenLaunch() async {
+    if (_hiddenLaunch) {
+      await showWindow();
+    }
+  }
 
   BridgeControlActivity get _presentationActivity =>
       _logoutStatus.locksBridgeControls ? BridgeControlActivity.signingOut : _activity;
@@ -227,6 +267,34 @@ class BridgeControlCubit._create({
       await _windowHost.hide();
     } on Object catch (error, stackTrace) {
       logw("Failed to hide the desktop window", error, stackTrace);
+    }
+  }
+
+  Future<void> toggleLaunchAtLogin() async {
+    if (_controlsLocked) {
+      return;
+    }
+    _activity = BridgeControlActivity.configuringLaunchAtLogin;
+    _rebuildMenu();
+    final bool target = !_launchAtLoginEnabled;
+    try {
+      if (target) {
+        await _launchAtLogin.enable();
+      } else {
+        await _launchAtLogin.disable();
+      }
+      _launchAtLoginEnabled = target;
+    } on Object catch (error, stackTrace) {
+      logw("Launch-at-login command failed", error, stackTrace);
+    } finally {
+      if (!isClosed) {
+        _activity = BridgeControlActivity.idle;
+        _rebuildMenu();
+        if (_quitAfterActivity) {
+          _quitAfterActivity = false;
+          _onWindowEvent(event: WindowHostEvent.closeRequested);
+        }
+      }
     }
   }
 
@@ -297,6 +365,7 @@ class BridgeControlCubit._create({
       desiredState: desiredState,
       status: controlStatus,
       activity: activity,
+      launchAtLoginEnabled: _launchAtLoginEnabled,
     );
     emit(
       BridgeControlState(
@@ -307,6 +376,7 @@ class BridgeControlCubit._create({
         processState: processState,
         desiredState: desiredState,
         toggleTarget: _toggleTarget(processState: processState, desiredState: desiredState),
+        launchAtLoginEnabled: _launchAtLoginEnabled,
         controlStatus: controlStatus,
       ),
     );
@@ -328,6 +398,7 @@ class BridgeControlCubit._create({
     required BridgeProcessDesiredState desiredState,
     required BridgeControlStatus status,
     required BridgeControlActivity activity,
+    required bool launchAtLoginEnabled,
   }) {
     final BridgeProcessDesiredState toggleTarget = _toggleTarget(
       processState: processState,
@@ -349,6 +420,13 @@ class BridgeControlCubit._create({
         SystemTrayCommandItem(
           command: SystemTrayCommand.toggleBridge,
           label: toggleTarget == BridgeProcessDesiredState.off ? "Turn Bridge Off" : "Turn Bridge On",
+          enabled: !activity.locksCommands,
+        ),
+        const SystemTraySeparator(),
+        SystemTrayTextItem(label: "Launch at login: ${launchAtLoginEnabled ? "On" : "Off"}"),
+        SystemTrayCommandItem(
+          command: SystemTrayCommand.toggleLaunchAtLogin,
+          label: launchAtLoginEnabled ? "Disable Launch at Login" : "Enable Launch at Login",
           enabled: !activity.locksCommands,
         ),
         const SystemTraySeparator(),

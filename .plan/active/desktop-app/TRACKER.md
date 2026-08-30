@@ -16,7 +16,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 7 | ⚙️ Window + Prego theme + v1 contents | done |
 | — | MT gate A: first real GUI supervision (user-run) | done |
 | 8 | ⚙️ Single instance + last-state restore | done |
-| 9 | ⚙️ Autostart + hidden boot | pending |
+| 9 | ⚙️ Autostart + hidden boot | in-progress |
 | 10 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
 | 11 | ⚙️ Logout coordination + offline unregister fallback | pending |
 | 12 | ⚙️ Supervised E2E suite + dev-harness retirement | pending |

@@ -37,8 +37,10 @@ void main() {
     getIt.registerLazySingleton<DesktopApplicationTerminator>(_FakeApplicationTerminator.new);
     getIt.unregister<WindowHost>();
     getIt.registerLazySingleton<WindowHost>(_FakeWindowHost.new);
+    getIt.unregister<LaunchAtLogin>();
+    getIt.registerLazySingleton<LaunchAtLogin>(_FakeLaunchAtLogin.new);
 
-    await tester.pumpWidget(const SesoriDesktopApp());
+    await tester.pumpWidget(const SesoriDesktopApp(hiddenLaunch: false));
     await tester.pump();
     await tester.pump();
 
@@ -72,7 +74,7 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => const Stream<WindowHostEvent>.empty();
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize({required bool hidden}) async {}
 
   @override
   Future<void> show() async {}
@@ -87,4 +89,15 @@ class _FakeWindowHost() implements WindowHost {
 class _FakeApplicationTerminator() implements DesktopApplicationTerminator {
   @override
   void terminate({required int exitCode}) {}
+}
+
+class _FakeLaunchAtLogin() implements LaunchAtLogin {
+  @override
+  Future<bool> isEnabled() async => false;
+
+  @override
+  Future<void> enable() async {}
+
+  @override
+  Future<void> disable() async {}
 }

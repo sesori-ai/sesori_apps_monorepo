@@ -9,6 +9,7 @@ enum SystemTrayAvailability({required final bool isAvailable}) {
 enum SystemTrayCommand({required final String key}) {
   openWindow(key: "open_window"),
   toggleBridge(key: "toggle_bridge"),
+  toggleLaunchAtLogin(key: "toggle_launch_at_login"),
   quit(key: "quit");
 
   static SystemTrayCommand? fromKey({required String? key}) {

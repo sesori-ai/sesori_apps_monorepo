@@ -5,6 +5,21 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+namespace {
+
+constexpr char kHiddenLaunchArgument[] = "--hidden";
+
+bool HasHiddenLaunchArgument(const std::vector<std::string>& arguments) {
+  for (const std::string& argument : arguments) {
+    if (argument == kHiddenLaunchArgument) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -22,9 +37,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();
 
+  const bool hidden_launch = HasHiddenLaunchArgument(command_line_arguments);
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
-  FlutterWindow window(project);
+  FlutterWindow window(project, hidden_launch);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
   if (!window.Create(L"Sesori", origin, size)) {

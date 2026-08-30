@@ -8,10 +8,12 @@ enum BridgeControlActivity({required final bool locksCommands}) {
   idle(locksCommands: false),
   toggling(locksCommands: true),
   signingOut(locksCommands: true),
+  configuringLaunchAtLogin(locksCommands: true),
   quitting(locksCommands: true),
 }
 
-/// Current tray and window presentation state for bridge supervision.
+/// Current tray, launch-at-login, and window presentation state for bridge
+/// supervision.
 class const BridgeControlState({
   required final SystemTrayAvailability trayAvailability,
   required final SystemTrayMenu menu,
@@ -20,5 +22,6 @@ class const BridgeControlState({
   required final BridgeProcessState processState,
   required final BridgeProcessDesiredState desiredState,
   required final BridgeProcessDesiredState toggleTarget,
+  required final bool launchAtLoginEnabled,
   required final BridgeControlStatus controlStatus,
 });

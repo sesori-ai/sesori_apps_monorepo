@@ -32,7 +32,7 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
   Stream<WindowHostEvent> get events => _events.stream;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({required bool hidden}) async {
     _ensureNotDisposed();
     if (_initialized) {
       throw StateError("WindowHost is already initialized");
@@ -44,8 +44,11 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
     try {
       await _manager.setPreventClose(true);
       await _manager.waitUntilReadyToShow(_options);
-      await _manager.show();
-      await _manager.focus();
+      await _manager.setSkipTaskbar(hidden);
+      if (!hidden) {
+        await _manager.show();
+        await _manager.focus();
+      }
       _initialized = true;
     } on Object {
       _manager.removeListener(this);
@@ -54,6 +57,11 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
         await _manager.setPreventClose(false);
       } on Object catch (error, stackTrace) {
         logw("Failed to restore native close behavior after window initialization failed", error, stackTrace);
+      }
+      try {
+        await _manager.setSkipTaskbar(false);
+      } on Object catch (error, stackTrace) {
+        logw("Failed to restore Dock/taskbar visibility after window initialization failed", error, stackTrace);
       }
       rethrow;
     }

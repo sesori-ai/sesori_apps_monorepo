@@ -17,6 +17,7 @@ void main() {
     late _FakeDesktopInstanceService instanceService;
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
+    late _FakeLaunchAtLogin launchAtLogin;
     late BridgeControlCubit cubit;
 
     setUp(() {
@@ -29,6 +30,7 @@ void main() {
       instanceService = _FakeDesktopInstanceService();
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
+      launchAtLogin = _FakeLaunchAtLogin();
       cubit = BridgeControlCubit(
         processService: processService,
         statusTracker: statusTracker,
@@ -39,6 +41,8 @@ void main() {
         instanceService: instanceService,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
+        launchAtLogin: launchAtLogin,
+        hiddenLaunch: false,
       );
     });
 
@@ -59,6 +63,11 @@ void main() {
       expect(_textLabels(menu: systemTray.menus.last), containsAll(<String>["Bridge: Off", "Active sessions: 0"]));
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.openWindow).label, "Open Sesori");
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Enable Launch at Login",
+      );
 
       statusTracker.markHelperConnected();
       statusTracker.applyStatus(
@@ -79,6 +88,65 @@ void main() {
         containsAll(<String>["Bridge: Degraded", "Active sessions: 3"]),
       );
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
+    });
+
+    test("toggle launch-at-login updates the menu only after registration succeeds", () async {
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleLaunchAtLogin);
+      await pumpEventQueue(times: 2);
+
+      expect(launchAtLogin.enableCalls, 1);
+      expect(launchAtLogin.disableCalls, 0);
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Disable Launch at Login",
+      );
+
+      systemTray.emit(command: SystemTrayCommand.toggleLaunchAtLogin);
+      await pumpEventQueue(times: 2);
+      expect(launchAtLogin.disableCalls, 1);
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+    });
+
+    test("failed launch-at-login registration remains retryable", () async {
+      launchAtLogin.enableError = StateError("login item unavailable");
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleLaunchAtLogin);
+      await pumpEventQueue(times: 2);
+
+      expect(launchAtLogin.enableCalls, 1);
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Enable Launch at Login",
+      );
+    });
+
+    test("hidden launch shows the window when tray availability is unavailable", () async {
+      await cubit.close();
+      systemTray.availability = SystemTrayAvailability.unavailable;
+      final BridgeControlCubit hiddenCubit = BridgeControlCubit(
+        processService: processService,
+        statusTracker: statusTracker,
+        systemTray: systemTray,
+        windowHost: windowHost,
+        applicationTerminator: applicationTerminator,
+        logRepository: logRepository,
+        instanceService: instanceService,
+        logoutTracker: logoutTracker,
+        urlLauncher: urlLauncher,
+        launchAtLogin: launchAtLogin,
+        hiddenLaunch: true,
+      );
+      addTearDown(hiddenCubit.close);
+
+      await hiddenCubit.initialize();
+
+      expect(windowHost.showCalls, 1);
+      expect(hiddenCubit.state.trayAvailability, SystemTrayAvailability.unavailable);
     });
 
     test("reports window-only fallback when no usable tray host exists", () async {
@@ -454,7 +522,7 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => _events.stream;
 
   @override
-  Future<void> initialize() async {}
+  Future<void> initialize({required bool hidden}) async {}
 
   @override
   Future<void> show() async {
@@ -532,5 +600,36 @@ class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminato
   @override
   void terminate({required int exitCode}) {
     exitCodes.add(exitCode);
+  }
+}
+
+class _FakeLaunchAtLogin() implements LaunchAtLogin {
+  bool enabled = false;
+  int enableCalls = 0;
+  int disableCalls = 0;
+  Object? enableError;
+  Object? disableError;
+
+  @override
+  Future<bool> isEnabled() async => enabled;
+
+  @override
+  Future<void> enable() async {
+    enableCalls++;
+    final Object? error = enableError;
+    if (error != null) {
+      throw error;
+    }
+    enabled = true;
+  }
+
+  @override
+  Future<void> disable() async {
+    disableCalls++;
+    final Object? error = disableError;
+    if (error != null) {
+      throw error;
+    }
+    enabled = false;
   }
 }

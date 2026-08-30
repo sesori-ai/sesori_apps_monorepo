@@ -6,8 +6,10 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 import "app.dart";
 import "core/di/injection.dart";
+import "core/platform/desktop_launch_arguments.dart";
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
+  final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies();
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
@@ -16,7 +18,7 @@ Future<void> main() async {
   }
 
   try {
-    await getIt<WindowHost>().initialize();
+    await getIt<WindowHost>().initialize(hidden: hiddenLaunch);
   } on Object catch (error, stackTrace) {
     try {
       await getIt.reset();
@@ -28,6 +30,6 @@ Future<void> main() async {
   // The dispatcher must own the control event stream before any service can
   // spawn a helper, or its first bootstrap token request could go unread.
   getIt<ControlMessageDispatcher>().start();
-  runApp(const SesoriDesktopApp());
+  runApp(SesoriDesktopApp(hiddenLaunch: hiddenLaunch));
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
 }
