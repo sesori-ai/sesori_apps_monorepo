@@ -30,9 +30,8 @@ findings. It confirmed the API → repository → service boundaries, focused
 - `dart run build_runner build` completed successfully for `module_desktop_core` and regenerated its DI config.
 - `git diff --check` clean.
 
-## Remaining
+## Handoff
 
-Step 11 is implementation-complete on the local successor branch and awaits
-Step 10's PR merge before it can be rebased, pushed, and opened as the next
-plan-series PR. MT gate B remains the user-run daily-driver checkpoint after
-this step's successor work.
+Step 10 merged in PR #1212. The successor branch is rebased onto the merged
+`origin/main` and is ready to publish as the next plan-series PR. MT gate B
+remains the user-run daily-driver checkpoint after Step 12.
