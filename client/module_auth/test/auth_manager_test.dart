@@ -8,6 +8,7 @@ import "package:sesori_auth/src/auth_manager.dart";
 import "package:sesori_auth/src/models/auth_login_result.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
 import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
+import "package:sesori_auth/src/platform/secure_storage.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -63,6 +64,8 @@ void main() {
     when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
       (_) async => (sessionToken: null, expiresAt: null),
     );
+    when(() => mockOAuthStorage.clearPkceVerifier()).thenAnswer((_) async {});
+    when(() => mockOAuthStorage.clearAuthProvider()).thenAnswer((_) async {});
     when(() => mockOAuthStorage.clearOAuthSession()).thenAnswer((_) async {});
     when(() => mockTokenStorage.saveUser(any())).thenAnswer((_) async {});
     when(
@@ -279,7 +282,379 @@ void main() {
     });
   });
 
+  group("refresh fencing", () {
+    test("clears local credentials before emitting unauthenticated on refresh rejection", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "revoked-refresh-token");
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("{}", 401));
+
+      final Completer<void> clearTokens = Completer<void>();
+      when(mockTokenStorage.clearTokens).thenAnswer((_) => clearTokens.future);
+      final List<AuthState> states = <AuthState>[];
+      final StreamSubscription<AuthState> subscription = authManager.authStateStream.listen(states.add);
+
+      final Future<String?> refreshed = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+
+      expect(states.whereType<AuthUnauthenticated>(), isEmpty);
+      verify(mockTokenStorage.clearTokens).called(1);
+      clearTokens.complete();
+
+      expect(await refreshed, isNull);
+      await pumpEventQueue();
+      await subscription.cancel();
+      expect(authManager.currentState, const AuthState.unauthenticated());
+      expect(states.last, const AuthState.unauthenticated());
+    });
+
+    test("a rejected refresh cannot be restored by a new manager", () async {
+      final _MemorySecureStorage storage = _MemorySecureStorage();
+      final TokenStorageService tokenStorage = TokenStorageService(storage);
+      final OAuthStorageService oauthStorage = OAuthStorageService(storage);
+      await tokenStorage.saveTokens(
+        accessToken: "old-access-token",
+        refreshToken: "revoked-refresh-token",
+      );
+      await tokenStorage.saveUser(user);
+
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("{}", 401));
+
+      final AuthManager firstManager = AuthManager(
+        mockHttpClient,
+        tokenStorage,
+        oauthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
+      );
+      expect(await firstManager.getFreshAccessToken(forceRefresh: true), isNull);
+      expect(await storage.read(key: "access_token"), isNull);
+      expect(await storage.read(key: "refresh_token"), isNull);
+      expect(await storage.read(key: "auth_user"), isNull);
+
+      final AuthManager relaunchedManager = AuthManager(
+        MockHttpClient(),
+        TokenStorageService(storage),
+        OAuthStorageService(storage),
+        FakeOAuthDeviceDescriptorProvider(),
+      );
+      expect(await relaunchedManager.hasLocallyValidSession(), isFalse);
+      expect(await relaunchedManager.restoreLocalSession(), isFalse);
+    });
+
+    test("keeps local credentials on a refresh transport failure", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "offline-refresh-token");
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) => Future<http.Response>.error(http.ClientException("offline")));
+
+      expect(await authManager.getFreshAccessToken(), isNull);
+      verifyNever(mockTokenStorage.clearTokens);
+      expect(authManager.currentState, isA<AuthInitial>());
+    });
+
+    test("a stale refresh rejection cannot clear a newer completed login", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "old-refresh-token");
+      final Completer<http.Response> refreshResponse = Completer<http.Response>();
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) => refreshResponse.future);
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "new-login-access-token",
+            "refreshToken": "new-login-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+            "accountStatus": "existing",
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "new-login-access-token",
+          refreshToken: "new-login-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<String?> refresh = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+      final AuthLoginResult login = await authManager.loginWithEmail(
+        email: "test@example.com",
+        password: "correct-password",
+      );
+      expect(login.user, user);
+
+      refreshResponse.complete(http.Response("{}", 401));
+      expect(await refresh, isNull);
+      await pumpEventQueue();
+
+      verifyNever(mockTokenStorage.clearTokens);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+    });
+
+    test("a refresh rejection cannot invalidate a login that is still completing", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "old-refresh-token");
+      final Completer<http.Response> refreshResponse = Completer<http.Response>();
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) => refreshResponse.future);
+      final Completer<http.Response> loginResponse = Completer<http.Response>();
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) => loginResponse.future);
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "new-login-access-token",
+          refreshToken: "new-login-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<String?> refresh = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+      final Future<AuthLoginResult> login = authManager.loginWithEmail(
+        email: "test@example.com",
+        password: "correct-password",
+      );
+
+      refreshResponse.complete(http.Response("{}", 401));
+      expect(await refresh, isNull);
+      verifyNever(mockTokenStorage.clearTokens);
+
+      loginResponse.complete(
+        http.Response(
+          jsonEncode({
+            "accessToken": "new-login-access-token",
+            "refreshToken": "new-login-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+            "accountStatus": "existing",
+          }),
+          200,
+        ),
+      );
+
+      expect((await login).user, user);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+    });
+
+    test("does not retain a refreshed token when logout races its awaited write", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "race-refresh-token");
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "race-access-token",
+            "refreshToken": "race-new-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      final Completer<void> saveTokens = Completer<void>();
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "race-access-token",
+          refreshToken: "race-new-refresh-token",
+        ),
+      ).thenAnswer((_) => saveTokens.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<String?> refreshed = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "race-access-token",
+          refreshToken: "race-new-refresh-token",
+        ),
+      ).called(1);
+
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      saveTokens.complete();
+
+      expect(await refreshed, isNull);
+      await logout;
+      expect(authManager.currentState, const AuthState.unauthenticated());
+      verify(mockTokenStorage.clearTokens).called(2);
+    });
+
+    test("does not write a refresh result that arrives after logout", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => "late-refresh-token");
+      final Completer<http.Response> response = Completer<http.Response>();
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/refresh"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) => response.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<String?> refreshed = authManager.getFreshAccessToken();
+      await pumpEventQueue();
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      await logout;
+      response.complete(
+        http.Response(
+          jsonEncode({
+            "accessToken": "late-access-token",
+            "refreshToken": "late-new-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+
+      expect(await refreshed, isNull);
+      verifyNever(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "late-access-token",
+          refreshToken: "late-new-refresh-token",
+        ),
+      );
+    });
+  });
+
   group("OAuth flow", () {
+    test("does not emit OAuth completion when logout races token persistence", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-race",
+            "userCode": "RACE",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "oauth-race-access-token",
+            "refreshToken": "oauth-race-refresh-token",
+            "accountStatus": "created",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      final Completer<void> saveTokens = Completer<void>();
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "oauth-race-access-token",
+          refreshToken: "oauth-race-refresh-token",
+        ),
+      ).thenAnswer((_) => saveTokens.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      final Future<AuthLoginResult> poll = authManager.pollForResult();
+      await pumpEventQueue();
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "oauth-race-access-token",
+          refreshToken: "oauth-race-refresh-token",
+        ),
+      ).called(1);
+
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      saveTokens.complete();
+
+      await expectLater(poll, throwsA(isA<Exception>()));
+      await logout;
+      expect(authManager.currentState, const AuthState.unauthenticated());
+      verifyNever(() => mockTokenStorage.saveUser(any()));
+    });
+
     test("startOAuthFlow creates header-only session token and sends the device descriptor", () async {
       const authUrl = "https://github.com/login/oauth/authorize?client_id=abc";
       when(
@@ -814,6 +1189,8 @@ void main() {
             expiresAt: any(named: "expiresAt"),
           ),
         ).thenAnswer((_) async {});
+        when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+        when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
         when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
         when(mockOAuthStorage.getOAuthSession).thenAnswer(
           (_) async => (sessionToken: null, expiresAt: null),
@@ -1106,6 +1483,59 @@ void main() {
   });
 
   group("loginWithEmail", () {
+    test("does not authenticate an email result when logout races token persistence", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "email-race-access-token",
+            "refreshToken": "email-race-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": "email",
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+            "accountStatus": "existing",
+          }),
+          200,
+        ),
+      );
+      final Completer<void> saveTokens = Completer<void>();
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "email-race-access-token",
+          refreshToken: "email-race-refresh-token",
+        ),
+      ).thenAnswer((_) => saveTokens.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<AuthLoginResult> login = authManager.loginWithEmail(
+        email: "test@example.com",
+        password: "correct-password",
+      );
+      await pumpEventQueue();
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "email-race-access-token",
+          refreshToken: "email-race-refresh-token",
+        ),
+      ).called(1);
+
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      saveTokens.complete();
+
+      await expectLater(login, throwsA(isA<Exception>()));
+      await logout;
+      verifyNever(() => mockTokenStorage.saveUser(any()));
+      expect(authManager.currentState, const AuthState.unauthenticated());
+    });
+
     test("posts to /auth/email and stores tokens and username on success", () async {
       when(
         () => mockHttpClient.post(
@@ -1174,6 +1604,180 @@ void main() {
   });
 
   group("restoreSession", () {
+    test("does not overwrite a newer login when /auth/me completes later", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer(
+        (_) async => (token: "restore-access-token", validityLeft: const Duration(minutes: 5)),
+      );
+      final Completer<http.Response> restoreResponse = Completer<http.Response>();
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/me"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) => restoreResponse.future);
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "login-access-token",
+            "refreshToken": "login-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+            "accountStatus": "existing",
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "login-access-token",
+          refreshToken: "login-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+
+      final Future<bool> restored = authManager.restoreSession();
+      await pumpEventQueue();
+      final AuthLoginResult login = await authManager.loginWithEmail(
+        email: "test@example.com",
+        password: "correct-password",
+      );
+      expect(login.user, user);
+
+      restoreResponse.complete(
+        http.Response(
+          jsonEncode({
+            "user": {
+              "id": "restored-user",
+              "provider": user.provider.key,
+              "providerUserId": "restored-provider-id",
+              "providerUsername": "restored-user",
+            },
+          }),
+          200,
+        ),
+      );
+
+      expect(await restored, isFalse);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+      verify(() => mockTokenStorage.saveUser(user)).called(1);
+    });
+
+    test("does not emit or save a user when logout supersedes /auth/me", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer(
+        (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 5)),
+      );
+      final Completer<http.Response> response = Completer<http.Response>();
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/me"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) => response.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<bool> restored = authManager.restoreSession();
+      await pumpEventQueue();
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      await logout;
+      response.complete(
+        http.Response(
+          jsonEncode({
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+
+      expect(await restored, isFalse);
+      verifyNever(() => mockTokenStorage.saveUser(any()));
+      expect(authManager.currentState, const AuthState.unauthenticated());
+    });
+
+    test("does not emit a restored user when logout races its user-cache write", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer(
+        (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 5)),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/me"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      final Completer<void> saveUser = Completer<void>();
+      when(() => mockTokenStorage.saveUser(user)).thenAnswer((_) => saveUser.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<bool> restored = authManager.restoreSession();
+      await pumpEventQueue();
+      verify(() => mockTokenStorage.saveUser(user)).called(1);
+
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      saveUser.complete();
+
+      expect(await restored, isFalse);
+      await logout;
+      expect(authManager.currentState, const AuthState.unauthenticated());
+    });
+
+    test("does not restore a local session when logout races the token read", () async {
+      final Completer<bool> hasSession = Completer<bool>();
+      when(() => mockTokenStorage.hasLocallyValidSession()).thenAnswer((_) => hasSession.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<bool> restored = authManager.restoreLocalSession();
+      await pumpEventQueue();
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      hasSession.complete(true);
+
+      expect(await restored, isFalse);
+      await logout;
+      verifyNever(() => mockTokenStorage.getUser());
+      expect(authManager.currentState, const AuthState.unauthenticated());
+    });
+
+    test("does not emit a local user when logout races the final restore read", () async {
+      when(() => mockTokenStorage.hasLocallyValidSession()).thenAnswer((_) async => true);
+      final Completer<AuthUser?> userRead = Completer<AuthUser?>();
+      when(() => mockTokenStorage.getUser()).thenAnswer((_) => userRead.future);
+      when(mockTokenStorage.clearTokens).thenAnswer((_) async {});
+
+      final Future<bool> restored = authManager.restoreLocalSession();
+      await pumpEventQueue();
+      verify(() => mockTokenStorage.getUser()).called(1);
+      final Future<void> logout = authManager.logoutCurrentDevice();
+      userRead.complete(user);
+
+      expect(await restored, isFalse);
+      await logout;
+      expect(authManager.currentState, const AuthState.unauthenticated());
+    });
+
     test("persists the username after restoring from /auth/me", () async {
       when(() => mockTokenStorage.getAccessToken()).thenAnswer(
         (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 5)),
@@ -1281,4 +1885,21 @@ void main() {
       expect(authManager.currentState, isA<AuthInitial>());
     });
   });
+}
+
+class _MemorySecureStorage() implements SecureStorage {
+  final Map<String, String> _values = <String, String>{};
+
+  @override
+  Future<String?> read({required String key}) async => _values[key];
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _values[key] = value;
+  }
+
+  @override
+  Future<void> delete({required String key}) async {
+    _values.remove(key);
+  }
 }

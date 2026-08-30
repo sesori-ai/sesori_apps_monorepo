@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
-import "package:meta/meta.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../orchestration/desktop_logout_orchestrator.dart";
@@ -17,16 +16,13 @@ import "auth_gate_state.dart";
 class AuthGateCubit._create({
   required final AuthSession _authSession,
   required final DesktopLogoutOrchestrator _logoutOrchestrator,
-  @visibleForTesting required final Duration _signOutRestoreFence,
 }) extends Cubit<AuthGateState> {
   new({
     required AuthSession authSession,
     required DesktopLogoutOrchestrator logoutOrchestrator,
-    @visibleForTesting Duration signOutRestoreFence = const Duration(seconds: 5),
   }) : this._create(
          authSession: authSession,
          logoutOrchestrator: logoutOrchestrator,
-         signOutRestoreFence: signOutRestoreFence,
        );
 
   this : super(const AuthGateState.checking()) {
@@ -34,7 +30,6 @@ class AuthGateCubit._create({
   }
 
   StreamSubscription<AuthState>? _subscription;
-  Future<void>? _backgroundRestore;
 
   Future<void> _restoreAndSubscribe() async {
     bool hasLocalSession = false;
@@ -72,12 +67,9 @@ class AuthGateCubit._create({
     }
 
     // Recover the account details in the background; the auth stream upgrades
-    // the state to a full signedIn(user) when it completes. The future is
-    // kept so signOut() can fence on it.
-    final Future<void> restore = _recoverUserInBackground();
-    _backgroundRestore = restore;
-    await restore;
-    _backgroundRestore = null;
+    // the state to a full signedIn(user) when it completes. AuthManager owns
+    // the logout generation that prevents a late result from re-authenticating.
+    await _recoverUserInBackground();
   }
 
   Future<void> _recoverUserInBackground() async {
@@ -99,30 +91,8 @@ class AuthGateCubit._create({
 
   /// Coordinated device-local sign-out. The logout owner stops the supervised
   /// helper before clearing local tokens; step 11 extends that same owner with
-  /// unregister handling.
+  /// unregister handling. AuthManager fences every in-flight auth result.
   Future<void> signOut() async {
-    // Fence on the startup user recovery: its /auth/me completion re-emits
-    // authenticated, which must land BEFORE logout's unauthenticated — never
-    // after, or a signed-out user would be flipped back to signed in.
-    final Future<void>? pending = _backgroundRestore;
-    if (pending != null) {
-      try {
-        await pending.timeout(_signOutRestoreFence);
-      } on TimeoutException {
-        // Pathologically slow restore: proceed with the sign-out rather than
-        // blocking the user — but the hung restore can still re-emit
-        // authenticated when it finally lands, so re-run coordinated logout
-        // after it settles: sign-out always wins eventually.
-        logw("Background session restore still pending at sign-out; retrying logout when it settles");
-        // Deliberately UNCONDITIONAL: the settling restore's own token
-        // refresh can re-persist tokens after the logout, and the auth layer
-        // has no logout generation, so no local check can distinguish them
-        // from a fresh sign-in. A fresh sign-in completing inside this
-        // pathological window is bounced once — visible and recoverable —
-        // which beats a silently undone sign-out.
-        unawaited(pending.whenComplete(_logoutBestEffort));
-      }
-    }
     await _logoutBestEffort();
   }
 

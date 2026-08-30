@@ -19,8 +19,8 @@ Date: 2026-08-28.
 - Added `DesktopLogoutOrchestrator` as the named Layer-4 cross-service owner.
   It marks a Layer-2 logout tracker so all lifecycle surfaces stay locked from
   expected stop through local token clearing, shares concurrent logout calls,
-  and refuses logout when stop fails. `AuthGateCubit` delegates while retaining
-  its temporary in-flight-restore fence until step 10 hardens auth generations.
+  and refuses logout when stop fails. `AuthGateCubit` delegates while
+  `module_auth` owns the generation fence for every in-flight auth result.
 - Added Prego-owned light/dark `ThemeData` assembly and adopted it in desktop.
 - Replaced the signed-in placeholder with account, On/Off, detailed status,
   active sessions, recent crash output, Open Logs, and coordinated sign-out.

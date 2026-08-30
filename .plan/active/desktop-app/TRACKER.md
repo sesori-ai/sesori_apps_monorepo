@@ -16,8 +16,8 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 7 | ⚙️ Window + Prego theme + v1 contents | done |
 | — | MT gate A: first real GUI supervision (user-run) | done |
 | 8 | ⚙️ Single instance + last-state restore | done |
-| 9 | ⚙️ Autostart + hidden boot | in-progress |
-| 10 | 🚧 `module_auth` logout/rejection hardening (R1) | pending |
+| 9 | ⚙️ Autostart + hidden boot | done |
+| 10 | 🚧 `module_auth` logout/rejection hardening (R1) | in-progress |
 | 11 | ⚙️ Logout coordination + offline unregister fallback | pending |
 | 12 | ⚙️ Supervised E2E suite + dev-harness retirement | pending |
 | — | MT gate B: daily driver (user-run) | pending |
@@ -44,4 +44,4 @@ work is expected. Phone session round-trip and standalone CLI coexistence were
 not separately re-reported in the final check; the user explicitly accepted
 the available gate coverage as sufficient.
 
-The next plan slice is Step 9 (autostart + hidden boot).
+The next plan slice is Step 10 (`module_auth` logout/rejection hardening).
