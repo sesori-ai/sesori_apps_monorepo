@@ -12,18 +12,13 @@ import "package:flutter_test/flutter_test.dart";
 /// null reply satisfies every method this suite's platform views send.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   setUp(() {
-    // Only widget-test suites have a test binding (`testWidgets` initializes
-    // it at declaration time, before setUp runs). Plain test() suites must not
-    // get one forced on them: TestWidgetsFlutterBinding installs HttpOverrides
+    // Only widget-test suites have a binding (`testWidgets` initializes it at
+    // declaration time, before setUp runs). Plain test() suites must not get
+    // one forced on them: TestWidgetsFlutterBinding installs HttpOverrides
     // that answer every real HttpClient request with a 400, which breaks
     // suites exercising a local HTTP server.
-    final TestWidgetsFlutterBinding binding;
-    try {
-      binding = TestWidgetsFlutterBinding.instance;
-    } on FlutterError {
-      return;
-    }
-    binding.defaultBinaryMessenger
+    if (BindingBase.debugBindingType() == null) return;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform_views, (call) async => null);
   });
   await testMain();
