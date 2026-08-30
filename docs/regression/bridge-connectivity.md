@@ -30,7 +30,16 @@ explicit restart, and the connection states the app presents.
 - Bridge registration uses a stable machine name. On macOS, transient
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
-  disconnected, and returns to connected when the bridge is back.
+  disconnected, and returns to connected when the bridge is back. The desktop shell
+  roots the same `ConnectionService` beside the supervised control channel, shows
+  its relay-client state separately from helper relay status, and hosts the typed
+  connection banner at the window root.
+- The desktop root constructs `ConnectionOverlayCubit` and `SseToastCubit` outside
+  the auth-gated content. Backend `tui.toast.show` events reach the desktop Prego
+  popup listener rather than being silently consumed; handled shared failures are
+  retained in local logs through a privacy-safe reporter that records error/stack
+  and operation/event context while reducing payload-bearing information to shape
+  metadata.
 - Fresh connections require the typed health body, including explicit filesystem-access
   degradation state; missing or malformed fields fail the connection rather than being
   treated as healthy. Resumed connections retain the last validated health state.
@@ -146,6 +155,11 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - The real supervised helper E2E suite uses fake loopback auth/relay/control services;
   it validates outbound relay authentication and local control sequencing, but does
   not claim production-service or server-side JWT coverage.
+- Until the shared router lands in Step 14, the desktop route source is intentionally
+  route-less: app-wide SSE toasts render, while session-attributed toast events are
+  withheld because no desktop session identity exists yet. The desktop notification-
+  open stack remains unbound until the shell has a real route and notification
+  capability.
 - Relay capacity and provider outages are out of scope.
 
 ## Sources
