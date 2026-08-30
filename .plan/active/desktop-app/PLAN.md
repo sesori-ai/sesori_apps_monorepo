@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 12/22 in progress (supervised E2E + harness retirement)
+- **Status:** Active — step 13/22 in progress (desktop relay-client enablement)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -398,9 +398,12 @@ than reviving a removed control message. CI runs the native bundle and test on
 macOS, Windows, and Linux; failure diagnostics are uploaded without bearer
 credentials or control secrets.
 
-The first Step 12 commit also carries the post-merge Step 11 lifecycle fixes:
-logout stop-mode ownership, immediate ordinary-shutdown fallback when unregister
-cannot be delivered, and `/auth/me` verification for token-only local sessions.
+Step 12 merged in PR #1215 on 2026-08-30. Its native supervised E2E
+verification passed on macOS, Windows, and Linux; the obsolete interactive
+control harness was retired. The PR also carried the post-merge Step 11
+lifecycle fixes: logout stop-mode ownership, immediate ordinary-shutdown
+fallback when unregister cannot be delivered, and `/auth/me` verification for
+token-only local sessions.
 
 > **MT gate B — daily driver (user-run, after step 12).** macOS primary
 > (Windows/Linux dev-build smoke as machines allow): autostart reboot →
