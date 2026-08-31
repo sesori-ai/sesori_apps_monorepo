@@ -235,8 +235,9 @@ in a temporary directory:
    `USERPROFILE`, `APPDATA`, and `LOCALAPPDATA` as applicable. Do not read or
    mutate the user's normal profile.
 4. Construct an explicit allowlisted child environment rather than inheriting
-   the caller's environment. Include only a minimal known-safe `PATH` (or equivalent runtime path),
-   `HOME`/host temp roots, the two Pi directory variables,
+   the caller's environment. Include only a minimal known-safe `PATH` (or
+   equivalent runtime path), `HOME`/host temp roots, the two Pi directory
+   variables,
    `PI_SKIP_VERSION_CHECK=1`, locale settings, and required Windows system
    variables. Omit API keys, `GH_TOKEN`, cloud credentials,
    `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
