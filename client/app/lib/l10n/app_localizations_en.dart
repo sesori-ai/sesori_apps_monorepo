@@ -1310,6 +1310,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emptyDirectory => 'This directory is empty';
 
   @override
+  String get parentDirectory => 'Parent directory';
+
+  @override
   String get fetchDirectoryFailed => 'Could not load directory contents';
 
   @override

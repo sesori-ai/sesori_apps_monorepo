@@ -2491,6 +2491,12 @@ abstract class AppLocalizations {
   /// **'This directory is empty'**
   String get emptyDirectory;
 
+  /// Accessibility label for the '..' row that navigates to the parent folder in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent directory'**
+  String get parentDirectory;
+
   /// No description provided for @fetchDirectoryFailed.
   ///
   /// In en, this message translates to:

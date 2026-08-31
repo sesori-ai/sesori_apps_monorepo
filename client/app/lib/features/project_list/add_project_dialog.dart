@@ -430,6 +430,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
         final entry = _entries[index - (parentPath == null ? 0 : 1)];
         return _FolderTile(
           entry: entry,
+          semanticLabel: null,
           onTap: () => _navigateInto(path: entry.path),
         );
       },
@@ -439,6 +440,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   Widget _buildParentEntry({required String path}) {
     return _FolderTile(
       entry: FilesystemSuggestion(path: path, name: "..", isGitRepo: false),
+      semanticLabel: context.loc.parentDirectory,
       onTap: _navigateUp,
     );
   }
@@ -450,8 +452,11 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
 /// One folder in the browser: its name, a tag when it already holds a git
 /// repository, and a chevron into it.
-class const _FolderTile({required final FilesystemSuggestion entry, required final VoidCallback onTap})
-    extends StatelessWidget {
+class const _FolderTile({
+  required final FilesystemSuggestion entry,
+  required final String? semanticLabel,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -459,6 +464,7 @@ class const _FolderTile({required final FilesystemSuggestion entry, required fin
 
     return MergeSemantics(
       child: Semantics(
+        label: semanticLabel,
         button: true,
         child: InkWell(
           onTap: onTap,
@@ -490,11 +496,14 @@ class const _FolderTile({required final FilesystemSuggestion entry, required fin
                         // Yields to the tag, so a long folder name ellipsizes
                         // instead of pushing the tag off the row.
                         Flexible(
-                          child: Text(
-                            entry.name,
-                            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: ExcludeSemantics(
+                            excluding: semanticLabel != null,
+                            child: Text(
+                              entry.name,
+                              style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                         if (entry.isGitRepo) ...[

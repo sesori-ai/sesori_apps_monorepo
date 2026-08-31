@@ -764,6 +764,10 @@
   "newFolderFailed": "Could not create the folder",
   "newFolderUnsupported": "Update Sesori Bridge on your computer to create folders from here.",
   "emptyDirectory": "This directory is empty",
+  "parentDirectory": "Parent directory",
+  "@parentDirectory": {
+    "description": "Accessibility label for the '..' row that navigates to the parent folder in the add-project browser."
+  },
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",
   "gitRepoBadge": "Git",

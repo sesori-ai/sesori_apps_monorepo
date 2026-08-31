@@ -423,6 +423,7 @@ void main() {
     });
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
+      final semantics = tester.ensureSemantics();
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -461,10 +462,12 @@ void main() {
       expect(find.text("/home/user/projects"), findsOneWidget);
       expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
       expect(find.text(".."), findsOneWidget);
+      expect(tester.getSemantics(find.text("..")).label, "Parent directory");
       expect(
         tester.getTopLeft(find.text("..")).dy,
         lessThan(tester.getTopLeft(find.text("app-one")).dy),
       );
+      semantics.dispose();
     });
 
     testWidgets("parent directory entry navigates up one directory level", (tester) async {
