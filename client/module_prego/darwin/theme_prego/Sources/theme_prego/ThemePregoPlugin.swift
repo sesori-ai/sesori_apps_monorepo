@@ -118,6 +118,13 @@ private enum AiLoaderSparkle {
 
     let group = CAAnimationGroup()
     group.animations = [fill, stroke, scale]
+    // A group's duration does NOT propagate to its children; an unset child
+    // duration falls back to the 0.25s CATransaction default, which would end
+    // each keyframe pass almost immediately and leave the sparkle solid for
+    // the rest of every repeat.
+    for animation in group.animations ?? [] {
+      animation.duration = period
+    }
     group.duration = period
     group.repeatCount = .infinity
     // Staggers list rows apart, matching the Dart painter's phase offset.
