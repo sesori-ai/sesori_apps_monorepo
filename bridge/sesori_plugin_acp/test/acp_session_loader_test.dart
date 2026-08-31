@@ -80,12 +80,13 @@ void main() {
           launchDirectory: "/repo",
           pluginId: "acp",
           configurationTracker: configurationTracker,
-        )..beginTurn("s1");
+        )..beginTurn(sessionId: "s1", messageId: null);
         final collector = AcpReplayCollector(
           sessionId: "s1",
           agentId: "ACP",
           initialUserMessageId: null,
           messageIdOverride: null,
+          messageTimeResolver: null,
           haltClassifier: null,
         );
         final liveEvents = <BridgeSseEvent>[];
@@ -128,10 +129,9 @@ void main() {
               AcpReplayCollector(
                   sessionId: "s1",
                   agentId: "Cursor",
-                  modelId: null,
-                  providerId: null,
                   initialUserMessageId: "s1-initial-user",
                   messageIdOverride: null,
+                  messageTimeResolver: null,
                   haltClassifier: null,
                 )
                 ..consume(
@@ -172,10 +172,9 @@ void main() {
           AcpReplayCollector(
               sessionId: "s1",
               agentId: "Cursor",
-              modelId: "gpt-5.5",
-              providerId: "cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -208,7 +207,11 @@ void main() {
               }),
             );
 
-      final messages = collector.build();
+      final messages = collector.buildWithAssistantSelection(
+        modelId: "gpt-5.5",
+        providerId: "cursor",
+        variant: null,
+      );
       expect(messages, hasLength(3));
 
       final user = messages.first;
@@ -230,6 +233,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -265,6 +269,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -302,6 +307,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -345,6 +351,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -377,6 +384,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -393,15 +401,14 @@ void main() {
       expect(toolPart.state.title, isNull);
     });
 
-    test("stamps replayed assistant messages with the loaded session model", () {
+    test("stamps replayed assistant messages with the loaded session selection", () {
       final collector =
           AcpReplayCollector(
             sessionId: "s1",
             agentId: "Cursor",
-            modelId: "claude-opus-4-8",
-            providerId: "cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({
@@ -409,9 +416,19 @@ void main() {
               "content": {"type": "text", "text": "hi"},
             }),
           );
-      final assistant = collector.build().single.info as PluginMessageAssistant;
+      final assistant =
+          collector
+                  .buildWithAssistantSelection(
+                    modelId: "claude-opus-4-8",
+                    providerId: "cursor",
+                    variant: "high",
+                  )
+                  .single
+                  .info
+              as PluginMessageAssistant;
       expect(assistant.modelID, "claude-opus-4-8");
       expect(assistant.providerID, "cursor");
+      expect(assistant.variant, "high");
     });
 
     test("a messageId change splits consecutive same-role chunks into two messages", () {
@@ -423,6 +440,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -461,6 +479,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -485,6 +504,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -509,6 +529,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         messageIdOverride: null,
+        messageTimeResolver: null,
         haltClassifier: null,
       );
 
@@ -525,6 +546,7 @@ void main() {
         agentId: "Cursor",
         initialUserMessageId: null,
         messageIdOverride: null,
+        messageTimeResolver: null,
         haltClassifier: null,
       );
       final output = _captureWarnings(() {
@@ -551,6 +573,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -661,6 +684,7 @@ void main() {
                 agentId: "Cursor",
                 initialUserMessageId: null,
                 messageIdOverride: null,
+                messageTimeResolver: null,
                 haltClassifier: null,
               )
               ..consume(
@@ -713,6 +737,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -752,6 +777,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -781,6 +807,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -810,6 +837,7 @@ void main() {
               agentId: "Cursor",
               initialUserMessageId: null,
               messageIdOverride: null,
+              messageTimeResolver: null,
               haltClassifier: null,
             )
             ..consume(
@@ -851,13 +879,11 @@ void main() {
           AcpReplayCollector(
             sessionId: "s1",
             agentId: "Cursor",
-            modelId: "claude-fable-5",
-            providerId: "cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => text.trim() == "Check your settings to continue"
-                ? const AcpHaltNotice(errorName: "cursor_gate", message: "Check your settings to continue")
-                : null,
+            messageTimeResolver: null,
+            haltClassifier: ({required text}) =>
+                text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -865,9 +891,15 @@ void main() {
             }),
           );
 
-      final message = collector.build().single;
+      final message = collector
+          .buildWithAssistantSelection(
+            modelId: "claude-fable-5",
+            providerId: "cursor",
+            variant: null,
+          )
+          .single;
       expect(message.info, isA<PluginMessageError>());
-      expect((message.info as PluginMessageError).errorMessage, "Check your settings to continue");
+      expect((message.info as PluginMessageError).errorMessage, "\n\nCheck your settings to continue");
       expect(message.parts, isEmpty);
     });
 
@@ -878,7 +910,8 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            messageTimeResolver: null,
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -897,7 +930,8 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            messageTimeResolver: null,
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -929,7 +963,8 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
-            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate", message: "gate"),
+            messageTimeResolver: null,
+            haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -952,6 +987,7 @@ void main() {
             agentId: "Cursor",
             initialUserMessageId: null,
             messageIdOverride: null,
+            messageTimeResolver: null,
             haltClassifier: null,
           )..consume(
             upd({

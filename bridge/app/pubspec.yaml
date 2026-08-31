@@ -1,11 +1,11 @@
 name: sesori_bridge
 description: Dart implementation of the Sesori Bridge CLI for WebSocket communication.
-version: 1.8.2
+version: 1.8.3
 publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.1
+  sdk: ^3.13.2
 
 dependencies:
   args: ^2.7.0
@@ -32,12 +32,16 @@ dependencies:
     path: ../sesori_plugin_codex
   cursor_plugin:
     path: ../sesori_plugin_cursor
+  copilot_plugin:
+    path: ../sesori_plugin_copilot
   deepseek_plugin:
     path: ../sesori_plugin_deepseek
   claude_plugin:
     path: ../sesori_plugin_claude
   hermes_plugin:
     path: ../sesori_plugin_hermes
+  grok_plugin:
+    path: ../sesori_plugin_grok
   pi_plugin:
     path: ../sesori_plugin_pi
   omp_plugin:
@@ -56,6 +60,6 @@ dev_dependencies:
   # production code reaches sqlite3 only transitively through drift.
   sqlite3: ^3.5.2
   build_runner: any
-  freezed: 4.0.0-dev.3
+  freezed: ^4.0.0
   json_serializable: ^6.14.1
   drift_dev: 2.34.3

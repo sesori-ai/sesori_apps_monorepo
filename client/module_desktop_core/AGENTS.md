@@ -5,7 +5,7 @@ control-channel orchestration, tray/window state, and desktop cubits. Zero
 Flutter SDK dependency — testable with plain `dart test`. `client/desktop` is
 the only production consumer; `module_core` must NEVER depend on this package.
 
-## Target Package Structure (built out phase by phase — see docs/desktop/PLAN.md §6)
+## Target Package Structure (built out step by step — see `.plan/active/desktop-app/PLAN.md`)
 
 ```
 lib/src/
@@ -17,6 +17,7 @@ lib/src/
 ├── trackers/                # Layer 2 — reactive state derived from events (status, prompts, helper logs)
 ├── services/                # Layer 3 — bridge_process_service, desktop_instance_service, desktop_update_service
 ├── control/                 # Layer 4 — control_message_dispatcher (writes DOWN into trackers/token seam)
+├── orchestration/           # Layer 4 — named cross-service workflow owners (desktop logout, ...)
 ├── cubits/                  # Layer 4 — desktop state management (bridge_control, ...)
 └── di/                      # @InjectableInit configureDesktopCoreDependencies
 ```

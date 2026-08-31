@@ -1,0 +1,24 @@
+name: grok_plugin
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  acp_plugin:
+    path: ../sesori_plugin_acp
+  freezed_annotation: ^3.1.0
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
+  json_annotation: ^4.12.0
+
+dev_dependencies:
+  build_runner: any
+  freezed: ^4.0.0
+  json_serializable: ^6.14.1
+  lints: ^6.1.0
+  test: ^1.31.2

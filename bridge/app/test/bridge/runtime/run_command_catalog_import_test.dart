@@ -7,7 +7,10 @@ void main() {
   test("run command registers every plugin option and no selector", () {
     final options = RunCommand().argParser.options;
 
-    expect(options.keys, containsAll(["opencode-bin", "codex-bin", "cursor-bin"]));
+    expect(
+      options.keys,
+      containsAll(["opencode-bin", "codex-bin", "copilot-bin", "cursor-bin", "deepseek-bin", "grok-bin"]),
+    );
     expect(options, isNot(contains("plugin")));
   });
 

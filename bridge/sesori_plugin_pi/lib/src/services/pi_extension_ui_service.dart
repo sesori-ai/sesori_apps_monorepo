@@ -27,6 +27,7 @@ final class const PiExtensionUiQuestionRejected({
 }) extends PiExtensionUiEvent;
 
 final class const PiExtensionUiToast({
+  required final String sessionId,
   required final String title,
   required final String message,
   required final PiNotificationType variant,
@@ -64,13 +65,17 @@ final class PiExtensionUiService({
         final visible = message == null ? null : _bounded(message);
         if (visible != null && visible.isNotEmpty) {
           _events.add(
-            PiExtensionUiToast(title: "Pi", message: visible, variant: notifyType ?? PiNotificationType.info),
+            PiExtensionUiToast(
+              sessionId: ownerSessionId,
+              title: "Pi",
+              message: visible,
+              variant: notifyType ?? PiNotificationType.info,
+            ),
           );
         }
         return;
       case PiExtensionDecorationRequest():
       case PiUnknownExtensionUiRequest():
-        Log.d("[pi] ignored unsupported extension UI decoration");
         return;
       case final PiExtensionDialogRequest dialog:
         final elapsed = Stopwatch()..start();
@@ -253,8 +258,12 @@ final class PiExtensionUiService({
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
-          question: "Choose one option.",
-          header: _header(title, fallback: "Pi extension"),
+          question: _dialogPrompt(
+            title: title,
+            detail: null,
+            fallback: "Choose one option.",
+          ),
+          header: "Pi extension",
           options: [for (final option in options) PluginQuestionOption(label: option, description: "")],
           multiple: false,
           custom: false,
@@ -270,7 +279,7 @@ final class PiExtensionUiService({
         projectId: shared.projectId,
         question: PluginQuestionInfo(
           question: _boundedNullable(message) ?? "Confirm this action.",
-          header: _header(title, fallback: "Confirmation"),
+          header: _boundedNullable(title) ?? "Confirmation",
           options: const [
             PluginQuestionOption(label: "Yes", description: ""),
             PluginQuestionOption(label: "No", description: ""),
@@ -287,8 +296,12 @@ final class PiExtensionUiService({
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
-          question: _boundedNullable(placeholder) ?? "Enter a value.",
-          header: _header(title, fallback: "Pi extension"),
+          question: _dialogPrompt(
+            title: title,
+            detail: _inputHint(placeholder: placeholder),
+            fallback: "Enter a value.",
+          ),
+          header: "Pi extension",
           options: const [],
           multiple: false,
           custom: true,
@@ -302,8 +315,12 @@ final class PiExtensionUiService({
         displaySessionId: shared.displaySessionId,
         projectId: shared.projectId,
         question: PluginQuestionInfo(
-          question: _editorPrompt(prefill),
-          header: _header(title, fallback: "Editor"),
+          question: _dialogPrompt(
+            title: title,
+            detail: _editorPrompt(prefill),
+            fallback: "Reply with the complete replacement text.",
+          ),
+          header: "Editor",
           options: const [],
           multiple: false,
           custom: true,
@@ -407,7 +424,23 @@ PiExtensionUiReply? _replyFor({
   };
 }
 
-String _header(String? value, {required String fallback}) => _boundedNullable(value) ?? fallback;
+// Pi's select, input, and editor APIs carry their authoritative prompt in
+// `title`; keep it in the scrollable body instead of ellipsized sheet chrome.
+String _dialogPrompt({
+  required String? title,
+  required String? detail,
+  required String fallback,
+}) {
+  final prompt = _boundedNullable(title);
+  if (prompt == null) return detail ?? fallback;
+  if (detail == null || detail == prompt) return prompt;
+  return "$prompt\n\n$detail";
+}
+
+String? _inputHint({required String? placeholder}) {
+  final value = _boundedNullable(placeholder);
+  return value == null ? null : "Input hint: $value";
+}
 
 String? _boundedNullable(String? value) => value == null || value.isEmpty ? null : _bounded(value);
 

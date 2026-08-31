@@ -14,6 +14,34 @@ void main() {
     expect(event.sessionId, equals("session-123"));
   });
 
+  test("session-attributed toast exposes its sessionId", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.tuiToastShow(
+        sessionID: "session-123",
+        title: "Pi",
+        message: "Done",
+        variant: "success",
+      ),
+    );
+
+    expect(event.sessionId, "session-123");
+    expect(event.data, isA<SesoriSessionEvent>());
+  });
+
+  test("unattributed toast remains outside every filtered session stream", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.tuiToastShow(
+        sessionID: null,
+        title: "Notice",
+        message: null,
+        variant: "info",
+      ),
+    );
+
+    expect(event.sessionId, isNull);
+    expect(event.data, isA<SesoriSessionEvent>());
+  });
+
   test("catalogImportProgress is a global non-session event", () {
     final event = SseEvent(
       data: const SesoriSseEvent.catalogImportProgress(

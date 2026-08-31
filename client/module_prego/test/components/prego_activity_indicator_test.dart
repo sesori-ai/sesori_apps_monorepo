@@ -22,7 +22,10 @@ void main() {
     debugDefaultTargetPlatformOverride = platform;
   }
 
-  testWidgets("uses the Flutter Android spinner without a platform view", (tester) async {
+  testWidgets("Android keeps the animated Flutter arc, deliberately", (tester) async {
+    // A hybrid-composition platform view idles Flutter on a static screen but
+    // wrecks scroll performance (measured on-device), so Android never gets a
+    // native spinner branch.
     usePlatform(TargetPlatform.android);
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(
@@ -36,12 +39,12 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.byType(PlatformViewLink), findsNothing);
+    expect(find.byType(AndroidView), findsNothing);
     expect(
       tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
       isNull,
     );
-    expect(find.byType(AndroidView), findsNothing);
-    expect(find.byType(PlatformViewLink), findsNothing);
     expect(tester.hasRunningAnimations, isTrue);
 
     final data = tester.getSemantics(find.byType(PregoActivityIndicator)).getSemanticsData();
@@ -67,24 +70,45 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
-  testWidgets("uses the Flutter macOS spinner without a platform view", (tester) async {
+  testWidgets("uses the native macOS spinner without scheduling Flutter animation", (tester) async {
     usePlatform(TargetPlatform.macOS);
     await tester.pumpWidget(
       wrap(const PregoActivityIndicator(color: color)),
     );
 
-    expect(
-      tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
-      isNull,
+    final platformView = tester.widget<AppKitView>(find.byType(AppKitView));
+    expect(platformView.viewType, "sesori/native-activity-indicator");
+    expect(platformView.creationParams, color.toARGB32());
+    expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(tester.hasRunningAnimations, isFalse);
+
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets("recreates the native view when the colour changes", (tester) async {
+    usePlatform(TargetPlatform.iOS);
+    const other = Color(0xFF654321);
+    await tester.pumpWidget(
+      wrap(const PregoActivityIndicator(color: color)),
     );
-    expect(find.byType(AppKitView), findsNothing);
-    expect(tester.hasRunningAnimations, isTrue);
+    expect(find.byKey(ValueKey(color.toARGB32())), findsOneWidget);
+
+    await tester.pumpWidget(
+      wrap(const PregoActivityIndicator(color: other)),
+    );
+    expect(find.byKey(ValueKey(color.toARGB32())), findsNothing);
+    expect(find.byKey(ValueKey(other.toARGB32())), findsOneWidget);
+    expect(
+      tester.widget<UiKitView>(find.byType(UiKitView)).creationParams,
+      other.toARGB32(),
+    );
 
     debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets("gives a loosely constrained Flutter spinner a 36 pixel square", (tester) async {
-    usePlatform(TargetPlatform.android);
+    usePlatform(TargetPlatform.linux);
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(

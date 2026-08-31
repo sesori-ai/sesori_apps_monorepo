@@ -1,0 +1,66 @@
+{
+  "protocolVersion": 1,
+  "agentCapabilities": {
+    "loadSession": true,
+    "promptCapabilities": {
+      "image": false,
+      "audio": false,
+      "embeddedContext": true
+    },
+    "sessionCapabilities": {
+      "list": {},
+      "resume": {},
+      "close": {}
+    }
+  },
+  "authMethods": [
+    {
+      "id": "grok.com",
+      "name": "Interactive login"
+    }
+  ],
+  "_meta": {
+    "grokShell": true,
+    "agentVersion": "1.0.5",
+    "modelState": {
+      "currentModelId": "synthetic:model-alpha",
+      "availableModels": [
+        {
+          "modelId": "synthetic:model-alpha",
+          "name": "Model Alpha",
+          "description": "Synthetic reasoning model",
+          "_meta": {
+            "supportsReasoningEffort": true,
+            "reasoningEffort": "high",
+            "reasoningEfforts": [
+              {
+                "id": "low",
+                "value": "low",
+                "label": "Low",
+                "description": "Synthetic low effort",
+                "default": false
+              },
+              {
+                "id": "high",
+                "value": "high",
+                "label": "High",
+                "description": "Synthetic high effort",
+                "default": true
+              }
+            ]
+          }
+        },
+        {
+          "modelId": "opaque/provider:model-beta",
+          "name": "Model Beta",
+          "description": null,
+          "_meta": {
+            "supportsReasoningEffort": false,
+            "reasoningEffort": null,
+            "reasoningEfforts": []
+          }
+        }
+      ]
+    }
+  }
+}

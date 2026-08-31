@@ -7,15 +7,14 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
-import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../helpers/voice_test_helpers.dart";
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
@@ -24,8 +23,6 @@ class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesSe
 class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
 
 class MockDeviceCanvasService() extends Mock implements DeviceCanvasService;
-
-class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 
 class MockPluginRepository() extends Mock implements PluginRepository;
 
@@ -105,6 +102,7 @@ class AdaptiveSessionRouterTestHarness() {
           path: "/$projectId",
           time: null,
           supportsDedicatedWorktrees: true,
+          voiceGlossaryKey: null,
         ),
       );
     });
@@ -219,10 +217,10 @@ class AdaptiveSessionRouterTestHarness() {
         information: any(named: "information"),
       ),
     ).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer(
-      (_) => maxDurationReachedController.stream,
+    stubVoiceTranscriptionService(
+      service: voiceTranscriptionService,
+      maxDurationStream: maxDurationReachedController.stream,
     );
-    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
     when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStateController.value);
 

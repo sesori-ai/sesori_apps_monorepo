@@ -2,13 +2,14 @@ name: sesori_bridge_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.13.1
+  sdk: ^3.13.2
 
 workspace:
   - app
   - sesori_bridge_foundation
   - sesori_plugin_opencode
   - sesori_plugin_codex
+  - sesori_plugin_copilot
   - sesori_plugin_runtime
   - sesori_plugin_interface
   - sesori_plugin_acp
@@ -17,4 +18,5 @@ workspace:
   - sesori_plugin_claude
   - sesori_plugin_pi
   - sesori_plugin_hermes
+  - sesori_plugin_grok
   - sesori_plugin_deepseek

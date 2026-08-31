@@ -58,5 +58,39 @@ void main() {
         isA<ErrorResponse<List<BridgeSummary>>>().having((r) => r.error, "error", isA<GenericError>()),
       );
     });
+
+    test("deleteBridge passes a successful deletion through", () async {
+      when(() => mockApi.deleteBridge(bridgeId: "br_1")).thenAnswer((_) async => ApiResponse.success(null));
+
+      final response = await repository.deleteBridge(bridgeId: "br_1");
+
+      expect(response, isA<SuccessResponse<void>>());
+      verify(() => mockApi.deleteBridge(bridgeId: "br_1")).called(1);
+    });
+
+    test("deleteBridge treats an already-missing bridge as success", () async {
+      when(() => mockApi.deleteBridge(bridgeId: "br_missing")).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "bridge not found"),
+        ),
+      );
+
+      final response = await repository.deleteBridge(bridgeId: "br_missing");
+
+      expect(response, isA<SuccessResponse<void>>());
+    });
+
+    test("deleteBridge passes non-404 errors through", () async {
+      when(() => mockApi.deleteBridge(bridgeId: "br_1")).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "offline")),
+      );
+
+      final response = await repository.deleteBridge(bridgeId: "br_1");
+
+      expect(
+        response,
+        isA<ErrorResponse<void>>().having((r) => r.error, "error", isA<NonSuccessCodeError>()),
+      );
+    });
   });
 }

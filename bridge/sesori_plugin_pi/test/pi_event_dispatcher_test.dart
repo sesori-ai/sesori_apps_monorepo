@@ -456,7 +456,9 @@ void main() {
           .single;
 
       expect((live.single as BridgeSseMessageUpdated).info, replay.info.toJson());
-      expect(live.single.toString(), isNot(contains("private provider detail")));
+      if (reason == "error") {
+        expect((live.single as BridgeSseMessageUpdated).info["errorMessage"], "private provider detail");
+      }
     }
   });
 
@@ -584,7 +586,11 @@ void main() {
   test("retry and compaction map lifecycle while only agent_settled emits idle", () {
     final retry = dispatcher.map(
       sessionId: sessionId,
-      event: _event("auto_retry_start", {"attempt": 2, "delayMs": 500}),
+      event: _event("auto_retry_start", {
+        "attempt": 2,
+        "delayMs": 500,
+        "errorMessage": "provider overloaded",
+      }),
       now: DateTime.fromMillisecondsSinceEpoch(1000),
     );
     final autoRetryResumed = dispatcher.map(
@@ -611,14 +617,14 @@ void main() {
 
     expect((retry.single as BridgeSseSessionStatus).status, {
       "attempt": 2,
-      "message": "Pi is retrying the provider request.",
+      "message": "provider overloaded",
       "next": 1500,
-      "runtimeType": "retry",
+      "type": "retry",
     });
     expect(agentEnd, isEmpty);
-    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
-    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"runtimeType": "busy"});
-    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"runtimeType": "busy"});
+    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
+    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
+    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"type": "busy"});
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
     expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;

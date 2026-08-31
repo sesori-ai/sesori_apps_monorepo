@@ -373,6 +373,21 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Once Google Play accepts a production submission, make that exact build the
+  # unauthenticated analytics cutoff. This is deliberately a separate job: a
+  # Remote Config failure remains visible and can be rerun without resubmitting
+  # the store release.
+  publish-analytics-release-cutoff:
+    name: Publish analytics release cutoff
+    if: ${{ inputs.track == 'production' && (inputs.platforms == 'both' || inputs.platforms == 'android') }}
+    needs: [resolve, submit-android]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-firebase-analytics-release-cutoff.yml
+    with:
+      build_number: ${{ needs.resolve.outputs.build_number }}
+
   # Rebuild the bridge from the RESOLVED commit with its committed (clean)
   # version. The per-merge internal binaries cannot be promoted — they have
   # `X.Y.Z-internal.<N>` baked in, while the production release must
@@ -409,16 +424,19 @@ jobs:
 
   tag:
     name: Tag commit
-    needs: [resolve, submit-ios, submit-android, build-bridge, approve-bridge-only]
-    # Run only if every REQUESTED job succeeded. A skipped store platform
-    # (one-platform-only or bridge-only submits) counts as OK; build-bridge is
-    # skipped on beta; approve-bridge-only is skipped unless bridge-only. For
-    # non-bridge-only submits at least one store platform must actually have run.
+    needs: [resolve, submit-ios, submit-android, publish-analytics-release-cutoff, build-bridge, approve-bridge-only]
+    # Run only if every REQUESTED job succeeded. A skipped store platform or
+    # analytics-cutoff publish (one-platform-only, beta, or bridge-only) counts
+    # as OK; build-bridge is skipped on beta; approve-bridge-only is skipped
+    # unless bridge-only. For non-bridge-only submits at least one store platform
+    # must actually have run.
     if: |
       always() && needs.resolve.result == 'success' &&
-      (needs.submit-ios.result    == 'success' || needs.submit-ios.result    == 'skipped') &&
+      (needs.submit-ios.result == 'success' || needs.submit-ios.result == 'skipped') &&
       (needs.submit-android.result == 'success' || needs.submit-android.result == 'skipped') &&
-      (needs.build-bridge.result  == 'success' || needs.build-bridge.result  == 'skipped') &&
+      (needs.publish-analytics-release-cutoff.result == 'success' ||
+       needs.publish-analytics-release-cutoff.result == 'skipped') &&
+      (needs.build-bridge.result == 'success' || needs.build-bridge.result == 'skipped') &&
       (needs.approve-bridge-only.result == 'success' || needs.approve-bridge-only.result == 'skipped') &&
       (inputs.platforms == 'bridge-only' || !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped'))
     runs-on: ubuntu-latest

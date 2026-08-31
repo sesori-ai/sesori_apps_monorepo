@@ -1699,7 +1699,7 @@ PR-level implementation plan:
     subscription and close its snapshot stream in `finally` even when `stopAll`
     fails; session listener/dispatcher/local-wire streams likewise close after
     their tails settle. Keep
-    `SupervisedExitCode` values `86/87/88/0/1`, contention/auth/restart sentinel
+    `BridgeSupervisedExitCode` values `86/87/88/0/1`, contention/auth/restart sentinel
     precedence, signal behavior, standalone exit behavior, and shutdown-error
     preservation unchanged. The stop-all ordered budget is one concurrent
     plugin budget, not the sum of plugin counts.

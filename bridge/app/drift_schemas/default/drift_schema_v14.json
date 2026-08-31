@@ -848,17 +848,15 @@
     },
     {
       "id": 6,
-      "references": [
-        1
-      ],
+      "references": [],
       "type": "table",
       "data": {
-        "name": "device_canvas_claims_table",
+        "name": "new_session_defaults_table",
         "was_declared_in_moor": false,
         "columns": [
           {
-            "name": "bridge_id",
-            "getter_name": "bridgeId",
+            "name": "plugin_id",
+            "getter_name": "pluginId",
             "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
@@ -867,120 +865,42 @@
             "dsl_features": []
           },
           {
-            "name": "device_key",
-            "getter_name": "deviceKey",
+            "name": "agent",
+            "getter_name": "agent",
             "moor_type": "string",
-            "nullable": false,
+            "nullable": true,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
           },
           {
-            "name": "session_id",
-            "getter_name": "sessionId",
+            "name": "agent_model",
+            "getter_name": "agentModel",
             "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "defaultConstraints": "REFERENCES sessions_table (session_id) ON DELETE CASCADE",
-            "dialectAwareDefaultConstraints": {
-              "sqlite": "REFERENCES sessions_table (session_id) ON DELETE CASCADE"
-            },
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": [
-              {
-                "foreign_key": {
-                  "to": {
-                    "table": "sessions_table",
-                    "column": "session_id"
-                  },
-                  "initially_deferred": false,
-                  "on_update": null,
-                  "on_delete": "cascade"
-                }
-              }
-            ]
-          },
-          {
-            "name": "claim_revision",
-            "getter_name": "claimRevision",
-            "moor_type": "int",
-            "nullable": false,
+            "nullable": true,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "claimed_at",
-            "getter_name": "claimedAt",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "updated_at",
-            "getter_name": "updatedAt",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const AgentModelConverter()",
+              "dart_type_name": "AgentModel"
+            }
           }
         ],
         "is_virtual": false,
-        "without_rowid": false,
-        "constraints": [],
+        "without_rowid": true,
+        "constraints": [
+          "CHECK (plugin_id <> '')"
+        ],
         "explicit_pk": [
-          "bridge_id",
-          "device_key"
+          "plugin_id"
         ]
       }
     },
     {
       "id": 7,
-      "references": [],
-      "type": "table",
-      "data": {
-        "name": "device_canvas_claim_revisions_table",
-        "was_declared_in_moor": false,
-        "columns": [
-          {
-            "name": "bridge_id",
-            "getter_name": "bridgeId",
-            "moor_type": "string",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          },
-          {
-            "name": "last_revision",
-            "getter_name": "lastRevision",
-            "moor_type": "int",
-            "nullable": false,
-            "customConstraints": null,
-            "default_dart": null,
-            "default_client_dart": null,
-            "dsl_features": []
-          }
-        ],
-        "is_virtual": false,
-        "without_rowid": false,
-        "constraints": [],
-        "explicit_pk": [
-          "bridge_id"
-        ]
-      }
-    },
-    {
-      "id": 8,
       "references": [
         0
       ],
@@ -999,7 +919,7 @@
       }
     },
     {
-      "id": 9,
+      "id": 8,
       "references": [
         0
       ],
@@ -1022,7 +942,7 @@
       }
     },
     {
-      "id": 10,
+      "id": 9,
       "references": [
         1
       ],
@@ -1045,7 +965,7 @@
       }
     },
     {
-      "id": 11,
+      "id": 10,
       "references": [
         1
       ],
@@ -1076,7 +996,7 @@
       }
     },
     {
-      "id": 12,
+      "id": 11,
       "references": [
         1
       ],
@@ -1103,7 +1023,7 @@
       }
     },
     {
-      "id": 13,
+      "id": 12,
       "references": [
         1
       ],
@@ -1117,7 +1037,7 @@
       }
     },
     {
-      "id": 14,
+      "id": 13,
       "references": [
         3
       ],
@@ -1142,25 +1062,6 @@
           },
           {
             "column": "github_login",
-            "order_by": null
-          }
-        ]
-      }
-    },
-    {
-      "id": 15,
-      "references": [
-        6
-      ],
-      "type": "index",
-      "data": {
-        "on": 6,
-        "name": "idx_device_canvas_claims_session",
-        "sql": null,
-        "unique": false,
-        "columns": [
-          {
-            "column": "session_id",
             "order_by": null
           }
         ]
@@ -1223,20 +1124,11 @@
       ]
     },
     {
-      "name": "device_canvas_claims_table",
+      "name": "new_session_defaults_table",
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"device_canvas_claims_table\" (\"bridge_id\" TEXT NOT NULL, \"device_key\" TEXT NOT NULL, \"session_id\" TEXT NOT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE, \"claim_revision\" INTEGER NOT NULL, \"claimed_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, PRIMARY KEY (\"bridge_id\", \"device_key\"));"
-        }
-      ]
-    },
-    {
-      "name": "device_canvas_claim_revisions_table",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"device_canvas_claim_revisions_table\" (\"bridge_id\" TEXT NOT NULL, \"last_revision\" INTEGER NOT NULL, PRIMARY KEY (\"bridge_id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"new_session_defaults_table\" (\"plugin_id\" TEXT NOT NULL, \"agent\" TEXT NULL, \"agent_model\" TEXT NULL, PRIMARY KEY (\"plugin_id\"), CHECK (plugin_id <> '')) WITHOUT ROWID;"
         }
       ]
     },
@@ -1300,15 +1192,6 @@
         {
           "dialect": "sqlite",
           "sql": "CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)"
-        }
-      ]
-    },
-    {
-      "name": "idx_device_canvas_claims_session",
-      "sql": [
-        {
-          "dialect": "sqlite",
-          "sql": "CREATE INDEX idx_device_canvas_claims_session ON device_canvas_claims_table (session_id)"
         }
       ]
     }

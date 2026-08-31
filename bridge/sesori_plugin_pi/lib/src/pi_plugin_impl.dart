@@ -65,6 +65,10 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi's abort response waits for full agent idleness, which can include
+      // an already queued steering continuation. Bound that acknowledgement
+      // tightly so Stop can force process replacement instead of stalling.
+      abortRpcTimeout: const Duration(seconds: 1),
       // Pi can run model-backed automatic compaction before acknowledging a
       // prompt, so prompt preflight needs the same generous bound as a turn.
       promptRpcTimeout: const Duration(minutes: 30),
@@ -482,7 +486,11 @@ final class PiPlugin._({
       throw _unsupportedSelection(operation: operation, message: "Unsupported Pi agent.", staleOptions: staleOptions);
     }
     if (variant != null && PiThinkingLevel.tryParse(value: variant.id) == null) {
-      throw _unsupportedSelection(operation: operation, message: "Unsupported Pi thinking level.", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "Unsupported Pi thinking level.",
+        staleOptions: staleOptions,
+      );
     }
     if (model == null) return;
     final options = await _catalogService.requireOptions(projectId: projectId);
@@ -529,7 +537,8 @@ final class PiPlugin._({
             sessionID: ownerSessionId,
             displaySessionId: displaySessionId,
           ),
-        PiExtensionUiToast(:final title, :final message, :final variant) => BridgeSseTuiToastShow(
+        PiExtensionUiToast(:final sessionId, :final title, :final message, :final variant) => BridgeSseTuiToastShow(
+          sessionID: sessionId,
           title: title,
           message: message,
           variant: switch (variant) {

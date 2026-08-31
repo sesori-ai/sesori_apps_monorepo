@@ -3464,594 +3464,250 @@ class SessionOptionsCacheTableCompanion
   }
 }
 
-mixin DeviceCanvasClaimsTableToColumns
-    implements Insertable<DeviceCanvasClaimsTableData> {
-  String get bridgeId;
-  String get deviceKey;
-  String get sessionId;
-  int get claimRevision;
-  int get claimedAt;
-  int get updatedAt;
+mixin NewSessionDefaultsTableToColumns
+    implements Insertable<NewSessionDefaultsTableData> {
+  String get pluginId;
+  String? get agent;
+  String? get agentModel;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['bridge_id'] = Variable<String>(bridgeId);
-    map['device_key'] = Variable<String>(deviceKey);
-    map['session_id'] = Variable<String>(sessionId);
-    map['claim_revision'] = Variable<int>(claimRevision);
-    map['claimed_at'] = Variable<int>(claimedAt);
-    map['updated_at'] = Variable<int>(updatedAt);
+    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || agent != null) {
+      map['agent'] = Variable<String>(agent);
+    }
+    if (!nullToAbsent || agentModel != null) {
+      map['agent_model'] = Variable<String>(agentModel);
+    }
     return map;
   }
 }
 
-class DeviceCanvasClaimsTable extends Table
-    with TableInfo<DeviceCanvasClaimsTable, DeviceCanvasClaimsTableData> {
+class NewSessionDefaultsTable extends Table
+    with TableInfo<NewSessionDefaultsTable, NewSessionDefaultsTableData> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  DeviceCanvasClaimsTable(this.attachedDatabase, [this._alias]);
-  late final GeneratedColumn<String> bridgeId = GeneratedColumn<String>(
-    'bridge_id',
+  NewSessionDefaultsTable(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
-  late final GeneratedColumn<String> deviceKey = GeneratedColumn<String>(
-    'device_key',
+  late final GeneratedColumn<String> agent = GeneratedColumn<String>(
+    'agent',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
   );
-  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
-    'session_id',
+  late final GeneratedColumn<String> agentModel = GeneratedColumn<String>(
+    'agent_model',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints:
-        'NOT NULL REFERENCES sessions_table(session_id)ON DELETE CASCADE',
-  );
-  late final GeneratedColumn<int> claimRevision = GeneratedColumn<int>(
-    'claim_revision',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> claimedAt = GeneratedColumn<int>(
-    'claimed_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
-    'updated_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
   );
   @override
-  List<GeneratedColumn> get $columns => [
-    bridgeId,
-    deviceKey,
-    sessionId,
-    claimRevision,
-    claimedAt,
-    updatedAt,
-  ];
+  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
   String get actualTableName => $name;
-  static const String $name = 'device_canvas_claims_table';
+  static const String $name = 'new_session_defaults_table';
   @override
-  Set<GeneratedColumn> get $primaryKey => {bridgeId, deviceKey};
+  Set<GeneratedColumn> get $primaryKey => {pluginId};
   @override
-  DeviceCanvasClaimsTableData map(
+  NewSessionDefaultsTableData map(
     Map<String, dynamic> data, {
     String? tablePrefix,
   }) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DeviceCanvasClaimsTableData(
-      bridgeId: attachedDatabase.typeMapping.read(
+    return NewSessionDefaultsTableData(
+      pluginId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}bridge_id'],
+        data['${effectivePrefix}plugin_id'],
       )!,
-      deviceKey: attachedDatabase.typeMapping.read(
+      agent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}device_key'],
-      )!,
-      sessionId: attachedDatabase.typeMapping.read(
+        data['${effectivePrefix}agent'],
+      ),
+      agentModel: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}session_id'],
-      )!,
-      claimRevision: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}claim_revision'],
-      )!,
-      claimedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}claimed_at'],
-      )!,
-      updatedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}updated_at'],
-      )!,
+        data['${effectivePrefix}agent_model'],
+      ),
     );
   }
 
   @override
-  DeviceCanvasClaimsTable createAlias(String alias) {
-    return DeviceCanvasClaimsTable(attachedDatabase, alias);
+  NewSessionDefaultsTable createAlias(String alias) {
+    return NewSessionDefaultsTable(attachedDatabase, alias);
   }
 
+  @override
+  bool get withoutRowId => true;
   @override
   List<String> get customConstraints => const [
-    'PRIMARY KEY(bridge_id, device_key)',
+    'PRIMARY KEY(plugin_id)',
+    'CHECK(plugin_id <> \'\')',
   ];
   @override
   bool get dontWriteConstraints => true;
 }
 
-class DeviceCanvasClaimsTableData extends DataClass
-    with DeviceCanvasClaimsTableToColumns {
+class NewSessionDefaultsTableData extends DataClass
+    with NewSessionDefaultsTableToColumns {
   @override
-  final String bridgeId;
+  final String pluginId;
   @override
-  final String deviceKey;
+  final String? agent;
   @override
-  final String sessionId;
-  @override
-  final int claimRevision;
-  @override
-  final int claimedAt;
-  @override
-  final int updatedAt;
-  const DeviceCanvasClaimsTableData({
-    required this.bridgeId,
-    required this.deviceKey,
-    required this.sessionId,
-    required this.claimRevision,
-    required this.claimedAt,
-    required this.updatedAt,
+  final String? agentModel;
+  const NewSessionDefaultsTableData({
+    required this.pluginId,
+    this.agent,
+    this.agentModel,
   });
-  DeviceCanvasClaimsTableCompanion toCompanion(bool nullToAbsent) {
-    return DeviceCanvasClaimsTableCompanion(
-      bridgeId: Value(bridgeId),
-      deviceKey: Value(deviceKey),
-      sessionId: Value(sessionId),
-      claimRevision: Value(claimRevision),
-      claimedAt: Value(claimedAt),
-      updatedAt: Value(updatedAt),
+  NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
+    return NewSessionDefaultsTableCompanion(
+      pluginId: Value(pluginId),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      agentModel: agentModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentModel),
     );
   }
 
-  factory DeviceCanvasClaimsTableData.fromJson(
+  factory NewSessionDefaultsTableData.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DeviceCanvasClaimsTableData(
-      bridgeId: serializer.fromJson<String>(json['bridgeId']),
-      deviceKey: serializer.fromJson<String>(json['deviceKey']),
-      sessionId: serializer.fromJson<String>(json['sessionId']),
-      claimRevision: serializer.fromJson<int>(json['claimRevision']),
-      claimedAt: serializer.fromJson<int>(json['claimedAt']),
-      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    return NewSessionDefaultsTableData(
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      agent: serializer.fromJson<String?>(json['agent']),
+      agentModel: serializer.fromJson<String?>(json['agentModel']),
     );
   }
   @override
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'bridgeId': serializer.toJson<String>(bridgeId),
-      'deviceKey': serializer.toJson<String>(deviceKey),
-      'sessionId': serializer.toJson<String>(sessionId),
-      'claimRevision': serializer.toJson<int>(claimRevision),
-      'claimedAt': serializer.toJson<int>(claimedAt),
-      'updatedAt': serializer.toJson<int>(updatedAt),
+      'pluginId': serializer.toJson<String>(pluginId),
+      'agent': serializer.toJson<String?>(agent),
+      'agentModel': serializer.toJson<String?>(agentModel),
     };
   }
 
-  DeviceCanvasClaimsTableData copyWith({
-    String? bridgeId,
-    String? deviceKey,
-    String? sessionId,
-    int? claimRevision,
-    int? claimedAt,
-    int? updatedAt,
-  }) => DeviceCanvasClaimsTableData(
-    bridgeId: bridgeId ?? this.bridgeId,
-    deviceKey: deviceKey ?? this.deviceKey,
-    sessionId: sessionId ?? this.sessionId,
-    claimRevision: claimRevision ?? this.claimRevision,
-    claimedAt: claimedAt ?? this.claimedAt,
-    updatedAt: updatedAt ?? this.updatedAt,
+  NewSessionDefaultsTableData copyWith({
+    String? pluginId,
+    Value<String?> agent = const Value.absent(),
+    Value<String?> agentModel = const Value.absent(),
+  }) => NewSessionDefaultsTableData(
+    pluginId: pluginId ?? this.pluginId,
+    agent: agent.present ? agent.value : this.agent,
+    agentModel: agentModel.present ? agentModel.value : this.agentModel,
   );
-  DeviceCanvasClaimsTableData copyWithCompanion(
-    DeviceCanvasClaimsTableCompanion data,
+  NewSessionDefaultsTableData copyWithCompanion(
+    NewSessionDefaultsTableCompanion data,
   ) {
-    return DeviceCanvasClaimsTableData(
-      bridgeId: data.bridgeId.present ? data.bridgeId.value : this.bridgeId,
-      deviceKey: data.deviceKey.present ? data.deviceKey.value : this.deviceKey,
-      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
-      claimRevision: data.claimRevision.present
-          ? data.claimRevision.value
-          : this.claimRevision,
-      claimedAt: data.claimedAt.present ? data.claimedAt.value : this.claimedAt,
-      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    return NewSessionDefaultsTableData(
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      agent: data.agent.present ? data.agent.value : this.agent,
+      agentModel: data.agentModel.present
+          ? data.agentModel.value
+          : this.agentModel,
     );
   }
 
   @override
   String toString() {
-    return (StringBuffer('DeviceCanvasClaimsTableData(')
-          ..write('bridgeId: $bridgeId, ')
-          ..write('deviceKey: $deviceKey, ')
-          ..write('sessionId: $sessionId, ')
-          ..write('claimRevision: $claimRevision, ')
-          ..write('claimedAt: $claimedAt, ')
-          ..write('updatedAt: $updatedAt')
+    return (StringBuffer('NewSessionDefaultsTableData(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    bridgeId,
-    deviceKey,
-    sessionId,
-    claimRevision,
-    claimedAt,
-    updatedAt,
-  );
+  int get hashCode => Object.hash(pluginId, agent, agentModel);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is DeviceCanvasClaimsTableData &&
-          other.bridgeId == this.bridgeId &&
-          other.deviceKey == this.deviceKey &&
-          other.sessionId == this.sessionId &&
-          other.claimRevision == this.claimRevision &&
-          other.claimedAt == this.claimedAt &&
-          other.updatedAt == this.updatedAt);
+      (other is NewSessionDefaultsTableData &&
+          other.pluginId == this.pluginId &&
+          other.agent == this.agent &&
+          other.agentModel == this.agentModel);
 }
 
-class DeviceCanvasClaimsTableCompanion
-    extends UpdateCompanion<DeviceCanvasClaimsTableData> {
-  final Value<String> bridgeId;
-  final Value<String> deviceKey;
-  final Value<String> sessionId;
-  final Value<int> claimRevision;
-  final Value<int> claimedAt;
-  final Value<int> updatedAt;
-  final Value<int> rowid;
-  const DeviceCanvasClaimsTableCompanion({
-    this.bridgeId = const Value.absent(),
-    this.deviceKey = const Value.absent(),
-    this.sessionId = const Value.absent(),
-    this.claimRevision = const Value.absent(),
-    this.claimedAt = const Value.absent(),
-    this.updatedAt = const Value.absent(),
-    this.rowid = const Value.absent(),
+class NewSessionDefaultsTableCompanion
+    extends UpdateCompanion<NewSessionDefaultsTableData> {
+  final Value<String> pluginId;
+  final Value<String?> agent;
+  final Value<String?> agentModel;
+  const NewSessionDefaultsTableCompanion({
+    this.pluginId = const Value.absent(),
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
   });
-  DeviceCanvasClaimsTableCompanion.insert({
-    required String bridgeId,
-    required String deviceKey,
-    required String sessionId,
-    required int claimRevision,
-    required int claimedAt,
-    required int updatedAt,
-    this.rowid = const Value.absent(),
-  }) : bridgeId = Value(bridgeId),
-       deviceKey = Value(deviceKey),
-       sessionId = Value(sessionId),
-       claimRevision = Value(claimRevision),
-       claimedAt = Value(claimedAt),
-       updatedAt = Value(updatedAt);
-  static Insertable<DeviceCanvasClaimsTableData> custom({
-    Expression<String>? bridgeId,
-    Expression<String>? deviceKey,
-    Expression<String>? sessionId,
-    Expression<int>? claimRevision,
-    Expression<int>? claimedAt,
-    Expression<int>? updatedAt,
-    Expression<int>? rowid,
+  NewSessionDefaultsTableCompanion.insert({
+    required String pluginId,
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
+  }) : pluginId = Value(pluginId);
+  static Insertable<NewSessionDefaultsTableData> custom({
+    Expression<String>? pluginId,
+    Expression<String>? agent,
+    Expression<String>? agentModel,
   }) {
     return RawValuesInsertable({
-      if (bridgeId != null) 'bridge_id': bridgeId,
-      if (deviceKey != null) 'device_key': deviceKey,
-      if (sessionId != null) 'session_id': sessionId,
-      if (claimRevision != null) 'claim_revision': claimRevision,
-      if (claimedAt != null) 'claimed_at': claimedAt,
-      if (updatedAt != null) 'updated_at': updatedAt,
-      if (rowid != null) 'rowid': rowid,
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (agent != null) 'agent': agent,
+      if (agentModel != null) 'agent_model': agentModel,
     });
   }
 
-  DeviceCanvasClaimsTableCompanion copyWith({
-    Value<String>? bridgeId,
-    Value<String>? deviceKey,
-    Value<String>? sessionId,
-    Value<int>? claimRevision,
-    Value<int>? claimedAt,
-    Value<int>? updatedAt,
-    Value<int>? rowid,
+  NewSessionDefaultsTableCompanion copyWith({
+    Value<String>? pluginId,
+    Value<String?>? agent,
+    Value<String?>? agentModel,
   }) {
-    return DeviceCanvasClaimsTableCompanion(
-      bridgeId: bridgeId ?? this.bridgeId,
-      deviceKey: deviceKey ?? this.deviceKey,
-      sessionId: sessionId ?? this.sessionId,
-      claimRevision: claimRevision ?? this.claimRevision,
-      claimedAt: claimedAt ?? this.claimedAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      rowid: rowid ?? this.rowid,
+    return NewSessionDefaultsTableCompanion(
+      pluginId: pluginId ?? this.pluginId,
+      agent: agent ?? this.agent,
+      agentModel: agentModel ?? this.agentModel,
     );
   }
 
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    if (bridgeId.present) {
-      map['bridge_id'] = Variable<String>(bridgeId.value);
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
     }
-    if (deviceKey.present) {
-      map['device_key'] = Variable<String>(deviceKey.value);
+    if (agent.present) {
+      map['agent'] = Variable<String>(agent.value);
     }
-    if (sessionId.present) {
-      map['session_id'] = Variable<String>(sessionId.value);
-    }
-    if (claimRevision.present) {
-      map['claim_revision'] = Variable<int>(claimRevision.value);
-    }
-    if (claimedAt.present) {
-      map['claimed_at'] = Variable<int>(claimedAt.value);
-    }
-    if (updatedAt.present) {
-      map['updated_at'] = Variable<int>(updatedAt.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
+    if (agentModel.present) {
+      map['agent_model'] = Variable<String>(agentModel.value);
     }
     return map;
   }
 
   @override
   String toString() {
-    return (StringBuffer('DeviceCanvasClaimsTableCompanion(')
-          ..write('bridgeId: $bridgeId, ')
-          ..write('deviceKey: $deviceKey, ')
-          ..write('sessionId: $sessionId, ')
-          ..write('claimRevision: $claimRevision, ')
-          ..write('claimedAt: $claimedAt, ')
-          ..write('updatedAt: $updatedAt, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-mixin DeviceCanvasClaimRevisionsTableToColumns
-    implements Insertable<DeviceCanvasClaimRevisionsTableData> {
-  String get bridgeId;
-  int get lastRevision;
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['bridge_id'] = Variable<String>(bridgeId);
-    map['last_revision'] = Variable<int>(lastRevision);
-    return map;
-  }
-}
-
-class DeviceCanvasClaimRevisionsTable extends Table
-    with
-        TableInfo<
-          DeviceCanvasClaimRevisionsTable,
-          DeviceCanvasClaimRevisionsTableData
-        > {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  DeviceCanvasClaimRevisionsTable(this.attachedDatabase, [this._alias]);
-  late final GeneratedColumn<String> bridgeId = GeneratedColumn<String>(
-    'bridge_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<int> lastRevision = GeneratedColumn<int>(
-    'last_revision',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  @override
-  List<GeneratedColumn> get $columns => [bridgeId, lastRevision];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'device_canvas_claim_revisions_table';
-  @override
-  Set<GeneratedColumn> get $primaryKey => {bridgeId};
-  @override
-  DeviceCanvasClaimRevisionsTableData map(
-    Map<String, dynamic> data, {
-    String? tablePrefix,
-  }) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DeviceCanvasClaimRevisionsTableData(
-      bridgeId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}bridge_id'],
-      )!,
-      lastRevision: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}last_revision'],
-      )!,
-    );
-  }
-
-  @override
-  DeviceCanvasClaimRevisionsTable createAlias(String alias) {
-    return DeviceCanvasClaimRevisionsTable(attachedDatabase, alias);
-  }
-
-  @override
-  List<String> get customConstraints => const ['PRIMARY KEY(bridge_id)'];
-  @override
-  bool get dontWriteConstraints => true;
-}
-
-class DeviceCanvasClaimRevisionsTableData extends DataClass
-    with DeviceCanvasClaimRevisionsTableToColumns {
-  @override
-  final String bridgeId;
-  @override
-  final int lastRevision;
-  const DeviceCanvasClaimRevisionsTableData({
-    required this.bridgeId,
-    required this.lastRevision,
-  });
-  DeviceCanvasClaimRevisionsTableCompanion toCompanion(bool nullToAbsent) {
-    return DeviceCanvasClaimRevisionsTableCompanion(
-      bridgeId: Value(bridgeId),
-      lastRevision: Value(lastRevision),
-    );
-  }
-
-  factory DeviceCanvasClaimRevisionsTableData.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DeviceCanvasClaimRevisionsTableData(
-      bridgeId: serializer.fromJson<String>(json['bridgeId']),
-      lastRevision: serializer.fromJson<int>(json['lastRevision']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'bridgeId': serializer.toJson<String>(bridgeId),
-      'lastRevision': serializer.toJson<int>(lastRevision),
-    };
-  }
-
-  DeviceCanvasClaimRevisionsTableData copyWith({
-    String? bridgeId,
-    int? lastRevision,
-  }) => DeviceCanvasClaimRevisionsTableData(
-    bridgeId: bridgeId ?? this.bridgeId,
-    lastRevision: lastRevision ?? this.lastRevision,
-  );
-  DeviceCanvasClaimRevisionsTableData copyWithCompanion(
-    DeviceCanvasClaimRevisionsTableCompanion data,
-  ) {
-    return DeviceCanvasClaimRevisionsTableData(
-      bridgeId: data.bridgeId.present ? data.bridgeId.value : this.bridgeId,
-      lastRevision: data.lastRevision.present
-          ? data.lastRevision.value
-          : this.lastRevision,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DeviceCanvasClaimRevisionsTableData(')
-          ..write('bridgeId: $bridgeId, ')
-          ..write('lastRevision: $lastRevision')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(bridgeId, lastRevision);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is DeviceCanvasClaimRevisionsTableData &&
-          other.bridgeId == this.bridgeId &&
-          other.lastRevision == this.lastRevision);
-}
-
-class DeviceCanvasClaimRevisionsTableCompanion
-    extends UpdateCompanion<DeviceCanvasClaimRevisionsTableData> {
-  final Value<String> bridgeId;
-  final Value<int> lastRevision;
-  final Value<int> rowid;
-  const DeviceCanvasClaimRevisionsTableCompanion({
-    this.bridgeId = const Value.absent(),
-    this.lastRevision = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  DeviceCanvasClaimRevisionsTableCompanion.insert({
-    required String bridgeId,
-    required int lastRevision,
-    this.rowid = const Value.absent(),
-  }) : bridgeId = Value(bridgeId),
-       lastRevision = Value(lastRevision);
-  static Insertable<DeviceCanvasClaimRevisionsTableData> custom({
-    Expression<String>? bridgeId,
-    Expression<int>? lastRevision,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (bridgeId != null) 'bridge_id': bridgeId,
-      if (lastRevision != null) 'last_revision': lastRevision,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  DeviceCanvasClaimRevisionsTableCompanion copyWith({
-    Value<String>? bridgeId,
-    Value<int>? lastRevision,
-    Value<int>? rowid,
-  }) {
-    return DeviceCanvasClaimRevisionsTableCompanion(
-      bridgeId: bridgeId ?? this.bridgeId,
-      lastRevision: lastRevision ?? this.lastRevision,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (bridgeId.present) {
-      map['bridge_id'] = Variable<String>(bridgeId.value);
-    }
-    if (lastRevision.present) {
-      map['last_revision'] = Variable<int>(lastRevision.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DeviceCanvasClaimRevisionsTableCompanion(')
-          ..write('bridgeId: $bridgeId, ')
-          ..write('lastRevision: $lastRevision, ')
-          ..write('rowid: $rowid')
+    return (StringBuffer('NewSessionDefaultsTableCompanion(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
           ..write(')'))
         .toString();
   }
@@ -4069,10 +3725,8 @@ class DatabaseAtV14 extends GeneratedDatabase {
       CatalogHydrationsTable(this);
   late final SessionOptionsCacheTable sessionOptionsCacheTable =
       SessionOptionsCacheTable(this);
-  late final DeviceCanvasClaimsTable deviceCanvasClaimsTable =
-      DeviceCanvasClaimsTable(this);
-  late final DeviceCanvasClaimRevisionsTable deviceCanvasClaimRevisionsTable =
-      DeviceCanvasClaimRevisionsTable(this);
+  late final NewSessionDefaultsTable newSessionDefaultsTable =
+      NewSessionDefaultsTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -4101,10 +3755,6 @@ class DatabaseAtV14 extends GeneratedDatabase {
     'idx_pull_requests_scope',
     'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
   );
-  late final Index idxDeviceCanvasClaimsSession = Index(
-    'idx_device_canvas_claims_session',
-    'CREATE INDEX idx_device_canvas_claims_session ON device_canvas_claims_table (session_id)',
-  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4116,8 +3766,7 @@ class DatabaseAtV14 extends GeneratedDatabase {
     pullRequestsTable,
     catalogHydrationsTable,
     sessionOptionsCacheTable,
-    deviceCanvasClaimsTable,
-    deviceCanvasClaimRevisionsTable,
+    newSessionDefaultsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -4125,7 +3774,6 @@ class DatabaseAtV14 extends GeneratedDatabase {
     idxSessionsChildren,
     idxSessionsArchive,
     idxPullRequestsScope,
-    idxDeviceCanvasClaimsSession,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4157,15 +3805,6 @@ class DatabaseAtV14 extends GeneratedDatabase {
       ),
       result: [
         TableUpdate('session_options_cache_table', kind: UpdateKind.delete),
-      ],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
-        'sessions_table',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [
-        TableUpdate('device_canvas_claims_table', kind: UpdateKind.delete),
       ],
     ),
   ]);

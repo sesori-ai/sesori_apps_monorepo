@@ -547,12 +547,15 @@ class _BlockingWriteRepository({
 
 class _BackfillingSessionRepository() implements SessionRepository {
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => [
-    MessageWithParts(
-      info: _message(id: "m1"),
-      parts: [_part(id: "seed")],
-    ),
-  ];
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async => (
+    messages: [
+      MessageWithParts(
+        info: _message(id: "m1"),
+        parts: [_part(id: "seed")],
+      ),
+    ],
+    promptDefaults: null,
+  );
 
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(

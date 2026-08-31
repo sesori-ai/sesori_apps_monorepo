@@ -11,6 +11,11 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "models/stored_session.dart";
 
+final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
+  @override
+  String toString() => "Unable to normalize stored history for replay comparison";
+}
+
 /// Raised when an audit file was written by a newer bridge than this one.
 class ChatHistoryArchiveVersionException({
   required final String sessionId,
@@ -30,6 +35,7 @@ typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 
 /// Identity of one stored part inside its session.
 typedef StoredPartRef = ({String messageId, String partId});
+typedef _SemanticMessageFingerprints = ({String content, String context, int? createdAt});
 
 /// How fresh a session's stored transcript is.
 ///
@@ -57,6 +63,7 @@ class ChatHistoryRepository({
   required final ArchivedSessionStorage _archivedSessionStorage,
 }) {
   static const _archiveSchemaVersion = 1;
+  static const _semanticMatchBridgeId = "history-semantic-match";
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
@@ -358,7 +365,19 @@ class ChatHistoryRepository({
   /// an edited message rolls its session back, and a bridge that was not
   /// watching that backend sees the removal only as this gap. Keeping it would
   /// restore messages the user deleted elsewhere. A session with no completed
-  /// import has no such line to draw, so everything stored is kept.
+  /// import has no such line to draw, so stored rows are otherwise kept.
+  ///
+  /// Backend replay identities can differ from the live identities Sesori
+  /// assigned to the same visible messages. Normalized semantic matching in the
+  /// same nearest-distinct visible-message context drops retained duplicates up
+  /// to the imported multiplicity while preserving truly live-only rows and
+  /// additional identical messages. Exact identities consume replay capacity
+  /// first and anchor neighboring context by ID even when their payload changes;
+  /// stale rows due for removal do not shape semantic context, and a
+  /// repeated run matches only occurrences with equal creation times. Conflicting
+  /// known times also keep singleton rows distinct, while internal parts hidden
+  /// from clients do not affect visible equivalence. The imported row remains
+  /// authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -375,39 +394,149 @@ class ChatHistoryRepository({
   }) async {
     final importedIds = {for (final message in messages) message.info.id};
     final storedRows = await _chatHistoryDao.getMessages(sessionId: sessionId);
-    final retained = [
-      for (final row in storedRows)
-        if (!importedIds.contains(row.messageId) && (lastImportedAt == null || row.updatedAt > lastImportedAt)) row,
-    ];
+    final storedIds = {for (final row in storedRows) row.messageId};
+    final storedPartRows = await _chatHistoryDao.getParts(sessionId: sessionId);
+    final storedPartJsonByMessage = <String, List<String>>{};
+    for (final row in storedPartRows) {
+      storedPartJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
 
     final importedMessageRows = <HistoryMessagesTableData>[];
+    final importedPartJsonByMessage = <String, List<String>>{};
     final partRows = <HistoryPartsTableData>[];
     var seq = 0;
     for (final message in messages) {
       seq++;
+      final infoJson = jsonEncode(message.info.toJson());
       importedMessageRows.add(
         HistoryMessagesTableData(
           sessionId: sessionId,
           messageId: message.info.id,
           seq: seq,
-          infoJson: jsonEncode(message.info.toJson()),
+          infoJson: infoJson,
           updatedAt: syncedAt,
         ),
       );
       for (var index = 0; index < message.parts.length; index++) {
         final part = message.parts[index];
+        final partJson = await _encodePart(storageScope: storageScope, part: part);
+        importedPartJsonByMessage.putIfAbsent(message.info.id, () => []).add(partJson);
         partRows.add(
           HistoryPartsTableData(
             sessionId: sessionId,
             messageId: message.info.id,
             partId: part.id,
             orderIndex: index,
-            partJson: await _encodePart(storageScope: storageScope, part: part),
+            partJson: partJson,
             updatedAt: syncedAt,
           ),
         );
       }
     }
+
+    final importedSemanticFingerprints = <_SemanticMessageFingerprints?>[];
+    for (var index = 0; index < messages.length; index++) {
+      final message = messages[index];
+      importedSemanticFingerprints.add(
+        await _semanticMessageFingerprints(
+          sessionId: sessionId,
+          messageId: message.info.id,
+          storageScope: storageScope,
+          infoJson: importedMessageRows[index].infoJson,
+          partJsons: importedPartJsonByMessage[message.info.id] ?? const [],
+        ),
+      );
+    }
+
+    final storedContextRows = [
+      for (final row in storedRows)
+        if (importedIds.contains(row.messageId) || lastImportedAt == null || row.updatedAt > lastImportedAt) row,
+    ];
+    final storedSemanticFingerprints = <_SemanticMessageFingerprints?>[];
+    for (final row in storedContextRows) {
+      storedSemanticFingerprints.add(
+        await _semanticMessageFingerprints(
+          sessionId: sessionId,
+          messageId: row.messageId,
+          storageScope: storageScope,
+          infoJson: row.infoJson,
+          partJsons: storedPartJsonByMessage[row.messageId] ?? const [],
+        ),
+      );
+    }
+
+    final importedSemanticContexts = _semanticContextFingerprints(
+      fingerprints: importedSemanticFingerprints,
+      anchorOverrides: [
+        for (final message in messages)
+          storedIds.contains(message.info.id) ? _exactIdentityAnchor(messageId: message.info.id) : null,
+      ],
+    );
+    final storedSemanticContexts = _semanticContextFingerprints(
+      fingerprints: storedSemanticFingerprints,
+      anchorOverrides: [
+        for (final row in storedContextRows)
+          importedIds.contains(row.messageId) ? _exactIdentityAnchor(messageId: row.messageId) : null,
+      ],
+    );
+    final importedIndexesByContext = <String, List<int>>{};
+    for (var index = 0; index < importedSemanticContexts.length; index++) {
+      if (storedIds.contains(messages[index].info.id)) continue;
+      final fingerprint = importedSemanticContexts[index];
+      if (fingerprint != null) importedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
+    }
+
+    final storedIndexesByContext = <String, List<int>>{};
+    for (var index = 0; index < storedContextRows.length; index++) {
+      final row = storedContextRows[index];
+      if (importedIds.contains(row.messageId)) continue;
+      final fingerprint = storedSemanticContexts[index];
+      if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
+    }
+
+    final semanticallyImportedStoredIds = <String>{};
+    for (final entry in storedIndexesByContext.entries) {
+      final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
+      final storedIndexes = entry.value;
+      if (importedIndexes.length == 1 && storedIndexes.length == 1) {
+        final importedCreatedAt = importedSemanticFingerprints[importedIndexes.single]?.createdAt;
+        final storedCreatedAt = storedSemanticFingerprints[storedIndexes.single]?.createdAt;
+        if (importedCreatedAt == null || storedCreatedAt == null || importedCreatedAt == storedCreatedAt) {
+          semanticallyImportedStoredIds.add(storedContextRows[storedIndexes.single].messageId);
+        }
+        continue;
+      }
+
+      // A repeated run is ambiguous by content and order alone, even when both
+      // sides have the same count. Match only equal creation times; null or
+      // differing times stay retained rather than risking deletion of a
+      // separate live-only occurrence.
+      final storedIndexesByCreatedAt = <int, List<int>>{};
+      for (final index in storedIndexes) {
+        final createdAt = storedSemanticFingerprints[index]?.createdAt;
+        if (createdAt != null) storedIndexesByCreatedAt.putIfAbsent(createdAt, () => []).add(index);
+      }
+      final importedCountsByCreatedAt = <int, int>{};
+      for (final index in importedIndexes) {
+        final createdAt = importedSemanticFingerprints[index]?.createdAt;
+        if (createdAt != null) importedCountsByCreatedAt[createdAt] = (importedCountsByCreatedAt[createdAt] ?? 0) + 1;
+      }
+      for (final entry in importedCountsByCreatedAt.entries) {
+        final matchingStoredIndexes = storedIndexesByCreatedAt[entry.key] ?? const [];
+        final matchCount = entry.value < matchingStoredIndexes.length ? entry.value : matchingStoredIndexes.length;
+        for (var index = 0; index < matchCount; index++) {
+          semanticallyImportedStoredIds.add(storedContextRows[matchingStoredIndexes[index]].messageId);
+        }
+      }
+    }
+
+    final retained = [
+      for (final row in storedRows)
+        if (!importedIds.contains(row.messageId) &&
+            !semanticallyImportedStoredIds.contains(row.messageId) &&
+            (lastImportedAt == null || row.updatedAt > lastImportedAt))
+          row,
+    ];
     final retainedCreatedAt = [
       for (final row in retained) Message.fromJson(jsonDecodeMap(row.infoJson)).time?.created,
     ];
@@ -484,8 +613,6 @@ class ChatHistoryRepository({
     required int updatedAt,
     required int archivedAt,
     required ArchivedSessionCompleteness completeness,
-    required String? lastAgent,
-    required String? lastAgentModel,
   }) async {
     final messageRows = await _chatHistoryDao.getMessages(sessionId: session.id);
     final partRows = await _chatHistoryDao.getParts(sessionId: session.id);
@@ -511,8 +638,6 @@ class ChatHistoryRepository({
         branchName: session.branchName,
         baseBranch: session.baseBranch,
         baseCommit: session.baseCommit,
-        lastAgent: lastAgent,
-        lastAgentModel: lastAgentModel,
         title: title,
         createdAt: createdAt,
         updatedAt: updatedAt,
@@ -635,6 +760,111 @@ class ChatHistoryRepository({
     }
     await _chatHistoryDao.reclaimFreedPages();
     if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
+  }
+
+  Future<_SemanticMessageFingerprints?> _semanticMessageFingerprints({
+    required String sessionId,
+    required String messageId,
+    required AttachmentStorageScope storageScope,
+    required String infoJson,
+    required List<String> partJsons,
+  }) async {
+    try {
+      final message = Message.fromJson(jsonDecodeMap(infoJson));
+      final info = _withoutFields(
+        source: message.toJson(),
+        fields: const {"id", "sessionID", "promptId", "time", "agent", "modelID", "providerID"},
+      );
+      final parts = await _rehydrateParts(
+        storageScope: storageScope,
+        partJsons: partJsons,
+        attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: _semanticMatchBridgeId),
+      );
+      final canonicalParts = <Map<String, dynamic>>[];
+      final contextParts = <Map<String, dynamic>>[];
+      for (final part in parts) {
+        if (!_isTranscriptVisiblePart(part: part)) continue;
+        final canonicalPart = _withoutFields(
+          source: part.toJson(),
+          fields: const {"id", "sessionID", "messageID"},
+        );
+        canonicalParts.add(canonicalPart);
+        // Some backends omit live reasoning from replay. It remains part of the
+        // message's own identity, but not the visible neighbor anchor used to
+        // correlate an otherwise equivalent adjacent prompt or response.
+        if (part is! MessagePartReasoning) contextParts.add(canonicalPart);
+      }
+      final content = await _jsonFingerprint(value: {"info": info, "parts": canonicalParts});
+      final context = contextParts.length == canonicalParts.length
+          ? content
+          : await _jsonFingerprint(value: {"info": info, "parts": contextParts});
+      return (content: content, context: context, createdAt: message.time?.created);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
+        error is FormatException ? _HistoryReplayComparisonError(innerError: error) : error,
+        stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<String> _jsonFingerprint({required Object value}) async {
+    final digest = await calculateSha256(message: utf8.encode(jsonEncode(value)));
+    return base64UrlEncode(digest);
+  }
+
+  String _exactIdentityAnchor({required String messageId}) => jsonEncode({"exactMessageId": messageId});
+
+  List<String?> _semanticContextFingerprints({
+    required List<_SemanticMessageFingerprints?> fingerprints,
+    required List<String?> anchorOverrides,
+  }) {
+    final previousDistinct = List<String?>.filled(fingerprints.length, null);
+    String? currentRun;
+    String? beforeRun;
+    for (var index = 0; index < fingerprints.length; index++) {
+      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
+      if (fingerprint == null) continue;
+      if (fingerprint != currentRun) {
+        beforeRun = currentRun;
+        currentRun = fingerprint;
+      }
+      previousDistinct[index] = beforeRun;
+    }
+
+    final nextDistinct = List<String?>.filled(fingerprints.length, null);
+    currentRun = null;
+    String? afterRun;
+    for (var index = fingerprints.length - 1; index >= 0; index--) {
+      final fingerprint = anchorOverrides[index] ?? fingerprints[index]?.context;
+      if (fingerprint == null) continue;
+      if (fingerprint != currentRun) {
+        afterRun = currentRun;
+        currentRun = fingerprint;
+      }
+      nextDistinct[index] = afterRun;
+    }
+
+    return [
+      for (var index = 0; index < fingerprints.length; index++)
+        if (fingerprints[index] case final _SemanticMessageFingerprints fingerprint)
+          jsonEncode([previousDistinct[index], fingerprint.content, nextDistinct[index]])
+        else
+          null,
+    ];
+  }
+
+  bool _isTranscriptVisiblePart({required MessagePart part}) =>
+      part is! MessagePartSnapshot && part is! MessagePartPatch && part is! MessagePartCompaction;
+
+  Map<String, dynamic> _withoutFields({
+    required Map<String, dynamic> source,
+    required Set<String> fields,
+  }) {
+    final result = Map<String, dynamic>.of(source);
+    fields.forEach(result.remove);
+    return result;
   }
 
   /// The stored JSON for [part], with inline attachment bytes moved to spill

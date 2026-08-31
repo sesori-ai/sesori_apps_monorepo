@@ -516,6 +516,7 @@ void delegateSessionOptionsRepository({
             providers: providerData.items,
             providersConnectedOnly: providerData.connectedOnly,
             commands: commandData.items,
+            lastUsedPromptDefaults: null,
           ),
         ),
       (ErrorResponse(:final error), _, _) => SessionOptionsRepositoryFailure(error: error),
@@ -679,6 +680,7 @@ MessageWithParts testMessageWithParts({String? id = _noString}) {
       agent: null,
       modelID: null,
       providerID: null,
+      sender: MessageSender.agent,
       time: null,
     ),
     parts: [

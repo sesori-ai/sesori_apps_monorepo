@@ -106,6 +106,44 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
+    test("replayed prompt defaults override parallel session metadata", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      const refreshed = SessionPromptDefaults(
+        agent: "build",
+        model: AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: "high"),
+      );
+      stubSessionRepositoryGetSession(
+        repository: repository,
+        sessionId: "session-1",
+        session: testSession(
+          promptDefaults: const SessionPromptDefaults(
+            agent: "old-agent",
+            model: AgentModel(providerID: "old-provider", modelID: "old-model", variant: "low"),
+          ),
+        ),
+      );
+      when(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: refreshed,
+          ),
+        ),
+      );
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect((result as SessionDetailLoadResultLoaded).snapshot.promptDefaults, refreshed);
+    });
+
     test("legacy fallback preserves successful options when one request fails", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
@@ -129,6 +167,7 @@ void main() {
             providers: catalog.providers,
             providersConnectedOnly: catalog.providersConnectedOnly,
             commands: const <CommandInfo>[],
+            lastUsedPromptDefaults: null,
           ),
           errors: [LegacySessionOptionError(source: LegacySessionOptionSource.commands, error: error)],
         ),
@@ -468,7 +507,13 @@ void _stubRepositorySnapshot({
       before: any(named: "before"),
     ),
   ).thenAnswer(
-    (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+    (_) async => ApiResponse.success(
+      MessageWithPartsResponse(
+        messages: [_messageWithParts()],
+        nextCursor: null,
+        replayedPromptDefaults: null,
+      ),
+    ),
   );
   when(
     () => repository.getPendingQuestions(sessionId: "session-1"),
@@ -537,6 +582,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
         subtask: false,
       ),
     ],
+    lastUsedPromptDefaults: null,
   );
 }
 

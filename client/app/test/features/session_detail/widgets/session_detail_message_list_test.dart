@@ -5,10 +5,12 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/code_block.dart";
+import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
+import "package:sesori_mobile/features/session_detail/widgets/system_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -186,6 +188,32 @@ MessageWithParts _message({
   );
 }
 
+MessageWithParts _automatedMessage({
+  required String messageId,
+  required String text,
+  required MessageSender sender,
+}) {
+  return MessageWithParts(
+    info: Message.assistant(
+      id: messageId,
+      sessionID: "session-1",
+      agent: null,
+      modelID: null,
+      providerID: null,
+      sender: sender,
+      time: null,
+    ),
+    parts: [
+      MessagePart.text(
+        id: "$messageId-part",
+        sessionID: "session-1",
+        messageID: messageId,
+        text: text,
+      ),
+    ],
+  );
+}
+
 const _emptyUserMessage = MessageWithParts(
   info: Message.user(
     promptId: null,
@@ -245,6 +273,28 @@ Future<void> _detachViewport(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets("renders system and unknown senders as automation instead of agent output", (tester) async {
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          _message(messageId: "agent", role: "assistant", text: "Agent reply"),
+          _automatedMessage(messageId: "system", text: "Automation report", sender: MessageSender.system),
+          _automatedMessage(messageId: "unknown", text: "Future sender", sender: MessageSender.unknown),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AssistantMessageCard), findsNWidgets(3));
+    expect(find.byType(SystemMessageCard), findsNWidgets(2));
+    expect(find.byType(PregoTag), findsNWidgets(2));
+    expect(find.text("Automation"), findsNWidgets(2));
+    expect(find.text("Agent reply"), findsOneWidget);
+    expect(find.text("Automation report"), findsOneWidget);
+    expect(find.text("Future sender"), findsOneWidget);
+  });
+
   testWidgets("renders bridge-queued prompts as cancellable queued bubbles", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(

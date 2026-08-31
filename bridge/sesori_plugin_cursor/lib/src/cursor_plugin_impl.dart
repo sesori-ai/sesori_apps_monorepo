@@ -137,9 +137,6 @@ class CursorPlugin._({
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
 
   @override
-  bool get cancelsActiveTurnForQueuedInput => true;
-
-  @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
     return CursorApprovalRegistry(
       client: client,

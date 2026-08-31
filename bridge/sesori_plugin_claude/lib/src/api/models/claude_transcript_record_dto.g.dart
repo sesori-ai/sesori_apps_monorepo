@@ -19,6 +19,7 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       uuid: _stringOrNull(json['uuid']),
       isMeta: _boolOrNull(json['isMeta']),
       isVisibleInTranscriptOnly: _boolOrNull(json['isVisibleInTranscriptOnly']),
+      effort: _stringOrNull(json['effort']),
       message: _messageOrNull(json['message']),
     );
 

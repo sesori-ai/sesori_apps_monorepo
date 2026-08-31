@@ -134,12 +134,11 @@ class SessionDetailLoadService({
         _SessionDetailOptionsAvailable(:final options) => options,
         _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
       };
-      final promptDefaults = session?.promptDefaults;
-
-      final (messages, olderMessagesCursor) = switch (messagesResponse) {
-        SuccessResponse(:final data) => (data.messages, data.nextCursor),
+      final (messages, olderMessagesCursor, replayedPromptDefaults) = switch (messagesResponse) {
+        SuccessResponse(:final data) => (data.messages, data.nextCursor, data.replayedPromptDefaults),
         ErrorResponse(:final error) => throw error,
       };
+      final promptDefaults = replayedPromptDefaults ?? session?.promptDefaults;
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,

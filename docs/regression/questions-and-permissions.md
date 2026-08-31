@@ -21,19 +21,40 @@ reaches the backend so the turn continues.
   exposing prompt/default content in diagnostics.
 - Pi extension `select`, `confirm`, `input`, and `editor` dialogs map to one
   single-select, Yes/No, or custom-answer question and return the exact Pi value,
-  confirmation, or cancellation shape. Editor answers replace the full value;
-  a bounded labelled prefill excerpt never implies that omitted text is retained.
+  confirmation, or cancellation shape. For select, input, and editor dialogs,
+  Pi's title is the user-facing prompt, so it remains fully readable in the
+  scrollable question body instead of the ellipsized sheet heading. Confirm
+  dialogs preserve their distinct title and message, while input hints and
+  editor guidance remain visible with the prompt. Editor answers replace the full
+  value; a bounded labelled prefill excerpt never implies that omitted text is
+  retained.
 - Pi mirrors upstream dialog expiry to retire the card, owns editor expiry,
   rejects pending cards on process/session cleanup, indexes imported children
   under their top-most display root and owning worktree project, and does not
   persist process-local dialog promises. Decorative extension UI is ignored;
-  bounded `notify` messages use the existing toast event.
-- DeepSeek standard ACP permissions preserve exact session and tool correlation
-  and expose only the scopes the adapter offers; v1 does not offer allow-always.
+  bounded `notify` messages use the existing toast event attributed to their
+  owning session, so another session or an unrelated route does not present them.
+- GitHub Copilot uses standard ACP permission requests correlated to their tool
+  call. The client always presents Once and Reject for a pending permission and
+  presents Always only when the request offers `allow_always`. The registry maps
+  a choice to an exact offered ACP option; if Once or Reject has no matching
+  option, it cancels rather than escalating or selecting another scope. The
+  pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
+  question capability and Sesori never invents a custom question channel.
+- DeepSeek standard ACP permissions use the request's explicit session ID when
+  present and retain the ACP active-turn fallback when an agent omits it. They
+  preserve the exact tool call ID and expose only the scopes the adapter offers;
+  v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
   detail. Abort, process exit, and disposal cancel pending requests and reject
   late replies.
+- Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
+  Standard ACP permissions preserve the exact session, tool call, and offered
+  option IDs; Once, Reject, and every scope the request actually advertises stay
+  phone-mediated unless an existing explicit bridge auto-approval rule applies.
+  Abort, process exit, and disposal cancel pending Grok requests rather than
+  broadening or silently approving them.
 - A sessionless backend request is attributed to the most recently dispatched
   active turn, falling back to the last dispatched turn at its settlement
   boundary. A backend requiring exact form correlation must serialize prompts
@@ -72,8 +93,8 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor exact replies and timeout cleanup. Automated DeepSeek coverage: exact two-session correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: both request kinds per plugin, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
@@ -83,22 +104,35 @@ Vary which backend raises the request and how it is provoked, the answer kind,
 the answer order when several are outstanding, and whether the answer comes from
 the request's own session view, a parent view, or a second client. Vary whether
 the session is fresh, resumed after a bridge restart, or reopened cold. Prefer a
-different combination than the previous recorded run.
+different combination than the previous recorded run. For Copilot, provoke a
+real tool permission, exercise Once and Reject plus Always when surfaced, include
+an upstream option set lacking `allow_once` or reject to confirm safe
+cancellation, abort with a request pending, and confirm the management/session
+capability surfaces do not claim questions. For Grok, provoke permissions from
+an ordinary text turn, exercise Once and Reject plus every scope actually
+advertised, vary two sessions and tool calls, abort with a request pending, and
+repeat after process restart without enabling approval-bypass launch flags.
 
 ## Failure Signals
 
 - A permission or question reply stalls behind a prompt sent to the same busy
-  session (the send must be accepted at enqueue and release the session lane
-  immediately).
-- A request never appears, appears under the wrong session, or omits options the
-  backend actually offered.
+  session instead of the accepted bridge send releasing its session lane
+  immediately. For DeepSeek, the underlying `session/prompt` remains pending
+  through turn settlement, but ACP server requests and replies continue
+  concurrently on the same transport.
+- A request never appears, appears under the wrong session, omits options the
+  backend actually offered, races ahead of its accepted user message and
+  preceding tool card while the prompt frame is still flushing, or surfaces as
+  pending after that writing turn was aborted.
 - An answer does not reach the backend, arrives with a different scope than the
   user chose, or leaves the turn blocked.
 - An ACP form answer changes scalar type, uses a display label instead of the
   backend value, reaches the wrong session, or remains pending after abort.
-- A Pi dialog loses multiline input, silently retains truncated editor prefill,
-  replies with the wrong wire variant, survives timeout/process cleanup, or
-  appears outside its imported display root or owning project.
+- A Pi select, input, or editor dialog leaves its user-facing prompt only in the
+  ellipsized sheet heading, or any Pi dialog loses its confirm message, input
+  hint, multiline input, or editor guidance; silently retains truncated editor
+  prefill; replies with the wrong wire variant; survives timeout/process cleanup;
+  or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
   scope, accepts custom plan-review input, or survives abort/process cleanup.
 - A resolved request stays visible, keeps suppressing notifications, or returns
@@ -115,6 +149,11 @@ different combination than the previous recorded run.
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.
 - An archived session accepts a reply.
+- Copilot offers a question surface or waits for a Sesori answer to an upstream
+  `ask_user` interaction that the CLI did not forward over ACP.
+- A Grok request is silently approved by launch policy, loses its session or tool
+  correlation, maps to an unoffered scope, survives abort/process cleanup, or
+  one session's answer resolves another session's request.
 
 ## Known Limitations
 
@@ -124,6 +163,14 @@ different combination than the previous recorded run.
 - Plugin scope follows currently registered plugins and their declared
   capabilities, not a fixed list. A plugin that does not expose a request kind
   is not a failure.
+- GitHub Copilot CLI currently does not forward `ask_user` over ACP
+  (`github/copilot-cli#2109`); only its standard permission requests are in scope.
+- Grok permission scopes are tool/account dependent. A scope not advertised by
+  the live request is absent capability, not failed coverage; Once and Reject
+  remain required.
+- The shared client models only whether Always is available. Once and Reject stay
+  visible even when an unusual ACP request omits their exact option; choosing one
+  then cancels safely rather than selecting a broader or different scope.
 - Untested Hermes gap (remove this entry once verified): no Hermes permission
   request was ever observed. The tested provider completed file tools without
   emitting an ACP permission request, so once/reject/always handling and
@@ -134,5 +181,7 @@ different combination than the previous recorded run.
 - Bridge pending-interaction and archived-validator services; per-plugin
   approval registries; shared pending permission/question and reply models.
 - Client permission and question surfaces and their auto-dismiss behavior.
+- `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
+  `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
 - Owning tests for pending interaction, reply routes, and pending state without
   a started backend.

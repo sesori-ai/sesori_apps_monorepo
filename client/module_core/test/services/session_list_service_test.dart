@@ -40,6 +40,32 @@ void main() {
     );
   });
 
+  test("live activity advances displayed recency without regressing a newer backend time", () {
+    final service = SessionListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+
+    final result = service.visibleSessions(
+      sessions: [
+        _session(id: "live-newer", title: "Live", updatedAt: 100).copyWith(lastUserActivityAt: 80),
+        _session(id: "backend-newer", title: "Backend", updatedAt: 400).copyWith(lastUserActivityAt: 100),
+      ],
+      showArchived: true,
+      activityBySessionId: const {},
+      listStateBySessionId: const {
+        "live-newer": (unseen: false, lastUserActivityAt: 300),
+        "backend-newer": (unseen: false, lastUserActivityAt: 300),
+      },
+    );
+    final byId = {for (final session in result) session.id: session};
+
+    expect(byId["live-newer"]?.time?.updated, 300);
+    expect(byId["live-newer"]?.lastUserActivityAt, 300);
+    expect(byId["backend-newer"]?.time?.updated, 400);
+    expect(byId["backend-newer"]?.lastUserActivityAt, 300);
+  });
+
   test("running sessions use REST markers before updated-time fallback", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),

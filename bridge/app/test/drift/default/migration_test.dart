@@ -6,12 +6,14 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
+
 import 'generated/schema.dart';
 
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
 import 'generated/schema_v13.dart' as v13;
+import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1546,6 +1548,23 @@ void main() {
     },
   );
 
+  test(
+    'migration v13 → v14 creates empty plugin-scoped new-session defaults',
+    () async {
+      final connection = await verifier.startAt(13);
+      final db = AppDatabase(connection);
+
+      await verifier.migrateAndValidate(
+        db,
+        14,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      expect(await db.select(db.newSessionDefaultsTable).get(), isEmpty);
+      await db.close();
+    },
+  );
+
   test('v13 PR key, scope index, and project FK remain enforced', () async {
     final db = await _migrateFromV12(verifier: verifier);
     addTearDown(db.close);
@@ -1644,116 +1663,155 @@ void main() {
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
   });
 
-  test('migrates schema from v13 to v14', () async {
-    final connection = await verifier.startAt(13);
-    final db = AppDatabase(connection);
+  test('migration v14 → v15 preserves new-session defaults', () async {
+    final schema = await verifier.schemaAt(14);
+    final oldDb = v14.DatabaseAtV14(schema.newConnection());
+    await oldDb.customStatement(
+      'INSERT INTO new_session_defaults_table (plugin_id, agent, agent_model) '
+      'VALUES (?, ?, ?)',
+      ['opencode', 'build', null],
+    );
+    await oldDb.close();
 
+    final db = AppDatabase(schema.newConnection());
     await verifier.migrateAndValidate(
       db,
-      14,
+      15,
       options: const ValidationOptions(validateDropped: true),
     );
+
+    final defaults = await db.select(db.newSessionDefaultsTable).get();
+    expect(defaults, hasLength(1));
+    expect(defaults.single.pluginId, 'opencode');
+    expect(defaults.single.agent, 'build');
     await db.close();
   });
 
-  test('v14 device canvas claims enforce scoped uniqueness and session cascade', () async {
-    await verifier.testWithDataIntegrity(
-      oldVersion: 13,
-      newVersion: 14,
-      createOld: v13.DatabaseAtV13.new,
-      createNew: AppDatabase.new,
-      openTestedDatabase: AppDatabase.new,
-      createItems: (batch, oldDb) {
-        batch.insert(
-          oldDb.projectsTable,
-          const v13.ProjectsTableData(
-            projectId: 'project-1',
-            hidden: 0,
-            baseBranch: null,
-            path: '/repo',
-            displayName: null,
-            createdAt: 1,
-            updatedAt: 1,
-            projectionUpdatedAt: 1,
-            prCacheGithubLogin: null,
-          ),
-        );
-        batch.insert(
-          oldDb.sessionsTable,
-          const v13.SessionsTableData(
-            sessionId: 'session-1',
-            backendSessionId: 'backend-1',
-            projectId: 'project-1',
-            parentSessionId: null,
-            directory: '/repo',
-            worktreePath: null,
-            branchName: null,
-            currentBranchName: null,
-            currentGithubRepositoryIdentity: null,
-            isDedicated: 0,
-            archivedAt: null,
-            baseBranch: null,
-            baseCommit: null,
-            lastAgent: null,
-            lastAgentModel: null,
-            createdAt: 1,
-            updatedAt: 1,
-            projectionUpdatedAt: 1,
-            lastActivityAt: null,
-            lastSeenAt: null,
-            lastUserMessageAt: null,
-            pluginId: 'opencode',
-            title: null,
-            catalogTitle: null,
-          ),
-        );
-      },
-      validateItems: (db) async {
-        await db
+  test('migration accepts legacy Device Canvas v14 and wipes claims', () async {
+    final schema = await verifier.schemaAt(13);
+    final oldDb = v13.DatabaseAtV13(schema.newConnection());
+    await oldDb.customStatement('''
+      CREATE TABLE device_canvas_claims_table (
+        bridge_id TEXT NOT NULL,
+        device_key TEXT NOT NULL,
+        session_id TEXT NOT NULL REFERENCES sessions_table (session_id) ON DELETE CASCADE,
+        claim_revision INTEGER NOT NULL,
+        claimed_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (bridge_id, device_key)
+      )
+    ''');
+    await oldDb.customStatement('''
+      CREATE TABLE device_canvas_claim_revisions_table (
+        bridge_id TEXT NOT NULL,
+        last_revision INTEGER NOT NULL,
+        PRIMARY KEY (bridge_id)
+      )
+    ''');
+    await oldDb.customStatement(
+      'CREATE INDEX idx_device_canvas_claims_session '
+      'ON device_canvas_claims_table (session_id)',
+    );
+    await oldDb.customStatement(
+      'INSERT INTO device_canvas_claim_revisions_table (bridge_id, last_revision) '
+      'VALUES (?, ?)',
+      ['bridge-a', 7],
+    );
+    await oldDb.customStatement('PRAGMA user_version = 14');
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(
+      db,
+      15,
+      options: const ValidationOptions(validateDropped: true),
+    );
+
+    expect(await db.select(db.newSessionDefaultsTable).get(), isEmpty);
+    expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
+    expect(await db.select(db.deviceCanvasClaimRevisionsTable).get(), isEmpty);
+    await db.close();
+  });
+
+  test(
+    'v15 device canvas claims enforce scoped uniqueness and session cascade',
+    () async {
+      final connection = await verifier.startAt(15);
+      final db = AppDatabase(connection);
+
+      await db
+          .into(db.projectsTable)
+          .insert(
+            ProjectsTableCompanion.insert(
+              projectId: 'project-1',
+              path: '/repo',
+              projectionUpdatedAt: 1,
+            ),
+          );
+      await db
+          .into(db.sessionTable)
+          .insert(
+            SessionTableCompanion.insert(
+              sessionId: 'session-1',
+              backendSessionId: 'backend-1',
+              projectId: 'project-1',
+              directory: '/repo',
+              isDedicated: false,
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+              pluginId: 'opencode',
+            ),
+          );
+      await db
+          .into(db.deviceCanvasClaimsTable)
+          .insert(
+            DeviceCanvasClaimsTableCompanion.insert(
+              bridgeId: 'bridge-a',
+              deviceKey: 'ios:booted',
+              sessionId: 'session-1',
+              claimRevision: 1,
+              claimedAt: 10,
+              updatedAt: 10,
+            ),
+          );
+      await db
+          .into(db.deviceCanvasClaimsTable)
+          .insert(
+            DeviceCanvasClaimsTableCompanion.insert(
+              bridgeId: 'bridge-b',
+              deviceKey: 'ios:booted',
+              sessionId: 'session-1',
+              claimRevision: 1,
+              claimedAt: 11,
+              updatedAt: 11,
+            ),
+          );
+
+      await expectLater(
+        db
             .into(db.deviceCanvasClaimsTable)
             .insert(
               DeviceCanvasClaimsTableCompanion.insert(
                 bridgeId: 'bridge-a',
                 deviceKey: 'ios:booted',
                 sessionId: 'session-1',
-                claimRevision: 1,
-                claimedAt: 10,
-                updatedAt: 10,
+                claimRevision: 2,
+                claimedAt: 12,
+                updatedAt: 12,
               ),
-            );
-        await db
-            .into(db.deviceCanvasClaimsTable)
-            .insert(
-              DeviceCanvasClaimsTableCompanion.insert(
-                bridgeId: 'bridge-b',
-                deviceKey: 'ios:booted',
-                sessionId: 'session-1',
-                claimRevision: 1,
-                claimedAt: 11,
-                updatedAt: 11,
-              ),
-            );
+            ),
+        throwsA(isA<SqliteException>()),
+      );
 
-        await expectLater(
-          db.into(db.deviceCanvasClaimsTable).insert(
-                DeviceCanvasClaimsTableCompanion.insert(
-                  bridgeId: 'bridge-a',
-                  deviceKey: 'ios:booted',
-                  sessionId: 'session-1',
-                  claimRevision: 2,
-                  claimedAt: 12,
-                  updatedAt: 12,
-                ),
-              ),
-          throwsA(isA<SqliteException>()),
-        );
-
-        await (db.delete(db.sessionTable)..where((table) => table.sessionId.equals('session-1'))).go();
-        expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
-        expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
-      },
-    );
-  });
+      await (db.delete(
+        db.sessionTable,
+      )..where((table) => table.sessionId.equals('session-1'))).go();
+      expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+      await db.close();
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
@@ -1764,7 +1822,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    14,
+    15,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

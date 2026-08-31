@@ -4,11 +4,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/deepseek_acp_api.dart";
 import "../api/models/deepseek_protocol_dto.dart";
 import "../deepseek_event_mapper.dart";
+import "../deepseek_message_time_parser.dart";
 
 class DeepSeekHistoryRepository({
   required final DeepSeekAcpApi api,
   required final DeepSeekEventMapper eventMapper,
   required final String pluginId,
+  required final DeepSeekMessageTimeParser messageTimeParser,
 }) {
   static const int _maxPages = 100;
   static const int _pageSize = 100;
@@ -20,10 +22,9 @@ class DeepSeekHistoryRepository({
     final collector = AcpReplayCollector(
       sessionId: sessionId,
       agentId: pluginId,
-      modelId: eventMapper.modelForSession(sessionId: sessionId),
-      providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: null,
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
+      messageTimeResolver: ({required params}) => messageTimeParser.parse(params),
       haltClassifier: eventMapper.classifyHaltNotice,
     );
     int? cursor;
@@ -45,7 +46,11 @@ class DeepSeekHistoryRepository({
                 collector.consume(envelope.toJson());
               }
             }
-            return collector.build();
+            return collector.buildWithAssistantSelection(
+              modelId: eventMapper.modelForSession(sessionId: sessionId),
+              providerId: eventMapper.providerForSession(sessionId: sessionId),
+              variant: null,
+            );
           case DeepSeekPaginatedHistoryResponseDto(:final nextBeforeSeq):
             if (cursor != null && nextBeforeSeq >= cursor) {
               throw const FormatException("DeepSeek history cursor did not progress");

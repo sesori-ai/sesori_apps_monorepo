@@ -12,12 +12,13 @@ void main() {
     final eventNames = <String>[];
     final singular = SingularStaticAdapter.test(start: (_) {}, event: eventNames.add);
     final startup = SingularAttributionStartup(singular: singular)
-      ..start(
+      ..prepare(
         isSupportedPlatform: true,
         ineligibilityReason: null,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",
-      );
+      )
+      ..applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
     final client = SingularAttributionClient(startup: startup, singular: singular);
 
     await client.logEvent(event: AttributionEvent.accountCreated);
@@ -49,12 +50,13 @@ void main() {
       event: eventNames.add,
     );
     final startup = SingularAttributionStartup(singular: singular)
-      ..start(
+      ..prepare(
         isSupportedPlatform: true,
-        ineligibilityReason: AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+        ineligibilityReason: null,
         sdkKey: "sdk-key",
         sdkSecret: "sdk-secret",
-      );
+      )
+      ..applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
     final client = SingularAttributionClient(startup: startup, singular: singular);
 
     await client.logEvent(event: AttributionEvent.accountLogin);

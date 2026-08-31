@@ -8,10 +8,10 @@ import "../../theme/prego_theme.dart";
 /// The mark of the harness a session, project or setting belongs to.
 ///
 /// Each supported harness has its own artwork, so a screen mixing backends
-/// tells them apart at a glance. Each mark ships a light and a dark export in
-/// its official brand colours and follows the theme brightness. A harness
-/// this build has no artwork for — a newer bridge can advertise one — falls
-/// back to a plug drawn in [color].
+/// tells them apart at a glance. Theme-specific exports follow the current
+/// brightness; theme-independent marks keep their official brand colours. A
+/// harness this build has no artwork for — a newer bridge can advertise one
+/// — falls back to a plug drawn in [color].
 ///
 /// The mark is decorative. Callers that lean on it to identify the harness
 /// must say so in words themselves; [displayNameFor] gives them the name.
@@ -45,6 +45,8 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/opencode_dark.svg" : "assets/svgs/brands/opencode_light.svg",
       final id when id == Harness.codex.name =>
         isDark ? "assets/svgs/brands/codex_dark.svg" : "assets/svgs/brands/codex_light.svg",
+      final id when id == Harness.copilot.name =>
+        isDark ? "assets/svgs/brands/copilot_dark.svg" : "assets/svgs/brands/copilot_light.svg",
       final id when id == Harness.cursor.name =>
         isDark ? "assets/svgs/brands/cursor_dark.svg" : "assets/svgs/brands/cursor_light.svg",
       final id when id == Harness.claude.name =>
@@ -54,6 +56,9 @@ class const PregoBrandLogo({
       final id when id == Harness.pi.name =>
         isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
       final id when id == Harness.omp.name => "assets/svgs/brands/omp.svg",
+      final id when id == Harness.deepseek.name => "assets/svgs/brands/deepseek.svg",
+      final id when id == Harness.grok.name =>
+        isDark ? "assets/svgs/brands/grok_dark.svg" : "assets/svgs/brands/grok_light.svg",
       _ => null,
     };
   }
@@ -67,11 +72,14 @@ class const PregoBrandLogo({
   static String displayNameFor(String pluginId) => switch (pluginId) {
     final id when id == Harness.opencode.name => "OpenCode",
     final id when id == Harness.codex.name => "Codex",
+    final id when id == Harness.copilot.name => "GitHub Copilot",
     final id when id == Harness.cursor.name => "Cursor",
     final id when id == Harness.claude.name => "Claude Code",
     final id when id == Harness.hermes.name => "Hermes Agent",
     final id when id == Harness.pi.name => "Pi",
     final id when id == Harness.omp.name => "Oh My Pi",
+    final id when id == Harness.deepseek.name => "DeepSeek",
+    final id when id == Harness.grok.name => "Grok Build",
     _ => pluginId,
   };
 }

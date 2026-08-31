@@ -202,8 +202,16 @@ Map<String, dynamic> _$PluginMessageAssistantToJson(
   'agent': ?instance.agent,
   'modelID': ?instance.modelID,
   'providerID': ?instance.providerID,
+  'variant': ?instance.variant,
+  'sender': _$PluginMessageSenderEnumMap[instance.sender]!,
   'time': ?instance.time?.toJson(),
   'role': instance.$type,
+};
+
+const _$PluginMessageSenderEnumMap = {
+  PluginMessageSender.agent: 'agent',
+  PluginMessageSender.system: 'system',
+  PluginMessageSender.unknown: 'unknown',
 };
 
 Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
@@ -213,6 +221,7 @@ Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
       'agent': ?instance.agent,
       'modelID': ?instance.modelID,
       'providerID': ?instance.providerID,
+      'variant': ?instance.variant,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
       'time': ?instance.time?.toJson(),

@@ -199,7 +199,7 @@ To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 
 All keys are optional. Plugins absent from `disabled` remain eligible. Timeout
 values are integer minutes; plugin-specific values override `default`, and an
-absent value falls back to 10 minutes. Values less than or equal to zero mean
+absent value falls back to 45 minutes. Values less than or equal to zero mean
 never idle-stop once the demand-start lifecycle is enabled. Unknown plugin
 objects and disabled IDs are preserved for forward compatibility. The current
 default is derived from setup-ready plugins in display-name order; missing
@@ -373,6 +373,19 @@ The crypto and protocol types live in `sesori_shared`, shared with the Flutter m
 ```bash
 dart test
 ```
+
+The supervised end-to-end test launches the native bundled helper against
+loopback fake auth, relay, and control services. Build the bundle first, then
+run the test in required mode:
+
+```bash
+dart build cli -o build/cli
+SESORI_E2E_REQUIRED=1 dart test test/integration/supervised_e2e_test.dart
+```
+
+Without a built helper, the integration test is skipped for ordinary local
+package test runs; desktop CI builds it natively on macOS, Windows, and Linux
+and sets required mode.
 
 ## License
 

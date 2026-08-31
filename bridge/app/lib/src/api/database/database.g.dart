@@ -3986,6 +3986,291 @@ class DeviceCanvasClaimRevisionsTableCompanion
   }
 }
 
+mixin $NewSessionDefaultsTableTableToColumns
+    implements Insertable<NewSessionDefaultsTableData> {
+  String get pluginId;
+  String? get agent;
+  AgentModel? get agentModel;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || agent != null) {
+      map['agent'] = Variable<String>(agent);
+    }
+    if (!nullToAbsent || agentModel != null) {
+      map['agent_model'] = Variable<String>(
+        $NewSessionDefaultsTableTable.$converteragentModeln.toSql(agentModel),
+      );
+    }
+    return map;
+  }
+}
+
+class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
+    with TableInfo<$NewSessionDefaultsTableTable, NewSessionDefaultsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NewSessionDefaultsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _agentMeta = const VerificationMeta('agent');
+  @override
+  late final GeneratedColumn<String> agent = GeneratedColumn<String>(
+    'agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<AgentModel?, String> agentModel =
+      GeneratedColumn<String>(
+        'agent_model',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<AgentModel?>(
+        $NewSessionDefaultsTableTable.$converteragentModeln,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'new_session_defaults_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NewSessionDefaultsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
+    if (data.containsKey('agent')) {
+      context.handle(
+        _agentMeta,
+        agent.isAcceptableOrUnknown(data['agent']!, _agentMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pluginId};
+  @override
+  NewSessionDefaultsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NewSessionDefaultsTableData(
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      agent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent'],
+      ),
+      agentModel: $NewSessionDefaultsTableTable.$converteragentModeln.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}agent_model'],
+        ),
+      ),
+    );
+  }
+
+  @override
+  $NewSessionDefaultsTableTable createAlias(String alias) {
+    return $NewSessionDefaultsTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<AgentModel, String> $converteragentModel =
+      const AgentModelConverter();
+  static TypeConverter<AgentModel?, String?> $converteragentModeln =
+      NullAwareTypeConverter.wrap($converteragentModel);
+  @override
+  bool get withoutRowId => true;
+}
+
+class NewSessionDefaultsTableData extends DataClass
+    with $NewSessionDefaultsTableTableToColumns {
+  @override
+  final String pluginId;
+  @override
+  final String? agent;
+  @override
+  final AgentModel? agentModel;
+  const NewSessionDefaultsTableData({
+    required this.pluginId,
+    this.agent,
+    this.agentModel,
+  });
+  NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
+    return NewSessionDefaultsTableCompanion(
+      pluginId: Value(pluginId),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      agentModel: agentModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentModel),
+    );
+  }
+
+  factory NewSessionDefaultsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NewSessionDefaultsTableData(
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      agent: serializer.fromJson<String?>(json['agent']),
+      agentModel: serializer.fromJson<AgentModel?>(json['agentModel']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'pluginId': serializer.toJson<String>(pluginId),
+      'agent': serializer.toJson<String?>(agent),
+      'agentModel': serializer.toJson<AgentModel?>(agentModel),
+    };
+  }
+
+  NewSessionDefaultsTableData copyWith({
+    String? pluginId,
+    Value<String?> agent = const Value.absent(),
+    Value<AgentModel?> agentModel = const Value.absent(),
+  }) => NewSessionDefaultsTableData(
+    pluginId: pluginId ?? this.pluginId,
+    agent: agent.present ? agent.value : this.agent,
+    agentModel: agentModel.present ? agentModel.value : this.agentModel,
+  );
+  NewSessionDefaultsTableData copyWithCompanion(
+    NewSessionDefaultsTableCompanion data,
+  ) {
+    return NewSessionDefaultsTableData(
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      agent: data.agent.present ? data.agent.value : this.agent,
+      agentModel: data.agentModel.present
+          ? data.agentModel.value
+          : this.agentModel,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewSessionDefaultsTableData(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(pluginId, agent, agentModel);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NewSessionDefaultsTableData &&
+          other.pluginId == this.pluginId &&
+          other.agent == this.agent &&
+          other.agentModel == this.agentModel);
+}
+
+class NewSessionDefaultsTableCompanion
+    extends UpdateCompanion<NewSessionDefaultsTableData> {
+  final Value<String> pluginId;
+  final Value<String?> agent;
+  final Value<AgentModel?> agentModel;
+  const NewSessionDefaultsTableCompanion({
+    this.pluginId = const Value.absent(),
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
+  });
+  NewSessionDefaultsTableCompanion.insert({
+    required String pluginId,
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
+  }) : pluginId = Value(pluginId);
+  static Insertable<NewSessionDefaultsTableData> custom({
+    Expression<String>? pluginId,
+    Expression<String>? agent,
+    Expression<String>? agentModel,
+  }) {
+    return RawValuesInsertable({
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (agent != null) 'agent': agent,
+      if (agentModel != null) 'agent_model': agentModel,
+    });
+  }
+
+  NewSessionDefaultsTableCompanion copyWith({
+    Value<String>? pluginId,
+    Value<String?>? agent,
+    Value<AgentModel?>? agentModel,
+  }) {
+    return NewSessionDefaultsTableCompanion(
+      pluginId: pluginId ?? this.pluginId,
+      agent: agent ?? this.agent,
+      agentModel: agentModel ?? this.agentModel,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (agent.present) {
+      map['agent'] = Variable<String>(agent.value);
+    }
+    if (agentModel.present) {
+      map['agent_model'] = Variable<String>(
+        $NewSessionDefaultsTableTable.$converteragentModeln.toSql(
+          agentModel.value,
+        ),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewSessionDefaultsTableCompanion(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4003,6 +4288,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DeviceCanvasClaimsTableTable(this);
   late final $DeviceCanvasClaimRevisionsTableTable
   deviceCanvasClaimRevisionsTable = $DeviceCanvasClaimRevisionsTableTable(this);
+  late final $NewSessionDefaultsTableTable newSessionDefaultsTable =
+      $NewSessionDefaultsTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -4059,6 +4346,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionOptionsCacheTable,
     deviceCanvasClaimsTable,
     deviceCanvasClaimRevisionsTable,
+    newSessionDefaultsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -7264,6 +7552,185 @@ typedef $$DeviceCanvasClaimRevisionsTableTableProcessedTableManager =
       DeviceCanvasClaimRevisionsTableData,
       PrefetchHooks Function()
     >;
+typedef $$NewSessionDefaultsTableTableCreateCompanionBuilder =
+    NewSessionDefaultsTableCompanion Function({
+      required String pluginId,
+      Value<String?> agent,
+      Value<AgentModel?> agentModel,
+    });
+typedef $$NewSessionDefaultsTableTableUpdateCompanionBuilder =
+    NewSessionDefaultsTableCompanion Function({
+      Value<String> pluginId,
+      Value<String?> agent,
+      Value<AgentModel?> agentModel,
+    });
+
+class $$NewSessionDefaultsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+  $$NewSessionDefaultsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get agent => $composableBuilder(
+    column: $table.agent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<AgentModel?, AgentModel, String>
+  get agentModel => $composableBuilder(
+    column: $table.agentModel,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$NewSessionDefaultsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+  $$NewSessionDefaultsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agent => $composableBuilder(
+    column: $table.agent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get agentModel => $composableBuilder(
+    column: $table.agentModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NewSessionDefaultsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NewSessionDefaultsTableTable> {
+  $$NewSessionDefaultsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
+  GeneratedColumn<String> get agent =>
+      $composableBuilder(column: $table.agent, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<AgentModel?, String> get agentModel =>
+      $composableBuilder(
+        column: $table.agentModel,
+        builder: (column) => column,
+      );
+}
+
+class $$NewSessionDefaultsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NewSessionDefaultsTableTable,
+          NewSessionDefaultsTableData,
+          $$NewSessionDefaultsTableTableFilterComposer,
+          $$NewSessionDefaultsTableTableOrderingComposer,
+          $$NewSessionDefaultsTableTableAnnotationComposer,
+          $$NewSessionDefaultsTableTableCreateCompanionBuilder,
+          $$NewSessionDefaultsTableTableUpdateCompanionBuilder,
+          (
+            NewSessionDefaultsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $NewSessionDefaultsTableTable,
+              NewSessionDefaultsTableData
+            >,
+          ),
+          NewSessionDefaultsTableData,
+          PrefetchHooks Function()
+        > {
+  $$NewSessionDefaultsTableTableTableManager(
+    _$AppDatabase db,
+    $NewSessionDefaultsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NewSessionDefaultsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$NewSessionDefaultsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$NewSessionDefaultsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> pluginId = const Value.absent(),
+                Value<String?> agent = const Value.absent(),
+                Value<AgentModel?> agentModel = const Value.absent(),
+              }) => NewSessionDefaultsTableCompanion(
+                pluginId: pluginId,
+                agent: agent,
+                agentModel: agentModel,
+              ),
+          createCompanionCallback:
+              ({
+                required String pluginId,
+                Value<String?> agent = const Value.absent(),
+                Value<AgentModel?> agentModel = const Value.absent(),
+              }) => NewSessionDefaultsTableCompanion.insert(
+                pluginId: pluginId,
+                agent: agent,
+                agentModel: agentModel,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NewSessionDefaultsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NewSessionDefaultsTableTable,
+      NewSessionDefaultsTableData,
+      $$NewSessionDefaultsTableTableFilterComposer,
+      $$NewSessionDefaultsTableTableOrderingComposer,
+      $$NewSessionDefaultsTableTableAnnotationComposer,
+      $$NewSessionDefaultsTableTableCreateCompanionBuilder,
+      $$NewSessionDefaultsTableTableUpdateCompanionBuilder,
+      (
+        NewSessionDefaultsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $NewSessionDefaultsTableTable,
+          NewSessionDefaultsTableData
+        >,
+      ),
+      NewSessionDefaultsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7296,5 +7763,10 @@ class $AppDatabaseManager {
       $$DeviceCanvasClaimRevisionsTableTableTableManager(
         _db,
         _db.deviceCanvasClaimRevisionsTable,
+      );
+  $$NewSessionDefaultsTableTableTableManager get newSessionDefaultsTable =>
+      $$NewSessionDefaultsTableTableTableManager(
+        _db,
+        _db.newSessionDefaultsTable,
       );
 }

@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
@@ -17,12 +18,13 @@ class const AssistantMessageCard({
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
+  required final EdgeInsetsGeometry contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: SelectionArea(
+      padding: contentPadding,
+      child: PregoReadableSelectionArea(
         child: Column(
           crossAxisAlignment: .start,
           children: [

@@ -110,6 +110,7 @@ final class PiSessionProcessRepository({
   required final PiMessageIdentityTracker _identityTracker,
   required final Duration _startupExitTimeout,
   required final Duration _historyRpcTimeout,
+  required final Duration _abortRpcTimeout,
   required final Duration _promptRpcTimeout,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
@@ -189,14 +190,23 @@ final class PiSessionProcessRepository({
   Future<PiSessionConnection> ensureResident({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) => _withSessionOperation(
     sessionId: sessionId,
-    operation: () => _ensureResident(sessionId: sessionId, knownDirectories: knownDirectories),
+    operation: () => _ensureResident(
+      sessionId: sessionId,
+      knownDirectories: knownDirectories,
+      model: model,
+      variant: variant,
+    ),
   );
 
   Future<PiSessionConnection> _ensureResident({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
     final resident = _residents[sessionId];
@@ -205,7 +215,12 @@ final class PiSessionProcessRepository({
     }
     final connecting = _connecting[sessionId];
     if (connecting != null) return await connecting;
-    final future = _connect(sessionId: sessionId, knownDirectories: knownDirectories);
+    final future = _connect(
+      sessionId: sessionId,
+      knownDirectories: knownDirectories,
+      model: model,
+      variant: variant,
+    );
     _connecting[sessionId] = future;
     try {
       return await future;
@@ -217,6 +232,8 @@ final class PiSessionProcessRepository({
   Future<PiSessionConnection> _connect({
     required String sessionId,
     required Set<String> knownDirectories,
+    required ({String providerID, String modelID})? model,
+    required PluginSessionVariant? variant,
   }) async {
     final generation = ++_nextConnectionGeneration;
     _generations[sessionId] = generation;
@@ -258,6 +275,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: cwd,
         launch: launch,
+        model: model,
+        thinkingLevel: variant?.id,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -403,7 +422,7 @@ final class PiSessionProcessRepository({
       await _requiredResident(connection).client.send(
         command: PiRpcCommand.abort,
         arguments: const {},
-        timeout: _historyRpcTimeout,
+        timeout: _abortRpcTimeout,
       );
       return const PiSessionAbortAcknowledged();
     } on PiRpcProcessExitException catch (error, stackTrace) {
@@ -582,6 +601,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: resolved.metadata.cwd,
         launch: PiResumedSession(sessionPath: resolved.path),
+        model: null,
+        thinkingLevel: null,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -828,6 +849,8 @@ final class PiSessionProcessRepository({
         binaryPath: _binaryPath,
         workingDirectory: resolved.metadata.cwd,
         launch: PiResumedSession(sessionPath: resolved.path),
+        model: null,
+        thinkingLevel: null,
         environment: _environment,
       ),
       processFactory: _processFactory,
@@ -888,11 +911,13 @@ final class PiSessionProcessRepository({
       timestamp: timestamp,
       message: _normalizeFileMessage(message),
     ),
-    PiSessionFileThinkingLevelChangeEntryDto(:final timestamp) => PiSessionEntryDto.thinkingLevelChange(
-      id: id,
-      parentId: parentId,
-      timestamp: timestamp,
-    ),
+    PiSessionFileThinkingLevelChangeEntryDto(:final timestamp, :final thinkingLevel) =>
+      PiSessionEntryDto.thinkingLevelChange(
+        id: id,
+        parentId: parentId,
+        timestamp: timestamp,
+        thinkingLevel: thinkingLevel,
+      ),
     PiSessionFileModelChangeEntryDto(:final timestamp) => PiSessionEntryDto.modelChange(
       id: id,
       parentId: parentId,

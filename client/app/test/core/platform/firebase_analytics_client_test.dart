@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/firebase_analytics_client.dart";
+import "package:sesori_mobile/core/platform/firebase_analytics_startup.dart";
 
 const _serverDerivedUserKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 const _occurredAtMicros = 1720000000123456;
@@ -18,6 +19,7 @@ void main() {
     client = FirebaseAnalyticsClient(
       analytics: analytics,
       capability: const AnalyticsRuntimeCapability.enabled(),
+      startup: FirebaseAnalyticsStartup(analytics: analytics),
     );
     when(
       () => analytics.logEvent(
@@ -85,6 +87,7 @@ void main() {
       capability: const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.debugOrProfile,
       ),
+      startup: FirebaseAnalyticsStartup(analytics: analytics),
     );
 
     await expectLater(
@@ -194,6 +197,31 @@ void main() {
       "schema_version": 1,
     });
     expect(parameters, isNot(contains("user_key")));
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("logs recommended authentication outcomes with method only", () async {
+    await client.logInstallationEvent(
+      event: const InstallationAnalyticsEvent.accountCreated(
+        method: AnalyticsLoginProvider.google,
+      ),
+    );
+    await client.logInstallationEvent(
+      event: const InstallationAnalyticsEvent.accountLogin(
+        method: AnalyticsLoginProvider.email,
+      ),
+    );
+
+    verifyInOrder([
+      () => analytics.logEvent(
+        name: "sign_up",
+        parameters: {"method": "google", "schema_version": 1},
+      ),
+      () => analytics.logEvent(
+        name: "login",
+        parameters: {"method": "email", "schema_version": 1},
+      ),
+    ]);
     verifyNoMoreInteractions(analytics);
   });
 }

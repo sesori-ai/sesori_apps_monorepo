@@ -4,6 +4,7 @@ import "dart:io";
 import "package:deepseek_plugin/src/api/deepseek_acp_api.dart";
 import "package:deepseek_plugin/src/api/models/deepseek_protocol_dto.dart";
 import "package:deepseek_plugin/src/deepseek_identity.dart";
+import "package:deepseek_plugin/src/deepseek_message_time_parser.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -19,9 +20,17 @@ void main() {
       expect(_decodeValid(api, definition, value), isA<Map<String, dynamic>>(), reason: definition);
     }
     expect(definitions, {
-      "initializeMetadata", "promptMetadata", "catalogRequest", "catalogResponse",
-      "historyRequest", "historyResponse", "renameRequest", "renameResponse",
-      "askUserQuestionRequest", "askUserQuestionResponse", "sessionStatusNotification",
+      "initializeMetadata",
+      "promptMetadata",
+      "catalogRequest",
+      "catalogResponse",
+      "historyRequest",
+      "historyResponse",
+      "renameRequest",
+      "renameResponse",
+      "askUserQuestionRequest",
+      "askUserQuestionResponse",
+      "sessionStatusNotification",
     });
   });
   test("all invalid runtime fixtures are rejected", () async {
@@ -37,9 +46,12 @@ void main() {
   });
   test("catalog rejects bounded collection and entry violations", () async {
     final corpus = jsonDecode(await File("${fixtureDirectory.path}/valid.json").readAsString()) as List;
-    Map<String, dynamic> fixture(String definition) => (corpus.cast<Map<String, dynamic>>().firstWhere(
-      (fixture) => fixture["definition"] == definition,
-    )["value"] as Map).cast<String, dynamic>();
+    Map<String, dynamic> fixture(String definition) =>
+        (corpus.cast<Map<String, dynamic>>().firstWhere(
+                  (fixture) => fixture["definition"] == definition,
+                )["value"]
+                as Map)
+            .cast<String, dynamic>();
     final valid = fixture("catalogResponse");
     Map<String, dynamic> copy() => (jsonDecode(jsonEncode(valid)) as Map).cast<String, dynamic>();
     Map<String, dynamic> mutate(void Function(Map<String, dynamic>) change) {
@@ -47,19 +59,30 @@ void main() {
       change(value);
       return value;
     }
+
     final provider = (valid["providers"] as List).single;
     final model = ((provider as Map)["models"] as List).single;
     final malformed = [
       mutate((value) => value["providers"] = List.filled(65, provider)),
       mutate((value) => ((value["providers"] as List).single as Map)["models"] = List.filled(257, model)),
-      mutate((value) => value["commands"] = [{"name": "", "description": "invalid"}]),
+      mutate(
+        (value) => value["commands"] = [
+          {"name": "", "description": "invalid"},
+        ],
+      ),
       mutate((value) => value["commands"] = List.filled(129, {"name": "valid", "description": "valid"})),
-      mutate((value) => value["failures"] = [
-        {"providerId": "provider", "category": "catalog", "message": "x".padRight(513, "x")},
-      ]),
-      mutate((value) => value["failures"] = List.filled(65, {
-        "providerId": "provider", "category": "catalog", "message": "failed",
-      })),
+      mutate(
+        (value) => value["failures"] = [
+          {"providerId": "provider", "category": "catalog", "message": "x".padRight(513, "x")},
+        ],
+      ),
+      mutate(
+        (value) => value["failures"] = List.filled(65, {
+          "providerId": "provider",
+          "category": "catalog",
+          "message": "failed",
+        }),
+      ),
     ];
     for (final catalog in malformed) {
       expect(() => api.parseCatalogResponse(catalog), throwsFormatException);
@@ -93,11 +116,17 @@ void _rejectInvalid(DeepSeekAcpApi api, String definition, Map<String, dynamic> 
     case "initializeMetadata" ||
         "promptMetadata" ||
         "catalogResponse" ||
-        "historyResponse" ||
         "askUserQuestionRequest" ||
         "askUserQuestionResponse" ||
         "sessionStatusNotification":
       _decodeValid(api, definition, value);
+    case "historyResponse":
+      final response = DeepSeekHistoryResponseDto.fromJson(value);
+      for (final update in response.updates) {
+        if (update.metadata != null && const DeepSeekMessageTimeParser().parse(update.toJson()) == null) {
+          throw const FormatException("messageCreatedAt");
+        }
+      }
     case "catalogRequest":
       final request = DeepSeekCatalogRequestDto.fromJson(value);
       if (!request.cwd.startsWith("/") && !RegExp(r"^[A-Za-z]:[\\/]").hasMatch(request.cwd)) {

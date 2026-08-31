@@ -22,6 +22,10 @@ entirely along with its transcript and, optionally, its worktree.
   reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
   (unstaged changes or a shared worktree) is refused with its issues and proceeds
   only on a forced retry. Session retirement never deletes a Git branch.
+- Per-session prompt defaults are live composer cache, not audit data. Archiving
+  clears them from the session row and omits them from the archive snapshot;
+  deletion removes them with the row. The separate last-successful New Session
+  preference is plugin-scoped and survives retiring any individual session.
 - Once deletion cleanup starts, the bridge suppresses session-created and
   session-updated events for the named session and its persisted descendants.
   Suppression remains for the bridge lifetime after success and is removed if
@@ -35,6 +39,16 @@ entirely along with its transcript and, optionally, its worktree.
   matching session without replay, invokes `/session delete`, then closes it.
   A bounded but truncated scan uses OMP's global-ID resume fallback; only an
   exhausted scan is treated as idempotent not-found.
+- GitHub Copilot exposes standard `session/close` but no delete/archive RPC.
+  Deletion cancels and closes a resident session when possible, purges Sesori's
+  row and transcript, and retains the plugin-scoped tombstone so a later explicit
+  ACP import cannot resurrect the retained upstream row. Sesori never deletes
+  files from Copilot's normal configuration home.
+- Grok likewise exposes standard `session/close` but no delete/archive RPC.
+  Active deletion orders cancel, settlement, and close before purging Sesori's
+  row, transcript, and requested worktree state. A plugin-scoped tombstone keeps
+  the retained upstream Grok row from explicit re-import, and Sesori never scans
+  or deletes Grok's private local storage.
 - Cleanup safety rejection happens before mutation. Once cleanup starts, a later
   visible failure can leave the worktree already removed; an identical retry
   accepts that missing worktree and completes session retirement. The session is
@@ -55,7 +69,7 @@ entirely along with its transcript and, optionally, its worktree.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
-| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. |
+| L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree cleanup, refusals presented to the user, branch retained. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
@@ -67,16 +81,23 @@ worktree with another active session, and a family with children. Vary state at
 retirement: idle, mid-turn, awaiting a request, or with its plugin stopped. Vary
 the entry surface and worktree-cleanup choice, and alternate archive-then-delete
 with direct deletion. Delete disposable sessions and remove any test worktrees
-and branches that remain after the asserted cleanup behavior.
+and branches that remain after the asserted cleanup behavior. For Copilot,
+compare idle and active deletion, verify standard close when resident, then run
+an exhausted explicit import and confirm the retained upstream row stays hidden.
+Repeat that matrix for Grok, including deletion with a permission pending and a
+restart before explicit re-import.
 
 ## Failure Signals
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
 - An audit record is missing or unreadable, history is purged without a durable
-  record, or a partial export is recorded as complete.
+  record, a partial export is recorded as complete, or an archived snapshot
+  retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- Copilot or Grok deletion removes private upstream files, omits the local
+  tombstone, or lets a later explicit import recreate the deleted local session.
 - A close-capable backend is closed while its prompt is still settling, emits
   late events after local removal, reports timeout/close failure as success, or
   a late session upsert makes a deleting or deleted session visible again.
@@ -102,10 +123,22 @@ and branches that remain after the asserted cleanup behavior.
   transcript and retains a plugin-scoped tombstone, but the corresponding ACP
   row can remain in Hermes storage until upstream provides a supported deletion
   surface; later import must not resurrect it.
+- DeepSeek standard close cancels and drains a live resident session but retains
+  adapter persistence because the pinned upstream owner has no delete API. Sesori
+  purges its database, transcript, and requested worktree state and retains a
+  plugin-scoped tombstone; it never infers and deletes private JSONL or attachment
+  paths. A later explicit import must not resurrect the retained adapter row.
+- Copilot's pinned CLI likewise has close but no delete/archive method. Its
+  history can remain in the user's normal Copilot home after local deletion;
+  Sesori's tombstone prevents re-import without inspecting or deleting that data.
+- Grok's supported CLI also has close but no delete/archive method. Its row can
+  remain in Grok storage after local deletion; Sesori's tombstone prevents
+  re-import without inspecting or deleting that data.
 
 ## Sources
 
 Bridge session lifecycle, deletion, archived-validator, and mutation dispatch
 services; chat-history export and purge; archived-record completeness model;
-worktree service; shared cleanup rejection model; OMP cleanup service; client
-list/detail surfaces.
+worktree service; shared cleanup rejection model; OMP cleanup service; shared
+ACP close/tombstone behavior used by Copilot and Grok; Grok package deletion
+tests; client list/detail surfaces.

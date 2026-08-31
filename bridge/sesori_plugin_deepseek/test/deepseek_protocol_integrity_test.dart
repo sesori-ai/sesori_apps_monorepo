@@ -12,7 +12,7 @@ void main() {
     ) as Map<String, dynamic>;
 
     expect(manifest["repository"], "sesori-ai/sesori-deepseek-acp");
-    expect(manifest["commit"], "e23a5c7e435c61af9ee7b8c5cdd61ee39fd60c6d");
+    expect(manifest["commit"], "9731711f079dc0d7acf7e5eff29c81a3622bc4a0");
     final expected = (manifest["files"] as Map).cast<String, String>();
     expect(expected.keys.toSet(), {
       "deepseek-acp.schema.json",

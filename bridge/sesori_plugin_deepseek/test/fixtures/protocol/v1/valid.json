@@ -98,6 +98,11 @@
           "sessionId": "session-1",
           "update": {
             "sessionUpdate": "agent_message_chunk"
+          },
+          "_meta": {
+            "sesori.ai/deepseek": {
+              "messageCreatedAt": 1787831943365
+            }
           }
         }
       ],

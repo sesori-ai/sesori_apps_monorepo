@@ -7,7 +7,7 @@ import "package:web_socket_channel/io.dart";
 /// Live connection state of the loopback control channel.
 ///
 /// This is internal lifecycle state, NOT a wire-protocol type — the
-/// control-protocol DTOs live in `sesori_shared` (added in a later PR).
+/// control-protocol DTOs live in `sesori_shared`.
 enum ControlChannelConnectionState() { connected, disconnected }
 
 /// Thrown by [ControlChannelClient.send] when the channel is not currently

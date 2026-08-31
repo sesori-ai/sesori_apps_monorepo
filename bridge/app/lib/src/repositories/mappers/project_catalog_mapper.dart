@@ -31,6 +31,7 @@ class const ProjectCatalogMapper() {
       hasUnseenChanges: hasUnseenChanges,
       directoryMissing: directoryMissing,
       supportsDedicatedWorktrees: supportsDedicatedWorktrees,
+      voiceGlossaryKey: null,
     );
   }
 

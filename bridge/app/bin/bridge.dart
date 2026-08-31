@@ -23,6 +23,7 @@ import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
@@ -183,6 +184,12 @@ class RunCommand() extends cli.Command<void> {
       }
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
+
+    if (options.isSupervised) {
+      // Establish ownership before sleep prevention or any other long-lived
+      // child starts, so the desktop can terminate the complete live group.
+      ProcessGroupIsolation().isolateCurrentProcess();
+    }
 
     if (!options.isSupervised) {
       final banner = BridgeStartupBannerFormatter(

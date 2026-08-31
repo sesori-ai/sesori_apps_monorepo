@@ -99,7 +99,7 @@ void main() {
       expect(message.permissionDenials.single["tool_name"], "Write");
     });
 
-    test("reads an API retry frame without retaining raw error text", () {
+    test("reads an API retry frame while retaining raw error text", () {
       final message =
           ClaudeStreamMessage.parse({
                 "type": "system",
@@ -118,6 +118,7 @@ void main() {
       expect(message.retryDelayMs, 1500);
       expect(message.errorStatus, 429);
       expect(message.error, ClaudeAssistantError.rateLimit);
+      expect(message.rawError, "rate_limit");
     });
 
     test("reads both declared and success-shaped error results", () {

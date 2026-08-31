@@ -324,7 +324,13 @@ void _stubLoadApis(MockSessionRepository service) {
       before: any(named: "before"),
     ),
   ).thenAnswer(
-    (_) async => ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+    (_) async => ApiResponse.success(
+      MessageWithPartsResponse(
+        messages: [_messageWithParts()],
+        nextCursor: null,
+        replayedPromptDefaults: null,
+      ),
+    ),
   );
   when(
     () => service.getPendingQuestions(sessionId: _sessionId),

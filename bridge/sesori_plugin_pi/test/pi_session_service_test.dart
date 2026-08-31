@@ -83,8 +83,18 @@ void main() {
     final frames = <PiSessionProcessFrame>[];
     fixture.repository.frames.listen(frames.add);
 
-    final first = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
-    final second = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final first = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
+    final second = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     process.emit(frame: {"type": "agent_start"});
     await pump();
     expect(frames, isEmpty);
@@ -105,7 +115,12 @@ void main() {
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await waitForCommand(process: process, type: "get_entries");
     expect(storage.pending, isNull);
     expect(storage.clearedDirectories, containsAll({"/project"}));
@@ -126,6 +141,8 @@ void main() {
       final connection = failedCleanupFixture.repository.ensureResident(
         sessionId: "other",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       await _answerEntries(failedCleanupProcess);
       await connection;
@@ -145,7 +162,12 @@ void main() {
     final fixture = _Fixture(processes: [resumed, created], storageOverride: storage);
     addTearDown(fixture.dispose);
 
-    final resident = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(resumed);
     await resident;
     expect(fixture.spawned.single.launch, isA<PiResumedSession>());
@@ -154,7 +176,12 @@ void main() {
     storage
       ..resolved = null
       ..pending = const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null);
-    final pending = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/pending"});
+    final pending = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/pending"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(created);
     await pending;
     expect(fixture.spawned.last.launch, isA<PiNewSession>());
@@ -222,6 +249,8 @@ void main() {
     final connecting = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await waitForCommand(process: process, type: "get_entries");
 
@@ -246,11 +275,17 @@ void main() {
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
       historyRpcTimeout: const Duration(seconds: 2),
+      abortRpcTimeout: const Duration(seconds: 1),
       promptRpcTimeout: const Duration(minutes: 30),
     );
     addTearDown(repository.dispose);
 
-    final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await pump();
     await repository.teardown(sessionId: "session");
     spawn.complete(process);
@@ -269,6 +304,8 @@ void main() {
     final firstConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(first);
     final firstGeneration = (await firstConnection).generation;
@@ -277,6 +314,8 @@ void main() {
     final secondConnection = fixture.repository.ensureResident(
       sessionId: "session",
       knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
     );
     await _answerEntries(second);
     expect((await secondConnection).generation, greaterThan(firstGeneration));
@@ -288,7 +327,12 @@ void main() {
     final fixture = _Fixture(processes: [resident, transient]);
     addTearDown(fixture.dispose);
 
-    final connecting = fixture.repository.ensureResident(sessionId: "session", knownDirectories: const {"/project"});
+    final connecting = fixture.repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
     final rename = fixture.repository.renameSession(
       sessionId: "session",
@@ -343,6 +387,8 @@ void main() {
       final connecting = fixture.repository.ensureResident(
         sessionId: "session",
         knownDirectories: const {"/project"},
+        model: null,
+        variant: null,
       );
       gate.complete();
 
@@ -362,7 +408,7 @@ void main() {
     });
   }
 
-  test("selection completes before prompt dispatch", () async {
+  test("selection is present at process startup and completes before prompt dispatch", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -378,6 +424,19 @@ void main() {
       model: (providerID: "provider", modelID: "model"),
     );
     await _answerEntries(process);
+    expect(fixture.spawned.single.arguments, [
+      "--mode",
+      "rpc",
+      "--approve",
+      "--session",
+      "/sessions/session.jsonl",
+      "--provider",
+      "provider",
+      "--model",
+      "model",
+      "--thinking",
+      "high",
+    ]);
     final model = await waitForCommand(process: process, type: "set_model");
     expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
     process.emitResponse(id: model["id"]! as String, command: "set_model");
@@ -1652,6 +1711,49 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
+  test("abort force-replaces Pi when its acknowledgement waits on hidden steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..abortRpcTimeout = const Duration(milliseconds: 10);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-active",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active")],
+      userVisibleText: "active",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-steering",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steering")],
+      userVisibleText: "steering",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+
+    final warnings = await _captureWarnings(() async {
+      final abort = service.abort(sessionId: "session");
+      await waitForCommand(process: process, type: "abort");
+      await abort;
+    });
+
+    expect(warnings, contains("abort acknowledgement timed out; forcing process replacement"));
+    expect(process.killed, isTrue);
+    expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+  });
+
   test("shutdown interruption accepts process exit before abort response", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1752,6 +1854,9 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
 
+    final messageInfos = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+    expect(messageInfos.map((info) => info["role"]), ["assistant", "assistant"]);
+    expect(messageInfos.map((info) => info["sender"]), ["system", "agent"]);
     expect(
       events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
       containsAllInOrder(["[PR Monitor] report", "Handled report"]),
@@ -1835,7 +1940,12 @@ void main() {
     await pump();
     expect(first.killed, isTrue);
 
-    final resident = fixture.repository.ensureResident(sessionId: "two", knownDirectories: const {"/project"});
+    final resident = fixture.repository.ensureResident(
+      sessionId: "two",
+      knownDirectories: const {"/project"},
+      model: null,
+      variant: null,
+    );
     await _answerEntries(second);
     await resident;
     await service.dispose();
@@ -2235,6 +2345,7 @@ final class _Fixture({
   final List<FakePiProcess> _processes = List.of(processes);
   Duration? idleTimeout = const Duration(minutes: 5);
   Duration historyRpcTimeout = const Duration(seconds: 2);
+  Duration abortRpcTimeout = const Duration(seconds: 1);
   Duration promptRpcTimeout = const Duration(seconds: 2);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
@@ -2256,6 +2367,7 @@ final class _Fixture({
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
     promptRpcTimeout: promptRpcTimeout,
   );
 

@@ -87,6 +87,7 @@ final class PiHistoryMapper({
     sessionId: sessionId,
     messageId: messageId,
     message: message,
+    variant: null,
     warnings: <_PiHistoryWarning>{},
   );
 
@@ -137,11 +138,9 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required PiAssistantMessageDto message,
+    required String? variant,
     required Set<_PiHistoryWarning> warnings,
   }) {
-    if (message.stopReason == PiAssistantStopReason.error && message.errorMessage != null) {
-      Log.w("[pi] assistant response failed", _PiAssistantFailureDiagnostic(detail: message.errorMessage!));
-    }
     final parts = <PluginMessagePart>[];
     for (var index = 0; index < message.content.length; index++) {
       switch (message.content[index]) {
@@ -191,7 +190,9 @@ final class PiHistoryMapper({
         messageId: messageId,
         provider: message.provider,
         model: message.model,
+        variant: variant,
         stopReason: message.stopReason,
+        errorMessage: message.errorMessage,
         timestamp: message.timestamp,
       ),
       parts: parts,
@@ -299,7 +300,7 @@ final class PiHistoryMapper({
     if (!message.display) return null;
     final text = _visibleCustomText(content: message.content, warnings: <_PiHistoryWarning>{});
     if (text == null) return null;
-    final draft = _textMessage(
+    final draft = _systemMessage(
       sessionId: sessionId,
       messageId: messageId,
       timestamp: message.timestamp,
@@ -316,7 +317,7 @@ final class PiHistoryMapper({
     if (!entry.display) return null;
     final text = _visibleCustomText(content: entry.content, warnings: <_PiHistoryWarning>{});
     if (text == null) return null;
-    final draft = _textMessage(sessionId: sessionId, messageId: messageId, timestamp: null, text: text);
+    final draft = _systemMessage(sessionId: sessionId, messageId: messageId, timestamp: null, text: text);
     return PluginMessageWithParts(info: draft.info, parts: draft.parts);
   }
 
@@ -333,6 +334,7 @@ final class PiHistoryMapper({
     final messages = <_MessageDraft>[];
     final toolLocations = <String, _ToolLocation>{};
     final terminalToolDrafts = <_MessageDraft>[];
+    String? currentVariant;
 
     for (final entry in branch) {
       switch (entry) {
@@ -359,6 +361,7 @@ final class PiHistoryMapper({
                 sessionId: sessionId,
                 messageId: messageId,
                 message: message,
+                variant: currentVariant,
                 warnings: warnings,
               );
               final draft = _MessageDraft(info: mapped.info, parts: mapped.parts.toList());
@@ -408,7 +411,7 @@ final class PiHistoryMapper({
               final text = _visibleCustomText(content: message.content, warnings: warnings);
               if (text == null) continue;
               messages.add(
-                _textMessage(sessionId: sessionId, messageId: messageId, timestamp: message.timestamp, text: text),
+                _systemMessage(sessionId: sessionId, messageId: messageId, timestamp: message.timestamp, text: text),
               );
             case PiBranchSummaryMessageDto() || PiCompactionSummaryMessageDto():
               continue;
@@ -425,7 +428,7 @@ final class PiHistoryMapper({
           final text = _visibleCustomText(content: content, warnings: warnings);
           if (text == null) continue;
           messages.add(
-            _textMessage(
+            _systemMessage(
               sessionId: sessionId,
               messageId: messageId,
               timestamp: null,
@@ -434,8 +437,10 @@ final class PiHistoryMapper({
           );
         case PiUnknownEntryDto():
           _warnOnce(reason: _PiHistoryWarning.unknownEntry, warnings: warnings);
-        case PiThinkingLevelChangeEntryDto() ||
-            PiModelChangeEntryDto() ||
+        case PiThinkingLevelChangeEntryDto(:final thinkingLevel):
+          currentVariant = thinkingLevel?.wireValue;
+          continue;
+        case PiModelChangeEntryDto() ||
             PiBranchSummaryEntryDto() ||
             PiCustomEntryDto() ||
             PiLabelEntryDto() ||
@@ -630,7 +635,9 @@ final class PiHistoryMapper({
     required String messageId,
     required String? provider,
     required String? model,
+    required String? variant,
     required PiAssistantStopReason? stopReason,
+    required String? errorMessage,
     required int? timestamp,
   }) {
     return switch (stopReason) {
@@ -640,8 +647,9 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: variant,
         errorName: "Pi response failed",
-        errorMessage: "The Pi assistant response failed.",
+        errorMessage: errorMessage ?? "The Pi assistant response failed.",
         time: _time(timestamp),
       ),
       PiAssistantStopReason.aborted => PluginMessage.error(
@@ -650,8 +658,9 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: variant,
         errorName: "Pi response aborted",
-        errorMessage: "The Pi assistant response was aborted.",
+        errorMessage: errorMessage ?? "The Pi assistant response was aborted.",
         time: _time(timestamp),
       ),
       _ => PluginMessage.assistant(
@@ -660,12 +669,14 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: model,
         providerID: provider,
+        variant: variant,
+        sender: PluginMessageSender.agent,
         time: _time(timestamp),
       ),
     };
   }
 
-  _MessageDraft _textMessage({
+  _MessageDraft _systemMessage({
     required String sessionId,
     required String messageId,
     required int? timestamp,
@@ -675,9 +686,11 @@ final class PiHistoryMapper({
       info: PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
-        agent: _pluginId,
+        agent: null,
         modelID: null,
         providerID: null,
+        variant: null,
+        sender: PluginMessageSender.system,
         time: _time(timestamp),
       ),
       parts: [
@@ -708,6 +721,8 @@ final class PiHistoryMapper({
         agent: _pluginId,
         modelID: null,
         providerID: null,
+        variant: null,
+        sender: PluginMessageSender.agent,
         time: _time(timestamp),
       ),
       parts: [
@@ -758,11 +773,6 @@ final class _MappedToolResult({
 final class _ImageBudget() {
   int candidates = 0;
   int decodedBytes = 0;
-}
-
-final class const _PiAssistantFailureDiagnostic({required final String detail}) implements Exception {
-  @override
-  String toString() => "Pi assistant response failed: $detail";
 }
 
 enum _PiHistoryWarning(final String message) {

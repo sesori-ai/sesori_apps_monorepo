@@ -436,6 +436,10 @@
   "sessionDetailLoadingSemantics": "Loading session",
   "sessionDetailEmpty": "No messages yet",
   "sessionDetailErrorTitle": "Failed to load messages",
+  "sessionDetailAutomation": "Automation",
+  "@sessionDetailAutomation": {
+    "description": "Label on a transcript message injected by session automation rather than authored by the user or agent."
+  },
   "sessionDetailRetry": "Retry",
   "deviceCanvasLinkWaiting": "Waiting for the expected Sesori bridge...",
   "deviceCanvasLinkUnavailable": "This Device Canvas session is not available from the connected Sesori bridge or account.",
@@ -815,9 +819,16 @@
     "description": "Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording."
   },
   "voiceTranscribing": "Transcribing...",
+  "voiceRecordingSaved": "Recording saved",
+  "@voiceRecordingSaved": {
+    "description": "Persistent composer status shown after a retryable async transcription failure."
+  },
+  "voiceRetry": "Retry",
+  "voiceDiscard": "Discard",
   "voiceErrorPermission": "Microphone permission is required for voice input",
   "voiceErrorRecording": "Recording failed. Please try again.",
-  "voiceErrorTranscription": "Transcription failed. Please try again.",
+  "voiceErrorTranscription": "Transcription failed. Record again or type instead.",
+  "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
   "voiceErrorNetwork": "Could not reach the server. Check your connection.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",

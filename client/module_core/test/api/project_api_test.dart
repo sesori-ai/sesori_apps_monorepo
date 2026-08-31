@@ -3,6 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/project_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -50,7 +51,13 @@ void main() {
 
   group("createProject", () {
     test("posts the project path and returns the project", () async {
-      const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+      const project = Project(
+        id: "project-1",
+        name: "Project 1",
+        path: "/project-1",
+        time: null,
+        voiceGlossaryKey: null,
+      );
       when(
         () => client.post<Project>(
           "/project/create",
@@ -89,7 +96,13 @@ void main() {
 
   group("discoverProject", () {
     test("posts the project path and returns the project", () async {
-      const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+      const project = Project(
+        id: "project-1",
+        name: "Project 1",
+        path: "/project-1",
+        time: null,
+        voiceGlossaryKey: null,
+      );
       when(
         () => client.post<Project>(
           "/project/open",
@@ -137,7 +150,13 @@ void main() {
 
   group("getProject", () {
     test("posts the project ID and returns the project", () async {
-      const project = Project(id: "project-1", name: "Project 1", path: "/project-1", time: null);
+      const project = Project(
+        id: "project-1",
+        name: "Project 1",
+        path: "/project-1",
+        time: null,
+        voiceGlossaryKey: null,
+      );
       when(
         () => client.post<Project>(
           "/project/current",
@@ -238,7 +257,7 @@ void main() {
 
   group("renameProject", () {
     test("patches the project name and returns the project", () async {
-      const project = Project(id: "project-1", name: "Renamed", path: "/project-1", time: null);
+      const project = Project(id: "project-1", name: "Renamed", path: "/project-1", time: null, voiceGlossaryKey: null);
       when(
         () => client.patch<Project>(
           "/project/name",

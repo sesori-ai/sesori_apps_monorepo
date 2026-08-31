@@ -2,24 +2,62 @@
 
 ## Capability
 
-The bridge is the durable source of a session's transcript. History is served
-from its own store, paged on demand, kept honest against backend-side changes,
-and rejoined after a client reconnect, plugin restart, or bridge restart.
+The bridge supplies the durable transcript boundary. History is served from its
+own store, with an owning plugin's bounded replay used as the backfill source,
+paged on demand, kept honest against backend-side changes, and rejoined after
+reconnect or restart.
 
 ## Required Behavior
 
-- Reading history of an already-synced session serves from the bridge store and
+- Reading an already-synced session serves from the bridge store and
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- A first or externally stale backend replay adopts the latest assistant/error
+  message's agent, provider, model, and available variant as the session's prompt
+  defaults. The bridge persists that selection and returns it with the replay so
+  the opening client cannot retain older session metadata fetched in parallel.
+  A replay with no assistant/error attribution leaves existing defaults intact.
+- When DeepSeek needs a first or stale backfill, its plugin calls
+  `deepseek/session/history` through the one long-lived adapter connection and
+  reads isolated persistence without resuming an agent or starting a scratch
+  process. It pages at complete message boundaries, returns at most 100 messages
+  per page, rejects non-progressing or over-100-page traversal, and reuses the
+  shared ACP replay collector. Direct user message IDs remain exact; assistant
+  IDs use the deterministic ACP projection.
+- GitHub Copilot history uses standard ACP `session/load` on a dedicated
+  short-lived connection. Replayed updates backfill the bridge transcript, while
+  reopening a prior session after plugin, process, or bridge restart loads it
+  before the next prompt without duplicating replay into the live stream. Sesori
+  uses the public protocol and never reads Copilot credential or history files.
+- Grok history also uses standard ACP `session/load` on a dedicated short-lived
+  connection and never reads its local credential or session files. Replay
+  initialization validates Grok identity without changing live process defaults;
+  after load, the session's complete model/provider/effort selection is captured
+  atomically and stamps replayed assistant/error messages. Cold continuation
+  loads that same session before prompting after process, plugin, or bridge
+  restart, while replay updates remain suppressed from the live event stream.
 - Messages visible live but absent from the backend's replay remain visible
-  after a stale re-read. They rejoin at their recorded creation time while
-  preserving relative order, so a catalog re-import cannot move old rows to the
-  newest edge. A message a backend replay once contained is the opposite case:
-  its later absence is a removal, so a re-read drops it. That is how a session
-  rolled back outside Sesori — an edited message in the backend's own client,
-  with no removal events reaching this bridge — stops showing the messages it
-  replaced.
+  after a stale re-read. Exact identities satisfy their replay occurrences
+  first and anchor neighboring order by identity even when replay revises their
+  payload. Among the remaining rows, replay replaces a live row only when it has
+  the same normalized message and nearest-distinct visible-message context,
+  up to the remaining replay multiplicity. When either side contains repeated
+  occurrences in one context, equal creation times align them even at equal
+  cardinality; ambiguous rows with absent or different times remain. Conflicting
+  known creation times also keep a singleton pair distinct. Equal content in
+  another ordered context and additional repeated occurrences remain, while
+  stored rows already stale at this import do not shape the comparison context.
+  The content fingerprint ignores identity, time, agent/model attribution, and
+  internal parts hidden from transcripts; alignment still uses available
+  creation times as above, normalizes spilled attachments, and keeps replay
+  metadata authoritative. Other retained rows
+  rejoin at their recorded creation time while preserving relative order, so a
+  catalog re-import cannot move old rows to the newest edge. A message a backend
+  replay once contained is the opposite case: its later absence is a removal,
+  so a re-read drops it. That is how a session rolled back outside Sesori — an
+  edited message in the backend's own client, with no removal events reaching
+  this bridge — stops showing the messages it replaced.
 - Live streamed messages and parts become queryable immediately after they
   finalize, with the same visibility filtering and tool-output bound a backend
   fetch returns. Reasoning finalizes when the stream advances to assistant or
@@ -55,10 +93,11 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
   advances the session's freshness marks, and a genuinely running tool swept by
   the turn-start race is corrected by its next live capture.
 - Pi history follows the active `leafId` branch while retaining visible
-  pre-compaction messages and omitting compaction and branch-summary payloads.
-  File fallback is allowed only for Pi's exact no-model startup failure, applies
-  v1-v3 migration in memory, and never exposes persisted paths or execution-only
-  prompt context to remote clients.
+  pre-compaction messages, applies thinking-level changes to later assistant and
+  error messages on that branch, and omits compaction and branch-summary
+  payloads. File fallback is allowed only for Pi's exact no-model startup
+  failure, applies v1-v3 migration in memory, and never exposes persisted paths
+  or execution-only prompt context to remote clients.
 - Pi live assistant finals use the same message identities, parts, bounded tool
   results, terminal failures, and visible compaction card as cold replay.
   Streaming text and reasoning follow their content indices, tool progress
@@ -70,9 +109,9 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, live capture that becomes immediately queryable, stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated Pi coverage: active branches, v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool and image parts. |
-| L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
+| L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
@@ -80,34 +119,49 @@ and rejoined after a client reconnect, plugin restart, or bridge restart.
 Vary transcript size relative to page size and how far back you page. Vary the
 disruption: stop the plugin, restart the bridge, drop the client link briefly and
 then beyond the replay window, or advance the session from the backend's own CLI
-between reads. Vary root versus child sessions and content types, since tool and
-image parts converge by their own rules.
+between reads. For Copilot and Grok, compare ordinary reopen, plugin restart,
+bridge restart, and forced ACP process replacement for the same imported
+session. For Grok, also vary a changed loaded model/effort and confirm replay
+uses the loaded tuple without replacing live defaults. Vary root versus child
+sessions and content types, since tool and image parts converge by their own
+rules where supported.
 
 ## Failure Signals
 
-- Opening a synced session starts a stopped backend, or content visible live
+- Opening synced history starts a stopped backend, or content visible live
   disappears after a refresh or reopen.
 - Reasoning still says `Thinking...` after answer or tool output has started, or
   disappears after reopening because only its empty start snapshot was retained.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
+- An id-less ACP reply reuses a pre-restart fallback identity and overwrites an
+  earlier answer instead of remaining distinct.
 - Loading an older page shifts the reader's viewport, remains hidden until
   reattachment, or triggers repeated requests while one page is in flight.
 - A session advanced outside Sesori keeps serving the old transcript, or stored
   transcripts are marked complete after a gap without a full re-sync.
-- A stale re-read moves an older retained message to the newest edge, or keeps
-  showing a message the backend removed — a rolled-back turn reappearing above
-  the edited one that replaced it.
+- A stale re-read moves an older retained message to the newest edge, keeps a
+  second copy of one visible message solely because replay changed its identity,
+  collapses equal content from a different ordered context or beyond replay's
+  multiplicity, or keeps showing a message the backend removed — a rolled-back
+  turn reappearing above the edited one that replaced it.
+- Replay reconciliation logs malformed persisted prompt, transcript, or tool
+  content instead of a privacy-safe decode failure with message/session context.
 - A released database row or audit file is rejected because a known message-part
   payload omitted variant-specific data, or a decoded known variant still carries
   null variant data.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
-  summary payload, or exposes a private path, raw backend error, or hidden prompt
-  prefix in mapped history.
+  summary payload, exposes a private persisted path or hidden prompt prefix, or
+  rewrites backend-provided error text in mapped history.
 - A Pi streamed part changes identity when finalized, cumulative tool output is
   appended, a duplicate terminal tool event repeats a diff invalidation, or
   `agent_end` marks the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
+- A Copilot restart prompts before `session/load`, duplicates replay as new live
+  output, or reads private history files instead of the ACP replay boundary.
+- Grok replay mutates live defaults during initialize, stamps messages from an
+  incomplete tuple, loses loaded effort/model attribution, duplicates replay as
+  live output, prompts before cold load, or reads private local files.
 
 ## Known Limitations
 
@@ -125,5 +179,6 @@ image parts converge by their own rules.
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; Pi session process repository,
-storage API, and history mapper; shared pagination cursor; client detail load
-service and cubit.
+storage API, and history mapper; shared ACP event mapper, turn serialization,
+and session loader plus Copilot and Grok plugins and package tests; shared
+pagination cursor; client detail load service and cubit.

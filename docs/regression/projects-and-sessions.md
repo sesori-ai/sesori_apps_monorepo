@@ -96,6 +96,11 @@ child sessions with titles, activity, statuses, and unseen state.
   platform, releasing an ordinary pull while its refresh is pending keeps the
   pane content displaced and its Cupertino indicator visible, and reports the
   outcome when it settles.
+- At the end of either full-screen list, the final project or session row
+  scrolls above its floating creation button and the bottom safe area instead
+  of remaining obscured. Session-list clearance grows with accessibility text
+  scaling when its labelled action becomes taller. The wide split-view session
+  pane has no floating action and does not reserve that clearance.
 - A pull that crossed the deeper catalog-scan threshold runs no ordinary refresh
   at all: the scan reaches the same backend and settles into a list refresh of
   its own. It stops holding the content the moment that stage fires — including
@@ -114,6 +119,9 @@ child sessions with titles, activity, statuses, and unseen state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Session activity stays relative for 30 days. Older rows use a compact numeric
+  date whose field order and separators follow the user's full device locale;
+  dates from the current year omit the year, while earlier years remain explicit.
 - A listed session's `session.updated` reports the newest instant the bridge
   knows: the backend's own updated time, or the live user-message marker when
   that is newer. A plugin that reports an updated time only at import or rename
@@ -137,6 +145,23 @@ child sessions with titles, activity, statuses, and unseen state.
   explicit `session_info` names, uses file modification time for activity,
   preserves resolvable parent-session lineage, and never decodes transcript
   messages to derive titles.
+- DeepSeek explicit import enumerates only adapter-owned session headers below
+  the isolated plugin state. It derives projects from normalized session `cwd`,
+  preserves parent/child metadata, and never scans or imports normal
+  `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
+  reads after import; adapter JSONL is not a second normal catalog source.
+- GitHub Copilot explicit import follows standard ACP `session/list` pagination,
+  up to the bounded page limit, attributes committed rows to `copilot`, and then
+  returns to bridge-database reads for ordinary listing. Sesori never scans
+  Copilot's configuration or history directories. Cancellation or a first-page
+  failure leaves the prior catalog intact. A later-page failure logs the error
+  and commits the pages gathered so far as a fail-soft partial observation;
+  missing previously imported rows remain because import is non-destructive.
+- Grok explicit import likewise uses only its bounded standard ACP `session/list`
+  catalog, attributes every committed project and session to `grok`, and remains
+  non-destructive on re-import. Ordinary reads return to the bridge database;
+  Sesori never scans Grok's credential, configuration, or session files and does
+  not resume a listed session merely to catalog it.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the
@@ -167,14 +192,18 @@ child sessions with titles, activity, statuses, and unseen state.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
 | L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
-| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok explicitly imports a persisted session with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
+| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
 
 Vary the owning plugin, manual open versus import discovery, git and non-git
-folders, and whether the directory moved between runs. Alternate empty,
+folders, and whether the directory moved between runs. For Copilot, vary a
+single-page and multi-page ACP catalog, unchanged re-import, cancellation,
+first-page failure, and a later-page failure after a prior committed import.
+For Grok, vary an empty and populated ACP catalog, first import, unchanged
+re-import, cancellation, and plugin or bridge restart. Alternate empty,
 child-only, and large projects, and reorder import, listing, creation. Remove
 disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
@@ -210,14 +239,25 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - A running root or project stays alphabetically ordered, a stale marker masks
   newer committed activity, a null marker fails to use updated time,
   awaiting-only is promoted, or inactive session/project or child order changes.
-- A session prompted minutes ago reports a days-old updated time, or sorts to
-  the top of its list while still displaying that stale time.
+- A session prompted minutes ago reports a days-old updated time, sorts to the
+  top of its list while still displaying that stale time, or an older row uses
+  generic US month/day order despite a different device locale.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- A healthy Copilot import stops before cursor exhaustion, scans private on-disk
+  history, or a first-page failure mutates the committed catalog. A later-page
+  fail-soft import drops prior rows instead of only adding gathered observations
+  non-destructively.
+- A Grok import scans local files, resumes a listed session, loses `grok`
+  attribution, destructively removes an absent row, or ordinary catalog reads
+  start Grok after import.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
   pull indicator until the operation completes.
+- The final row in a full-screen project or session list remains behind its
+  floating creation button when scrolled to the end, or the wide pane gains an
+  unnecessary matching gap.
 - A pull that started a scan comes to rest an indicator's height below the top
   before collapsing, rather than settling to the top in one movement.
 - A scan offered for a harness the bridge will not import from, a pull
@@ -241,6 +281,11 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
+- Copilot and Grok discovery are limited to sessions their public ACP catalogs
+  report; Sesori does not infer additional sessions from private files. A
+  failure after Copilot's first successful page is logged but currently
+  completes import with the pages gathered so far rather than surfacing a
+  partial status to the client.
 - User-side activity is an ordering heuristic, not proof of human intent.
   Generated backend input normalized as a user message and lifecycle-generated
   replies or rejections that clear pending input can advance it.
@@ -265,6 +310,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
+- DeepSeek catalog: `bridge/sesori_plugin_deepseek/lib/src/repositories/`
+- Copilot and Grok ACP catalogs: `bridge/sesori_plugin_acp/lib/src/acp_plugin.dart`,
+  `bridge/sesori_plugin_copilot/`, and `bridge/sesori_plugin_grok/`
 - Tests: `bridge/app/test/bridge/routing/catalog_read_handlers_test.dart`,
   `bridge/app/test/bridge/repositories/project_repository_test.dart`,
   `bridge/sesori_plugin_pi/test/pi_session_storage_api_test.dart`,
@@ -276,8 +324,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
+  `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/app/test/core/widgets/catalog_scan_row_test.dart`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
+  `client/app/test/features/session_list/session_list_bar_test.dart`, and
   `client/app/test/features/session_list/session_list_panel_test.dart`
 - Device Canvas ownership and projectless navigation:
   `docs/regression/device-canvas-ownership.md`

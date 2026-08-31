@@ -73,6 +73,49 @@ void main() {
       );
     });
 
+    test("maps a system sender through the shared message update", () {
+      final result = mapEvent(
+        BridgeSseMessageUpdated(
+          info: const PluginMessage.assistant(
+            id: "m-system",
+            sessionID: "s1",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            variant: null,
+            sender: PluginMessageSender.system,
+            time: null,
+          ).toJson(),
+        ),
+      );
+
+      expect(result, isA<SesoriMessageUpdated>());
+      final event = result! as SesoriMessageUpdated;
+      expect(event.info, isA<MessageAssistant>());
+      expect((event.info as MessageAssistant).sender, MessageSender.system);
+    });
+
+    test("maps serialized plugin retry status through the shared SSE union", () {
+      final result = mapEvent(
+        BridgeSseSessionStatus(
+          sessionID: "s1",
+          status: const PluginSessionStatus.retry(
+            attempt: 1,
+            message: "provider overloaded",
+            next: 2000,
+          ).toJson(),
+        ),
+      );
+
+      expect(result, isA<SesoriSessionStatus>());
+      final event = result! as SesoriSessionStatus;
+      expect(event.sessionID, "s1");
+      expect(
+        event.status,
+        const SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000),
+      );
+    });
+
     test("attributes command catalog updates to their source plugin", () {
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),
@@ -80,6 +123,27 @@ void main() {
       );
 
       expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
+    });
+
+    test("maps toast session attribution to the wire event", () {
+      final result = mapEvent(
+        const BridgeSseTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
+
+      expect(
+        result,
+        const SesoriTuiToastShow(
+          sessionID: "stable-session",
+          title: "Pi",
+          message: "Extension finished",
+          variant: "success",
+        ),
+      );
     });
 
     test("maps session.created with provided enriched payload", () {

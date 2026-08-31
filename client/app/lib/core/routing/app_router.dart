@@ -41,20 +41,6 @@ const _settingsNotificationsRouteSegment = "notifications";
 const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
-// WORKAROUND: go_router only recognizes package:flutter's legacy MaterialApp,
-// so builder routes under material_ui.MaterialApp become NoTransitionPages.
-// Remove this helper and the explicit pageBuilders once
-// https://github.com/flutter/flutter/issues/191132 is fixed.
-MaterialPage<void> _materialPage({required GoRouterState state, required Widget child}) {
-  return MaterialPage<void>(
-    key: state.pageKey,
-    name: state.name ?? state.path,
-    arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
-    restorationId: state.pageKey.value,
-    child: child,
-  );
-}
-
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
   /// screen switch over decoded [AppRoute] values.
@@ -95,10 +81,7 @@ extension AppRouteToGoRoute on AppRouteDef {
     return GoRoute(
       path: path,
       routes: routes,
-      pageBuilder: (context, state) => _materialPage(
-        state: state,
-        child: _buildScreen(context: context, state: state),
-      ),
+      builder: (context, state) => _buildScreen(context: context, state: state),
     );
   }
 
@@ -271,26 +254,23 @@ List<RouteBase> _buildAppRoutes({
       routes: [
         ShellRoute(
           navigatorKey: sessionShellNavigatorKey,
-          pageBuilder: (context, state, child) {
+          builder: (context, state, child) {
             final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
             final projectViewingService = getIt<ProjectViewingService>();
 
-            return _materialPage(
-              state: state,
-              child: SessionListCubitProvider(
-                key: ValueKey("session-list-cubit-$projectId"),
-                projectId: projectId,
-                child: SessionSplitShell(
-                  projectViewingService: projectViewingService,
-                  list: _SessionListPane(
-                    projectId: projectId,
-                    projectName: projectName,
-                    selectedSessionId: selectedSessionId,
-                  ),
-                  child: child,
+            return SessionListCubitProvider(
+              key: ValueKey("session-list-cubit-$projectId"),
+              projectId: projectId,
+              child: SessionSplitShell(
+                projectViewingService: projectViewingService,
+                list: _SessionListPane(
+                  projectId: projectId,
+                  projectName: projectName,
+                  selectedSessionId: selectedSessionId,
                 ),
+                child: child,
               ),
             );
           },
@@ -404,10 +384,8 @@ List<RouteBase> _buildAppRoutes({
       routes: [
         GoRoute(
           path: _settingsNotificationsRouteSegment,
-          pageBuilder: (context, state) => _materialPage(
-            state: state,
-            child: AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
-          ),
+          builder: (context, state) =>
+              AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
         ),
         GoRoute(
           path: _settingsHarnessesRouteSegment,
@@ -419,8 +397,9 @@ List<RouteBase> _buildAppRoutes({
           //
           // The modal is a CupertinoPage for the same reason settings itself
           // uses one: only the Cupertino route honours `fullscreenDialog` on
-          // Android too. The pushed page is an explicit MaterialPage, so it
-          // keeps the platform's push transition.
+          // Android too. Choosing per presentation requires a pageBuilder, so
+          // the pushed branch spells out the MaterialPage that go_router would
+          // otherwise supply, keeping the platform's push transition.
           pageBuilder: (context, state) {
             final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
             final child = route.screen;
@@ -430,16 +409,19 @@ List<RouteBase> _buildAppRoutes({
                 fullscreenDialog: true,
                 child: child,
               ),
-              HarnessSettingsPresentation.pushed => _materialPage(state: state, child: child),
+              HarnessSettingsPresentation.pushed => MaterialPage<void>(
+                key: state.pageKey,
+                name: state.name ?? state.path,
+                arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
+                restorationId: state.pageKey.value,
+                child: child,
+              ),
             };
           },
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
-          pageBuilder: (context, state) => _materialPage(
-            state: state,
-            child: AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
-          ),
+          builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
         ),
       ],
     ),

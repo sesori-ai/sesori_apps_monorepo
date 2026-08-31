@@ -18,7 +18,7 @@ enum SseToastVariant() {
   };
 }
 
-/// What the app-wide toast surface should present.
+/// What the root toast surface should present.
 ///
 /// [SseToastShow.sequence] increases on every show so equal repeated guidance
 /// (for example the same `/login` hint twice) is still a distinct effect for

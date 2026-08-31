@@ -1531,6 +1531,12 @@ abstract class AppLocalizations {
   /// **'Failed to load messages'**
   String get sessionDetailErrorTitle;
 
+  /// Label on a transcript message injected by session automation rather than authored by the user or agent.
+  ///
+  /// In en, this message translates to:
+  /// **'Automation'**
+  String get sessionDetailAutomation;
+
   /// No description provided for @sessionDetailRetry.
   ///
   /// In en, this message translates to:
@@ -2665,6 +2671,24 @@ abstract class AppLocalizations {
   /// **'Transcribing...'**
   String get voiceTranscribing;
 
+  /// Persistent composer status shown after a retryable async transcription failure.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording saved'**
+  String get voiceRecordingSaved;
+
+  /// No description provided for @voiceRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get voiceRetry;
+
+  /// No description provided for @voiceDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get voiceDiscard;
+
   /// No description provided for @voiceErrorPermission.
   ///
   /// In en, this message translates to:
@@ -2680,8 +2704,14 @@ abstract class AppLocalizations {
   /// No description provided for @voiceErrorTranscription.
   ///
   /// In en, this message translates to:
-  /// **'Transcription failed. Please try again.'**
+  /// **'Transcription failed. Record again or type instead.'**
   String get voiceErrorTranscription;
+
+  /// No description provided for @voiceErrorSavedRecordingMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The saved recording is no longer available. Record again or type instead.'**
+  String get voiceErrorSavedRecordingMissing;
 
   /// No description provided for @voiceErrorNetwork.
   ///

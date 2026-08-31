@@ -3,6 +3,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
+class _EnvelopeTimeEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
+    final created = notification.params["messageCreatedAt"];
+    return created is int ? PluginMessageTime(created: created, completed: null) : null;
+  }
+}
+
 /// Asserts the mapper emits sesori-schema payloads — message envelopes must
 /// round-trip through `Message.fromJson`, exactly like the codex mapper.
 void main() {
@@ -26,7 +38,7 @@ void main() {
     );
 
     test("agent_message_chunk emits envelope + part + delta on first chunk", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -44,8 +56,36 @@ void main() {
       expect(delta.field, "text");
     });
 
+    test("accepted prompt ids keep id-less replies unique across mapper restarts", () {
+      String assistantId({required AcpEventMapper target, required String promptId}) {
+        target.beginTurn(
+          sessionId: "s1",
+          messageId: AcpEventMapper.sentUserMessageId(promptId: promptId),
+        );
+        final events = target.map(
+          update({
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "reply"},
+          }),
+        );
+        return shared.Message.fromJson(events.whereType<BridgeSseMessageUpdated>().single.info).id;
+      }
+
+      final beforeRestart = assistantId(target: mapper, promptId: "prompt-one");
+      final replacementMapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
+      final afterRestart = assistantId(target: replacementMapper, promptId: "prompt-two");
+
+      expect(beforeRestart, "prompt-one-user-assistant-a0");
+      expect(afterRestart, "prompt-two-user-assistant-a0");
+      expect(afterRestart, isNot(beforeRestart));
+    });
+
     test("subsequent chunks emit only a delta on the same part", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -63,7 +103,7 @@ void main() {
     });
 
     test("reasoning transition and turn final emit complete snapshots", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -83,15 +123,19 @@ void main() {
         }),
       );
 
-      final parts = [
-        ...transition.whereType<BridgeSseMessagePartUpdated>(),
-        ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
-      ].map((event) => event.part).where(
-        (part) => switch (part) {
-          PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
-          _ => false,
-        },
-      ).toList();
+      final parts =
+          [
+                ...transition.whereType<BridgeSseMessagePartUpdated>(),
+                ...mapper.finalizeTurn(sessionId: "s1").whereType<BridgeSseMessagePartUpdated>(),
+              ]
+              .map((event) => event.part)
+              .where(
+                (part) => switch (part) {
+                  PluginMessagePartText(:final text) || PluginMessagePartReasoning(:final text) => text.isNotEmpty,
+                  _ => false,
+                },
+              )
+              .toList();
 
       expect(parts.map((part) => part.id), [
         "s1-t1-assistant-a0-reasoning",
@@ -106,7 +150,7 @@ void main() {
     });
 
     test("tool activity finalizes active reasoning before the turn ends", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -154,7 +198,7 @@ void main() {
     });
 
     test("tool activity finalizes active assistant text before the turn ends", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -196,7 +240,7 @@ void main() {
     });
 
     test("a first-seen tool update finalizes active id-less assistant text", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -220,7 +264,7 @@ void main() {
     });
 
     test("a tool call does not finalize an explicit assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -259,7 +303,7 @@ void main() {
     });
 
     test("forgetSession drops pending text snapshots", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -273,7 +317,7 @@ void main() {
     });
 
     test("agent message content preserves mixed text and image order", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -308,7 +352,7 @@ void main() {
     });
 
     test("message trackers persist across chunks and reset at turn boundaries", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -334,7 +378,7 @@ void main() {
         "s1-mm1-assistant-text",
       );
 
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final reset = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -354,7 +398,7 @@ void main() {
     });
 
     test("agent_thought_chunk maps to a reasoning part", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -370,6 +414,7 @@ void main() {
         messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [
           const PluginPromptPart.text(text: "Hello"),
           const PluginPromptPart.text(text: "Cursor"),
@@ -401,6 +446,7 @@ void main() {
           messageId: "s1-sent-1-user",
           promptId: "prompt-1",
           sessionId: "s1",
+          createdAtMs: 1,
           parts: parts,
         );
 
@@ -420,6 +466,7 @@ void main() {
     test("an initial prompt uses the history-stable message and part identity", () {
       final events = mapper.mapInitialPrompt(
         sessionId: "s1",
+        createdAtMs: 1,
         parts: const [
           PluginPromptPart.text(text: "Hello"),
           PluginPromptPart.fileData(mime: "image/png", base64: "AA==", filename: "private.png"),
@@ -443,6 +490,7 @@ void main() {
         messageId: "s1-sent-1-user",
         promptId: "prompt-1",
         sessionId: "s1",
+        createdAtMs: 1,
         parts: [const PluginPromptPart.text(text: "Hello")],
       );
 
@@ -457,7 +505,7 @@ void main() {
     });
 
     test("id-less assistant content after a tool opens a later envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final beforeTool = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -498,7 +546,7 @@ void main() {
     });
 
     test("an explicit assistant message closes the prior id-less envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final before = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -678,8 +726,48 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
     });
 
+    test("a reordered tool call corrects its synthesized envelope time", () {
+      mapper = _EnvelopeTimeEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+      );
+      AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": "s1",
+          "update": body,
+          "messageCreatedAt": createdAt,
+        },
+      );
+
+      final updateEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-reordered",
+          "status": "completed",
+        }, 20),
+      );
+      expect(
+        (updateEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        20,
+      );
+
+      final callEvents = mapper.map(
+        timedUpdate({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "tc-reordered",
+          "kind": "read",
+        }, 10),
+      );
+      expect(
+        (callEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        10,
+      );
+    });
+
     test("a completed tool retains its state for a late in-turn update; beginTurn clears it", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "tool_call",
@@ -712,7 +800,7 @@ void main() {
       expect(latePart.state.output, "final");
 
       // The next turn clears the prior turn's tools to keep the cache bounded.
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final afterTurn = mapper.map(
         update({
           "sessionUpdate": "tool_call_update",
@@ -864,7 +952,7 @@ void main() {
     });
 
     test("chunks group by ACP messageId when present", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final first = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1189,7 +1277,7 @@ void main() {
           modelId: "claude-opus-4-8",
           providerId: "cursor",
         );
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1227,7 +1315,7 @@ void main() {
     );
 
     test("a classified halt notice becomes a lone error message, not assistant text", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1239,14 +1327,14 @@ void main() {
         events.whereType<BridgeSseMessageUpdated>().single.info,
       );
       expect(message, isA<shared.MessageError>());
-      expect((message as shared.MessageError).errorMessage, "HALT: fix it");
+      expect((message as shared.MessageError).errorMessage, "\n\nHALT: fix it");
       // No assistant text part or delta — the notice rides in the error message.
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
     });
 
     test("a repeated identical halt chunk does not stack duplicate error cards", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1263,7 +1351,7 @@ void main() {
     });
 
     test("a tool clears unrendered id-less state before a later halt", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       expect(
         mapper.map(
           update({
@@ -1295,7 +1383,7 @@ void main() {
     });
 
     test("id-less assistant text after a halt opens a fresh envelope", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final before = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1329,7 +1417,7 @@ void main() {
     });
 
     test("a reasoning chunk is never classified as a halt notice", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_thought_chunk",
@@ -1343,7 +1431,7 @@ void main() {
     });
 
     test("an image-bearing halt-like message remains an assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1370,7 +1458,7 @@ void main() {
     });
 
     test("an identified halt-like text chunk can receive a later image", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final text = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1401,7 +1489,7 @@ void main() {
     });
 
     test("ordinary assistant text still streams as an assistant message", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         update({
           "sessionUpdate": "agent_message_chunk",
@@ -1418,7 +1506,7 @@ void main() {
 }
 
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
-/// as a halt notice, using the trimmed text as the shown message.
+/// while the base mapper preserves the original text as the shown message.
 class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper {
   this
     : super(
@@ -1430,7 +1518,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
   AcpHaltNotice? classifyHaltNotice({required String text}) {
     final trimmed = text.trim();
     if (trimmed.startsWith("HALT:")) {
-      return AcpHaltNotice(errorName: "test_halt", message: trimmed);
+      return const AcpHaltNotice(errorName: "test_halt");
     }
     return null;
   }

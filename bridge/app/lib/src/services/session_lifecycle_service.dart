@@ -232,12 +232,9 @@ class SessionLifecycleService({
     required int archivedAt,
   }) async {
     final session = await _sessionRepository.getCatalogSession(sessionId: storedSession.id);
-    final promptDefaults = session?.promptDefaults;
     await _chatHistoryService.exportSessionHistory(
       session: storedSession,
       title: session?.title,
-      lastAgent: promptDefaults?.agent,
-      lastAgentModel: promptDefaults?.model?.modelID,
       createdAt: session?.time?.created ?? archivedAt,
       updatedAt: session?.time?.updated ?? archivedAt,
       archivedAt: archivedAt,

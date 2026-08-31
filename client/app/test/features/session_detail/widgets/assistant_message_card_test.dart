@@ -62,6 +62,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         ),
       ),
     );
@@ -168,6 +169,7 @@ void main() {
     );
 
     expect(find.byType(SelectionArea), findsOneWidget);
+    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     expect(find.byType(MarkdownBody), findsNWidgets(2));
 
     final markdownBodies = tester.widgetList<MarkdownBody>(find.byType(MarkdownBody)).toList();

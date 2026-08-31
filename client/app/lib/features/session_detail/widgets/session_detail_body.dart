@@ -17,6 +17,16 @@ import "question_modal.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 
+String? _resolveModelName({required AgentModel? model, required List<ProviderInfo> providers}) {
+  if (model == null) return null;
+  for (final provider in providers) {
+    if (provider.id == model.providerID) {
+      return provider.models[model.modelID]?.name ?? model.modelID;
+    }
+  }
+  return model.modelID;
+}
+
 class const SessionDetailBody({
   super.key,
   required final String projectId,
@@ -90,9 +100,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final subtitle = switch (state) {
       // Both parts are null-aware: with a null agent/model the join must yield
       // an empty string (no subtitle), never a literal "null" under the title.
-      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [
+      SessionDetailLoaded(:final agent, :final assistantAgentModel, :final availableProviders) => [
         ?agent,
-        ?assistantAgentModel?.modelID,
+        ?_resolveModelName(model: assistantAgentModel, providers: availableProviders),
       ].join(" · "),
       SessionDetailLoading() || SessionDetailFailed() => "",
     };

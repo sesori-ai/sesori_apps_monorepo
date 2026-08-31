@@ -53,6 +53,16 @@ class _GatedSelectionPlugin({
   }
 }
 
+class _TimestampingEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      PluginMessageTime(created: createdAtMs, completed: null);
+}
+
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
   final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
 
@@ -295,6 +305,234 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("agent output racing the prompt flush follows the accepted user message", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      final promptId = await sendPrompt(sessionId, "ordered prompt");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "fast reply"},
+          },
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSseMessageUpdated>().length < 2; i++) {
+        await pump();
+      }
+
+      final messages = emitted.whereType<BridgeSseMessageUpdated>().toList();
+      expect(messages.map((event) => event.info["role"]), ["user", "assistant"]);
+      expect(messages.first.info["promptId"], promptId);
+      expect(messages.last.info["id"], "$promptId-user-assistant-a0");
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a permission racing the prompt flush follows its accepted user and tool", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "permission ordering");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "tool-1",
+            "kind": "execute",
+            "title": "Run command",
+            "status": "pending",
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 90,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+
+      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
+      expect(emitted.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
+
+      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info["role"] == "user");
+      final tool = emitted.whereType<BridgeSseMessagePartUpdated>().singleWhere(
+        (event) => event.part.type == PluginMessagePartType.tool,
+      );
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(emitted.indexOf(user), lessThan(emitted.indexOf(tool)));
+      expect(emitted.indexOf(tool), lessThan(emitted.indexOf(permission)));
+
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: sessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("aborting a writing turn settles its buffered permission after the flush", () async {
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "cancel permission");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 92,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": sessionId,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      await plugin.abortSession(sessionId: sessionId);
+      flush.complete();
+      for (var i = 0; i < 20 && !fake.written.any((frame) => frame["id"] == 92); i++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      final cancellation = emitted.whereType<BridgeSsePermissionReplied>().single;
+      expect(emitted.indexOf(permission), lessThan(emitted.indexOf(cancellation)));
+      expect(await plugin.getPendingPermissions(sessionId: sessionId), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 92);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a buffered sessionless permission keeps its writing-turn attribution", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      emitted.clear();
+
+      final flush = fake.holdNextFlush();
+      await sendPrompt(firstSessionId, "first session");
+      final firstPrompt = await waitForFrameCount("session/prompt", 1);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 91,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "tool-1", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+
+      await sendPrompt(secondSessionId, "second session");
+      final secondPrompt = await waitForFrameCount("session/prompt", 2);
+      await pump();
+
+      flush.complete();
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(permission.sessionID, firstSessionId);
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: firstSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      respondTo(secondPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a queued prompt message uses its dispatch time", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final timestampingPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: _TimestampingEventMapper(
+          launchDirectory: cwd,
+          pluginId: "acp",
+          configurationTracker: configurationTracker,
+        ),
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = timestampingPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      final firstPromptId = await sendPrompt(sessionId, "first");
+      final first = await waitForFrame("session/prompt");
+      final secondPromptId = await sendPrompt(sessionId, "second");
+      final queuedAt = (await plugin.getQueuedPrompts(sessionId: sessionId))
+          .singleWhere((prompt) => prompt.id == secondPromptId)
+          .createdAt;
+
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      respondTo(first, {"stopReason": "end_turn"});
+      final second = await waitForFrameCount("session/prompt", 2);
+      await pump();
+
+      final secondMessage = emitted.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["promptId"] == secondPromptId,
+      );
+      expect((secondMessage.info["time"] as Map)["created"], greaterThan(queuedAt));
+
+      expect(firstPromptId, isNot(secondPromptId));
+      respondTo(second, {"stopReason": "end_turn"});
+    });
+
     test("a failed ACP frame flush never marks the prompt sent", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
@@ -521,7 +759,7 @@ void main() {
       expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
     });
 
-    test("a second prompt on one session dispatches only after the first turn completes", () async {
+    test("active-turn follow-ups cancel before replacement dispatch", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
@@ -530,13 +768,15 @@ void main() {
       expect(busyCount(), 1);
 
       final secondPromptId = await sendPrompt(sessionId, "second");
+      final cancel = await waitForFrame("session/cancel");
+      expect(cancel["params"], {"sessionId": sessionId});
       for (var i = 0; i < 10; i++) {
         await pump();
       }
       expect(
         frames("session/prompt"),
         hasLength(1),
-        reason: "the second prompt must wait for the first turn to complete",
+        reason: "the second prompt must wait for cancellation to settle",
       );
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
       expect(
@@ -547,7 +787,7 @@ void main() {
       expect(busyCount(), 1, reason: "queued turn keeps the one busy signal");
       expect(idleCount(), 0);
 
-      respondTo(firstPrompt, {"stopReason": "end_turn"});
+      respondTo(firstPrompt, {"stopReason": "cancelled"});
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       expect((secondPrompt["params"] as Map)["sessionId"], sessionId);
       await pump();
@@ -688,7 +928,11 @@ void main() {
       await sendPrompt(sessionId, "queued");
 
       await plugin.abortSession(sessionId: sessionId);
-      expect(frames("session/cancel"), hasLength(1));
+      expect(
+        frames("session/cancel"),
+        hasLength(2),
+        reason: "the queued follow-up and explicit abort each cancel the active turn",
+      );
 
       // The agent honours the cancel by ending the in-flight turn.
       respondTo(firstPrompt, {"stopReason": "cancelled"});

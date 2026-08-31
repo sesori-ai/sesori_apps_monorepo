@@ -33,6 +33,13 @@ MessageAssistant _$MessageAssistantFromJson(Map json) => MessageAssistant(
   agent: json['agent'] as String?,
   modelID: json['modelID'] as String?,
   providerID: json['providerID'] as String?,
+  sender:
+      $enumDecodeNullable(
+        _$MessageSenderEnumMap,
+        json['sender'],
+        unknownValue: MessageSender.unknown,
+      ) ??
+      MessageSender.agent,
   time: json['time'] == null
       ? null
       : MessageTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
@@ -46,9 +53,16 @@ Map<String, dynamic> _$MessageAssistantToJson(MessageAssistant instance) =>
       'agent': ?instance.agent,
       'modelID': ?instance.modelID,
       'providerID': ?instance.providerID,
+      'sender': _$MessageSenderEnumMap[instance.sender]!,
       'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
+
+const _$MessageSenderEnumMap = {
+  MessageSender.agent: 'agent',
+  MessageSender.system: 'system',
+  MessageSender.unknown: 'unknown',
+};
 
 MessageError _$MessageErrorFromJson(Map json) => MessageError(
   id: json['id'] as String,

@@ -14,6 +14,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "api/archived_session_storage.dart";
 import "api/attachment_spill_storage.dart";
+import "api/database/daos/new_session_defaults_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
@@ -31,14 +32,17 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
+import "listeners/current_project_glossary_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
+import "listeners/viewed_project_glossary_listener.dart";
 import "listeners/viewed_project_pr_refresh_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
@@ -60,11 +64,15 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
+import "repositories/project_glossary_publication_repository.dart";
+import "repositories/project_glossary_repository.dart";
+import "repositories/project_glossary_scope_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
@@ -144,6 +152,7 @@ import "services/archived_session_validator.dart";
 import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
+import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/device_canvas_agent_tool_service.dart";
 import "services/device_canvas_claim_service.dart";
@@ -155,6 +164,10 @@ import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
+import "services/project_glossary_population_service.dart";
+import "services/project_glossary_scope_service.dart";
+import "services/project_glossary_scope_tracker.dart";
+import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/project_view_tracker.dart";
@@ -201,38 +214,41 @@ typedef OrchestratorComposition = ({
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
 class Orchestrator({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final PluginLifecycleService _pluginLifecycleService,
-    required final PluginRuntime _pluginRuntime,
-    required final BridgeSettingsRepository _bridgeSettingsRepository,
-    required final ServerClock _clock,
-    required final AppDatabase _database,
-    required final ChatHistoryDatabase _chatHistoryDatabase,
-    required final AttachmentSpillStorage _attachmentSpillStorage,
-    required final ArchivedSessionStorage _archivedSessionStorage,
-    required final http.Client _httpClient,
-    required final ProcessRunner _processRunner,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final FailureReporter _failureReporter,
-    required final BridgeRestartService _restartService,
-    required final bool _filesystemAccessOk,
-    final DeviceCanvasTurnCredentialIssuer? _deviceCanvasTurnCredentialIssuer,
-    // Supervised mode only: owns the status-class pushes to the desktop GUI.
-    // Standalone has no control channel, so this is null there.
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
-
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final PluginLifecycleService _pluginLifecycleService,
+  required final PluginRuntime _pluginRuntime,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final ServerClock _clock,
+  required final AppDatabase _database,
+  required final ChatHistoryDatabase _chatHistoryDatabase,
+  required final AttachmentSpillStorage _attachmentSpillStorage,
+  required final ArchivedSessionStorage _archivedSessionStorage,
+  required final http.Client _httpClient,
+  required final ProcessRunner _processRunner,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final FailureReporter _failureReporter,
+  required final BridgeRestartService _restartService,
+  required final bool _filesystemAccessOk,
+  final DeviceCanvasTurnCredentialIssuer? _deviceCanvasTurnCredentialIssuer,
+  // Supervised mode only: owns the status-class pushes to the desktop GUI.
+  // Standalone has no control channel, so this is null there.
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+}) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
     final pluginComposition = _pluginLifecycleService.compositionView;
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
-    final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final gitCliApi = GitCliApi(
+      processRunner: _processRunner,
+      streamingProcessRunner: const StreamingProcessRunner(),
+      gitPathExists: _gitPathExists,
+    );
     final deviceCanvasIntegrationState = DeviceCanvasIntegrationState();
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
@@ -272,6 +288,9 @@ class Orchestrator({
       integrationState: deviceCanvasIntegrationState,
       sessionRepository: sessionRepository,
     );
+    final newSessionDefaultsRepository = NewSessionDefaultsRepository(
+      dao: NewSessionDefaultsDao(database: _database),
+    );
     final sessionOptionsRepository = SessionOptionsRepository(
       runtime: _pluginRuntime,
       projectsDao: _database.projectsDao,
@@ -280,6 +299,7 @@ class Orchestrator({
     );
     final sessionOptionsService = SessionOptionsService(
       repository: sessionOptionsRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       pluginScopes: pluginComposition.sessionOptionsScopeById,
       clock: _clock,
       retention: const Duration(days: 30),
@@ -383,6 +403,42 @@ class Orchestrator({
       prSyncService: prSyncService,
       settingsService: pullRequestRefreshSettingsService,
     );
+    final projectGlossaryScopeTracker = ProjectGlossaryScopeTracker(
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
+    final projectGlossaryScopeService = ProjectGlossaryScopeService(
+      repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
+      bridgeIdProvider: _bridgeRegistrationService,
+      scopeTracker: projectGlossaryScopeTracker,
+    );
+    final currentProjectService = CurrentProjectService(
+      projectRepository: projectRepository,
+      projectGlossaryScopeTracker: projectGlossaryScopeTracker,
+    );
+    final sesoriServerApi = SesoriServerApi(
+      authBackendUrl: config.authBackendURL,
+      client: _httpClient,
+      requestDeadline: SesoriServerApi.defaultRequestDeadline,
+      tokenRefresher: _tokenRefresher,
+    );
+    final projectGlossaryPopulationService = ProjectGlossaryPopulationService(
+      projectRepository: projectRepository,
+      scopeService: projectGlossaryScopeService,
+      glossaryRepository: ProjectGlossaryRepository(
+        gitCliApi: gitCliApi,
+        filesystemApi: const FilesystemApi(),
+      ),
+      termCalculator: const ProjectGlossaryTermCalculator(),
+      publicationRepository: ProjectGlossaryPublicationRepository(api: sesoriServerApi),
+    );
+    final currentProjectGlossaryListener = CurrentProjectGlossaryListener(
+      source: currentProjectService.loadedProjectIds,
+      service: projectGlossaryPopulationService,
+    );
+    final viewedProjectGlossaryListener = ViewedProjectGlossaryListener(
+      tracker: projectViewTracker,
+      service: projectGlossaryPopulationService,
+    );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
       projectActivityRepository: ProjectActivityRepository(
@@ -425,17 +481,12 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
     );
     final sessionCreationService = SessionCreationService(
-      sessionMetadataRepository: SessionMetadataRepository(
-        api: SesoriServerApi(
-          authBackendUrl: config.authBackendURL,
-          client: _httpClient,
-          requestDeadline: SesoriServerApi.defaultRequestDeadline,
-          tokenRefresher: _tokenRefresher,
-        ),
-      ),
+      sessionMetadataRepository: SessionMetadataRepository(api: sesoriServerApi),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
+      newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionOptionsService: sessionOptionsService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
@@ -598,7 +649,7 @@ class Orchestrator({
           pluginIds: pluginComposition.sessionOptionsScopeById.keys.toSet(),
         ),
         RestartBridgeHandler(restartService: _restartService),
-        GetCurrentProjectHandler(projectRepository: projectRepository),
+        GetCurrentProjectHandler(currentProjectService: currentProjectService),
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
@@ -699,6 +750,10 @@ class Orchestrator({
       deviceCanvasStreamService: deviceCanvasStreamService,
       prSyncService: prSyncService,
       viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
+      currentProjectGlossaryListener: currentProjectGlossaryListener,
+      viewedProjectGlossaryListener: viewedProjectGlossaryListener,
+      projectGlossaryPopulationService: projectGlossaryPopulationService,
+      currentProjectService: currentProjectService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       projectViewTracker: projectViewTracker,
@@ -761,65 +816,72 @@ bool _gitPathExists({required String gitPath}) {
   return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }
 
-enum OrchestratorSessionStartResult() { ready, cancelled }
+enum OrchestratorSessionStartResult() {
+  ready,
+  cancelled,
+}
 
 /// A running bridge session with immutable runtime state.
 ///
 /// Created by [Orchestrator.create]. Call [start] once, capture
 /// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
 class OrchestratorSession._({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
-    required final PluginEventListener _pluginEventListener,
-    required final SessionBindingCommitListener _sessionBindingCommitListener,
-    required final SessionMutationListener _sessionMutationListener,
-    required final ChatHistoryListener _chatHistoryListener,
-    required final ChatHistoryActivityListener _chatHistoryActivityListener,
-    required final ChatHistoryService _chatHistoryService,
-    required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
-    required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
-    required final SessionEventDispatcher _sessionEventDispatcher,
-    required final PluginRuntime _pluginRuntime,
-    required final CompletionPushListener _completionListener,
-    required final MaintenancePushListener _maintenanceListener,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final SessionEncryptor _sessionEncryptor,
-    required final KeyExchangeManager _keyExchangeManager,
-    required final SSEManager _sseManager,
-    required final RoutedRequestDispatcher _routedRequestDispatcher,
-    required final BridgeEventMapper _mapper,
-    required final SessionPromptService _sessionPromptService,
-    required Stream<CatalogImportProgress> catalogImportProgress,
-    required Stream<String> pluginManagementSnapshotTokens,
-    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
-    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
-    required final StreamController<int> _bytesSentController,
-    required final StreamController<SesoriSseEvent> _localWireEventsController,
-    required final FailureReporter _failureReporter,
-    required final SessionRepository _sessionRepository,
-    required final DeviceCanvasClaimService _deviceCanvasClaimService,
-    required final DeviceCanvasIntegrationState _deviceCanvasIntegrationState,
-    required final DeviceCanvasStreamService _deviceCanvasStreamService,
-    required final PrSyncService _prSyncService,
-    required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
-    required final SessionUnseenService _sessionUnseenService,
-    required final SessionViewTracker _sessionViewTracker,
-    required final ProjectViewTracker _projectViewTracker,
-    required final ProjectActivityService _projectActivityService,
-    required final PermissionAutoApprovalService _permissionAutoApprovalService,
-    required final YoloSettingsService _yoloSettingsService,
-    required final PendingInteractionService _pendingInteractionService,
-    required final SessionAbortService _sessionAbortService,
-    required final SessionOperationDispatcher _sessionOperationDispatcher,
-    required final SessionMutationDispatcher _sessionMutationDispatcher,
-    required final SessionCreationService _sessionCreationService,
-    required final BridgeRestartDispatcher _restartDispatcher,
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
+  required final PluginEventListener _pluginEventListener,
+  required final SessionBindingCommitListener _sessionBindingCommitListener,
+  required final SessionMutationListener _sessionMutationListener,
+  required final ChatHistoryListener _chatHistoryListener,
+  required final ChatHistoryActivityListener _chatHistoryActivityListener,
+  required final ChatHistoryService _chatHistoryService,
+  required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
+  required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+  required final SessionEventDispatcher _sessionEventDispatcher,
+  required final PluginRuntime _pluginRuntime,
+  required final CompletionPushListener _completionListener,
+  required final MaintenancePushListener _maintenanceListener,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final SessionEncryptor _sessionEncryptor,
+  required final KeyExchangeManager _keyExchangeManager,
+  required final SSEManager _sseManager,
+  required final RoutedRequestDispatcher _routedRequestDispatcher,
+  required final BridgeEventMapper _mapper,
+  required final SessionPromptService _sessionPromptService,
+  required Stream<CatalogImportProgress> catalogImportProgress,
+  required Stream<String> pluginManagementSnapshotTokens,
+  required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+  required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
+  required final StreamController<int> _bytesSentController,
+  required final StreamController<SesoriSseEvent> _localWireEventsController,
+  required final FailureReporter _failureReporter,
+  required final SessionRepository _sessionRepository,
+  required final DeviceCanvasClaimService _deviceCanvasClaimService,
+  required final DeviceCanvasIntegrationState _deviceCanvasIntegrationState,
+  required final DeviceCanvasStreamService _deviceCanvasStreamService,
+  required final PrSyncService _prSyncService,
+  required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
+  required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
+  required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
+  required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
+  required final CurrentProjectService _currentProjectService,
+  required final SessionUnseenService _sessionUnseenService,
+  required final SessionViewTracker _sessionViewTracker,
+  required final ProjectViewTracker _projectViewTracker,
+  required final ProjectActivityService _projectActivityService,
+  required final PermissionAutoApprovalService _permissionAutoApprovalService,
+  required final YoloSettingsService _yoloSettingsService,
+  required final PendingInteractionService _pendingInteractionService,
+  required final SessionAbortService _sessionAbortService,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final SessionCreationService _sessionCreationService,
+  required final BridgeRestartDispatcher _restartDispatcher,
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+}) {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
@@ -969,6 +1031,8 @@ class OrchestratorSession._({
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
+    _currentProjectGlossaryListener.start();
+    _viewedProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
@@ -1089,7 +1153,7 @@ class OrchestratorSession._({
         .addTo(_subscriptions);
     // Live re-auth: when the token provider emits a token whose auth IDENTITY
     // differs from the one the relay socket is actually authenticated with
-    // (supervised mode: the GUI pushed a token_update after an account switch;
+    // (supervised mode: a later GUI token pull observes an account switch;
     // standalone: a re-login as another user picked up by the next refresh),
     // drop the relay so the reconnect loop below re-authenticates on the fresh
     // token — the same path a relay-side disconnect drives, so both triggers
@@ -1098,7 +1162,7 @@ class OrchestratorSession._({
     // Identity-gated on purpose: the relay validates the JWT once at connect
     // and never re-checks it for the lifetime of the socket, so a routine
     // same-user token rotation (TokenService refreshing near expiry during
-    // metadata generation or push sends, or the GUI pushing a routine refresh)
+    // metadata generation or push sends, or a routine GUI token pull)
     // keeps the open socket fully valid. Dropping it would disconnect every
     // phone mid-flight for nothing — see [_requiresRelayReauth].
     _accessTokenProvider.tokenStream
@@ -1121,6 +1185,7 @@ class OrchestratorSession._({
     _deviceCanvasStreamService.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
+    _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1149,9 +1214,15 @@ class OrchestratorSession._({
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
+      attempt(_currentProjectGlossaryListener.dispose),
+      attempt(_viewedProjectGlossaryListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
+    await Future.wait([
+      attempt(_currentProjectService.dispose),
+      attempt(_projectGlossaryPopulationService.dispose),
+    ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
       "(+${teardownSw.elapsedMilliseconds}ms)",
@@ -1296,7 +1367,7 @@ class OrchestratorSession._({
         // Don't reconnect without a usable token: in supervised mode a
         // signed-out / mid-login GUI yields no token, and reconnecting would
         // re-authenticate the relay from a stale cached token. Back off and
-        // retry — a later refresh (or a token_update push) recovers.
+        // retry — a later successful refresh pull recovers.
         if (!await _refreshAccessToken()) {
           Log.w("No access token available — deferring reconnect (retrying in $backoff)");
           backoff = _nextBackoff(backoff, takenOver: takenOver);
@@ -1339,8 +1410,10 @@ class OrchestratorSession._({
 
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
+    _deviceCanvasStreamService.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
+    _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(
@@ -2537,14 +2610,15 @@ class OrchestratorSession._({
 /// milliseconds-order waits instead of real minutes; production uses
 /// [ReconnectBackoffPolicy.standard].
 class const ReconnectBackoffPolicy({
-    /// Backoff for a plain network drop (network blip, relay restart).
+  /// Backoff for a plain network drop (network blip, relay restart).
   required final Duration ordinaryInitial,
-    required final Duration ordinaryMax,
-    /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
+  required final Duration ordinaryMax,
+
+  /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
   /// kicking each other (ADR A22).
   required final Duration takeoverInitial,
-    required final Duration takeoverMax,
-  }) {
+  required final Duration takeoverMax,
+}) {
   static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy(
     ordinaryInitial: Duration(seconds: 1),
     ordinaryMax: Duration(seconds: 30),

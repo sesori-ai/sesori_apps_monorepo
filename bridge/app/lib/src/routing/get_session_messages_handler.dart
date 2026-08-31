@@ -34,6 +34,10 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       before: body.before,
       attachmentDelivery: body.attachmentDelivery,
     );
-    return MessageWithPartsResponse(messages: page.messages, nextCursor: page.nextCursor);
+    return MessageWithPartsResponse(
+      messages: page.messages,
+      nextCursor: page.nextCursor,
+      replayedPromptDefaults: page.replayedPromptDefaults,
+    );
   }
 }

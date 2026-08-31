@@ -1,7 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "control_provision_progress.dart";
-
 part "control_message.freezed.dart";
 part "control_message.g.dart";
 
@@ -32,12 +30,6 @@ sealed class ControlMessage with _$ControlMessage {
     required String? accessToken,
   }) = ControlTokenResponse;
 
-  /// GUI → helper (push): a refreshed access token to adopt without a request.
-  @FreezedUnionValue("token_update")
-  const factory tokenUpdate({
-    required String accessToken,
-  }) = ControlTokenUpdate;
-
   /// helper → GUI (push): current relay/plugin health + active-session summary.
   @FreezedUnionValue("status")
   const factory status({
@@ -64,10 +56,10 @@ sealed class ControlMessage with _$ControlMessage {
     required bool accepted,
   }) = ControlPromptResponse;
 
-  /// helper → GUI: heads-up that this exit is an intentional restart (exit 86),
-  /// so the GUI respawns it instead of treating the exit as a crash.
-  @FreezedUnionValue("restart")
-  const factory restart() = ControlRestart;
+  /// GUI → helper: gracefully stop the supervised bridge and exit 0 without
+  /// unregistering it. This is the normal desktop On → Off lifecycle command.
+  @FreezedUnionValue("shutdown")
+  const factory shutdown() = ControlShutdown;
 
   /// GUI → helper: unregister this bridge with the current token, then exit 0
   /// (logout ordering).
@@ -81,13 +73,6 @@ sealed class ControlMessage with _$ControlMessage {
   const factory registered({
     required String bridgeId,
   }) = ControlRegistered;
-
-  /// helper → GUI: a runtime-provisioning progress event (first-run download /
-  /// install), teed from the bridge's provisioning stream.
-  @FreezedUnionValue("provision_progress")
-  const factory provisionProgress({
-    required ControlProvisionProgress progress,
-  }) = ControlProvisionProgressMessage;
 
   factory fromJson(Map<String, dynamic> json) => _$ControlMessageFromJson(json);
 }
@@ -118,8 +103,6 @@ enum ControlPluginHealthState() {
   healthy,
   @JsonValue("degraded")
   degraded,
-  @JsonValue("unavailable")
-  unavailable,
   @JsonValue("unknown")
   unknown,
 }

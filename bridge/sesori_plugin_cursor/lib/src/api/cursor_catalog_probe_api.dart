@@ -28,6 +28,7 @@ class CursorCatalogProbeApi({required final AcpStdioClient _client}) {
       formElicitation: false,
       capabilityMeta: CursorBinary.acpCapabilityMeta,
       authMethodId: CursorBinary.acpAuthMethodId,
+      authMethodAllowlist: null,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
   }

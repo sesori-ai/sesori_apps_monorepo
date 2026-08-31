@@ -660,6 +660,7 @@ Map<String, dynamic> _$SesoriWorkspaceFailedToJson(
 ) => <String, dynamic>{'message': ?instance.message, 'type': instance.$type};
 
 SesoriTuiToastShow _$SesoriTuiToastShowFromJson(Map json) => SesoriTuiToastShow(
+  sessionID: json['sessionID'] as String?,
   title: json['title'] as String?,
   message: json['message'] as String?,
   variant: json['variant'] as String?,
@@ -668,6 +669,7 @@ SesoriTuiToastShow _$SesoriTuiToastShowFromJson(Map json) => SesoriTuiToastShow(
 
 Map<String, dynamic> _$SesoriTuiToastShowToJson(SesoriTuiToastShow instance) =>
     <String, dynamic>{
+      'sessionID': ?instance.sessionID,
       'title': ?instance.title,
       'message': ?instance.message,
       'variant': ?instance.variant,

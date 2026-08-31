@@ -18,13 +18,19 @@ void main() {
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
       api: api,
+      messageTimeParser: const DeepSeekMessageTimeParser(),
     );
     final plugin = DeepSeekPlugin(
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
       launchDirectory: "/repo",
       mapper: mapper,
       api: api,
-      historyRepository: DeepSeekHistoryRepository(api: api, eventMapper: mapper, pluginId: DeepSeekIdentity.id),
+      historyRepository: DeepSeekHistoryRepository(
+        api: api,
+        eventMapper: mapper,
+        pluginId: DeepSeekIdentity.id,
+        messageTimeParser: const DeepSeekMessageTimeParser(),
+      ),
       deepSeekSessionService: const DeepSeekSessionService(
         repository: DeepSeekSessionRepository(api: api),
       ),

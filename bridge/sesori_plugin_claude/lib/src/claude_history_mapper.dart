@@ -27,12 +27,14 @@ final class const ClaudeHistoryMapper({
               id: record.id,
               timestamp: record.timestamp,
               model: record.model,
+              variant: record.effort?.wireValue,
             );
             entries.add(created);
             return created;
           });
           assistant.content.add(record.content);
           assistant.model ??= record.model;
+          assistant.variant ??= record.effort?.wireValue;
           for (final block in blocks) {
             if (block case ClaudeMappedToolUseContentBlock(:final id)) {
               assistantsByToolId[id] = assistant;
@@ -132,6 +134,8 @@ final class const ClaudeHistoryMapper({
         agent: "claude",
         modelID: entry.model,
         providerID: "anthropic",
+        variant: entry.variant,
+        sender: PluginMessageSender.agent,
         time: _messageTime(entry.timestamp),
       ),
       parts: List.unmodifiable(parts),
@@ -150,6 +154,7 @@ final class _AssistantHistoryMessage({
   required final String id,
   required final DateTime? timestamp,
   required var String? model,
+  required var String? variant,
 }) extends _ClaudeHistoryEntry {
   final List<Object?> content = [];
 }

@@ -8,6 +8,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/device_canvas_claim_dao.dart";
 import "daos/projects_dao.dart";
@@ -18,6 +19,7 @@ import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/device_canvas_claim_revisions_table.dart";
 import "tables/device_canvas_claims_table.dart";
+import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
 import "tables/session_options_cache_table.dart";
@@ -38,6 +40,7 @@ part "database.g.dart";
     SessionOptionsCacheTable,
     DeviceCanvasClaimsTable,
     DeviceCanvasClaimRevisionsTable,
+    NewSessionDefaultsTable,
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao, DeviceCanvasClaimDao],
 )
@@ -45,7 +48,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -287,13 +290,28 @@ class AppDatabase(super.e) extends _$AppDatabase {
         }
       },
       from13To14: (m, schema) async {
+        await m.createTable(schema.newSessionDefaultsTable);
+      },
+      from14To15: (m, schema) async {
+        final hasNewSessionDefaults =
+            await customSelect(
+              "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+              variables: [Variable.withString("new_session_defaults_table")],
+            ).getSingleOrNull() !=
+            null;
+        if (!hasNewSessionDefaults) {
+          await m.createTable(schema.newSessionDefaultsTable);
+        }
+
+        await customStatement("DROP TABLE IF EXISTS device_canvas_claims_table");
+        await customStatement("DROP TABLE IF EXISTS device_canvas_claim_revisions_table");
         await m.createTable(schema.deviceCanvasClaimsTable);
         await m.createTable(schema.deviceCanvasClaimRevisionsTable);
         await m.createIndex(schema.idxDeviceCanvasClaimsSession);
 
         final violations = await m.database.customSelect("PRAGMA foreign_key_check").get();
         if (violations.isNotEmpty) {
-          throw StateError("Migration v13->v14 left foreign key violations: ${violations.map((row) => row.data)}");
+          throw StateError("Migration v14->v15 left foreign key violations: ${violations.map((row) => row.data)}");
         }
       },
     ),

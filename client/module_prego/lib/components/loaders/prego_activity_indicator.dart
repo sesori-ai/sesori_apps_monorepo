@@ -36,6 +36,10 @@ class const PregoActivityIndicator({
       return _indicator(value: null);
     }
 
+    // Android deliberately has no native branch: a hybrid-composition platform
+    // view idles Flutter beautifully on a static screen, but wrecks scroll
+    // performance wherever a spinner shares the screen with a scrolling list
+    // (measured on-device, 2026-08-31), so the animated Flutter arc stays.
     final nativeView = switch (defaultTargetPlatform) {
       TargetPlatform.iOS => UiKitView(
         viewType: _nativeViewType,
@@ -43,18 +47,26 @@ class const PregoActivityIndicator({
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
-      TargetPlatform.android ||
-      TargetPlatform.fuchsia ||
-      TargetPlatform.linux ||
-      TargetPlatform.macOS ||
-      TargetPlatform.windows => null,
+      TargetPlatform.macOS => AppKitView(
+        viewType: _nativeViewType,
+        creationParams: color.toARGB32(),
+        creationParamsCodec: const StandardMessageCodec(),
+        hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+      ),
+      TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => null,
     };
 
-    return nativeView ?? _indicator(value: null);
+    if (nativeView == null) {
+      return _indicator(value: null);
+    }
+    // Native views consume creationParams only at creation, so a colour change
+    // (a theme switch while a spinner is visible) must recreate the view.
+    return KeyedSubtree(key: ValueKey(color.toARGB32()), child: nativeView);
   }
 
   Widget _indicator({required double? value}) {
-    // The approved wrapper owns the Flutter fallback on non-iOS platforms.
+    // The approved wrapper owns the Flutter fallback for platforms without a
+    // native renderer and for static reduced-motion states.
     // ignore: no_slop_linter/avoid_flutter_spinners
     return CircularProgressIndicator(
       value: value,

@@ -41,7 +41,7 @@ Three-phase init in `configureDependencies()`:
 
 **Voice Features**
 
-`VoiceTranscriptionService` — records audio via the `record` package and submits to the voice API. `WakeLockService` — keeps the screen on during active sessions using `wakelock_plus`.
+`FlutterVoiceCapture` — adapts the `record` package into one native capture session per composer. Module-core `VoiceTranscriptionService` owns recording/transcription policy through `VoiceRepository`, while `VoiceInputCubit` exposes lifecycle state to the shell. `WakeLockService` coordinates session leases over the process-wide `wakelock_plus` capability.
 
 ## Running
 
@@ -55,8 +55,9 @@ flutter run
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release
 builds using the required compile-time credentials. Debug/profile builds and unsupported platforms remain disabled.
-An unauthenticated Android launch inside the Play pre-launch window defers startup; successful interactive
-authentication starts Singular before reporting its conversion events, while crawlers that never authenticate stay off.
+An unauthenticated Android build newer than the latest production submission in Firebase Remote Config defers startup;
+successful interactive authentication starts Singular before reporting its conversion events, while crawlers that never
+authenticate stay off. The Remote Config decision is resolved asynchronously and never delays the first product frame.
 
 Keep credentials outside Git. Create a local JSON file such as:
 

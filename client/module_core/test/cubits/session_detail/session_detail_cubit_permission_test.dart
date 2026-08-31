@@ -499,7 +499,13 @@ void main() {
       expect(cubit.state, const SessionDetailState.loading());
 
       messagesCompleter.complete(
-        ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+        ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
       );
       await _awaitLoaded(cubit);
 
@@ -805,7 +811,13 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
-      ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()], nextCursor: null)),
+      ApiResponse.success(
+        MessageWithPartsResponse(
+          messages: [_messageWithParts()],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     ),
   );
   when(

@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
@@ -24,6 +25,28 @@ void main() {
     test("rejects non-ws schemes even on loopback", () {
       expect(BridgeRuntimeRunner.isLoopbackControlUrl(Uri.parse("http://127.0.0.1:9")), isFalse);
       expect(BridgeRuntimeRunner.isLoopbackControlUrl(Uri.parse("https://localhost:9")), isFalse);
+    });
+  });
+
+  group("BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit", () {
+    test("uses auth-required when no lifecycle outcome exists", () {
+      expect(
+        BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: null),
+        BridgeSupervisedExitCode.authRequired,
+      );
+    });
+
+    test("preserves a lifecycle outcome selected before token cancellation", () {
+      for (final BridgeSupervisedExitCode requestedExit in <BridgeSupervisedExitCode>[
+        BridgeSupervisedExitCode.cleanStop,
+        BridgeSupervisedExitCode.controlChannelLost,
+        BridgeSupervisedExitCode.restart,
+      ]) {
+        expect(
+          BridgeRuntimeRunner.resolveSupervisedTokenUnavailableExit(requestedExit: requestedExit),
+          requestedExit,
+        );
+      }
     });
   });
 

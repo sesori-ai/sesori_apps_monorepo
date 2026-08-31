@@ -53,6 +53,7 @@ import "prego_design_system.dart";
 
 export 'font/prego_text_theme.dart';
 export "prego_design_system.dart";
+export "prego_theme_data.dart";
 export "primitives/prego_colors.g.dart" show PregoColors, PregoColorsDark, PregoColorsLight;
 export "primitives/prego_colors_x.dart";
 export "primitives/prego_radius.g.dart";

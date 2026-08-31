@@ -20,12 +20,15 @@ void main() {
       temporaryDirectoryClient: temporaryDirectoryClient,
     );
 
-    final firstPath = await provider.createRecordingPath();
-    final secondPath = await provider.createRecordingPath();
+    final [firstPath, secondPath] = await Future.wait([
+      provider.createRecordingPath(),
+      provider.createRecordingPath(),
+    ]);
 
     expect(firstPath, startsWith("/tmp/sesori-recording-file-provider-test/sesori_voice_"));
     expect(firstPath, endsWith(".m4a"));
     expect(secondPath, startsWith("/tmp/sesori-recording-file-provider-test/sesori_voice_"));
+    expect(secondPath, isNot(firstPath));
     expect(directoryLoads, 1);
   });
 

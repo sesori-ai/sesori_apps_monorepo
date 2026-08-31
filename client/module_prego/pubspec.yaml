@@ -5,25 +5,28 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.1
-  flutter: ">=3.47.1"
+  sdk: ^3.13.2
+  flutter: ">=3.47.2"
 
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: ^1.0.1
-  cupertino_ui: ^1.0.0
+  material_ui: ^1.1.0
+  cupertino_ui: ^1.0.1
   sesori_shared:
     path: ../../shared/sesori_shared
   flutter_svg: ^2.3.0
   universal_platform: ^1.1.0
-  liquid_glass_widgets: ^0.30.1
+  liquid_glass_widgets: ^1.1.0
   cue: ^0.3.1
 
 flutter:
   plugin:
     platforms:
       ios:
+        pluginClass: ThemePregoPlugin
+        sharedDarwinSource: true
+      macos:
         pluginClass: ThemePregoPlugin
         sharedDarwinSource: true
   assets:

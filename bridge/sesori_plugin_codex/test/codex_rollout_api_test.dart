@@ -216,7 +216,7 @@ void main() {
         }),
         CodexRolloutLineDto.fromJson({
           "type": "turn_context",
-          "payload": {"model": "gpt-5.4"},
+          "payload": {"model": "gpt-5.4", "reasoning_effort": "high"},
         }),
         CodexRolloutLineDto.fromJson({
           "type": "response_item",
@@ -243,6 +243,7 @@ void main() {
       expect(lines[4], isA<CodexRolloutUnknownLineDto>());
       expect(_sessionMetadataPayload(line: lines[0]).id, "session-id");
       expect(_turnContextPayload(line: lines[1]).model, "gpt-5.4");
+      expect(_turnContextPayload(line: lines[1]).effort, "high");
       expect(_responseItemPayload(line: lines[2]), isA<CodexRolloutMessageDto>());
     });
 
@@ -1112,7 +1113,11 @@ authored arguments
         structuredToolStatusByCallId: const {},
       );
 
-      expect(messages.single.parts.single.text, r"$review authored arguments" "\n");
+      expect(
+        messages.single.parts.single.text,
+        r"$review authored arguments"
+        "\n",
+      );
     });
 
     test("readMessages hides bridge context from an argumentless command", () {
@@ -1216,7 +1221,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.6"},
+            "payload": {"model": "gpt-5.6", "reasoning_effort": "high"},
           }),
           jsonEncode({
             "timestamp": "2026-08-19T18:06:15.079Z",
@@ -1245,6 +1250,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(error.id, "turn-quota");
       expect(error.modelID, "gpt-5.6");
       expect(error.providerID, "openai");
+      expect(error.variant, "high");
       expect(error.errorName, "CodexError");
       expect(error.errorMessage, "You've hit your usage limit.");
       expect(messages.single.parts, isEmpty);
@@ -2234,7 +2240,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           .single
           .parts
           .single
-          .state.output;
+          .state
+          .output;
 
       expect(output?.runes, hasLength(maxToolOutputLength));
       expect(output, endsWith(emoji));
@@ -2423,7 +2430,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex"},
+            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
           }),
         ],
       );
@@ -2454,7 +2461,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         extraLines: [
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.2-codex"},
+            "payload": {"model": "gpt-5.2-codex", "reasoning_effort": "low"},
           }),
           jsonEncode({
             "type": "response_item",
@@ -2469,7 +2476,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           // Model switches mid-session — later assistant messages reflect it.
           jsonEncode({
             "type": "turn_context",
-            "payload": {"model": "gpt-5.4-codex"},
+            "payload": {"model": "gpt-5.4-codex", "reasoning_effort": "xhigh"},
           }),
           jsonEncode({
             "type": "response_item",
@@ -2496,7 +2503,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(first.agent, equals("codex"));
       expect(first.providerID, equals("openai"));
       expect(first.modelID, equals("gpt-5.2-codex"));
+      expect(first.variant, equals("low"));
       expect(second.modelID, equals("gpt-5.4-codex"));
+      expect(second.variant, equals("xhigh"));
     });
 
     test("readMessages falls back to config model when no turn_context", () {
@@ -2541,6 +2550,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final assistant = messages.single.info as PluginMessageAssistant;
       expect(assistant.modelID, equals("gpt-5.5"));
       expect(assistant.providerID, equals("openai"));
+      expect(assistant.variant, isNull);
     });
   });
 }

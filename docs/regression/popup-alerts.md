@@ -11,6 +11,8 @@ snackbars and render above the current route, below the top navigation bar.
   actions expand the card without clipping at accessibility text sizes.
 - The card is centered with 16 px screen margins and a 343 px maximum width.
 - A newly presented alert replaces the alert already visible on the same route.
+- Session-attributed backend alerts appear only while the matching session detail
+  or diffs route is on top; unattributed backend alerts remain app-wide.
 - Alerts dismiss after three seconds by default and dismiss immediately when
   the close button is tapped.
 - Swiping an alert upwards dismisses it, following the finger and completing on

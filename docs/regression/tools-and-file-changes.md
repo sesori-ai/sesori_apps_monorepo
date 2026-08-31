@@ -30,6 +30,22 @@ signal that a tool changed files.
   reload with the same identity, status, and output; unknown status renders as
   the fallback. A backend abort without a turn identifier still finalizes tools
   in the active turn.
+- DeepSeek projects tool calls and updates through standard ACP with exact call
+  identity, bounded presenter output, terminal result/error state, and diff
+  content. Presenter failure degrades to a generic bounded tool card instead of
+  dropping the call or result.
+- Cursor's fire-and-forget tool extensions preserve their top-level tool-call
+  correlation before falling back to the active turn, including while another
+  session is in flight.
+- GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
+  must be exact while the request is live. Call identity, bounded output,
+  terminal state, and diff content then converge after `session/load`; permission
+  decisions are process-local and are not part of replay. Backend tool names
+  remain presentation data rather than shared behavior.
+- Grok uses that standard ACP lifecycle with exact live permission linkage.
+  Tool-call identity, pending-to-terminal status, bounded output or error, and
+  diff content converge between live events and `session/load`; Grok tool names
+  remain presentation data and never become shared domain vocabulary.
 
 ## Regression Levels
 
@@ -37,7 +53,7 @@ signal that a tool changed files.
 |---|---|
 | L1 Smoke | Not included because proving tool behavior requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a tool part with name, terminal status, and bounded output. |
-| L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. |
+| L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete tool lifecycle with bounded output, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity, status, and output intact; a failing tool surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
@@ -45,7 +61,12 @@ signal that a tool changed files.
 
 Vary the tool mix per run: read-only inspection, single- and multi-file edits,
 shell-style execution, a failing tool, a sub-agent task. Alternate long,
-multi-byte, and empty output; compare live with a later reload.
+multi-byte, and empty output; compare live with a later reload. For Copilot,
+verify permission linkage against the live call, then cold-replay the resulting
+call identity, terminal tool state, bounded output, and diff without expecting
+its process-local permission decision to replay. For Grok, compare read-only,
+mutating, failing, and long-output tools live and after `session/load`, including
+one permission-gated mutation and one repeated terminal update.
 
 ## Failure Signals
 
@@ -58,6 +79,14 @@ multi-byte, and empty output; compare live with a later reload.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
+- A Cursor tool extension with an originating call ID is attributed to a
+  different concurrently active session.
+- A Copilot tool loses permission correlation while live, or its call identity,
+  terminal status, bounded output, or diff changes when reopened through ACP
+  history.
+- A Grok tool loses live permission correlation, changes call identity or status
+  after replay, exposes unbounded output, loses diff content, or emits the wrong
+  number of file-change invalidations.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 
@@ -66,6 +95,9 @@ multi-byte, and empty output; compare live with a later reload.
 - Available tools, attachments, and sub-agents are backend-specific; a plugin
   that cannot produce a case is not a failure but is also not coverage.
 - Rendering needs the client; the phone is the only transcript surface.
+- ACP permission decisions and pending requests are process-local interaction
+  state. Cold replay restores the resulting tool lifecycle and diff, not the
+  earlier decision or its linkage event.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client does not tolerate an unknown message-part `type` from a newer
@@ -77,7 +109,9 @@ multi-byte, and empty output; compare live with a later reload.
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
 - Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,
-  `bridge/app/lib/src/sse/bridge_event_mapper.dart`; mappers and tests under
+  the shared ACP mapper used by `bridge/sesori_plugin_copilot/` and
+  `bridge/sesori_plugin_grok/`, `bridge/app/lib/src/sse/bridge_event_mapper.dart`;
+  mappers and tests under
   `bridge/sesori_plugin_*/`; `client/app/lib/features/session_detail/widgets/`
 - Tests: `shared/sesori_shared/test/models/message_attachment_test.dart`,
   `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`

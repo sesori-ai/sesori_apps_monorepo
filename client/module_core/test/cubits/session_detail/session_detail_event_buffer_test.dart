@@ -157,6 +157,26 @@ void main() {
       expect(state.messages.length, 1);
       expect(state.messages.first.info.id, "msg-1");
       expect(state.agent, "build");
+
+      sessionEvents.add(
+        const SesoriMessageUpdated(
+          info: Message.assistant(
+            id: "system-1",
+            sessionID: _sessionId,
+            agent: "automation",
+            modelID: "automation-model",
+            providerID: "automation-provider",
+            sender: MessageSender.system,
+            time: null,
+          ),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final afterSystem = cubit.state as SessionDetailLoaded;
+      expect(afterSystem.messages.map((message) => message.info.id), ["msg-1", "system-1"]);
+      expect(afterSystem.agent, "build");
+      expect(afterSystem.assistantAgentModel, state.assistantAgentModel);
     });
 
     test("a live error updates assistant model attribution", () async {

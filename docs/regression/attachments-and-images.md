@@ -16,6 +16,11 @@ content the transcript renders live and after reload.
   inline within the staged-attachment size bound so the request fits the relay's
   message limit. The owning plugin normalizes backend-produced images into a
   client-safe attachment; host paths never cross that boundary.
+- GitHub Copilot's production descriptor advertises prompt attachments
+  unconditionally, and the shared ACP mapper sends bounded inline image parts
+  without renegotiating that declaration against initialization metadata. A
+  vision-capable selected model must receive the exact image; a model or account
+  rejection remains a visible backend failure rather than silently dropping it.
 - During new-session submission, one memory-only snapshot retains the exact
   attachment identities only until success, in-route restoration, or background
   settlement. A failed current-route launch restores those attachments together
@@ -98,7 +103,7 @@ content the transcript renders live and after reload.
 |---|---|
 | L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
@@ -107,7 +112,9 @@ content the transcript renders live and after reload.
 Vary the image source (picker, clipboard, backend-generated, tool output, remote
 reference), raster format, collection size from one image to over the candidate
 limit, and bytes from small to over budget. Vary whether the transcript is seen
-live, after paging back, or after a reopen, and vary the plugin.
+live, after paging back, or after a reopen, and vary the plugin. For Copilot,
+vary a vision-capable selected model, a model that rejects images, and an
+account-level rejection without changing the descriptor's capability claim.
 
 ## Failure Signals
 
@@ -137,6 +144,8 @@ live, after paging back, or after a reopen, and vary the plugin.
   decode succeeds, or retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
+- Copilot advertises images but drops the ACP image part, accepts it with the
+  wrong selected model, or hides a model/account rejection.
 - Failed creation loses, duplicates, or persists submitted attachment bytes;
   restores them after route exit; reconnect erases pending restoration; or
   maximum-size serialization blocks launch rendering or changes wire bytes.
@@ -150,6 +159,10 @@ live, after paging back, or after a reopen, and vary the plugin.
 - Markdown inline image URLs use the platform network image loader for HTTP and
   HTTPS and do not pass through the guarded attachment loader; they are not
   covered by the remote-attachment guarantee.
+- Copilot does not negotiate its descriptor's attachment support against the
+  initialized CLI capability. Image acceptance can vary by selected model and
+  account entitlement; a visible upstream rejection is expected coverage, not a
+  bridge failure.
 - Cursor path-only generated images are read locally inside its plugin and
   delivered as bounded attachments; the host path still never crosses the wire.
 - Older apps continue to request inline delivery by default, and newer apps
@@ -160,6 +173,6 @@ live, after paging back, or after a reopen, and vary the plugin.
 ## Sources
 
 Shared attachment variants, budgets, safe-URI rules, and prompt part shapes;
-per-plugin image mappers, including Cursor generated-image reading, and
-descriptor capability declarations; client attachment cache, loader, and
-surface tests.
+per-plugin image mappers, including Cursor generated-image reading, the shared
+ACP image mapping used by Copilot, and descriptor capability declarations;
+client attachment cache, loader, and surface tests.

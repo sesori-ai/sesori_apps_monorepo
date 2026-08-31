@@ -101,9 +101,11 @@ void main() {
           info: PluginMessage.assistant(
             id: "m2",
             sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
+            agent: "build",
+            modelID: "gpt-5",
+            providerID: "openai",
+            variant: "high",
+            sender: PluginMessageSender.agent,
             time: null,
           ),
           parts: [],
@@ -116,6 +118,13 @@ void main() {
       );
 
       expect(response.messages.length, equals(2));
+      expect(
+        response.replayedPromptDefaults,
+        const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        ),
+      );
     });
 
     test("keeps default delivery inline and threads explicit stored references", () async {

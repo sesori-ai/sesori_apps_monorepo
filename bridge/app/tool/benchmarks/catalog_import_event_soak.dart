@@ -12,6 +12,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
@@ -148,6 +149,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: _ExistingFilesystemApi(),
         gitCliApi: GitCliApi(
+          streamingProcessRunner: const StreamingProcessRunner(),
           processRunner: ProcessRunner(),
           gitPathExists: ({required String gitPath}) => false,
         ),

@@ -35,23 +35,89 @@ void main() {
       expect(served.map((message) => message.info.id), const ["m1"]);
     });
 
+    test("a first replay returns and persists the latest prompt defaults", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..replayedPromptDefaults = const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        );
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(page.replayedPromptDefaults, repository.replayedPromptDefaults);
+      expect(repository.promptDefaultsUpdates, [repository.replayedPromptDefaults]);
+
+      final cached = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(cached.replayedPromptDefaults, isNull);
+      expect(repository.promptDefaultsUpdates, hasLength(1));
+    });
+
+    test("a replay still returns prompt defaults when persistence fails", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..replayedPromptDefaults = const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        )
+        ..promptDefaultsUpdateError = StateError("database unavailable");
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(page.replayedPromptDefaults, repository.replayedPromptDefaults);
+      expect(page.messages, repository.transcript);
+    });
+
+    test("a reader queued behind a backfill receives its replayed prompt defaults", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])
+        ..fetchGate = fetchGate.future
+        ..replayedPromptDefaults = const SessionPromptDefaults(
+          agent: "build",
+          model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+        );
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final first = history.service.getSessionMessages(sessionId: "ses_a");
+      while (repository.fetchCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final queued = history.service.getSessionMessages(sessionId: "ses_a");
+      fetchGate.complete();
+
+      final pages = await Future.wait([first, queued]);
+      expect(pages.map((page) => page.replayedPromptDefaults), [
+        repository.replayedPromptDefaults,
+        repository.replayedPromptDefaults,
+      ]);
+      expect(repository.fetchCount, 1);
+    });
+
     test("observed backend activity forces one re-read, then settles", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
       final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      expect(repository.promptDefaultsUpdates, isEmpty);
 
       await history.service.observeBackendActivity(
         sessionId: "ses_a",
         activityAt: synced.watermark + 5000,
       );
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
+      repository.replayedPromptDefaults = const SessionPromptDefaults(
+        agent: "build",
+        model: AgentModel(providerID: "openai", modelID: "gpt-5", variant: "high"),
+      );
 
+      final refreshed = await history.service.getSessionMessages(sessionId: "ses_a");
       expect(
-        (await history.service.getSessionMessages(sessionId: "ses_a")).messages.map((message) => message.info.id),
+        refreshed.messages.map((message) => message.info.id),
         const ["m1", "m2"],
         reason: "a session advanced outside Sesori must be re-read",
       );
+      expect(refreshed.replayedPromptDefaults, repository.replayedPromptDefaults);
+      expect(repository.promptDefaultsUpdates, [repository.replayedPromptDefaults]);
       expect(repository.fetchCount, 2);
 
       await history.service.getSessionMessages(sessionId: "ses_a");
@@ -231,20 +297,35 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
 class _FakeSessionRepository({required var List<MessageWithParts> transcript, final Object? error})
     implements SessionRepository {
   int fetchCount = 0;
+  SessionPromptDefaults? replayedPromptDefaults;
+  Object? promptDefaultsUpdateError;
+  final List<SessionPromptDefaults> promptDefaultsUpdates = [];
 
   /// Runs while the fetch is in flight, so a test can interleave live events.
   void Function()? onFetch;
   Future<void>? fetchGate;
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
     onFetch?.call();
     await fetchGate;
     await Future<void>.delayed(Duration.zero);
     final failure = error;
     if (failure != null) throw failure;
-    return transcript;
+    return (messages: transcript, promptDefaults: replayedPromptDefaults);
+  }
+
+  @override
+  Future<void> updatePromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) async {
+    if (promptDefaultsUpdateError case final error?) {
+      throw error;
+    }
+    promptDefaultsUpdates.add(SessionPromptDefaults(agent: agent, model: agentModel));
   }
 
   @override

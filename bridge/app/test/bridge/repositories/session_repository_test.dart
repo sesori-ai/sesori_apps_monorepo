@@ -119,7 +119,7 @@ void main() {
       );
     });
 
-    test("deleteSession records a plugin-scoped tombstone and removes the stored row", () async {
+    test("deleteSession removes the stored row including its prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
       final repository = singlePluginSessionRepository(
@@ -142,8 +142,12 @@ void main() {
         branchName: null,
         baseBranch: null,
         baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
+        lastAgent: "build",
+        lastAgentModel: const AgentModel(
+          providerID: "provider",
+          modelID: "model",
+          variant: "high",
+        ),
       );
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isFalse);
 
@@ -1608,8 +1612,8 @@ void main() {
       final statuses = await repository.getSessionStatuses();
 
       expect(plugin.lastGetMessagesSessionId, equals("backend-s1"));
-      expect(messages.single.info.sessionID, equals("stable-s1"));
-      expect(messages.single.parts.single.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.info.sessionID, equals("stable-s1"));
+      expect(messages.messages.single.parts.single.sessionID, equals("stable-s1"));
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
     });
 

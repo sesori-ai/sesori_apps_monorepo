@@ -153,6 +153,7 @@ class SessionRepository({
         SuccessResponse(:final data) => data.items,
         ErrorResponse() => const <CommandInfo>[],
       },
+      lastUsedPromptDefaults: null,
     );
     final errors = <LegacySessionOptionError>[
       if (agents case ErrorResponse(:final error))
@@ -192,6 +193,7 @@ class SessionRepository({
           providers: data.providers.items,
           providersConnectedOnly: data.providers.connectedOnly,
           commands: data.commands.items,
+          lastUsedPromptDefaults: data.lastUsedPromptDefaults,
         ),
         isStale: data.stale,
       ),

@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/git_diff_output_mapper.dart";
 import "package:sesori_bridge/src/repositories/session_diff_repository.dart";
@@ -40,6 +41,7 @@ void main() {
         sessionRepository: sessionRepository,
         sessionDiffRepository: SessionDiffRepository(
           gitCliApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
             gitPathExists: ({required String gitPath}) => true,
           ),

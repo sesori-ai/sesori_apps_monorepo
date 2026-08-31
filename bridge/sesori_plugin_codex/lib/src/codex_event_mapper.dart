@@ -291,6 +291,7 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      variant: null,
       errorName: "CodexError",
       errorMessage: message,
       time: _turnMessageTime(turn),
@@ -309,6 +310,7 @@ class CodexEventMapper({
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      variant: null,
       errorName: "CodexError",
       errorMessage: message,
       time: _rolloutMessageTime(timestamp),
@@ -575,7 +577,7 @@ class CodexEventMapper({
         info: _assistantMessage(itemId: itemId, threadId: threadId, time: time).toJson(),
       ),
       BridgeSseMessagePartUpdated(
-part: PluginMessagePart.tool(
+        part: PluginMessagePart.tool(
           id: "$itemId-tool",
           sessionID: threadId,
           messageID: itemId,
@@ -707,6 +709,7 @@ part: PluginMessagePart.tool(
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
+      sender: shared.MessageSender.agent,
       time: time,
     );
   }

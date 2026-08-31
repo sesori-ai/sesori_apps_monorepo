@@ -91,6 +91,24 @@ void main() {
       expect(find.text("Checking foo() method"), findsOneWidget);
     });
 
+    testWidgets("decodes HTML character references in preview", (tester) async {
+      await tester.pumpWidget(
+        buildApp(text: "The user wants &quot;quoted text&quot;.\n\nDetails here.", isStreaming: false),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('The user wants "quoted text".'), findsOneWidget);
+    });
+
+    testWidgets("preserves HTML character references inside inline code", (tester) async {
+      await tester.pumpWidget(
+        buildApp(text: "The literal entity is `&quot;`.\n\nDetails here.", isStreaming: false),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text("The literal entity is &quot;."), findsOneWidget);
+    });
+
     testWidgets("strips link markdown from preview", (tester) async {
       await tester.pumpWidget(
         buildApp(text: "See [docs](https://example.com)\n\nDetails here.", isStreaming: false),

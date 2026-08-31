@@ -2,6 +2,7 @@ import "package:device_info_plus/device_info_plus.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 @module
 abstract class RegisterModule() {
@@ -11,17 +12,11 @@ abstract class RegisterModule() {
   @lazySingleton
   DeviceInfoPlugin get deviceInfoPlugin => DeviceInfoPlugin();
 
-  // Same "Sesori" keychain service label as the mobile app; the differing
-  // bundle ids (com.sesori.desktop vs com.sesori.app) keep the two products'
-  // keychain items isolated on macOS.
-  //
-  // usesDataProtectionKeychain is OFF: the data-protection keychain requires a
-  // provisioned keychain-access-group entitlement, which this non-sandboxed
-  // Developer-ID-style app (and every unsigned dev build) does not carry — the
-  // first token write would fail with errSecMissingEntitlement. The legacy
-  // login keychain works for both. Revisit with the final signing setup.
   @lazySingleton
-  FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
-    mOptions: MacOsOptions(accountName: "Sesori", usesDataProtectionKeychain: false),
-  );
+  RelayCryptoService get relayCryptoService => RelayCryptoService();
+
+  // Used by Windows and Linux. The desktop storage adapter routes macOS to the
+  // dedicated classic-Keychain channel required by non-provisioned builds.
+  @lazySingleton
+  FlutterSecureStorage get secureStorage => const FlutterSecureStorage();
 }

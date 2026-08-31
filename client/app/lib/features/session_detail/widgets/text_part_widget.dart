@@ -30,6 +30,7 @@ class const TextPartWidget({
           semanticLabel: alt,
         ),
         styleSheet: buildSessionMarkdownStyleSheet(prego: context.prego),
+        blockSyntaxes: sessionMarkdownBlockSyntaxes,
         builders: buildSessionMarkdownBuilders(
           highlightEnabled: !isStreaming,
           copyTooltip: context.loc.sessionDetailCopy,

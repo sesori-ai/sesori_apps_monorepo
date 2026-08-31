@@ -52,6 +52,8 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
+/// [status] uses the shared session-status JSON shape with a `type` discriminator.
+/// `PluginSessionStatus.toJson()` produces that shape for plugin-owned status.
 // ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
 class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
     extends BridgeSseEvent;
@@ -181,8 +183,14 @@ class const BridgeSseWorkspaceReady({final String? name}) extends BridgeSseEvent
 
 class const BridgeSseWorkspaceFailed({final String? message}) extends BridgeSseEvent;
 
-class const BridgeSseTuiToastShow({final String? title, final String? message, final String? variant})
-    extends BridgeSseEvent;
+/// Transient backend guidance. [sessionID] is the backend session identity
+/// before bridge-core remapping; null means genuinely global or unattributed.
+class const BridgeSseTuiToastShow({
+  required final String? sessionID,
+  required final String? title,
+  required final String? message,
+  required final String? variant,
+}) extends BridgeSseEvent;
 
 class const BridgeSseWorktreeReady() extends BridgeSseEvent;
 

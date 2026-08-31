@@ -98,8 +98,10 @@ class DeepSeekPlugin({
         cwd: projectId ?? launchDirectory,
       );
 
+  // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
   Map<String, dynamic>? _sessionMetadata(AcpSessionInfo info) {
     final value = info.metadata?[DeepSeekAcpApi.initializeMetadataKey];
+    // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
     return value is Map ? value.cast<String, dynamic>() : null;
   }
 

@@ -77,7 +77,7 @@ class const UserMessageBubble({
           children: [
             ...attachments,
             if (markdown != null)
-              SelectionArea(
+              PregoReadableSelectionArea(
                 child: MarkdownBody(
                   data: markdown,
                   selectable: false,
@@ -89,6 +89,7 @@ class const UserMessageBubble({
                     semanticLabel: alt,
                   ),
                   styleSheet: buildUserMessageMarkdownStyleSheet(prego: prego),
+                  blockSyntaxes: sessionMarkdownBlockSyntaxes,
                   builders: buildSessionMarkdownBuilders(
                     highlightEnabled: true,
                     copyTooltip: context.loc.sessionDetailCopy,

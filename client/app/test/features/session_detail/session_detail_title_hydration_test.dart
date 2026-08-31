@@ -8,21 +8,19 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
-import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
 
 class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 
 class MockDeviceCanvasService() extends Mock implements DeviceCanvasService;
 
@@ -211,8 +209,10 @@ void main() {
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
-    when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
-    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
+    stubVoiceTranscriptionService(
+      service: voiceTranscriptionService,
+      maxDurationStream: maxDurationReached.stream,
+    );
 
     when(
       () => loadService.load(

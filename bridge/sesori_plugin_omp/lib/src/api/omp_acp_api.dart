@@ -54,6 +54,7 @@ class OmpAcpApi({
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: OmpBinary.acpAuthMethodId,
+      authMethodAllowlist: null,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
   }

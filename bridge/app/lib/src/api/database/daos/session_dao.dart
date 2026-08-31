@@ -471,6 +471,8 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         archivedAt: Value(archivedAt),
+        lastAgent: const Value(null),
+        lastAgentModel: const Value(null),
         updatedAt: Value(updatedAt),
         projectionUpdatedAt: Value(projectionUpdatedAt),
       ),

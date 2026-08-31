@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_transcript_record_dto.dart";
+import "../models/claude_effort_level.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
 
@@ -244,6 +245,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       return ClaudeTranscriptAssistantRecord(
         id: id,
         model: _nonEmpty(dto.message?.model),
+        effort: ClaudeEffortLevel.tryParse(dto.effort),
         content: dto.message?.content,
         cwd: dto.cwd,
         timestamp: dto.timestamp,

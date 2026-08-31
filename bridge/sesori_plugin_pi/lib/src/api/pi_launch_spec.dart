@@ -43,10 +43,14 @@ bool isValidPiSessionId({required String sessionId}) => _sessionIdPattern.hasMat
 ///
 /// One process serves one session and inherits the user's environment so Pi can
 /// use normal credentials, configuration, packages, and session directories.
+/// The first turn's requested selection is part of the command line so Pi
+/// extensions observe it during `session_start`, before RPC commands are read.
 class PiLaunchSpec({
   required final String binaryPath,
   required final String workingDirectory,
   required final PiSessionLaunch launch,
+  required final ({String providerID, String modelID})? model,
+  required final String? thinkingLevel,
   required Map<String, String> environment,
 }) {
   this {
@@ -58,18 +62,31 @@ class PiLaunchSpec({
   /// Additional entries merged over the inherited process environment.
   final Map<String, String> environment = Map.unmodifiable({...environment, "PI_SKIP_VERSION_CHECK": "1"});
 
-  List<String> get arguments => switch (launch) {
-    PiNoSession() => ["--mode", "rpc", "--no-session", "--approve"],
-    PiNewSession(:final sessionId) => ["--mode", "rpc", "--approve", "--session-id", sessionId],
-    PiForkedSession(:final sessionId, :final parentSessionPath) => [
-      "--mode",
-      "rpc",
-      "--approve",
-      "--fork",
-      parentSessionPath,
-      "--session-id",
-      sessionId,
-    ],
-    PiResumedSession(:final sessionPath) => ["--mode", "rpc", "--approve", "--session", sessionPath],
-  };
+  List<String> get arguments {
+    final selectedModel = model;
+    final selectedThinkingLevel = thinkingLevel;
+    return [
+      ...switch (launch) {
+        PiNoSession() => ["--mode", "rpc", "--no-session", "--approve"],
+        PiNewSession(:final sessionId) => ["--mode", "rpc", "--approve", "--session-id", sessionId],
+        PiForkedSession(:final sessionId, :final parentSessionPath) => [
+          "--mode",
+          "rpc",
+          "--approve",
+          "--fork",
+          parentSessionPath,
+          "--session-id",
+          sessionId,
+        ],
+        PiResumedSession(:final sessionPath) => ["--mode", "rpc", "--approve", "--session", sessionPath],
+      },
+      if (selectedModel != null) ...[
+        "--provider",
+        selectedModel.providerID,
+        "--model",
+        selectedModel.modelID,
+      ],
+      if (selectedThinkingLevel != null) ...["--thinking", selectedThinkingLevel],
+    ];
+  }
 }

@@ -65,7 +65,7 @@ final class ClaudeEventDispatcher({
     if (attempt == null || delay == null) return null;
     return PluginSessionStatus.retry(
       attempt: attempt,
-      message: _retryMessage(message.error),
+      message: _retryMessage(message),
       next: now.millisecondsSinceEpoch + delay,
     );
   }
@@ -379,7 +379,7 @@ final class ClaudeEventDispatcher({
         sessionID: sessionId,
         status: shared.SessionStatus.retry(
           attempt: attempt,
-          message: _retryMessage(message.error),
+          message: _retryMessage(message),
           next: now.millisecondsSinceEpoch + delay,
         ).toJson(),
       ),
@@ -404,6 +404,7 @@ final class ClaudeEventDispatcher({
           agent: "claude",
           modelID: _models[sessionId],
           providerID: "anthropic",
+          variant: null,
           errorName: error.name,
           errorMessage: error.message,
           time: null,
@@ -422,6 +423,8 @@ final class ClaudeEventDispatcher({
     agent: "claude",
     modelID: _models[sessionId],
     providerID: "anthropic",
+    variant: null,
+    sender: PluginMessageSender.agent,
     time: time,
   );
 
@@ -478,23 +481,18 @@ String? _realModel({required String? model}) {
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
 
-String _retryMessage(ClaudeAssistantError error) => switch (error) {
-  ClaudeAssistantError.authenticationFailed ||
-  ClaudeAssistantError.oauthOrgNotAllowed => "Claude Code is retrying after an authentication failure.",
-  ClaudeAssistantError.billingError => "Claude Code is retrying after a billing failure.",
-  ClaudeAssistantError.rateLimit => "Claude Code is retrying after a rate limit.",
-  ClaudeAssistantError.overloaded => "Claude Code is retrying because the service is overloaded.",
-  ClaudeAssistantError.modelNotFound => "Claude Code is retrying with the selected model.",
-  ClaudeAssistantError.maxOutputTokens => "Claude Code is retrying after reaching the output limit.",
-  ClaudeAssistantError.invalidRequest ||
-  ClaudeAssistantError.serverError ||
-  ClaudeAssistantError.unknown => "Claude Code is retrying the request.",
-};
+String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Claude Code is retrying the request.";
 
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
   if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
     return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
   }
+  final fallback = _resultErrorFallback(result);
+  final rawError = result.errors.isNotEmpty ? result.errors.join("\n") : result.result;
+  return rawError == null ? fallback : (name: fallback.name, message: rawError);
+}
+
+({String name, String message}) _resultErrorFallback(ClaudeResultMessage result) {
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {
     return (name: "authentication_failed", message: "Claude Code authentication failed.");
   }

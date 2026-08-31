@@ -235,6 +235,8 @@ void main() {
           binaryPath: "/managed/pi",
           workingDirectory: "/project",
           launch: const PiNoSession(),
+          model: null,
+          thinkingLevel: null,
           environment: const {"ANTHROPIC_API_KEY": "secret"},
         ),
       );

@@ -57,7 +57,12 @@ void main() {
         identityTracker: identities,
       );
       addTearDown(repository.dispose);
-      final connecting = repository.ensureResident(sessionId: "session", knownDirectories: const {});
+      final connecting = repository.ensureResident(
+        sessionId: "session",
+        knownDirectories: const {},
+        model: null,
+        variant: null,
+      );
       final initial = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
         id: initial["id"]! as String,
@@ -208,6 +213,48 @@ void main() {
       expect(warnings, contains("pi_rpc_client.dart"));
       expect(warnings, isNot(contains("from file")));
       expect(warnings, isNot(contains("/private/home")));
+    });
+
+    test("file fallback preserves thinking level for later assistant messages", () async {
+      final root = Directory.systemTemp.createTempSync("pi-history-repository-");
+      addTearDown(() => root.deleteSync(recursive: true));
+      final path = "${root.path}/session.jsonl";
+      File(path).writeAsStringSync(
+        [
+          {
+            "type": "session",
+            "version": 3,
+            "id": "session",
+            "timestamp": "2026-08-01T00:00:00Z",
+            "cwd": "/exact/header-cwd",
+          },
+          {
+            "type": "thinking_level_change",
+            "id": "level",
+            "parentId": null,
+            "timestamp": "2026-08-01T00:00:01Z",
+            "thinkingLevel": "high",
+          },
+          {
+            "type": "message",
+            "id": "assistant",
+            "parentId": "level",
+            "timestamp": "2026-08-01T00:00:02Z",
+            "message": {
+              "role": "assistant",
+              "content": "answer",
+              "provider": "anthropic",
+              "model": "claude-sonnet-4-5",
+              "stopReason": "stop",
+              "timestamp": 2,
+            },
+          },
+        ].map(jsonEncode).join("\n"),
+      );
+
+      final messages = await _loadFileFallback(storage: _ProcessStorage(path: path));
+
+      expect((messages.single.info as PluginMessageAssistant).variant, "high");
     });
 
     test("does not fall back for arbitrary send failure", () async {
@@ -373,6 +420,7 @@ void main() {
 
       final messages = await _loadFileFallback(storage: storage);
 
+      expect((messages.single.info as PluginMessageAssistant).sender, PluginMessageSender.system);
       expect(messages.single.parts.single.text, "hook content");
     });
 
@@ -424,6 +472,7 @@ PiSessionProcessRepository _repository({
   PiMessageIdentityTracker? identityTracker,
   Duration startupExitTimeout = const Duration(seconds: 5),
   Duration historyRpcTimeout = const Duration(minutes: 2),
+  Duration abortRpcTimeout = const Duration(seconds: 1),
 }) {
   final storage = storageApi ?? _ProcessStorage();
   return PiSessionProcessRepository(
@@ -436,6 +485,7 @@ PiSessionProcessRepository _repository({
     identityTracker: identityTracker ?? PiMessageIdentityTracker(pluginId: "pi"),
     startupExitTimeout: startupExitTimeout,
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
     promptRpcTimeout: const Duration(minutes: 30),
   );
 }

@@ -30,13 +30,35 @@ class InstallationAnalyticsService({
     required AuthProvider provider,
     required AccountStatus accountStatus,
   }) async {
+    final analyticsProvider = _analyticsProvider(provider: provider);
+    // Attribution is an independent sink; only the Firebase outcome events
+    // wait for the store-crawl suspension to lift.
     final results = await Future.wait([
-      _log(
-        event: InstallationAnalyticsEvent.loginAttemptCompleted(
-          provider: _analyticsProvider(provider: provider),
-        ),
-      ),
+      _activateThenLogOutcomes(provider: analyticsProvider, accountStatus: accountStatus),
       _logAttribution(accountStatus: accountStatus),
+    ]);
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
+
+  /// A server-confirmed interactive authentication is the proof-of-human that
+  /// lifts the store-crawl suspension, so activate before logging the one-time
+  /// outcome events.
+  Future<AnalyticsDeliveryResult> _activateThenLogOutcomes({
+    required AnalyticsLoginProvider provider,
+    required AccountStatus accountStatus,
+  }) async {
+    await _repository.activateAfterInteractiveAuthentication();
+    final accountOutcomeEvent = switch (accountStatus) {
+      AccountStatus.created => InstallationAnalyticsEvent.accountCreated(method: provider),
+      AccountStatus.existing => InstallationAnalyticsEvent.accountLogin(method: provider),
+      AccountStatus.unknown => null,
+    };
+    final results = await Future.wait([
+      _log(event: InstallationAnalyticsEvent.loginAttemptCompleted(provider: provider)),
+      if (accountOutcomeEvent != null) _log(event: accountOutcomeEvent),
     ]);
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)

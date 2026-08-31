@@ -439,6 +439,7 @@ SessionOptionsResponse _response({required String marker}) {
         ),
       ],
     ),
+    lastUsedPromptDefaults: null,
   );
 }
 

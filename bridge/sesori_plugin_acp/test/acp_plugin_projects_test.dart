@@ -434,7 +434,7 @@ void main() {
       expect(s1.directory, cwd, reason: "a blank cwd must fall back to the launch directory");
     });
 
-    test("a session/prompt rejection after dispatch surfaces a session error, not a silent idle", () async {
+    test("a session/prompt rejection after dispatch surfaces its backend detail inline", () async {
       await connect();
       final creating = plugin.createSession(
         directory: "/repo",
@@ -465,15 +465,23 @@ void main() {
       fake().emit({
         "jsonrpc": "2.0",
         "id": promptFrame["id"],
-        "error": {"code": -32000, "message": "boom"},
+        "error": {
+          "code": -32603,
+          "message": "Internal error",
+          "data": {"details": "Agent is already processing."},
+        },
       });
       await pump();
       await pump();
 
+      final inlineError = events.whereType<BridgeSseMessageUpdated>().singleWhere(
+        (event) => event.info["role"] == "error",
+      );
+      expect(inlineError.info["errorMessage"], "Agent is already processing.");
       expect(
         events.whereType<BridgeSseSessionError>(),
         isNotEmpty,
-        reason: "a post-dispatch prompt rejection must surface as an error, not a silent idle",
+        reason: "the generic session failure signal remains available to lifecycle consumers",
       );
     });
 

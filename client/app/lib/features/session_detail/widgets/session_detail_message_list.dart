@@ -15,6 +15,7 @@ import "message_timestamp_reveal.dart";
 import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
+import "system_message_card.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -519,7 +520,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     final card = switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
-      MessageAssistant() => AssistantMessageCard(
+      MessageAssistant(sender: MessageSender.agent) => AssistantMessageCard(
+        projectId: widget.projectId,
+        bridgeId: widget.bridgeId,
+        message: message,
+        streamingText: streamingText,
+        children: children,
+        childStatuses: childStatuses,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      MessageAssistant() => SystemMessageCard(
         projectId: widget.projectId,
         bridgeId: widget.bridgeId,
         message: message,

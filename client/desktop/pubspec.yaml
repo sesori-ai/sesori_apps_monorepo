@@ -9,9 +9,10 @@ resolution: workspace
 version: 0.1.0
 
 environment:
-  sdk: ^3.13.1
+  sdk: ^3.13.2
 
 dependencies:
+  dbus: ^0.7.15
   device_info_plus: ^13.2.0
   flutter:
     sdk: flutter
@@ -20,8 +21,10 @@ dependencies:
   get_it: ^9.2.1
   http: ^1.6.0
   injectable: ^3.0.0
-  material_ui: ^1.0.1
+  material_ui: ^1.1.0
   package_info_plus: ^10.2.1
+  path: ^1.9.1
+  path_provider: ^2.1.6
   rxdart: ^0.28.0
   # DI-call only (configureAuthDependencies) — sesori_auth types MUST NOT be
   # imported outside lib/core/di/ (see client/AGENTS.md).
@@ -35,7 +38,10 @@ dependencies:
     path: ../../shared/sesori_shared
   theme_prego:
     path: ../module_prego
+  tray_manager: ^0.5.3
   url_launcher: ^6.3.2
+  win32_registry: ^3.0.3
+  window_manager: ^0.5.2
 
 dev_dependencies:
   no_slop_linter:
@@ -49,3 +55,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Canonical transparent monochrome mark; PNG/ICO are the runtime formats.
+    - assets/tray_icon.svg
+    - assets/tray_icon.ico
+    - assets/tray_icon.png

@@ -35,15 +35,69 @@ explicit restart, and the connection states the app presents.
 - Bridge registration uses a stable machine name. On macOS, transient
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
-  disconnected, and returns to connected when the bridge is back.
+  disconnected, and returns to connected when the bridge is back. The desktop shell
+  roots the same `ConnectionService` beside the supervised control channel, shows
+  its relay-client state separately from helper relay status, and hosts the typed
+  connection banner at the window root.
+- The desktop root constructs `ConnectionOverlayCubit` and `SseToastCubit` outside
+  the auth-gated content. Backend `tui.toast.show` events reach the desktop Prego
+  popup listener rather than being silently consumed; handled shared failures are
+  retained in local logs through a privacy-safe reporter that records error/stack
+  and operation/event context while reducing payload-bearing information to shape
+  metadata. A token-only local restore entering the signed-in desktop destination
+  hands off one fresh auth-backed connection to the desktop auth/connection
+  coordinator even while the auth session remains provisionally `AuthInitial`;
+  the overlay cubit remains stream-derived.
 - Fresh connections require the typed health body, including explicit filesystem-access
   degradation state; missing or malformed fields fail the connection rather than being
   treated as healthy. Resumed connections retain the last validated health state.
 - The configured sleep policy applies at standalone startup and releases its wake lock on
   shutdown; unsupported lid-close prevention and wake-lock failures warn without aborting.
-- In supervised mode, the authenticated local control channel can supply tokens, report
-  status and provisioning, resolve prompts, unregister, and request sentinel restarts;
-  loss of its owner exits after the grace period without orphaning backend processes.
+- In supervised mode, the authenticated local control channel answers helper token
+  pulls, reports aggregate status, resolves prompts, unregisters, and accepts clean
+  shutdown; loss of its owner exits after the grace period without orphaning backend
+  processes. Restart intent is authoritative only through the child exit sentinel.
+  The desktop persists the registered bridge ID with its account owner, restores it
+  before supervision, and performs idempotent GUI-side deletion only after owner
+  verification; token-only local sessions are verified through `/auth/me` when
+  connectivity is available.
+- Aggregate plugin health is degraded iff any eligible plugin is degraded or failed;
+  dormant, not-installed, and zero-eligible snapshots are healthy because eligibility
+  is independent from runtime residency. The wire emits healthy/degraded while unknown
+  remains the forward-parse fallback.
+- A GUI `shutdown` performs the same ordered graceful teardown as standalone stop,
+  exits 0 without unregistering, and cannot be reclassified as auth-required when
+  teardown cancels an in-flight bootstrap token request.
+- The supervised bridge leads a dedicated POSIX process group before starting
+  sleep prevention or any other long-lived child; force-stop signals that
+  complete live group atomically. Windows uses
+  `taskkill /T /F` for the equivalent descendant-tree guarantee.
+- Desktop supervision continuously drains both helper pipes with malformed-UTF-8
+  tolerance, bounds partial lines and pending persistence, retains the latest 200
+  entries, and rotates owner-only local logs. Storage failures and queue overflow
+  remain observable without stopping either pipe drain.
+- Desktop spawn is authenticated-session-gated. Each attempt starts a fresh
+  loopback control server, passes only its URL in argv, writes the fresh secret
+  through child stdin, attaches both log pipes, and observes the repository exit
+  stream. Any startup failure expected-stops a created child, stops the server,
+  restores retryable state, and rethrows the original failure.
+- The desktop's single inbound control dispatcher subscribes during shell
+  bootstrap, before any helper spawn, so the first token request is answered.
+- Desktop exit policy treats 86 as one immediate restart, 87 as login-required
+  until a later successful sign-in when desired On, 88 as machine contention,
+  and clean or expected exits as stopped. Other exits retry after 1, 2, 4, 8,
+  and 16 seconds, then give up with the latest 20 helper log lines. Five minutes
+  of control-connected runtime resets that crash budget; every manual Start or
+  Off cancels a pending timer before acting.
+- Conversational GUI prompt answers are sent only for a prompt still owned by
+  the connected helper and clear that prompt only after the frame is accepted
+  by the live control socket. Expected shutdown remains repository-owned.
+- The desktop tray derives its status, active-session count, and On/Off action
+  from the process service and control-status tracker. Quit expected-stops the
+  helper before process exit; a stop failure keeps the desktop alive.
+- Tray initialization failure keeps the desktop window visible. Linux claims a
+  usable tray only when the session bus has a live StatusNotifier watcher, so a
+  stock GNOME session without an AppIndicator host cannot become tray-only.
 
 ## Regression Levels
 
@@ -52,7 +106,7 @@ explicit restart, and the connection states the app presents.
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; headless supervised harness for control authentication, token rotation, prompts, status, provisioning progress, unregister, restart sentinels, owner loss, and orphan cleanup. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
@@ -75,13 +129,45 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns.
+- GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
+  auth-required sentinel because teardown cancelled the bootstrap token request.
+- A forced stop leaving a backend alive, targeting only one process-table snapshot,
+  or reporting success after process-group/tree termination was rejected.
+- Helper output blocking a child pipe, an unterminated line or persistence backlog
+  growing without bound, log files losing owner-only permissions, or one transient
+  application-support lookup failure permanently disabling persisted diagnostics.
+- A signed-out desktop spawning a helper, the control dispatcher starting after
+  the helper, the control secret appearing in argv, a first token request going
+  unread, an unsolicited token write bypassing pull correlation, or a failed spawn
+  leaving its server or child alive and blocking retry.
+- A persisted bridge ID being submitted with a different account, token-only local
+  sign-out skipping a verifiable owner, a late unregister following an ordinary
+  shutdown, or an undelivered unregister leaving the helper waiting for an avoidable
+  full graceful deadline.
+- A dormant, not-installed, or zero-eligible plugin snapshot degrading aggregate
+  health; or one eligible degraded/failed plugin still reporting healthy.
+- Exit 86 spawning twice, exit 87 retrying before auth changes, exit 88 entering
+  crash backoff, an expected/clean exit respawning, an unbounded crash loop,
+  stable runtime failing to reset the budget, or a cancelled retry later
+  spawning a second helper after manual Start or Off.
+- A stale prompt answer reaching a newer helper, a failed prompt send removing
+  the pending prompt, or conversational sends bypassing the command service.
+- A stale tray menu, an invisible Linux tray causing the only window to hide,
+  Quit exiting before helper teardown, or a failed stop still terminating the app.
 
 ## Known Limitations
 
 - The relay does not acknowledge bridge auth, so local readiness is the strongest
   available claim.
 - Takeover backoff is minutes-order and jittered; the full curve belongs at L4 or above.
-- The desktop shell is not shipped; supervised control is covered with a headless harness.
+- The real supervised helper E2E suite uses fake loopback auth/relay/control services;
+  it validates outbound relay authentication and local control sequencing, but does
+  not claim production-service or server-side JWT coverage.
+- Until the shared router lands in Step 14, the desktop route source is intentionally
+  route-less: app-wide SSE toasts render, while session-attributed toast events are
+  withheld because no desktop session identity exists yet. The desktop notification-
+  open stack remains unbound until the shell has a real route and notification
+  capability.
 - Relay capacity and provider outages are out of scope.
 
 ## Sources
@@ -91,4 +177,5 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Bridge orchestrator, `client_test.dart`, `key_exchange_test.dart`, sleep, and control suites.
 - Device Canvas restart and presence details:
   `docs/regression/device-canvas-ownership.md`
+- `bridge/app/test/integration/supervised_e2e_test.dart` (native helper + fake auth/relay/control).
 - Historical: `.plan/completed/relay-request-concurrency/`

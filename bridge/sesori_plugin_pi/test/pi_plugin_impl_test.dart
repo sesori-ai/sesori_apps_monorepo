@@ -237,7 +237,9 @@ void main() {
       }
 
       expect(events.whereType<BridgeSseQuestionAsked>().single.sessionID, session.id);
-      expect(events.whereType<BridgeSseTuiToastShow>().single.variant, "warning");
+      final toast = events.whereType<BridgeSseTuiToastShow>().single;
+      expect(toast.sessionID, session.id);
+      expect(toast.variant, "warning");
       expect(events.whereType<BridgeSseProjectUpdated>(), hasLength(projectUpdatesBeforeQuestion + 1));
       expect(await harness.plugin.getPendingPermissions(sessionId: session.id), isEmpty);
       await expectLater(

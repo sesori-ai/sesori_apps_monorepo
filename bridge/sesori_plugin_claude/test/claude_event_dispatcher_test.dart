@@ -569,7 +569,7 @@ void main() {
       expect(contextOnly, isEmpty);
     });
 
-    test("maps retry and terminal errors with parseable privacy-safe payloads", () {
+    test("maps retry and terminal errors without replacing backend text", () {
       final before = DateTime.now().millisecondsSinceEpoch;
       final retry =
           _map(
@@ -589,7 +589,7 @@ void main() {
               as BridgeSseSessionStatus;
       final status = shared.SessionStatus.fromJson(retry.status) as shared.SessionStatusRetry;
       expect(status.attempt, 2);
-      expect(status.message, "Claude Code is retrying after a rate limit.");
+      expect(status.message, "rate_limit");
       expect(status.next, inInclusiveRange(before + 5000, DateTime.now().millisecondsSinceEpoch + 5000));
 
       _startMessage(mapper, messageId: "msg-error", model: "claude-opus-5");
@@ -604,16 +604,32 @@ void main() {
                   "is_error": true,
                   "terminal_reason": "api_error",
                   "api_error_status": 404,
-                  "result": "raw backend detail must not be forwarded",
+                  "result": "  raw backend detail must be forwarded  ",
                 },
               ).single
               as BridgeSseMessageUpdated;
       final info = shared.Message.fromJson(error.info) as shared.MessageError;
       expect(info.errorName, "api_error");
-      expect(info.errorMessage, "Claude Code could not complete the API request (HTTP 404).");
-      expect(info.errorMessage, isNot(contains("raw backend detail")));
+      expect(info.errorMessage, "  raw backend detail must be forwarded  ");
       expect(info.modelID, "claude-opus-5");
       expect(info.providerID, "anthropic");
+
+      final multipleErrors =
+          _map(
+                mapper,
+                {
+                  "type": "result",
+                  "subtype": "error_during_execution",
+                  "session_id": "session-1",
+                  "uuid": "result-multiple-errors",
+                  "is_error": true,
+                  "terminal_reason": "api_error",
+                  "errors": ["first backend error", "second backend error"],
+                },
+              ).single
+              as BridgeSseMessageUpdated;
+      final multipleInfo = shared.Message.fromJson(multipleErrors.info) as shared.MessageError;
+      expect(multipleInfo.errorMessage, "first backend error\nsecond backend error");
     });
 
     test("complete live assistant shapes match transcript history", () {
@@ -657,6 +673,7 @@ void main() {
               ClaudeTranscriptAssistantRecord(
                 id: "msg-1",
                 model: "claude-opus-5",
+                effort: null,
                 content: content,
                 cwd: "/tmp/project",
                 timestamp: timestamp,

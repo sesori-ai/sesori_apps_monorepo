@@ -450,6 +450,8 @@ final class PiSessionService({
       final connection = await _processes.ensureResident(
         sessionId: sessionId,
         knownDirectories: {state.directory},
+        model: turn.model,
+        variant: turn.variant,
       );
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) {
         throw PiTurnCancelledException(sessionId: sessionId);
@@ -543,6 +545,7 @@ final class PiSessionService({
       if (presented.message?.contains("/login") ?? false) {
         _emit(
           BridgeSseTuiToastShow(
+            sessionID: sessionId,
             title: "Pi login required",
             message: presented.message,
             variant: "warning",
@@ -767,7 +770,8 @@ final class PiSessionService({
     );
     if (hasUncancelled && exit.authUnavailable) {
       _emit(
-        const BridgeSseTuiToastShow(
+        BridgeSseTuiToastShow(
+          sessionID: exit.sessionId,
           title: "Pi login required",
           message: "Pi has no model available. Run Pi locally and use /login, then try again.",
           variant: "warning",
@@ -949,6 +953,7 @@ final class PiSessionService({
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
+    var forceTeardown = false;
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
@@ -957,15 +962,30 @@ final class PiSessionService({
           case PiSessionAbortAcknowledged():
             break;
           case PiSessionAbortProcessExited(:final innerError, :final innerStackTrace):
+            forceTeardown = true;
             if (!processExitIsExpected) {
               Log.w("[pi] abort command failed for session id=$sessionId", innerError, innerStackTrace);
             }
         }
       }
+    } on TimeoutException catch (error, stack) {
+      forceTeardown = true;
+      if (!processExitIsExpected) {
+        Log.w(
+          "[pi] abort acknowledgement timed out; forcing process replacement for session id=$sessionId",
+          error,
+          stack,
+        );
+      }
     } on Object catch (error, stack) {
+      forceTeardown = true;
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
-      await _processes.teardown(sessionId: sessionId);
+      if (forceTeardown) {
+        await _processes.teardown(sessionId: sessionId, gracefulTimeout: Duration.zero);
+      } else {
+        await _processes.teardown(sessionId: sessionId);
+      }
     }
     _emit(
       BridgeSseSessionStatus(

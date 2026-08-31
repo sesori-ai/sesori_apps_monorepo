@@ -14,6 +14,15 @@ class BridgeApi({required final AuthenticatedHttpApiClient _client}) {
     );
   }
 
+  /// Revokes one bridge registration. The repository maps an already-revoked
+  /// bridge (404) to the idempotent success expected by logout.
+  Future<ApiResponse<void>> deleteBridge({required String bridgeId}) {
+    return _client.delete(
+      Uri.parse("$authBaseUrl/auth/bridges/${Uri.encodeComponent(bridgeId)}"),
+      fromJson: (_) {},
+    );
+  }
+
   // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
   static BridgesListResponse _parseBridges(dynamic json) {
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic

@@ -53,6 +53,8 @@ class PiBackendCatalogRepository({
         binaryPath: _binaryPath,
         workingDirectory: normalizedProject,
         launch: const PiNoSession(),
+        model: null,
+        thinkingLevel: null,
         environment: _environment,
       ),
       processFactory: _processFactory,

@@ -15,6 +15,11 @@ _MessageWithPartsResponse _$MessageWithPartsResponseFromJson(Map json) =>
           )
           .toList(),
       nextCursor: (json['nextCursor'] as num?)?.toInt(),
+      replayedPromptDefaults: json['replayedPromptDefaults'] == null
+          ? null
+          : SessionPromptDefaults.fromJson(
+              Map<String, dynamic>.from(json['replayedPromptDefaults'] as Map),
+            ),
     );
 
 Map<String, dynamic> _$MessageWithPartsResponseToJson(
@@ -22,6 +27,7 @@ Map<String, dynamic> _$MessageWithPartsResponseToJson(
 ) => <String, dynamic>{
   'messages': instance.messages.map((e) => e.toJson()).toList(),
   'nextCursor': ?instance.nextCursor,
+  'replayedPromptDefaults': ?instance.replayedPromptDefaults?.toJson(),
 };
 
 _MessageWithParts _$MessageWithPartsFromJson(Map json) => _MessageWithParts(

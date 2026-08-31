@@ -26,6 +26,7 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
+    @JsonKey(fromJson: _stringOrNull) required String? effort,
     @JsonKey(fromJson: _messageOrNull) required ClaudeTranscriptMessageDto? message,
   }) = _ClaudeTranscriptRecordDto;
 

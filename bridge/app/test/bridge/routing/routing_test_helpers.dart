@@ -437,7 +437,10 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<void> deletePersistedSession({required String pluginId, required String backendSessionId}) async {}
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async => const <MessageWithParts>[];
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async => (
+    messages: const <MessageWithParts>[],
+    promptDefaults: null,
+  );
 
   @override
   Future<SessionStatus?> getSessionStatus({required String sessionId}) async => null;
@@ -700,9 +703,12 @@ class FakeSessionRepository({
   }) async => (rootSessionId: sessionId, pluginId: _plugin.id);
 
   @override
-  Future<List<MessageWithParts>> getSessionMessages({required String sessionId}) async {
+  Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     final pluginMessages = await _plugin.getSessionMessages(sessionId);
-    return pluginMessages.toSharedMessageWithParts(sessionId: sessionId);
+    return (
+      messages: pluginMessages.toSharedMessageWithParts(sessionId: sessionId),
+      promptDefaults: pluginMessages.latestPromptDefaults(),
+    );
   }
 
   /// Recorded setSessionTitleIfStored calls (sessionId → title).
