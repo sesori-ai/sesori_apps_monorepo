@@ -128,10 +128,14 @@ scout/delegate may inventory every commit title and changed area, while the
 main review uses the aggregate tag diff for evidence. Do not let an agent edit
 the Sesori worktree or create another worktree.
 
-For any nontrivial subagent reasoning or synthesis, use the exact registered
-model `openai-codex/gpt-5.6-luna` with maximum thinking effort (after checking
-the available model registry). Keep lightweight inventory work separate from
-smart review work.
+For any nontrivial subagent reasoning or synthesis, check the available model
+registry first and prefer the exact registered model
+`openai-codex/gpt-5.6-luna` with maximum thinking effort when the caller's
+agent interface can select it. If that model or effort selector is unavailable,
+use the caller's current model/effort or another available selector and record
+that fallback; do not make an otherwise executable audit depend on an
+unavailable model. Keep lightweight inventory work separate from smart review
+work.
 
 Search the aggregate diff, release changelogs, and source at both tags for:
 
@@ -217,7 +221,8 @@ both as speculative machinery.
 ## Phase 3 — Run a safe current-host probe
 
 Before changing the target, validate the candidate archive on the current host
-in a temporary directory:
+in a temporary directory. Treat the downloaded archive as an untrusted
+executable even after its official digest is verified:
 
 1. Download the matching official archive and verify its SHA-256.
 2. Inspect/extract it without changing the repository. Confirm the package tree
@@ -227,14 +232,20 @@ in a temporary directory:
    temporary PATH wrapper is unavoidable, use only a symlink to the original
    entrypoint, assert its resolved real path stays inside the extraction root,
    and launch with the original package root intact.
-3. Create an empty temporary project cwd and isolated temporary `HOME`, Pi
+3. Before executing the candidate, use a disposable container/VM or a
+   restricted OS account with no sensitive mounts and blocked outbound network
+   access. A temporary `HOME`, Pi directories, or allowlisted environment does
+   not sandbox a process running as the maintainer's account: if the current
+   host cannot provide this boundary, stop after archive/package inspection and
+   record the live probe as skipped rather than executing the candidate.
+4. Create an empty temporary project cwd and isolated temporary `HOME`, Pi
    data/session roots, and host-specific config/cache roots. Explicitly set
    `PI_CODING_AGENT_DIR` and `PI_CODING_AGENT_SESSION_DIR` to temporary
    directories (or unset them while proving the defaults also resolve inside
    the probe root); do not inherit the user's values. On Windows also isolate
    `USERPROFILE`, `APPDATA`, and `LOCALAPPDATA` as applicable. Do not read or
    mutate the user's normal profile.
-4. Construct an explicit allowlisted child environment rather than inheriting
+5. Construct an explicit allowlisted child environment rather than inheriting
    the caller's environment. Include only a minimal known-safe `PATH` (or
    equivalent runtime path), `HOME`/host temp roots, the two Pi directory
    variables,
@@ -243,10 +254,10 @@ in a temporary directory:
    `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
    The probe must remain unauthenticated; use a separately authorized and
    explicitly approved procedure if authenticated behavior needs testing.
-5. Verify the absolute entrypoint's `--version` output identifies exactly the
+6. Verify the absolute entrypoint's `--version` output identifies exactly the
    candidate release, rather than merely returning success. Preserve the
    normal environment policy in the production launch design.
-6. Launch the extracted entrypoint with exactly these arguments:
+7. Launch the extracted entrypoint with exactly these arguments:
 
    ```text
    --mode rpc --no-session --approve
@@ -257,7 +268,7 @@ in a temporary directory:
    environment/PowerShell map on Windows), and keep the empty temporary cwd as
    the process working directory. Do not use a PATH-installed binary.
 
-7. Write this exact newline-delimited request to the child stdin:
+8. Write this exact newline-delimited request to the child stdin:
 
    ```json
    {"id":"probe-1","type":"get_state"}
@@ -274,7 +285,7 @@ in a temporary directory:
    termination if needed) with the same bounded wait. Always remove the
    temporary archive, extraction root, profile roots, project cwd, and probe
    logs with a cleanup trap/finally block.
-8. If the release changes a command/event surface that Sesori may adopt, run a
+9. If the release changes a command/event surface that Sesori may adopt, run a
    focused additional probe for that surface. Stop on a startup, framing,
    response-correlation, package-layout, isolation, or required-surface
    regression. Do not pin a candidate based on a version output alone.
