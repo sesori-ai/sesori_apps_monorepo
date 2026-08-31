@@ -14,8 +14,8 @@ import "new_folder_dialog.dart";
 /// Shows the Add Project modal bottom sheet.
 ///
 /// Presented directly rather than through `showPregoBottomSheet` because the
-/// header is not fixed: its title, path subtitle, and back button all follow
-/// the folder the browser is showing.
+/// header is not fixed: its title and path subtitle follow the folder the
+/// browser is showing.
 ///
 /// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
 /// `createDirectory` without relying on the widget tree's BlocProvider (which
@@ -44,6 +44,7 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 @visibleForTesting
 class const AddProjectDialog({
   required final ProjectListCubit cubit,
+
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
   required final double topInset,
@@ -73,7 +74,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
   bool get _isAtStartingPath => _currentPath.isNotEmpty && _currentPath == _startingPath;
 
-  bool get _canNavigateUp => _currentPath.isNotEmpty && widget.cubit.parentHostPath(path: _currentPath) != null;
+  String? get _parentPath => _currentPath.isEmpty ? null : widget.cubit.parentHostPath(path: _currentPath);
 
   @override
   void initState() {
@@ -134,7 +135,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   }
 
   void _navigateUp() {
-    final parent = widget.cubit.parentHostPath(path: _currentPath);
+    final parent = _parentPath;
     if (parent == null) return;
     setState(() => _currentPath = parent);
     _fetchEntries();
@@ -327,7 +328,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
       // for the sheet — so the leading-aligned title/path variant.
       alignment: PregoSheetTitleAlignment.start,
       topInset: widget.topInset,
-      onBack: _canNavigateUp ? _navigateUp : null,
       onClose: _dismissDialog,
       // Full-bleed body; the banner, rows, and action menu pad themselves.
       contentPadding: EdgeInsetsDirectional.zero,
@@ -381,19 +381,33 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// content pads past it so the last folder clears the buttons, and the states
   /// that centre their content centre in what is left above them.
   Widget _buildListing({required AppLocalizations loc, required double bottomInset}) {
+    final parentPath = _parentPath;
     if (_loading) {
-      return _FolderListSkeleton(semanticLabel: loc.addProject);
-    }
-    if (_hasError) {
-      return Padding(
+      return ListView(
         padding: EdgeInsetsDirectional.only(bottom: bottomInset),
-        child: _BrowseError(
-          permissionDenied: _permissionDenied,
-          onRetry: _fetchEntries,
-        ),
+        children: [
+          if (parentPath != null) _buildParentEntry(path: parentPath),
+          _FolderListSkeleton(semanticLabel: loc.addProject),
+        ],
       );
     }
-    if (_entries.isEmpty) {
+    if (_hasError) {
+      return Column(
+        children: [
+          if (parentPath != null) _buildParentEntry(path: parentPath),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(bottom: bottomInset),
+              child: _BrowseError(
+                permissionDenied: _permissionDenied,
+                onRetry: _fetchEntries,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    if (_entries.isEmpty && parentPath == null) {
       return Padding(
         padding: EdgeInsetsDirectional.only(bottom: bottomInset),
         child: Center(
@@ -408,14 +422,24 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     }
     return ListView.builder(
       padding: EdgeInsetsDirectional.only(bottom: bottomInset),
-      itemCount: _entries.length,
+      itemCount: _entries.length + (parentPath == null ? 0 : 1),
       itemBuilder: (context, index) {
-        final entry = _entries[index];
+        if (parentPath != null && index == 0) {
+          return _buildParentEntry(path: parentPath);
+        }
+        final entry = _entries[index - (parentPath == null ? 0 : 1)];
         return _FolderTile(
           entry: entry,
           onTap: () => _navigateInto(path: entry.path),
         );
       },
+    );
+  }
+
+  Widget _buildParentEntry({required String path}) {
+    return _FolderTile(
+      entry: FilesystemSuggestion(path: path, name: "..", isGitRepo: false),
+      onTap: _navigateUp,
     );
   }
 }
@@ -426,7 +450,8 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
 /// One folder in the browser: its name, a tag when it already holds a git
 /// repository, and a chevron into it.
-class const _FolderTile({required final FilesystemSuggestion entry, required final VoidCallback onTap}) extends StatelessWidget {
+class const _FolderTile({required final FilesystemSuggestion entry, required final VoidCallback onTap})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -545,7 +570,8 @@ class const _FolderListSkeleton({required final String semanticLabel}) extends S
 
 /// The listing's failure state — the folder could not be read, either because
 /// the host denied access or because the bridge could not list it.
-class const _BrowseError({required final bool permissionDenied, required final VoidCallback onRetry}) extends StatelessWidget {
+class const _BrowseError({required final bool permissionDenied, required final VoidCallback onRetry})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -593,14 +619,16 @@ class const _BrowseError({required final bool permissionDenied, required final V
 /// uses (`PromptInput`), and the mirror of the scroll-edge fade the sheet header
 /// paints at the top.
 class const _ActionMenu({
-    /// Null while an action is in flight or before the browser knows its folder.
+  /// Null while an action is in flight or before the browser knows its folder.
   required final VoidCallback? onAdd,
-    /// Null while an action is in flight or before the browser knows its folder.
+
+  /// Null while an action is in flight or before the browser knows its folder.
   required final VoidCallback? onCreateFolder,
-    /// Which action is waiting on the bridge, so that button — and only that one
+
+  /// Which action is waiting on the bridge, so that button — and only that one
   /// — spins.
   required final _AddProjectAction? inFlight,
-  }) extends StatelessWidget {
+}) extends StatelessWidget {
   /// Clear space above the buttons, where the fade starts.
   static const double _fadeExtent = PregoSpacing.x5l;
 
@@ -717,7 +745,10 @@ class const _FilesystemAccessBanner() extends StatelessWidget {
 
 /// The sheet's two bridge-bound actions, so the one that is running can be told
 /// apart from the one that is merely blocked while it runs.
-enum _AddProjectAction() { add, createFolder }
+enum _AddProjectAction() {
+  add,
+  createFolder,
+}
 
 const double _folderIconSize = 16;
 const double _chevronSize = 16;

@@ -410,12 +410,13 @@ void main() {
       // The path comes from the bridge response, so it is bound to the host
       // serving the filesystem request.
       expect(find.text(_homePath), findsOneWidget);
-      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+      expect(find.text(".."), findsOneWidget);
 
       expect(_button(tester, _addButton).onPressed, isNotNull);
       expect(_button(tester, _createFolderButton).onPressed, isNotNull);
 
-      await tester.tap(find.byIcon(TablerRegular.arrow_left));
+      await tester.tap(find.text(".."));
       await tester.pumpAndSettle();
 
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
@@ -458,10 +459,15 @@ void main() {
       // path below.
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("/home/user/projects"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
+      expect(find.text(".."), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text("..")).dy,
+        lessThan(tester.getTopLeft(find.text("app-one")).dy),
+      );
     });
 
-    testWidgets("back button navigates up one directory level", (tester) async {
+    testWidgets("parent directory entry navigates up one directory level", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,
         byPrefix: {
@@ -496,14 +502,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("app-one"), findsOneWidget);
 
-      await tester.tap(find.byIcon(TablerRegular.arrow_left));
+      await tester.tap(find.text(".."));
       await tester.pumpAndSettle();
 
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("work"), findsOneWidget);
       // The starting folder is only the initial location; its parent remains
-      // reachable.
-      expect(find.byIcon(TablerRegular.arrow_left), findsOneWidget);
+      // reachable through the first list row.
+      expect(find.text(".."), findsOneWidget);
+      expect(find.byIcon(TablerRegular.arrow_left), findsNothing);
     });
 
     testWidgets("a listing that lands after stepping back out is ignored", (tester) async {
@@ -539,8 +546,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("projects"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(TablerRegular.arrow_left));
+      await tester.pump();
+      await tester.tap(find.text(".."));
       await tester.pumpAndSettle();
 
       projectsListing.complete(
