@@ -110,10 +110,25 @@ class IoBridgeProcessEnvironment.forTesting({
 
   static String _shellExecutable({required Map<String, String> environment}) {
     final String? configured = environment["SHELL"]?.trim();
-    if (configured != null && const <String>{"/bin/zsh", "/bin/bash", "/bin/sh", "/bin/dash"}.contains(configured)) {
+    if (configured != null && _isExecutableFile(path: configured)) {
       return configured;
     }
     return "/bin/zsh";
+  }
+
+  // POSIX owner/group/other execute bits (octal 0111).
+  static const int _posixExecuteBits = 0x49;
+
+  static bool _isExecutableFile({required String path}) {
+    if (!path.startsWith("/") || path.contains("\u0000") || path.contains("\n") || path.contains("\r")) {
+      return false;
+    }
+    try {
+      final FileStat stat = FileStat.statSync(path);
+      return stat.type == FileSystemEntityType.file && (stat.mode & _posixExecuteBits) != 0;
+    } on Object {
+      return false;
+    }
   }
 
   static const int _maxCapturedShellOutputBytes = 64 * 1024;
@@ -176,8 +191,6 @@ class IoBridgeProcessEnvironment.forTesting({
         path.join(home, ".local", "bin"),
         ...?asdfShims == null ? null : <String>[asdfShims],
         path.join(home, ".bun", "bin"),
-        path.join(home, ".opencode", "bin"),
-        path.join(home, ".grok", "bin"),
         path.join(home, ".sesori", "bin"),
         path.join(home, ".pub-cache", "bin"),
         path.join(home, ".cargo", "bin"),

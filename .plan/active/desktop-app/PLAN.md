@@ -449,7 +449,7 @@ cockpit extraction remains blocked until the user accepts MT Gate B.
 
 | Finding | Evidence | Revised plan |
 |---|---|---|
-| Launch context hid installed harnesses | A launchd helper had the minimal system PATH; `gh` failed with `ENOENT`. The GUI/helper used the same UID and executable modes, and no `EACCES`/`EPERM` failure was found. | Add a macOS-only, login-shell-derived PATH capability for supervised spawns. Merge it with the inherited environment at the `dart:io` boundary; import no other shell variables and persist nothing. |
+| Launch context hid installed harnesses | A launchd helper had the minimal system PATH; `gh` failed with `ENOENT`. The GUI/helper used the same UID and executable modes, and no `EACCES`/`EPERM` failure was found. | Add a macOS-only, login-shell-derived PATH capability for supervised spawns. Resolve it at the Layer-1 process boundary through the Layer-2 repository, recheck cancellation before spawning, merge it with the inherited environment at `dart:io`, and import no other shell variables or persist anything. |
 | Quit lost the last-on intent | The persisted desired-state file was `off` after app Quit, so a restart could not restore the user's prior explicit On choice. | Quit stops/disposes the current helper without rewriting desired state. Explicit Bridge Off and coordinated logout continue to persist Off. |
 | Takeover was only a status | Local contention and relay displacement were rendered as status, but no deliberate user action could reclaim ownership. | Add a typed tray/window Take Over action that persists On, performs one stop-and-respawn, and accepts only the fresh replacement prompt. |
 
