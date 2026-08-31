@@ -21,8 +21,12 @@ identify useful upstream capabilities, distinguish externally observable RPC
 behavior from extension-only behavior, and propose the smallest Sesori changes
 that improve or simplify the integration.
 
-This skill is intentionally Pi-only. Use `update-backend-runtimes` for a
-multi-harness refresh.
+This skill is intentionally Pi-only. Use the repository's multi-harness
+workflow for a multi-harness refresh: read
+`.opencode/skills/update-backend-runtimes/SKILL.md` explicitly with the `read`
+tool from the repository root before proceeding. If that path is absent, stop
+and report the missing handoff rather than assuming this Pi-only workflow covers
+other backends.
 
 ## Scope and invariants
 
@@ -224,20 +228,25 @@ Before changing the target, validate the candidate archive on the current host
 in a temporary directory. Treat the downloaded archive as an untrusted
 executable even after its official digest is verified:
 
-1. Download the matching official archive and verify its SHA-256.
-2. Inspect/extract it without changing the repository. Confirm the package tree
-   and platform-specific entrypoint remain intact. Resolve that entrypoint to
-   an absolute path and invoke that path for every check; never invoke a bare
-   PATH-installed `pi` or copy the executable away from its package files. If a
-   temporary PATH wrapper is unavoidable, use only a symlink to the original
-   entrypoint, assert its resolved real path stays inside the extraction root,
-   and launch with the original package root intact.
-3. Before executing the candidate, use a disposable container/VM or a
-   restricted OS account with no sensitive mounts and blocked outbound network
-   access. A temporary `HOME`, Pi directories, or allowlisted environment does
-   not sandbox a process running as the maintainer's account: if the current
-   host cannot provide this boundary, stop after archive/package inspection and
-   record the live probe as skipped rather than executing the candidate.
+1. Establish the disposable boundary before handling archive contents. Use a
+   container/VM or restricted OS account with no sensitive mounts and blocked
+   outbound network access. A temporary `HOME`, Pi directories, or allowlisted
+   environment does not sandbox a process running as the maintainer's account.
+   If the current host cannot provide this boundary, do not inspect, extract,
+   or execute the archive there; record the live probe as blocked and use a
+   suitable sandboxed host instead.
+2. Download the matching official archive into that boundary and verify its
+   SHA-256. If the boundary cannot download directly, transfer the archive as
+   opaque bytes from the host and perform the digest check before parsing it.
+3. Inspect and extract the archive inside the same disposable boundary without
+   changing the repository. Use a hardened extractor that rejects absolute,
+   traversal, and escaping symlink/hardlink targets before writing; confirm the
+   package tree and platform-specific entrypoint remain intact. Resolve that
+   entrypoint to an absolute path and invoke that path for every check; never
+   invoke a bare PATH-installed `pi` or copy the executable away from its
+   package files. If a temporary PATH wrapper is unavoidable, use only a
+   symlink to the original entrypoint, assert its resolved real path stays
+   inside the extraction root, and launch with the original package root intact.
 4. Create an empty temporary project cwd and isolated temporary `HOME`, Pi
    data/session roots, and host-specific config/cache roots. Explicitly set
    `PI_CODING_AGENT_DIR` and `PI_CODING_AGENT_SESSION_DIR` to temporary
@@ -279,16 +288,27 @@ executable even after its official digest is verified:
    `command == "get_state"`, `success == true`, and `data` is an object. Reject
    malformed JSON, an unexpected matching response, or a timeout; unrelated
    event records may be drained but must not be mistaken for the response.
-   After the assertion, close stdin and wait up to 2 seconds for clean exit.
-   On POSIX, send SIGTERM and then SIGKILL only if needed; on Windows, use the
-   host equivalent (`Stop-Process`/`TerminateProcess`, followed by a forced
-   termination if needed) with the same bounded wait. Always remove the
-   temporary archive, extraction root, profile roots, project cwd, and probe
-   logs with a cleanup trap/finally block.
+   Put the version check, RPC assertions, and any focused probes inside a
+   `try/finally`. On success or rejection, close stdin, wait up to 2 seconds,
+   then terminate the entire candidate process tree before removing anything.
+   On POSIX, terminate the process group/session with SIGTERM and then SIGKILL
+   only if needed; on Windows, use a Job Object or equivalent recursive
+   process-tree termination (`Stop-Process`/`TerminateProcess`, followed by a
+   forced termination if needed) with the same bounded wait. Do not kill only
+   the parent and assume bundled child processes exited. Tear down
+   the sandbox and remove the temporary archive, extraction root, profile
+   roots, project cwd, and probe logs only after child cleanup completes.
 9. If the release changes a command/event surface that Sesori may adopt, run a
    focused additional probe for that surface. Stop on a startup, framing,
    response-correlation, package-layout, isolation, or required-surface
    regression. Do not pin a candidate based on a version output alone.
+
+A skipped or failed live probe is a hard gate, not a successful platform
+limitation: Phase 4 may report the blocked state, but do not approve or
+edit/pin the runtime target in Phase 5 until the candidate has passed the
+sandboxed probe on a suitable host. Artifact and source verification may be
+reported for other platforms, but it cannot substitute for that successful
+runtime validation.
 
 Keep probe output redacted and bounded. Do not retain raw frames, credentials,
 transcripts, prompts, user/project/local filesystem paths, or provider/account
@@ -319,6 +339,10 @@ than carrying it forward. The skill-only documentation PR may proceed when
 explicitly requested, while the runtime/capability PR remains behind this gate.
 
 ## Phase 5 — Implement only after approval
+
+Enter this phase only after the candidate has passed the sandboxed live probe
+on a suitable host and the user has approved the resulting scope. A skipped or
+failed probe blocks target edits; artifact verification alone is insufficient.
 
 For an approved target refresh:
 
