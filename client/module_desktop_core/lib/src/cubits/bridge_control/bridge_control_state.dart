@@ -1,3 +1,5 @@
+import "package:sesori_shared/sesori_shared.dart";
+
 import "../../foundation/bridge_process_desired_state.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../services/bridge_process_state.dart";
@@ -24,4 +26,8 @@ class const BridgeControlState({
   required final BridgeProcessDesiredState toggleTarget,
   required final bool launchAtLoginEnabled,
   required final BridgeControlStatus controlStatus,
-});
+}) {
+  /// Whether an explicit user action can reclaim local or relay ownership.
+  bool get canTakeOver =>
+      processState is BridgeProcessContention || controlStatus.relay == ControlRelayConnectionState.takenOver;
+}

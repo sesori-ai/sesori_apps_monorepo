@@ -42,14 +42,19 @@ and keep native close/quit behavior safe.
   Sesori Icon Composer asset used by the main client, not the Flutter starter
   icon; keeping the copy local preserves independent shell builds.
 - Quit expected-stops the supervised helper before disposing native surfaces or
-  terminating the desktop process. A failed stop leaves the app alive.
+  terminating the desktop process. Quit preserves the persisted On/Off intent;
+  only an explicit Bridge Off action or coordinated logout writes Off. A failed
+  stop leaves the app alive.
 - Window and tray On/Off actions share one serialized owner. Intent is durable
   before lifecycle work begins: a persistence failure leaves the helper and
   session unchanged, while a failed start or stop leaves the next action
   targeted at retrying that failed operation.
 - The signed-in window shows account, process/control status, registration,
   relay state, plugin health, active-session count, takeover/login-required
-  states, and recent output after crash give-up.
+  states, and recent output after crash give-up. Take Over is an explicit tray
+  and window action for local bridge contention or relay displacement; it
+  persists On, performs one stop-and-respawn, and accepts only replacement
+  prompts from the fresh helper.
 - Open Logs prepares the owner-only active log through Layer-1 storage, then
   resolves it through the desktop log repository and delegates it to the system
   default application, including before the helper emits its first line.
@@ -68,7 +73,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, and signed-in supervision rendering. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, and offline deletion failure; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, and explicit Take Over; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -78,8 +83,11 @@ and keep native close/quit behavior safe.
 Vary signed-in versus signed-out startup, tray present versus absent, bridge On
 versus Off, second launch while visible/hidden, owner crash with stale metadata,
 and whether close occurs during a lifecycle transition. Exercise
-both clean and failed helper teardown before Quit or sign-out. Kill the helper
-at different handshake phases and inspect the status and bounded recent output.
+both clean and failed helper teardown before Quit or sign-out. Exercise Take
+Over from local contention and relay displacement, and verify one stop-and-
+respawn rather than a restart war. Quit while desired On, relaunch, and verify
+last-On restoration. Kill the helper at different handshake phases and inspect
+the status and bounded recent output.
 
 ## Failure Signals
 
@@ -88,6 +96,8 @@ at different handshake phases and inspect the status and bounded recent output.
   killed owner leaves a lock that bricks future launches.
 - Desired Off restores On, last-On never restores, startup bypasses auth gating,
   or bridge restore begins before the control dispatcher owns its event stream.
+  Quit while desired On unexpectedly persists Off, or an explicit Take Over is
+  missing when local or relay ownership is lost.
 - Repeated launch-at-login enables create duplicate registrations, disabling
   leaves a stale login item, a login-launched development build cannot find its
   repository helper or its PATH-installed harnesses, `--hidden` startup hides
@@ -109,8 +119,9 @@ at different handshake phases and inspect the status and bounded recent output.
   retrying the failed action.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
-  recent crash output is absent, Open Logs targets a nonexistent/bypassed file,
-  or a supervised Full Disk Access warning tells the user to authorize only
+  a takeover starts a restart war or approves a non-replacement prompt, recent
+  crash output is absent, Open Logs targets a nonexistent/bypassed file, or a
+  supervised Full Disk Access warning tells the user to authorize only
   Terminal instead of the process running the bridge.
 - The desktop theme lacks Prego colors, typography, or design-system extension.
 
@@ -141,6 +152,7 @@ at different handshake phases and inspect the status and bounded recent output.
 - `client/module_desktop_core/lib/src/cubits/bridge_control/`
 - `client/module_desktop_core/lib/src/foundation/platform/bridge_process_environment.dart`
 - `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
+- `client/module_desktop_core/lib/src/orchestration/desktop_bridge_takeover_orchestrator.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_logout_orchestrator.dart`
 - `client/module_desktop_core/lib/src/api/bridge_id_storage.dart`
 - `client/module_core/lib/src/api/bridge_api.dart`

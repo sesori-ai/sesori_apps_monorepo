@@ -17,6 +17,7 @@ void main() {
     late _FakeDesktopApplicationTerminator applicationTerminator;
     late _FakeBridgeProcessLogRepository logRepository;
     late _FakeDesktopInstanceService instanceService;
+    late _FakeDesktopBridgeTakeoverOrchestrator takeoverOrchestrator;
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
     late _FakeLaunchAtLogin launchAtLogin;
@@ -30,6 +31,7 @@ void main() {
       applicationTerminator = _FakeDesktopApplicationTerminator();
       logRepository = _FakeBridgeProcessLogRepository();
       instanceService = _FakeDesktopInstanceService();
+      takeoverOrchestrator = _FakeDesktopBridgeTakeoverOrchestrator();
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
       launchAtLogin = _FakeLaunchAtLogin();
@@ -41,6 +43,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
@@ -92,6 +95,39 @@ void main() {
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
     });
 
+    test("exposes and handles Take Over for local bridge contention", () async {
+      processService.emit(
+        state: const BridgeProcessContention(),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      await cubit.initialize();
+
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.takeOver).label, "Take Over");
+
+      systemTray.emit(command: SystemTrayCommand.takeOver);
+      await pumpEventQueue(times: 2);
+
+      expect(takeoverOrchestrator.takeOverCalls, 1);
+    });
+
+    test("exposes Take Over when the relay was displaced", () async {
+      statusTracker.markHelperConnected();
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          relay: ControlRelayConnectionState.takenOver,
+          plugin: ControlPluginHealthState.healthy,
+          activeSessionCount: 0,
+        ),
+      );
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      await cubit.initialize();
+
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.takeOver).label, "Take Over");
+    });
+
     test("toggle launch-at-login updates the menu only after registration succeeds", () async {
       await cubit.initialize();
 
@@ -138,6 +174,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
@@ -346,23 +383,22 @@ void main() {
       expect(processService.startCalls, 0);
     });
 
-    test("Quit leaves the app and helper running when Off cannot be persisted", () async {
+    test("Quit preserves a persisted On intent while stopping the helper", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
-      instanceService.writeError = StateError("application support is read-only");
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.quit);
       await pumpEventQueue(times: 2);
 
       expect(instanceService.cancelRestoreCalls, 1);
-      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
-      expect(processService.stopCalls, 0);
-      expect(applicationTerminator.exitCodes, isEmpty);
-      expect(systemTray.disposeCalls, 0);
-      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(instanceService.writes, isEmpty);
+      expect(processService.stopCalls, 1);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(systemTray.disposeCalls, 1);
+      expect(cubit.state.activity, BridgeControlActivity.quitting);
     });
 
     test("Quit terminates only after expected bridge stop completes", () async {
@@ -386,7 +422,7 @@ void main() {
 
       expect(systemTray.disposeCalls, 1);
       expect(windowHost.disposeCalls, 1);
-      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
+      expect(instanceService.writes, isEmpty);
       expect(applicationTerminator.exitCodes, <int>[0]);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
     });
@@ -584,6 +620,20 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDesktopBridgeTakeoverOrchestrator() implements DesktopBridgeTakeoverOrchestrator {
+  int takeOverCalls = 0;
+  Object? takeOverError;
+
+  @override
+  Future<void> takeOver() async {
+    takeOverCalls++;
+    final Object? error = takeOverError;
+    if (error != null) {
+      throw error;
+    }
+  }
 }
 
 class _FakeUrlLauncher() implements UrlLauncher {

@@ -9,6 +9,7 @@ import "../../foundation/platform/desktop_application_terminator.dart";
 import "../../foundation/platform/launch_at_login.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../foundation/platform/window_host.dart";
+import "../../orchestration/desktop_bridge_takeover_orchestrator.dart";
 import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
@@ -33,6 +34,7 @@ class BridgeControlCubit._create({
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
   required final DesktopInstanceService _instanceService,
+  required final DesktopBridgeTakeoverOrchestrator _takeoverOrchestrator,
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
   required final LaunchAtLogin _launchAtLogin,
@@ -46,6 +48,7 @@ class BridgeControlCubit._create({
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
     required DesktopInstanceService instanceService,
+    required DesktopBridgeTakeoverOrchestrator takeoverOrchestrator,
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
     required LaunchAtLogin launchAtLogin,
@@ -58,6 +61,7 @@ class BridgeControlCubit._create({
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
          instanceService: instanceService,
+         takeoverOrchestrator: takeoverOrchestrator,
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
          launchAtLogin: launchAtLogin,
@@ -155,6 +159,10 @@ class BridgeControlCubit._create({
       case SystemTrayCommand.toggleBridge:
         if (!_controlsLocked) {
           unawaited(toggleBridge());
+        }
+      case SystemTrayCommand.takeOver:
+        if (!_controlsLocked) {
+          unawaited(takeOver());
         }
       case SystemTrayCommand.toggleLaunchAtLogin:
         if (!_controlsLocked) {
@@ -270,6 +278,28 @@ class BridgeControlCubit._create({
     }
   }
 
+  Future<void> takeOver() async {
+    if (_controlsLocked || !_canTakeOver) {
+      return;
+    }
+    _activity = BridgeControlActivity.toggling;
+    _rebuildMenu();
+    try {
+      await _takeoverOrchestrator.takeOver();
+    } on Object catch (error, stackTrace) {
+      logw("Desktop bridge takeover command failed", error, stackTrace);
+    } finally {
+      if (!isClosed) {
+        _activity = BridgeControlActivity.idle;
+        _rebuildMenu();
+        if (_quitAfterActivity) {
+          _quitAfterActivity = false;
+          _onWindowEvent(event: WindowHostEvent.closeRequested);
+        }
+      }
+    }
+  }
+
   Future<void> toggleLaunchAtLogin() async {
     if (_controlsLocked) {
       return;
@@ -317,13 +347,9 @@ class BridgeControlCubit._create({
     _activity = BridgeControlActivity.quitting;
     _rebuildMenu();
     _instanceService.cancelPendingBridgeRestore();
-    try {
-      await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
-    } on Object catch (error, stackTrace) {
-      logw("Desktop quit stopped because bridge Off could not be persisted", error, stackTrace);
-      _markQuitFailed();
-      return;
-    }
+    // Stopping the helper must not rewrite the user's persisted On/Off
+    // intent. An explicit Bridge Off action has already persisted Off; Quit
+    // only stops the current process so a later launch can restore last-On.
     try {
       await _processService.stop();
     } on Object catch (error, stackTrace) {
@@ -417,6 +443,17 @@ class BridgeControlCubit._create({
         ),
         SystemTrayTextItem(label: "Active sessions: ${status.activeSessionCount}"),
         const SystemTraySeparator(),
+        if (_canTakeOverFor(
+          processState: processState,
+          status: status,
+        )) ...<SystemTrayMenuEntry>[
+          SystemTrayCommandItem(
+            command: SystemTrayCommand.takeOver,
+            label: "Take Over",
+            enabled: !activity.locksCommands,
+          ),
+          const SystemTraySeparator(),
+        ],
         SystemTrayCommandItem(
           command: SystemTrayCommand.toggleBridge,
           label: toggleTarget == BridgeProcessDesiredState.off ? "Turn Bridge Off" : "Turn Bridge On",
@@ -437,6 +474,18 @@ class BridgeControlCubit._create({
         ),
       ],
     );
+  }
+
+  bool get _canTakeOver => _canTakeOverFor(
+    processState: _processService.state,
+    status: _statusTracker.status,
+  );
+
+  static bool _canTakeOverFor({
+    required BridgeProcessState processState,
+    required BridgeControlStatus status,
+  }) {
+    return processState is BridgeProcessContention || status.relay == ControlRelayConnectionState.takenOver;
   }
 
   static BridgeProcessDesiredState _toggleTarget({

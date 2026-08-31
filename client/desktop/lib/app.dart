@@ -49,6 +49,7 @@ class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) exte
               applicationTerminator: getIt(),
               logRepository: getIt(),
               instanceService: getIt(),
+              takeoverOrchestrator: getIt(),
               logoutTracker: getIt(),
               urlLauncher: getIt(),
               launchAtLogin: getIt(),

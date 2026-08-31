@@ -78,6 +78,11 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
                           spacing: context.prego.spacing.md,
                           runSpacing: context.prego.spacing.md,
                           children: <Widget>[
+                            if (state.canTakeOver)
+                              OutlinedButton(
+                                onPressed: state.activity.locksCommands ? null : () => unawaited(controls.takeOver()),
+                                child: const Text("Take Over"),
+                              ),
                             FilledButton(
                               onPressed: state.activity.locksCommands ? null : () => unawaited(controls.toggleBridge()),
                               child: Text(

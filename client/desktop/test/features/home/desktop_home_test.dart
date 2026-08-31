@@ -26,6 +26,7 @@ void main() {
     authGateCubit = _MockAuthGateCubit();
     connectionOverlayCubit = _MockConnectionOverlayCubit();
     when(() => bridgeControlCubit.toggleBridge()).thenAnswer((_) async {});
+    when(() => bridgeControlCubit.takeOver()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.toggleLaunchAtLogin()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.openLogs()).thenAnswer((_) async {});
     when(() => authGateCubit.signOut()).thenAnswer((_) async {});
@@ -95,6 +96,43 @@ void main() {
     verify(() => bridgeControlCubit.toggleLaunchAtLogin()).called(1);
     verify(() => bridgeControlCubit.openLogs()).called(1);
     verify(() => authGateCubit.signOut()).called(1);
+  });
+
+  testWidgets("shows and delegates Take Over when relay ownership is displaced", (WidgetTester tester) async {
+    await pumpHome(
+      tester: tester,
+      state: _state(
+        processState: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+        status: const BridgeControlStatus(
+          helperOnline: true,
+          relay: ControlRelayConnectionState.takenOver,
+          plugin: ControlPluginHealthState.healthy,
+          activeSessionCount: 0,
+          bridgeId: "bridge-1",
+        ),
+        statusLabel: "Bridge: Relay taken over",
+      ),
+    );
+
+    expect(find.text("Take Over"), findsOneWidget);
+    await tester.tap(find.text("Take Over"));
+
+    verify(() => bridgeControlCubit.takeOver()).called(1);
+  });
+
+  testWidgets("shows Take Over for local bridge contention", (WidgetTester tester) async {
+    await pumpHome(
+      tester: tester,
+      state: _state(
+        processState: const BridgeProcessContention(),
+        desiredState: BridgeProcessDesiredState.on,
+        status: BridgeControlStatus.offline,
+        statusLabel: "Bridge: Another bridge is running",
+      ),
+    );
+
+    expect(find.text("Take Over"), findsOneWidget);
   });
 
   testWidgets("shows recent helper output after the crash budget is exhausted", (WidgetTester tester) async {

@@ -69,8 +69,8 @@ step. The work is intentionally split into two manageable PRs:
 
 | Follow-up | Status | Scope |
 |---|---|---|
-| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | in-progress | macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
-| `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` | in-progress | Quit intent semantics, explicit takeover orchestration/UI, and lifecycle coverage |
+| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | in-progress | PR #1222 open: macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
+| `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` | in-progress | Successor local: Quit intent semantics, explicit takeover orchestration/UI, and lifecycle coverage |
 
 The helper receives only a login-shell-derived PATH, merged with its inherited
 environment; shell variables, secrets, permissions, and entitlements are not
