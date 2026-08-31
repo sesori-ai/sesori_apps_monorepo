@@ -9,6 +9,7 @@ void main() {
       final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
         environment: {DesktopBridgeExecutablePathResolver.environmentVariable: configuredPath},
         workingDirectory: path.absolute(path.join("repo", "client", "desktop")),
+        resolvedExecutable: path.absolute(path.join("repo", "client", "desktop", "build", "Sesori")),
         isWindows: false,
       );
 
@@ -20,6 +21,7 @@ void main() {
       final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
         environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "tools/bridge"},
         workingDirectory: workingDirectory,
+        resolvedExecutable: path.join(workingDirectory, "build", "Sesori"),
         isWindows: false,
       );
 
@@ -31,6 +33,55 @@ void main() {
       final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
         environment: const {},
         workingDirectory: workingDirectory,
+        resolvedExecutable: path.join(workingDirectory, "build", "Sesori"),
+        isWindows: false,
+      );
+
+      expect(
+        resolver.resolve(),
+        path.normalize(
+          path.join(workingDirectory, "..", "..", "bridge", "app", "build", "cli", "bundle", "bin", "bridge"),
+        ),
+      );
+    });
+
+    test("resolves the repository from the executable when launchd changes the working directory", () {
+      final String repositoryRoot = path.absolute("repo");
+      final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
+        environment: const {},
+        workingDirectory: path.rootPrefix(repositoryRoot),
+        resolvedExecutable: path.join(
+          repositoryRoot,
+          "client",
+          "desktop",
+          "build",
+          "macos",
+          "Build",
+          "Products",
+          "Release",
+          "Sesori.app",
+          "Contents",
+          "MacOS",
+          "Sesori",
+        ),
+        isWindows: false,
+      );
+
+      expect(
+        resolver.resolve(),
+        path.normalize(
+          path.join(repositoryRoot, "bridge", "app", "build", "cli", "bundle", "bin", "bridge"),
+        ),
+      );
+    });
+
+    test("falls back to the launch directory outside the repository", () {
+      final String root = path.rootPrefix(path.absolute("repo"));
+      final String workingDirectory = path.join(root, "tmp", "sesori-desktop");
+      final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
+        environment: const {},
+        workingDirectory: workingDirectory,
+        resolvedExecutable: path.join(root, "Applications", "Sesori.app", "Contents", "MacOS", "Sesori"),
         isWindows: false,
       );
 
@@ -47,6 +98,7 @@ void main() {
       final DesktopBridgeExecutablePathResolver resolver = DesktopBridgeExecutablePathResolver.forTesting(
         environment: const {},
         workingDirectory: workingDirectory,
+        resolvedExecutable: path.join(workingDirectory, "build", "Sesori.exe"),
         isWindows: true,
       );
 
