@@ -114,6 +114,7 @@ void main() {
     });
 
     test("uses OMP's per-session and fail-closed policies", () {
+      expect(plugin.permitsDeviceCanvasHttpMcp, isTrue);
       expect(plugin.serializesPromptsProcessWide, isFalse);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);
@@ -420,7 +421,8 @@ void main() {
         PluginMessagePartType.text,
         PluginMessagePartType.file,
       ]);
-      final image = (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
+      final image =
+          (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));

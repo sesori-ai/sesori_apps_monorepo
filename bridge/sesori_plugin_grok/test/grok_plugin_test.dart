@@ -120,6 +120,7 @@ void main() {
 
     test("uses Grok identity, headless auth policy, and stop-and-send", () {
       expect(plugin.id, "grok");
+      expect(plugin.permitsDeviceCanvasHttpMcp, isFalse);
       expect(plugin.authMethodId, isNull);
       expect(plugin.authMethodAllowlist, {"xai.api_key", "cached_token"});
       expect(plugin.supportsFormElicitation, isFalse);

@@ -1,3 +1,6 @@
+import "dart:convert";
+import "dart:io" show File;
+
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -15,6 +18,23 @@ void main() {
     expect(CursorRuntimeManifest.targetVersion, "2026.08.11-e8db854");
     expect(manifest.bundledVersion.raw, CursorRuntimeManifest.targetVersion);
     expect(manifest.minPathVersion.raw, "2026.07.16");
+  });
+
+  test("pinned initialize fixture advertises HTTP MCP", () {
+    final fixture = (jsonDecode(File("test/fixtures/protocol/v1/initialize.json").readAsStringSync()) as Map)
+        .cast<String, dynamic>();
+    final capabilities = (fixture["agentCapabilities"] as Map).cast<String, dynamic>();
+    final mcp = (capabilities["mcpCapabilities"] as Map).cast<String, dynamic>();
+
+    expect(mcp, {"http": true, "sse": true});
+    expect(
+      manifest
+          .assetFor(
+            target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+          )
+          ?.sha256,
+      "46044d6d7bcbd7b49a0cf1cd01aa4ca79aaa2ea5f2c7a32965fc0ebe29841790",
+    );
   });
 
   test("publishes darwin and linux packages but not windows", () {

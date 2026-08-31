@@ -98,10 +98,11 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   Future<AcpNewSessionResult> newSession({
     required String cwd,
     required Duration timeout,
+    List<AcpHttpMcpServer> mcpServers = const [],
   }) async {
     final raw = await client.request(
       method: AcpMethods.sessionNew,
-      params: _sessionActivationParams(cwd: cwd),
+      params: _sessionActivationParams(cwd: cwd, mcpServers: mcpServers),
       timeout: timeout,
     );
     final session = AcpNewSessionResult.fromJson(_asJson(raw));
@@ -119,7 +120,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) => _activateSession(method: AcpMethods.sessionLoad, sessionId: sessionId, cwd: cwd, timeout: timeout);
+    List<AcpHttpMcpServer> mcpServers = const [],
+  }) => _activateSession(
+    method: AcpMethods.sessionLoad,
+    sessionId: sessionId,
+    cwd: cwd,
+    timeout: timeout,
+    mcpServers: mcpServers,
+  );
 
   /// `session/resume` — re-activates [sessionId] without history replay. Same
   /// result contract as [loadSession].
@@ -127,7 +135,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required Duration timeout,
-  }) => _activateSession(method: AcpMethods.sessionResume, sessionId: sessionId, cwd: cwd, timeout: timeout);
+    List<AcpHttpMcpServer> mcpServers = const [],
+  }) => _activateSession(
+    method: AcpMethods.sessionResume,
+    sessionId: sessionId,
+    cwd: cwd,
+    timeout: timeout,
+    mcpServers: mcpServers,
+  );
 
   /// One `session/list` page; [cwd] null means the unfiltered form.
   Future<AcpSessionListResult> listSessionsPage({
@@ -173,12 +188,13 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required String sessionId,
     required String cwd,
     required Duration timeout,
+    required List<AcpHttpMcpServer> mcpServers,
   }) async {
     final raw = await client.request(
       method: method,
       params: {
         "sessionId": sessionId,
-        ..._sessionActivationParams(cwd: cwd),
+        ..._sessionActivationParams(cwd: cwd, mcpServers: mcpServers),
       },
       timeout: timeout,
     );
@@ -186,11 +202,13 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     return AcpNewSessionResult.fromJson(raw.cast<String, dynamic>());
   }
 
-  /// The bridge never injects MCP servers, but the field is required by the
-  /// spec for `session/new`, `session/load`, and `session/resume`.
-  static Map<String, dynamic> _sessionActivationParams({required String cwd}) => {
+  /// The field is required by the spec even when no per-session server is used.
+  static Map<String, dynamic> _sessionActivationParams({
+    required String cwd,
+    required List<AcpHttpMcpServer> mcpServers,
+  }) => {
     "cwd": cwd,
-    "mcpServers": const <Object?>[],
+    "mcpServers": mcpServers.map((server) => server.toJson()).toList(growable: false),
   };
 
   static Map<String, dynamic> _asJson(Object? raw) =>

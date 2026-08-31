@@ -5,6 +5,7 @@ import "bridge_host_info.dart";
 import "host_json_store.dart";
 import "host_port_service.dart";
 import "host_process_service.dart";
+import "plugin_agent_tools.dart";
 
 /// Services the bridge offers to a starting plugin.
 ///
@@ -72,4 +73,13 @@ abstract class PluginHost() {
   /// cleanup themselves (the bridge's whole-plugin suspension timer never
   /// arms) and use this value for their internal reclamation instead.
   Duration? get pluginIdleTimeout;
+}
+
+extension PluginAgentToolHostExtension on PluginHost {
+  /// Agent-tool services when this bridge build provisioned them for the
+  /// current plugin generation; null in older hosts and unit-test fakes.
+  PluginAgentToolServices? get agentToolServices => switch (this) {
+    final PluginAgentToolServicesProvider provider => provider.agentToolServices,
+    _ => null,
+  };
 }

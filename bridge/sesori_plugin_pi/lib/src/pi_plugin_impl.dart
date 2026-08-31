@@ -50,6 +50,7 @@ final class PiPlugin._({
     required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
     required Duration editorTimeout,
+    PluginAgentToolServices? agentToolServices,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
     final catalogRepository = PiSessionCatalogRepository(storageApi: storage);
@@ -72,6 +73,7 @@ final class PiPlugin._({
       // Pi can run model-backed automatic compaction before acknowledging a
       // prompt, so prompt preflight needs the same generous bound as a turn.
       promptRpcTimeout: const Duration(minutes: 30),
+      agentToolServices: agentToolServices,
     );
     final extensionUiService = PiExtensionUiService(
       catalogRepository: catalogRepository,
@@ -117,6 +119,7 @@ final class PiPlugin._({
   static const String pluginId = PiPluginIdentity.id;
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
+  bool _disposeComplete = false;
   bool _disposed = false;
 
   @override
@@ -438,11 +441,22 @@ final class PiPlugin._({
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
 
-  Future<void> dispose() => _disposeFuture ??= _dispose(shutdownBudget: Duration.zero);
+  Future<void> dispose() => _startDisposal(shutdownBudget: Duration.zero);
 
   /// [shutdownBudget] `null` means the caller imposes no deadline.
-  Future<void> shutdown({required Duration? shutdownBudget}) =>
-      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
+  Future<void> shutdown({required Duration? shutdownBudget}) => _startDisposal(shutdownBudget: shutdownBudget);
+
+  Future<void> _startDisposal({required Duration? shutdownBudget}) {
+    if (_disposeComplete) return Future.value();
+    final active = _disposeFuture;
+    if (active != null) return active;
+    late final Future<void> disposal;
+    disposal = _dispose(shutdownBudget: shutdownBudget).then<void>((_) => _disposeComplete = true).whenComplete(() {
+      if (identical(_disposeFuture, disposal)) _disposeFuture = null;
+    });
+    _disposeFuture = disposal;
+    return disposal;
+  }
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;

@@ -3,8 +3,8 @@
 ## Capability
 
 Bridge-authoritative ownership of locally discovered Device Canvas simulators,
-including client presentation, exact-session deep links, and OpenCode-native
-list, claim, and release tools.
+including client presentation, exact-session deep links, and verified
+backend-native or MCP list, claim, and release tools.
 
 ## Required Behavior
 
@@ -44,6 +44,18 @@ list, claim, and release tools.
   configured managed runtime is healthy. Device Canvas disconnection
   hard-disables operations with a typed unavailable result; bridge shutdown
   stops intake, drains accepted work, and removes the rendezvous file.
+- Every newer adapter receives the same three definitions through an optional
+  generation-scoped bridge authority, not a protocol-unifying plugin framework.
+  Native adapters pass only backend identity supplied by their trusted callback.
+  MCP adapters receive an opaque bearer capability already bound, or
+  provisionally bound after session creation, to one plugin generation and
+  backend session. Model arguments never carry either identity.
+- Every invocation re-resolves the durable `(pluginId, backendSessionId)` row. A
+  call that arrives before first-turn session persistence returns
+  `sessionUnavailable`. Revocation removes capability admission before waiting
+  for an accepted invocation to drain. Failed activation, replacement, archive,
+  reset, process exit, plugin startup failure, and disposal revoke authority and,
+  where present, delete generated owner-only files.
 - The Sesori mobile client exposes a Device Canvas `Watch` action only when built
   with `DEVICE_CANVAS_LAN_VIDEO=true`, the current session owns a present Android
   device with `remoteVideo`, and the bridge is connected. The default build has
@@ -102,14 +114,27 @@ list, claim, and release tools.
   bridge, session, device, or claim revision no longer matches, including while
   claim projection is delayed.
 
+## Agent Adapter Matrix
+
+| Backend | Device Canvas registration | Supported runtime evidence |
+|---|---|---|
+| OpenCode | Native registry; trusted `context.sessionID`. | PATH floor `1.14.49`, managed target `1.18.19`, live model/device run on `1.18.20`. |
+| Codex | `thread/start.dynamicTools`; trusted `item/tool/call.params.threadId`. | PATH floor and target `0.148.0`. Start-time tools persist on resume; pre-integration threads cannot add them through `thread/resume`. |
+| Claude | Per-child owner-only `--mcp-config` with a bound HTTP capability. | Minimum and target `2.1.251`. |
+| Pi | Per-child owner-only `--extension` TypeScript adapter with a bound HTTP capability. | PATH floor and target `0.84.2`. |
+| Cursor | ACP HTTP MCP after concrete opt-in and live negotiation. | PATH floor `2026.07.16`; pinned probe/target `2026.08.11-e8db854`. |
+| OMP | ACP HTTP MCP after concrete opt-in and live negotiation. | PATH floor `17.2.13`; pinned probe/target `17.3.8`. |
+| Copilot | ACP HTTP MCP after concrete opt-in and live negotiation. | PATH floor `1.0.78`; pinned probe/target `1.0.80`. |
+| Hermes, DeepSeek, Grok | Disabled by the shared ACP default-deny policy. | No verified HTTP MCP seam; DeepSeek `0.1.2` explicitly rejects MCP servers. |
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated bridge coverage proves canonical binding, idempotent claim/release, conflict without reassignment, privacy-safe bounded listing, disconnected behavior, bridge-rotation cleanup, loopback authentication, request bounds, and rendezvous cleanup. OpenCode package coverage proves the exact native tool surface, trusted context use, config isolation, capability stripping, and readiness gating. |
-| L2 Routine | Headless bridge with a Device Canvas fixture and two stored OpenCode sessions exercises list, claim, repeat, conflict, wrong-owner release, owner release, archive cleanup, Device Canvas disconnect/reconnect, and bridge restart. A successfully configured live managed OpenCode runtime must advertise exactly the three native tools through its real tool registry; failed injection must advertise none. |
-| L3 Release | Live OpenCode agent plus Device Canvas and Sesori client: two real sessions demonstrate relative listing, claim, repeat, conflict, release, inability to act as another canonical session, ownership badges/accessibility, and exact deep-link navigation. Client end to end and live plugin on the release-target bridge host. |
-| L4 Extended | Device Canvas and bridge takeover/restart in both orders; device stop/restart; OpenCode crash/restart; malformed, oversized, unauthorized, and stalled local requests; archive/deletion during activity; alternate client platform; older client/new bridge and new client/older bridge degradation. |
+| L1 Smoke | Automated bridge coverage proves canonical binding, idempotent claim/release, conflict without reassignment, privacy-safe bounded listing, disconnected behavior, bridge-rotation cleanup, loopback authentication, request bounds, first-turn fail-closed behavior, generation isolation, in-flight revocation draining, and cleanup. Adapter packages prove exact schemas, trusted native callback identity, opaque MCP delivery, default deny, and activation/replacement/archive/reset/disposal cleanup. |
+| L2 Routine | Headless bridge with a Device Canvas fixture and two stored OpenCode sessions exercises list, claim, repeat, conflict, wrong-owner release, owner release, archive cleanup, Device Canvas disconnect/reconnect, and bridge restart. Each supported adapter exercises new/resume and failed-start cleanup through its real protocol shape. A configured OpenCode runtime advertises exactly the three native tools; failed injection advertises none. |
+| L3 Release | Live OpenCode agent plus Device Canvas and Sesori client: two real sessions demonstrate relative listing, claim, repeat, conflict, release, inability to act as another canonical session, ownership badges/accessibility, and exact deep-link navigation. Pinned newer runtimes must pass their recorded native/MCP protocol probe on the release-target bridge host. |
+| L4 Extended | Device Canvas and bridge takeover/restart in both orders; device stop/restart; supported adapter process crash/restart; malformed, oversized, unauthorized, revoked, and stalled local requests; archive/deletion during activity; alternate client platform; older client/new bridge and new client/older bridge degradation. |
 | L5 Full | Packaged Sesori and Device Canvas builds across supported bridge hosts with large bounded inventories, multiple concurrent sessions and devices, repeated lifecycle recovery, and every documented compatible version pairing. |
 
 ## Phase 1 Verification Evidence
@@ -136,6 +161,33 @@ Recorded on 2026-08-25 on the release-target macOS host:
   heartbeat. Unsupported local protocol versions also failed closed. Current
   live-agent verification used OpenCode `1.18.20`; automated runtime gates retain
   PATH minimum `1.14.49` and managed target `1.18.19`.
+
+## Agent Adapter Follow-up Evidence
+
+Recorded on 2026-08-31 on the release-target macOS host:
+
+- Redacted ACP v1 initialize fixtures retain only capability and authentication
+  schema from official arm64 artifacts. Cursor `2026.08.11-e8db854` has SHA-256
+  `46044d6d7bcbd7b49a0cf1cd01aa4ca79aaa2ea5f2c7a32965fc0ebe29841790`;
+  OMP `17.3.8` has
+  `84705a1ca833f59afccca2db7aff559e09cb74902e7a5aaf87077a88f3c84b84`;
+  Copilot `1.0.80` has
+  `2346bb691981c2997d65c1c5bc3cef1aeddc9edd37dcb2f970b911aa597e59f6`.
+  Each isolated initialize negotiated ACP v1 and advertised HTTP and SSE MCP.
+- Hermes and Grok probes advertised no MCP. DeepSeek `0.1.2` returned
+  `MCP servers are not supported`. Their concrete plugins retain the shared ACP
+  deny default even if a future peer advertises an unverified capability.
+- Pinned Codex `0.148.0` schema and binary probing verified
+  `thread/start.dynamicTools` and `item/tool/call`; the upstream
+  `rust-v0.148.0` migration verifies that start-time dynamic tools persist with
+  the thread and restore on cold resume. The resume request has no registration
+  override, so older threads remain unavailable for Device Canvas tools.
+- Automated coverage proves exact native/MCP schemas, durable identity lookup,
+  provisional ACP binding, unsupported-runtime denial, owner-only Claude/Pi
+  attachment lifecycle, failed-start disposal, and revocation that waits for an
+  accepted invocation. Workspace `make analyze` passed all 15 Bridge packages;
+  workspace `make test` passed every package and ended at 2,964 bridge-app tests
+  with the two expected host-platform skips. `git diff --check` was clean.
 
 ## Phase 2 Transport Gate
 
@@ -418,8 +470,8 @@ version pinning, is also required.
 
 Vary which session claims first, whether devices are iOS or Android, whether a
 device or Device Canvas disconnects before or after a mutation, and whether the
-bridge or OpenCode restarts while claims exist. Use unrelated canonical and
-backend session IDs so an accidental identity shortcut is visible. Restore
+bridge or supported adapter restarts while claims exist. Use unrelated canonical
+and backend session IDs so an accidental identity shortcut is visible. Restore
 claims, sessions, plugin eligibility, and local processes after the run.
 
 ## Failure Signals
@@ -436,14 +488,30 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - A managed OpenCode runtime reports healthy before its configured native
   adapter registers, modifies user/project configuration, advertises extra
   simulator tools, or accepts claims while Device Canvas is unavailable.
+- An MCP adapter accepts a model-supplied session identity, exposes a capability
+  across plugin generations or sessions, admits an unapproved ACP harness, keeps
+  authority after replacement/archive/reset, or completes revocation before an
+  already-authorized invocation settles.
+- A first-turn call guesses canonical authority before the durable session row
+  exists, or adapter startup failure leaves a capability or generated private
+  file behind.
 - A deep link opens the wrong bridge/session, guesses project identity, or loads
   session content before exact resolution.
 
 ## Known Limitations
 
-- Autonomous simulator tools are currently OpenCode-only and require a
-  bridge-managed OpenCode process. Attach mode is unchanged because the bridge
-  cannot safely inject a trusted invocation adapter into an existing process.
+- OpenCode autonomous simulator tools require a bridge-managed process. Attach
+  mode is unchanged because the bridge cannot safely inject a trusted invocation
+  adapter into an existing process.
+- Only OpenCode currently has a recorded live model plus two-session Device
+  Canvas ownership end-to-end run. Codex, Claude, Pi, Cursor, OMP, and Copilot
+  have version-pinned protocol evidence and automated adapter lifecycle
+  coverage; they still require release-target live model/device expansion.
+- Codex threads created before `dynamicTools` registration cannot be retrofitted
+  because `thread/resume` in `0.148.0` has no tool override.
+- Hermes and Grok expose no verified HTTP MCP capability, and DeepSeek `0.1.2`
+  rejects MCP servers. They remain explicitly disabled rather than receiving a
+  user-dispatched command presented as autonomous support.
 - OpenCode's current plugin API does not dynamically unregister native tools.
   Definitions remain visible after Device Canvas disconnects, but every
   operation is hard-disabled with `integrationUnavailable` until reconnection.
@@ -467,6 +535,12 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - `bridge/app/lib/src/services/device_canvas_claim_service.dart`
 - `bridge/app/lib/src/services/device_canvas_agent_tool_service.dart`
 - `bridge/app/lib/src/bridge/device_canvas/`
+- `bridge/sesori_plugin_interface/lib/src/host/plugin_agent_tools.dart`
+- `bridge/sesori_plugin_acp/lib/src/acp_plugin.dart`
+- `bridge/sesori_plugin_codex/lib/src/api/codex_app_server_api.dart`
+- `bridge/sesori_plugin_claude/lib/src/repositories/claude_session_process_repository.dart`
+- `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_process_repository.dart`
+- `bridge/sesori_plugin_{cursor,omp,copilot}/test/fixtures/protocol/v1/`
 - `bridge/app/lib/src/services/device_canvas_stream_service.dart`
 - `bridge/app/tool/device_canvas_local_turn.dart`
 - `bridge/app/tool/device_canvas_external_turn_smoke.dart`
@@ -474,7 +548,8 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_policy.dart`
 - Focused tests under `bridge/app/test/bridge/device_canvas/`,
   `bridge/app/test/bridge/services/`, and
-  `bridge/sesori_plugin_opencode/test/runtime/`
+  `bridge/sesori_plugin_opencode/test/runtime/`, plus adapter tests under
+  `bridge/sesori_plugin_{acp,codex,claude,pi}/test/`
 - `client/module_core/test/capabilities/relay/relay_client_handshake_replay_test.dart`
 - `client/app/lib/core/platform/flutter_device_canvas_video_peer.dart`
 - `bridge/app/test/bridge/routing/routed_request_dispatcher_test.dart`

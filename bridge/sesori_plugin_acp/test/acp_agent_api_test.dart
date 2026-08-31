@@ -214,5 +214,76 @@ void main() {
         reason: "a fresh per-request timeout would let authenticate run until ~900 ms",
       );
     });
+
+    test("new, load, and resume send the exact typed HTTP MCP wire value", () async {
+      const server = AcpHttpMcpServer(
+        name: "Sesori Device Canvas",
+        url: "http://127.0.0.1:7777/mcp",
+        headers: [AcpHttpHeader(name: "Authorization", value: "Bearer test-token")],
+      );
+      const expectedServer = {
+        "type": "http",
+        "name": "Sesori Device Canvas",
+        "url": "http://127.0.0.1:7777/mcp",
+        "headers": [
+          {"name": "Authorization", "value": "Bearer test-token"},
+        ],
+      };
+
+      final creating = api.newSession(
+        cwd: "/new",
+        timeout: const Duration(seconds: 5),
+        mcpServers: const [server],
+      );
+      final newFrame = await waitForFrame("session/new");
+      expect(newFrame["params"], {
+        "cwd": "/new",
+        "mcpServers": [expectedServer],
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": newFrame["id"],
+        "result": {"sessionId": "new-id"},
+      });
+      await creating;
+
+      final loading = api.loadSession(
+        sessionId: "load-id",
+        cwd: "/load",
+        timeout: const Duration(seconds: 5),
+        mcpServers: const [server],
+      );
+      final loadFrame = await waitForFrame("session/load");
+      expect(loadFrame["params"], {
+        "sessionId": "load-id",
+        "cwd": "/load",
+        "mcpServers": [expectedServer],
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "result": {"sessionId": "load-id"},
+      });
+      await loading;
+
+      final resuming = api.resumeSession(
+        sessionId: "resume-id",
+        cwd: "/resume",
+        timeout: const Duration(seconds: 5),
+        mcpServers: const [server],
+      );
+      final resumeFrame = await waitForFrame("session/resume");
+      expect(resumeFrame["params"], {
+        "sessionId": "resume-id",
+        "cwd": "/resume",
+        "mcpServers": [expectedServer],
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": resumeFrame["id"],
+        "result": {"sessionId": "resume-id"},
+      });
+      await resuming;
+    });
   });
 }

@@ -39,6 +39,9 @@ class CursorPlugin._({
   static final String pluginId = Harness.cursor.name;
   static const String _providerId = "cursor";
 
+  @override
+  bool get permitsDeviceCanvasHttpMcp => true;
+
   factory({
     String binaryPath = CursorBinary.defaultBinary,
     String? launchDirectory,

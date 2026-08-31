@@ -26,6 +26,7 @@ typedef PiPluginFactory = PiPlugin Function({
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
+  required PluginAgentToolServices? agentToolServices,
 });
 
 PiPlugin _buildPiPlugin({
@@ -42,6 +43,7 @@ PiPlugin _buildPiPlugin({
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
+  required PluginAgentToolServices? agentToolServices,
 }) => PiPlugin(
   binaryPath: binaryPath,
   storageEnvironment: storageEnvironment,
@@ -56,6 +58,7 @@ PiPlugin _buildPiPlugin({
   healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
   editorTimeout: editorTimeout,
+  agentToolServices: agentToolServices,
 );
 
 /// Descriptor and lifecycle composition root for the local Pi CLI plugin.
@@ -191,17 +194,18 @@ final class const PiPluginDescriptor({
   }) async {
     const manifest = PiRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: _versionValidator(processes: processes),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+          managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
+        );
     if (selection is ManagedRuntimeSelected) return const PluginSetupReady();
     final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
@@ -218,8 +222,7 @@ final class const PiPluginDescriptor({
       };
     }
     final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) ||
-        _isUnknownRejection(automatic.managedRejection)) {
+    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -275,6 +278,7 @@ final class const PiPluginDescriptor({
         healthTimeout: const Duration(seconds: 10),
         resolveIdleTimeout: () => host.pluginIdleTimeout,
         editorTimeout: const Duration(minutes: 30),
+        agentToolServices: host.agentToolServices,
       );
     } on Object {
       await processFactory.dispose();

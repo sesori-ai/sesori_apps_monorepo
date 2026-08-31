@@ -13,6 +13,7 @@ void main() {
       ClaudeEffortLevel? effort,
       ClaudePermissionMode? permissionMode,
       List<String> allowedTools = const [],
+      String? mcpConfigPath,
     }) {
       return ClaudeLaunchSpec(
         binaryPath: "claude",
@@ -22,6 +23,7 @@ void main() {
         effort: effort,
         permissionMode: permissionMode,
         allowedTools: allowedTools,
+        mcpConfigPath: mcpConfigPath,
       );
     }
 
@@ -112,6 +114,26 @@ void main() {
       ).arguments;
 
       expect(arguments, containsAllInOrder(["--allowedTools", "Write", "Bash(git status:*)"]));
+    });
+
+    test("adds only the generated MCP config path when provided", () {
+      final arguments = specFor(
+        ClaudeNewSession(sessionId: _newSessionId),
+        mcpConfigPath: "/bridge-state/claude-device-canvas-1.json",
+      ).arguments;
+
+      expect(
+        arguments,
+        containsAllInOrder(["--mcp-config", "/bridge-state/claude-device-canvas-1.json"]),
+      );
+      expect(arguments, isNot(contains("--strict-mcp-config")));
+    });
+
+    test("preserves MCP arguments when no private services are available", () {
+      final arguments = specFor(ClaudeNewSession(sessionId: _newSessionId)).arguments;
+
+      expect(arguments, isNot(contains("--mcp-config")));
+      expect(arguments, isNot(contains("--strict-mcp-config")));
     });
 
     test("rejects a HOME override", () {

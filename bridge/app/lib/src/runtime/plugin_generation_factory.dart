@@ -10,6 +10,7 @@ import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_port_service.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/bridge_plugin_host_impl.dart";
+import "../server/host/bridge_plugin_private_file_service.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/process_repository.dart";
 import "../server/repositories/startup_mutex_repository.dart";
@@ -55,6 +56,7 @@ class PluginGenerationFactory({
   required Map<String, String> environment,
   required Map<String, Map<String, String>> environmentOverridesByPluginId,
   required final ProcessUser? _currentUser,
+  final PluginAgentToolHost? Function({required String pluginId})? _agentToolsForPlugin,
 
   /// Resolves the currently configured idle timeout for a plugin, in minutes.
   /// Read live at each [PluginHost.pluginIdleTimeout] access so runtime
@@ -147,26 +149,31 @@ class PluginGenerationFactory({
           case BridgeInstanceResolutionStatus.allowed:
             final startSettlements = <Future<void>>[];
             for (final request in batch) {
+              BridgePluginHostImpl? host;
               try {
-                final host = await _buildHost(request: request, resolution: resolution);
-                await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
+                final builtHost = await _buildHost(request: request, resolution: resolution);
+                host = builtHost;
+                await for (final event in request.registration.descriptor.ensureRuntime(host: builtHost)) {
                   request.controller.add(PluginGenerationProvisionProgress(event: event));
                   if (event case ProvisionReady(:final binaryPath)) {
-                    host.provisionedRuntimePath = binaryPath;
+                    builtHost.provisionedRuntimePath = binaryPath;
                   }
                 }
-                host.addEnvironmentOverrides(
+                builtHost.addEnvironmentOverrides(
                   _environmentOverridesByPluginId[request.registration.descriptor.id] ?? const <String, String>{},
                 );
                 startSettlements.add(
                   _settleDescriptorStart(
                     request: request,
-                    start: request.registration.descriptor.start(host),
+                    host: builtHost,
+                    start: request.registration.descriptor.start(builtHost),
                   ),
                 );
               } on PluginStartAbortedException catch (error, stackTrace) {
+                await _disposeAgentTools(host);
                 request.controller.addError(error, stackTrace);
               } on Object catch (error, stackTrace) {
+                await _disposeAgentTools(host);
                 request.controller.addError(
                   PluginGenerationStartFailedException(
                     pluginId: request.registration.descriptor.id,
@@ -221,6 +228,7 @@ class PluginGenerationFactory({
 
   Future<void> _settleDescriptorStart({
     required _GenerationStartRequest request,
+    required BridgePluginHostImpl host,
     required Future<BridgePlugin> start,
   }) async {
     try {
@@ -228,8 +236,10 @@ class PluginGenerationFactory({
         PluginGenerationStarted(plugin: await start),
       );
     } on PluginStartAbortedException catch (error, stackTrace) {
+      await _disposeAgentTools(host);
       request.controller.addError(error, stackTrace);
     } on Object catch (error, stackTrace) {
+      await _disposeAgentTools(host);
       request.controller.addError(
         PluginGenerationStartFailedException(
           pluginId: request.registration.descriptor.id,
@@ -237,6 +247,14 @@ class PluginGenerationFactory({
         ),
         stackTrace,
       );
+    }
+  }
+
+  Future<void> _disposeAgentTools(BridgePluginHostImpl? host) async {
+    try {
+      await host?.agentToolServices?.tools.dispose();
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to dispose agent-tool host after plugin generation startup failure", error, stackTrace);
     }
   }
 
@@ -259,6 +277,7 @@ class PluginGenerationFactory({
       stateDirectory,
       () => RuntimeFileApi(runtimeDirectory: stateDirectory),
     );
+    final agentTools = _agentToolsForPlugin?.call(pluginId: descriptor.id);
     return BridgePluginHostImpl(
       config: request.registration.config,
       stateDirectory: stateDirectory,
@@ -281,6 +300,12 @@ class PluginGenerationFactory({
       ),
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: BridgeHostJsonStore(fileApi: fileApi),
+      agentToolServices: agentTools == null
+          ? null
+          : BridgePluginAgentToolServices(
+              tools: agentTools,
+              privateFiles: BridgePluginPrivateFileService(stateDirectory: stateDirectory),
+            ),
       resolveIdleTimeout: () {
         final minutes = _resolveIdleTimeoutMins(pluginId: descriptor.id);
         return minutes > 0 ? Duration(minutes: minutes) : null;

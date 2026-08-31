@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:convert";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "codex_app_server_client.dart";
@@ -41,10 +44,25 @@ const String _elicitationMethod = "mcpServer/elicitation/request";
 /// The v2 user-input method. Its response is
 /// `{answers: {<questionId>: {answers: [..]}}}`.
 const String _userInputMethod = "item/tool/requestUserInput";
+const String _dynamicToolCallMethod = "item/tool/call";
+const Duration _dynamicToolCallTimeout = Duration(seconds: 10);
+const int _maxDynamicToolOutcomeCharacters = 512 * 1024;
+const String _dynamicToolFailureOutcome = '{"outcome":"internalError"}';
+const Set<String> _dynamicToolParamKeys = {
+  "threadId",
+  "turnId",
+  "callId",
+  "tool",
+  "namespace",
+  "arguments",
+};
 
 const String _elicitationApprovalKindKey = "codex_approval_kind";
 
-enum _ElicitationApprovalKind() { mcpToolCall, toolSuggestion }
+enum _ElicitationApprovalKind() {
+  mcpToolCall,
+  toolSuggestion,
+}
 
 class _PendingApproval({
   required final Object codexId,
@@ -103,6 +121,7 @@ void _cancelCodexPending({required _PendingApproval payload, required PendingCan
 /// Subscribe with [attach]. Detach + free pending state with [dispose].
 class ApprovalRegistry({
   required super.emit,
+  final PluginAgentToolHost? agentToolHost,
   required final ApprovalResponder _respond,
   required final ApprovalErrorResponder _respondError,
   super.idGenerator,
@@ -116,9 +135,25 @@ class ApprovalRegistry({
         cancelPending: _cancelCodexPending,
       );
 
+  final Set<Future<void>> _dynamicCalls = {};
+
   @override
   void handleRequest(CodexServerRequest request) {
     final method = request.method;
+    if (method == _dynamicToolCallMethod) {
+      final host = agentToolHost;
+      if (host == null) {
+        _respondError(request.id, -32601, "Method not available");
+        return;
+      }
+      late final Future<void> operation;
+      operation = _handleDynamicToolCall(request: request, host: host).whenComplete(
+        () => _dynamicCalls.remove(operation),
+      );
+      _dynamicCalls.add(operation);
+      unawaited(operation);
+      return;
+    }
     final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
     final isPermission = _permissionMethods.contains(method) || isMcpToolApproval;
     final isQuestion = _questionMethods.contains(method) && !isMcpToolApproval;
@@ -156,6 +191,91 @@ class ApprovalRegistry({
         questions: [_questionInfoFor(entry)],
       );
     }
+  }
+
+  Future<void> _handleDynamicToolCall({
+    required CodexServerRequest request,
+    required PluginAgentToolHost host,
+  }) async {
+    final invocation = _parseDynamicToolInvocation(request.params);
+    if (invocation == null) {
+      _respondError(request.id, -32602, "Invalid params");
+      return;
+    }
+
+    var success = true;
+    var text = _dynamicToolFailureOutcome;
+    try {
+      final outcome = await host
+          .invoke(
+            backendSessionId: invocation.backendSessionId,
+            tool: invocation.tool,
+            arguments: invocation.arguments,
+          )
+          .timeout(_dynamicToolCallTimeout);
+      final encoded = jsonEncode(outcome);
+      if (encoded.length > _maxDynamicToolOutcomeCharacters) {
+        throw const FormatException("dynamic tool outcome exceeds protocol limit");
+      }
+      text = encoded;
+    } on Object {
+      success = false;
+      Log.w("[codex] dynamic tool call failed");
+    }
+    _respond(request.id, {
+      "success": success,
+      "contentItems": [
+        {"type": "inputText", "text": text},
+      ],
+    });
+  }
+
+  _DynamicToolInvocation? _parseDynamicToolInvocation(Map<String, dynamic> params) {
+    if (params.keys.any((key) => !_dynamicToolParamKeys.contains(key))) return null;
+    final backendSessionId = _boundedString(params["threadId"], maxLength: 2048);
+    final turnId = _boundedString(params["turnId"], maxLength: 2048);
+    final callId = _boundedString(params["callId"], maxLength: 2048);
+    final toolName = params["tool"];
+    final namespace = params["namespace"];
+    final rawArguments = params["arguments"];
+    if (backendSessionId == null ||
+        turnId == null ||
+        callId == null ||
+        toolName is! String ||
+        namespace != null ||
+        rawArguments is! Map) {
+      return null;
+    }
+    final tool = PluginAgentTool.fromWireName(toolName);
+    if (tool == null) return null;
+
+    final arguments = <String, dynamic>{};
+    for (final entry in rawArguments.entries) {
+      final key = entry.key;
+      if (key is! String) return null;
+      arguments[key] = entry.value;
+    }
+    final validArguments = switch (tool) {
+      PluginAgentTool.listSimulators => arguments.isEmpty,
+      PluginAgentTool.claimSimulator || PluginAgentTool.releaseSimulator =>
+        arguments.length == 1 && _boundedString(arguments["deviceKey"], maxLength: 512) != null,
+    };
+    if (!validArguments) return null;
+    return _DynamicToolInvocation(
+      backendSessionId: backendSessionId,
+      tool: tool,
+      arguments: arguments,
+    );
+  }
+
+  String? _boundedString(Object? value, {required int maxLength}) =>
+      value is String && value.isNotEmpty && value.length <= maxLength ? value : null;
+
+  @override
+  Future<void> dispose() async {
+    await super.dispose();
+    final calls = _dynamicCalls.toList(growable: false);
+    if (calls.isNotEmpty) await Future.wait(calls);
   }
 
   bool _allowsAlways(_PendingApproval entry) {
@@ -346,3 +466,9 @@ class ApprovalRegistry({
     return null;
   }
 }
+
+class const _DynamicToolInvocation({
+  required final String backendSessionId,
+  required final PluginAgentTool tool,
+  required final Map<String, dynamic> arguments,
+});

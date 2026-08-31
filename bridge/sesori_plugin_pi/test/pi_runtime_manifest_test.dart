@@ -12,7 +12,7 @@ void main() {
     expect(manifest.runtimeId, "pi");
     expect(manifest.pathExecutableName, "pi");
     expect(manifest.binaryFileName, Platform.isWindows ? "pi.exe" : "pi");
-    expect(manifest.minPathVersion.raw, "0.84.1");
+    expect(manifest.minPathVersion.raw, "0.84.2");
     expect(PiRuntimeManifest.targetVersion, "0.84.2");
     expect(manifest.bundledVersion.raw, PiRuntimeManifest.targetVersion);
     expect(manifest.parseVersion(value: "0.84.2")?.raw, "0.84.2");

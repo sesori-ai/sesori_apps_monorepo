@@ -117,6 +117,7 @@ void main() {
     });
 
     test("uses the stock ACP policies plus stop-and-send follow-ups", () {
+      expect(plugin.permitsDeviceCanvasHttpMcp, isFalse);
       expect(plugin.authMethodId, isNull, reason: "Hermes provider ids are dynamic");
       expect(plugin.initializeCapabilityMeta, isNull);
       expect(plugin.supportsFormElicitation, isFalse, reason: "no elicitation/create on Hermes");

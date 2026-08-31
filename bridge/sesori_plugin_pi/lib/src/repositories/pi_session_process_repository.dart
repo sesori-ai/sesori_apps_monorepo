@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../api/models/pi_rpc_frame.dart";
 import "../api/models/pi_session_history_dto.dart";
+import "../api/pi_agent_tool_extension.dart";
 import "../api/pi_launch_spec.dart";
 import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
@@ -72,7 +73,7 @@ final class const PiSessionAbortProcessExited({
 final class const PiPromptPayload({required final String message, required final List<Map<String, Object?>> images});
 
 enum _PiPromptStreamingBehavior(final String wireValue) {
-  steer("steer");
+  steer("steer"),
 }
 
 final class const PiAgentState({required final bool streaming, required final int pendingMessageCount});
@@ -112,6 +113,7 @@ final class PiSessionProcessRepository({
   required final Duration _historyRpcTimeout,
   required final Duration _abortRpcTimeout,
   required final Duration _promptRpcTimeout,
+  final PluginAgentToolServices? _agentToolServices,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentClient> _residents = {};
@@ -120,10 +122,16 @@ final class PiSessionProcessRepository({
   final Map<String, _ConnectingClient> _connectingClients = {};
   final Map<String, Future<void>> _sessionOperationTails = {};
   final Map<String, int> _generations = {};
+  final Set<Future<void>> _detachedCleanups = {};
+  final Set<_PiAgentToolAttachment> _agentToolAttachments = {};
   final StreamController<PiSessionProcessFrame> _frames = StreamController.broadcast();
   final StreamController<PiSessionProcessExit> _exits = StreamController.broadcast();
   var _nextConnectionGeneration = 0;
+  var _pendingAgentToolProvisions = 0;
+  Completer<void>? _agentToolProvisionsDrained;
   bool _disposed = false;
+  bool _disposeComplete = false;
+  Future<void>? _disposeFuture;
 
   Stream<PiSessionProcessFrame> get frames => _frames.stream;
   Stream<PiSessionProcessExit> get exits => _exits.stream;
@@ -270,18 +278,33 @@ final class PiSessionProcessRepository({
               : PiForkedSession(sessionId: sessionId, parentSessionPath: pending.parentSessionPath!)
         : PiResumedSession(sessionPath: resolved.path);
     final cwd = resolved?.metadata.cwd ?? pending!.cwd;
-    final client = PiRpcClient(
-      launchSpec: PiLaunchSpec(
-        binaryPath: _binaryPath,
-        workingDirectory: cwd,
-        launch: launch,
-        model: model,
-        thinkingLevel: variant?.id,
-        environment: _environment,
-      ),
-      processFactory: _processFactory,
-    );
-    final connecting = _ConnectingClient(client: client, generation: generation);
+    if (_disposed || _generations[sessionId] != generation) {
+      throw StateError("Pi session connection was invalidated before tool provisioning");
+    }
+    final agentTools = await _provisionAgentTools(sessionId: sessionId);
+    if (_disposed || _generations[sessionId] != generation) {
+      await agentTools?.dispose();
+      throw StateError("Pi session connection was invalidated before startup");
+    }
+    final PiRpcClient client;
+    try {
+      client = PiRpcClient(
+        launchSpec: PiLaunchSpec(
+          binaryPath: _binaryPath,
+          workingDirectory: cwd,
+          launch: launch,
+          model: model,
+          thinkingLevel: variant?.id,
+          environment: _environment,
+          extensionPath: agentTools?.path,
+        ),
+        processFactory: _processFactory,
+      );
+    } on Object {
+      await agentTools?.dispose();
+      rethrow;
+    }
+    final connecting = _ConnectingClient(client: client, generation: generation, agentTools: agentTools);
     _connectingClients[sessionId] = connecting;
     try {
       await client.start();
@@ -307,6 +330,7 @@ final class PiSessionProcessRepository({
         client: client,
         generation: generation,
         initialPendingPersistence: pending != null,
+        agentTools: agentTools,
       );
       _residents[sessionId] = resident;
       resident.frameSubscription = client.frames.listen((frame) {
@@ -318,7 +342,9 @@ final class PiSessionProcessRepository({
         client.processExit.then((exitCode) {
           if (!identical(_residents[sessionId], resident)) return;
           _residents.remove(sessionId);
-          unawaited(resident.cancelFrames());
+          _trackDetachedCleanup(
+            Future.wait([resident.cancelFrames(), ?resident.agentTools?.dispose()]),
+          );
           if (!_exits.isClosed) {
             _exits.add(
               PiSessionProcessExit(
@@ -334,7 +360,13 @@ final class PiSessionProcessRepository({
       return PiSessionConnection(sessionId: sessionId, generation: generation);
     } on Object catch (error, stack) {
       final authUnavailable = client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix);
-      if (!_residents.containsKey(sessionId)) await client.dispose();
+      if (!_residents.containsKey(sessionId)) {
+        try {
+          await client.dispose();
+        } finally {
+          await agentTools?.dispose();
+        }
+      }
       if (authUnavailable) {
         Error.throwWithStackTrace(PiSessionAuthenticationException(innerError: error), stack);
       }
@@ -344,6 +376,48 @@ final class PiSessionProcessRepository({
         _connectingClients.remove(sessionId);
       }
     }
+  }
+
+  Future<_PiAgentToolAttachment?> _provisionAgentTools({required String sessionId}) async {
+    final services = _agentToolServices;
+    if (services == null) return null;
+    if (_pendingAgentToolProvisions++ == 0) _agentToolProvisionsDrained = null;
+    try {
+      final name = "pi-device-canvas-${generateSessionId()}.ts";
+      final capability = await services.tools.provisionMcp(backendSessionId: sessionId);
+      late final _PiAgentToolAttachment attachment;
+      attachment = _PiAgentToolAttachment(
+        tools: services.tools,
+        privateFiles: services.privateFiles,
+        capability: capability,
+        name: name,
+        onDisposed: () => _agentToolAttachments.remove(attachment),
+      );
+      _agentToolAttachments.add(attachment);
+      try {
+        final contents = const PiAgentToolExtensionSource().build(capability: capability);
+        attachment.path = await services.privateFiles.write(name: name, contents: contents);
+        return attachment;
+      } on Object catch (error, stack) {
+        try {
+          await attachment.dispose();
+        } on Object catch (cleanupError, cleanupStack) {
+          Log.w("[pi] failed to roll back an unstarted Device Canvas attachment", cleanupError, cleanupStack);
+        }
+        Error.throwWithStackTrace(error, stack);
+      }
+    } finally {
+      _pendingAgentToolProvisions--;
+      if (_pendingAgentToolProvisions == 0) _agentToolProvisionsDrained?.complete();
+    }
+  }
+
+  void _trackDetachedCleanup(Future<void> cleanup) {
+    final guarded = cleanup.catchError((Object error, StackTrace stack) {
+      Log.w("[pi] Device Canvas attachment cleanup failed after process exit", error, stack);
+    });
+    _detachedCleanups.add(guarded);
+    unawaited(guarded.whenComplete(() => _detachedCleanups.remove(guarded)));
   }
 
   Future<PiSessionEntriesDto> _getEntries({required PiRpcClient client}) async {
@@ -632,13 +706,14 @@ final class PiSessionProcessRepository({
       final wasRunning = connecting.client.isRunning;
       final disposal = connecting.client.dispose(gracefulTimeout: gracefulTimeout);
       if (wasRunning) {
-        await disposal;
+        await Future.wait([disposal, ?connecting.agentTools?.dispose()]);
       } else {
         unawaited(
           disposal.catchError((Object error, StackTrace stack) {
             Log.w("[pi] connecting client teardown failed for session id=$sessionId", error, stack);
           }),
         );
+        await connecting.agentTools?.dispose();
       }
     }
     final resident = _residents.remove(sessionId);
@@ -652,6 +727,7 @@ final class PiSessionProcessRepository({
       await Future.wait([
         resident.cancelFrames(),
         resident.client.dispose(gracefulTimeout: gracefulTimeout),
+        ?resident.agentTools?.dispose(),
       ]);
       _tearingDown.remove(sessionId);
       completion.complete();
@@ -679,8 +755,12 @@ final class PiSessionProcessRepository({
 
   /// [shutdownBudget] `null` means no deadline: teardown waits as long as
   /// graceful disposal takes.
-  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) async {
-    if (_disposed) return;
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) {
+    if (_disposeComplete) return Future.value();
+    return _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget).whenComplete(() => _disposeFuture = null);
+  }
+
+  Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;
     final stopwatch = Stopwatch()..start();
     final gracefulTimeout = shutdownBudget == null
@@ -713,8 +793,29 @@ final class PiSessionProcessRepository({
       shutdownBudget: shutdownBudget,
       operation: "session operations",
     );
-    await _frames.close();
-    await _exits.close();
+    await _withinRemainingBudget(
+      Future.wait(_detachedCleanups.toList()),
+      stopwatch: stopwatch,
+      shutdownBudget: shutdownBudget,
+      operation: "Device Canvas attachments",
+    );
+    if (_pendingAgentToolProvisions > 0) {
+      await (_agentToolProvisionsDrained ??= Completer<void>()).future;
+    }
+    await _drainAgentToolAttachments();
+    if (!_frames.isClosed) await _frames.close();
+    if (!_exits.isClosed) await _exits.close();
+    _disposeComplete = true;
+  }
+
+  Future<void> _drainAgentToolAttachments() async {
+    try {
+      await Future.wait([for (final attachment in _agentToolAttachments.toList()) attachment.dispose()]);
+    } on Object {
+      // A teardown started under the general shutdown budget may have supplied
+      // this first failure. Retry only the still-tracked security attachments.
+      await Future.wait([for (final attachment in _agentToolAttachments.toList()) attachment.dispose()]);
+    }
   }
 
   Future<void> _withinRemainingBudget(
@@ -730,9 +831,12 @@ final class PiSessionProcessRepository({
     final remaining = shutdownBudget - stopwatch.elapsed;
     if (remaining <= Duration.zero) {
       unawaited(
-        operationFuture.catchError((Object error, StackTrace stackTrace) {
-          Log.w("[pi] $operation cleanup failed after the shutdown budget elapsed", error, stackTrace);
-        }),
+        operationFuture.then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            Log.w("[pi] $operation cleanup failed after the shutdown budget elapsed", error, stackTrace);
+          },
+        ),
       );
       if (shutdownBudget > Duration.zero) {
         Log.w("[pi] shutdown budget elapsed before waiting for $operation");
@@ -1049,12 +1153,17 @@ final class PiSessionProcessRepository({
   }
 }
 
-final class const _ConnectingClient({required final PiRpcClient client, required final int generation});
+final class const _ConnectingClient({
+  required final PiRpcClient client,
+  required final int generation,
+  required final _PiAgentToolAttachment? agentTools,
+});
 
 final class _ResidentClient({
   required final PiRpcClient client,
   required final int generation,
   required bool initialPendingPersistence,
+  required final _PiAgentToolAttachment? agentTools,
 }) {
   StreamSubscription<PiRpcFrame>? frameSubscription;
   ({String providerID, String modelID})? model;
@@ -1063,6 +1172,60 @@ final class _ResidentClient({
   Future<void> cancelFrames() async {
     await frameSubscription?.cancel();
     frameSubscription = null;
+  }
+}
+
+final class _PiAgentToolAttachment({
+  required final PluginAgentToolHost tools,
+  required final PluginPrivateFileService privateFiles,
+  required final PluginAgentToolMcpCapability capability,
+  required final String name,
+  required final void Function() onDisposed,
+}) {
+  String? path;
+  Future<void>? _disposeFuture;
+  bool _capabilityRevoked = false;
+  bool _fileDeleted = false;
+  bool _disposed = false;
+
+  Future<void> dispose() {
+    if (_disposed) return Future.value();
+    final active = _disposeFuture;
+    if (active != null) return active;
+    late final Future<void> disposal;
+    disposal = _dispose().whenComplete(() {
+      if (identical(_disposeFuture, disposal)) _disposeFuture = null;
+    });
+    _disposeFuture = disposal;
+    return disposal;
+  }
+
+  Future<void> _dispose() async {
+    Object? firstError;
+    StackTrace? firstStack;
+    if (!_capabilityRevoked) {
+      try {
+        await tools.revokeMcp(capability: capability);
+        _capabilityRevoked = true;
+      } on Object catch (error, stack) {
+        firstError = error;
+        firstStack = stack;
+      }
+    }
+    if (!_fileDeleted) {
+      try {
+        await privateFiles.delete(name: name);
+        _fileDeleted = true;
+      } on Object catch (error, stack) {
+        firstError ??= error;
+        firstStack ??= stack;
+      }
+    }
+    if (_capabilityRevoked && _fileDeleted) {
+      _disposed = true;
+      onDisposed();
+    }
+    if (firstError case final error?) Error.throwWithStackTrace(error, firstStack!);
   }
 }
 

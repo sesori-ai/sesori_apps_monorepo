@@ -24,7 +24,11 @@ final class const PiTurnCancelledException({required final String sessionId}) im
   String toString() => "Pi turn was cancelled";
 }
 
-enum _PiQueueState() { visible, released, cancelled }
+enum _PiQueueState() {
+  visible,
+  released,
+  cancelled,
+}
 
 final class _PiSessionTurnState({required final String initialDirectory}) {
   /// See [recentPromptIds]. 64 comfortably exceeds any realistic gap between
@@ -70,8 +74,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   bool isAdmitted({required String promptId}) =>
       turns.any(
         (turn) =>
-            turn.promptId == promptId &&
-            (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
+            turn.promptId == promptId && (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
       ) ||
       recentPromptIds.contains(promptId);
 
@@ -155,6 +158,7 @@ final class PiSessionService({
   late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
   late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
   Future<void>? _disposeFuture;
+  bool _disposeComplete = false;
   bool _disposed = false;
 
   Stream<BridgeSseEvent> get events => _events.stream;
@@ -193,10 +197,7 @@ final class PiSessionService({
       return true;
     }
     final index = state.queue.indexWhere(
-      (turn) =>
-          turn is _PiQueuedPromptTurn &&
-          turn.promptId == promptId &&
-          turn.queueState == _PiQueueState.visible,
+      (turn) => turn is _PiQueuedPromptTurn && turn.promptId == promptId && turn.queueState == _PiQueueState.visible,
     );
     if (index == -1) return false;
     final turn = state.queue.removeAt(index) as _PiQueuedPromptTurn;
@@ -1007,8 +1008,7 @@ final class PiSessionService({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds)
-          _abort(sessionId: sessionId, processExitIsExpected: true),
+        for (final sessionId in activeSessionIds) _abort(sessionId: sessionId, processExitIsExpected: true),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1074,10 +1074,7 @@ final class PiSessionService({
     if (idleTimeout == null) return;
     unawaited(() async {
       await _clock.delay(duration: idleTimeout);
-      if (_disposed ||
-          !identical(_sessions[sessionId], state) ||
-          state.hasWork ||
-          state.idleGeneration != generation) {
+      if (_disposed || !identical(_sessions[sessionId], state) || state.hasWork || state.idleGeneration != generation) {
         return;
       }
       _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
@@ -1154,8 +1151,17 @@ final class PiSessionService({
   }
 
   /// [shutdownBudget] `null` means no deadline.
-  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) =>
-      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) {
+    if (_disposeComplete) return Future.value();
+    final active = _disposeFuture;
+    if (active != null) return active;
+    late final Future<void> disposal;
+    disposal = _dispose(shutdownBudget: shutdownBudget).then<void>((_) => _disposeComplete = true).whenComplete(() {
+      if (identical(_disposeFuture, disposal)) _disposeFuture = null;
+    });
+    _disposeFuture = disposal;
+    return disposal;
+  }
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;

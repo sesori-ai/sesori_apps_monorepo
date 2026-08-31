@@ -61,6 +61,7 @@ final class _PendingTurn({
 final class _ResidentProcess({
   required final ClaudeStreamClient client,
   required final bool resumed,
+  required final _McpAttachment? mcpAttachment,
   required var String? appliedModel,
   required var ClaudeEffortLevel? appliedEffort,
   required var ClaudePermissionMode? appliedPermissionMode,
@@ -73,11 +74,22 @@ final class _ResidentProcess({
   Future<void> cancelMessages() => messages.cancel();
 }
 
+final class _McpAttachment({
+  required final PluginAgentToolMcpCapability capability,
+  required final String fileName,
+}) {
+  String? filePath;
+  Future<void>? disposal;
+  bool capabilityRevoked = false;
+  bool fileDeleted = false;
+}
+
 /// Owns resident Claude processes and all transport-facing session state.
 final class ClaudeSessionProcessRepository({
   required final ClaudeProcessFactory _processFactory,
   required final String _binaryPath,
   required Map<String, String> environment,
+  final PluginAgentToolServices? _agentToolServices,
 }) {
   final Map<String, String> _environment = Map.unmodifiable(environment);
   final Map<String, _ResidentProcess> _resident = {};
@@ -85,8 +97,12 @@ final class ClaudeSessionProcessRepository({
   final Map<String, ClaudeStreamClient> _connectingClients = {};
   final Map<String, int> _sessionGenerations = {};
   final Set<String> _startedSessions = {};
+  final Set<_McpAttachment> _mcpAttachments = {};
   final StreamController<ClaudeSessionProcessEvent> _events = StreamController.broadcast();
+  int _nextMcpFileId = 1;
   bool _disposed = false;
+  bool _disposeComplete = false;
+  Future<void>? _disposeFuture;
 
   Stream<ClaudeSessionProcessEvent> get events => _events.stream;
 
@@ -126,6 +142,7 @@ final class ClaudeSessionProcessRepository({
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
     required List<String> allowedTools,
+    bool provisionAgentTools = true,
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
     final resident = _resident[sessionId];
@@ -156,6 +173,7 @@ final class ClaudeSessionProcessRepository({
       effort: effort,
       permissionMode: permissionMode,
       allowedTools: allowedTools,
+      provisionAgentTools: provisionAgentTools,
       generation: generation,
     );
     _connecting[sessionId] = connection;
@@ -267,7 +285,11 @@ final class ClaudeSessionProcessRepository({
       } on Object catch (error, stack) {
         Log.w("[claude] failed to cancel process message subscription", error, stack);
       } finally {
-        await process.client.dispose();
+        try {
+          await process.client.dispose();
+        } finally {
+          await _disposeMcpAttachment(process.mcpAttachment);
+        }
       }
     }
     if (connectingClient != null) await connectingClient.dispose();
@@ -281,14 +303,22 @@ final class ClaudeSessionProcessRepository({
     }
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  Future<void> dispose() {
+    if (_disposeComplete) return Future.value();
+    return _disposeFuture ??= _dispose().whenComplete(() => _disposeFuture = null);
+  }
+
+  Future<void> _dispose() async {
     _disposed = true;
     final sessionIds = {..._resident.keys, ..._connecting.keys}.toList(growable: false);
     for (final sessionId in sessionIds) {
       await teardown(sessionId: sessionId);
     }
-    await _events.close();
+    await Future.wait([
+      for (final attachment in _mcpAttachments.toList(growable: false)) _disposeMcpAttachment(attachment),
+    ]);
+    if (!_events.isClosed) await _events.close();
+    _disposeComplete = true;
   }
 
   void forgetSession({required String sessionId}) {
@@ -303,63 +333,162 @@ final class ClaudeSessionProcessRepository({
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
     required List<String> allowedTools,
+    required bool provisionAgentTools,
     required int generation,
   }) async {
     final launch = createNew && !_startedSessions.contains(sessionId)
         ? ClaudeNewSession(sessionId: sessionId)
         : ClaudeResumedSession(sessionId: sessionId);
-    final client = ClaudeStreamClient(
-      launchSpec: ClaudeLaunchSpec(
-        binaryPath: _binaryPath,
-        workingDirectory: directory,
-        launch: launch,
-        model: model,
-        effort: effort,
-        permissionMode: permissionMode,
-        allowedTools: allowedTools,
-        environment: _environment,
-      ),
-      processFactory: _processFactory,
-    );
-    _connectingClients[sessionId] = client;
+    _McpAttachment? mcpAttachment;
+    ClaudeStreamClient? client;
+    var transferredToResident = false;
     try {
-      await client.connect();
-    } finally {
-      if (identical(_connectingClients[sessionId], client)) {
-        _connectingClients.remove(sessionId);
+      if (provisionAgentTools && _agentToolServices != null) {
+        mcpAttachment = await _createMcpAttachment(sessionId: sessionId);
+        if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
+          throw StateError("Claude session residency was cancelled");
+        }
       }
-    }
-    if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
-      await client.dispose();
-      throw StateError("Claude session residency was cancelled");
-    }
+      client = ClaudeStreamClient(
+        launchSpec: ClaudeLaunchSpec(
+          binaryPath: _binaryPath,
+          workingDirectory: directory,
+          launch: launch,
+          model: model,
+          effort: effort,
+          permissionMode: permissionMode,
+          allowedTools: allowedTools,
+          mcpConfigPath: mcpAttachment?.filePath,
+          environment: _environment,
+        ),
+        processFactory: _processFactory,
+      );
+      _connectingClients[sessionId] = client;
+      try {
+        await client.connect();
+      } finally {
+        if (identical(_connectingClients[sessionId], client)) {
+          _connectingClients.remove(sessionId);
+        }
+      }
+      if (_disposed || (_sessionGenerations[sessionId] ?? 0) != generation) {
+        throw StateError("Claude session residency was cancelled");
+      }
 
-    final process = _ResidentProcess(
-      client: client,
-      resumed: launch is ClaudeResumedSession,
-      appliedModel: model,
-      appliedEffort: effort,
-      appliedPermissionMode: permissionMode,
-    );
-    process.messages = client.messages.listen((message) {
-      final current = _resident[sessionId];
-      if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
-        current?.appliedModel = message.model;
+      final process = _ResidentProcess(
+        client: client,
+        resumed: launch is ClaudeResumedSession,
+        mcpAttachment: mcpAttachment,
+        appliedModel: model,
+        appliedEffort: effort,
+        appliedPermissionMode: permissionMode,
+      );
+      process.messages = client.messages.listen((message) {
+        final current = _resident[sessionId];
+        if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
+          current?.appliedModel = message.model;
+        }
+        final promptId = _trackTurnMessage(process: process, message: message);
+        if (!_events.isClosed) {
+          _events.add(
+            ClaudeSessionProcessMessage(
+              sessionId: sessionId,
+              message: message,
+              interrupted: process.interrupted,
+              promptId: promptId,
+            ),
+          );
+        }
+      });
+      _resident[sessionId] = process;
+      transferredToResident = true;
+      unawaited(client.processExit.then((_) => _handleExit(sessionId: sessionId, process: process)));
+    } finally {
+      if (!transferredToResident) {
+        if (client != null) {
+          try {
+            await client.dispose();
+          } on Object catch (error, stack) {
+            Log.w("[claude] failed to dispose connecting process", error, stack);
+          }
+        }
+        try {
+          await _disposeMcpAttachment(mcpAttachment);
+        } on Object catch (error, stack) {
+          Log.w("[claude] failed to clean up an unstarted Device Canvas MCP attachment", error, stack);
+        }
       }
-      final promptId = _trackTurnMessage(process: process, message: message);
-      if (!_events.isClosed) {
-        _events.add(
-          ClaudeSessionProcessMessage(
-            sessionId: sessionId,
-            message: message,
-            interrupted: process.interrupted,
-            promptId: promptId,
-          ),
-        );
+    }
+  }
+
+  Future<_McpAttachment> _createMcpAttachment({required String sessionId}) async {
+    final services = _agentToolServices!;
+    final capability = await services.tools.provisionMcp(backendSessionId: sessionId);
+    final fileName = "claude-device-canvas-${_nextMcpFileId++}.json";
+    final attachment = _McpAttachment(capability: capability, fileName: fileName);
+    _mcpAttachments.add(attachment);
+    try {
+      attachment.filePath = await services.privateFiles.write(
+        name: fileName,
+        contents: jsonEncode({
+          "mcpServers": {
+            "sesori-device-canvas": {
+              "type": "http",
+              "url": capability.url,
+              "headers": {"Authorization": "Bearer ${capability.bearerToken}"},
+            },
+          },
+        }),
+      );
+      return attachment;
+    } on Object catch (error, stackTrace) {
+      try {
+        await _disposeMcpAttachment(attachment);
+      } on Object catch (cleanupError, cleanupStack) {
+        Log.w("[claude] failed to roll back Device Canvas MCP attachment creation", cleanupError, cleanupStack);
       }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
+
+  Future<void> _disposeMcpAttachment(_McpAttachment? attachment) {
+    if (attachment == null) return Future.value();
+    final active = attachment.disposal;
+    if (active != null) return active;
+    late final Future<void> disposal;
+    disposal = _deleteAndRevokeMcpAttachment(attachment).whenComplete(() {
+      if (identical(attachment.disposal, disposal)) attachment.disposal = null;
     });
-    _resident[sessionId] = process;
-    unawaited(client.processExit.then((_) => _handleExit(sessionId: sessionId, process: process)));
+    attachment.disposal = disposal;
+    return disposal;
+  }
+
+  Future<void> _deleteAndRevokeMcpAttachment(_McpAttachment attachment) async {
+    final services = _agentToolServices!;
+    Object? firstError;
+    StackTrace? firstStack;
+    if (!attachment.capabilityRevoked) {
+      try {
+        await services.tools.revokeMcp(capability: attachment.capability);
+        attachment.capabilityRevoked = true;
+      } on Object catch (error, stack) {
+        firstError = error;
+        firstStack = stack;
+      }
+    }
+    if (!attachment.fileDeleted) {
+      try {
+        await services.privateFiles.delete(name: attachment.fileName);
+        attachment.fileDeleted = true;
+      } on Object catch (error, stack) {
+        firstError ??= error;
+        firstStack ??= stack;
+      }
+    }
+    if (attachment.capabilityRevoked && attachment.fileDeleted) {
+      _mcpAttachments.remove(attachment);
+    }
+    if (firstError case final error?) Error.throwWithStackTrace(error, firstStack!);
   }
 
   Future<void> _handleExit({required String sessionId, required _ResidentProcess process}) async {
@@ -377,7 +506,15 @@ final class ClaudeSessionProcessRepository({
     } on Object catch (error, stack) {
       Log.w("[claude] failed to cancel exited process subscription", error, stack);
     } finally {
-      await process.client.dispose();
+      try {
+        await process.client.dispose();
+      } finally {
+        try {
+          await _disposeMcpAttachment(process.mcpAttachment);
+        } on Object catch (error, stack) {
+          Log.w("[claude] failed to clean up Device Canvas MCP after process exit", error, stack);
+        }
+      }
     }
   }
 

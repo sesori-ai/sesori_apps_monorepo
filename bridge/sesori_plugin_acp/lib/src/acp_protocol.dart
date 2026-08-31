@@ -37,7 +37,7 @@ abstract final class AcpMethods() {
 /// An auth method advertised by the agent in the `initialize` result.
 enum AcpAuthMethodType() {
   terminal,
-  other;
+  other,
 }
 
 class const AcpAuthMethod({
@@ -51,6 +51,17 @@ class const AcpAuthMethod({
     type: json["type"] == "terminal" ? AcpAuthMethodType.terminal : AcpAuthMethodType.other,
     name: json["name"] as String?,
     description: json["description"] as String?,
+  );
+}
+
+/// MCP transports the agent reports at `initialize`.
+class const AcpMcpCapabilities({
+  required final bool http,
+  required final bool sse,
+}) {
+  factory fromJson(Map<String, dynamic> json) => AcpMcpCapabilities(
+    http: json["http"] == true,
+    sse: json["sse"] == true,
   );
 }
 
@@ -70,26 +81,56 @@ class const AcpAgentCapabilities({
   /// Whether `session/close` is supported.
   required final bool closeSession,
 
+  /// MCP transports accepted in per-session `mcpServers` values.
+  required final AcpMcpCapabilities mcpCapabilities,
+
   /// Full raw capabilities object for harness-specific probing.
   required final Map<String, dynamic> raw,
 }) {
   factory fromJson(Map<String, dynamic> json) {
     final rawSession = json["sessionCapabilities"];
     final session = rawSession is Map ? rawSession.cast<String, dynamic>() : null;
-    // ACP advertises an optional capability as either a bool or a nested
-    // object (Cursor sends `"list": {}` to mean "supported"); presence of a
-    // non-false value signals support.
+    // ACP v1 advertises each optional session capability as an object. Reject
+    // truthy lookalikes so security decisions never trust malformed metadata.
     final list = session?["list"];
     final resume = session?["resume"];
     final close = session?["close"];
+    final rawMcp = json["mcpCapabilities"];
+    final mcp = rawMcp is Map ? rawMcp.cast<String, dynamic>() : const <String, dynamic>{};
     return AcpAgentCapabilities(
       loadSession: json["loadSession"] == true,
-      listSessions: list != null && list != false,
-      resumeSession: resume != null && resume != false,
-      closeSession: close != null && close != false,
+      listSessions: list is Map,
+      resumeSession: resume is Map,
+      closeSession: close is Map,
+      mcpCapabilities: AcpMcpCapabilities.fromJson(mcp),
       raw: json,
     );
   }
+}
+
+/// One HTTP header in an ACP HTTP MCP server definition.
+class const AcpHttpHeader({required final String name, required final String value}) {
+  Map<String, dynamic> toJson() => {"name": name, "value": value};
+
+  @override
+  String toString() => "AcpHttpHeader(<redacted>)";
+}
+
+/// Typed wire value accepted in `mcpServers` by ACP session activation calls.
+class const AcpHttpMcpServer({
+  required final String name,
+  required final String url,
+  required final List<AcpHttpHeader> headers,
+}) {
+  Map<String, dynamic> toJson() => {
+    "type": "http",
+    "name": name,
+    "url": url,
+    "headers": headers.map((header) => header.toJson()).toList(growable: false),
+  };
+
+  @override
+  String toString() => "AcpHttpMcpServer(<redacted>)";
 }
 
 /// Parsed result of the `initialize` handshake.

@@ -392,10 +392,36 @@ void main() {
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
       expect(process.killed, isTrue);
     });
+
+    test("failed attachment cleanup remains retryable through plugin shutdown", () async {
+      final tools = _RetryingTools()..revokeFailures = 1;
+      final files = _PrivateFiles();
+      final retrying = _Harness(
+        agentToolServices: _AgentToolServices(tools: tools, privateFiles: files),
+      );
+      addTearDown(retrying.dispose);
+      await retrying.plugin.createSession(
+        directory: retrying.project.path,
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "retry cleanup")],
+        userVisibleText: "retry cleanup",
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await retrying.nextSessionProcess();
+
+      await expectLater(retrying.plugin.shutdown(shutdownBudget: null), throwsA(isA<StateError>()));
+      await retrying.plugin.shutdown(shutdownBudget: null);
+
+      expect(tools.revokeAttempts, 2);
+      expect(tools.revokedIds, ["capability-1"]);
+      expect(files.contents, isEmpty);
+    });
   });
 }
 
-final class _Harness({bool stdinCloseCompletes = true}) {
+final class _Harness({bool stdinCloseCompletes = true, PluginAgentToolServices? agentToolServices}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -420,6 +446,7 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       healthTimeout: const Duration(seconds: 1),
       resolveIdleTimeout: () => const Duration(minutes: 5),
       editorTimeout: const Duration(minutes: 1),
+      agentToolServices: agentToolServices,
     );
   }
 
@@ -460,6 +487,69 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       await entry.process.close();
     }
     if (root.existsSync()) root.deleteSync(recursive: true);
+  }
+}
+
+final class const _AgentToolServices({
+  @override required final _RetryingTools tools,
+  @override required final _PrivateFiles privateFiles,
+}) implements PluginAgentToolServices;
+
+final class _RetryingTools() implements PluginAgentToolHost {
+  final List<String> revokedIds = [];
+  int revokeFailures = 0;
+  int revokeAttempts = 0;
+  int _sequence = 0;
+
+  @override
+  Future<PluginAgentToolMcpCapability> provisionMcp({required String? backendSessionId}) async {
+    final sequence = ++_sequence;
+    return PluginAgentToolMcpCapability(
+      id: "capability-$sequence",
+      url: "http://127.0.0.1:4321/mcp",
+      bearerToken: "owner-token-$sequence",
+    );
+  }
+
+  @override
+  Future<void> revokeMcp({required PluginAgentToolMcpCapability capability}) async {
+    revokeAttempts++;
+    if (revokeFailures > 0) {
+      revokeFailures--;
+      throw StateError("revoke failed");
+    }
+    revokedIds.add(capability.id);
+  }
+
+  @override
+  Future<void> bindMcp({
+    required PluginAgentToolMcpCapability capability,
+    required String backendSessionId,
+  }) async => throw StateError("capabilities must be provisioned already bound");
+
+  @override
+  Future<Map<String, dynamic>> invoke({
+    required String backendSessionId,
+    required PluginAgentTool tool,
+    required Map<String, dynamic> arguments,
+  }) async => throw UnsupportedError("native invocation is not used by Pi");
+
+  @override
+  Future<void> dispose() async {}
+}
+
+final class _PrivateFiles() implements PluginPrivateFileService {
+  final Map<String, String> contents = {};
+
+  @override
+  Future<String> write({required String name, required String contents}) async {
+    this.contents[name] = contents;
+    return "/private/$name";
+  }
+
+  @override
+  Future<void> delete({required String name}) async {
+    contents.remove(name);
   }
 }
 
@@ -533,7 +623,7 @@ final class _CommandExecutor() implements CommandExecutor {
     Duration? timeout,
   }) async {
     calls.add((executable, arguments));
-    return const CommandResult(exitCode: 0, stdout: "pi 0.84.1", stderr: "");
+    return const CommandResult(exitCode: 0, stdout: "pi 0.84.2", stderr: "");
   }
 }
 

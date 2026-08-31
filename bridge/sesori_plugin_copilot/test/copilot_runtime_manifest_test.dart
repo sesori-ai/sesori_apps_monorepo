@@ -1,3 +1,6 @@
+import "dart:convert";
+import "dart:io" show File;
+
 import "package:copilot_plugin/copilot_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -12,6 +15,16 @@ void main() {
       expect(manifest.minPathVersion.raw, "1.0.78");
       expect(manifest.bundledVersion.raw, CopilotRuntimeManifest.targetVersion);
       expect(manifest.bundledVersion.raw, "1.0.80");
+    });
+
+    test("pinned initialize fixture advertises HTTP MCP", () {
+      final fixture = (jsonDecode(File("test/fixtures/protocol/v1/initialize.json").readAsStringSync()) as Map)
+          .cast<String, dynamic>();
+      final capabilities = (fixture["agentCapabilities"] as Map).cast<String, dynamic>();
+      final mcp = (capabilities["mcpCapabilities"] as Map).cast<String, dynamic>();
+
+      expect((fixture["agentInfo"] as Map)["version"], CopilotRuntimeManifest.targetVersion);
+      expect(mcp, {"http": true, "sse": true});
     });
 
     test("pins all six official single-binary release archives", () {

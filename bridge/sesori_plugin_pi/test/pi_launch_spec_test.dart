@@ -43,6 +43,41 @@ void main() {
       ]);
     });
 
+    test("adds one native extension without disabling discovered user extensions", () {
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/tmp/project",
+        launch: PiNewSession(sessionId: "session-1"),
+        model: null,
+        thinkingLevel: null,
+        environment: const {},
+        extensionPath: "/private/device-canvas.ts",
+      );
+
+      expect(spec.arguments, [
+        "--mode",
+        "rpc",
+        "--approve",
+        "--session-id",
+        "session-1",
+        "--extension",
+        "/private/device-canvas.ts",
+      ]);
+      expect(spec.arguments, isNot(contains("--no-extensions")));
+      expect(
+        () => PiLaunchSpec(
+          binaryPath: "pi",
+          workingDirectory: "/tmp/project",
+          launch: PiNewSession(sessionId: "session-1"),
+          model: null,
+          thinkingLevel: null,
+          environment: const {},
+          extensionPath: "relative.ts",
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test("builds the exact parent-fork RPC argument vector", () {
       final parentPath = Platform.isWindows ? r"C:\sessions\parent.jsonl" : "/sessions/parent.jsonl";
       final spec = PiLaunchSpec(

@@ -50,6 +50,7 @@ void main() {
       List<RuntimeProvisionProgress>? observedProgress,
       Map<String, Map<String, String>> environmentOverridesByPluginId = const <String, Map<String, String>>{},
       void Function(PluginGenerationFactory factory)? configureFactory,
+      PluginAgentToolHost? Function(String pluginId)? agentToolsForPlugin,
     }) async {
       final directory = stateDirectory ?? runtimeDirectory.path;
       final managedRuntimePaths = ManagedRuntimePaths(
@@ -69,6 +70,9 @@ void main() {
         environment: const <String, String>{"HOME": "/home/alex"},
         environmentOverridesByPluginId: environmentOverridesByPluginId,
         currentUser: ProcessUser.fromRawUser("alex"),
+        agentToolsForPlugin: agentToolsForPlugin == null
+            ? null
+            : ({required pluginId}) => agentToolsForPlugin(pluginId),
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
       );
       configureFactory?.call(factory);
@@ -346,6 +350,18 @@ void main() {
       await expectLater(startPlugin(), throwsA(isA<PluginStartAbortedException>()));
     });
 
+    test("a descriptor start failure disposes its generation-scoped agent tools", () async {
+      final agentTools = _RecordingAgentToolHost();
+      descriptor.startErrors.add(StateError("start failed"));
+
+      await expectLater(
+        startPlugin(agentToolsForPlugin: (_) => agentTools),
+        throwsA(isA<PluginGenerationStartFailedException>()),
+      );
+
+      expect(agentTools.disposeCalls, 1);
+    });
+
     group("runtime-resolution tee", () {
       test("emits each runtime-resolution event in order", () async {
         descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
@@ -505,6 +521,18 @@ class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingAgentToolHost() implements PluginAgentToolHost {
+  int disposeCalls = 0;
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("Unexpected call: ${invocation.memberName}");
 }
 
 /// Never invoked in these tests: the host's process service is constructed

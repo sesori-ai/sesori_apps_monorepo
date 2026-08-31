@@ -4,6 +4,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         HostJsonStore,
         HostPortService,
         HostProcessService,
+        PluginAgentToolServices,
+        PluginAgentToolServicesProvider,
         PluginConfig,
         PluginHost,
         ServerClock,
@@ -33,8 +35,9 @@ class BridgePluginHostImpl({
   @override required final HostProcessService processes,
   @override required final HostPortService ports,
   @override required final HostJsonStore store,
+  @override final PluginAgentToolServices? agentToolServices,
   required final Duration? Function() _resolveIdleTimeout,
-}) implements PluginHost {
+}) implements PluginHost, PluginAgentToolServicesProvider {
   Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
 
   @override

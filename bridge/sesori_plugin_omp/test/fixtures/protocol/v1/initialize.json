@@ -1,0 +1,32 @@
+{
+  "protocolVersion": 1,
+  "agentInfo": {
+    "name": "oh-my-pi",
+    "title": "Oh My Pi",
+    "version": "17.3.8"
+  },
+  "authMethods": [
+    {
+      "id": "agent",
+      "name": "Use existing local credentials",
+      "description": "Use credentials already configured for OMP"
+    }
+  ],
+  "agentCapabilities": {
+    "loadSession": true,
+    "mcpCapabilities": {
+      "http": true,
+      "sse": true
+    },
+    "promptCapabilities": {
+      "embeddedContext": true,
+      "image": true
+    },
+    "sessionCapabilities": {
+      "list": {},
+      "fork": {},
+      "resume": {},
+      "close": {}
+    }
+  }
+}

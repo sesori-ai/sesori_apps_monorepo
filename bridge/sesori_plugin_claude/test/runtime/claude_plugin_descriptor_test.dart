@@ -19,13 +19,13 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
-      expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.237");
+      expect(ClaudePluginDescriptor.minVersion, "2.1.251");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.251");
     });
 
     test("reports ready after ordered version and typed auth probes", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.251 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(
           stdoutText: jsonEncode({
             "loggedIn": true,
@@ -43,7 +43,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.237"));
+      expect(status, const PluginSetupReady.versioned(runtimeVersion: "2.1.251"));
       expect(processes.arguments, [
         const ["--version"],
         const ["auth", "status"],
@@ -69,7 +69,7 @@ void main() {
 
     test("reports unavailable and skips auth for an outdated runtime", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.250 (Claude Code)\n", exitCode: Future.value(0)),
       ]);
 
       final status = await const ClaudePluginDescriptor().inspectSetup(
@@ -87,7 +87,7 @@ void main() {
 
     test("reports authentication required from loggedIn false only", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.251 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(
           stdoutText: '{"loggedIn":false,"email":"private@example.com"}',
           exitCode: Future.value(1),
@@ -102,13 +102,13 @@ void main() {
       );
 
       _expectNonReady<PluginSetupAuthenticationRequired>(status);
-      expect(status.runtimeVersion, "2.1.237");
+      expect(status.runtimeVersion, "2.1.251");
       expect(status.actionHint, isNot(contains("private@example.com")));
     });
 
     test("reports unknown for malformed auth without exposing its payload", () async {
       final processes = _ProcessService([
-        _ProbeProcess(stdoutText: "2.1.237 (Claude Code)\n", exitCode: Future.value(0)),
+        _ProbeProcess(stdoutText: "2.1.251 (Claude Code)\n", exitCode: Future.value(0)),
         _ProbeProcess(stdoutText: "private-account-output", exitCode: Future.value(0)),
       ]);
 
@@ -120,7 +120,7 @@ void main() {
       );
 
       _expectNonReady<PluginSetupUnknown>(status);
-      expect(status.runtimeVersion, "2.1.237");
+      expect(status.runtimeVersion, "2.1.251");
       expect(status.actionHint, isNot(contains("private-account-output")));
     });
 
@@ -241,6 +241,8 @@ void main() {
       expect(processes.runInShellValues, [Platform.isWindows, Platform.isWindows]);
       expect(processes.workingDirectories, everyElement(Directory.systemTemp.path));
       expect(processes.environments, everyElement(containsPair("HOME", "/Users/test")));
+      expect(processes.arguments.expand((arguments) => arguments), isNot(contains("--mcp-config")));
+      expect(processes.arguments.expand((arguments) => arguments), isNot(contains("--strict-mcp-config")));
 
       liveProcess.completeExit(1);
       await _pump();

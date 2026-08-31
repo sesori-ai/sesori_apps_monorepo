@@ -9,9 +9,9 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// Two version constants drive provisioning:
 /// - [minPathVersion] gates a *pre-installed* (PATH) codex: at or above it the
 ///   bridge uses the user's own install; below it the bridge falls back to the
-///   managed runtime. `0.139.0` is the floor the bridge's `app-server` v2
-///   protocol assumes (see `codex_app_server_client.dart`, which opts into a
-///   capability codex added in 0.139.0).
+///   managed runtime. `0.148.0` is the first pinned runtime proven against the
+///   native `thread/start.dynamicTools` and `item/tool/call` protocol used by
+///   this plugin.
 /// - [targetVersion] is the latest stable release targeted by the plugin, and
 ///   [_bundledVersion] is the exact version the managed runtime downloads.
 ///
@@ -25,7 +25,7 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// published asset digests for codex `rust-v0.148.0`.
 class const CodexRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed codex version the bridge will use as-is.
-  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.139.0");
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.148.0");
 
   /// The latest stable codex release targeted by this plugin.
   static const String targetVersion = "0.148.0";

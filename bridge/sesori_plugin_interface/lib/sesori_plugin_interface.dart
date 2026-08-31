@@ -6,6 +6,7 @@ export "src/host/bridge_host_info.dart";
 export "src/host/host_json_store.dart";
 export "src/host/host_port_service.dart";
 export "src/host/host_process_service.dart";
+export "src/host/plugin_agent_tools.dart";
 export "src/host/plugin_host.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";

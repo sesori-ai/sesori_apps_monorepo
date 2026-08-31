@@ -1,6 +1,7 @@
 // ignore_for_file: cast_nullable_to_non_nullable
 
 import "dart:async";
+import "dart:convert";
 
 import "package:codex_plugin/codex_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -12,6 +13,7 @@ void main() {
     late List<BridgeSseEvent> emitted;
     late List<_RespondCall> respondCalls;
     late List<_RespondError> errorCalls;
+    late _FakeAgentToolHost agentToolHost;
     late ApprovalRegistry registry;
 
     setUp(() {
@@ -19,7 +21,9 @@ void main() {
       emitted = [];
       respondCalls = [];
       errorCalls = [];
+      agentToolHost = _FakeAgentToolHost();
       registry = ApprovalRegistry(
+        agentToolHost: agentToolHost,
         emit: emitted.add,
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
@@ -617,6 +621,128 @@ void main() {
       },
     );
 
+    test("dynamic tools trust app-server threadId and return typed JSON", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 400,
+          method: "item/tool/call",
+          params: {
+            "threadId": "trusted-thread",
+            "turnId": "turn-1",
+            "callId": "call-1",
+            "tool": "claim_simulator",
+            "namespace": null,
+            "arguments": {"deviceKey": "ios:sim-1"},
+          },
+        ),
+      );
+      await pump();
+      await pump();
+
+      expect(agentToolHost.invocations, hasLength(1));
+      expect(agentToolHost.invocations.single.backendSessionId, "trusted-thread");
+      expect(agentToolHost.invocations.single.tool, PluginAgentTool.claimSimulator);
+      expect(agentToolHost.invocations.single.arguments, {"deviceKey": "ios:sim-1"});
+      final result = respondCalls.single.result as Map<String, dynamic>;
+      expect(result["success"], isTrue);
+      expect(
+        jsonDecode(((result["contentItems"] as List).single as Map)["text"] as String),
+        agentToolHost.outcome,
+      );
+    });
+
+    test("dynamic tools reject model-controlled session identity", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 401,
+          method: "item/tool/call",
+          params: {
+            "threadId": "trusted-thread",
+            "turnId": "turn-1",
+            "callId": "call-1",
+            "tool": "claim_simulator",
+            "arguments": {
+              "deviceKey": "ios:sim-1",
+              "backendSessionId": "injected-thread",
+            },
+          },
+        ),
+      );
+      await pump();
+
+      expect(agentToolHost.invocations, isEmpty);
+      expect(respondCalls, isEmpty);
+      expect(errorCalls.single.id, 401);
+      expect(errorCalls.single.code, -32602);
+      expect(errorCalls.single.message, "Invalid params");
+    });
+
+    test("dynamic tool failures return a bounded non-leaking response", () async {
+      agentToolHost.error = StateError("private backend detail");
+      requests.add(
+        const CodexServerRequest(
+          id: 402,
+          method: "item/tool/call",
+          params: {
+            "threadId": "trusted-thread",
+            "turnId": "turn-1",
+            "callId": "call-1",
+            "tool": "list_simulators",
+            "arguments": <String, Object?>{},
+          },
+        ),
+      );
+      await pump();
+      await pump();
+
+      final result = respondCalls.single.result as Map<String, dynamic>;
+      expect(result["success"], isFalse);
+      expect(result, {
+        "success": false,
+        "contentItems": [
+          {"type": "inputText", "text": '{"outcome":"internalError"}'},
+        ],
+      });
+      expect(jsonEncode(result), isNot(contains("private backend detail")));
+    });
+
+    test("dynamic tools and approvals coexist on one request subscription", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 403,
+          method: "item/tool/call",
+          params: {
+            "threadId": "t-coexist",
+            "turnId": "turn-1",
+            "callId": "call-1",
+            "tool": "release_simulator",
+            "arguments": {"deviceKey": "ios:sim-1"},
+          },
+        ),
+      );
+      requests.add(
+        const CodexServerRequest(
+          id: 404,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            "threadId": "t-coexist",
+            "turnId": "turn-1",
+            "itemId": "item-1",
+            "command": "ls",
+          },
+        ),
+      );
+      await pump();
+      await pump();
+
+      final asked = emitted.single as BridgeSsePermissionAsked;
+      expect(agentToolHost.invocations.single.backendSessionId, "t-coexist");
+      expect(respondCalls.single.id, 403);
+      expect(registry.replyPermission(requestId: asked.requestID, reply: PluginPermissionReply.once), isTrue);
+      expect(respondCalls.map((call) => call.id), [403, 404]);
+      expect((respondCalls.last.result as Map)["decision"], "accept");
+    });
+
     test(
       "unhandled method gets a -32601 error so codex doesn't hang",
       () async {
@@ -666,3 +792,54 @@ void main() {
 class _RespondCall(final Object id, final Object? result);
 
 class _RespondError(final Object id, final int code, final String message);
+
+class _FakeAgentToolHost() implements PluginAgentToolHost {
+  final Map<String, dynamic> outcome = {
+    "outcome": "claimed",
+    "deviceKey": "ios:sim-1",
+  };
+  final List<_ToolInvocation> invocations = [];
+  Object? error;
+  bool disposed = false;
+
+  @override
+  Future<Map<String, dynamic>> invoke({
+    required String backendSessionId,
+    required PluginAgentTool tool,
+    required Map<String, dynamic> arguments,
+  }) async {
+    invocations.add(
+      _ToolInvocation(
+        backendSessionId: backendSessionId,
+        tool: tool,
+        arguments: arguments,
+      ),
+    );
+    final invocationError = error;
+    if (invocationError != null) throw invocationError;
+    return outcome;
+  }
+
+  @override
+  Future<PluginAgentToolMcpCapability> provisionMcp({required String? backendSessionId}) => throw UnimplementedError();
+
+  @override
+  Future<void> bindMcp({
+    required PluginAgentToolMcpCapability capability,
+    required String backendSessionId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> revokeMcp({required PluginAgentToolMcpCapability capability}) => throw UnimplementedError();
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
+  }
+}
+
+class _ToolInvocation({
+  required final String backendSessionId,
+  required final PluginAgentTool tool,
+  required final Map<String, dynamic> arguments,
+});

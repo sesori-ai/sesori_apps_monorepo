@@ -5,10 +5,11 @@
 - **Plan slug:** `device-canvas-integration`
 - **Implementation base:** `upstream/main` at `5c50f38a`
 - **Current branch:** `device-canvas-integration-step-1`
-- **Series state:** Steps 1-9 implemented; explicitly approved, default-off direct
-  LAN and development local-coturn video seams are implemented and physically
-  validated from Android and iOS clients; an isolated external-coturn test seam
-  is implemented and its disposable public UDP/TCP/TLS host has passed bounded
+- **Series state:** Steps 1-9 and the verified multi-backend Phase 1 agent-tool
+  follow-up are implemented; explicitly approved, default-off direct LAN and
+  development local-coturn video seams are implemented and physically validated
+  from Android and iOS clients; an isolated external-coturn test seam is
+  implemented and its disposable public UDP/TCP/TLS host has passed bounded
   transport smoke; the Phase 2 product entry gate remains NO-GO
 - **Current step:** collect Device Canvas client/carrier evidence and finish the
   production operations gate; the default-off authenticated issuer and Bridge
@@ -39,6 +40,11 @@
   resolver, and replace themselves with the canonical session-detail stack only
   after exact identity verification.
 - [x] OpenCode is the first autonomous agent adapter.
+- [x] Later autonomous adapters ship only through a verified trusted-session
+  seam. Codex, Claude, Pi, Cursor, OMP, and Copilot are enabled; Hermes,
+  DeepSeek, and Grok remain disabled.
+- [x] ACP Device Canvas MCP is default-deny and requires both concrete-adapter
+  approval and live HTTP MCP capability negotiation.
 - [x] Relay requests carry Phase 2 signaling only, never continuous media/input.
 - [x] WebRTC SRTP/DataChannel is the preferred media/input plane, subject to the
   recorded spike and dependency review.
@@ -73,8 +79,10 @@
 - [x] One current Device Canvas inventory projection in Bridge memory.
 - [x] One authenticated local Device Canvas peer.
 - [x] Full snapshots on reconnect; no unbounded local replay log.
-- [x] No generic plugin-extension framework for this feature.
-- [x] No fake cross-backend autonomous-tool abstraction.
+- [x] No generic plugin-protocol framework for this feature; shared contracts are
+  limited to optional generation-scoped authority and owner-only private files.
+- [x] No fake cross-backend registration abstraction; each plugin retains its
+  verified native, MCP, ACP, or extension seam.
 - [x] Additive client/bridge contracts with unsupported degradation.
 - [x] One transient projectless resolver route, with no duplicate session-detail
   surface or pre-verification content load.
@@ -342,6 +350,45 @@
   disconnect/reconnect recovery. Temporary processes, state, and the simulator
   were cleaned up.
 
+### Step 6 follow-up: verified cross-harness simulator tools
+
+- Added one optional generation-scoped `PluginAgentToolHost` authority with the
+  same three bounded tool definitions, native trusted-backend invocation, opaque
+  per-session HTTP MCP capabilities, and owner-only generated private files. The
+  bridge still resolves every `(pluginId, backendSessionId)` through the durable
+  `SessionRepository`; a first-turn race returns `sessionUnavailable` rather than
+  deriving authority from process-local state.
+- Capability revocation removes admission before awaiting already-authorized
+  work, then drains that bounded in-flight operation. Failed plugin-generation
+  startup disposes its host. Adapter provisioning failures, replacement,
+  archive, connection reset, child exit, and disposal revoke capabilities and
+  remove generated files.
+- Codex registers `thread/start.dynamicTools` and accepts callbacks only with the
+  app-server's `item/tool/call.params.threadId`. PATH and managed versions are
+  `0.148.0`. The pinned schema, binary probe, and upstream `rust-v0.148.0`
+  migration prove start-time tools persist across cold resume; because
+  `thread/resume` has no `dynamicTools`, older threads cannot be retrofitted.
+- Claude creates one owner-only `--mcp-config` per resident child; its minimum
+  and target version are `2.1.251`. Pi creates one owner-only `--extension`
+  TypeScript adapter per resident child; its PATH floor and target are `0.84.2`.
+  Both paths revoke and delete attachments on failed startup, exit, replacement,
+  and disposal.
+- ACP Device Canvas MCP is default-deny. Cursor, OMP, and Copilot opt in through
+  concrete plugin classes and must also negotiate `mcpCapabilities.http`.
+  New-session capabilities are provisional until the returned backend ID is
+  bound; load/resume capabilities are pre-bound. Failure, replacement, archive,
+  reset, and disposal revoke them. Hermes, DeepSeek, and Grok explicitly retain
+  the deny default.
+- Isolated ACP v1 initialize probes recorded redacted fixtures for Cursor
+  `2026.08.11-e8db854` (`46044d6d7bcbd7b49a0cf1cd01aa4ca79aaa2ea5f2c7a32965fc0ebe29841790`),
+  OMP `17.3.8` (`84705a1ca833f59afccca2db7aff559e09cb74902e7a5aaf87077a88f3c84b84`),
+  and Copilot `1.0.80` (`2346bb691981c2997d65c1c5bc3cef1aeddc9edd37dcb2f970b911aa597e59f6`).
+  Each advertised HTTP and SSE MCP. Hermes and Grok advertised none; DeepSeek
+  `0.1.2` returned `MCP servers are not supported`.
+- On 2026-08-31, workspace `make analyze` passed all 15 Bridge packages and
+  workspace `make test` passed every package, ending at 2,964 bridge-app tests
+  with the two expected host-platform skips. `git diff --check` was clean.
+
 ### Step 7 Phase 1 ownership verification
 
 - `make codegen` completed in the bridge and client workspaces with no tracked
@@ -578,7 +625,8 @@
 These defaults are locked for planning but may be changed explicitly before their
 own implementation step:
 
-- OpenCode ships before other backend adapters.
+- OpenCode shipped first; Codex, Claude, Pi, Cursor, OMP, and Copilot now retain
+  separate verified adapters while unverified harnesses remain disabled.
 - Device Canvas, not Apple Device Hub, owns the local badge/action.
 - Claims survive temporary device and Device Canvas outages.
 - A conflict never silently steals ownership.

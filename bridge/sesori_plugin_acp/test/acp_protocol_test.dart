@@ -23,6 +23,8 @@ void main() {
       expect(init.agentCapabilities.loadSession, isTrue);
       expect(init.agentCapabilities.listSessions, isTrue);
       expect(init.agentCapabilities.closeSession, isTrue);
+      expect(init.agentCapabilities.mcpCapabilities.http, isFalse);
+      expect(init.agentCapabilities.mcpCapabilities.sse, isFalse);
       expect(init.requiresAuth, isTrue);
       expect(init.authMethods.single.id, "cursor_login");
     });
@@ -32,7 +34,39 @@ void main() {
       expect(init.agentCapabilities.loadSession, isFalse);
       expect(init.agentCapabilities.listSessions, isFalse);
       expect(init.agentCapabilities.closeSession, isFalse);
+      expect(init.agentCapabilities.mcpCapabilities.http, isFalse);
+      expect(init.agentCapabilities.mcpCapabilities.sse, isFalse);
       expect(init.requiresAuth, isFalse);
+    });
+
+    test("parses only typed MCP transport booleans", () {
+      final init = AcpInitializeResult.fromJson(const {
+        "agentCapabilities": {
+          "mcpCapabilities": {"http": true, "sse": false},
+        },
+      });
+      expect(init.agentCapabilities.mcpCapabilities.http, isTrue);
+      expect(init.agentCapabilities.mcpCapabilities.sse, isFalse);
+
+      final malformed = AcpInitializeResult.fromJson(const {
+        "agentCapabilities": {
+          "mcpCapabilities": {"http": "true", "sse": 1},
+        },
+      });
+      expect(malformed.agentCapabilities.mcpCapabilities.http, isFalse);
+      expect(malformed.agentCapabilities.mcpCapabilities.sse, isFalse);
+    });
+
+    test("rejects malformed session capability lookalikes", () {
+      final init = AcpInitializeResult.fromJson(const {
+        "agentCapabilities": {
+          "sessionCapabilities": {"list": true, "resume": "true", "close": 1},
+        },
+      });
+
+      expect(init.agentCapabilities.listSessions, isFalse);
+      expect(init.agentCapabilities.resumeSession, isFalse);
+      expect(init.agentCapabilities.closeSession, isFalse);
     });
   });
 

@@ -28,7 +28,7 @@ void main() {
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.1\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.84.2\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
       expect((events.last as ProvisionReady).binaryPath, "pi");
@@ -38,7 +38,7 @@ void main() {
     test("ensureRuntime falls back to the exact managed binary", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "0.84.0\n", exitCode: 0),
+          _Output(stdout: "0.84.1\n", exitCode: 0),
           _Output(stdout: "0.84.2\n", exitCode: 0),
         ],
       );
@@ -123,6 +123,7 @@ void main() {
       Map<String, String>? capturedStorageEnvironment;
       Map<String, String>? capturedProcessEnvironment;
       Duration? Function()? capturedIdleTimeoutResolver;
+      PluginAgentToolServices? capturedAgentToolServices;
       final descriptor = _descriptor(
         buildPlugin:
             ({
@@ -139,11 +140,13 @@ void main() {
               required healthTimeout,
               required resolveIdleTimeout,
               required editorTimeout,
+              required agentToolServices,
             }) {
               capturedBinaryPath = binaryPath;
               capturedStorageEnvironment = storageEnvironment;
               capturedProcessEnvironment = processEnvironment;
               capturedIdleTimeoutResolver = resolveIdleTimeout;
+              capturedAgentToolServices = agentToolServices;
               return _plugin(
                 binaryPath: binaryPath,
                 storageEnvironment: storageEnvironment,
@@ -158,13 +161,16 @@ void main() {
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
                 editorTimeout: editorTimeout,
+                agentToolServices: agentToolServices,
               );
             },
       );
+      final agentToolServices = _AgentToolServices();
       final host = _Host(
         processes: _Processes(),
         provisionedRuntimePath: "/managed/pi",
         pluginIdleTimeout: const Duration(minutes: 17),
+        agentToolServices: agentToolServices,
       );
       final plugin = await descriptor.start(host);
 
@@ -172,6 +178,7 @@ void main() {
       expect(capturedStorageEnvironment, containsPair("HOME", "/home/test"));
       expect(capturedProcessEnvironment, isEmpty);
       expect(capturedIdleTimeoutResolver?.call(), const Duration(minutes: 17));
+      expect(capturedAgentToolServices, same(agentToolServices));
       expect(plugin.currentStatus, const PluginReady());
       expect(plugin.currentWorkState, PluginWorkState.idle);
 
@@ -199,6 +206,7 @@ void main() {
               required healthTimeout,
               required resolveIdleTimeout,
               required editorTimeout,
+              required agentToolServices,
             }) {
               built = _plugin(
                 binaryPath: binaryPath,
@@ -214,6 +222,7 @@ void main() {
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
                 editorTimeout: editorTimeout,
+                agentToolServices: agentToolServices,
               );
               abort.abort();
               return built!;
@@ -274,6 +283,7 @@ PiPlugin _plugin({
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
   required Duration editorTimeout,
+  PluginAgentToolServices? agentToolServices,
 }) => PiPlugin(
   binaryPath: binaryPath,
   storageEnvironment: storageEnvironment,
@@ -288,6 +298,7 @@ PiPlugin _plugin({
   healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
   editorTimeout: editorTimeout,
+  agentToolServices: agentToolServices,
 );
 
 class _Host({
@@ -296,7 +307,8 @@ class _Host({
   @override final String? provisionedRuntimePath,
   @override final Duration? pluginIdleTimeout = const Duration(minutes: 10),
   StartAbortSignal? startAborted,
-}) implements PluginHost {
+  @override final PluginAgentToolServices? agentToolServices,
+}) implements PluginHost, PluginAgentToolServicesProvider {
   @override
   final StartAbortSignal startAborted = startAborted ?? StartAbortSignal.never;
 
@@ -309,6 +321,24 @@ class _Host({
   @override
   String get stateDirectory => "/state";
 
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _AgentToolServices() implements PluginAgentToolServices {
+  @override
+  final PluginPrivateFileService privateFiles = _UnusedPrivateFiles();
+
+  @override
+  final PluginAgentToolHost tools = _UnusedAgentTools();
+}
+
+final class _UnusedPrivateFiles() implements PluginPrivateFileService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _UnusedAgentTools() implements PluginAgentToolHost {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

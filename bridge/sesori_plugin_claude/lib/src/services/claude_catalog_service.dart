@@ -61,6 +61,7 @@ final class ClaudeCatalogService({
         effort: null,
         permissionMode: null,
         allowedTools: const [],
+        provisionAgentTools: false,
       );
       final catalog = await _readCatalog(sessionId: _probeSessionId, refresh: refresh);
       _catalog = catalog;

@@ -1,4 +1,5 @@
-import "dart:io" show Platform;
+import "dart:convert";
+import "dart:io" show File, Platform;
 
 import "package:omp_plugin/omp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -18,6 +19,24 @@ void main() {
     expect(manifest.parseVersion(value: "omp/17.3.8")?.raw, "17.3.8");
     expect(manifest.parseVersion(value: "17.3.8"), isNull);
     expect(manifest.parseVersion(value: "omp/not-a-version"), isNull);
+  });
+
+  test("pinned initialize fixture advertises HTTP MCP", () {
+    final fixture = (jsonDecode(File("test/fixtures/protocol/v1/initialize.json").readAsStringSync()) as Map)
+        .cast<String, dynamic>();
+    final capabilities = (fixture["agentCapabilities"] as Map).cast<String, dynamic>();
+    final mcp = (capabilities["mcpCapabilities"] as Map).cast<String, dynamic>();
+
+    expect((fixture["agentInfo"] as Map)["version"], OmpRuntimeManifest.targetVersion);
+    expect(mcp, {"http": true, "sse": true});
+    expect(
+      manifest
+          .assetFor(
+            target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+          )
+          ?.sha256,
+      "84705a1ca833f59afccca2db7aff559e09cb74902e7a5aaf87077a88f3c84b84",
+    );
   });
 
   test("maps all seven official direct binary assets", () {

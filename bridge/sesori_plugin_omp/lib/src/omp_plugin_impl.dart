@@ -31,6 +31,9 @@ class OmpPlugin._({
   required final OmpSessionCleanupService _cleanupService,
   required super.processFactory,
 }) extends AcpPlugin implements PersistedSessionCleanupApi {
+  @override
+  bool get permitsDeviceCanvasHttpMcp => true;
+
   factory({
     String binaryPath = OmpBinary.defaultBinary,
     String? launchDirectory,

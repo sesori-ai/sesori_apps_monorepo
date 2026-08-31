@@ -3,9 +3,10 @@
 ## Status
 
 - **Plan slug:** `device-canvas-integration`
-- **Status:** Active - Steps 1-9 implemented; an approved default-off pre-Step-12
-  LAN video validation viewport is implemented; the Phase 2 entry gate remains
-  NO-GO pending the remaining release evidence
+- **Status:** Active - Steps 1-9 and the verified multi-backend Phase 1 agent-tool
+  follow-up are implemented; an approved default-off pre-Step-12 LAN video
+  validation viewport is implemented; the Phase 2 entry gate remains NO-GO
+  pending the remaining release evidence
 - **Plan date:** 2026-08-18
 - **Primary repository:** `sesori-ai/sesori_apps_monorepo`
 - **Companion repository:** `daniil-shumko/device-canvas`
@@ -68,9 +69,11 @@ Phase 2 delivers remote interaction:
 - No modification of Apple's Device Hub or private Device Hub binaries.
 - No second authoritative claim store in Device Canvas or a Sesori client.
 - No silent claim stealing by another session or surface.
-- No universal backend-tool framework invented solely for this integration.
-- No requirement that every backend expose agent-initiated claiming in the first
-  release. OpenCode is the first supported adapter.
+- No protocol-unifying backend-tool framework invented solely for this
+  integration. A narrow optional bridge authority may be shared while each
+  runtime keeps its verified native, MCP, ACP, or extension adapter.
+- No requirement that every backend expose agent-initiated claiming. A backend
+  without a verified trusted-session registration seam remains disabled.
 - No physical iOS or Android device support.
 - No remote screen frames or high-rate input over `RelayMessage`, SSE, ordinary
   relay HTTP requests, or transcript attachments.
@@ -123,9 +126,10 @@ Only the translation that makes a claim operation visible to a particular AI
 runtime belongs in that runtime's plugin package.
 
 The shared `PluginCommand` model exposes user-dispatched commands, but there is
-no shared mechanism for registering an autonomous model tool across OpenCode,
-Codex, Cursor/ACP, Claude, and Hermes. Each backend has a different native tool,
-MCP, skill, command, or extension seam.
+no universal runtime protocol for registering an autonomous model tool. The
+implementation therefore shares only optional generation-scoped authority and
+private-file contracts; OpenCode, Codex, ACP, Claude, and Pi retain separate
+native, MCP, or extension adapters.
 
 ### Sesori routing
 
@@ -371,23 +375,42 @@ Tool results contain bounded metadata and typed outcomes. The adapter resolves
 the invoking backend session through `SessionRepository` before reaching the
 claim service. It never accepts `sessionId`, `bridgeId`, or force from model input.
 
-The first adapter is OpenCode through its native tool support. The adapter:
+OpenCode was the first adapter through its native tool support. Every adapter:
 
-1. registers exactly three tools only in bridge-managed OpenCode;
-2. binds each call to the backend session that invoked it;
+1. registers exactly the three tools only through a verified runtime seam;
+2. binds each call to trusted backend-session identity or an opaque capability;
 3. translates the binding to canonical `Session.id`;
 4. reports conflicts without exposing prompt or transcript content;
 5. hard-disables every operation when the integration becomes unavailable.
+
+The implemented support matrix is:
+
+| Backend | Registration and trusted binding | Runtime evidence |
+|---|---|---|
+| OpenCode | Native tools use invocation `context.sessionID`. | PATH floor `1.14.49`, managed target `1.18.19`, live `1.18.20` model/device evidence. |
+| Codex | `thread/start.dynamicTools`; callbacks use `item/tool/call.params.threadId`. | PATH floor and managed target `0.148.0`. Tools persist only for threads created with them; `thread/resume` has no override. |
+| Claude | One owner-only `--mcp-config` and bound HTTP MCP capability per child process. | Minimum and target `2.1.251`. |
+| Pi | One owner-only `--extension` TypeScript adapter and bound HTTP MCP capability per child process. | PATH floor and managed target `0.84.2`. |
+| Cursor, OMP, Copilot | ACP `session/new`, `session/load`, and `session/resume` receive HTTP MCP only after concrete-adapter opt-in and live capability negotiation. | Verified managed targets Cursor `2026.08.11-e8db854`, OMP `17.3.8`, and Copilot `1.0.80`; existing PATH floors remain `2026.07.16`, `17.2.13`, and `1.0.78`, with HTTP MCP still required at initialize. |
+| Hermes, DeepSeek, Grok | Disabled; no trusted Device Canvas tool registration is supplied. | Hermes and Grok advertised no MCP; DeepSeek `0.1.2` returned `MCP servers are not supported`. |
+
+Every call re-resolves stored `(pluginId, backendSessionId)` through
+`SessionRepository`. A first-turn call that arrives before the durable session
+row commits returns `sessionUnavailable`; the adapter does not substitute
+process-local identity. MCP capabilities are opaque and scoped to one plugin
+generation and session. Revocation removes authority before waiting for an
+already-authorized invocation to drain. Failed session activation, replacement,
+archive, connection reset, plugin startup failure, and disposal revoke or dispose
+their authority and owner-only files.
 
 OpenCode's current native registry is fixed for the process lifetime, so tool
 definitions may remain visible after Device Canvas disconnects. The bridge must
 return the typed unavailable outcome and perform no claim operation; it must not
 pretend that dynamic unregistration succeeded.
 
-Codex, Cursor/ACP, Claude, and Hermes adapters are separate follow-ups. A backend
-with no verified native registration seam does not advertise a pretend command
-as autonomous agent support. User-dispatched `PluginCommand` may be added as a
-separate convenience, but it does not satisfy agent-initiated claiming.
+A backend with no verified native registration seam does not advertise a pretend
+command as autonomous agent support. User-dispatched `PluginCommand` may be added
+as a separate convenience, but it does not satisfy agent-initiated claiming.
 
 ### 7. Device Canvas claim presentation
 
@@ -446,6 +469,12 @@ local Device Canvas launch.
 - **IPC authentication/version failure:** fail closed, log locally with protocol
   context, and expose no session metadata.
 - **Claim conflict:** preserve the old owner and return a typed conflict.
+- **Session row not yet durable:** return `sessionUnavailable`; never infer
+  canonical authority from a provisional process-local session.
+- **MCP capability revocation:** reject new calls immediately, allow an already
+  authorized bounded call to settle, then complete revocation.
+- **Adapter activation/startup failure:** revoke provisional session capability,
+  delete generated owner-only files, and dispose generation authority.
 - **Session archive/delete race:** the session-family operation wins; no claim is
   committed for a non-ownable binding.
 - **Device disappears after claim validation:** commit may succeed, but presence
@@ -484,8 +513,19 @@ local Device Canvas launch.
 - Deep-link tests prove percent-encoded route construction, bridge scope,
   disconnected recovery, missing session, wrong account, and unchanged OAuth
   handling.
-- OpenCode adapter tests prove backend-to-canonical session binding and reject an
-  arbitrary session identity.
+- Agent-tool server tests prove native and MCP backend-to-canonical binding,
+  exact schemas, argument bounds, provisional binding, generation isolation,
+  first-turn fail-closed behavior, and in-flight revocation draining.
+- OpenCode tests retain trusted native-context and injection coverage. Codex
+  tests cover `dynamicTools`, trusted callback routing, bounded failures, and the
+  pre-integration-thread limitation. Claude and Pi tests cover per-child
+  owner-only adapters and cleanup. ACP tests cover default deny, negotiated HTTP
+  admission, new/load/resume, replacement, archive, reset, failed activation,
+  and disposal.
+- Redacted pinned initialize fixtures and isolated real-runtime probes prove ACP
+  v1 HTTP/SSE MCP capability for Cursor `2026.08.11-e8db854`, OMP `17.3.8`, and
+  Copilot `1.0.80`. Pinned Codex `0.148.0` schema/binary evidence proves
+  `thread/start.dynamicTools` and persisted resume behavior.
 - Device Canvas seams receive focused protocol/model tests once a test target is
   introduced; private DeviceKit rendering remains manual integration coverage.
 
@@ -1118,8 +1158,9 @@ media plan, separate WebRTC media plane, and iOS gate.
 - Device Canvas depends on unsupported private DeviceKit and may require changes
   for every Xcode build. Phase 1 claims remain useful even if iOS rendering
   temporarily degrades.
-- No universal autonomous-tool seam exists across Sesori plugins. The first
-  release supports OpenCode and makes no broader claim.
+- No universal autonomous-tool seam exists across Sesori plugins. The bridge
+  supports only the matrix recorded above and default-denies every unverified
+  harness; future adapters require their own trusted-session and lifecycle proof.
 - A durable claim can outlive temporary device presence by design. The UI must
   distinguish offline ownership clearly.
 - Session archive releases ownership. If product later wants archived sessions to
@@ -1138,11 +1179,13 @@ media plan, separate WebRTC media plane, and iOS gate.
 
 ## Expected Result
 
-After Phase 1, an OpenCode-backed Sesori session can discover and exclusively
-claim a local simulator or emulator. The Bridge persists that ownership, Device
-Canvas visibly identifies the owning session, and the user can open the exact
-bridge-scoped Sesori session from the device pane. Claims survive ordinary
-process/device outages and release predictably with session lifecycle.
+After Phase 1, a Sesori session using a supported adapter can discover and
+exclusively claim a local simulator or emulator. The Bridge persists that
+ownership, Device Canvas visibly identifies the owning session, and the user can
+open the exact bridge-scoped Sesori session from the device pane. Claims survive
+ordinary process/device outages and release predictably with session lifecycle.
+OpenCode retains the recorded live model/device end-to-end evidence; newer
+adapters currently add pinned-runtime protocol and automated lifecycle evidence.
 
 After Phase 2, the owner can explicitly open an Android emulator viewport from
 the Sesori session and control it over an authorized, encrypted,

@@ -659,6 +659,7 @@ class const BridgeRuntimeRunner._() {
         isWindows: io.Platform.isWindows,
       );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
+      DeviceCanvasAgentToolServer? agentToolServer;
 
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
@@ -680,6 +681,7 @@ class const BridgeRuntimeRunner._() {
         environment: pluginEnvironment,
         environmentOverridesByPluginId: const <String, Map<String, String>>{},
         currentUser: currentUser,
+        agentToolsForPlugin: ({required pluginId}) => agentToolServer?.pluginHost(pluginId: pluginId),
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
       );
@@ -925,7 +927,7 @@ class const BridgeRuntimeRunner._() {
       }
       await activeRuntime.cleanupDeviceCanvasClaimsOnStartup(bridgeId: currentBridgeId);
       try {
-        final agentToolServer = DeviceCanvasAgentToolServer(
+        final server = DeviceCanvasAgentToolServer(
           service: composition.deviceCanvasAgentToolService,
           rendezvousRepository: DeviceCanvasAgentToolRendezvousRepository(
             filePath: deviceCanvasAgentToolRendezvous,
@@ -933,7 +935,8 @@ class const BridgeRuntimeRunner._() {
           pluginId: openCodePluginId,
           bootstrapSecret: deviceCanvasAgentToolBootstrapSecret,
         );
-        await agentToolServer.start();
+        await server.start();
+        agentToolServer = server;
         generationFactory.setEnvironmentOverrides(
           pluginId: openCodePluginId,
           overrides: <String, String>{
@@ -944,11 +947,11 @@ class const BridgeRuntimeRunner._() {
         shutdownCoordinator
           ..addPhase(
             phase: BridgeShutdownPhase.signal,
-            action: agentToolServer.beginShutdown,
+            action: server.beginShutdown,
           )
           ..addPhase(
             phase: BridgeShutdownPhase.drain,
-            action: agentToolServer.drain,
+            action: server.drain,
           );
       } on Object catch (error, stackTrace) {
         Log.w("failed to start Device Canvas agent-tool server", error, stackTrace);
