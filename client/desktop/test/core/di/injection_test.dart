@@ -65,6 +65,7 @@ void main() {
     final ConnectionService connectionService = getIt<ConnectionService>();
     expect(connectionService.currentStatus, isA<ConnectionDisconnected>());
     expect(getIt<RegisteredBridgesService>(), isA<RegisteredBridgesService>());
+    expect(getIt<DesktopRelayConnectionService>(), isA<DesktopRelayConnectionService>());
     expect(getIt.isRegistered<DesktopInstanceService>(), isTrue);
     expect(getIt.isRegistered<BridgeControlCubit>(), isFalse);
     expect(getIt<BridgeProcessService>().state, isA<BridgeProcessStopped>());
