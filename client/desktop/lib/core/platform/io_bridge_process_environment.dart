@@ -116,7 +116,7 @@ class IoBridgeProcessEnvironment.forTesting({
     return shellPath;
   }
 
-  static String _stderrDetails({required Object stderr}) {
+  static String _stderrDetails({required String stderr}) {
     final String value = stderr.toString().trim();
     if (value.isEmpty) return "";
     final String bounded = value.length <= _maxLoggedShellStderrCharacters
