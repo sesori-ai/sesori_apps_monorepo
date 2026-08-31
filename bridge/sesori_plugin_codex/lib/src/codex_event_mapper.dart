@@ -585,6 +585,7 @@ class CodexEventMapper({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: tool == "shell" ? title : null,
             output: output,
             error: error ?? (status == PluginToolStatus.error ? output : null),
             attachments: attachments,

@@ -496,6 +496,7 @@ class CodexMessageRepository({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: tool == "shell" ? title : null,
             output: output,
             error: status == PluginToolStatus.error ? output : null,
             attachments: attachments,

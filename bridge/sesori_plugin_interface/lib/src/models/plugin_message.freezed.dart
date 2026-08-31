@@ -1560,7 +1560,7 @@ as String?,
 /// @nodoc
 mixin _$PluginToolState {
 
- PluginToolStatus get status; String? get title; String? get output; String? get error; List<PluginMessageAttachment> get attachments;
+ PluginToolStatus get status; String? get title; String? get shellCommand; String? get output; String? get error; List<PluginMessageAttachment> get attachments;
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1573,16 +1573,16 @@ $PluginToolStateCopyWith<PluginToolState> get copyWith => _$PluginToolStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(attachments));
+int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+  return 'PluginToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1593,7 +1593,7 @@ abstract mixin class $PluginToolStateCopyWith<$Res>  {
   factory $PluginToolStateCopyWith(PluginToolState value, $Res Function(PluginToolState) _then) = _$PluginToolStateCopyWithImpl;
 @useResult
 $Res call({
- PluginToolStatus status, String? title, String? output, String? error, List<PluginMessageAttachment> attachments
+ PluginToolStatus status, String? title, String? shellCommand, String? output, String? error, List<PluginMessageAttachment> attachments
 });
 
 
@@ -1610,10 +1610,11 @@ class _$PluginToolStateCopyWithImpl<$Res>
 
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(PluginToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
@@ -1629,11 +1630,12 @@ as List<PluginMessageAttachment>,
 @JsonSerializable(createFactory: false)
 
 class _PluginToolState implements PluginToolState {
-  const _PluginToolState({required this.status, required this.title, required this.output, required this.error, required  List<PluginMessageAttachment> attachments}): _attachments = attachments;
+  const _PluginToolState({required this.status, required this.title, required this.shellCommand, required this.output, required this.error, required  List<PluginMessageAttachment> attachments}): _attachments = attachments;
   
 
 @override final  PluginToolStatus status;
 @override final  String? title;
+@override final  String? shellCommand;
 @override final  String? output;
 @override final  String? error;
  final  List<PluginMessageAttachment> _attachments;
@@ -1657,16 +1659,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(_attachments));
+int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+  return 'PluginToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1677,7 +1679,7 @@ abstract mixin class _$PluginToolStateCopyWith<$Res> implements $PluginToolState
   factory _$PluginToolStateCopyWith(_PluginToolState value, $Res Function(_PluginToolState) _then) = __$PluginToolStateCopyWithImpl;
 @override @useResult
 $Res call({
- PluginToolStatus status, String? title, String? output, String? error, List<PluginMessageAttachment> attachments
+ PluginToolStatus status, String? title, String? shellCommand, String? output, String? error, List<PluginMessageAttachment> attachments
 });
 
 
@@ -1694,10 +1696,11 @@ class __$PluginToolStateCopyWithImpl<$Res>
 
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_PluginToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable

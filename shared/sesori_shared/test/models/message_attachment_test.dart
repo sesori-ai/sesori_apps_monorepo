@@ -17,6 +17,7 @@ void main() {
         part,
         equals(const MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: "hello")),
       );
+      expect(state.shellCommand, isNull);
       expect(state.attachments, isEmpty);
     });
 

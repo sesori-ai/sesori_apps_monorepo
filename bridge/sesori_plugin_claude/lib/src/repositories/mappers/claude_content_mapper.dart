@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
+import "claude_shell_command_mapper.dart";
 
 sealed class const ClaudeMappedContentBlock();
 
@@ -276,17 +277,18 @@ final class const ClaudeContentMapper() {
         messageID: messageId,
         text: thinking,
       ),
-      ClaudeMappedToolUseContentBlock(:final id, :final name) => PluginMessagePart.tool(
+      ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => PluginMessagePart.tool(
         id: id,
         sessionID: sessionId,
         messageID: messageId,
         tool: name,
-        state: const PluginToolState(
+        state: PluginToolState(
           status: PluginToolStatus.pending,
           title: null,
+          shellCommand: ClaudeShellCommandMapper.map(name: name, input: input),
           output: null,
           error: null,
-          attachments: [],
+          attachments: const [],
         ),
       ),
       ClaudeMappedToolResultContentBlock(:final toolUseId, :final output, :final isError, :final attachments) =>
@@ -298,6 +300,7 @@ final class const ClaudeContentMapper() {
           state: PluginToolState(
             status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
             title: null,
+            shellCommand: null,
             output: isError ? null : output,
             error: isError ? output : null,
             attachments: attachments,

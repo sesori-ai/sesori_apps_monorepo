@@ -573,6 +573,7 @@ void main() {
       final part = messages.single.parts.single;
       expect(part.tool, "bash");
       expect(part.state.output?.runes.length, maxToolOutputLength);
+      expect(part.state.shellCommand?.runes.length, maxToolOutputLength);
       expect(part.state.title?.runes.length, maxToolOutputLength);
       expect(messages.toString(), isNot(contains(privatePath)));
     });

@@ -272,6 +272,7 @@ final class PiEventDispatcher({
               state: const PluginToolState(
                 status: PluginToolStatus.error,
                 title: null,
+                shellCommand: null,
                 output: null,
                 error: "Pi tool call did not complete.",
                 attachments: [],

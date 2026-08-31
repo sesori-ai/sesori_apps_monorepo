@@ -1383,7 +1383,7 @@ void main() {
       tool: "browser",
       state: ToolState(
         status: ToolStatus.completed,
-        title: "Screenshot",
+        shellCommand: null,
         output: null,
         error: null,
         attachments: [

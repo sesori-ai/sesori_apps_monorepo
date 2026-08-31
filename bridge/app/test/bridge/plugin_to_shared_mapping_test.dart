@@ -138,10 +138,11 @@ void main() {
   });
 
   group("PluginToolStateMapping.toShared()", () {
-    test("carries status as a typed ToolStatus enum, not a wire string", () {
+    test("strips non-shell title and output while preserving status and attachments", () {
       const state = PluginToolState(
         status: PluginToolStatus.completed,
         title: "Read file",
+        shellCommand: null,
         output: "contents",
         error: null,
         attachments: [
@@ -152,8 +153,8 @@ void main() {
       final shared = state.toShared();
 
       expect(shared.status, equals(ToolStatus.completed));
-      expect(shared.title, equals("Read file"));
-      expect(shared.output, equals("contents"));
+      expect(shared.shellCommand, isNull);
+      expect(shared.output, isNull);
       expect(shared.error, isNull);
       expect(
         shared.attachments,
@@ -161,10 +162,28 @@ void main() {
       );
     });
 
+    test("preserves shell command results", () {
+      const state = PluginToolState(
+        status: PluginToolStatus.completed,
+        title: "Shell",
+        shellCommand: "git status --short",
+        output: " M file.dart",
+        error: null,
+        attachments: [],
+      );
+
+      final shared = state.toShared();
+
+      expect(shared.shellCommand, equals("git status --short"));
+      expect(shared.output, equals(" M file.dart"));
+      expect(shared.error, isNull);
+    });
+
     test("round-trips status through JSON using the unchanged wire value", () {
       const state = PluginToolState(
         status: PluginToolStatus.running,
         title: null,
+        shellCommand: null,
         output: null,
         error: null,
         attachments: [],
@@ -179,7 +198,6 @@ void main() {
     test("decodes an unrecognized wire status to ToolStatus.unknown", () {
       final decoded = ToolState.fromJson(const {
         "status": "some-future-status",
-        "title": null,
         "output": null,
         "error": null,
       });

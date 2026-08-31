@@ -281,8 +281,7 @@ class AcpEventMapper({
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
-  String _fallbackTurnMessageId(String sessionId) =>
-      _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
+  String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
@@ -610,9 +609,7 @@ class AcpEventMapper({
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
-      update: messageId == null
-          ? const <String, dynamic>{}
-          : <String, dynamic>{"messageId": messageId},
+      update: messageId == null ? const <String, dynamic>{} : <String, dynamic>{"messageId": messageId},
       role: _ChunkRole.assistant,
     );
     final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
@@ -1054,6 +1051,7 @@ class AcpEventMapper({
         state: PluginToolState(
           status: state.status,
           title: state.title,
+          shellCommand: null,
           output: content.output,
           error: state.status == PluginToolStatus.error ? content.output : null,
           attachments: content.attachments,
@@ -1226,7 +1224,10 @@ class AcpEventMapper({
   }
 }
 
-enum _ChunkRole() { user, assistant }
+enum _ChunkRole() {
+  user,
+  assistant,
+}
 
 /// Last-known metadata for one session, merged into the `session.updated`
 /// payload a `session_info_update` emits.
@@ -1237,10 +1238,10 @@ class _SessionSnapshot() {
 }
 
 class _TextPartAccumulator({
-    required final String partId,
-    required final String messageId,
-    required final PluginMessagePartType type,
-  }) {
+  required final String partId,
+  required final String messageId,
+  required final PluginMessagePartType type,
+}) {
   final StringBuffer text = StringBuffer();
   bool isStreaming = false;
 }
@@ -1248,13 +1249,13 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
-    required final String tool,
-    required final String? title,
-    required final PluginToolStatus status,
-    required final AcpToolContentTracker contentTracker,
-    required final bool isFileMutation,
-    required var bool diffEmitted,
-    required final bool hasExplicitKind,
-    required final bool hasExplicitStatus,
-    required final PluginMessageTime? time,
-  });
+  required final String tool,
+  required final String? title,
+  required final PluginToolStatus status,
+  required final AcpToolContentTracker contentTracker,
+  required final bool isFileMutation,
+  required var bool diffEmitted,
+  required final bool hasExplicitKind,
+  required final bool hasExplicitStatus,
+  required final PluginMessageTime? time,
+});

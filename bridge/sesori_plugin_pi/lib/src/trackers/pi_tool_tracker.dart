@@ -70,6 +70,7 @@ final class _TrackedTool({
   PluginToolState state = const PluginToolState(
     status: PluginToolStatus.pending,
     title: null,
+    shellCommand: null,
     output: null,
     error: null,
     attachments: [],

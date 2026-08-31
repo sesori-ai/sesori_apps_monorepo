@@ -172,6 +172,7 @@ final class PiHistoryMapper({
               state: const PluginToolState(
                 status: PluginToolStatus.pending,
                 title: null,
+                shellCommand: null,
                 output: null,
                 error: null,
                 attachments: [],
@@ -208,6 +209,7 @@ final class PiHistoryMapper({
     return PluginToolState(
       status: status,
       title: title,
+      shellCommand: null,
       output: message.isError ? null : mapped.output,
       error: message.isError ? mapped.output : null,
       attachments: mapped.attachments,
@@ -264,6 +266,7 @@ final class PiHistoryMapper({
       timestamp: null,
       tool: "compact",
       title: title,
+      shellCommand: null,
       output: null,
       error: null,
       status: status,
@@ -285,6 +288,7 @@ final class PiHistoryMapper({
       timestamp: message.timestamp,
       tool: "bash",
       title: _clip(message.command),
+      shellCommand: _clip(message.command),
       output: failed ? null : visibleOutput,
       error: failed ? visibleOutput : null,
       status: failed ? PluginToolStatus.error : PluginToolStatus.completed,
@@ -393,6 +397,7 @@ final class PiHistoryMapper({
                 state: PluginToolState(
                   status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
                   title: oldPart.state.title,
+                  shellCommand: oldPart.state.shellCommand,
                   output: isError ? null : mapped.output,
                   error: isError ? mapped.output : null,
                   attachments: mapped.attachments,
@@ -457,6 +462,7 @@ final class PiHistoryMapper({
           state: PluginToolState(
             status: PluginToolStatus.error,
             title: part.state.title,
+            shellCommand: part.state.shellCommand,
             output: null,
             error: _unfinishedToolError,
             attachments: const [],
@@ -710,6 +716,7 @@ final class PiHistoryMapper({
     required int? timestamp,
     required String tool,
     required String? title,
+    required String? shellCommand,
     required String? output,
     required String? error,
     required PluginToolStatus status,
@@ -734,6 +741,7 @@ final class PiHistoryMapper({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: shellCommand,
             output: output,
             error: error,
             attachments: const [],
@@ -782,5 +790,5 @@ enum _PiHistoryWarning(final String message) {
   unsupportedUserContent("[pi] history contains unsupported user content blocks; omitting them"),
   unsupportedToolContent("[pi] history contains unsupported tool-result blocks; omitting them"),
   imageCount("[pi] history image collection exceeds count limit; omitting excess images"),
-  invalidBranch("[pi] history active branch is incomplete; mapping reachable entries only");
+  invalidBranch("[pi] history active branch is incomplete; mapping reachable entries only"),
 }

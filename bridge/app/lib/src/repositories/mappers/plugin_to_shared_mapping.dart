@@ -50,13 +50,16 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared() => ToolState(
-    status: status.toShared(),
-    title: title,
-    output: output,
-    error: error,
-    attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
-  );
+  ToolState toShared() {
+    final isShellCommand = shellCommand != null;
+    return ToolState(
+      status: status.toShared(),
+      shellCommand: shellCommand,
+      output: isShellCommand ? output : null,
+      error: isShellCommand ? error : null,
+      attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
+    );
+  }
 }
 
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]

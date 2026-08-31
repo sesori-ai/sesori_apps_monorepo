@@ -171,6 +171,7 @@ Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
     <String, dynamic>{
       'status': _$PluginToolStatusEnumMap[instance.status]!,
       'title': ?instance.title,
+      'shellCommand': ?instance.shellCommand,
       'output': ?instance.output,
       'error': ?instance.error,
       'attachments': instance.attachments.map((e) => e.toJson()).toList(),

@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../mappers/claude_shell_command_mapper.dart";
+
 /// An immutable presentation snapshot of one Claude tool call.
 final class const ClaudeTrackedTool({
   required final String id,
@@ -204,6 +206,7 @@ final class _TrackedTool({
         state: PluginToolState(
           status: status,
           title: null,
+          shellCommand: ClaudeShellCommandMapper.map(name: name, input: input),
           output: output,
           error: error,
           attachments: attachments,

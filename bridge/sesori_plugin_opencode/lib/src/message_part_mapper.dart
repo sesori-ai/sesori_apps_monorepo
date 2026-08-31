@@ -72,7 +72,7 @@ class const MessagePartMapper() {
       sessionID: raw.sessionID,
       messageID: raw.messageID,
       tool: raw.tool,
-      state: _mapToolState(raw.state),
+      state: _mapToolState(tool: raw.tool, state: raw.state),
     ),
     SubtaskPart() => PluginMessagePart.subtask(
       id: raw.id,
@@ -258,7 +258,7 @@ class const MessagePartMapper() {
     );
   }
 
-  PluginToolState _mapToolState(ToolState state) {
+  PluginToolState _mapToolState({required String tool, required ToolState state}) {
     final status = switch (state) {
       ToolStatePending() => PluginToolStatus.pending,
       ToolStateRunning() => PluginToolStatus.running,
@@ -291,12 +291,26 @@ class const MessagePartMapper() {
     return PluginToolState(
       status: status,
       title: title,
+      shellCommand: _shellCommand(tool: tool, state: state),
       output: output != null && output.length > maxToolOutputLength
           ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
           : output,
       error: error,
       attachments: attachments,
     );
+  }
+
+  String? _shellCommand({required String tool, required ToolState state}) {
+    if (tool.toLowerCase() != "bash") return null;
+    final input = switch (state) {
+      ToolStatePending(:final input) ||
+      ToolStateRunning(:final input) ||
+      ToolStateCompleted(:final input) ||
+      ToolStateError(:final input) => input,
+      _ => null,
+    };
+    final command = input?["command"];
+    return command is String && command.isNotEmpty ? command : null;
   }
 
   List<PluginMessageAttachment> _mapToolAttachments({
