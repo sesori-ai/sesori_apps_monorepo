@@ -45,7 +45,12 @@ class FlutterWindowHost.forTesting({required final WindowManager _manager}) with
       await _manager.setPreventClose(true);
       await _manager.waitUntilReadyToShow(_options);
       await _manager.setSkipTaskbar(hidden);
-      if (!hidden) {
+      if (hidden) {
+        // Native runners hide the window before the first frame where
+        // possible; keep the state explicit here as a cross-platform
+        // fallback for hosts that initially order the window.
+        await _manager.hide();
+      } else {
         await _manager.show();
         await _manager.focus();
       }

@@ -21,7 +21,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 11 | 🚧 Logout coordination + offline unregister fallback | done |
 | 12 | 🚧 Supervised E2E suite + dev-harness retirement | done |
 | — | MT gate B: daily driver (user-run) | pending |
-| 13 | ⚙️ Desktop relay-client enablement | in-progress |
+| 13 | ⚙️ Desktop relay-client enablement | done |
 | 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | pending |
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | pending |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | pending |
@@ -48,4 +48,7 @@ Step 10 merged in PR #1212 on 2026-08-30. Step 11 merged in PR #1213 on
 2026-08-30. Step 12 merged in PR #1215 on 2026-08-30 with 19/19 CI checks
 passing, including the native supervised E2E on macOS, Windows, and Linux.
 The Step 12 PR also included the post-merge Step 11 stop-mode and token-only
-deletion hardening. Step 13 is now the active successor.
+deletion hardening. Step 13 merged in PR #1216 on 2026-08-31 with 13/13 CI
+checks passing. The desktop relay client and token-only startup handoff are
+complete. MT gate B remains pending; do not begin Step 14 until the user-run
+daily-driver checkpoint is recorded.

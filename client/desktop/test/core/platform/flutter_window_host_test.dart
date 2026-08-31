@@ -54,7 +54,10 @@ void main() {
 
     await host.initialize(hidden: true);
 
-    verify(() => manager.setSkipTaskbar(true)).called(1);
+    verifyInOrder(<void Function()>[
+      () => manager.setSkipTaskbar(true),
+      () => manager.hide(),
+    ]);
     verifyNever(manager.show);
     verifyNever(manager.focus);
   });

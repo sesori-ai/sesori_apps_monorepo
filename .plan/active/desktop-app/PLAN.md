@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 13/22 in progress (desktop relay-client enablement)
+- **Status:** Active — awaiting MT gate B before step 14 (desktop relay client merged)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -434,7 +434,12 @@ root wiring: `ConnectionOverlayCubit` (+ `ConnectionBanner` host) and
 not be silently consumed). **Standing rule for every cockpit slice
 (15–19):** the slice that first renders a screen also wires, at the desktop
 root, every root-level provider/listener that screen watches — a moved
-screen may never land ahead of its root wiring.
+screen may never land ahead of its root wiring. Token-only local restores hand
+connection startup to a desktop auth/connection coordinator rather than the
+projection cubit.
+
+Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete; the
+next implementation step waits for the user-run MT gate B above.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
