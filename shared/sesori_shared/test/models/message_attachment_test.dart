@@ -11,12 +11,13 @@ void main() {
         "type": "text",
         "text": "hello",
       });
-      final state = ToolState.fromJson(const {"status": "completed"});
+      final state = ToolState.fromJson(const {"status": "completed", "title": "git status"});
 
       expect(
         part,
         equals(const MessagePart.text(id: "part-1", sessionID: "session-1", messageID: "message-1", text: "hello")),
       );
+      expect(state.title, "git status");
       expect(state.shellCommand, isNull);
       expect(state.attachments, isEmpty);
     });

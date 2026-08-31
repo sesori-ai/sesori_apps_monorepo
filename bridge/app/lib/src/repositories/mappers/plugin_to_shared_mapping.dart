@@ -54,6 +54,7 @@ extension PluginToolStateMapping on PluginToolState {
     final isShellCommand = shellCommand != null;
     return ToolState(
       status: status.toShared(),
+      title: isShellCommand ? shellCommand : null,
       shellCommand: shellCommand,
       output: isShellCommand ? output : null,
       error: isShellCommand ? error : null,

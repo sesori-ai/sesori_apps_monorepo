@@ -131,6 +131,7 @@ sealed class const MessagePart._() with _$MessagePart {
     @Default(
       ToolState(
         status: ToolStatus.pending,
+        title: null,
         shellCommand: null,
         output: null,
         error: null,
@@ -295,12 +296,10 @@ enum ToolStatus() {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class ToolState with _$ToolState {
-  // ignore: no_slop_linter/prefer_required_named_parameters
   const factory({
     @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
-    // COMPATIBILITY 2026-08-31 (v1.8.3): Older bridges omit the shell command.
-    // Remove @Default and require shellCommand when the minimum supported bridge sends it.
-    @Default(null) String? shellCommand,
+    required String? title,
+    required String? shellCommand,
     required String? output,
     required String? error,
     // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments,

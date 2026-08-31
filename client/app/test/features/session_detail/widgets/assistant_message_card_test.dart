@@ -110,6 +110,7 @@ MessagePartTool _runningCompactionPart() {
     tool: "compact",
     state: ToolState(
       status: ToolStatus.running,
+      title: null,
       shellCommand: null,
       output: null,
       error: null,

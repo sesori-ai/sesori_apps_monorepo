@@ -153,6 +153,7 @@ void main() {
       final shared = state.toShared();
 
       expect(shared.status, equals(ToolStatus.completed));
+      expect(shared.title, isNull);
       expect(shared.shellCommand, isNull);
       expect(shared.output, isNull);
       expect(shared.error, isNull);
@@ -174,6 +175,7 @@ void main() {
 
       final shared = state.toShared();
 
+      expect(shared.title, equals("git status --short"));
       expect(shared.shellCommand, equals("git status --short"));
       expect(shared.output, equals(" M file.dart"));
       expect(shared.error, isNull);

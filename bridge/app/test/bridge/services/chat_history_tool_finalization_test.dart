@@ -260,7 +260,7 @@ MessagePart _toolPart({
   sessionID: "ses_a",
   messageID: messageId,
   tool: "Edit",
-  state: ToolState(status: status, shellCommand: shellCommand, output: output, error: null),
+  state: ToolState(status: status, title: shellCommand, shellCommand: shellCommand, output: output, error: null),
 );
 
 MessagePart _textPart({required String id, required String messageId, required String text}) => MessagePart.text(
