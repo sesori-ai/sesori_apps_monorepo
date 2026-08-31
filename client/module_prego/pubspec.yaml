@@ -23,9 +23,6 @@ dependencies:
 flutter:
   plugin:
     platforms:
-      android:
-        package: com.sesori.theme_prego
-        pluginClass: ThemePregoPlugin
       ios:
         pluginClass: ThemePregoPlugin
         sharedDarwinSource: true

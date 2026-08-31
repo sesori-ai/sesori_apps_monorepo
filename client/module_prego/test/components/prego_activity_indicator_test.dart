@@ -1,6 +1,5 @@
 import "package:flutter/foundation.dart";
 import "package:flutter/rendering.dart";
-import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -23,7 +22,10 @@ void main() {
     debugDefaultTargetPlatformOverride = platform;
   }
 
-  testWidgets("uses the native Android spinner without scheduling Flutter animation", (tester) async {
+  testWidgets("Android keeps the animated Flutter arc, deliberately", (tester) async {
+    // A hybrid-composition platform view idles Flutter on a static screen but
+    // wrecks scroll performance (measured on-device), so Android never gets a
+    // native spinner branch.
     usePlatform(TargetPlatform.android);
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(
@@ -37,9 +39,13 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byType(PlatformViewLink), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(tester.hasRunningAnimations, isFalse);
+    expect(find.byType(PlatformViewLink), findsNothing);
+    expect(find.byType(AndroidView), findsNothing);
+    expect(
+      tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator)).value,
+      isNull,
+    );
+    expect(tester.hasRunningAnimations, isTrue);
 
     final data = tester.getSemantics(find.byType(PregoActivityIndicator)).getSemanticsData();
     expect(data.role, SemanticsRole.loadingSpinner);
@@ -76,57 +82,6 @@ void main() {
     expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(tester.hasRunningAnimations, isFalse);
-
-    debugDefaultTargetPlatformOverride = null;
-  });
-
-  testWidgets("creates the Android platform view with the requested colour", (tester) async {
-    usePlatform(TargetPlatform.android);
-    final creates = <MethodCall>[];
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform_views,
-      (call) async {
-        if (call.method == "create") creates.add(call);
-        return null;
-      },
-    );
-    await tester.pumpWidget(
-      wrap(const PregoActivityIndicator(color: color)),
-    );
-    await tester.pump();
-
-    expect(creates, hasLength(1));
-    final arguments = creates.single.arguments;
-    if (arguments is! Map) {
-      fail("create arguments were not a map: $arguments");
-    }
-    expect(arguments["viewType"], "sesori/native-activity-indicator");
-    expect(arguments["hybrid"], isTrue);
-    final params = arguments["params"];
-    if (params is! Uint8List) {
-      fail("creation params were not encoded bytes: $params");
-    }
-    expect(
-      const StandardMessageCodec().decodeMessage(ByteData.sublistView(params)),
-      color.toARGB32(),
-    );
-
-    debugDefaultTargetPlatformOverride = null;
-  });
-
-  testWidgets("Android indicator survives a rebuild with an unchanged colour", (tester) async {
-    usePlatform(TargetPlatform.android);
-    await tester.pumpWidget(
-      wrap(const PregoActivityIndicator(color: color)),
-    );
-    // The link's state re-invokes surfaceFactory with its original controller;
-    // a second identical pump must not crash the surface build.
-    await tester.pumpWidget(
-      wrap(const PregoActivityIndicator(color: color)),
-    );
-
-    expect(tester.takeException(), isNull);
-    expect(find.byType(PlatformViewLink), findsOneWidget);
 
     debugDefaultTargetPlatformOverride = null;
   });
