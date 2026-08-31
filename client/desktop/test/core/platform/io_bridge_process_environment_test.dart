@@ -57,6 +57,42 @@ void main() {
       expect(() => first["PATH"] = "/changed", throwsUnsupportedError);
     });
 
+    test("honors an executable configured login shell outside system paths", () async {
+      if (Platform.isWindows) return;
+      final String configuredShell = Platform.resolvedExecutable;
+      String? invokedShell;
+      final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
+        isMacOS: true,
+        baseEnvironment: <String, String>{
+          "HOME": "/home/test",
+          "PATH": "/base/bin",
+          "SHELL": configuredShell,
+        },
+        runProcess:
+            ({
+              required String executable,
+              required List<String> arguments,
+              required Map<String, String>? environment,
+              required Duration timeout,
+            }) async {
+              invokedShell = executable;
+              return ProcessResult(
+                1,
+                0,
+                "__SESORI_PATH_BEGIN__/custom/shell/bin__SESORI_PATH_END__",
+                "",
+              );
+            },
+        shellTimeout: const Duration(seconds: 5),
+        fallbackPathDirectories: const <String>["/fallback/bin"],
+      );
+
+      final Map<String, String> resolved = await environment.resolve();
+
+      expect(invokedShell, configuredShell);
+      expect(resolved["PATH"], "/custom/shell/bin:/base/bin:/fallback/bin");
+    });
+
     test("uses fallback paths when the login shell cannot be resolved", () async {
       final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
         isMacOS: true,

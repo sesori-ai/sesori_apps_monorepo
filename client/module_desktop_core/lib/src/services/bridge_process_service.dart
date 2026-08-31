@@ -9,7 +9,6 @@ import "package:sesori_shared/sesori_shared.dart" show BridgeSupervisedExitCode;
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/control_channel_server.dart";
 import "../foundation/platform/bridge_executable_path_resolver.dart";
-import "../foundation/platform/bridge_process_environment.dart";
 import "../repositories/bridge_process_repository.dart";
 import "../trackers/bridge_process_log_tracker.dart";
 import "../trackers/bridge_status_tracker.dart";
@@ -47,8 +46,8 @@ class const BridgeProcessStopRequest({
 /// It coordinates only lower layers: the process repository owns every raw
 /// process operation and the atomic expected-stop marker; the log tracker owns
 /// child-pipe draining; the control server owns the per-spawn secret and
-/// socket; the process-environment capability supplies the non-terminal launch
-/// context. Manual lifecycle actions supersede delayed policy work, so an old
+/// socket; the process repository owns the launch-environment boundary. Manual
+/// lifecycle actions supersede delayed policy work, so an old
 /// retry can never create a second helper after Off or an explicit retry.
 @lazySingleton
 class BridgeProcessService.forTesting({
@@ -58,7 +57,6 @@ class BridgeProcessService.forTesting({
   required final ControlChannelServer _controlChannelServer,
   required final AuthSession _authSession,
   required final BridgeExecutablePathResolver _executablePathResolver,
-  required final BridgeProcessEnvironment _processEnvironment,
   required final List<Duration> _crashBackoffDelays,
   required final Duration _stableRuntime,
   required final int _recentLogCount,
@@ -72,7 +70,6 @@ class BridgeProcessService.forTesting({
     required ControlChannelServer controlChannelServer,
     required AuthSession authSession,
     required BridgeExecutablePathResolver executablePathResolver,
-    required BridgeProcessEnvironment processEnvironment,
   }) : this.forTesting(
          repository: repository,
          logTracker: logTracker,
@@ -80,7 +77,6 @@ class BridgeProcessService.forTesting({
          controlChannelServer: controlChannelServer,
          authSession: authSession,
          executablePathResolver: executablePathResolver,
-         processEnvironment: processEnvironment,
          crashBackoffDelays: defaultCrashBackoffDelays,
          stableRuntime: defaultStableRuntime,
          recentLogCount: defaultRecentLogCount,
@@ -267,11 +263,13 @@ class BridgeProcessService.forTesting({
       await _controlChannelServer.start();
       _throwIfStartCancelled();
 
+      final Map<String, String> environment = await _repository.resolveEnvironment();
+      _throwIfStartCancelled();
       final BridgeProcessStreams streams = await _repository.spawn(
         executable: _executablePathResolver.resolve(),
         arguments: <String>["--control-url", _controlChannelServer.url.toString()],
         workingDirectory: null,
-        environment: await _processEnvironment.resolve(),
+        environment: environment,
       );
       childCreated = true;
       spawnedPid = streams.pid;

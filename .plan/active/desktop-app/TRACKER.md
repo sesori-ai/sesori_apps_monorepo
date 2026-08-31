@@ -65,7 +65,10 @@ permission for the process that accesses the protected folder; the desktop does
 not grant or persist it.
 
 These findings are a pre-Gate-B hardening divergence, not a new numbered plan
-step. The work is intentionally split into two manageable PRs:
+step. During review, the environment lookup was kept below the service layer:
+the process API resolves it through the repository, the service rechecks
+cancellation before spawn, and the fallback list remains backend-neutral. The
+work is intentionally split into two manageable PRs:
 
 | Follow-up | Status | Scope |
 |---|---|---|

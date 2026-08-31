@@ -3,6 +3,8 @@ import "dart:io";
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
+import "../foundation/platform/bridge_process_environment.dart";
+
 /// Starts a child process while keeping the platform calls replaceable in unit
 /// tests without introducing a production-only interface.
 @visibleForTesting
@@ -60,13 +62,15 @@ final class const BridgeProcessTreeKillException({
 @lazySingleton
 class BridgeProcessApi.forTesting({
   required final bool _isWindows,
+  required final BridgeProcessEnvironment _processEnvironment,
   required final BridgeProcessStarter _startProcess,
   required final BridgeProcessCommandRunner _runCommand,
   required final BridgeProcessSignalSender _sendSignal,
 }) {
-  new()
+  new({required BridgeProcessEnvironment processEnvironment})
     : this.forTesting(
         isWindows: Platform.isWindows,
+        processEnvironment: processEnvironment,
         startProcess: _startProcessDefault,
         runCommand: _runCommandDefault,
         sendSignal: _sendSignalDefault,
@@ -74,6 +78,13 @@ class BridgeProcessApi.forTesting({
 
   @visibleForTesting
   this;
+
+  /// Resolves the environment overrides before a child is spawned.
+  ///
+  /// The API owns the platform boundary: callers receive the result through
+  /// the repository and can re-check lifecycle cancellation before invoking
+  /// [spawn].
+  Future<Map<String, String>> resolveEnvironment() => _processEnvironment.resolve();
 
   Future<BridgeProcessApiHandle> spawn({
     required String executable,

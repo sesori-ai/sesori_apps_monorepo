@@ -7,6 +7,22 @@ import "package:test/test.dart";
 
 void main() {
   group("BridgeProcessApi", () {
+    test("resolves the launch environment through the injected capability", () async {
+      final _FakeBridgeProcessEnvironment environment = _FakeBridgeProcessEnvironment(
+        value: const <String, String>{"PATH": "/user/bin"},
+      );
+      final BridgeProcessApi api = BridgeProcessApi.forTesting(
+        isWindows: false,
+        processEnvironment: environment,
+        startProcess: _unusedStarter,
+        runCommand: _unusedCommandRunner,
+        sendSignal: _unusedSignalSender,
+      );
+
+      expect(await api.resolveEnvironment(), const <String, String>{"PATH": "/user/bin"});
+      expect(environment.resolveCalls, 1);
+    });
+
     test("spawn returns raw stdio and forwards launch settings", () async {
       final _ProcessFixture fixture = _ProcessFixture(pid: 42);
       addTearDown(fixture.dispose);
@@ -16,6 +32,7 @@ void main() {
       Map<String, String>? launchedEnvironment;
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess:
             ({
               required String executable,
@@ -59,6 +76,7 @@ void main() {
       Map<String, String>? launchedEnvironment;
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess:
             ({
               required String executable,
@@ -89,6 +107,7 @@ void main() {
       when(() => fixture.process.kill(ProcessSignal.sigkill)).thenReturn(true);
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess: ({
           required String executable,
           required List<String> arguments,
@@ -115,6 +134,7 @@ void main() {
       final List<(int, ProcessSignal)> signals = <(int, ProcessSignal)>[];
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess: _unusedStarter,
         runCommand: _unusedCommandRunner,
         sendSignal: ({required int pid, required ProcessSignal signal}) {
@@ -131,6 +151,7 @@ void main() {
     test("POSIX process-tree kill reports rejected group delivery", () async {
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess: _unusedStarter,
         runCommand: _unusedCommandRunner,
         sendSignal: ({required int pid, required ProcessSignal signal}) => false,
@@ -151,6 +172,7 @@ void main() {
       List<String>? launchedArguments;
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: true,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess: _unusedStarter,
         runCommand: ({required String executable, required List<String> arguments}) async {
           launchedExecutable = executable;
@@ -170,6 +192,7 @@ void main() {
     test("all signal and kill entry points reject non-positive pids", () async {
       final BridgeProcessApi api = BridgeProcessApi.forTesting(
         isWindows: false,
+        processEnvironment: _FakeBridgeProcessEnvironment(),
         startProcess: _unusedStarter,
         runCommand: _unusedCommandRunner,
         sendSignal: _unusedSignalSender,
@@ -221,3 +244,14 @@ class _ProcessFixture({required int pid}) {
 class _MockProcess() extends Mock implements Process;
 
 class _MockIOSink() extends Mock implements IOSink;
+
+class _FakeBridgeProcessEnvironment({final Map<String, String> value = const <String, String>{}})
+    implements BridgeProcessEnvironment {
+  int resolveCalls = 0;
+
+  @override
+  Future<Map<String, String>> resolve() async {
+    resolveCalls++;
+    return value;
+  }
+}
