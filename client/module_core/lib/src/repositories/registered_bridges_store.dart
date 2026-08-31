@@ -43,11 +43,18 @@ class RegisteredBridgesStore({
   /// registered bridge; `false` means "not yet known" — never "no bridges".
   bool _knownRegistered = false;
 
+  /// Bumped on logout so a storage read started for the previous account
+  /// cannot repopulate this cache after the account changes.
+  int _authGeneration = 0;
+
   this {
     _authSubscription = authSession.authStateStream.listen((state) {
       // Logout: drop the latch so the next account starts from scratch.
       // clear() handles its own errors, so this stays fire-and-forget.
-      if (state is AuthUnauthenticated) unawaited(clear());
+      if (state is AuthUnauthenticated) {
+        _authGeneration++;
+        unawaited(clear());
+      }
     });
   }
 
@@ -56,14 +63,15 @@ class RegisteredBridgesStore({
   /// run for the positive answer; the in-memory flag short-circuits after that.
   Future<bool> hasRegisteredBridges() async {
     if (_knownRegistered) return true;
+    final generation = _authGeneration;
     try {
       if (await _storage.read(key: _storageKey) == _storedValue) {
-        _knownRegistered = true;
+        if (generation == _authGeneration) _knownRegistered = true;
       }
     } catch (error, stackTrace) {
       loge("Failed to read registered-bridges latch", error, stackTrace);
     }
-    return _knownRegistered;
+    return generation == _authGeneration && _knownRegistered;
   }
 
   /// Latches the positive answer in memory and in persistent storage. A no-op

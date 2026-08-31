@@ -64,12 +64,12 @@ class RegisteredBridgesService({
   /// Last successful bridge-list result, sorted in display order.
   List<BridgeSummary>? _cachedBridges;
 
-  /// Auth generation, bumped on every logout. A lookup or connection-driven
-  /// latch captures this when it starts; if a logout bumps it while the
-  /// operation is in flight, the operation must not write the old account's
-  /// answer to the store or the stream — otherwise the next account signing in
-  /// on this device would inherit the latch and see a spurious bridge-offline
-  /// flow.
+  /// Auth generation, bumped on every logout. An asynchronous read, lookup, or
+  /// connection-driven latch captures this when it starts; if a logout bumps
+  /// it while the operation is in flight, the operation must not write the old
+  /// account's answer to the store or the stream — otherwise the next account
+  /// signing in on this device would inherit the latch and see a spurious
+  /// bridge-offline flow.
   int _authGeneration = 0;
 
   StreamSubscription<ConnectionStatus>? _statusSubscription;
@@ -106,17 +106,21 @@ class RegisteredBridgesService({
   }
 
   Future<void> _seedFromStore() async {
-    if (await _store.hasRegisteredBridges()) _latchEmit();
+    final generation = _authGeneration;
+    if (await _store.hasRegisteredBridges() && generation == _authGeneration) _latchEmit();
   }
 
   Future<bool> _resolve() async {
+    final generation = _authGeneration;
     // Tiers 1 & 2: the in-process latch, then the store's in-memory / persisted
     // latch. A known-positive answer never reverts, so don't touch the network.
     if (_isRegistered.value) return true;
     if (await _store.hasRegisteredBridges()) {
+      if (generation != _authGeneration) return false;
       _latchEmit();
       return true;
     }
+    if (generation != _authGeneration) return false;
     // Tier 3: ask the auth server, latching a positive answer for next time.
     return await _lookup();
   }
