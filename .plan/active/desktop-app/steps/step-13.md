@@ -60,13 +60,14 @@ intent before the follow-up push.
   row.
 - Dart LSP diagnostics and `git diff --check` are clean.
 - `asdf exec flutter build macos` completed successfully (`Sesori.app`,
-  55.3 MB). Windows/Linux native build verification remains pending for the
-  Step 13 PR.
+  55.3 MB); the Step 13 PR's 13/13 CI checks also passed the Windows/Linux
+  native build jobs.
 
 ## Handoff
 
-Step 12 merged in PR #1215 on 2026-08-30. After this step merges, Step 14
-creates `module_app_ui`, moves the shared localization/context foundation, and
-replaces the temporary route-less desktop source and shell-owned connection
-banner with the shared adaptive UI/router foundation. MT gate B remains the
-user-run daily-driver checkpoint.
+Step 12 merged in PR #1215 on 2026-08-30, and Step 13 merged in PR #1216 on
+2026-08-31. The desktop relay-client implementation is complete. MT gate B
+remains the user-run daily-driver checkpoint; after its outcome is recorded,
+Step 14 creates `module_app_ui`, moves the shared localization/context
+foundation, and replaces the temporary route-less desktop source and
+shell-owned connection banner with the shared adaptive UI/router foundation.
