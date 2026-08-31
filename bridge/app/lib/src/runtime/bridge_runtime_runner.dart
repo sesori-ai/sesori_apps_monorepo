@@ -138,43 +138,57 @@ import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
 
 @visibleForTesting
-DeviceCanvasTurnCredentialBuilder? buildDeviceCanvasLocalTurnCredentialBuilder({required BridgeCliOptions options}) {
-  if (options.deviceCanvasLocalTurnUrls.isEmpty) return null;
-  final secretFile = options.deviceCanvasLocalTurnSecretFile;
-  if (secretFile == null) throw StateError("Device Canvas local TURN options are incomplete");
+DeviceCanvasTurnCredentialBuilder? buildDeviceCanvasDevelopmentTurnCredentialBuilder({
+  required BridgeCliOptions options,
+}) {
+  final localConfigured =
+      options.deviceCanvasLocalTurnUrls.isNotEmpty || options.deviceCanvasLocalTurnSecretFile != null;
+  final externalConfigured =
+      options.deviceCanvasExternalTurnTestEnabled ||
+      options.deviceCanvasExternalTurnUrls.isNotEmpty ||
+      options.deviceCanvasExternalTurnSecretFile != null;
+  if (localConfigured && externalConfigured) {
+    throw StateError("Device Canvas local and external test TURN modes are mutually exclusive");
+  }
+  if (!localConfigured && !externalConfigured) return null;
+
+  final urls = externalConfigured ? options.deviceCanvasExternalTurnUrls : options.deviceCanvasLocalTurnUrls;
+  final secretFile = externalConfigured
+      ? options.deviceCanvasExternalTurnSecretFile
+      : options.deviceCanvasLocalTurnSecretFile;
+  if (urls.isEmpty || secretFile == null || (externalConfigured && !options.deviceCanvasExternalTurnTestEnabled)) {
+    throw StateError("Device Canvas development TURN options are incomplete");
+  }
   return DeviceCanvasTurnCredentialBuilder(
-    urls: options.deviceCanvasLocalTurnUrls,
-    sharedSecret: readDeviceCanvasLocalTurnSecret(filePath: secretFile),
+    urls: urls,
+    sharedSecret: readDeviceCanvasTurnSharedSecret(filePath: secretFile),
   );
 }
 
-@visibleForTesting
-List<int> readDeviceCanvasLocalTurnSecret({required String filePath}) {
+List<int> readDeviceCanvasTurnSharedSecret({required String filePath}) {
   if (io.Platform.isWindows) {
-    throw const FormatException("Device Canvas local TURN requires POSIX file permissions");
+    throw const FormatException("Device Canvas development TURN requires POSIX file permissions");
   }
   if (io.FileSystemEntity.typeSync(filePath, followLinks: false) != io.FileSystemEntityType.file) {
-    throw const FormatException("Device Canvas local TURN secret must be a regular, non-symlink file");
+    throw const FormatException("Device Canvas TURN secret must be a regular, non-symlink file");
   }
   final String resolvedPath;
   try {
     resolvedPath = io.File(filePath).resolveSymbolicLinksSync();
   } on io.FileSystemException {
-    throw const FormatException("Device Canvas local TURN secret path cannot be resolved safely");
+    throw const FormatException("Device Canvas TURN secret path cannot be resolved safely");
   }
   final file = io.File(resolvedPath);
   final parentStat = file.parent.statSync();
-  if (parentStat.type != io.FileSystemEntityType.directory || parentStat.mode & 0x12 != 0) {
-    throw const FormatException(
-      "Device Canvas local TURN secret directory must not be writable by other users",
-    );
+  if (parentStat.type != io.FileSystemEntityType.directory || parentStat.mode & 0x3f != 0) {
+    throw const FormatException("Device Canvas TURN secret directory must not be accessible by other users");
   }
   final stat = file.statSync();
   if (stat.mode & 0x100 == 0 || stat.mode & 0x3f != 0) {
-    throw const FormatException("Device Canvas local TURN secret must be readable only by its owner");
+    throw const FormatException("Device Canvas TURN secret must be readable only by its owner");
   }
   if (stat.size < DeviceCanvasTurnCredentialBuilder.minimumSharedSecretBytes || stat.size > 1024) {
-    throw const FormatException("Device Canvas local TURN secret has an invalid size");
+    throw const FormatException("Device Canvas TURN secret has an invalid size");
   }
   final secret = file.readAsBytesSync();
   final afterRead = file.statSync();
@@ -184,10 +198,10 @@ List<int> readDeviceCanvasLocalTurnSecret({required String filePath}) {
       afterRead.size != stat.size ||
       afterRead.modified != stat.modified ||
       afterRead.changed != stat.changed) {
-    throw const FormatException("Device Canvas local TURN secret changed while it was being read");
+    throw const FormatException("Device Canvas TURN secret changed while it was being read");
   }
   if (secret.any((byte) => byte < 33 || byte > 126)) {
-    throw const FormatException("Device Canvas local TURN secret must contain one printable ASCII token");
+    throw const FormatException("Device Canvas TURN secret must contain one printable ASCII token");
   }
   return List<int>.unmodifiable(secret);
 }
@@ -394,7 +408,7 @@ class const BridgeRuntimeRunner._() {
     );
 
     try {
-      final deviceCanvasTurnCredentialBuilder = buildDeviceCanvasLocalTurnCredentialBuilder(options: options);
+      final deviceCanvasTurnCredentialBuilder = buildDeviceCanvasDevelopmentTurnCredentialBuilder(options: options);
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -625,7 +639,7 @@ class const BridgeRuntimeRunner._() {
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
       if (deviceCanvasTurnCredentialBuilder != null && options.deviceCanvasProductionTurnEnabled) {
-        throw StateError("Production and local Device Canvas TURN modes are mutually exclusive");
+        throw StateError("Production and development Device Canvas TURN modes are mutually exclusive");
       }
       final DeviceCanvasTurnCredentialIssuer? deviceCanvasTurnCredentialIssuer =
           deviceCanvasTurnCredentialBuilder ??

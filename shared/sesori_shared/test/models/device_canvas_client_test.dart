@@ -202,6 +202,22 @@ void main() {
     expect(canonicalizeDeviceCanvasTurnUrl("turn:[::]"), "turn:[::]:3478?transport=udp");
   });
 
+  test("canonical DNS TURN URLs exclude noncanonical and literal endpoints", () {
+    expect(isCanonicalDeviceCanvasDnsTurnUrl("turn:relay.example.test:3478?transport=udp"), isTrue);
+    expect(isCanonicalDeviceCanvasDnsTurnUrl("turns:relay.example.test:5349?transport=tcp"), isTrue);
+
+    for (final url in const [
+      "turn:relay.example.test",
+      "turn:relay:3478?transport=udp",
+      "turn:192.0.2.1:3478?transport=udp",
+      "turn:[2001:db8::1]:3478?transport=udp",
+      "turn:0x:3478?transport=udp",
+      "turn:0x.0x:3478?transport=udp",
+    ]) {
+      expect(isCanonicalDeviceCanvasDnsTurnUrl(url), isFalse, reason: url);
+    }
+  });
+
   test("TURN URLs reject malformed, duplicate, and alternate numeric endpoints", () {
     const invalid = [
       "https:turn.example.test",
@@ -214,6 +230,7 @@ void main() {
       "turn:127.000.0.1",
       "turn:127.1",
       "turn:0x7f000001",
+      "turn:0x.0x",
       "turn:[::ffff:192.168.1.9]",
       "turn:[::ffff:c0a8:109]",
       "turn:[::c0a8:109]",

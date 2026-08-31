@@ -68,11 +68,18 @@ list, claim, and release tools.
   in memory, and forwards it unchanged to Device Canvas only when start consumes
   the reservation. Host and reflexive candidates are rejected in this mode.
   The hidden issuer accepts one private/link-local IP endpoint, requires at least
-  32 secret bytes in a directory not writable by other users, and bounds pending
+  32 secret bytes in a directory inaccessible to other users, and bounds pending
   authorization work. Prepare/start races, timeout, disconnect, claim change,
   stop, expiry, and shutdown remove the reservation; credentials, SDP,
   candidates, and leases are never persisted or emitted through diagnostics,
   rendezvous, or analytics.
+- A separate `DEVICE_CANVAS_EXTERNAL_TURN_TEST=true` development gate permits
+  that same relay-only path to target canonical DNS coturn URLs before the
+  auth issuer is deployed. The Bridge requires separately named hidden URL and
+  owner-only secret-file flags, reuses the bounded local HMAC issuer, and never
+  sends the static secret to a client. This mode cannot be combined with local or
+  production TURN and is external-network evidence only, not deployed credential
+  service evidence.
 - Production relay selection is a separate default-off
   `DEVICE_CANVAS_PRODUCTION_TURN=true` client define and Bridge environment gate;
   the existing LAN-video define is still required. The Bridge first authorizes
@@ -82,7 +89,8 @@ list, claim, and release tools.
   TURN URLs, a canonical SHA1 credential, the exact operation-bound username,
   and an expiry no later than the lease. Registration change, timeout, malformed
   output, or late completion fails unavailable without promoting or logging the
-  reservation. Local and production Bridge issuers cannot be enabled together.
+  reservation. Local, external-test, and production Bridge issuers cannot be
+  enabled together.
 - Each start has a bounded random operation ID; status is accepted only for that
   operation and when its echoed offer fingerprint matches the current peer.
   Start and prepare processing are bounded to 15 seconds; a timeout or late
@@ -186,6 +194,100 @@ production signaling and media peers can traverse local coturn; it does not prov
 external NAT/cellular reachability, TLS/SNI, public firewall behavior, abuse
 limits, observability, or deployed production credential issuance.
 
+### Development external TURN runbook
+
+This default-off seam validates the existing clients and Bridge against public
+self-hosted coturn without waiting for auth-server deployment. It deliberately
+keeps the REST secret on the coturn host and one isolated development Bridge. It
+must not be enabled in a packaged or shared Bridge deployment.
+
+1. Allocate an isolated Linux VM with a stable public IPv4 address. Point a
+   canonical name such as `turn-dev.example.com` at it. If Cloudflare manages the
+   zone, the record must be DNS-only; Workers, Tunnel, and ordinary proxied DNS do
+   not carry TURN. Confirm from the Bridge host that every returned address is
+   the intended global VM address; URL parsing deliberately does not resolve DNS
+   or treat a hostname as proof of public routing.
+2. Open `3478/udp`, `3478/tcp`, `5349/tcp`, and only the selected UDP relay range,
+   such as `49160-49200/udp`, in both the cloud and host firewalls. Remove every
+   rule after the test VM is retired.
+3. Install coturn and a valid certificate chain for the DNS name. Configure the
+   service with `fingerprint`, `use-auth-secret`, one high-entropy
+   `static-auth-secret`, `max-allocate-lifetime=300`, `stale-nonce=600`, bounded
+   user/total quotas and bandwidth, `no-cli`, `no-tcp-relay`, `no-dtls`,
+   `no-multicast-peers`, and credential-safe logging. Set `listening-port=3478`,
+   `tls-listening-port=5349`, and the exact relay range. For a VM behind 1:1 NAT,
+   set `listening-ip` and `relay-ip` to its private address and
+   `external-ip=<public>/<private>`; use the directly assigned public address
+   when no translation exists. Restrict peer destinations to prevent access to
+   loopback, metadata, and internal infrastructure without blocking the relay
+   address used by the two allocations.
+4. Create the matching Bridge secret file without a trailing newline. Run the
+   isolated Bridge as a dedicated non-root account, keep the immediate parent
+   directory mode 0700 and the file mode 0600, transfer the token through SSH or
+   a secret manager, and never put the static token in an environment variable,
+   process argument, shell history, repository file, or client build. These mode
+   checks complement, but do not replace, host account and ACL isolation.
+
+```sh
+install -d -m 700 "$HOME/.sesori/device-canvas-turn"
+umask 077
+openssl rand -base64 48 | tr -d '\n' > "$HOME/.sesori/device-canvas-turn/external-secret"
+chmod 600 "$HOME/.sesori/device-canvas-turn/external-secret"
+```
+
+After coturn and TLS are live, run the bounded smoke utility from `bridge/app`:
+
+```sh
+dart run tool/device_canvas_external_turn_smoke.dart \
+  --turn-url 'turn:turn-dev.example.com:3478?transport=udp' \
+  --turn-url 'turn:turn-dev.example.com:3478?transport=tcp' \
+  --turn-url 'turns:turn-dev.example.com:5349?transport=tcp' \
+  --secret-file "$HOME/.sesori/device-canvas-turn/external-secret" \
+  --ca-file /etc/ssl/cert.pem
+```
+
+Use `/etc/ssl/certs/ca-certificates.crt` on distributions whose system CA bundle
+is there. Before the encrypted relay test, the utility uses OpenSSL to verify the
+TLS certificate chain, hostname, and SNI endpoint. It then reads the static secret
+through the same mode checks as Bridge startup, derives a fresh five-minute
+operation credential per URL, and runs two 100-byte client-to-client relay
+messages with a 30-second process deadline. Only the short-lived credential
+reaches `turnutils_uclient`; the static secret is not printed or placed in child
+process arguments. Coturn's test client does not itself verify the hostname, so
+the separate OpenSSL preflight is required evidence.
+
+Then start one source-run Bridge with production TURN unset and the explicit
+external-test gate plus paired hidden options:
+
+```sh
+DEVICE_CANVAS_EXTERNAL_TURN_TEST=true \
+dart run bin/bridge.dart \
+  --device-canvas-external-turn-url 'turn:turn-dev.example.com:3478?transport=udp' \
+  --device-canvas-external-turn-url 'turn:turn-dev.example.com:3478?transport=tcp' \
+  --device-canvas-external-turn-url 'turns:turn-dev.example.com:5349?transport=tcp' \
+  --device-canvas-external-turn-secret-file "$HOME/.sesori/device-canvas-turn/external-secret"
+```
+
+Build the isolated validation client with:
+
+```sh
+--dart-define=DEVICE_CANVAS_LAN_VIDEO=true \
+--dart-define=DEVICE_CANVAS_EXTERNAL_TURN_TEST=true
+```
+
+Use exactly one of the local, external-test, or production TURN client defines;
+mixed client modes fail closed. The wire behavior is intentionally the same
+relay-only prepare flow, so the Bridge remains the authoritative issuer-mode
+boundary and the external-test client label is an operator/build convention.
+
+Prove relay-only selection from separate external networks, then block UDP to
+exercise TCP/TLS fallback. Repeat explicit close, backgrounding, source loss,
+claim release/reassignment, allocation expiry, and Bridge/coturn restart. Record
+selected ICE pairs, transport, loss, setup latency, relay traffic, coturn
+allocations, and cost without recording credentials, SDP, or user content. This
+closes neither deployed auth issuance nor the production abuse, rotation,
+monitoring, and rollout gates.
+
 ### Production self-hosted TURN deployment gate
 
 The authenticated issuer and Bridge client are implemented, but they are not a
@@ -271,6 +373,28 @@ Recorded on 2026-08-25 on the release-target macOS host:
   and continuous real-time screen updates through development local coturn. This
   proves the bounded local launcher, production relay peers, signaling, and
   physical client path on the trusted LAN, not external TURN behavior.
+- On 2026-08-31, a disposable Google Cloud trial `e2-micro` VM in
+  `europe-west3-a` ran Ubuntu 24.04 and coturn 4.6.1 behind reserved IPv4
+  `34.159.67.140`. A dedicated VPC and matching host firewall exposed only
+  `3478/udp`, `3478/tcp`, `5349/tcp`, and `49160-49200/udp`; SSH was reachable
+  only through authenticated Google IAP tunneling. Coturn ran as its unprivileged
+  service account with REST-secret auth, five-minute allocation lifetime,
+  bounded quotas and bandwidth, private/metadata/reserved peer denial, disabled
+  CLI, DTLS, and TCP relay, and no secret in process arguments.
+- The development-only name `turn-dev.34-159-67-140.sslip.io` resolved only to
+  that address. Let's Encrypt issued an ECDSA certificate valid through
+  2026-11-29. OpenSSL independently verified its chain, hostname, and SNI before
+  the smoke tool loaded the secret; TLS negotiated TLS 1.2 with
+  `ECDHE-ECDSA-AES256-GCM-SHA384`. The temporary ACME port was removed after
+  issuance, so renewal is deliberately manual.
+- The bounded external smoke passed UDP, TCP, and TLS/TCP with fresh five-minute
+  credentials and zero packet loss. The recorded average round-trip delays were
+  27.5 ms, 52.25 ms, and 51.5 ms respectively. Coturn also survived an explicit
+  service restart and a fresh post-restart UDP allocation. This proves public
+  coturn authentication, allocation, relay, TLS, firewall, NAT advertisement,
+  and restart behavior from the Bridge host; it does not prove Flutter selected
+  pairs, separate carrier/NAT shapes, production auth issuance, abuse controls,
+  monitoring, or sustained media cost.
 - A connected test joins encrypted relay framing, exact connection incarnation,
   claim revision, authenticated local IPC, parser-valid SDP, fingerprint tamper
   rejection, answer correlation, claim-release revocation, and post-release
@@ -327,12 +451,13 @@ claims, sessions, plugin eligibility, and local processes after the run.
   process. Capability isolation protects other bridge backends and model shell
   commands; it is not a sandbox against a malicious in-process OpenCode plugin.
 - Remote video and control are not yet product behavior. The default-off LAN
-  video viewport, development-only local coturn mode, and shared Android
-  production source support cross-device validation, while the Phase 2 entry
-  gate remains closed. External TURN,
-  DataChannel input, reconnect/recovery, cumulative latency/resource and Sesori
-  responsiveness distributions, full dependency acceptance, and the formal
-  Step 12 release matrix remain unresolved.
+  video viewport, development-only local and external-test coturn modes, and
+  shared Android production source support cross-device validation, while the
+  Phase 2 entry gate remains closed. External Device Canvas client/carrier
+  evidence, production credential deployment, DataChannel input,
+  reconnect/recovery, cumulative latency/resource and Sesori responsiveness
+  distributions, full dependency acceptance, and the formal Step 12 release
+  matrix remain unresolved.
 - iOS transport depends on private SimulatorKit and DTUHID APIs, not a public
   simulator control contract. Compatibility is limited to the recorded matrix
   until a separately planned implementation expands it.
@@ -344,6 +469,7 @@ claims, sessions, plugin eligibility, and local processes after the run.
 - `bridge/app/lib/src/bridge/device_canvas/`
 - `bridge/app/lib/src/services/device_canvas_stream_service.dart`
 - `bridge/app/tool/device_canvas_local_turn.dart`
+- `bridge/app/tool/device_canvas_external_turn_smoke.dart`
 - `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_device_canvas_tools.dart`
 - `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_runtime_policy.dart`
 - Focused tests under `bridge/app/test/bridge/device_canvas/`,

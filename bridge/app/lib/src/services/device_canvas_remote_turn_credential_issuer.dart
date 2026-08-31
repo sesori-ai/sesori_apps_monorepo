@@ -25,11 +25,6 @@ class DeviceCanvasRemoteTurnCredentialIssuer({
   required final BridgeIdProvider _bridgeIdProvider,
 }) implements DeviceCanvasTurnCredentialIssuer {
   static final RegExp _operationIdPattern = RegExp(r"^[A-Za-z0-9_-]+$");
-  static final RegExp _productionTurnUrlPattern = RegExp(
-    r"^(turns?):([a-z0-9.-]+):([1-9][0-9]{0,4})\?transport=(udp|tcp)$",
-  );
-  static final RegExp _dnsLabelPattern = RegExp(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$");
-  static final RegExp _ipv4NumberLabelPattern = RegExp(r"^(?:[0-9]+|0x[0-9a-f]*)$");
 
   @override
   Future<DeviceCanvasTurnConfiguration> issue({
@@ -108,7 +103,7 @@ class DeviceCanvasRemoteTurnCredentialIssuer({
         configuration.expiresAt <= now.millisecondsSinceEpoch ||
         configuration.expiresAt > leaseExpiresAt ||
         configuration.username != "${configuration.expiresAt ~/ Duration.millisecondsPerSecond}:$operationId" ||
-        configuration.urls.any((url) => !_isCanonicalProductionTurnUrl(url))) {
+        configuration.urls.any((url) => !isCanonicalDeviceCanvasDnsTurnUrl(url))) {
       return false;
     }
 
@@ -118,23 +113,5 @@ class DeviceCanvasRemoteTurnCredentialIssuer({
     } on FormatException {
       return false;
     }
-  }
-
-  static bool _isCanonicalProductionTurnUrl(String value) {
-    final match = _productionTurnUrlPattern.firstMatch(value);
-    if (match == null || match.group(0) != value) return false;
-    final scheme = match.group(1)!;
-    final host = match.group(2)!;
-    final portValue = match.group(3)!;
-    final transport = match.group(4)!;
-    final port = int.tryParse(portValue);
-    if (port == null || port > 65535 || "$port" != portValue || (scheme == "turns" && transport != "tcp")) {
-      return false;
-    }
-    final labels = host.split(".");
-    return host.length <= 253 &&
-        labels.length >= 2 &&
-        labels.every(_dnsLabelPattern.hasMatch) &&
-        !labels.every(_ipv4NumberLabelPattern.hasMatch);
   }
 }

@@ -137,9 +137,13 @@ Device Canvas production TURN remains off unless the process environment sets
 `DEVICE_CANVAS_PRODUCTION_TURN=true` (or `1`) exactly. That mode obtains
 short-lived credentials from the configured auth backend with the Bridge's
 normal bearer token; it never reads the coturn static secret. It is mutually
-exclusive with the hidden development local-TURN options. The client viewport
-also remains independently compile-time gated, so this environment value alone
-does not expose the feature.
+exclusive with the hidden development local-TURN options and the separately
+gated `DEVICE_CANVAS_EXTERNAL_TURN_TEST=true` public-coturn validation options.
+The external test mode requires paired canonical DNS URL and owner-only secret
+file flags and never calls the production issuer. The client viewport also
+remains independently compile-time gated, so either environment value alone does
+not expose the feature. See `docs/regression/device-canvas-ownership.md` for the
+local, external-test, and production runbooks.
 
 > `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 

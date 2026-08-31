@@ -757,9 +757,13 @@ Steps 10-12. The exception is compiled behind
 `DEVICE_CANVAS_LAN_VIDEO=true`; it is off by default and does not change the
   delivery order or Phase 2 **NO-GO** decision. A second default-off define,
   `DEVICE_CANVAS_LOCAL_TURN=true`, now permits the same video-only viewport to
-  validate local coturn without making external Step 10 claims. A separate
+  validate local coturn without making external Step 10 claims. A third
+  `DEVICE_CANVAS_EXTERNAL_TURN_TEST=true` define and Bridge gate permit an
+  isolated source build to validate canonical DNS coturn on an external VM with
+  a Bridge-only secret before auth deployment. A separate
   `DEVICE_CANVAS_PRODUCTION_TURN=true` define selects the default-off production
-  relay path only when the Bridge process has the same explicit environment gate.
+  relay path only when the Bridge process has the same explicit environment
+  gate. All three Bridge issuer modes are mutually exclusive.
 
 The exception is deliberately narrower than Step 12:
 

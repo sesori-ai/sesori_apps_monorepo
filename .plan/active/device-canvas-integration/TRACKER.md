@@ -7,14 +7,15 @@
 - **Current branch:** `device-canvas-integration-step-1`
 - **Series state:** Steps 1-9 implemented; explicitly approved, default-off direct
   LAN and development local-coturn video seams are implemented and physically
-  validated from Android and iOS clients; the Phase 2 product entry gate remains
-  NO-GO
-- **Current step:** provision the self-hosted external TURN service and collect
-  the remaining production-network evidence; the default-off authenticated
-  issuer and Bridge client are implemented
-- **Next action:** allocate the TURN host and DNS name, install TLS and the shared
-  coturn secret, deploy the gated auth-server issuer, then run the external
-  NAT/cellular, firewall, abuse, observability, and cost matrix
+  validated from Android and iOS clients; an isolated external-coturn test seam
+  is implemented and its disposable public UDP/TCP/TLS host has passed bounded
+  transport smoke; the Phase 2 product entry gate remains NO-GO
+- **Current step:** collect Device Canvas client/carrier evidence and finish the
+  production operations gate; the default-off authenticated issuer and Bridge
+  client are implemented but not deployed
+- **Next action:** manually run the relay-only Android-source/client matrix
+  against the external host, then deploy the gated auth-server issuer and run the
+  remaining NAT/cellular, abuse, observability, rotation, and cost matrix
 
 ## Locked Decisions
 
@@ -50,13 +51,17 @@
 - [x] `DEVICE_CANVAS_LOCAL_TURN=true` additionally enables only a development
   prepare/reservation path and relay-only peers; Bridge issuance is disabled
   unless explicit local TURN URLs and an owner-only secret file are supplied.
+- [x] `DEVICE_CANVAS_EXTERNAL_TURN_TEST=true` separately permits an isolated
+  development Bridge/client pair to exercise canonical DNS coturn on an external
+  VM with a Bridge-only secret before auth deployment. It is not a production
+  issuer path.
 - [x] Production TURN is self-hosted coturn. `sesori_auth_server` owns the
   authenticated short-lived credential endpoint; `sesori_relay_server` remains
   payload-blind and does not receive the static secret.
 - [x] Production issuance remains independently default-off in the auth server,
   Bridge environment, and client build through explicit
-  `DEVICE_CANVAS_*_TURN` gates. Local and production Bridge issuers are mutually
-  exclusive.
+  `DEVICE_CANVAS_*_TURN` gates. Local, external-test, and production Bridge
+  issuers are mutually exclusive.
 
 ## Complexity Guardrails
 
@@ -91,7 +96,7 @@
 | [x] | 7/12 - Verify Phase 1 | Both | Automated and user-confirmed ownership, compatibility, restart, conflict, and deep-link matrix passed |
 | [x] | 8/12 - Prove media feasibility | Both | Spikes completed; component architecture is feasible, but the integrated Phase 2 entry gate is NO-GO |
 | [x] | 9/12 - Authorize/signaling streams | Both | Implemented for local Android video-only testing; Phase 2 remains NO-GO |
-| [ ] | 10/12 - Provision TURN | Infrastructure | Provider-neutral prepare contract, local issuer, authenticated production issuer, and Bridge client implemented default-off; external service, abuse/observability, and remote matrix remain open |
+| [ ] | 10/12 - Provision TURN | Infrastructure | Disposable external UDP/TCP/TLS service and bounded smoke passed; production issuer deployment, client/carrier matrix, abuse/observability, rotation, and cost gates remain open |
 | [ ] | 11/12 - Stream/control Android | Device Canvas | Video source/peer implemented ahead of the step; control and release gates remain blocked on Step 10 |
 | [ ] | 12/12 - Add Sesori viewport/verify | Sesori | Formal control/release step remains blocked on Steps 10-11; approved default-off LAN video-only validation slice implemented ahead of sequence |
 
@@ -475,7 +480,7 @@
   expiry, and shutdown remove reservations. A pure coturn REST builder emits
   whole-second HMAC-SHA1 credentials bounded by the lease, and runtime composition
   requires at least 32 secret bytes from a nonsymlink owner-only file whose parent
-  is not writable by other users. The hidden local flags accept only one
+  is inaccessible to other users. The hidden local flags accept only one
   private/link-local IP endpoint, and explicit authorization slots cap unresolved
   claim work per connection and process. The default runtime has no issuer and
   returns unsupported.
@@ -527,7 +532,8 @@
   configuration.
 - Bridge production mode is independently gated by the exact
   `DEVICE_CANVAS_PRODUCTION_TURN=true` environment value and is mutually
-  exclusive with local TURN. Its existing token authority supplies bearer auth;
+  exclusive with local and external-test TURN. Its existing token authority
+  supplies bearer auth;
   one 401 forces exactly one refresh. The abortable HTTP request has a 10-second
   deadline, registration changes fence late responses, and strict validation
   rejects nonproduction URLs, malformed HMAC credentials, wrong operation
@@ -537,14 +543,35 @@
   shutdown cannot promote a late remote response. Invalid output and every
   issuer failure degrade to unavailable without logging or persisting response
   bodies, credentials, leases, SDP, or ICE.
+- Bridge external-test mode is independently gated by the exact
+  `DEVICE_CANVAS_EXTERNAL_TURN_TEST=true` environment value, paired hidden DNS
+  URL and mode-restricted secret-file options, and a separate client define. It
+  reuses the bounded HMAC builder without calling the auth server; a smoke
+  utility independently verifies the TLS chain/hostname and tests UDP, TCP, and
+  TLS with fresh derived credentials and hard child-process deadlines.
 - The client adds an independent default-off
   `--dart-define=DEVICE_CANVAS_PRODUCTION_TURN=true` relay-only selection. The
   existing `DEVICE_CANVAS_LAN_VIDEO=true` viewport gate is still required; no
   default production build exposes the validation viewport.
-- This does not complete Step 10. No public coturn host, DNS record, TLS
-  certificate, firewall/relay range, production secret deployment, monitoring,
-  cost control, or external NAT/cellular matrix exists yet. Credential-service
-  behavior is automated but not production-deployed evidence.
+- On 2026-08-31, a disposable Google Cloud trial `e2-micro` in
+  `europe-west3-a` was provisioned with a reserved public IPv4, dedicated VPC,
+  matching cloud/host firewalls, coturn 4.6.1, and bounded REST-secret auth. The
+  development-only `turn-dev.34-159-67-140.sslip.io` endpoint has a verified
+  Let's Encrypt ECDSA certificate valid through 2026-11-29. ACME port 80 was
+  removed after issuance, making renewal explicitly manual.
+- The external smoke independently verified chain, SNI, and hostname, then
+  authenticated and relayed over UDP, TCP, and TLS/TCP with fresh five-minute
+  credentials and zero loss. Average round-trip delays were 27.5 ms, 52.25 ms,
+  and 51.5 ms. Service restart and a post-restart UDP allocation also passed.
+- Post-deployment focused verification passed 14 shared contract tests, 44
+  Bridge option/runtime/smoke tests, and 4 Flutter viewport tests. Strict shared,
+  Bridge, and affected Flutter analysis passed, and `git diff --check` remained
+  clean.
+- This still does not complete Step 10. The host and Bridge share a development
+  test secret, the production auth issuer is not deployed, and no external
+  Flutter selected-pair, carrier/NAT, sustained-media, abuse, observability,
+  rotation, or bounded-cost matrix has passed. Credential-service behavior is
+  automated but not production-deployed evidence.
 
 ## Open Product Confirmations
 

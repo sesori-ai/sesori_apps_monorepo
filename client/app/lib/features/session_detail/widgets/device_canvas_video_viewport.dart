@@ -14,7 +14,18 @@ import "../../../core/platform/flutter_webrtc_client.dart";
 
 const bool deviceCanvasLanVideoPreviewEnabled = bool.fromEnvironment("DEVICE_CANVAS_LAN_VIDEO");
 const bool deviceCanvasLocalTurnEnabled = bool.fromEnvironment("DEVICE_CANVAS_LOCAL_TURN");
+const bool deviceCanvasExternalTurnTestEnabled = bool.fromEnvironment("DEVICE_CANVAS_EXTERNAL_TURN_TEST");
 const bool deviceCanvasProductionTurnEnabled = bool.fromEnvironment("DEVICE_CANVAS_PRODUCTION_TURN");
+
+bool resolveDeviceCanvasTurnEnabled({
+  required bool local,
+  required bool externalTest,
+  required bool production,
+}) {
+  final enabledModeCount = (local ? 1 : 0) + (externalTest ? 1 : 0) + (production ? 1 : 0);
+  if (enabledModeCount > 1) throw StateError("Device Canvas TURN client modes are mutually exclusive");
+  return enabledModeCount == 1;
+}
 
 class const DeviceCanvasVideoViewportOwner({
   super.key,
@@ -68,7 +79,11 @@ class _DeviceCanvasVideoViewportOwnerState() extends State<DeviceCanvasVideoView
             mutation: const DeviceCanvasSessionMutationIdle(),
           ),
           deviceKey: widget.initialDevice.deviceKey,
-          useLocalTurn: deviceCanvasLocalTurnEnabled || deviceCanvasProductionTurnEnabled,
+          useLocalTurn: resolveDeviceCanvasTurnEnabled(
+            local: deviceCanvasLocalTurnEnabled,
+            externalTest: deviceCanvasExternalTurnTestEnabled,
+            production: deviceCanvasProductionTurnEnabled,
+          ),
         );
         _cubit = cubit;
         cubit.authorizationChanged(widget.authorizationState);

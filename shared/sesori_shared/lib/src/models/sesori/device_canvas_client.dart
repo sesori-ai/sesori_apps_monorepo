@@ -545,6 +545,17 @@ String? canonicalizeDeviceCanvasTurnUrl(String value) {
   return "$scheme:${normalizedAuthority.host}:$port?transport=$transport";
 }
 
+bool isCanonicalDeviceCanvasDnsTurnUrl(String value) {
+  if (canonicalizeDeviceCanvasTurnUrl(value) != value) return false;
+  final queryStart = value.indexOf("?");
+  final endpoint = value.substring(value.indexOf(":") + 1, queryStart);
+  if (endpoint.startsWith("[")) return false;
+  final portSeparator = endpoint.lastIndexOf(":");
+  if (portSeparator <= 0) return false;
+  final host = endpoint.substring(0, portSeparator);
+  return host.split(".").length >= 2 && _canonicalizeDeviceCanvasIpv4(host) == null;
+}
+
 ({String host, int? port})? _canonicalizeDeviceCanvasTurnAuthority(String authority) {
   if (authority.startsWith("[")) {
     final closingBracket = authority.indexOf("]");
@@ -675,7 +686,7 @@ bool _looksLikeAlternateNumericHost(String value) {
   final labels = value.split(".");
   return labels.isNotEmpty &&
       labels.every(
-        (label) => RegExp(r"^[0-9]+$").hasMatch(label) || RegExp(r"^0[xX][0-9A-Fa-f]+$").hasMatch(label),
+        (label) => RegExp(r"^[0-9]+$").hasMatch(label) || RegExp(r"^0[xX][0-9A-Fa-f]*$").hasMatch(label),
       );
 }
 

@@ -6,6 +6,21 @@ import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  test("TURN selection is disabled by default and rejects mixed client modes", () {
+    expect(
+      resolveDeviceCanvasTurnEnabled(local: false, externalTest: false, production: false),
+      isFalse,
+    );
+    expect(
+      resolveDeviceCanvasTurnEnabled(local: false, externalTest: true, production: false),
+      isTrue,
+    );
+    expect(
+      () => resolveDeviceCanvasTurnEnabled(local: true, externalTest: true, production: false),
+      throwsStateError,
+    );
+  });
+
   testWidgets("shows a connecting LAN-only video surface", (tester) async {
     await tester.pumpWidget(_app(state: const DeviceCanvasVideoConnecting()));
 
