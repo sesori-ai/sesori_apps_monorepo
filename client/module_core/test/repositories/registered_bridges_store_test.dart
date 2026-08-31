@@ -18,11 +18,14 @@ class _InMemorySecureStorage() implements SecureStorage {
   bool throwOnRead = false;
   bool throwOnWrite = false;
   bool throwOnDelete = false;
+  Completer<String?>? readGate;
 
   @override
   Future<String?> read({required String key}) async {
     reads++;
     if (throwOnRead) throw Exception("read failed");
+    final gate = readGate;
+    if (gate != null) return await gate.future;
     return _data[key];
   }
 
@@ -123,6 +126,23 @@ void main() {
 
     expect(storage._data.containsKey("has_registered_bridges"), isFalse);
     expect(storage.deletes, greaterThanOrEqualTo(1));
+    expect(await store.hasRegisteredBridges(), isFalse);
+  });
+
+  test("a storage read completing after logout does not restore the cache", () async {
+    storage._data["has_registered_bridges"] = "true";
+    final readGate = storage.readGate = Completer<String?>();
+    final store = buildStore();
+    final pending = store.hasRegisteredBridges();
+    await _settle();
+
+    authState.add(const AuthState.unauthenticated());
+    await _settle();
+    storage.readGate = null;
+    readGate.complete("true");
+    await _settle();
+
+    expect(await pending, isFalse);
     expect(await store.hasRegisteredBridges(), isFalse);
   });
 

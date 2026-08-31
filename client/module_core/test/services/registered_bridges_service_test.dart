@@ -426,6 +426,36 @@ void main() {
       expect(service.isRegistered.value, isFalse);
     });
 
+    test("a logout while the startup store seed is in flight discards the stale latch", () async {
+      final seedGate = Completer<bool>();
+      when(() => store.hasRegisteredBridges()).thenAnswer((_) => seedGate.future);
+      final service = build();
+      await _settle();
+
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      seedGate.complete(true);
+      await _settle();
+
+      expect(service.isRegistered.value, isFalse);
+    });
+
+    test("a logout while store resolution is in flight discards the stale latch", () async {
+      final service = build();
+      await _settle();
+      final resolutionGate = Completer<bool>();
+      when(() => store.hasRegisteredBridges()).thenAnswer((_) => resolutionGate.future);
+
+      final pending = service.hasRegisteredBridges();
+      await _settle();
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      resolutionGate.complete(true);
+
+      expect(await pending, isFalse);
+      expect(service.isRegistered.value, isFalse);
+    });
+
     test("a stale latch completing after a new account latched does not wipe the new latch", () async {
       var markCalls = 0;
       final firstMarkGate = Completer<void>();

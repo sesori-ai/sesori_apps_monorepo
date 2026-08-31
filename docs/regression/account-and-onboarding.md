@@ -32,6 +32,8 @@ participates.
   projects shows the add-project call to action instead.
 - An account that never registered a bridge parks offline silently; the
   bridge-offline banner is reserved for accounts that have one.
+- A persisted registered-bridge read that completes after logout cannot restore
+  the signed-out account's latch or leak it to the next account.
 - The bridge prompt appears only once the bridge is locally ready to serve, never
   after a failed or cancelled start, and never for an account known to have the app.
 - The prompt costs one immediate registration check and never polls; push
@@ -62,6 +64,8 @@ the prompt and a reused one when testing suppression.
   emitting authenticated after logout, a rejected refresh leaving credentials
   restorable after relaunch, a transport failure clearing a usable session, or
   macOS OAuth completion failing with a missing Keychain entitlement (`-34018`).
+- A delayed persisted registered-bridge read restoring the previous account's
+  offline banner or recovery flow after logout.
 - The prompt appearing before readiness, after a failed start, on an account that
   already has the app, or driving repeated status requests.
 - Relay availability or key exchange waiting on push registration or the check.
