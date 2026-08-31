@@ -12,6 +12,9 @@ metadata:
 
 # Update the Pi Harness Target
 
+This repository skill lives under `.agents/skills/` so the agent harness can
+load it alongside the other repository skills.
+
 Refresh the Sesori Pi plugin against the latest stable release of
 [`earendil-works/pi`](https://github.com/earendil-works/pi), but treat a target
 bump as a protocol audit rather than a version-only edit. The outcome should
@@ -177,6 +180,35 @@ Classify findings:
 - **Reject:** speculative defenses or compatibility machinery without a real
   caller and meaningful damage.
 
+### Choose a compatibility shape deliberately
+
+For a real version difference, first try one tolerant implementation: preserve
+unknown frames, make newly introduced transport fields optional where an older
+Pi can legitimately omit them, and degrade to the existing behavior. Do not
+add version branches merely because an API technically permits them.
+
+If the semantics are genuinely incompatible and the compatibility code is large
+or hard to reason about, explicitly evaluate a narrow shared interface with two
+Pi-version-specific implementations. Select the implementation only from a
+validated runtime version/provenance (the managed manifest or a validated PATH
+probe); Pi has no handshake, so never infer a version from an event or silently
+assume the binary behind `PATH`. Keep both implementations inside the Pi plugin
+and do not leak Pi-specific concepts into `bridge/app/` or client contracts.
+
+For every retained compatibility branch, comment the exact older Pi behavior it
+preserves and the first minimum Pi version that no longer needs the branch. Use
+this marker directly above the retained field/branch:
+
+```dart
+// COMPATIBILITY YYYY-MM-DD (v1.8.3): Pi <= <old> omits <behavior>; remove this
+// fallback when PiRuntimeManifest.minPathVersion is raised to <new>.
+```
+
+Use the current product version in the marker, not a package version. If a
+single tolerant path is sufficient, prefer it over the two-implementation
+interface; if neither path has a concrete caller and meaningful damage, reject
+both as speculative machinery.
+
 ## Phase 3 — Run a safe current-host probe
 
 Before changing the target, validate the candidate archive on the current host
@@ -244,7 +276,10 @@ Before editing the runtime target or production protocol code, report:
 - which findings are truly visible on JSONL/RPC stdout;
 - probe results and any platform limitations;
 - proposed Sesori edits, explicitly separating version-only changes from
-  capability changes, simplifications, and follow-up work.
+  capability changes, simplifications, and follow-up work;
+- the compatibility strategy: tolerant single path versus a justified
+  version-selected interface with two implementations, including each
+  branch's retirement/minimum version.
 
 Ask the user to approve the proposed production changes. A release audit is
 not permission to expand scope, raise the compatibility floor, or implement
@@ -264,15 +299,23 @@ For an approved target refresh:
 3. For an approved capability, add typed command/event models at the wire
    boundary, map them through the owning Pi plugin, and add focused tests for
    exact field casing, ordering, unknown-field degradation, and failure paths.
+   Prefer one tolerant implementation. If a real incompatible semantic
+   difference makes the change substantial, document why a narrow shared
+   interface with two version-specific implementations is warranted, how the
+   validated runtime version selects it, and when each branch can be removed.
    Do not expose Pi concepts in bridge `app/` or client layers unless an
    existing backend-neutral contract already supports them.
-4. For queue/cancellation changes, prove which work is owned by Sesori's
+4. Put a dated `COMPATIBILITY` comment directly above every retained
+   version-specific field or branch. State the older Pi behavior being kept and
+   the minimum Pi version at which that code is no longer needed; do not leave
+   an unexplained fallback or use a package version in the marker.
+5. For queue/cancellation changes, prove which work is owned by Sesori's
    admission queue versus Pi's internal steering/follow-up queue before
    replacing the existing teardown or retry behavior.
-5. Update `docs/regression/` only when supported behavior materially changes or
+6. Update `docs/regression/` only when supported behavior materially changes or
    a compatibility floor changes. A target-only refresh does not justify a new
    regression tombstone.
-6. Run `dart format` on changed Dart files; never edit generated outputs.
+7. Run `dart format` on changed Dart files; never edit generated outputs.
 
 ## Verification and delivery
 
@@ -284,7 +327,7 @@ git diff --check
 git diff -- bridge/sesori_plugin_pi
 # Stage the documentation file first, or use `git diff --no-index /dev/null ...`
 # while it is untracked, so the skill itself is reviewed too.
-git diff HEAD -- .opencode/skills/update-pi-harness/SKILL.md
+git diff HEAD -- .agents/skills/update-pi-harness/SKILL.md
 ```
 
 If the change affects shared runtime primitives, also run the owning foundation
