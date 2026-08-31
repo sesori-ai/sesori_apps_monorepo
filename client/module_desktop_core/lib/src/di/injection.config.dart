@@ -27,6 +27,8 @@ import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
     as _i464;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_path_resolver.dart'
     as _i961;
+import 'package:sesori_desktop_core/src/foundation/platform/bridge_process_environment.dart'
+    as _i962;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_support_directory.dart'
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
@@ -176,6 +178,7 @@ extension GetItInjectableX on _i174.GetIt {
         controlChannelServer: gh<_i464.ControlChannelServer>(),
         authSession: gh<_i948.AuthSession>(),
         executablePathResolver: gh<_i961.BridgeExecutablePathResolver>(),
+        processEnvironment: gh<_i962.BridgeProcessEnvironment>(),
       ),
       dispose: (i) => i.dispose(),
     );

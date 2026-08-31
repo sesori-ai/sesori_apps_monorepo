@@ -441,6 +441,38 @@ projection cubit.
 Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete; the
 next implementation step waits for the user-run MT gate B above.
 
+### Plan divergence — post-Step 13 Gate B findings (2026-08-31)
+
+The first daily-driver checks exposed three gaps that were not represented at
+the Step 13/14 boundary. This is pre-Gate-B hardening, not Step 14; the
+cockpit extraction remains blocked until the user accepts MT Gate B.
+
+| Finding | Evidence | Revised plan |
+|---|---|---|
+| Launch context hid installed harnesses | A launchd helper had the minimal system PATH; `gh` failed with `ENOENT`. The GUI/helper used the same UID and executable modes, and no `EACCES`/`EPERM` failure was found. | Add a macOS-only, login-shell-derived PATH capability for supervised spawns. Merge it with the inherited environment at the `dart:io` boundary; import no other shell variables and persist nothing. |
+| Quit lost the last-on intent | The persisted desired-state file was `off` after app Quit, so a restart could not restore the user's prior explicit On choice. | Quit stops/disposes the current helper without rewriting desired state. Explicit Bridge Off and coordinated logout continue to persist Off. |
+| Takeover was only a status | Local contention and relay displacement were rendered as status, but no deliberate user action could reclaim ownership. | Add a typed tray/window Take Over action that persists On, performs one stop-and-respawn, and accepts only the fresh replacement prompt. |
+
+The initial incomplete-file-permissions hypothesis was not confirmed. POSIX
+permissions remain unchanged, and the desktop does not grant or persist macOS
+Full Disk Access; TCC remains a user-approved permission for the process that
+actually accesses the protected folder. The helper's PATH fix addresses command
+lookup only and must not be treated as a permission grant.
+
+To keep review and rollback manageable, deliver this divergence as a fixed
+two-PR pre-gate follow-up:
+
+1. `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` —
+   launch-context PATH handling, setup diagnostics, and focused regression
+   coverage.
+2. `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` —
+   quit semantics, takeover orchestration, shell controls, and lifecycle
+   coverage.
+
+The series does not change the original 22-step numbering or mark Gate B done;
+Step 14 must not begin until the user records the gate outcome and explicitly
+authorizes it.
+
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
 `build_context_x` extensions; `client/app` consumes them from the package and

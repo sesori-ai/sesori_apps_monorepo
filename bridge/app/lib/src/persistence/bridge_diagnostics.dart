@@ -7,7 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 ///
 /// Runs checks that help surface configuration or permission issues early,
 /// before the user encounters them at runtime.
-class BridgeDiagnostics() {
+class BridgeDiagnostics({required final bool _isSupervised}) {
   /// Runs all diagnostic checks and logs warnings for any issues found.
   ///
   /// Returns `true` if all checks passed, `false` if any warnings were logged.
@@ -36,11 +36,16 @@ class BridgeDiagnostics() {
     }
   }
 
+  String get _accessSubject => _isSupervised
+      ? "the Sesori desktop app or its supervised bridge helper"
+      : "the application or terminal running the bridge";
+
   /// Checks that the bridge can list directories the user is likely to browse.
   ///
-  /// On macOS, Full Disk Access must be granted to the terminal app for
-  /// directories like `~/Desktop`, `~/Documents`, and `~/Downloads`.
-  /// This check tests listing a few common paths and warns if any fail.
+  /// On macOS, Full Disk Access must be granted to the application or terminal
+  /// process that is actually running the bridge for directories like
+  /// `~/Desktop`, `~/Documents`, and `~/Downloads`. This check tests listing a
+  /// few common paths and warns if any fail.
   Future<bool> checkFilesystemAccess() async {
     final homeDir = resolveUserHomeDirectory(environment: Platform.environment);
     if (homeDir == null) {
@@ -65,7 +70,7 @@ class BridgeDiagnostics() {
         dir.listSync(followLinks: false);
       } on FileSystemException {
         Log.w(
-          "Cannot list $path — the terminal may need Full Disk Access "
+          "Cannot list $path — $_accessSubject may need Full Disk Access "
           "(System Settings → Privacy & Security → Full Disk Access).",
         );
         allAccessible = false;

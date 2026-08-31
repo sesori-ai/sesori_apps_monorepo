@@ -63,6 +63,18 @@ intent before the follow-up push.
   55.3 MB); the Step 13 PR's 13/13 CI checks also passed the Windows/Linux
   native build jobs.
 
+## Post-step supervision hardening
+
+The follow-up keeps app Quit from rewriting the persisted bridge intent: an
+explicit Bridge Off action and coordinated logout still persist Off, while Quit
+only performs the expected helper stop. It adds a typed Take Over action for
+local bridge contention and relay displacement; the action persists On, does
+one stop-and-respawn, and accepts only replacement prompts from the fresh
+helper. The desktop also supplies a login-shell-derived PATH override to the
+supervised helper, without importing shell variables or granting macOS Full
+Disk Access. Genuine Full Disk Access remains a user permission for the process
+that actually runs the bridge.
+
 ## Handoff
 
 Step 12 merged in PR #1215 on 2026-08-30, and Step 13 merged in PR #1216 on

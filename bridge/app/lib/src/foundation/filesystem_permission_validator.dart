@@ -5,7 +5,7 @@ import "dart:io";
 ///
 /// On macOS, directories such as `~/Desktop`, `~/Documents`, `~/Downloads`,
 /// and external/iCloud volumes are gated behind TCC ("Full Disk Access"). When
-/// the terminal running the bridge has not been granted access, `dart:io`
+/// the application or terminal running the bridge has not been granted access, `dart:io`
 /// filesystem calls fail with `EPERM`/`EACCES`. This validator recognises those
 /// denials so callers can surface an actionable message instead of a generic
 /// I/O error.

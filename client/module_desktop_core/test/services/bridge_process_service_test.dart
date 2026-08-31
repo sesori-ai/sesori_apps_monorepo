@@ -20,6 +20,7 @@ void main() {
     late _FakeControlChannelServer controlServer;
     late _FakeAuthSession authSession;
     late _FakeBridgeExecutablePathResolver executablePathResolver;
+    late _FakeBridgeProcessEnvironment processEnvironment;
     late DateTime now;
     late List<String> warnings;
     late BridgeProcessService service;
@@ -32,6 +33,7 @@ void main() {
       authSession = _FakeAuthSession(initialState: const AuthState.unauthenticated());
       statusTracker = BridgeStatusTracker(bridgeIdStorage: MemoryBridgeIdStorage());
       executablePathResolver = _FakeBridgeExecutablePathResolver(path: "/repo/bridge");
+      processEnvironment = _FakeBridgeProcessEnvironment();
       now = DateTime.utc(2026, 8, 28);
       warnings = <String>[];
       service = BridgeProcessService.forTesting(
@@ -41,6 +43,7 @@ void main() {
         controlChannelServer: controlServer,
         authSession: authSession,
         executablePathResolver: executablePathResolver,
+        processEnvironment: processEnvironment,
         crashBackoffDelays: const <Duration>[Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
         recentLogCount: 20,
@@ -66,6 +69,7 @@ void main() {
         controlChannelServer: controlServer,
         authSession: authSession,
         executablePathResolver: executablePathResolver,
+        processEnvironment: processEnvironment,
         crashBackoffDelays: crashBackoffDelays,
         stableRuntime: stableRuntime,
         recentLogCount: recentLogCount,
@@ -102,6 +106,7 @@ void main() {
       expect(repository.spawnCalls, 1);
       expect(repository.executable, "/repo/bridge");
       expect(repository.arguments, ["--control-url", "ws://127.0.0.1:41001"]);
+      expect(repository.environment, processEnvironment.value);
       expect(repository.arguments, isNot(contains("spawn-secret-1")));
       expect(logTracker.attachedStdout, same(streams.stdout));
       expect(logTracker.attachedStderr, same(streams.stderr));
@@ -189,6 +194,24 @@ void main() {
             .having((state) => state.crashCount, "crashCount", 1)
             .having((state) => state.delay, "delay", const Duration(hours: 1)),
       );
+    });
+
+    test("environment resolution failure is cleaned up and permits retry", () async {
+      authSession.state = _authenticatedState;
+      final StateError environmentError = StateError("login environment unavailable");
+      processEnvironment.error = environmentError;
+
+      await expectLater(service.start(), throwsA(same(environmentError)));
+
+      expect(processEnvironment.resolveCalls, 1);
+      expect(repository.spawnCalls, 0);
+      expect(controlServer.startCalls, 1);
+      expect(controlServer.stopCalls, 1);
+      expect(service.state, isA<BridgeProcessStopped>());
+
+      processEnvironment.error = null;
+      await service.start();
+      expect(repository.spawnCalls, 1);
     });
 
     test("control bind failure is cleaned up and permits retry", () async {
@@ -715,6 +738,7 @@ void main() {
       controlChannelServer: server,
       authSession: authSession,
       executablePathResolver: _FakeBridgeExecutablePathResolver(path: "/repo/bridge"),
+      processEnvironment: _FakeBridgeProcessEnvironment(),
       crashBackoffDelays: const <Duration>[Duration(hours: 1)],
       stableRuntime: const Duration(minutes: 5),
       recentLogCount: 20,
@@ -801,6 +825,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   Completer<void>? stopAfterCommandGate;
   String? executable;
   List<String>? arguments;
+  Map<String, String>? environment;
   Object? spawnError;
   Object? stopError;
   bool emitExpectedExitOnStop = false;
@@ -827,6 +852,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
     spawnCalls++;
     this.executable = executable;
     this.arguments = List<String>.of(arguments, growable: false);
+    this.environment = environment;
     final Object? failure = spawnError;
     if (failure != null) {
       throw failure;
@@ -994,6 +1020,22 @@ class _FakeAuthSession({required AuthState initialState}) implements AuthSession
 class _FakeBridgeExecutablePathResolver({required final String path}) implements BridgeExecutablePathResolver {
   @override
   String resolve() => path;
+}
+
+class _FakeBridgeProcessEnvironment() implements BridgeProcessEnvironment {
+  final Map<String, String> value = const <String, String>{"PATH": "/test/bin"};
+  int resolveCalls = 0;
+  Object? error;
+
+  @override
+  Future<Map<String, String>> resolve() async {
+    resolveCalls++;
+    final Object? failure = error;
+    if (failure != null) {
+      throw failure;
+    }
+    return value;
+  }
 }
 
 class _FakeAuthTokenProvider() implements AuthTokenProvider {

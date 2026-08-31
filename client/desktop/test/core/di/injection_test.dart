@@ -49,6 +49,7 @@ void main() {
     expect(getIt<ProductAnalyticsService>(), isA<ProductAnalyticsService>());
     expect(getIt.isRegistered<DesktopApplicationSupportDirectory>(), isTrue);
     expect(getIt.isRegistered<BridgeExecutablePathResolver>(), isTrue);
+    expect(getIt.isRegistered<BridgeProcessEnvironment>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessLogStorage>(), isTrue);
     expect(getIt.isRegistered<BridgeProcessService>(), isTrue);
     expect(getIt.isRegistered<ControlCommandService>(), isTrue);

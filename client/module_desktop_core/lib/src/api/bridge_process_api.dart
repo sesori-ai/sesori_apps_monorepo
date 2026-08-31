@@ -81,11 +81,17 @@ class BridgeProcessApi.forTesting({
     required String? workingDirectory,
     required Map<String, String>? environment,
   }) async {
+    // dart:io replaces the inherited environment when a non-null map is
+    // supplied, so merge capability-provided overrides before crossing the
+    // process boundary. A null value preserves the platform default exactly.
+    final Map<String, String>? childEnvironment = environment == null
+        ? null
+        : <String, String>{...Platform.environment, ...environment};
     final Process process = await _startProcess(
       executable: executable,
       arguments: arguments,
       workingDirectory: workingDirectory,
-      environment: environment,
+      environment: childEnvironment,
     );
     try {
       _requirePositivePid(pid: process.pid);

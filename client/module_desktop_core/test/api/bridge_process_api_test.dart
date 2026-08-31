@@ -47,7 +47,40 @@ void main() {
       expect(launchedExecutable, "/opt/sesori/bridge");
       expect(launchedArguments, const ["--control-url", "ws://127.0.0.1:1"]);
       expect(launchedWorkingDirectory, "/workspace");
-      expect(launchedEnvironment, const {"A": "B"});
+      expect(launchedEnvironment, containsPair("A", "B"));
+      for (final MapEntry<String, String> entry in Platform.environment.entries) {
+        expect(launchedEnvironment, containsPair(entry.key, entry.value));
+      }
+    });
+
+    test("spawn preserves a null environment for the platform default", () async {
+      final _ProcessFixture fixture = _ProcessFixture(pid: 42);
+      addTearDown(fixture.dispose);
+      Map<String, String>? launchedEnvironment;
+      final BridgeProcessApi api = BridgeProcessApi.forTesting(
+        isWindows: false,
+        startProcess:
+            ({
+              required String executable,
+              required List<String> arguments,
+              required String? workingDirectory,
+              required Map<String, String>? environment,
+            }) async {
+              launchedEnvironment = environment;
+              return fixture.process;
+            },
+        runCommand: _unusedCommandRunner,
+        sendSignal: _unusedSignalSender,
+      );
+
+      await api.spawn(
+        executable: "bridge",
+        arguments: const <String>[],
+        workingDirectory: null,
+        environment: null,
+      );
+
+      expect(launchedEnvironment, isNull);
     });
 
     test("spawn rejects a non-positive child pid before returning it", () async {

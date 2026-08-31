@@ -35,6 +35,8 @@ import 'package:sesori_desktop/core/platform/flutter_desktop_application_support
     as _i11;
 import 'package:sesori_desktop/core/platform/flutter_system_tray.dart' as _i81;
 import 'package:sesori_desktop/core/platform/flutter_window_host.dart' as _i789;
+import 'package:sesori_desktop/core/platform/io_bridge_process_environment.dart'
+    as _i906;
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
@@ -95,6 +97,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i227.DesktopFailureReporter(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i316.BridgeProcessEnvironment>(
+      () => _i906.IoBridgeProcessEnvironment(),
+    );
     gh.lazySingleton<_i316.WindowHost>(
       () => _i789.FlutterWindowHost(),
       dispose: (i) => i.dispose(),
