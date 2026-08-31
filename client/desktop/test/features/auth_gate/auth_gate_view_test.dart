@@ -52,6 +52,7 @@ void main() {
       const Stream<ConnectionOverlayState>.empty(),
       initialState: const ConnectionOverlayState.hidden(connected: false),
     );
+    when(() => connectionOverlayCubit.ensureConnected()).thenAnswer((_) async {});
   });
 
   Future<void> pumpGate(WidgetTester tester) {
@@ -85,6 +86,19 @@ void main() {
 
     expect(find.byType(DesktopHome), findsOneWidget);
     expect(find.textContaining("alex"), findsOneWidget);
+  });
+
+  testWidgets("signed-in destination starts relay for a token-only restore", (WidgetTester tester) async {
+    whenListen(
+      cubit,
+      Stream<AuthGateState>.value(const AuthGateState.signedIn(user: null)),
+      initialState: const AuthGateState.checking(),
+    );
+
+    await pumpGate(tester);
+    await tester.pump();
+
+    verify(() => connectionOverlayCubit.ensureConnected()).called(1);
   });
 
   testWidgets("sign out button delegates to the cubit", (WidgetTester tester) async {

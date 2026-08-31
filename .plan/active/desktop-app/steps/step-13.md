@@ -13,7 +13,9 @@ Date: 2026-08-30.
   opaque information arguments to type/shape metadata so SSE properties cannot
   put prompt, transcript, or source content into a future crash-report seam.
 - Rooted the existing shared `ConnectionService` before the desktop widget tree
-  and let its auth-state listener own relay connect/reconnect behavior. No
+  and let its auth-state listener own relay connect/reconnect behavior. The
+  signed-in destination also issues one idempotent auth-backed connect trigger
+  for token-only local restores that intentionally remain `AuthInitial`; no
   second reconnect driver was added.
 - Constructed `ConnectionOverlayCubit` and `SseToastCubit` at the desktop root,
   added a root connection-banner host, and added a navigator-overlay Prego toast
@@ -46,8 +48,9 @@ Step 13 scope. The reviewer returned `Merge verdict: OK`.
   `ConnectionService`, and `RegisteredBridgesService`; cubits remain
   shell-constructed rather than DI-registered.
 - Focused widget coverage verifies bridge-offline and relay-lost banners,
-  retry delegation, backend toast presentation on the navigator overlay, and
-  the separate desktop relay-client status row.
+  retry delegation, backend toast presentation on the navigator overlay, the
+  token-only signed-in destination connection trigger, and the separate desktop
+  relay-client status row.
 - Dart LSP diagnostics and `git diff --check` are clean.
 - `asdf exec flutter build macos` completed successfully (`Sesori.app`,
   55.3 MB). Windows/Linux native build verification remains pending for the

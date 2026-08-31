@@ -39,7 +39,9 @@ explicit restart, and the connection states the app presents.
   popup listener rather than being silently consumed; handled shared failures are
   retained in local logs through a privacy-safe reporter that records error/stack
   and operation/event context while reducing payload-bearing information to shape
-  metadata.
+  metadata. A token-only local restore entering the signed-in desktop destination
+  triggers one fresh auth-backed connection even while the auth session remains
+  provisionally `AuthInitial`.
 - Fresh connections require the typed health body, including explicit filesystem-access
   degradation state; missing or malformed fields fail the connection rather than being
   treated as healthy. Resumed connections retain the last validated health state.
