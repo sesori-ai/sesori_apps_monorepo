@@ -14,9 +14,10 @@ Date: 2026-08-30.
   put prompt, transcript, or source content into a future crash-report seam.
 - Rooted the existing shared `ConnectionService` before the desktop widget tree
   and let its auth-state listener own relay connect/reconnect behavior. The
-  signed-in destination also issues one idempotent auth-backed connect trigger
-  for token-only local restores that intentionally remain `AuthInitial`; no
-  second reconnect driver was added.
+  signed-in destination signals `DesktopRelayConnectionService` through the
+  auth-gate intent for token-only local restores that intentionally remain
+  `AuthInitial`; the connection overlay remains stream-derived and issues no
+  transport commands.
 - Constructed `ConnectionOverlayCubit` and `SseToastCubit` at the desktop root,
   added a root connection-banner host, and added a navigator-overlay Prego toast
   listener for backend `tui.toast.show` events. The desktop home now shows the
@@ -38,19 +39,25 @@ shell now activates the already-shared relay transport and root event surfaces.
 Approved with no blocking findings. The review covered the desktop DI/platform
 boundary, root relay-client composition, shell-owned cubits and presentation,
 route-less behavior, privacy-preserving failure reporting, client layering, and
-Step 13 scope. The reviewer returned `Merge verdict: OK`.
+Step 13 scope. The reviewer returned `Merge verdict: OK`. A follow-up Codex P1
+found that the token-only trigger had been placed on the projection cubit; it
+was moved to the desktop auth/connection coordination service and auth-gate
+intent before the follow-up push.
 
 ## Verification
 
 - `client/desktop`: `dart analyze --fatal-infos` clean; full `flutter test`
-  passed (56 tests).
+  passed (57 tests).
+- `client/module_desktop_core`: `dart analyze --fatal-infos` clean; full
+  `dart test` passed (183 tests).
 - Desktop DI resolves `RelayCryptoService`, `FailureReporter`, `RouteSource`,
   `ConnectionService`, and `RegisteredBridgesService`; cubits remain
   shell-constructed rather than DI-registered.
-- Focused widget coverage verifies bridge-offline and relay-lost banners,
-  retry delegation, backend toast presentation on the navigator overlay, the
-  token-only signed-in destination connection trigger, and the separate desktop
-  relay-client status row.
+- Focused coverage verifies bridge-offline and relay-lost banners, retry
+  delegation, backend toast presentation on the navigator overlay, the
+  token-only signed-in destination handoff through the auth/connection
+  coordinator, DI registration, and the separate desktop relay-client status
+  row.
 - Dart LSP diagnostics and `git diff --check` are clean.
 - `asdf exec flutter build macos` completed successfully (`Sesori.app`,
   55.3 MB). Windows/Linux native build verification remains pending for the

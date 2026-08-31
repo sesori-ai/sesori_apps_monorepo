@@ -52,7 +52,7 @@ void main() {
       const Stream<ConnectionOverlayState>.empty(),
       initialState: const ConnectionOverlayState.hidden(connected: false),
     );
-    when(() => connectionOverlayCubit.ensureConnected()).thenAnswer((_) async {});
+    when(() => cubit.onSignedInDestinationReady()).thenAnswer((_) async {});
   });
 
   Future<void> pumpGate(WidgetTester tester) {
@@ -98,7 +98,7 @@ void main() {
     await pumpGate(tester);
     await tester.pump();
 
-    verify(() => connectionOverlayCubit.ensureConnected()).called(1);
+    verify(() => cubit.onSignedInDestinationReady()).called(1);
   });
 
   testWidgets("sign out button delegates to the cubit", (WidgetTester tester) async {

@@ -54,17 +54,6 @@ class ConnectionOverlayCubit(
     };
   }
 
-  /// Starts a fresh auth-backed connection for a signed-in destination.
-  ///
-  /// The root cubit is created before auth restoration, so its connection
-  /// service normally starts from an [AuthAuthenticated] stream emission. A
-  /// token-only local restore intentionally keeps [AuthInitial] while the
-  /// destination is already visible; that destination uses this one-shot
-  /// trigger to avoid leaving a valid local session disconnected.
-  Future<void> ensureConnected() async {
-    await _connectionService.connectWithFreshAuthToken();
-  }
-
   void reconnect() => _connectionService.reconnect();
 
   @override

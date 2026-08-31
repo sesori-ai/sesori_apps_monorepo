@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -16,7 +15,11 @@ class const AuthGate({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthGateCubit>(
-      create: (_) => AuthGateCubit(authSession: getIt(), logoutOrchestrator: getIt()),
+      create: (_) => AuthGateCubit(
+        authSession: getIt(),
+        logoutOrchestrator: getIt(),
+        relayConnectionService: getIt(),
+      ),
       child: const AuthGateView(),
     );
   }
@@ -34,7 +37,7 @@ class const AuthGateView({super.key}) extends StatelessWidget {
         // The auth gate itself stays local-only. Once the signed-in
         // destination is entered, explicitly start the relay for token-only
         // restores that intentionally remain AuthInitial.
-        unawaited(context.read<ConnectionOverlayCubit>().ensureConnected());
+        unawaited(context.read<AuthGateCubit>().onSignedInDestinationReady());
       },
       child: switch (state) {
         AuthGateChecking() => Scaffold(

@@ -125,16 +125,6 @@ void main() {
       expect: () => const [ConnectionOverlayState.bridgeOffline()],
     );
 
-    test("ensureConnected() delegates to an auth-backed connection", () async {
-      when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
-      final ConnectionOverlayCubit cubit = buildCubit();
-      addTearDown(cubit.close);
-
-      await cubit.ensureConnected();
-
-      verify(() => mockConnectionService.connectWithFreshAuthToken()).called(1);
-    });
-
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "reconnect() delegates to connectionService.reconnect()",
       build: buildCubit,

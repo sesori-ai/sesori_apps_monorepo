@@ -4,6 +4,7 @@ import "package:bloc/bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../orchestration/desktop_logout_orchestrator.dart";
+import "../../services/desktop_relay_connection_service.dart";
 import "auth_gate_state.dart";
 
 /// Desktop sign-in gate: maps the auth session's state stream into the
@@ -16,13 +17,16 @@ import "auth_gate_state.dart";
 class AuthGateCubit._create({
   required final AuthSession _authSession,
   required final DesktopLogoutOrchestrator _logoutOrchestrator,
+  required final DesktopRelayConnectionService _relayConnectionService,
 }) extends Cubit<AuthGateState> {
   new({
     required AuthSession authSession,
     required DesktopLogoutOrchestrator logoutOrchestrator,
+    required DesktopRelayConnectionService relayConnectionService,
   }) : this._create(
          authSession: authSession,
          logoutOrchestrator: logoutOrchestrator,
+         relayConnectionService: relayConnectionService,
        );
 
   this : super(const AuthGateState.checking()) {
@@ -87,6 +91,14 @@ class AuthGateCubit._create({
       // Same posture as the unconfirmed case above.
       logw("Background session restore failed", error, stackTrace);
     }
+  }
+
+  /// Starts the relay once the signed-in destination is visible.
+  ///
+  /// This is deliberately separate from local startup restoration: the gate
+  /// remains local-only and the relay coordinator owns the transport command.
+  Future<void> onSignedInDestinationReady() {
+    return _relayConnectionService.connectForAuthenticatedDestination();
   }
 
   /// Coordinated device-local sign-out. The logout owner stops the supervised
