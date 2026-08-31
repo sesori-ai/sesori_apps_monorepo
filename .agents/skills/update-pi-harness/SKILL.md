@@ -4,7 +4,6 @@ description: >-
   Audit and update Sesori's Pi Agent Harness target while finding protocol
   capabilities, event changes, and simplifications worth integrating. Use when
   refreshing the Pi runtime pin or reviewing a new Pi release.
-compatibility: opencode
 metadata:
   audience: maintainers
   workflow: github
@@ -48,9 +47,11 @@ compatibility change:
   `pi/` package tree; Windows archives are a package tree with `pi.exe`.
 - Keep strict JSONL framing, request-ID correlation, delta-only message updates,
   and `message_end` as final message authority.
-- Preserve the user's Pi profile, credential sources, and runtime settings.
-  Never put secrets, prompts, transcripts, paths, or raw provider errors in
-  reports or commits.
+- Preserve the user's Pi profile, credential sources, and runtime settings in
+  the production launch. The safe probe is deliberately credential-free.
+  Never put secrets, prompts, transcripts, user/project/local filesystem paths,
+  or raw provider errors in reports or commits. Public upstream repository
+  paths and source links may be cited for auditability.
 - Never hand-edit generated Dart files.
 
 ## Phase 1 — Establish the candidate
@@ -109,15 +110,19 @@ git clone --filter=blob:none --no-checkout --quiet \
 git -C "$tmp_repo/pi" fetch --quiet --no-tags origin \
   refs/tags/v<old>:refs/tags/v<old> refs/tags/v<new>:refs/tags/v<new>
 git -C "$tmp_repo/pi" diff --name-status v<old> v<new>
-git -C "$tmp_repo/pi" diff v<old> v<new> -- packages/
 git -C "$tmp_repo/pi" diff --stat v<old> v<new>
+git -C "$tmp_repo/pi" diff --no-ext-diff --no-textconv v<old> v<new> -- \
+  > "$tmp_repo/pi-release.patch"
 ```
 
-The fallback must include the complete tag diff (or a separately paginated
+Inspect and summarize the patch for every changed path, including release
+workflows, archive builders, package metadata, and launch wrappers; a
+`packages/`-only view is supplemental, never the completeness check. The
+fallback must include the complete tag diff (or a separately paginated
 per-commit inventory) before a capability is marked absent. Remove the
 temporary clone after the audit. Prefer a derived summary of commit titles,
-changed paths, additions/deletions,
-and selected patches over dumping the full JSON response. A complete
+changed paths, additions/deletions, and selected patches over dumping the full
+JSON response or patch into the conversation. A complete
 commit-by-commit deep read is optional; when the range is large, a lightweight
 scout/delegate may inventory every commit title and changed area, while the
 main review uses the aggregate tag diff for evidence. Do not let an agent edit
@@ -218,9 +223,10 @@ in a temporary directory:
 2. Inspect/extract it without changing the repository. Confirm the package tree
    and platform-specific entrypoint remain intact. Resolve that entrypoint to
    an absolute path and invoke that path for every check; never invoke a bare
-   PATH-installed `pi`. If a temporary PATH wrapper is more convenient, put
-   only a symlink/copy to the extracted entrypoint first and assert that
-   `command -v pi` (or the Windows equivalent) resolves inside the probe root.
+   PATH-installed `pi` or copy the executable away from its package files. If a
+   temporary PATH wrapper is unavoidable, use only a symlink to the original
+   entrypoint, assert its resolved real path stays inside the extraction root,
+   and launch with the original package root intact.
 3. Create an empty temporary project cwd and isolated temporary `HOME`, Pi
    data/session roots, and host-specific config/cache roots. Explicitly set
    `PI_CODING_AGENT_DIR` and `PI_CODING_AGENT_SESSION_DIR` to temporary
@@ -228,21 +234,29 @@ in a temporary directory:
    the probe root); do not inherit the user's values. On Windows also isolate
    `USERPROFILE`, `APPDATA`, and `LOCALAPPDATA` as applicable. Do not read or
    mutate the user's normal profile.
-4. Verify the absolute entrypoint's `--version` output identifies exactly the
+4. Construct an explicit allowlisted child environment rather than inheriting
+   the caller's environment. Include only a minimal known-safe `PATH` (or equivalent runtime path),
+   `HOME`/host temp roots, the two Pi directory variables,
+   `PI_SKIP_VERSION_CHECK=1`, locale settings, and required Windows system
+   variables. Omit API keys, `GH_TOKEN`, cloud credentials,
+   `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
+   The probe must remain unauthenticated; use a separately authorized and
+   explicitly approved procedure if authenticated behavior needs testing.
+5. Verify the absolute entrypoint's `--version` output identifies exactly the
    candidate release, rather than merely returning success. Preserve the
    normal environment policy in the production launch design.
-5. Launch the extracted entrypoint with exactly these arguments:
+6. Launch the extracted entrypoint with exactly these arguments:
 
    ```text
    --mode rpc --no-session --approve
    ```
 
-   Inject `PI_SKIP_VERSION_CHECK=1` using the host's environment syntax (`env`
-   on POSIX, `$env:PI_SKIP_VERSION_CHECK = '1'` before `& $entrypoint` in
-   PowerShell), and keep the empty temporary cwd as the process working
-   directory. Do not use a PATH-installed binary.
+   Apply the allowlisted environment using host-appropriate APIs (`env -i` or
+   an explicit environment map on POSIX; an explicit `ProcessStartInfo`
+   environment/PowerShell map on Windows), and keep the empty temporary cwd as
+   the process working directory. Do not use a PATH-installed binary.
 
-6. Write this exact newline-delimited request to the child stdin:
+7. Write this exact newline-delimited request to the child stdin:
 
    ```json
    {"id":"probe-1","type":"get_state"}
@@ -253,17 +267,20 @@ in a temporary directory:
    `command == "get_state"`, `success == true`, and `data` is an object. Reject
    malformed JSON, an unexpected matching response, or a timeout; unrelated
    event records may be drained but must not be mistaken for the response.
-   After the assertion, close stdin, wait up to 2 seconds for clean exit, then
-   send SIGTERM and finally SIGKILL only if needed. Always remove the temporary
-   archive, extraction root, profile roots, project cwd, and probe logs with a
-   cleanup trap/finally block.
-7. If the release changes a command/event surface that Sesori may adopt, run a
+   After the assertion, close stdin and wait up to 2 seconds for clean exit.
+   On POSIX, send SIGTERM and then SIGKILL only if needed; on Windows, use the
+   host equivalent (`Stop-Process`/`TerminateProcess`, followed by a forced
+   termination if needed) with the same bounded wait. Always remove the
+   temporary archive, extraction root, profile roots, project cwd, and probe
+   logs with a cleanup trap/finally block.
+8. If the release changes a command/event surface that Sesori may adopt, run a
    focused additional probe for that surface. Stop on a startup, framing,
    response-correlation, package-layout, isolation, or required-surface
    regression. Do not pin a candidate based on a version output alone.
 
 Keep probe output redacted and bounded. Do not retain raw frames, credentials,
-transcripts, prompts, project paths, or provider/account identifiers.
+transcripts, prompts, user/project/local filesystem paths, or provider/account
+identifiers. Public upstream repository paths may remain in the audit record.
 
 ## Phase 4 — Report and approval gate
 
@@ -283,9 +300,11 @@ Before editing the runtime target or production protocol code, report:
 
 Ask the user to approve the proposed production changes. A release audit is
 not permission to expand scope, raise the compatibility floor, or implement
-interesting but unverified upstream behavior. The skill-only documentation PR
-may proceed when explicitly requested, while the runtime/capability PR remains
-behind this gate.
+interesting but unverified upstream behavior. If the user approves a higher
+minimum Pi version, inspect the compatibility branches, tests, and docs that
+only support versions below the new floor and delete the obsolete code rather
+than carrying it forward. The skill-only documentation PR may proceed when
+explicitly requested, while the runtime/capability PR remains behind this gate.
 
 ## Phase 5 — Implement only after approval
 
@@ -323,10 +342,11 @@ Run focused verification for the changed package and inspect the diff:
 
 ```bash
 (cd bridge/sesori_plugin_pi && dart test && dart analyze --fatal-infos)
-git diff --check
-git diff -- bridge/sesori_plugin_pi
-# Stage the documentation file first, or use `git diff --no-index /dev/null ...`
-# while it is untracked, so the skill itself is reviewed too.
+# HEAD comparisons include both staged and unstaged changes.
+git diff HEAD --check
+git diff HEAD -- bridge/sesori_plugin_pi
+# Inspect the skill path as well; use `git diff --no-index /dev/null ...` only
+# when it is still untracked and has not yet been staged.
 git diff HEAD -- .agents/skills/update-pi-harness/SKILL.md
 ```
 
