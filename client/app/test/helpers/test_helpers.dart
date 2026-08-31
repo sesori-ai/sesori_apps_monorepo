@@ -37,6 +37,9 @@ class StubConnectionOverlayCubit({
   this : super(initialState);
 
   @override
+  Future<void> ensureConnected() async {}
+
+  @override
   void reconnect() {}
 }
 
