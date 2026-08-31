@@ -234,6 +234,32 @@ void main() {
       expect(routed.map((delta) => delta.runtimeType).toSet(), hasLength(routed.length));
     });
 
+    test("carries tool-call identity at toolcall_start", () {
+      final delta = parseDelta({
+        "type": "toolcall_start",
+        "contentIndex": 2,
+        "id": "call-1",
+        "toolName": "bash",
+      });
+
+      final start = delta as PiToolCallStartDelta;
+      expect(start.contentIndex, 2);
+      expect(start.id, "call-1");
+      expect(start.toolName, "bash");
+    });
+
+    test("keeps the legacy toolcall_start shape available for the compatibility fallback", () {
+      final delta = parseDelta({
+        "type": "toolcall_start",
+        "contentIndex": 2,
+      });
+
+      final start = delta as PiToolCallStartDelta;
+      expect(start.contentIndex, 2);
+      expect(start.id, isNull);
+      expect(start.toolName, isNull);
+    });
+
     test("carries the content index and the complete tool call at toolcall_end", () {
       final delta = parseDelta({
         "type": "toolcall_end",

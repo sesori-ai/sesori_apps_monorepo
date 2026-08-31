@@ -220,6 +220,13 @@ final class PiEventDispatcher({
         content: content,
         type: PluginMessagePartType.reasoning,
       ),
+      PiToolCallStartDelta(:final contentIndex, :final id, :final toolName) => _toolCallStart(
+        sessionId: sessionId,
+        state: state,
+        contentIndex: contentIndex,
+        toolId: id,
+        toolName: toolName,
+      ),
       PiToolCallEndDelta(:final contentIndex, :final toolCall) => _toolCall(
         sessionId: sessionId,
         state: state,
@@ -227,7 +234,6 @@ final class PiEventDispatcher({
         toolCall: toolCall,
       ),
       PiMessageStartDelta() ||
-      PiToolCallStartDelta() ||
       PiToolCallDelta() ||
       PiAssistantDoneDelta() ||
       PiAssistantErrorDelta() ||
@@ -456,6 +462,29 @@ final class PiEventDispatcher({
     ];
   }
 
+  List<BridgeSseEvent> _toolCallStart({
+    required String sessionId,
+    required _SessionState state,
+    required int? contentIndex,
+    required String? toolId,
+    required String? toolName,
+  }) {
+    if (contentIndex == null || contentIndex < 0) return const [];
+    if (state.messageId == null) return const [];
+    if (toolId == null || toolName == null || toolId.isEmpty || toolName.isEmpty) {
+      // COMPATIBILITY 2026-08-31 (v1.8.3): Pi <= 0.84.2 omits toolcall_start
+      // metadata; keep waiting for toolcall_end. Remove this fallback when
+      // PiRuntimeManifest.minPathVersion is raised to 0.84.3.
+      return const [];
+    }
+    return _emitToolCall(
+      sessionId: sessionId,
+      state: state,
+      toolId: toolId,
+      toolName: toolName,
+    );
+  }
+
   List<BridgeSseEvent> _toolCall({
     required String sessionId,
     required _SessionState state,
@@ -463,24 +492,40 @@ final class PiEventDispatcher({
     required Map<String, Object?> toolCall,
   }) {
     if (contentIndex == null || contentIndex < 0) return const [];
-    final messageId = state.messageId;
+    if (state.messageId == null) return const [];
     final decoded = _historyMapper.decodeToolCall(raw: toolCall);
-    if (messageId == null || decoded == null) return const [];
+    if (decoded == null) return const [];
+    return _emitToolCall(
+      sessionId: sessionId,
+      state: state,
+      toolId: decoded.id,
+      toolName: decoded.name,
+    );
+  }
+
+  List<BridgeSseEvent> _emitToolCall({
+    required String sessionId,
+    required _SessionState state,
+    required String toolId,
+    required String toolName,
+  }) {
+    final messageId = state.messageId;
+    if (messageId == null) return const [];
     final tool = _tools.pending(
       sessionId: sessionId,
       messageId: messageId,
-      toolId: decoded.id,
-      name: decoded.name,
+      toolId: toolId,
+      name: toolName,
     );
-    if (tool != null) state.emittedPartIds.add(tool.id);
-    return tool == null
-        ? const []
-        : [
-            ..._announce(sessionId: sessionId, state: state),
-            BridgeSseMessagePartUpdated(
-              part: _toolPart(sessionId: sessionId, tool: tool),
-            ),
-          ];
+    // The start event already announced this part; the terminal delta adds no
+    // new display state. `message_end` remains authoritative and reconciles it.
+    if (tool == null || !state.emittedPartIds.add(tool.id)) return const [];
+    return [
+      ..._announce(sessionId: sessionId, state: state),
+      BridgeSseMessagePartUpdated(
+        part: _toolPart(sessionId: sessionId, tool: tool),
+      ),
+    ];
   }
 
   List<BridgeSseEvent> _toolRunning({

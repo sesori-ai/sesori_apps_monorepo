@@ -90,6 +90,71 @@ void main() {
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
+  test("announces a pending tool at toolcall_start and avoids a duplicate at toolcall_end", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
+    );
+
+    final started = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_start",
+          "contentIndex": 0,
+          "id": "call-start",
+          "toolName": "write",
+        },
+      }),
+    );
+    final part = started.whereType<BridgeSseMessagePartUpdated>().single.part;
+    expect(started.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+    expect(part.id, "call-start");
+    expect(part.tool, "write");
+    expect(part.state.status, PluginToolStatus.pending);
+
+    final ended = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {"id": "call-start", "name": "write", "arguments": <String, Object?>{}},
+        },
+      }),
+    );
+    expect(ended, isEmpty);
+  });
+
+  test("legacy toolcall_start waits for toolcall_end metadata", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
+    );
+
+    expect(
+      dispatcher.map(
+        sessionId: sessionId,
+        event: _event("message_update", {
+          "assistantMessageEvent": {"type": "toolcall_start", "contentIndex": 0},
+        }),
+      ),
+      isEmpty,
+    );
+
+    final ended = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {"id": "call-legacy", "name": "write", "arguments": <String, Object?>{}},
+        },
+      }),
+    );
+    expect(ended.whereType<BridgeSseMessagePartUpdated>().single.part.tool, "write");
+  });
+
   test("registering a steering prompt preserves the active assistant stream and prompt order", () {
     dispatcher.registerPrompt(
       sessionId: sessionId,

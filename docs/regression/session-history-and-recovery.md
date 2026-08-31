@@ -101,15 +101,18 @@ reconnect or restart.
 - Pi live assistant finals use the same message identities, parts, bounded tool
   results, terminal failures, and visible compaction card as cold replay.
   Streaming text and reasoning follow their content indices, tool progress
-  replaces cumulative output, edit/write completion invalidates the diff once,
-  and only `agent_settled` marks the session idle.
+  replaces cumulative output, and Pi v0.84.3+ `toolcall_start` metadata
+  announces a pending tool before execution begins without duplicating it at
+  `toolcall_end`; older Pi output waits for the terminal tool-call metadata.
+  `message_end` remains authoritative, edit/write completion invalidates the
+  diff once, and only `agent_settled` marks the session idle.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -152,9 +155,10 @@ rules where supported.
 - Pi falls back after an arbitrary RPC failure, shows an abandoned branch or
   summary payload, exposes a private persisted path or hidden prompt prefix, or
   rewrites backend-provided error text in mapped history.
-- A Pi streamed part changes identity when finalized, cumulative tool output is
-  appended, a duplicate terminal tool event repeats a diff invalidation, or
-  `agent_end` marks the session idle before `agent_settled`.
+- A Pi streamed part changes identity when finalized, a tool remains invisible
+  until execution ends despite valid start metadata, a duplicate terminal tool
+  event repeats the pending card or a diff invalidation, or `agent_end` marks
+  the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
