@@ -33,8 +33,10 @@ shell now activates the already-shared relay transport and root event surfaces.
 
 ## Architecture implementation review
 
-Pending the required implementation review for the new desktop DI/platform
-boundary and root relay-client composition.
+Approved with no blocking findings. The review covered the desktop DI/platform
+boundary, root relay-client composition, shell-owned cubits and presentation,
+route-less behavior, privacy-preserving failure reporting, client layering, and
+Step 13 scope. The reviewer returned `Merge verdict: OK`.
 
 ## Verification
 
@@ -47,7 +49,9 @@ boundary and root relay-client composition.
   retry delegation, backend toast presentation on the navigator overlay, and
   the separate desktop relay-client status row.
 - Dart LSP diagnostics and `git diff --check` are clean.
-- Native desktop build/CI verification remains pending for the Step 13 PR.
+- `asdf exec flutter build macos` completed successfully (`Sesori.app`,
+  55.3 MB). Windows/Linux native build verification remains pending for the
+  Step 13 PR.
 
 ## Handoff
 
