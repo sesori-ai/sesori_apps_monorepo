@@ -30,6 +30,10 @@ Future<void> main(List<String> arguments) async {
   // The dispatcher must own the control event stream before any service can
   // spawn a helper, or its first bootstrap token request could go unread.
   await getIt<ControlMessageDispatcher>().start();
+  // Root the shared relay client before the UI builds. Its auth-state listener
+  // connects automatically when AuthGate restores or completes a login, and
+  // no second reconnect driver is introduced in the desktop shell.
+  getIt<ConnectionService>();
   runApp(SesoriDesktopApp(hiddenLaunch: hiddenLaunch));
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
 }

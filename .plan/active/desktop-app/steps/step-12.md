@@ -55,10 +55,10 @@ runner; the terminal `status` aggregator includes the new job.
   tests).
 - `actionlint .github/workflows/desktop-ci.yml` and Dart LSP diagnostics for
   changed source/test files are clean; `git diff --check` is clean.
-- Native three-OS CI verification remains pending until the Step 12 PR runs.
+- Native three-OS CI passed in the merged Step 12 PR (#1215), with 19/19 CI
+  checks green, including the real supervised E2E on macOS, Windows, and Linux.
 
 ## Handoff
 
-The Step 12 implementation is ready for its PR. After it is merged, the
-user-run MT gate B daily-driver matrix is the next checkpoint. The plan remains
-active until that gate is recorded.
+Step 12 merged in PR #1215 on 2026-08-30. The user-run MT gate B daily-driver
+matrix is the next manual checkpoint while Step 13 proceeds locally.

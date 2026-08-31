@@ -49,6 +49,8 @@ import 'package:sesori_desktop_core/src/services/control_command_service.dart'
     as _i175;
 import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
+import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
+    as _i314;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
     as _i866;
 import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
@@ -123,6 +125,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i210.DesktopInstanceRepository(
         api: gh<_i828.DesktopInstanceApi>(),
         storage: gh<_i155.DesktopInstanceStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i314.DesktopRelayConnectionService>(
+      () => _i314.DesktopRelayConnectionService(
+        authSession: gh<_i948.AuthSession>(),
+        connectionService: gh<_i948.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i21.ControlMessageDispatcher>(

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -13,7 +15,11 @@ class const AuthGate({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthGateCubit>(
-      create: (_) => AuthGateCubit(authSession: getIt(), logoutOrchestrator: getIt()),
+      create: (_) => AuthGateCubit(
+        authSession: getIt(),
+        logoutOrchestrator: getIt(),
+        relayConnectionService: getIt(),
+      ),
       child: const AuthGateView(),
     );
   }
@@ -25,12 +31,21 @@ class const AuthGateView({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthGateState state = context.watch<AuthGateCubit>().state;
-    return switch (state) {
-      AuthGateChecking() => Scaffold(
-        body: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
-      ),
-      AuthGateSignedOut() => const LoginScreen(),
-      AuthGateSignedIn(:final user) => DesktopHome(user: user),
-    };
+    return BlocListener<AuthGateCubit, AuthGateState>(
+      listenWhen: (previous, current) => previous is! AuthGateSignedIn && current is AuthGateSignedIn,
+      listener: (context, _) {
+        // The auth gate itself stays local-only. Once the signed-in
+        // destination is entered, explicitly start the relay for token-only
+        // restores that intentionally remain AuthInitial.
+        unawaited(context.read<AuthGateCubit>().onSignedInDestinationReady());
+      },
+      child: switch (state) {
+        AuthGateChecking() => Scaffold(
+          body: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+        ),
+        AuthGateSignedOut() => const LoginScreen(),
+        AuthGateSignedIn(:final user) => DesktopHome(user: user),
+      },
+    );
   }
 }

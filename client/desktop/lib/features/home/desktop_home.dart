@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -20,6 +21,7 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
   Widget build(BuildContext context) {
     final BridgeControlState state = context.watch<BridgeControlCubit>().state;
     final BridgeControlCubit controls = context.read<BridgeControlCubit>();
+    final ConnectionOverlayState relayConnection = context.watch<ConnectionOverlayCubit>().state;
     final List<BridgeProcessLogEntry> crashLogs = switch (state.processState) {
       BridgeProcessCrashGiveUp(:final recentLogs) => recentLogs,
       BridgeProcessStopped() ||
@@ -60,7 +62,8 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
                           label: "Registration",
                           value: state.controlStatus.bridgeId == null ? "Not registered" : "Registered",
                         ),
-                        _StatusRow(label: "Relay", value: _relayLabel(state.controlStatus.relay)),
+                        _StatusRow(label: "Supervised relay", value: _relayLabel(state.controlStatus.relay)),
+                        _StatusRow(label: "Desktop relay client", value: _connectionLabel(relayConnection)),
                         _StatusRow(label: "Plugin health", value: _pluginLabel(state.controlStatus.plugin)),
                         _StatusRow(
                           label: "Active sessions",
@@ -124,6 +127,13 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
     ControlRelayConnectionState.disconnected => "Disconnected",
     ControlRelayConnectionState.takenOver => "Taken over",
     ControlRelayConnectionState.unknown => "Unknown",
+  };
+
+  static String _connectionLabel(ConnectionOverlayState state) => switch (state) {
+    ConnectionOverlayHidden(:final connected) => connected ? "Connected" : "Disconnected",
+    ConnectionOverlayReconnecting() => "Reconnecting",
+    ConnectionOverlayConnectionLost() => "Connection lost",
+    ConnectionOverlayBridgeOffline() => "Bridge offline",
   };
 
   static String _pluginLabel(ControlPluginHealthState state) => switch (state) {

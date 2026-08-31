@@ -20,6 +20,7 @@ void main() {
     expect(getIt.isRegistered<DesktopInstanceStorage>(), isTrue);
     expect(getIt.isRegistered<DesktopInstanceRepository>(), isTrue);
     expect(getIt.isRegistered<DesktopInstanceService>(), isTrue);
+    expect(getIt.isRegistered<DesktopRelayConnectionService>(), isTrue);
     expect(getIt.isRegistered<DesktopStartupOrchestrator>(), isTrue);
     expect(getIt.isRegistered<DesktopLogoutOrchestrator>(), isTrue);
   });

@@ -3,6 +3,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/features/home/desktop_home.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -18,10 +19,12 @@ const AuthUser _user = AuthUser(
 void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
   late _MockAuthGateCubit authGateCubit;
+  late _MockConnectionOverlayCubit connectionOverlayCubit;
 
   setUp(() {
     bridgeControlCubit = _MockBridgeControlCubit();
     authGateCubit = _MockAuthGateCubit();
+    connectionOverlayCubit = _MockConnectionOverlayCubit();
     when(() => bridgeControlCubit.toggleBridge()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.toggleLaunchAtLogin()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.openLogs()).thenAnswer((_) async {});
@@ -35,6 +38,11 @@ void main() {
       const Stream<AuthGateState>.empty(),
       initialState: const AuthGateState.signedIn(user: _user),
     );
+    whenListen(
+      connectionOverlayCubit,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.hidden(connected: true),
+    );
     return tester.pumpWidget(
       MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
@@ -42,6 +50,7 @@ void main() {
           providers: [
             BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
+            BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
           ],
           child: const DesktopHome(user: _user),
         ),
@@ -69,7 +78,8 @@ void main() {
     expect(find.text("Signed in as alex (GitHub)"), findsOneWidget);
     expect(find.text("Bridge: Connected"), findsOneWidget);
     expect(find.text("Registered"), findsOneWidget);
-    expect(find.text("Connected"), findsOneWidget);
+    expect(find.text("Desktop relay client"), findsOneWidget);
+    expect(find.text("Connected"), findsNWidgets(2));
     expect(find.text("Healthy"), findsOneWidget);
     expect(find.text("2"), findsOneWidget);
     expect(find.text("Turn Bridge Off"), findsOneWidget);
@@ -135,3 +145,5 @@ BridgeControlState _state({
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
+
+class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;

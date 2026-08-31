@@ -37,6 +37,7 @@ export "src/services/bridge_process_service.dart";
 export "src/services/bridge_process_state.dart";
 export "src/services/control_command_service.dart";
 export "src/services/desktop_instance_service.dart";
+export "src/services/desktop_relay_connection_service.dart";
 export "src/trackers/bridge_control_status.dart";
 export "src/trackers/bridge_process_log_tracker.dart";
 export "src/trackers/bridge_prompt_tracker.dart";

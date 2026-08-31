@@ -19,10 +19,14 @@ import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
+import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
+    as _i227;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
     as _i20;
+import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
+    as _i911;
 import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
     as _i757;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
@@ -41,6 +45,7 @@ import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
+import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -53,6 +58,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
     gh.lazySingleton<_i833.DeviceInfoPlugin>(
       () => registerModule.deviceInfoPlugin,
+    );
+    gh.lazySingleton<_i553.RelayCryptoService>(
+      () => registerModule.relayCryptoService,
     );
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
@@ -83,11 +91,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i91.NoOpAttributionClient(),
     );
+    gh.lazySingleton<_i553.FailureReporter>(
+      () => _i227.DesktopFailureReporter(),
+    );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
     gh.lazySingleton<_i316.WindowHost>(
       () => _i789.FlutterWindowHost(),
       dispose: (i) => i.dispose(),
     );
+    gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(

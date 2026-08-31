@@ -11,6 +11,8 @@ class _MockAuthSession() extends Mock implements AuthSession;
 
 class _MockDesktopLogoutOrchestrator() extends Mock implements DesktopLogoutOrchestrator;
 
+class _MockDesktopRelayConnectionService() extends Mock implements DesktopRelayConnectionService;
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -21,16 +23,19 @@ const AuthUser _user = AuthUser(
 void main() {
   late _MockAuthSession authSession;
   late _MockDesktopLogoutOrchestrator logoutOrchestrator;
+  late _MockDesktopRelayConnectionService relayConnectionService;
   late BehaviorSubject<AuthState> authStates;
 
   setUp(() {
     authSession = _MockAuthSession();
     logoutOrchestrator = _MockDesktopLogoutOrchestrator();
+    relayConnectionService = _MockDesktopRelayConnectionService();
     authStates = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
     when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStates.value);
     when(() => authSession.hasLocallyValidSession()).thenAnswer((_) async => false);
     when(() => authSession.restoreLocalSession()).thenAnswer((_) async => false);
+    when(() => relayConnectionService.connectForAuthenticatedDestination()).thenAnswer((_) async {});
     when(() => logoutOrchestrator.logoutCurrentDevice()).thenAnswer((_) async {
       try {
         await authSession.logoutCurrentDevice();
@@ -49,6 +54,7 @@ void main() {
     final AuthGateCubit cubit = AuthGateCubit(
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
+      relayConnectionService: relayConnectionService,
     );
     addTearDown(cubit.close);
     // Let the async restore-and-subscribe bootstrap settle.
@@ -107,6 +113,7 @@ void main() {
     final AuthGateCubit cubit = AuthGateCubit(
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
+      relayConnectionService: relayConnectionService,
     );
     addTearDown(cubit.close);
     final List<AuthGateState> emitted = <AuthGateState>[];
@@ -132,6 +139,7 @@ void main() {
     final AuthGateCubit cubit = AuthGateCubit(
       authSession: authSession,
       logoutOrchestrator: logoutOrchestrator,
+      relayConnectionService: relayConnectionService,
     );
     addTearDown(cubit.close);
     await pumpEventQueue();
@@ -172,6 +180,14 @@ void main() {
     final AuthGateCubit cubit = await pumpCubit();
 
     expect(cubit.state, const AuthGateState.signedOut());
+  });
+
+  test("signed-in destination delegates relay startup", () async {
+    final AuthGateCubit cubit = await pumpCubit();
+
+    await cubit.onSignedInDestinationReady();
+
+    verify(() => relayConnectionService.connectForAuthenticatedDestination()).called(1);
   });
 
   test("signOut delegates to the device-local logout", () async {
