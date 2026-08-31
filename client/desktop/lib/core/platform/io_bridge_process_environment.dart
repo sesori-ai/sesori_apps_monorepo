@@ -75,10 +75,7 @@ class IoBridgeProcessEnvironment.forTesting({
     try {
       result = await _runProcess(
         executable: shell,
-        arguments: const <String>[
-          "-ilc",
-          r'printf "__SESORI_PATH_BEGIN__%s__SESORI_PATH_END__\n" "$PATH"',
-        ],
+        arguments: const <String>["-ilc", "/usr/bin/env"],
         environment: null,
         timeout: _shellTimeout,
       );
@@ -87,26 +84,48 @@ class IoBridgeProcessEnvironment.forTesting({
       return null;
     }
     if (result.exitCode != 0) {
-      logw("The macOS login shell exited with code ${result.exitCode}; using fallback executable paths");
+      logw(
+        "The macOS login shell exited with code ${result.exitCode}; using fallback executable paths"
+        "${_stderrDetails(stderr: result.stderr.toString())}",
+      );
       return null;
     }
 
-    final String output = result.stdout.toString();
-    String? encodedPath;
-    for (final RegExpMatch match in _pathMarkers.allMatches(output)) {
-      encodedPath = match.group(1);
-    }
-    if (encodedPath == null) {
-      logw("The macOS login shell did not return a usable PATH; using fallback executable paths");
+    final String? shellPath = _extractPath(output: result.stdout.toString());
+    if (shellPath == null) {
+      logw(
+        "The macOS login shell did not return a usable PATH; using fallback executable paths"
+        "${_stderrDetails(stderr: result.stderr.toString())}",
+      );
       return null;
     }
-    return encodedPath;
+    return shellPath;
   }
 
-  static final RegExp _pathMarkers = RegExp(
-    "__SESORI_PATH_BEGIN__(.*?)__SESORI_PATH_END__",
-    dotAll: true,
-  );
+  /// Reads the exported PATH from `env` rather than expanding `$PATH` in the
+  /// shell command. Fish represents PATH as a list and expands a quoted list
+  /// once per entry; `env` serializes it to the single colon-delimited value
+  /// inherited by child processes for every supported shell.
+  static String? _extractPath({required String output}) {
+    String? shellPath;
+    for (final String line in const LineSplitter().convert(output)) {
+      if (line.startsWith("PATH=")) {
+        shellPath = line.substring("PATH=".length);
+      }
+    }
+    return shellPath;
+  }
+
+  static String _stderrDetails({required Object stderr}) {
+    final String value = stderr.toString().trim();
+    if (value.isEmpty) return "";
+    final String bounded = value.length <= _maxLoggedShellStderrCharacters
+        ? value
+        : "…${value.substring(value.length - _maxLoggedShellStderrCharacters)}";
+    return "; stderr: $bounded";
+  }
+
+  static const int _maxLoggedShellStderrCharacters = 4 * 1024;
 
   static String _shellExecutable({required Map<String, String> environment}) {
     final String? configured = environment["SHELL"]?.trim();
@@ -148,12 +167,12 @@ class IoBridgeProcessEnvironment.forTesting({
       mode: ProcessStartMode.normal,
     );
     try {
-      final (int exitCode, String stdout, _) = await (
+      final (int exitCode, String stdout, String stderr) = await (
         process.exitCode,
         _readOutputTail(stream: process.stdout),
-        process.stderr.drain<void>(),
+        _readOutputTail(stream: process.stderr),
       ).wait.timeout(timeout);
-      return ProcessResult(process.pid, exitCode, stdout, "");
+      return ProcessResult(process.pid, exitCode, stdout, stderr);
     } on Object {
       process.kill(ProcessSignal.sigkill);
       rethrow;

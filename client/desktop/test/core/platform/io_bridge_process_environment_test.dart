@@ -33,7 +33,7 @@ void main() {
                 1,
                 0,
                 "shell startup output\nSECRET_FROM_SHELL=do-not-copy\n"
-                    "__SESORI_PATH_BEGIN__/shell/bin:/base/bin:/non-\u00e9:relative__SESORI_PATH_END__\n",
+                    "PATH=/shell/bin:/base/bin:/non-\u00e9:relative\n",
                 "",
               );
             },
@@ -47,10 +47,7 @@ void main() {
       expect(first, same(second));
       expect(calls, 1);
       expect(shell, "/bin/zsh");
-      expect(capturedArguments, [
-        "-ilc",
-        r'printf "__SESORI_PATH_BEGIN__%s__SESORI_PATH_END__\n" "$PATH"',
-      ]);
+      expect(capturedArguments, ["-ilc", "/usr/bin/env"]);
       expect(first["PATH"], "/shell/bin:/base/bin:/non-é:/fallback/bin");
       expect(first["EXISTING_VARIABLE"], isNull);
       expect(first["SECRET_FROM_SHELL"], isNull);
@@ -79,7 +76,7 @@ void main() {
               return ProcessResult(
                 1,
                 0,
-                "__SESORI_PATH_BEGIN__/custom/shell/bin__SESORI_PATH_END__",
+                "PATH=/custom/shell/bin",
                 "",
               );
             },
@@ -102,7 +99,7 @@ void main() {
           required List<String> arguments,
           required Map<String, String>? environment,
           required Duration timeout,
-        }) async => throw const ProcessException("/bin/zsh", <String>[], "unavailable", 1),
+        }) async => ProcessResult(1, 1, "", "login shell unavailable"),
         shellTimeout: const Duration(seconds: 5),
         fallbackPathDirectories: const <String>["/user/bin"],
       );
