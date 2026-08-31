@@ -2491,11 +2491,23 @@ abstract class AppLocalizations {
   /// **'This directory is empty'**
   String get emptyDirectory;
 
-  /// Accessibility label for the '..' row that navigates to the parent folder in the add-project browser.
+  /// Accessibility label for the arrow button that navigates to the parent folder in the add-project browser.
   ///
   /// In en, this message translates to:
   /// **'Parent directory'**
   String get parentDirectory;
+
+  /// Shortcut button that jumps to the host user's home directory in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'~ Home'**
+  String get folderPickerHome;
+
+  /// Shortcut button that jumps to the host filesystem root in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'/ Root'**
+  String get folderPickerRoot;
 
   /// No description provided for @fetchDirectoryFailed.
   ///

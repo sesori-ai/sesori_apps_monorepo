@@ -1,7 +1,6 @@
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:path/path.dart" as p;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -55,9 +54,12 @@ class const AddProjectDialog({
 }
 
 class _AddProjectDialogState() extends State<AddProjectDialog> {
-  /// The folder the bridge started us in, used to present that full host path
-  /// as the header title. It is a starting location, not a navigation boundary.
+  /// The folder the bridge started us in. The bridge's default is the host
+  /// user's home directory, so this is also the Home shortcut target.
   String? _startingPath;
+
+  /// The host filesystem root resolved from [_startingPath].
+  String? _rootPath;
 
   /// The folder being listed. Empty until the first fetch resolves the start.
   String _currentPath = "";
@@ -71,8 +73,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// same folder, so one at a time — and the button that is working is the one
   /// that shows it.
   _AddProjectAction? _inFlight;
-
-  bool get _isAtStartingPath => _currentPath.isNotEmpty && _currentPath == _startingPath;
 
   String? get _parentPath => _currentPath.isEmpty ? null : widget.cubit.parentHostPath(path: _currentPath);
 
@@ -108,11 +108,12 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
       switch (outcome) {
         case FilesystemSuggestionsSuccess(:final suggestions):
           final resolvedPath = suggestions.path;
-          // The first fetch has no prefix, so the bridge names the folder it
-          // chose. Keep it for presentation while allowing navigation above it.
+          // The first fetch has no prefix, so the bridge names the host user's
+          // home folder. Keep both shortcut targets for this browsing session.
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
             _startingPath = resolvedPath;
+            _rootPath = _resolveRootPath(path: resolvedPath);
           }
           _entries = suggestions.data;
           _hasError = false;
@@ -137,33 +138,17 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   void _navigateUp() {
     final parent = _parentPath;
     if (parent == null) return;
-    setState(() => _currentPath = parent);
-    _fetchEntries();
+    _navigateInto(path: parent);
   }
 
-  // ---------------------------------------------------------------------------
-  // Header labelling
-  // ---------------------------------------------------------------------------
-
-  /// The bar's title: the bridge-returned host path at the starting folder, or
-  /// the current folder name after navigating away from it.
-  String _title({required AppLocalizations loc}) {
-    if (_currentPath.isEmpty) return loc.addProject;
-    if (_isAtStartingPath) return _currentPath;
-    return _hostBasename(_currentPath);
+  String _resolveRootPath({required String path}) {
+    var root = path;
+    while (true) {
+      final parent = widget.cubit.parentHostPath(path: root);
+      if (parent == null) return root;
+      root = parent;
+    }
   }
-
-  /// The bar's second line is the full host path after navigating away from the
-  /// starting folder. Null there, where the title already shows that path.
-  String? _subtitle() {
-    if (_isAtStartingPath || _currentPath.isEmpty) return null;
-    return _currentPath;
-  }
-
-  /// The last segment of a host path. The path comes from the bridge's host,
-  /// not the phone's, so both separator styles have to parse — the
-  /// platform-local basename would return a Windows path unchanged.
-  static String _hostBasename(String path) => p.posix.basename(path.replaceAll(r"\", "/"));
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -315,6 +300,8 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final startingPath = _startingPath;
+    final rootPath = _rootPath;
     // The listing scrolls inside the body, so the body needs a bounded height.
     // Take the whole sheet: the browser keeps one height while folders of
     // different lengths come and go, instead of the sheet resizing under the
@@ -322,11 +309,9 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
 
     return PregoBottomSheet(
-      title: _title(loc: loc),
-      subtitle: _subtitle(),
-      // The header is a nav bar for the folder being browsed, not a headline
-      // for the sheet — so the leading-aligned title/path variant.
-      alignment: PregoSheetTitleAlignment.start,
+      // Navigation lives in the browser body; the sheet header only owns its
+      // close affordance and drag handle.
+      title: "",
       topInset: widget.topInset,
       onClose: _dismissDialog,
       // Full-bleed body; the banner, rows, and action menu pad themselves.
@@ -344,6 +329,17 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
             child: Column(
               children: [
                 const _FilesystemAccessBanner(),
+                if (_currentPath.isNotEmpty)
+                  _DirectoryNavigation(
+                    currentPath: _currentPath,
+                    onNavigateUp: _parentPath == null ? null : _navigateUp,
+                    onNavigateHome: startingPath == null || _currentPath == startingPath
+                        ? null
+                        : () => _navigateInto(path: startingPath),
+                    onNavigateRoot: rootPath == null || _currentPath == rootPath
+                        ? null
+                        : () => _navigateInto(path: rootPath),
+                  ),
                 Expanded(
                   // The listing runs to the bottom edge and the actions float
                   // over it, so folders scroll behind them and dissolve into
@@ -381,33 +377,22 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// content pads past it so the last folder clears the buttons, and the states
   /// that centre their content centre in what is left above them.
   Widget _buildListing({required AppLocalizations loc, required double bottomInset}) {
-    final parentPath = _parentPath;
     if (_loading) {
       return ListView(
         padding: EdgeInsetsDirectional.only(bottom: bottomInset),
-        children: [
-          if (parentPath != null) _buildParentEntry(path: parentPath),
-          _FolderListSkeleton(semanticLabel: loc.addProject),
-        ],
+        children: [_FolderListSkeleton(semanticLabel: loc.addProject)],
       );
     }
     if (_hasError) {
-      return Column(
-        children: [
-          if (parentPath != null) _buildParentEntry(path: parentPath),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(bottom: bottomInset),
-              child: _BrowseError(
-                permissionDenied: _permissionDenied,
-                onRetry: _fetchEntries,
-              ),
-            ),
-          ),
-        ],
+      return Padding(
+        padding: EdgeInsetsDirectional.only(bottom: bottomInset),
+        child: _BrowseError(
+          permissionDenied: _permissionDenied,
+          onRetry: _fetchEntries,
+        ),
       );
     }
-    if (_entries.isEmpty && parentPath == null) {
+    if (_entries.isEmpty) {
       return Padding(
         padding: EdgeInsetsDirectional.only(bottom: bottomInset),
         child: Center(
@@ -422,39 +407,93 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     }
     return ListView.builder(
       padding: EdgeInsetsDirectional.only(bottom: bottomInset),
-      itemCount: _entries.length + (parentPath == null ? 0 : 1),
+      itemCount: _entries.length,
       itemBuilder: (context, index) {
-        if (parentPath != null && index == 0) {
-          return _buildParentEntry(path: parentPath);
-        }
-        final entry = _entries[index - (parentPath == null ? 0 : 1)];
+        final entry = _entries[index];
         return _FolderTile(
           entry: entry,
-          semanticLabel: null,
           onTap: () => _navigateInto(path: entry.path),
         );
       },
     );
   }
-
-  Widget _buildParentEntry({required String path}) {
-    return _FolderTile(
-      entry: FilesystemSuggestion(path: path, name: "..", isGitRepo: false),
-      semanticLabel: context.loc.parentDirectory,
-      onTap: _navigateUp,
-    );
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Folder rows
+// Folder navigation and rows
 // ---------------------------------------------------------------------------
+
+class const _DirectoryNavigation({
+  required final String currentPath,
+  required final VoidCallback? onNavigateUp,
+  required final VoidCallback? onNavigateHome,
+  required final VoidCallback? onNavigateRoot,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        PregoSpacing.xl,
+        0,
+        PregoSpacing.xl,
+        PregoSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            spacing: PregoSpacing.md,
+            children: [
+              PregoButtonsSolid(
+                label: loc.folderPickerHome,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onNavigateHome,
+              ),
+              PregoButtonsSolid(
+                label: loc.folderPickerRoot,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onNavigateRoot,
+              ),
+            ],
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          Row(
+            children: [
+              Semantics(
+                label: loc.parentDirectory,
+                child: PregoButtonsSolid.iconOnly(
+                  leadingIcon: TablerRegular.arrow_up,
+                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.lg,
+                  onPressed: onNavigateUp,
+                ),
+              ),
+              const SizedBox(width: PregoSpacing.lg),
+              Expanded(
+                child: Text(
+                  "..$currentPath",
+                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// One folder in the browser: its name, a tag when it already holds a git
 /// repository, and a chevron into it.
 class const _FolderTile({
   required final FilesystemSuggestion entry,
-  required final String? semanticLabel,
   required final VoidCallback onTap,
 }) extends StatelessWidget {
   @override
@@ -464,7 +503,6 @@ class const _FolderTile({
 
     return MergeSemantics(
       child: Semantics(
-        label: semanticLabel,
         button: true,
         child: InkWell(
           onTap: onTap,
@@ -496,14 +534,11 @@ class const _FolderTile({
                         // Yields to the tag, so a long folder name ellipsizes
                         // instead of pushing the tag off the row.
                         Flexible(
-                          child: ExcludeSemantics(
-                            excluding: semanticLabel != null,
-                            child: Text(
-                              entry.name,
-                              style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          child: Text(
+                            entry.name,
+                            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         if (entry.isGitRepo) ...[
