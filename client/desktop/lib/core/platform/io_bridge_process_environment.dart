@@ -126,7 +126,8 @@ class IoBridgeProcessEnvironment.forTesting({
     try {
       final FileStat stat = FileStat.statSync(path);
       return stat.type == FileSystemEntityType.file && (stat.mode & _posixExecuteBits) != 0;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      logw("Failed to inspect the configured macOS login shell; using /bin/zsh", error, stackTrace);
       return false;
     }
   }
@@ -231,8 +232,7 @@ class IoBridgeProcessEnvironment.forTesting({
           !entry.startsWith("/") ||
           entry.contains("\u0000") ||
           entry.contains("\n") ||
-          entry.contains("\r") ||
-          entry.codeUnits.any((unit) => unit > 0x7f)) {
+          entry.contains("\r")) {
         continue;
       }
       yield entry;

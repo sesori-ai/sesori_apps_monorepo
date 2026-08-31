@@ -5,7 +5,7 @@ import "package:sesori_desktop/core/platform/io_bridge_process_environment.dart"
 
 void main() {
   group("IoBridgeProcessEnvironment", () {
-    test("resolves only the login-shell PATH and caches the result", () async {
+    test("resolves and caches a login-shell PATH without dropping valid Unicode entries", () async {
       var calls = 0;
       String? shell;
       List<String>? capturedArguments;
@@ -51,7 +51,7 @@ void main() {
         "-ilc",
         r'printf "__SESORI_PATH_BEGIN__%s__SESORI_PATH_END__\n" "$PATH"',
       ]);
-      expect(first["PATH"], "/shell/bin:/base/bin:/fallback/bin");
+      expect(first["PATH"], "/shell/bin:/base/bin:/non-é:/fallback/bin");
       expect(first["EXISTING_VARIABLE"], isNull);
       expect(first["SECRET_FROM_SHELL"], isNull);
       expect(() => first["PATH"] = "/changed", throwsUnsupportedError);
