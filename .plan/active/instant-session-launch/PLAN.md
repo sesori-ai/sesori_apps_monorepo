@@ -23,7 +23,11 @@
   fixed two stale timeout references and replaced command-name queue matching
   with exact identity: the initial command send reuses `launchId` as its
   promptId, so the existing promptId dedupe/swap machinery covers command
-  launches with no bespoke rule.
+  launches with no bespoke rule. A sixth and seventh round settled remaining
+  consistency: verification wording, subscription ownership, the required
+  nullable handoff parameter, cancel-clears-handoff for command launches, the
+  narrowed initial-echo non-goal, and failed-state entries in the step
+  scopes.
   The dated-marker request for `launchId` was declined in favor of the shipped
   `promptId` doc-comment posture.
 - **Plan date:** 2026-08-31
@@ -272,7 +276,8 @@ duplicate-risk warning.
   resend after failure enters a new sending phase with a fresh `launchId`, so
   a late event from the previous attempt can never update it, and settlement
   discards identity and stage together. The cubit subscribes once to
-  `ConnectionService.events` alongside its existing status subscription; a
+  `ConnectionService.events`, owned and cancelled in `close()` exactly like
+  the existing status subscription; a
   `session.create.progress` event updates `stage` only when the current phase
   is sending with the event's `launchId`. Late, foreign, or post-settlement
   events are ignored by that same match.
@@ -319,8 +324,10 @@ duplicate-risk warning.
   Content comes from the snapshot and configuration.
 - `SessionDetailCubit` takes the handoff before constructing its initial
   state, and the value then lives only in state:
-  - `SessionDetailState.loading` gains `QueuedSessionSubmission?
-    launchSubmission` (default null), set on the initial state.
+  - `SessionDetailState.loading` gains `required QueuedSessionSubmission?
+    launchSubmission` (required nullable per the repository parameter rule —
+    a defaulted parameter would let an ordinary emission silently discard the
+    already-consumed handoff), set on the initial state.
     `_loadMessages` preserves the current state's `launchSubmission` in every
     loading emission it makes and passes it into `_buildLoadedState` — the
     constructor-set value must survive the load path's own emissions, or the
@@ -340,7 +347,12 @@ duplicate-risk warning.
       (Design §2). The command handoff bubble therefore uses `launchId` as its
       local promptId, and the existing machinery applies verbatim — the
       local/server dedupe hides the bubble while the queue lists the id, and
-      `_releaseDeliveredPrompt` swaps it on the promptId-carrying echo. No
+      `_releaseDeliveredPrompt` swaps it on the promptId-carrying echo. A
+      successful local `cancelBridgeQueuedPrompt` whose promptId equals the
+      launch id also clears `launchSubmission` in the same emission — the
+      cancelled input will never echo, and the bubble must not resurrect. A
+      cancellation issued by another client leaves a stale bubble until
+      refresh; accepted residual for that rare cross-client flow. No
       command-name matching exists. Against an old bridge the ids cannot
       match, so the command bubble degrades to the first-renderable-user-
       message rule; a same-named user command queued inside that echo window
@@ -446,7 +458,9 @@ Unchanged from the shipped behavior, restated for completeness:
   `fast-new-session-launch`).
 - No per-plugin sub-stages, no plugin-interface progress surface, no
   `RuntimeProvisionProgress` forwarding, and no percent/measure fields.
-- No promptId on the initial echo and no bridge-side echo rewriting.
+- No promptId on the initial text-parts echo and no bridge-side echo
+  rewriting. The slash-command start keeps its normal plugin-stamped promptId
+  — now fed by `launchId` (Design §2) — which the command handoff relies on.
 - No stage persistence, no session-list "launching" placeholder, no desktop
   surface work (the desktop shell cannot create sessions).
 - No pre-warming of dormant plugins when the new-session screen opens
@@ -510,8 +524,8 @@ Series slug `instant-session-launch`; every PR titled
 | 1/7 | `🌱 [instant-session-launch] docs: plan instant session launch [step 1/7]` | This plan and `TRACKER.md`. |
 | 2/7 | `🌿 [instant-session-launch] contracts: session create progress wire surface [step 2/7]` | Shared `launchId` field, `SessionCreateStage`, `session.create.progress` variant, codegen, round-trip/unknown-decode tests, lockstep client switch arms. |
 | 3/7 | `🌿 [instant-session-launch] bridge: report session create progress stages [step 3/7]` | Progress stream on `SessionCreationService`, three boundary emissions, orchestrator wiring, drain close, tests. |
-| 4/7 | `⚙️ [instant-session-launch] client: carry the first message and stages through launch [step 4/7]` | `QueuedSessionSubmission` relocation to `foundation/models/composer/` with single `prm_` id owner, `launchId` generation/threading, 180 s create timeout + non-sensitive `postWithTimeout` option, sending-phase stage state + event subscription, `SessionLaunchHandoffStorage` + `SessionLaunchHandoffRepository`, detail loading/loaded `launchSubmission` + release rule + empty-state guard, cubit tests. |
-| 5/7 | `⚙️ [instant-session-launch] client: render the chat-shaped launch presentation [step 5/7]` | `QueuedMessageBubble` + `UserMessageBubble`/`MarkdownMessageImage` extraction to `core/widgets/`, `PregoInlineLaunchStatus`, chat-shaped sending body, rail-less bubble presentation, detail-loading handoff view, message-list launch row, localization, widget tests. |
+| 4/7 | `⚙️ [instant-session-launch] client: carry the first message and stages through launch [step 4/7]` | `QueuedSessionSubmission` relocation to `foundation/models/composer/` with single `prm_` id owner, `launchId` generation/threading, 180 s create timeout + non-sensitive `postWithTimeout` option, sending-phase stage state + event subscription, `SessionLaunchHandoffStorage` + `SessionLaunchHandoffRepository`, detail loading/loaded/failed `launchSubmission` + release and cancel-clear rules + empty-state guard, cubit tests. |
+| 5/7 | `⚙️ [instant-session-launch] client: render the chat-shaped launch presentation [step 5/7]` | `QueuedMessageBubble` + `UserMessageBubble`/`MarkdownMessageImage` extraction to `core/widgets/`, `PregoInlineLaunchStatus`, chat-shaped sending body, rail-less bubble presentation, detail loading and failed handoff views, message-list launch row, localization, widget tests. |
 | 6/7 | `🌱 [instant-session-launch] docs: reconcile launch regression coverage [step 6/7]` | Reconcile affected regression documents; complete the cleanup audit against the implementation. |
 | 7/7 | `🌿 [instant-session-launch] verify: run launch coverage and retire the plan [step 7/7]` | Run the recorded level/matrix, record results in `TRACKER.md`, move the plan to `.plan/completed/`. |
 
