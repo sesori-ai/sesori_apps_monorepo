@@ -15,8 +15,13 @@ final class const ClaudeTaskNotification({
 }) {
   static const String marker = "<task-notification>";
 
+  static const String _closingMarker = "</task-notification>";
+
   static ClaudeTaskNotification? tryParse(String text) {
-    if (!text.trimLeft().startsWith(marker)) return null;
+    final trimmed = text.trim();
+    // A whole envelope and nothing else: prose around it is a prompt that
+    // discusses the protocol, not a delivery.
+    if (!trimmed.startsWith(marker) || !trimmed.endsWith(_closingMarker)) return null;
     final taskId = _tag(text, "task-id");
     final toolUseId = _tag(text, "tool-use-id");
     final status = _tag(text, "status");

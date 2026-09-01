@@ -107,7 +107,9 @@ sealed class const ClaudeStreamMessage({
         return ClaudeUserMessage(
           message: message,
           parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
-          toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"]),
+          // The stream spells it snake_case; the transcript the CLI replays it
+          // from spells it camelCase, and replayed frames have carried both.
+          toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"] ?? json["toolUseResult"]),
           taskNotifications: _taskNotifications(message["content"]),
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,

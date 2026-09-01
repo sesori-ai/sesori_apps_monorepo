@@ -63,6 +63,8 @@ void main() {
       expect(parsed?.summary, 'Agent "Say hi" finished');
       expect(parsed?.result, "hi");
       expect(ClaudeTaskNotification.tryParse("please explain $_notificationText"), isNull);
+      expect(ClaudeTaskNotification.tryParse("$_notificationText and then reply"), isNull);
+      expect(ClaudeTaskNotification.tryParse(_notificationText.substring(0, _notificationText.length - 5)), isNull);
       expect(ClaudeTaskNotification.tryParse("<task-notification><task-id>x</task-id></task-notification>"), isNull);
     });
   });
