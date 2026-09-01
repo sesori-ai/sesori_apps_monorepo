@@ -13,6 +13,7 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
   static const String _appName = "Sesori";
   static const String _bridgeSupervision = "Bridge supervision";
   static const String _openLogs = "Open Logs";
+  static const String _takeOver = "Take Over";
   static const String _recentBridgeOutput = "Recent bridge output";
   static const String _signedIn = "Signed in";
   static const String _signOut = "Sign out";
@@ -81,7 +82,7 @@ class const DesktopHome({required final AuthUser? user, super.key}) extends Stat
                             if (state.canTakeOver)
                               OutlinedButton(
                                 onPressed: state.activity.locksCommands ? null : () => unawaited(controls.takeOver()),
-                                child: const Text("Take Over"),
+                                child: const Text(_takeOver),
                               ),
                             FilledButton(
                               onPressed: state.activity.locksCommands ? null : () => unawaited(controls.toggleBridge()),
