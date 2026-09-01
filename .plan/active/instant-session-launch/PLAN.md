@@ -14,12 +14,16 @@
   identity carried in the sending variant, handoff threaded through the load
   path's own emissions and preserved across `SessionDetailFailed`/Retry,
   release triggered on the part-update path as well as message envelopes,
-  command-launch reconciliation matched by command name against the bridge
-  queue, and the core-widget extraction settled on the verified neutral closure
+  command-launch reconciliation against the bridge queue, and the core-widget
+  extraction settled on the verified neutral closure
   (`UserMessageBubble`, `MarkdownMessageImage`, `image_attachment_viewer.dart`)
   so core imports no feature files. A fourth round then corrected the timeout
   above the summed cold budget (180 s), removed the double status rail, and
-  rendered the retained bubble on the failed detail branch.
+  rendered the retained bubble on the failed detail branch. A fifth round
+  fixed two stale timeout references and replaced command-name queue matching
+  with exact identity: the initial command send reuses `launchId` as its
+  promptId, so the existing promptId dedupe/swap machinery covers command
+  launches with no bespoke rule.
   The dated-marker request for `launchId` was declined in favor of the shipped
   `promptId` doc-comment posture.
 - **Plan date:** 2026-08-31
@@ -207,7 +211,10 @@ duplicate-risk warning.
   `_generatePromptId`). Old bridges ignore the extra key; when absent (older
   clients) the bridge emits no progress. The field's doc comment states that
   legacy meaning exactly as `SendPromptRequest.promptId` already does ("null
-  from clients that predate it; the bridge then emits no progress"). No dated
+  from clients that predate it; the bridge then emits no progress"). For
+  slash-command starts the same id also becomes the initial command send's
+  promptId (Design §2), giving the client exact queue/echo identity for the
+  launch input. No dated
   compatibility marker is added: absence remains a valid contract for as long
   as any released client omits the field, the same shipped posture as
   `promptId`, and there is no honest non-null default for a correlation id.
@@ -238,6 +245,11 @@ duplicate-risk warning.
     reports nothing);
   - `creatingSession` immediately before `SessionRepository.createSession`
     (`:74`); slash-command acceptance stays under this stage.
+- `_maybeSendCommand` passes `promptId: request.launchId` into the initial
+  slash-command send when the request carries one (today's generated fallback
+  otherwise). The command already flows through the normal promptId-aware send
+  path, so this one threaded value gives the client exact queue and echo
+  identity for the launch command without any new rule or state.
 - A thrown failure simply stops emissions; no terminal or failure stage exists.
 - The orchestrator subscribes next to its `catalogImportProgress` listener and
   maps each item to `SesoriSseEvent.sessionCreateProgress` via
@@ -300,10 +312,11 @@ duplicate-risk warning.
 - On the same success path that emits `NewSessionCreated` (and only there — a
   background completion after the cubit closed stashes nothing, matching the
   existing background-failure discipline), `NewSessionCubit` maps the
-  submission snapshot to a `QueuedSessionSubmission` (fresh local `prm_`
-  promptId that never goes on the wire, text/command/attachments/agent/model
-  from the snapshot and configuration) and stashes it for the created session
-  id.
+  submission snapshot to a `QueuedSessionSubmission` and stashes it for the
+  created session id. Text submissions get a fresh local `prm_` promptId that
+  never goes on the wire; command submissions reuse the launch's `launchId` as
+  the promptId, matching the id the bridge used for the initial command send.
+  Content comes from the snapshot and configuration.
 - `SessionDetailCubit` takes the handoff before constructing its initial
   state, and the value then lives only in state:
   - `SessionDetailState.loading` gains `QueuedSessionSubmission?
@@ -320,17 +333,19 @@ duplicate-risk warning.
       the part-update path for the common empty-envelope-then-
       `message.part.updated` delivery the cubit already accounts for, and
       silent-refresh reconciliation;
-    - command submissions additionally: when `bridgeQueuedPrompts` lists a
-      prompt whose `command` equals the submitted command name. The launch
-      submission's local promptId never goes on the wire, so identity matching
-      is impossible by design; the command name is the shared authoritative
-      fact, and a same-named prompt queued by the user in that window would
-      render identical content, making the swap harmless either way. The
-      bridge sends the initial command through the normal post-create send
-      path, so Claude exposes it as a bridge-queued prompt before its
-      transcript echo; without this rule the same command would render twice
-      in that window. The bridge-queued bubble then owns presentation through
-      the existing queued-to-sent transform.
+    - command submissions carry exact identity instead of a matching rule:
+      the bridge sends the initial command through the normal post-create send
+      path (Claude exposes it as a bridge-queued prompt before its transcript
+      echo), and that send now uses the request's `launchId` as its promptId
+      (Design §2). The command handoff bubble therefore uses `launchId` as its
+      local promptId, and the existing machinery applies verbatim — the
+      local/server dedupe hides the bubble while the queue lists the id, and
+      `_releaseDeliveredPrompt` swaps it on the promptId-carrying echo. No
+      command-name matching exists. Against an old bridge the ids cannot
+      match, so the command bubble degrades to the first-renderable-user-
+      message rule; a same-named user command queued inside that echo window
+      can then release the bubble early, a transient that self-corrects when
+      the initial echo lands (accepted residual, old bridges only).
   - `SessionDetailFailed` carries the same nullable field: a failed initial
     load preserves the handoff it already consumed, and Retry threads it back
     into its loading emission — a relay drop between the create response and
@@ -495,7 +510,7 @@ Series slug `instant-session-launch`; every PR titled
 | 1/7 | `🌱 [instant-session-launch] docs: plan instant session launch [step 1/7]` | This plan and `TRACKER.md`. |
 | 2/7 | `🌿 [instant-session-launch] contracts: session create progress wire surface [step 2/7]` | Shared `launchId` field, `SessionCreateStage`, `session.create.progress` variant, codegen, round-trip/unknown-decode tests, lockstep client switch arms. |
 | 3/7 | `🌿 [instant-session-launch] bridge: report session create progress stages [step 3/7]` | Progress stream on `SessionCreationService`, three boundary emissions, orchestrator wiring, drain close, tests. |
-| 4/7 | `⚙️ [instant-session-launch] client: carry the first message and stages through launch [step 4/7]` | `QueuedSessionSubmission` relocation to `foundation/models/composer/` with single `prm_` id owner, `launchId` generation/threading, 120 s create timeout + non-sensitive `postWithTimeout` option, sending-phase stage state + event subscription, `SessionLaunchHandoffStorage` + `SessionLaunchHandoffRepository`, detail loading/loaded `launchSubmission` + release rule + empty-state guard, cubit tests. |
+| 4/7 | `⚙️ [instant-session-launch] client: carry the first message and stages through launch [step 4/7]` | `QueuedSessionSubmission` relocation to `foundation/models/composer/` with single `prm_` id owner, `launchId` generation/threading, 180 s create timeout + non-sensitive `postWithTimeout` option, sending-phase stage state + event subscription, `SessionLaunchHandoffStorage` + `SessionLaunchHandoffRepository`, detail loading/loaded `launchSubmission` + release rule + empty-state guard, cubit tests. |
 | 5/7 | `⚙️ [instant-session-launch] client: render the chat-shaped launch presentation [step 5/7]` | `QueuedMessageBubble` + `UserMessageBubble`/`MarkdownMessageImage` extraction to `core/widgets/`, `PregoInlineLaunchStatus`, chat-shaped sending body, rail-less bubble presentation, detail-loading handoff view, message-list launch row, localization, widget tests. |
 | 6/7 | `🌱 [instant-session-launch] docs: reconcile launch regression coverage [step 6/7]` | Reconcile affected regression documents; complete the cleanup audit against the implementation. |
 | 7/7 | `🌿 [instant-session-launch] verify: run launch coverage and retire the plan [step 7/7]` | Run the recorded level/matrix, record results in `TRACKER.md`, move the plan to `.plan/completed/`. |
@@ -510,7 +525,8 @@ and 5 are split exactly so state machinery and presentation review separately.
   `client/module_core` analysis for the mechanical arms.
 - **Step 3:** `bridge/app` creation-service and orchestrator tests +
   `dart analyze --fatal-infos`. Prove ordering, launchId gating, in-place
-  omission of `preparingWorkspace`, stop-on-failure, drain close.
+  omission of `preparingWorkspace`, stop-on-failure, drain close, and the
+  initial command send carrying the request's `launchId` as its promptId.
 - **Step 4:** `client/module_core` cubit/state/repository tests + analysis.
   Prove stage matching, handoff stash-only-on-emit, release-at-load, release
   on message and part events in one emission, failed-load/Retry preservation,
@@ -528,7 +544,7 @@ CI runs the full matrix; the PR monitor owns failures.
 Affected feature documents (reconciled in Step 6):
 
 - `docs/regression/session-creation-and-options.md` — primary: chat-shaped
-  launch, stage line and fallback, handoff visibility and release, 120 s
+  launch, stage line and fallback, handoff visibility and release, 180 s
   timeout.
 - `docs/regression/session-turns.md` — inspect; only the overlay-row ordering
   note if the message-list contract wording needs it.
@@ -580,6 +596,10 @@ wall-clock SLA.
 - The positional release rule could theoretically drop the bubble on a foreign
   first echo; no current plugin can produce one before the initial dispatch,
   and the outcome self-corrects. Accepted residual, no guard.
+- Against an old bridge, a command-launch bubble has no promptId match and
+  falls back to positional release; a same-named user command queued inside
+  the echo window can release it early. Transient, self-correcting, old
+  bridges only. Accepted residual.
 - A 180 s create timeout means a genuinely lost response is detected later
   than today on the launch view. Back remains available throughout, and the
   uncertain-outcome warning semantics are unchanged.
