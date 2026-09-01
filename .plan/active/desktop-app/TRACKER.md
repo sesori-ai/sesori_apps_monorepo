@@ -28,7 +28,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 17 | 🚧 Session detail: transcript slice | pending |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
 | 19 | ⚙️ Diffs + new-session slice | pending |
-| 20 | ⚙️ Desktop cockpit composition | pending |
+| 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
