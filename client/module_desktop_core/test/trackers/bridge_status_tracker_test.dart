@@ -89,11 +89,17 @@ void main() {
   });
 
   test("a late registered frame is still recorded while offline", () async {
+    final Future<BridgeRegistrationRecord> registrationEvent = tracker.registrationEvents.first;
+
     tracker.handleRegistered(bridgeId: "bridge-late", accountId: "account-a");
     await pumpEventQueue();
 
     expect(tracker.status.bridgeId, "bridge-late");
     expect(storage.bridgeId, "bridge-late");
+    expect(
+      await registrationEvent,
+      const BridgeRegistrationRecord(bridgeId: "bridge-late", accountId: "account-a"),
+    );
   });
 
   test("initializes its bridge id and owner from persisted storage", () async {

@@ -19,11 +19,19 @@ import "bridge_control_status.dart";
 class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
   final BridgeIdStorage _bridgeIdStorage = bridgeIdStorage;
   final BehaviorSubject<BridgeControlStatus> _status = BehaviorSubject.seeded(BridgeControlStatus.offline);
+  final StreamController<BridgeRegistrationRecord> _registrationEvents =
+      StreamController<BridgeRegistrationRecord>.broadcast(sync: true);
   Future<void>? _initialization;
   Future<void> _bridgeIdMutationTail = Future<void>.value();
   BridgeRegistrationRecord? _registeredBridge;
 
   ValueStream<BridgeControlStatus> get statusStream => _status.stream;
+
+  /// Emits every registration announced by the currently supervised helper.
+  /// Unlike [status], this is an event stream rather than a replayed snapshot,
+  /// so a takeover coordinator can distinguish a fresh helper registration
+  /// from the persisted id retained across a disconnect.
+  Stream<BridgeRegistrationRecord> get registrationEvents => _registrationEvents.stream;
 
   BridgeControlStatus get status => _status.value;
 
@@ -113,6 +121,7 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
     );
     _registeredBridge = registration;
     _status.add(status.copyWith(bridgeId: bridgeId));
+    _registrationEvents.add(registration);
     unawaited(
       _queueBridgeIdMutation(
         action: () => _bridgeIdStorage.write(registration: registration),
@@ -169,5 +178,6 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
   @disposeMethod
   Future<void> dispose() async {
     await _status.close();
+    await _registrationEvents.close();
   }
 }
