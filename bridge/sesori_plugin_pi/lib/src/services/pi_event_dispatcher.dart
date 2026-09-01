@@ -478,6 +478,7 @@ final class PiEventDispatcher({
     return _emitToolCall(
       sessionId: sessionId,
       state: state,
+      contentIndex: contentIndex,
       toolId: toolId,
       toolName: toolName,
     );
@@ -496,6 +497,7 @@ final class PiEventDispatcher({
     return _emitToolCall(
       sessionId: sessionId,
       state: state,
+      contentIndex: contentIndex,
       toolId: decoded.id,
       toolName: decoded.name,
     );
@@ -504,11 +506,16 @@ final class PiEventDispatcher({
   List<BridgeSseEvent> _emitToolCall({
     required String sessionId,
     required _SessionState state,
+    required int contentIndex,
     required String toolId,
     required String toolName,
   }) {
     final messageId = state.messageId;
     if (messageId == null) return const [];
+    // The content index identifies the streamed block. Prefer it over the
+    // decoded ids because start metadata and the cumulative end payload must
+    // not produce two visible cards if an upstream id is normalized differently.
+    if (!state.emittedToolContentIndexes.add(contentIndex)) return const [];
     final tool = _tools.pending(
       sessionId: sessionId,
       messageId: messageId,
@@ -517,7 +524,11 @@ final class PiEventDispatcher({
     );
     // The start event already announced this part; the terminal delta adds no
     // new display state. `message_end` remains authoritative and reconciles it.
-    if (tool == null || !state.emittedPartIds.add(tool.id)) return const [];
+    if (tool == null) {
+      state.emittedToolContentIndexes.remove(contentIndex);
+      return const [];
+    }
+    state.emittedPartIds.add(tool.id);
     return [
       ..._announce(sessionId: sessionId, state: state),
       BridgeSseMessagePartUpdated(
@@ -731,6 +742,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};
+  final Set<int> emittedToolContentIndexes = {};
   String? compactionMessageId;
 
   void clearMessage() {
@@ -739,6 +751,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
     announced = false;
     startedParts.clear();
     emittedPartIds.clear();
+    emittedToolContentIndexes.clear();
   }
 }
 

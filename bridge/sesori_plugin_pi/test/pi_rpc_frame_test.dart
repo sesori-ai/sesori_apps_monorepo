@@ -260,6 +260,20 @@ void main() {
       expect(start.toolName, isNull);
     });
 
+    test("tolerates malformed optional toolcall_start metadata", () {
+      final delta = parseDelta({
+        "type": "toolcall_start",
+        "contentIndex": "not-an-index",
+        "id": 42,
+        "toolName": false,
+      });
+
+      final start = delta as PiToolCallStartDelta;
+      expect(start.contentIndex, isNull);
+      expect(start.id, isNull);
+      expect(start.toolName, isNull);
+    });
+
     test("carries the content index and the complete tool call at toolcall_end", () {
       final delta = parseDelta({
         "type": "toolcall_end",

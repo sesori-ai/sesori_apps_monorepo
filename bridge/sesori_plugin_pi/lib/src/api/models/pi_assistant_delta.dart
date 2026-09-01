@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../models/pi_assistant_stop_reason.dart";
 import "pi_frame_fields.dart";
+import "pi_tool_call_start_dto.dart";
 
 /// One `message_update.assistantMessageEvent` from Pi v0.84.4.
 ///
@@ -31,12 +32,7 @@ sealed class const PiAssistantDelta({
       "thinking_start" => PiThinkingStartDelta(contentIndex: index, raw: json),
       "thinking_delta" => PiThinkingDelta(contentIndex: index, delta: stringOrNull(json["delta"]), raw: json),
       "thinking_end" => PiThinkingEndDelta(contentIndex: index, content: stringOrNull(json["content"]), raw: json),
-      "toolcall_start" => PiToolCallStartDelta(
-        contentIndex: index,
-        id: stringOrNull(json["id"]),
-        toolName: stringOrNull(json["toolName"]),
-        raw: json,
-      ),
+      "toolcall_start" => _toolCallStartDelta(json: json),
       "toolcall_delta" => PiToolCallDelta(contentIndex: index, delta: stringOrNull(json["delta"]), raw: json),
       "toolcall_end" => PiToolCallEndDelta(
         contentIndex: index,
@@ -56,6 +52,16 @@ sealed class const PiAssistantDelta({
       _ => _unknownDelta(json),
     };
   }
+}
+
+PiToolCallStartDelta _toolCallStartDelta({required Map<String, Object?> json}) {
+  final decoded = PiToolCallStartDto.fromJson(json.cast<String, dynamic>());
+  return PiToolCallStartDelta(
+    contentIndex: decoded.contentIndex,
+    id: decoded.id,
+    toolName: decoded.toolName,
+    raw: json,
+  );
 }
 
 PiAssistantStopReason? _stopReason(String? value) {

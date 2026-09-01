@@ -126,6 +126,38 @@ void main() {
     expect(ended, isEmpty);
   });
 
+  test("correlates early and terminal tool visibility by content index", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 103)}),
+    );
+
+    final started = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_start",
+          "contentIndex": 0,
+          "id": "normalized-at-start",
+          "toolName": "write",
+        },
+      }),
+    );
+    expect(started.whereType<BridgeSseMessagePartUpdated>().single.part.id, "normalized-at-start");
+
+    final ended = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {"id": "normalized-at-end", "name": "write", "arguments": <String, Object?>{}},
+        },
+      }),
+    );
+    expect(ended, isEmpty);
+  });
+
   test("legacy toolcall_start waits for toolcall_end metadata", () {
     dispatcher.map(
       sessionId: sessionId,
