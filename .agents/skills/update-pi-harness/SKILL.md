@@ -93,12 +93,13 @@ compatibility change:
    for pinning. Resolve the release tag to an immutable commit and inspect the
    release workflow or other published provenance. Accept a signed/attested
    artifact whose subject digest is tied to that audited commit, or reproduce
-   each target archive from the exact source tag in a clean build environment
-   and compare the normalized contents and resulting digest. If the upstream
-   project publishes neither verifiable provenance nor a reproducible build
-   path, mark the pin blocked and report why; a GitHub-generated digest and a
-   benign probe prove integrity and basic behavior, not source-to-artifact
-   identity.
+   each target archive from the exact source tag in a disposable container/VM
+   or restricted account with no sensitive mounts, no inherited secrets, and
+   tightly constrained outbound access. Compare the normalized contents and
+   resulting digest. If the upstream project publishes neither verifiable
+   provenance nor a reproducible build path that can run within that boundary,
+   mark the pin blocked and report why; a GitHub-generated digest and a benign
+   probe prove integrity and basic behavior, not source-to-artifact identity.
 
 ## Phase 2 — Audit the release diff in aggregate
 
@@ -118,7 +119,6 @@ local tag-diff fallback instead:
 
 ```bash
 tmp_repo="$(mktemp -d)"
-trap 'rm -rf "$tmp_repo"' EXIT
 git clone --filter=blob:none --no-checkout --quiet \
   https://github.com/earendil-works/pi.git "$tmp_repo/pi"
 git -C "$tmp_repo/pi" fetch --quiet --no-tags origin \
@@ -127,16 +127,21 @@ git -C "$tmp_repo/pi" diff --name-status v<old> v<new>
 git -C "$tmp_repo/pi" diff --stat v<old> v<new>
 git -C "$tmp_repo/pi" diff --no-ext-diff --no-textconv v<old> v<new> -- \
   > "$tmp_repo/pi-release.patch"
+# Keep this temporary tree until the complete patch has been consumed.
 ```
 
 Inspect and summarize the patch for every changed path, including release
 workflows, archive builders, package metadata, and launch wrappers; a
-`packages/`-only view is supplemental, never the completeness check. The
-fallback must include the complete tag diff (or a separately paginated
-per-commit inventory) before a capability is marked absent. Remove the
-temporary clone after the audit. Prefer a derived summary of commit titles,
-changed paths, additions/deletions, and selected patches over dumping the full
-JSON response or patch into the conversation. A complete
+`packages/`-only view is supplemental, never the completeness check. Consume
+`pi-release.patch` with the available file-reading or analysis mechanism before
+cleanup, and do not install an EXIT trap that removes it prematurely. If the
+inspection is interrupted, retain the temporary tree until the patch has been
+read or the failure has been recorded; then remove it in an explicit cleanup
+step. The fallback must include the complete tag diff (or a separately
+paginated per-commit inventory) before a capability is marked absent. Prefer a
+derived summary of commit titles, changed paths, additions/deletions, and
+selected patches over dumping the full JSON response or patch into the
+conversation. A complete
 commit-by-commit deep read is optional; when the range is large, a lightweight
 scout/delegate may inventory every commit title and changed area, while the
 main review uses the aggregate tag diff for evidence. Do not let an agent edit
@@ -219,15 +224,18 @@ assume the binary behind `PATH`. Keep both implementations inside the Pi plugin
 and do not leak Pi-specific concepts into `bridge/app/` or client contracts.
 
 For every retained compatibility branch, comment the exact older Pi behavior it
-preserves and the first minimum Pi version that no longer needs the branch. Use
-this marker directly above the retained field/branch:
+preserves and the first minimum Pi version that no longer needs the branch. Read
+the current product version from `bridge/app/pubspec.yaml` immediately before
+writing the marker, and replace both `YYYY-MM-DD` and `vX.Y.Z` with concrete
+values; never commit the placeholders or a stale package version. Use this
+marker directly above the retained field/branch:
 
 ```dart
-// COMPATIBILITY YYYY-MM-DD (v1.8.3): Pi <= <old> omits <behavior>; remove this
+// COMPATIBILITY YYYY-MM-DD (vX.Y.Z): Pi <= <old> omits <behavior>; remove this
 // fallback when PiRuntimeManifest.minPathVersion is raised to <new>.
 ```
 
-Use the current product version in the marker, not a package version. If a
+If a
 single tolerant path is sufficient, prefer it over the two-implementation
 interface; if neither path has a concrete caller and meaningful damage, reject
 both as speculative machinery.
@@ -251,7 +259,12 @@ executable even after its official digest is verified:
 3. Inspect and extract the archive inside the same disposable boundary without
    changing the repository. Use a hardened extractor that rejects absolute,
    traversal, and escaping symlink/hardlink targets before writing; confirm the
-   package tree and platform-specific entrypoint remain intact. Resolve that
+   package tree and platform-specific entrypoint remain intact. For a managed
+   install decision, run the archive through the production extraction and
+   package-placement path (`bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart`
+   and `bridge/sesori_plugin_runtime/lib/src/provisioning/runtime_install_service.dart`),
+   or enforce every one of its rejection rules; this repository rejects all
+   symlinks after extraction, not only links that escape. Resolve that
    entrypoint to an absolute path and invoke that path for every check; never
    invoke a bare PATH-installed `pi` or copy the executable away from its
    package files. If a temporary PATH wrapper is unavoidable, use only a
