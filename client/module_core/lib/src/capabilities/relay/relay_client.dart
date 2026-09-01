@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:cryptography/cryptography.dart";
 import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:web_socket_channel/io.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
 
 import "../../logging/logging.dart";
@@ -56,6 +57,14 @@ class RelayClient._({
   static const int _messageVersion = 0x01;
   static const Duration _handshakeTimeout = Duration(seconds: 15);
   static const Duration _channelCloseTimeout = Duration(seconds: 3);
+
+  /// Client→relay WebSocket ping cadence, mirroring the bridge's relay client.
+  /// `dart:io` closes the socket locally when no pong arrives within the next
+  /// interval, so a dead network path (Wi-Fi drop, VPN toggle, sleep/wake)
+  /// surfaces as a socket close within ~2× this interval and enters the normal
+  /// reconnect path, instead of lingering undetected until a 30s request
+  /// timeout or the relay reaping the connection from its side.
+  static const Duration _pingInterval = Duration(seconds: 15);
   int? _lastCloseCode;
   int? get lastCloseCode => _lastCloseCode;
 
@@ -69,7 +78,7 @@ class RelayClient._({
          cryptoService: cryptoService,
          roomKeyStorage: roomKeyStorage,
          authToken: authToken,
-         channelConnector: WebSocketChannel.connect,
+         channelConnector: _connectWithPingInterval,
          boundedJsonEncoder: BoundedJsonEncoder(
            chunkSize: BoundedJsonEncoder.defaultChunkSize,
            yieldTurn: BoundedJsonEncoder.eventLoopTurn,
@@ -100,6 +109,9 @@ class RelayClient._({
               ),
           maxPlaintextMessageBytes: maxPlaintextMessageBytes,
         );
+
+  static WebSocketChannel _connectWithPingInterval(Uri uri) =>
+      IOWebSocketChannel.connect(uri, pingInterval: _pingInterval);
 
   RelayClientConnectionState get connectionState => _connectionState;
 

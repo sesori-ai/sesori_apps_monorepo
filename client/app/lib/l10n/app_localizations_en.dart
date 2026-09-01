@@ -155,6 +155,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectionLostReconnect => 'Reconnect';
 
   @override
+  String get connectionReconnectingTitle => 'Reconnecting…';
+
+  @override
   String get bridgeDisconnectedTitle => 'Bridge disconnected';
 
   @override

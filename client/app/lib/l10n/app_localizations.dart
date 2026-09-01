@@ -361,6 +361,12 @@ abstract class AppLocalizations {
   /// **'Reconnect'**
   String get connectionLostReconnect;
 
+  /// No description provided for @connectionReconnectingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get connectionReconnectingTitle;
+
   /// No description provided for @bridgeDisconnectedTitle.
   ///
   /// In en, this message translates to:
