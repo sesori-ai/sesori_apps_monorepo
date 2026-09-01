@@ -545,7 +545,8 @@ and 5 are split exactly so state machinery and presentation review separately.
   Prove stage matching, handoff stash-only-on-emit, release-at-load, release
   on message and part events in one emission, failed-load/Retry preservation,
   command-launch release through the `launchId` promptId across queue dedupe
-  and echo swap plus the old-bridge positional fallback, reconciliation on
+  and echo swap plus the old-bridge positional fallback, cancel-clear of the
+  handoff on a successful matching queue cancellation, reconciliation on
   refresh, timeout override on both create paths, unchanged restoration.
 - **Step 5:** `client/module_prego` + `client/app` widget tests + analysis,
   including reduced-motion, semantics, split view, the single-status-line
