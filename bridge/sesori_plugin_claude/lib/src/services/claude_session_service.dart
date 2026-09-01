@@ -9,7 +9,6 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
-import "../models/claude_task_notification.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -686,26 +685,12 @@ final class ClaudeSessionService({
           case ClaudeToolUseResultCompleted() || ClaudeToolUseResultAbsent() || ClaudeToolUseResultUnknown():
             break;
         }
-        for (final notification in _taskNotifications(message)) {
+        for (final notification in message.taskNotifications) {
           state.runningTaskIds.remove(notification.taskId);
         }
       case ClaudeStreamMessage():
         break;
     }
-  }
-
-  /// Every `<task-notification>` envelope in a user frame's text blocks.
-  List<ClaudeTaskNotification> _taskNotifications(ClaudeUserMessage message) {
-    final content = message.message["content"];
-    final texts = switch (content) {
-      final String text => [text],
-      final List<Object?> blocks => [
-        for (final block in blocks)
-          if (block is Map && block["type"] == "text" && block["text"] is String) block["text"]! as String,
-      ],
-      _ => const <String>[],
-    };
-    return [for (final text in texts) ?ClaudeTaskNotification.tryParse(text)];
   }
 
   /// Mirrors the CLI's pending `ScheduleWakeup` timer from the tool calls that
@@ -749,7 +734,7 @@ final class ClaudeSessionService({
       case ClaudeStreamEventMessage(parentToolUseId: final String _) ||
           ClaudeAssistantMessage(parentToolUseId: final String _):
         break;
-      case ClaudeUserMessage() when _taskNotifications(message).isEmpty:
+      case ClaudeUserMessage() when message.taskNotifications.isEmpty:
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||

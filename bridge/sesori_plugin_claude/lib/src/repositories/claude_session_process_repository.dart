@@ -258,6 +258,12 @@ final class ClaudeSessionProcessRepository({
     final connectingClient = _connectingClients[sessionId];
     final process = _resident.remove(sessionId);
     if (process != null) {
+      // An explicit teardown ends the resident process exactly like a natural
+      // exit does, and everything that lived only inside it (background
+      // tasks, wakeup timers) must observe that the same way.
+      if (!_events.isClosed) {
+        _events.add(ClaudeSessionProcessExited(sessionId: sessionId, interrupted: process.interrupted));
+      }
       _settlePendingTurns(
         process: process,
         outcome: process.interrupted ? const ClaudeTurnInterrupted() : const ClaudeTurnFailed(),

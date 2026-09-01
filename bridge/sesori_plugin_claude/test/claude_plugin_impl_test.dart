@@ -831,7 +831,12 @@ void main() {
       });
       process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
       await pump();
-      process.exit(1);
+      // An explicit stop tears the process down without a natural exit; the
+      // sub-agent must still surface as cancelled.
+      final abort = harness.plugin.abortSession(sessionId: testSessionId);
+      final interrupt = await _waitForControl(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
       await pump();
 
       final subtasks = events

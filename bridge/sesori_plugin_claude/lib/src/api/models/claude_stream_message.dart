@@ -1,4 +1,5 @@
 import "../../models/claude_permission_mode.dart";
+import "../../models/claude_task_notification.dart";
 import "../../models/claude_task_status.dart";
 import "../../models/claude_task_type.dart";
 import "../../models/claude_tool_use_result.dart";
@@ -102,10 +103,12 @@ sealed class const ClaudeStreamMessage({
       case "assistant":
         return ClaudeAssistantMessage.fromJson(json, sessionId: sessionId, uuid: uuid);
       case "user":
+        final message = _mapOrEmpty(json["message"]);
         return ClaudeUserMessage(
-          message: _mapOrEmpty(json["message"]),
+          message: message,
           parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
           toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"]),
+          taskNotifications: _taskNotifications(message["content"]),
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
@@ -144,6 +147,20 @@ DateTime? _dateTimeOrNull(Object? value) => value is String ? DateTime.tryParse(
 
 Map<String, Object?> _mapOrEmpty(Object? value) =>
     value is Map ? value.cast<String, Object?>() : const <String, Object?>{};
+
+/// Every `<task-notification>` envelope among a user message's text blocks.
+List<ClaudeTaskNotification> _taskNotifications(Object? content) {
+  final texts = switch (content) {
+    final String text => [text],
+    final List<Object?> blocks => [
+      for (final block in blocks)
+        if (block is Map<Object?, Object?> && block["type"] == "text")
+          if (block["text"] case final String text) text,
+    ],
+    _ => const <String>[],
+  };
+  return [for (final text in texts) ?ClaudeTaskNotification.tryParse(text)];
+}
 
 List<String> _stringList(Object? value) => value is List
     ? [
@@ -460,6 +477,11 @@ final class const ClaudeUserMessage({
 
   /// The frame-level typed result of the tool call this frame completes.
   required final ClaudeToolUseResult toolUseResult,
+
+  /// Background-task outcomes this frame delivers to the model as
+  /// `<task-notification>` text, parsed here so lifecycle consumers never read
+  /// the wire content shape.
+  required final List<ClaudeTaskNotification> taskNotifications,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,
