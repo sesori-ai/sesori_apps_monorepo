@@ -49,8 +49,8 @@ Cubit construction, and CI responsibility. The reviewer returned
   tests passed.
 - `client/app`: `dart analyze --fatal-infos` clean; all 915 Flutter tests
   passed.
-- `client/desktop`: `dart analyze --fatal-infos` clean; the full Flutter test
-  suite passed.
+- `client/desktop`: `dart analyze --fatal-infos` clean; all 64 Flutter tests
+  passed.
 - App and desktop Injectable outputs regenerated successfully; localization
   outputs regenerated from `client/module_app_ui/l10n.yaml`.
 - Dart LSP diagnostics reported zero findings across the new shared package and
