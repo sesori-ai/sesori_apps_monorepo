@@ -244,7 +244,9 @@ void main() {
       );
       final process = await harness.nextSessionProcess();
       final request = await waitForCommand(process: process, type: "compact");
-      final runningUpdate = harness.plugin.events.firstWhere((event) => event is BridgeSseMessageUpdated);
+      final runningUpdate = harness.plugin.events.firstWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info["promptId"] == null,
+      );
       process.emit(frame: {"type": "compaction_start", "reason": "manual"});
       await accepted;
       final runningEvent = await runningUpdate;
