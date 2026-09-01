@@ -119,12 +119,29 @@ class _FakePreferenceRepository() extends Mock implements ProductAnalyticsPrefer
 }
 
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
-  final productOutcomes = <ProductAnalyticsEvent>[];
+  final StreamController<void> _readinessController = StreamController<void>.broadcast(sync: true);
+  final events = <AttributionEvent>[];
+  AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  bool ready = true;
 
   @override
-  Future<void> reportProductOutcome({required ProductAnalyticsEvent event}) async {
-    productOutcomes.add(event);
+  bool get isReady => ready;
+
+  @override
+  Stream<void> get readinessStream => _readinessController.stream;
+
+  @override
+  Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
+    events.add(event);
+    return result;
   }
+
+  void setReady({required bool value}) {
+    ready = value;
+    if (value) _readinessController.add(null);
+  }
+
+  Future<void> close() => _readinessController.close();
 }
 
 class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
@@ -199,6 +216,7 @@ void main() {
 
   tearDown(() async {
     await service.dispose();
+    await attributionRepository.close();
     await authSession.dispose();
   });
 
@@ -765,8 +783,8 @@ void main() {
       AnalyticsDeliveryResult.failed,
     );
     expect(
-      attributionRepository.productOutcomes,
-      [activationOutcome],
+      attributionRepository.events,
+      [AttributionEvent.firstSessionRun],
       reason: "the independent attribution sink is reached before the product preference gate",
     );
 
@@ -783,6 +801,53 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
       ],
     );
+  });
+
+  test("retains one canonical activation until attribution becomes ready", () async {
+    createService();
+    attributionRepository.setReady(value: false);
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(
+        record: _record(
+          userId: _userA.id,
+          userKey: _userKeyA,
+          preference: ProductAnalyticsPreference.disabled,
+        ),
+      ),
+    );
+    await service.start();
+
+    await service.logEvent(
+      event: const ProductAnalyticsEvent.sessionCreationFailed(
+        failureReason: AnalyticsSessionCreationFailureReason.serverRejected,
+        workspaceKind: AnalyticsWorkspaceKind.project,
+      ),
+      occurredAtUtc: DateTime.utc(2026, 7, 29),
+    );
+    attributionRepository.setReady(value: true);
+    await Future<void>.delayed(Duration.zero);
+    expect(attributionRepository.events, isEmpty);
+    attributionRepository.setReady(value: false);
+
+    await service.logEvent(
+      event: const ProductAnalyticsEvent.sessionMessageSent(
+        submission: AnalyticsSubmission.command(),
+      ),
+      occurredAtUtc: DateTime.utc(2026, 7, 30),
+    );
+    await service.logEvent(
+      event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+        submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        workspaceKind: AnalyticsWorkspaceKind.project,
+      ),
+      occurredAtUtc: DateTime.utc(2026, 7, 30, 1),
+    );
+    expect(attributionRepository.events, isEmpty);
+
+    attributionRepository.setReady(value: true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(attributionRepository.events, [AttributionEvent.firstSessionRun]);
   });
 
   test("a retried local read cannot overwrite a newer preference request", () async {

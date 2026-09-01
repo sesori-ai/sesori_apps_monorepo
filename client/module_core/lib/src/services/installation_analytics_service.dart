@@ -2,6 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../foundation/models/product_analytics/analytics_runtime_capability.dart";
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
@@ -39,8 +40,20 @@ class InstallationAnalyticsService({
     // wait for the store-crawl suspension to lift.
     final results = await Future.wait([
       _activateThenLogOutcomes(provider: analyticsProvider, accountStatus: accountStatus),
-      _attributionRepository.reportAuthenticationCompleted(accountStatus: accountStatus),
+      _reportAuthenticationAttribution(accountStatus: accountStatus),
     ]);
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
+
+  Future<AnalyticsDeliveryResult> _reportAuthenticationAttribution({required AccountStatus accountStatus}) async {
+    final results = <AnalyticsDeliveryResult>[];
+    if (accountStatus == AccountStatus.created) {
+      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
         ? AnalyticsDeliveryResult.acceptedBySdk

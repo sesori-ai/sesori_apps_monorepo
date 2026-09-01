@@ -222,6 +222,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i853.SingularAttributionStartup(
         singular: gh<_i776.SingularStaticAdapter>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(
       () => _i901.NoOpAnalyticsClient(),

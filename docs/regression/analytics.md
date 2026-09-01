@@ -61,14 +61,15 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
 - The same successful authentication reports Singular's parameter-free standard `sng_login` event. It first reports
   parameter-free `sng_complete_registration` only when the auth server's operation-scoped account status is `created`;
   `existing` and forward-unknown statuses report Singular login only. The client never infers creation from local state.
-- One attribution repository owns every Singular dispatch trigger. Authentication and product-outcome services depend
-  downward on that repository rather than a peer service. A successful encrypted `ConnectionConnected` transition
+- Authentication and product-outcome services select their closed attribution events and depend downward on the raw
+  attribution repository rather than on a peer service. A successful encrypted `ConnectionConnected` transition
   reports parameter-free `bridge_paired`; the canonical successful `session_message_sent` or
   `session_created_with_message` product outcome reports parameter-free `first_session_run` before the product
   preference gate. The connection listener starts only after the asynchronous crawl-gate result is applied; replayed
-  status recovers an already-established connection, and one qualifying product outcome arriving earlier is retained
-  until that start rather than activating Singular from unresolved configuration. The module-core attribution
-  repository coalesces and claims each custom event in app-support storage before SDK invocation; this storage survives
+  status recovers an already-established connection. The product-outcome service retains one qualifying earlier
+  outcome until the attribution sink becomes ready after either the crawl gate or interactive authentication. The
+  module-core attribution repository coalesces and claims each custom event in app-support storage before SDK
+  invocation; this storage survives
   process restart and upgrade but is removed with the app. Each event is sent at most once across repeated transitions,
   sessions, and accounts within that installation. Startup unavailability and storage uncertainty fail closed without
   SDK delivery or duplicate risk. Pairing, opening/creating an empty session, offline queueing,

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:singular_flutter_sdk/events.dart";
@@ -12,6 +14,9 @@ class SingularAttributionClient({
 }) implements AttributionClient {
   @override
   bool get isReady => _startup.isStarted;
+
+  @override
+  Stream<void> get readinessStream => _startup.readinessStream;
 
   @override
   Future<void> logEvent({required AttributionEvent event}) async {

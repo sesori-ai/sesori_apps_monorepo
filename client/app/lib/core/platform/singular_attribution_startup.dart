@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:singular_flutter_sdk/singular_config.dart";
@@ -8,11 +10,13 @@ import "singular/singular_static_adapter.dart";
 /// account-linked Sesori product analytics.
 @lazySingleton
 class SingularAttributionStartup({required final SingularStaticAdapter _singular}) {
+  final StreamController<void> _readinessController = StreamController<void>.broadcast(sync: true);
   bool _isStarted = false;
   SingularConfig? _pendingCrawlGateConfig;
   SingularConfig? _deferredStartConfig;
 
   bool get isStarted => _isStarted;
+  Stream<void> get readinessStream => _readinessController.stream;
 
   /// Prepares SDK configuration without starting Singular. The asynchronous
   /// crawl-gate decision can then complete after the first frame.
@@ -68,10 +72,14 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
     try {
       _singular.start(config: config);
       _isStarted = true;
+      _readinessController.add(null);
       return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to start Singular attribution", error, stackTrace);
       return false;
     }
   }
+
+  @disposeMethod
+  Future<void> dispose() => _readinessController.close();
 }

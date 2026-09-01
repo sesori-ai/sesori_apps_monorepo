@@ -16,11 +16,11 @@ class AttributionService({
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
   bool _started = false;
 
-  Future<void> start() async {
-    if (_started) return;
+  Future<void> start() {
+    if (_started) return Future<void>.value();
     _started = true;
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
-    await _repository.start();
+    return Future<void>.value();
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

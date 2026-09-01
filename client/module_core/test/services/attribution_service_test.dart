@@ -9,12 +9,6 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
   final events = <AttributionEvent>[];
-  int startCount = 0;
-
-  @override
-  Future<void> start() async {
-    startCount += 1;
-  }
 
   @override
   Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
@@ -46,7 +40,7 @@ void main() {
     await statuses.close();
   });
 
-  test("starts repository delivery once and reports connected status", () async {
+  test("starts once and reports connected status", () async {
     await statuses.close();
     statuses = BehaviorSubject.seeded(_connected);
     when(() => connectionService.status).thenAnswer((_) => statuses.stream);
@@ -59,7 +53,6 @@ void main() {
       ..add(_connected);
     await Future<void>.delayed(Duration.zero);
 
-    expect(repository.startCount, 1);
     expect(repository.events, [
       AttributionEvent.bridgePaired,
       AttributionEvent.bridgePaired,

@@ -54,9 +54,8 @@ class _RecordingAttributionRepository() extends Mock implements AttributionRepos
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
 
   @override
-  Future<AnalyticsDeliveryResult> reportAuthenticationCompleted({required AccountStatus accountStatus}) async {
-    if (accountStatus == AccountStatus.created) events.add(AttributionEvent.accountCreated);
-    events.add(AttributionEvent.accountLogin);
+  Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
+    events.add(event);
     return result;
   }
 }

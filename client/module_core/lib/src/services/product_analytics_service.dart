@@ -3,6 +3,7 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 import "../logging/logging.dart";
@@ -24,11 +25,14 @@ class ProductAnalyticsService({
   final ProductAnalyticsGenerationEventDispatcher _activationReadiness = ProductAnalyticsGenerationEventDispatcher();
 
   StreamSubscription<ProductAnalyticsState>? _stateSubscription;
+  StreamSubscription<void>? _attributionReadinessSubscription;
   DeferredProductAnalyticsCandidates? _deferredCandidates;
   ({int generation, Future<void> future})? _activeGenerationDispatch;
   ProductAnalyticsDeliveryContext? _trailingGenerationDispatch;
   Future<void>? _startFuture;
+  Future<void>? _activeAttributionDispatch;
   Future<void>? _disposeFuture;
+  bool _pendingFirstSessionRun = false;
   bool _disposed = false;
 
   ValueStream<ProductAnalyticsState> get stateStream => _preferenceService.stateStream;
@@ -41,6 +45,10 @@ class ProductAnalyticsService({
 
   Future<void> _start() async {
     _stateSubscription = stateStream.listen((state) => _onPreferenceState(state: state));
+    _attributionReadinessSubscription = _attributionRepository.readinessStream.listen(
+      (_) => _tryReportPendingAttribution(),
+    );
+    _tryReportPendingAttribution();
     await _preferenceService.start();
   }
 
@@ -62,7 +70,7 @@ class ProductAnalyticsService({
     required DateTime occurredAtUtc,
   }) async {
     if (_disposed) return AnalyticsDeliveryResult.failed;
-    unawaited(_attributionRepository.reportProductOutcome(event: event));
+    _reportAttributionOutcome(event: event);
     final envelope = ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc);
     final context = _preferenceService.deliveryContext;
     if (context != null) {
@@ -79,6 +87,36 @@ class ProductAnalyticsService({
     final retention = candidates.retain(envelope: envelope);
     _deferredCandidates = retention.candidates;
     return retention.retained ? AnalyticsDeliveryResult.deferredUntilPreference : AnalyticsDeliveryResult.failed;
+  }
+
+  void _reportAttributionOutcome({required ProductAnalyticsEvent event}) {
+    if (event is! SessionMessageSentEvent && event is! SessionCreatedWithMessageEvent) return;
+    if (_activeAttributionDispatch != null) return;
+    _pendingFirstSessionRun = true;
+    _tryReportPendingAttribution();
+  }
+
+  void _tryReportPendingAttribution() {
+    if (_disposed ||
+        !_pendingFirstSessionRun ||
+        !_attributionRepository.isReady ||
+        _activeAttributionDispatch != null) {
+      return;
+    }
+
+    _pendingFirstSessionRun = false;
+    late final Future<void> dispatch;
+    dispatch = _reportFirstSessionRun().whenComplete(() {
+      if (identical(_activeAttributionDispatch, dispatch)) _activeAttributionDispatch = null;
+    });
+    _activeAttributionDispatch = dispatch;
+  }
+
+  Future<void> _reportFirstSessionRun() async {
+    final result = await _attributionRepository.logEvent(event: AttributionEvent.firstSessionRun);
+    if (result == AnalyticsDeliveryResult.failed && !_disposed) {
+      _pendingFirstSessionRun = true;
+    }
   }
 
   void _retryActiveGenerationDispatch({required ProductAnalyticsDeliveryContext context}) {
@@ -224,8 +262,12 @@ class ProductAnalyticsService({
   Future<void> _dispose() async {
     _disposed = true;
     _deferredCandidates = null;
+    _pendingFirstSessionRun = false;
+    _activeAttributionDispatch = null;
     _activeGenerationDispatch = null;
     _trailingGenerationDispatch = null;
+    await _attributionReadinessSubscription?.cancel();
+    _attributionReadinessSubscription = null;
     await _stateSubscription?.cancel();
     _stateSubscription = null;
     await _preferenceService.dispose();
