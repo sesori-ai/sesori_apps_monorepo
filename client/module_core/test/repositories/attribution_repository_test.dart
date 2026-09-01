@@ -68,6 +68,57 @@ void main() {
     expect(claimStorage.writes, 0);
   });
 
+  test("maps authentication outcomes in registration-before-login order", () async {
+    final repository = buildRepository();
+
+    expect(
+      await repository.reportAuthenticationCompleted(accountStatus: AccountStatus.created),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    verifyInOrder([
+      () => api.logEvent(event: AttributionEvent.accountCreated),
+      () => api.logEvent(event: AttributionEvent.accountLogin),
+    ]);
+
+    clearInteractions(api);
+    await repository.reportAuthenticationCompleted(accountStatus: AccountStatus.unknown);
+    verify(() => api.logEvent(event: AttributionEvent.accountLogin)).called(1);
+    verifyNever(() => api.logEvent(event: AttributionEvent.accountCreated));
+  });
+
+  test("retains one canonical product outcome until crawl-gated start", () async {
+    final repository = buildRepository();
+
+    await repository.reportProductOutcome(
+      event: const ProductAnalyticsEvent.sessionCreationFailed(
+        failureReason: AnalyticsSessionCreationFailureReason.serverRejected,
+        workspaceKind: AnalyticsWorkspaceKind.project,
+      ),
+    );
+    await repository.reportProductOutcome(
+      event: const ProductAnalyticsEvent.sessionMessageSent(
+        submission: AnalyticsSubmission.command(),
+      ),
+    );
+    await repository.reportProductOutcome(
+      event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+        submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
+      ),
+    );
+    verifyNever(() => api.logEvent(event: any(named: "event")));
+
+    await repository.start();
+    await repository.start();
+    await repository.reportProductOutcome(
+      event: const ProductAnalyticsEvent.sessionMessageSent(
+        submission: AnalyticsSubmission.command(),
+      ),
+    );
+
+    verify(() => api.logEvent(event: AttributionEvent.firstSessionRun)).called(1);
+  });
+
   test("an unavailable sink does not claim a one-shot event", () async {
     when(() => api.isReady).thenReturn(false);
     final repository = buildRepository();

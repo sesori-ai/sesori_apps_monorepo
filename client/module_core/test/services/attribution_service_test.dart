@@ -9,12 +9,17 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
   final events = <AttributionEvent>[];
-  AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
+  int startCount = 0;
+
+  @override
+  Future<void> start() async {
+    startCount += 1;
+  }
 
   @override
   Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
     events.add(event);
-    return result;
+    return AnalyticsDeliveryResult.acceptedBySdk;
   }
 }
 
@@ -41,59 +46,7 @@ void main() {
     await statuses.close();
   });
 
-  test("routes authentication attribution through one coordinator", () async {
-    expect(
-      await service.reportAuthenticationCompleted(accountStatus: AccountStatus.created),
-      AnalyticsDeliveryResult.acceptedBySdk,
-    );
-    expect(repository.events, [
-      AttributionEvent.accountCreated,
-      AttributionEvent.accountLogin,
-    ]);
-
-    repository.events.clear();
-    await service.reportAuthenticationCompleted(accountStatus: AccountStatus.unknown);
-
-    expect(repository.events, [AttributionEvent.accountLogin]);
-  });
-
-  test("buffers only canonical full activation until the crawl-gated listener starts", () async {
-    await service.reportProductOutcome(
-      event: const ProductAnalyticsEvent.sessionCreationFailed(
-        failureReason: AnalyticsSessionCreationFailureReason.serverRejected,
-        workspaceKind: AnalyticsWorkspaceKind.project,
-      ),
-    );
-    await service.reportProductOutcome(
-      event: const ProductAnalyticsEvent.sessionMessageSent(
-        submission: AnalyticsSubmission.command(),
-      ),
-    );
-    await service.reportProductOutcome(
-      event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
-        submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
-        workspaceKind: AnalyticsWorkspaceKind.dedicatedWorktree,
-      ),
-    );
-
-    expect(repository.events, isEmpty);
-
-    await service.start();
-    await Future<void>.delayed(Duration.zero);
-    expect(repository.events, [AttributionEvent.firstSessionRun]);
-
-    await service.reportProductOutcome(
-      event: const ProductAnalyticsEvent.sessionMessageSent(
-        submission: AnalyticsSubmission.command(),
-      ),
-    );
-    expect(repository.events, [
-      AttributionEvent.firstSessionRun,
-      AttributionEvent.firstSessionRun,
-    ]);
-  });
-
-  test("the started listener reports connected status and owns repeat transitions", () async {
+  test("starts repository delivery once and reports connected status", () async {
     await statuses.close();
     statuses = BehaviorSubject.seeded(_connected);
     when(() => connectionService.status).thenAnswer((_) => statuses.stream);
@@ -106,6 +59,7 @@ void main() {
       ..add(_connected);
     await Future<void>.delayed(Duration.zero);
 
+    expect(repository.startCount, 1);
     expect(repository.events, [
       AttributionEvent.bridgePaired,
       AttributionEvent.bridgePaired,

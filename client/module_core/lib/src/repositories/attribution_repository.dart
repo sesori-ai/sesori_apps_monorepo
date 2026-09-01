@@ -1,8 +1,10 @@
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/attribution_api.dart";
 import "../foundation/models/product_analytics/attribution_event.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/platform/attribution_claim_storage.dart";
 import "../logging/logging.dart";
 import "models/analytics_delivery_result.dart";
@@ -22,6 +24,8 @@ class AttributionRepository._({
 }) {
   final Set<AttributionEvent> _claimedEvents = {};
   final Map<AttributionEvent, Future<_AttributionClaimResult>> _activeClaims = {};
+  bool _started = false;
+  bool _pendingFirstSessionRun = false;
 
   new({
     required AttributionApi api,
@@ -38,6 +42,38 @@ class AttributionRepository._({
     required AttributionClaimStorage claimStorage,
     required Duration deliveryDeadline,
   }) : this._(api: api, claimStorage: claimStorage, deliveryDeadline: deliveryDeadline);
+
+  /// Opens crawl-gated custom-event delivery and flushes one retained activation.
+  Future<void> start() async {
+    if (_started) return;
+    _started = true;
+    if (_pendingFirstSessionRun) {
+      _pendingFirstSessionRun = false;
+      await logEvent(event: AttributionEvent.firstSessionRun);
+    }
+  }
+
+  Future<AnalyticsDeliveryResult> reportAuthenticationCompleted({required AccountStatus accountStatus}) async {
+    final results = <AnalyticsDeliveryResult>[];
+    if (accountStatus == AccountStatus.created) {
+      results.add(await logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await logEvent(event: AttributionEvent.accountLogin));
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
+
+  /// Reuses the canonical product-event variants that define full activation.
+  Future<void> reportProductOutcome({required ProductAnalyticsEvent event}) async {
+    if (event is! SessionMessageSentEvent && event is! SessionCreatedWithMessageEvent) return;
+    if (!_started) {
+      _pendingFirstSessionRun = true;
+      return;
+    }
+    await logEvent(event: AttributionEvent.firstSessionRun);
+  }
 
   Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
     try {

@@ -342,6 +342,13 @@ extension GetItInjectableX on _i174.GetIt {
         deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
       ),
     );
+    gh.lazySingleton<_i285.InstallationAnalyticsService>(
+      () => _i285.InstallationAnalyticsService(
+        capability: gh<_i684.AnalyticsRuntimeCapability>(),
+        attributionRepository: gh<_i993.AttributionRepository>(),
+        repository: gh<_i274.AnalyticsRepository>(),
+      ),
+    );
     gh.lazySingleton<_i659.NotificationRegistrationService>(
       () => _i659.NotificationRegistrationService(
         repository: gh<_i471.NotificationRepository>(),
@@ -423,6 +430,14 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i204.ProductAnalyticsService>(
+      () => _i204.ProductAnalyticsService(
+        analyticsRepository: gh<_i274.AnalyticsRepository>(),
+        attributionRepository: gh<_i993.AttributionRepository>(),
+        preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i492.AttributionService>(
       () => _i492.AttributionService(
         repository: gh<_i993.AttributionRepository>(),
@@ -432,13 +447,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
-    );
-    gh.lazySingleton<_i285.InstallationAnalyticsService>(
-      () => _i285.InstallationAnalyticsService(
-        capability: gh<_i684.AnalyticsRuntimeCapability>(),
-        repository: gh<_i274.AnalyticsRepository>(),
-        attributionService: gh<_i492.AttributionService>(),
-      ),
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
@@ -450,14 +458,6 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
         routeSource: gh<_i366.RouteSource>(),
       ),
-    );
-    gh.lazySingleton<_i204.ProductAnalyticsService>(
-      () => _i204.ProductAnalyticsService(
-        analyticsRepository: gh<_i274.AnalyticsRepository>(),
-        preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
-        attributionService: gh<_i492.AttributionService>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(

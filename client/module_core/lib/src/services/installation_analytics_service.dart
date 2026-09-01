@@ -5,8 +5,8 @@ import "../foundation/models/product_analytics/analytics_runtime_capability.dart
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
+import "../repositories/attribution_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
-import "attribution_service.dart";
 
 enum LoginAttemptFailureCause() {
   authentication,
@@ -19,8 +19,8 @@ enum LoginAttemptFailureCause() {
 @lazySingleton
 class InstallationAnalyticsService({
   required final AnalyticsRuntimeCapability _capability,
+  required final AttributionRepository _attributionRepository,
   required final AnalyticsRepository _repository,
-  required final AttributionService _attributionService,
 }) {
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
     return _log(
@@ -39,7 +39,7 @@ class InstallationAnalyticsService({
     // wait for the store-crawl suspension to lift.
     final results = await Future.wait([
       _activateThenLogOutcomes(provider: analyticsProvider, accountStatus: accountStatus),
-      _attributionService.reportAuthenticationCompleted(accountStatus: accountStatus),
+      _attributionRepository.reportAuthenticationCompleted(accountStatus: accountStatus),
     ]);
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)

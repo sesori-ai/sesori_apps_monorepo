@@ -49,7 +49,7 @@ class _StalledActivationAnalyticsRepository() extends Mock implements AnalyticsR
   Future<void> activateAfterInteractiveAuthentication() => Completer<void>().future;
 }
 
-class _RecordingAttributionService() extends Mock implements AttributionService {
+class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
   final events = <AttributionEvent>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
 
@@ -64,11 +64,11 @@ class _RecordingAttributionService() extends Mock implements AttributionService 
 void main() {
   test("enabled runtime sends only the closed installation event", () async {
     final repository = _RecordingAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     final result = await service.loginAttemptFailed(
@@ -84,17 +84,17 @@ void main() {
       ),
     ]);
     expect(repository.events.single.parameters, isNot(contains("user_key")));
-    expect(attributionService.events, isEmpty);
+    expect(attributionRepository.events, isEmpty);
   });
 
   test("disabled runtimes emit no installation event", () async {
     for (final reason in AnalyticsRuntimeDisabledReason.values) {
       final repository = _RecordingAnalyticsRepository();
-      final attributionService = _RecordingAttributionService();
+      final attributionRepository = _RecordingAttributionRepository();
       final service = InstallationAnalyticsService(
         capability: AnalyticsRuntimeCapability.disabled(reason: reason),
         repository: repository,
-        attributionService: attributionService,
+        attributionRepository: attributionRepository,
       );
 
       expect(
@@ -102,7 +102,7 @@ void main() {
         AnalyticsDeliveryResult.failed,
       );
       expect(repository.events, isEmpty);
-      expect(attributionService.events, isEmpty);
+      expect(attributionRepository.events, isEmpty);
     }
   });
 
@@ -111,7 +111,7 @@ void main() {
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: _RecordingAttributionService(),
+      attributionRepository: _RecordingAttributionRepository(),
     );
 
     for (final provider in [
@@ -131,11 +131,11 @@ void main() {
 
   test("created accounts report Firebase signup and Singular registration before login", () async {
     final repository = _RecordingAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     final result = await service.loginAttemptCompleted(
@@ -148,7 +148,7 @@ void main() {
       const InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.google),
       const InstallationAnalyticsEvent.accountCreated(method: AnalyticsLoginProvider.google),
     ]);
-    expect(attributionService.events, [
+    expect(attributionRepository.events, [
       AttributionEvent.accountCreated,
       AttributionEvent.accountLogin,
     ]);
@@ -156,11 +156,11 @@ void main() {
 
   test("Singular delivery does not wait for a stalled installation sink", () async {
     final repository = _DeferredAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     final completion = service.loginAttemptCompleted(
@@ -169,7 +169,7 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
 
-    expect(attributionService.events, [
+    expect(attributionRepository.events, [
       AttributionEvent.accountCreated,
       AttributionEvent.accountLogin,
     ]);
@@ -181,11 +181,11 @@ void main() {
 
   test("existing accounts report Firebase and Singular login", () async {
     final repository = _RecordingAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     await service.loginAttemptCompleted(
@@ -197,16 +197,16 @@ void main() {
       const InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.apple),
       const InstallationAnalyticsEvent.accountLogin(method: AnalyticsLoginProvider.apple),
     ]);
-    expect(attributionService.events, [AttributionEvent.accountLogin]);
+    expect(attributionRepository.events, [AttributionEvent.accountLogin]);
   });
 
   test("unknown account status does not infer a Firebase signup or login", () async {
     final repository = _RecordingAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     await service.loginAttemptCompleted(
@@ -217,7 +217,7 @@ void main() {
     expect(repository.events, [
       const InstallationAnalyticsEvent.loginAttemptCompleted(provider: AnalyticsLoginProvider.apple),
     ]);
-    expect(attributionService.events, [AttributionEvent.accountLogin]);
+    expect(attributionRepository.events, [AttributionEvent.accountLogin]);
     // Interactive authentication lifts the store-crawl suspension before any
     // one-time outcome event is logged.
     expect(repository.activationCalls, 1);
@@ -226,11 +226,11 @@ void main() {
 
   test("a stalled activation does not delay attribution", () async {
     final repository = _StalledActivationAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     unawaited(
@@ -241,19 +241,19 @@ void main() {
     );
     await Future<void>.delayed(Duration.zero);
 
-    expect(attributionService.events, [AttributionEvent.accountLogin]);
+    expect(attributionRepository.events, [AttributionEvent.accountLogin]);
     expect(repository.events, isEmpty);
   });
 
   test("disabled installation analytics does not gate attribution", () async {
     final repository = _RecordingAnalyticsRepository();
-    final attributionService = _RecordingAttributionService();
+    final attributionRepository = _RecordingAttributionRepository();
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.disabled(
         reason: AnalyticsRuntimeDisabledReason.debugOrProfile,
       ),
       repository: repository,
-      attributionService: attributionService,
+      attributionRepository: attributionRepository,
     );
 
     expect(
@@ -264,7 +264,7 @@ void main() {
       AnalyticsDeliveryResult.failed,
     );
     expect(repository.events, isEmpty);
-    expect(attributionService.events, [AttributionEvent.accountLogin]);
+    expect(attributionRepository.events, [AttributionEvent.accountLogin]);
   });
 
   test("enabled runtime makes rejected SDK delivery observable", () async {
@@ -272,7 +272,7 @@ void main() {
     final service = InstallationAnalyticsService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       repository: repository,
-      attributionService: _RecordingAttributionService(),
+      attributionRepository: _RecordingAttributionRepository(),
     );
     final logLines = <String>[];
 
