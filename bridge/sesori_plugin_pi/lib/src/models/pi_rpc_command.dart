@@ -2,6 +2,7 @@
 enum PiRpcCommand(final String wireValue) {
   prompt("prompt"),
   abort("abort"),
+  compact("compact"),
   getState("get_state"),
   setModel("set_model"),
   getAvailableModels("get_available_models"),

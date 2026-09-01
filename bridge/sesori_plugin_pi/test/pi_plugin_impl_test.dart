@@ -91,7 +91,10 @@ void main() {
     test("exposes one coherent project catalog and validates selections and commands", () async {
       expect((await harness.plugin.getAgents(projectId: harness.project.path)).single.name, "pi");
       expect((await harness.plugin.getProviders(projectId: harness.project.path)).providers.single.id, "provider");
-      expect((await harness.plugin.getCommands(projectId: harness.project.path)).single.name, "review");
+      expect((await harness.plugin.getCommands(projectId: harness.project.path)).map((command) => command.name), [
+        "review",
+        PiCatalogService.compactionCommandName,
+      ]);
       final options = await harness.plugin.getSessionOptions(
         projectId: harness.project.path,
         discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
@@ -160,6 +163,55 @@ void main() {
         harness.processes.where((entry) => entry.spec.launch is! PiNoSession),
         hasLength(1),
       );
+    });
+
+    test("exposes and dispatches native manual compaction", () async {
+      final commands = await harness.plugin.getCommands(projectId: harness.project.path);
+      final compaction = commands.singleWhere(
+        (command) => command.name == PiCatalogService.compactionCommandName,
+      );
+      expect(compaction.description, isNotNull);
+      final session = await harness.plugin.createSession(
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final accepted = harness.plugin.sendCommand(
+        sessionId: session.id,
+        promptId: "prompt-compact",
+        command: PiCatalogService.compactionCommandName,
+        arguments: "Keep architecture decisions",
+        userVisibleArguments: "Keep architecture decisions",
+        variant: null,
+        agent: "pi",
+        model: null,
+      );
+      var completed = false;
+      unawaited(accepted.then((_) => completed = true));
+      final process = await harness.nextSessionProcess();
+      final request = await waitForCommand(process: process, type: "compact");
+      expect(request["customInstructions"], "Keep architecture decisions");
+      expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
+      expect(completed, isFalse);
+
+      process.emit(frame: {"type": "compaction_start", "reason": "manual"});
+      await accepted;
+      expect(completed, isTrue);
+
+      final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      process.emit(frame: {"type": "compaction_end", "reason": "manual", "aborted": false, "willRetry": false});
+      process.emitResponse(id: request["id"]! as String, command: "compact", data: const {});
+      await idle;
+
+      expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     });
 
     test("wrapped command failures retain the backend stack", () async {

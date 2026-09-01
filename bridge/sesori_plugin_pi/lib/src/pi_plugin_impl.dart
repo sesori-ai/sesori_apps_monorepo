@@ -363,16 +363,28 @@ final class PiPlugin._({
       throw const PluginOperationException("sendCommand", statusCode: 400, message: "Unsupported Pi command.");
     }
     try {
-      await _sessionService.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        directory: session.directory,
-        command: command,
-        arguments: arguments,
-        userVisibleArguments: userVisibleArguments,
-        variant: variant,
-        model: model,
-      );
+      final dispatch = command == PiCatalogService.compactionCommandName
+          ? _sessionService.compact(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            )
+          : _sessionService.sendCommand(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            );
+      await dispatch;
     } on PluginOperationException {
       rethrow;
     } on Object catch (error, stackTrace) {
