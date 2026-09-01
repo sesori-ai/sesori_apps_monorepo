@@ -1,6 +1,6 @@
 # Attribution Activation Events
 
-**Status:** Implemented and locally verified; ready for PR review.
+**Status:** Implemented and locally verified in PR #1236; monitoring CI and review feedback.
 
 **Plan slug:** `attribution-activation-events`
 

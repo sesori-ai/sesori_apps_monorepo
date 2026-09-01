@@ -4,7 +4,7 @@
 
 **Planned PR title:** `⚙️ Add Singular activation attribution events`
 
-**Status:** Implemented and locally verified; preparing the PR.
+**Status:** PR [#1236](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1236) is open and monitored.
 
 ## Checklist
 
@@ -17,7 +17,7 @@
 - [x] Update the privacy disclosure and analytics regression contract.
 - [x] Run focused module-core/mobile tests and analysis.
 - [x] Complete architecture implementation review (pass 2 approved after the pass-1 fix).
-- [ ] Commit, push, open the PR, and monitor it to ready for human review.
+- [x] Commit, push, open PR #1236, and start autonomous monitoring toward human review.
 
 ## Decisions and evidence
 
