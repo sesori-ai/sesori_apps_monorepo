@@ -1,9 +1,9 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/extensions/build_context_x.dart";
 import "../../core/status_colors.dart";
 import "pr_status_row.dart";
 import "session_row_metrics.dart";

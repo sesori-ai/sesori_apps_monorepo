@@ -1,14 +1,13 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../core/widgets/connection_banner.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first section.

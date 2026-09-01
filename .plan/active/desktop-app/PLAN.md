@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — awaiting MT gate B before step 14 (desktop relay client merged)
+- **Status:** Active — step 14 complete (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -479,14 +479,14 @@ two-PR pre-gate follow-up:
 
 The series does not change the original 22-step numbering. Its merge did not
 itself mark Gate B done; the user accepted the gate after running the final
-matrix on 2026-09-01. Step 14 is no longer gate-blocked but remains pending
-until the user explicitly authorizes it.
+matrix on 2026-09-01. The user explicitly authorized Step 14 that day; its
+implementation and focused verification are complete.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
 `build_context_x` extensions; `client/app` consumes them from the package and
-converges on the `module_prego` theme-assembly helper from step 7 (~70-file
-mechanical import churn). The **desktop shell also wires the package here**:
+converges on the `module_prego` theme-assembly helper from step 7 (~116-file
+mechanical import churn across mobile sources and tests). The **desktop shell also wires the package here**:
 dependency, `localizationsDelegates` + `supportedLocales` on its root app —
 `context.loc` throws without them, and step 15's shared screens are the first
 desktop consumers — plus the **desktop router skeleton** over the

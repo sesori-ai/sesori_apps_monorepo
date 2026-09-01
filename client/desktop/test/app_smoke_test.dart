@@ -46,6 +46,7 @@ void main() {
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
+    expect(getIt<RouteSource>().currentRoute, AppRouteDef.splash);
     expect(systemTray.initializeCalls, 1);
   });
 }

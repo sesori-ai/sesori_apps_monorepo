@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
 import 'package:firebase_core/firebase_core.dart' as _i982;
@@ -144,7 +145,7 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
-    gh.singleton<_i948.RouteSource>(() => _i597.GoRouterRouteSource());
+    gh.singleton<_i948.RouteSource>(() => _i597.MobileGoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),

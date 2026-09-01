@@ -1,11 +1,11 @@
 import "dart:async";
 
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show ModelPickerSection, ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../extensions/build_context_x.dart";
 import "model_picker_sheet.dart";
 
 /// Composer header exposing the available agent / model / variant selections

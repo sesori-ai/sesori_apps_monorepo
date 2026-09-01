@@ -24,6 +24,7 @@ on:
       - 'client/module_core/**'
       - 'client/module_auth/**'
       - 'client/module_prego/**'
+      - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'

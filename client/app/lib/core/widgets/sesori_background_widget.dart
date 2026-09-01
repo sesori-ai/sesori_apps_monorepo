@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../extensions/build_context_x.dart';
+import "package:sesori_app_ui/sesori_app_ui.dart";
 
 class const SesoriBackgroundWidget({super.key}) extends StatelessWidget {
   @override

@@ -1,7 +1,6 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../../core/extensions/build_context_x.dart";
 
 /// Empty state for the sessions list while the archived filter is on and the
 /// project has nothing archived: a ghosted stack of archive boxes above the

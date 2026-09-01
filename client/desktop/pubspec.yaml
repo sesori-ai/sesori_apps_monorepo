@@ -19,6 +19,7 @@ dependencies:
   flutter_bloc: ^9.1.1
   flutter_secure_storage: ^11.0.0
   get_it: ^9.2.1
+  go_router: ^18.0.0
   http: ^1.6.0
   injectable: ^3.0.0
   material_ui: ^1.1.0
@@ -30,6 +31,8 @@ dependencies:
   # imported outside lib/core/di/ (see client/AGENTS.md).
   sesori_auth:
     path: ../module_auth
+  sesori_app_ui:
+    path: ../module_app_ui
   sesori_dart_core:
     path: ../module_core
   sesori_desktop_core:

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/code_block.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
@@ -12,7 +13,6 @@ import "package:sesori_mobile/features/session_detail/widgets/retry_error_messag
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/features/session_detail/widgets/system_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 

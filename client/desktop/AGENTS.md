@@ -39,7 +39,8 @@ depend on registrations from an earlier one at resolution time.
 - Platform adapters implement interfaces from `sesori_dart_core` /
   `sesori_desktop_core` and live in `lib/core/platform/`. Adapters stay dumb —
   no process lifecycle or status state.
-- May import `theme_prego` directly for shell-owned presentation.
+- May import `theme_prego` directly for shell-owned presentation and
+  `module_app_ui` for shared localization, route presentation, and adaptive UI.
 - Never import bridge-workspace code (e.g. the bridge's OAuth browser opener);
   desktop equivalents go through platform adapters (ADR A11).
 - Follow the repo-root `AGENTS.md` error-handling and naming rules.

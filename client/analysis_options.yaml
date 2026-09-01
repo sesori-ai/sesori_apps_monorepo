@@ -34,9 +34,11 @@ analyzer:
       "**.g.edited.dart",
       "lib/generated/**",
       "lib/l10n/app_localizations*.dart",
+      "lib/**/l10n/app_localizations*.dart",
       "lib/firebase_options.dart",
       "**/lib/generated/**",
       "**/lib/l10n/app_localizations*.dart",
+      "**/lib/**/l10n/app_localizations*.dart",
       "**/lib/firebase_options.dart",
     ]
   language:

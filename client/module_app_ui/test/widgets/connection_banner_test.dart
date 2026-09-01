@@ -2,8 +2,8 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop/core/widgets/desktop_connection_banner.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
@@ -20,9 +20,11 @@ void main() {
         value: cubit,
         child: MaterialApp(
           theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
-              body: DesktopConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+              body: ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
             ),
           ),
         ),
@@ -57,7 +59,7 @@ void main() {
 
     await pumpBanner(tester: tester, cubit: cubit);
 
-    expect(find.text("Connection lost"), findsOneWidget);
+    expect(find.text("Connection Lost"), findsOneWidget);
     expect(find.text("Reconnect"), findsOneWidget);
     await tester.tap(find.text("Reconnect"));
     expect(cubit.reconnectCalls, 1);
@@ -87,7 +89,7 @@ void main() {
       addTearDown(cubit.close);
       whenListen(cubit, const Stream<ConnectionOverlayState>.empty(), initialState: state);
       await pumpBanner(tester: tester, cubit: cubit);
-      expect(find.byType(DesktopConnectionBanner), findsNothing);
+      expect(find.byType(ConnectionBanner), findsNothing);
     }
   });
 }

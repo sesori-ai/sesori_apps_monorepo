@@ -9,9 +9,10 @@ cohesion rules, commit discipline, and review workflow, see the repo-root
 
 ```bash
 dart pub get                                              # from client/ — installs all modules
-dart analyze                                              # run per module (app/, desktop/, module_core/, module_auth/, module_prego/, module_desktop_core/)
-cd app && flutter test                                    # Flutter tests
-cd desktop && flutter test                                # desktop Flutter tests
+dart analyze                                              # run per workspace member
+cd app && flutter test                                    # mobile shell tests
+cd desktop && flutter test                                # desktop shell tests
+cd module_app_ui && flutter test                          # shared Flutter UI tests
 cd module_core && dart test                               # pure Dart tests
 cd module_auth && dart test                               # pure Dart tests
 cd module_prego && flutter test                           # shared Flutter design-system tests
@@ -22,22 +23,21 @@ dart run build_runner build --delete-conflicting-outputs  # per module, after mo
 ## Module Dependency Direction
 
 ```
-client/app ───────────────→ module_core → module_auth → sesori_shared
-     │
-     └→ module_prego
-
-client/desktop ───────────→ module_core → module_auth → sesori_shared
-     │
-     ├→ module_desktop_core ─────────────────→ module_core
+client/app ───────────────→ module_app_ui ─┐
+     │                         │            │
+     └→ module_prego ←─────────┘            ├→ module_core → module_auth → sesori_shared
+                                            │
+client/desktop ───────────→ module_app_ui ───┤
+     │                                      │
+     ├→ module_desktop_core ─────────────────┘
      │                         │
      │                         └→ sesori_shared
      └→ module_prego
 ```
 
-`module_app_ui` does not exist yet — it is planned by
-`.plan/active/desktop-app/PLAN.md` (cockpit steps) to hold shared Flutter
-screens. When it lands, both product shells depend on it and it sits above
-`module_core`.
+`module_app_ui` owns shared Flutter localization, context, route-presentation,
+and adaptive-screen foundations above `module_core`. Product shells own DI,
+platform adapters, and surface-specific composition.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the
@@ -45,9 +45,9 @@ have `module_auth` as a pubspec dependency solely for the
 types in source code outside that DI call. All auth functionality is accessed
 through `module_core` interfaces. `module_core` MUST NOT depend on
 `module_desktop_core`. Product shells may import `module_prego` directly for
-shell-owned presentation. Once `module_app_ui` exists it may depend on
-`module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI
-dependencies; it must not import product shells or `module_desktop_core`.
+shell-owned presentation. `module_app_ui` may depend on `module_core`,
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
+import product shells or `module_desktop_core`.
 
 Reusable visual primitives belong in `module_prego`, including any native
 plugin renderer they require. Keep registration automatic through the package's
@@ -73,7 +73,7 @@ operations use the dedicated plugin-scoped request DTO.
 
 - `flutter test` from `app/`
 - `dart test` from `module_core/` and `module_auth/`
-- `flutter test` from `module_prego/`
+- `flutter test` from `module_prego/` and `module_app_ui/`
 - `flutter test` from `desktop/` and `dart test` from `module_desktop_core/`
 - Cubits in `module_core/` and `module_desktop_core/` must be testable without Flutter. Use fake streams and fake services, not `WidgetTester`.
 
