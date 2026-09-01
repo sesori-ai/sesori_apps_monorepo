@@ -501,7 +501,10 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
 
     // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Keep the page surface painted through the keyboard inset. The inner
+      // GlassScaffold is resized above the keyboard, but iOS 26's rounded,
+      // translucent keyboard exposes the area behind it around the corners.
+      backgroundColor: backgroundColor,
       floatingActionButton: _floatingActionButton,
       body: top_bar.PregoTopBarInsetScope(
         baseInset: topPad + PregoTopNavigation.barHeight,

@@ -93,6 +93,15 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     required String prompt,
     required String description,
     required String agent,
+
+    /// The subtask's own lifecycle, when the backend reports one. Named apart
+    /// from the tool-only [state] convenience accessor, which a subtask has no
+    /// business answering.
+    @JsonKey(includeToJson: true) required PluginToolState? taskState,
+
+    /// The backend session hosting this subtask's work, when the backend
+    /// exposes one. The bridge translates it to a bridge session id.
+    @JsonKey(includeToJson: true) required String? childSessionID,
   }) = PluginMessagePartSubtask;
 
   @FreezedUnionValue("step-start")
@@ -267,7 +276,8 @@ sealed class PluginMessageAttachment with _$PluginMessageAttachment {
   }) = PluginMessageAttachmentMetadata;
 }
 
-/// Lifecycle status of a tool invocation. Mirrors the OpenCode `ToolState`
+/// Lifecycle status of a tool invocation, and of a subtask that reports one.
+/// Mirrors the OpenCode `ToolState`
 /// union discriminator so consumers switch on enum members instead of
 /// matching magic strings. The `@JsonValue`s keep the wire form
 /// (`"pending"`, `"running"`, …) unchanged.
@@ -281,10 +291,19 @@ enum PluginToolStatus() {
   completed,
   @JsonValue("error")
   error,
+  @JsonValue("cancelled")
+  cancelled,
   @JsonValue("unknown")
   unknown;
 
-  bool get isTerminal => this == completed || this == error;
+  /// Whether this is an end state.
+  ///
+  /// Exhaustive so a status added later must be classified deliberately: an
+  /// end state misread as live leaves the call reported as running forever.
+  bool get isTerminal => switch (this) {
+    pending || running => false,
+    completed || error || cancelled || unknown => true,
+  };
 }
 
 @freezed

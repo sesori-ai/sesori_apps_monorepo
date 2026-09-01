@@ -68,6 +68,8 @@ void main() {
         id: "part-1",
         sessionID: "session-1",
         messageID: "message-1",
+        taskState: null,
+        childSessionID: null,
       ),
       "step-start": MessagePart.stepStart(id: "part-1", sessionID: "session-1", messageID: "message-1"),
       "step-finish": MessagePart.stepFinish(id: "part-1", sessionID: "session-1", messageID: "message-1"),

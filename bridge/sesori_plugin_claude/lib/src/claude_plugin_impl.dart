@@ -207,6 +207,7 @@ final class ClaudePlugin({
       return _history.map(
         sessionId: sessionId,
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
+        residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
       );
     } on Object catch (error) {
       throw PluginOperationException(
@@ -504,7 +505,11 @@ final class ClaudePlugin({
   }) {
     if (model == null) return;
     if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude model", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude model",
+        staleOptions: staleOptions,
+      );
     }
   }
 
@@ -516,7 +521,11 @@ final class ClaudePlugin({
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude effort", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude effort",
+        staleOptions: staleOptions,
+      );
     }
     return effort;
   }
@@ -529,7 +538,11 @@ final class ClaudePlugin({
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude agent", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude agent",
+        staleOptions: staleOptions,
+      );
     }
     return selection.permissionMode;
   }
@@ -557,6 +570,11 @@ final class ClaudePlugin({
   String? _directoryForSession(String sessionId) => _findSession(sessionId)?.directory;
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
+    if (event is ClaudeSessionProcessExited) {
+      // Sub-agents live only inside the resident process.
+      _eventDispatcher.cancelTasks(sessionId: event.sessionId).forEach(_eventBuffer.add);
+      return;
+    }
     if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(

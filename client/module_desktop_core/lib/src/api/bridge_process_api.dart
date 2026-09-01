@@ -3,6 +3,8 @@ import "dart:io";
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
+import "../foundation/platform/bridge_process_environment.dart";
+
 /// Starts a child process while keeping the platform calls replaceable in unit
 /// tests without introducing a production-only interface.
 @visibleForTesting
@@ -60,13 +62,15 @@ final class const BridgeProcessTreeKillException({
 @lazySingleton
 class BridgeProcessApi.forTesting({
   required final bool _isWindows,
+  required final BridgeProcessEnvironment _processEnvironment,
   required final BridgeProcessStarter _startProcess,
   required final BridgeProcessCommandRunner _runCommand,
   required final BridgeProcessSignalSender _sendSignal,
 }) {
-  new()
+  new({required BridgeProcessEnvironment processEnvironment})
     : this.forTesting(
         isWindows: Platform.isWindows,
+        processEnvironment: processEnvironment,
         startProcess: _startProcessDefault,
         runCommand: _runCommandDefault,
         sendSignal: _sendSignalDefault,
@@ -75,17 +79,30 @@ class BridgeProcessApi.forTesting({
   @visibleForTesting
   this;
 
+  /// Resolves the environment overrides before a child is spawned.
+  ///
+  /// The API owns the platform boundary: callers receive the result through
+  /// the repository and can re-check lifecycle cancellation before invoking
+  /// [spawn].
+  Future<Map<String, String>> resolveEnvironment() => _processEnvironment.resolve();
+
   Future<BridgeProcessApiHandle> spawn({
     required String executable,
     required List<String> arguments,
     required String? workingDirectory,
     required Map<String, String>? environment,
   }) async {
+    // dart:io replaces the inherited environment when a non-null map is
+    // supplied, so merge capability-provided overrides before crossing the
+    // process boundary. A null value preserves the platform default exactly.
+    final Map<String, String>? childEnvironment = environment == null
+        ? null
+        : <String, String>{...Platform.environment, ...environment};
     final Process process = await _startProcess(
       executable: executable,
       arguments: arguments,
       workingDirectory: workingDirectory,
-      environment: environment,
+      environment: childEnvironment,
     );
     try {
       _requirePositivePid(pid: process.pid);

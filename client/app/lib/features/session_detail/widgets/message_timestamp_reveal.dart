@@ -1,7 +1,6 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../../../core/extensions/build_context_x.dart";
 
 /// Wraps a single chat row so that a horizontal "peek" gesture on the
 /// transcript reveals the message's timestamp in a gutter on the right —

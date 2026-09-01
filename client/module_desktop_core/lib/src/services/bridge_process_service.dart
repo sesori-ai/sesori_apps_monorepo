@@ -46,7 +46,8 @@ class const BridgeProcessStopRequest({
 /// It coordinates only lower layers: the process repository owns every raw
 /// process operation and the atomic expected-stop marker; the log tracker owns
 /// child-pipe draining; the control server owns the per-spawn secret and
-/// socket. Manual lifecycle actions supersede delayed policy work, so an old
+/// socket; the process repository owns the launch-environment boundary. Manual
+/// lifecycle actions supersede delayed policy work, so an old
 /// retry can never create a second helper after Off or an explicit retry.
 @lazySingleton
 class BridgeProcessService.forTesting({
@@ -262,11 +263,13 @@ class BridgeProcessService.forTesting({
       await _controlChannelServer.start();
       _throwIfStartCancelled();
 
+      final Map<String, String> environment = await _repository.resolveEnvironment();
+      _throwIfStartCancelled();
       final BridgeProcessStreams streams = await _repository.spawn(
         executable: _executablePathResolver.resolve(),
         arguments: <String>["--control-url", _controlChannelServer.url.toString()],
         workingDirectory: null,
-        environment: null,
+        environment: environment,
       );
       childCreated = true;
       spawnedPid = streams.pid;

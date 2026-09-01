@@ -6,11 +6,12 @@ import "../../models/pi_thinking_level.dart";
 import "pi_assistant_delta.dart";
 import "pi_frame_fields.dart";
 
-/// One agent event from Pi v0.84.1's stdout event stream.
+/// One agent event from Pi v0.84.4's stdout event stream.
 ///
 /// Every known top-level event type is routed to a variant so no event silently
 /// becomes anonymous data; unknown types survive as [PiUnknownEvent] because Pi
 /// gains events between releases and a strict parser would drop a whole turn.
+/// The parser remains tolerant of the supported v0.84.1 PATH floor.
 ///
 /// Only Pi's own scalars are typed here. Message, entry, tool, and result
 /// payloads stay raw maps until the step that consumes them adds their DTOs.
@@ -161,8 +162,7 @@ final class const PiMessageStartEvent({required final Map<String, Object?> messa
 final class const PiMessageUpdateEvent({required final PiAssistantDelta delta, required super.raw}) extends PiEvent;
 
 /// The final authority for one message.
-final class const PiMessageEndEvent({required final Map<String, Object?> message, required super.raw})
-    extends PiEvent;
+final class const PiMessageEndEvent({required final Map<String, Object?> message, required super.raw}) extends PiEvent;
 
 final class const PiToolExecutionStartEvent({
   required final String? toolCallId,
@@ -215,8 +215,7 @@ final class const PiCompactionEndEvent({
 }) extends PiEvent;
 
 /// A session entry was persisted. The entry stays raw until history mapping.
-final class const PiEntryAppendedEvent({required final Map<String, Object?> entry, required super.raw})
-    extends PiEvent;
+final class const PiEntryAppendedEvent({required final Map<String, Object?> entry, required super.raw}) extends PiEvent;
 
 /// The explicit session name changed. Null means the name was cleared.
 final class const PiSessionInfoChangedEvent({required final String? name, required super.raw}) extends PiEvent;

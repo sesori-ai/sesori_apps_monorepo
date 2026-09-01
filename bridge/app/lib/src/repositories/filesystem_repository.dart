@@ -8,8 +8,8 @@ import "../api/filesystem_api.dart";
 import "../foundation/filesystem_permission_validator.dart";
 
 /// Thrown when a filesystem operation fails because the host OS denied access
-/// (e.g. macOS Full Disk Access not granted to the terminal running the
-/// bridge). Carries the [path] that could not be accessed.
+/// (e.g. macOS Full Disk Access not granted to the application or terminal
+/// running the bridge). Carries the [path] that could not be accessed.
 class FilesystemPermissionDeniedException({required final String path}) implements Exception {
   @override
   String toString() => "FilesystemPermissionDeniedException: permission denied: $path";

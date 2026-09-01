@@ -13,12 +13,18 @@ class PiCatalogService({
     if (_totalTimeout <= Duration.zero) throw ArgumentError.value(_totalTimeout, "totalTimeout", "must be positive");
   }
 
+  static const String compactionCommandName = "compact";
+
+  static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
+
   final Map<String, Future<_PiCatalogProbeOutcome>> _inFlight = {};
 
   Future<bool> healthCheck() => _repository.healthCheck();
 
   Future<List<PluginCommand>> getCommands({required String projectId}) async =>
       (await requireOptions(projectId: projectId)).commands;
+
+  bool isNativeCompactionCommand({required PluginCommand command}) => identical(command, _compactionCommand);
 
   Future<PluginSessionOptions> requireOptions({required String projectId}) async {
     final normalized = normalizeProjectDirectory(directory: projectId);
@@ -65,7 +71,7 @@ class PiCatalogService({
       final snapshot = PluginSessionOptions(
         agents: probe.agents,
         providers: probe.providers,
-        commands: probe.commands,
+        commands: _withCompaction(probe.commands),
         completeness: probe.complete
             ? PluginSessionOptionsCompleteness.complete
             : PluginSessionOptionsCompleteness.partial,
@@ -84,6 +90,11 @@ class PiCatalogService({
         stackTrace: stack,
       );
     }
+  }
+
+  List<PluginCommand> _withCompaction(List<PluginCommand> commands) {
+    if (commands.any((command) => command.name == compactionCommandName)) return commands;
+    return [...commands, _compactionCommand];
   }
 
   Never _throwDiscoveryFailure({required _PiCatalogProbeOutcome outcome}) {

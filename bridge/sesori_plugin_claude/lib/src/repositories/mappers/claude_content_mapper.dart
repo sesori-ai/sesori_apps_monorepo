@@ -10,11 +10,22 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
+import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
 
 sealed class const ClaudeMappedContentBlock();
 
 final class const ClaudeMappedTextContentBlock({required final String text}) extends ClaudeMappedContentBlock;
+
+/// A text block that is a complete `<task-notification>` envelope.
+///
+/// Consumers finalize the named task and hide the block only when its tool-use
+/// id is a task they know; otherwise [text] renders as ordinary user text, so a
+/// prompt that discusses the protocol can neither vanish nor finalize a subtask.
+final class const ClaudeMappedTaskNotificationContentBlock({
+  required final ClaudeTaskNotification notification,
+  required final String text,
+}) extends ClaudeMappedContentBlock;
 
 final class const ClaudeMappedThinkingContentBlock({required final String thinking}) extends ClaudeMappedContentBlock;
 
@@ -133,7 +144,7 @@ final class const ClaudeContentMapper() {
   }) sync* {
     if (content == null) return;
     if (content is String) {
-      yield ClaudeMappedTextContentBlock(text: content);
+      yield _textBlock(content);
       return;
     }
     if (content is List) {
@@ -163,7 +174,7 @@ final class const ClaudeContentMapper() {
 
     switch (dto) {
       case ClaudeTextContentBlockDto(:final text):
-        yield text == null ? const ClaudeMappedUnknownContentBlock() : ClaudeMappedTextContentBlock(text: text);
+        yield text == null ? const ClaudeMappedUnknownContentBlock() : _textBlock(text);
       case ClaudeThinkingContentBlockDto(:final thinking):
         yield thinking == null
             ? const ClaudeMappedUnknownContentBlock()
@@ -191,6 +202,13 @@ final class const ClaudeContentMapper() {
     }
   }
 
+  ClaudeMappedContentBlock _textBlock(String text) {
+    final notification = ClaudeTaskNotification.tryParse(text);
+    return notification == null
+        ? ClaudeMappedTextContentBlock(text: text)
+        : ClaudeMappedTaskNotificationContentBlock(notification: notification, text: text);
+  }
+
   ClaudeMappedToolResultContentBlock _mapToolResult({
     required String toolUseId,
     required Object? content,
@@ -201,7 +219,8 @@ final class const ClaudeContentMapper() {
     final attachments = <PluginMessageAttachment>[];
     for (final block in _mapValue(content: content, state: state)) {
       switch (block) {
-        case ClaudeMappedTextContentBlock(text: final value):
+        case ClaudeMappedTextContentBlock(text: final value) ||
+            ClaudeMappedTaskNotificationContentBlock(text: final value):
           outputBuffer.write(value);
         case ClaudeMappedImageContentBlock(:final attachment):
           attachments.add(attachment);
@@ -265,7 +284,8 @@ final class const ClaudeContentMapper() {
   }) {
     final fallbackId = "$messageId-block-$index";
     return switch (block) {
-      ClaudeMappedTextContentBlock(:final text) => PluginMessagePart.text(
+      ClaudeMappedTextContentBlock(:final text) ||
+      ClaudeMappedTaskNotificationContentBlock(:final text) => PluginMessagePart.text(
         id: fallbackId,
         sessionID: sessionId,
         messageID: messageId,

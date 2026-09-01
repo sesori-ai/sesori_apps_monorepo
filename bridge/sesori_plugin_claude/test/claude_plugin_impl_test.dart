@@ -794,6 +794,65 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a process exit surfaces a launched sub-agent as cancelled", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      process.emit({
+        "type": "assistant",
+        "session_id": testSessionId,
+        "message": {
+          "id": "msg-agent",
+          "model": "claude-opus-5",
+          "content": [
+            {
+              "type": "tool_use",
+              "id": "toolu-agent",
+              "name": "Agent",
+              "input": {"description": "Say hi", "prompt": "hi", "subagent_type": "general-purpose"},
+            },
+          ],
+        },
+      });
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "launch-result",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+          ],
+        },
+        "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
+      });
+      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      await pump();
+      // An explicit stop tears the process down without a natural exit; the
+      // sub-agent must still surface as cancelled.
+      final abort = harness.plugin.abortSession(sessionId: testSessionId);
+      final interrupt = await _waitForControl(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await pump();
+
+      final subtasks = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .toList();
+      expect(subtasks.map((part) => part.taskState?.status), [
+        PluginToolStatus.running,
+        PluginToolStatus.running,
+        PluginToolStatus.cancelled,
+      ]);
+      expect(subtasks.last.childSessionID, "agent-abc123");
+      await subscription.cancel();
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);

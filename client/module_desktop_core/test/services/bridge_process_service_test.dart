@@ -102,6 +102,7 @@ void main() {
       expect(repository.spawnCalls, 1);
       expect(repository.executable, "/repo/bridge");
       expect(repository.arguments, ["--control-url", "ws://127.0.0.1:41001"]);
+      expect(repository.environment, repository.resolvedEnvironment);
       expect(repository.arguments, isNot(contains("spawn-secret-1")));
       expect(logTracker.attachedStdout, same(streams.stdout));
       expect(logTracker.attachedStderr, same(streams.stderr));
@@ -189,6 +190,44 @@ void main() {
             .having((state) => state.crashCount, "crashCount", 1)
             .having((state) => state.delay, "delay", const Duration(hours: 1)),
       );
+    });
+
+    test("environment resolution failure is cleaned up and permits retry", () async {
+      authSession.state = _authenticatedState;
+      final StateError environmentError = StateError("login environment unavailable");
+      repository.resolveEnvironmentError = environmentError;
+
+      await expectLater(service.start(), throwsA(same(environmentError)));
+
+      expect(repository.resolveEnvironmentCalls, 1);
+      expect(repository.spawnCalls, 0);
+      expect(controlServer.startCalls, 1);
+      expect(controlServer.stopCalls, 1);
+      expect(service.state, isA<BridgeProcessStopped>());
+
+      repository.resolveEnvironmentError = null;
+      await service.start();
+      expect(repository.spawnCalls, 1);
+    });
+
+    test("rechecks cancellation after environment resolution before spawning", () async {
+      authSession.state = _authenticatedState;
+      final Completer<Map<String, String>> environmentGate = Completer<Map<String, String>>();
+      repository.resolveEnvironmentGate = environmentGate;
+
+      final Future<void> start = service.start();
+      await pumpEventQueue(times: 2);
+      expect(repository.resolveEnvironmentCalls, 1);
+      final Future<void> stop = service.stop();
+      await pumpEventQueue(times: 2);
+
+      environmentGate.complete(repository.resolvedEnvironment);
+      await start;
+      await stop;
+
+      expect(repository.resolveEnvironmentCalls, 1);
+      expect(repository.spawnCalls, 0);
+      expect(service.state, isA<BridgeProcessStopped>());
     });
 
     test("control bind failure is cleaned up and permits retry", () async {
@@ -793,6 +832,10 @@ class _MockIOSink() extends Mock implements IOSink;
 
 class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}) implements BridgeProcessRepository {
   final StreamController<BridgeProcessExit> _exits = StreamController<BridgeProcessExit>.broadcast(sync: true);
+  final Map<String, String> resolvedEnvironment = const <String, String>{"PATH": "/resolved/bin"};
+  int resolveEnvironmentCalls = 0;
+  Object? resolveEnvironmentError;
+  Completer<Map<String, String>>? resolveEnvironmentGate;
   int spawnCalls = 0;
   int stopCalls = 0;
   int stopAfterCommandCalls = 0;
@@ -801,6 +844,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   Completer<void>? stopAfterCommandGate;
   String? executable;
   List<String>? arguments;
+  Map<String, String>? environment;
   Object? spawnError;
   Object? stopError;
   bool emitExpectedExitOnStop = false;
@@ -818,6 +862,20 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
   int? get activePid => _activePid;
 
   @override
+  Future<Map<String, String>> resolveEnvironment() async {
+    resolveEnvironmentCalls++;
+    final Completer<Map<String, String>>? gate = resolveEnvironmentGate;
+    if (gate != null) {
+      await gate.future;
+    }
+    final Object? failure = resolveEnvironmentError;
+    if (failure != null) {
+      throw failure;
+    }
+    return resolvedEnvironment;
+  }
+
+  @override
   Future<BridgeProcessStreams> spawn({
     required String executable,
     required List<String> arguments,
@@ -827,6 +885,7 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
     spawnCalls++;
     this.executable = executable;
     this.arguments = List<String>.of(arguments, growable: false);
+    this.environment = environment;
     final Object? failure = spawnError;
     if (failure != null) {
       throw failure;

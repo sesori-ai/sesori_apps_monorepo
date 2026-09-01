@@ -20,15 +20,15 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 10 | 🚧 `module_auth` logout/rejection hardening (R1) | done |
 | 11 | 🚧 Logout coordination + offline unregister fallback | done |
 | 12 | 🚧 Supervised E2E suite + dev-harness retirement | done |
-| — | MT gate B: daily driver (user-run) | pending |
+| — | MT gate B: daily driver (user-run) | done |
 | 13 | ⚙️ Desktop relay-client enablement | done |
-| 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | pending |
-| 15 | 🚧 Settings + harness management slice (desktop onboarding) | pending |
-| 16 | 🚧 Project/session lists slice + desktop offline strategy | pending |
+| 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | done |
+| 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
+| 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | pending |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
 | 19 | ⚙️ Diffs + new-session slice | pending |
-| 20 | ⚙️ Desktop cockpit composition | pending |
+| 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
@@ -50,5 +50,48 @@ passing, including the native supervised E2E on macOS, Windows, and Linux.
 The Step 12 PR also included the post-merge Step 11 stop-mode and token-only
 deletion hardening. Step 13 merged in PR #1216 on 2026-08-31 with 13/13 CI
 checks passing. The desktop relay client and token-only startup handoff are
-complete. MT gate B remains pending; do not begin Step 14 until the user-run
-daily-driver checkpoint is recorded.
+complete. MT gate B was later accepted below.
+
+## MT Gate B — accepted 2026-09-01
+
+The user reported every macOS-primary daily-driver check passed on the final
+merged build after PRs #1222 and #1230: autostart reboot restored a hidden
+last-On bridge and disabling autostart stuck; a second launch focused the first
+instance; GUI `kill -9` led to bounded helper teardown and last-On restoration;
+live- and dead-helper logout removed the active bridge while preserving the
+phone session and clearing local tokens; 10+ minute sleep/wake recovered
+without a duplicate helper; and explicit cross-machine Take Over reclaimed
+ownership without a flip-flop restart war. The user accepted the desktop app as
+the terminal bridge replacement for daily use.
+
+Gate B acceptance removed the gate blocker. The user explicitly authorized
+Step 14 on 2026-09-01; Steps 14 and 15 are now implemented and verified.
+
+## Plan divergence — post-Step 13 Gate B findings (2026-08-31)
+
+The first daily-driver checks found that the persisted On intent was lost on
+app Quit, the rendered local/relay takeover state had no explicit reclaim
+action, and launchd's minimal PATH hid user-installed harnesses. The initial
+incomplete-file-permissions hypothesis was not confirmed: the GUI/helper ran
+under the same user with executable files, and the observed `gh` failure was
+`ENOENT` rather than `EACCES`/`EPERM`. Full Disk Access remains a manual
+permission for the process that accesses the protected folder; the desktop does
+not grant or persist it.
+
+These findings are a pre-Gate-B hardening divergence, not a new numbered plan
+step. During review, the environment lookup was kept below the service layer:
+the repository resolves it through the process API, the service rechecks
+cancellation before spawn, each supervised start refreshes PATH while
+concurrent callers share one probe, and a failed probe preserves the inherited
+environment unchanged. The work is intentionally split into two manageable
+PRs:
+
+| Follow-up | Status | Scope |
+|---|---|---|
+| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | done | PR #1222 merged: macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
+| `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` | done | PR #1230 merged: Quit intent semantics, explicit takeover orchestration/UI, and lifecycle coverage |
+
+The helper receives only a login-shell-derived PATH, merged with its inherited
+environment; shell variables, secrets, permissions, and entitlements are not
+copied. The user accepted Gate B and explicitly authorized Step 14 on
+2026-09-01; Step 14 is complete.

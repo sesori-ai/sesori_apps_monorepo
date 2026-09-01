@@ -10,20 +10,18 @@ import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
-import "core/extensions/appearance_mode_x.dart";
-import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
-import "l10n/app_localizations.dart";
 
 const _singularSdkKeyDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_KEY");
 const _singularSdkSecretDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_SECRET");
@@ -334,30 +332,9 @@ class const _SesoriAppShell() extends StatelessWidget {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
       themeMode: themeMode,
-      theme: ThemeData(
-        colorScheme: PregoColors.light.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
-        fontFamily: PregoTextTheme.fontFamily,
-        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
-        extensions: [PregoDesignSystem.light],
-        // Dark status-bar icons for the light theme's light backgrounds.
-        // Without this, transparent AppBars (e.g. ProjectListScreen) default
-        // to light/white icons that vanish against a light background.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.dark),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: PregoColors.dark.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
-        fontFamily: PregoTextTheme.fontFamily,
-        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
-        extensions: [PregoDesignSystem.dark],
-        // Light status-bar icons for the dark theme's dark backgrounds.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
-      ),
-      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-        AppLocalizations.delegate,
-        ...GlobalMaterialLocalizations.delegates,
-      ],
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      darkTheme: buildPregoThemeData(brightness: Brightness.dark),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
       // Legacy UI dependencies still need the SDK theme/localization types.
@@ -379,43 +356,14 @@ class const _SesoriAppShell() extends StatelessWidget {
                 connectionService: getIt<ConnectionService>(),
                 routeSource: getIt<RouteSource>(),
               ),
-              child: _SseToastListener(child: child ?? const SizedBox.shrink()),
+              child: SseToastListener(
+                navigatorKey: appRootNavigatorKey,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Renders accepted backend toast states through the design-system popup alert
-/// presenter on the root overlay, including global guidance on routes with no
-/// scaffold.
-class const _SseToastListener({required final Widget child}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<SseToastCubit, SseToastState>(
-      listener: (context, state) {
-        if (state case SseToastShow(:final title, :final message, :final variant)) {
-          final overlay = appRootNavigatorKey.currentState?.overlay;
-          if (overlay == null) return;
-          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
-            title: title ?? message,
-            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
-            variant: switch (variant) {
-              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
-              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
-              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
-              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
-            },
-            duration: switch (variant) {
-              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
-              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
-            },
-          );
-        }
-      },
-      child: child,
     );
   }
 }

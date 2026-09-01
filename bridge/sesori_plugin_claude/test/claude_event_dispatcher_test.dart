@@ -688,6 +688,8 @@ void main() {
                 content: resultContent,
                 isMeta: false,
                 isVisibleInTranscriptOnly: false,
+                toolUseResult: const ClaudeToolUseResultAbsent(),
+                isTaskNotification: false,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,
@@ -697,6 +699,7 @@ void main() {
                 raw: const {},
               ),
             ],
+            residentTaskToolUseIds: const {},
           )
           .single;
 

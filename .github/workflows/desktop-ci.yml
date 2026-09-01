@@ -79,6 +79,7 @@ jobs:
               - 'client/module_core/**'
               - 'client/module_auth/**'
               - 'client/module_prego/**'
+              - 'client/module_app_ui/**'
               - 'shared/sesori_shared/**'
               - 'shared/no_slop_linter/**'
               - 'client/pubspec.yaml'

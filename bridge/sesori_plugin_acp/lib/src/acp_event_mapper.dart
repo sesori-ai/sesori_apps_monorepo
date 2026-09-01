@@ -1211,12 +1211,7 @@ class AcpEventMapper({
     events.add(BridgeSseSessionDiff(sessionID: sessionId));
   }
 
-  bool _isTerminalToolStatus(PluginToolStatus status) {
-    return switch (status) {
-      PluginToolStatus.completed || PluginToolStatus.error => true,
-      PluginToolStatus.pending || PluginToolStatus.running || PluginToolStatus.unknown => false,
-    };
-  }
+  bool _isTerminalToolStatus(PluginToolStatus status) => status.isTerminal;
 
   Map<String, dynamic>? _asMap(Object? value) {
     if (value is Map) return value.cast<String, dynamic>();

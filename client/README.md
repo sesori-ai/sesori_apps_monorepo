@@ -14,10 +14,7 @@ product, the design catalog, and the shared client modules they consume.
 | `module_desktop_core/` | Pure Dart desktop business logic: bridge supervision, control orchestration, trackers, services, and cubits. |
 | `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
 | `module_prego/` | Shared Flutter design system: theme, fonts, icons, and components. |
-
-`module_app_ui` is planned by `.plan/active/desktop-app/PLAN.md` (cockpit
-steps). It will hold shared Flutter screens and widgets without owning
-product-shell DI or desktop process supervision.
+| `module_app_ui/` | Shared Flutter localization, route presentation, context extensions, settings/harness management, and adaptive UI. |
 
 ## Dependency Direction
 
@@ -25,16 +22,17 @@ product-shell DI or desktop process supervision.
 graph TD
   mobile[client/app] --> core[client/module_core]
   mobile --> prego[client/module_prego]
-  mobile -. "planned" .-> app_ui[client/module_app_ui planned]
+  mobile --> app_ui[client/module_app_ui]
 
   desktop[client/desktop] --> core
   desktop --> desktop_core[client/module_desktop_core]
   desktop --> prego
-  desktop -. "planned" .-> app_ui
+  desktop --> app_ui
 
   catalog[client/design_catalog] --> prego
 
-  app_ui -. "planned" .-> core
+  app_ui --> core
+  app_ui --> prego
   desktop_core --> core
   desktop_core --> shared[shared/sesori_shared]
   core --> auth[client/module_auth]
@@ -72,8 +70,10 @@ module_desktop_core/lib/src/
 └── cubits/        desktop state management
 ```
 
-Flutter widgets and platform plugins stay in `app/` or `desktop/`. Cubits stay
-in the appropriate pure Dart module, not in either product shell.
+Shared adaptive Flutter widgets and screens live in `module_app_ui`; shell-specific
+DI, navigation callbacks, platform strategies, and plugins stay in `app/` or
+`desktop/`. Cubits stay in the
+appropriate pure Dart module, not in product shells or `module_app_ui`.
 
 ## Dependency Injection
 
@@ -129,6 +129,7 @@ Target individual members when needed:
 (cd module_desktop_core && dart test)
 (cd module_auth && dart test)
 (cd module_prego && flutter test)
+(cd module_app_ui && flutter test)
 ```
 
 Run every catalog-specific gate without broadening the product-shell test loop:
@@ -141,8 +142,9 @@ make catalog-check
 
 After modifying Freezed models or injectable annotations, run `make codegen`
 from `client/`, or run `dart run build_runner build` in the affected member.
-Generated `*.freezed.dart`, `*.g.dart`, and `*.config.dart` files must not be
-edited manually.
+After changing shared ARB localization resources, run `flutter gen-l10n` from
+`module_app_ui/`. Generated `*.freezed.dart`, `*.g.dart`, `*.config.dart`, and
+localization Dart files must not be edited manually.
 
 ## Related
 

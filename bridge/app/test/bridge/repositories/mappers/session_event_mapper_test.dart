@@ -257,7 +257,55 @@ void main() {
         same(optionsChanged),
       );
     });
+
+    test("a subtask's child reference is optional, and translated when bound", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
+
+      expect(mapper.backendSessionIds(event: event), {"backend-session"});
+      expect(mapper.optionalBackendSessionIds(event: event), {"backend-child"});
+
+      final mapped = mapper.map(
+        event: event,
+        sessionIdsByBackendId: const {...ids, "backend-child": "ses-child"},
+      );
+      final part = (mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+
+      expect(part.sessionID, "ses-session");
+      expect(part.childSessionID, "ses-child");
+    });
+
+    test("an unbound child reference becomes null without withholding the part", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: "backend-child"));
+
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+      final part = (mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+
+      expect(part.sessionID, "ses-session");
+      expect(part.description, "description");
+      expect(part.childSessionID, isNull);
+    });
+
+    test("a part with no child reference contributes no optional id", () {
+      final event = BridgeSseMessagePartUpdated(part: _subtaskPart(childSessionID: null));
+
+      expect(mapper.optionalBackendSessionIds(event: event), isEmpty);
+      final mapped = mapper.map(event: event, sessionIdsByBackendId: ids);
+      expect(((mapped! as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask).childSessionID, isNull);
+    });
   });
+}
+
+PluginMessagePart _subtaskPart({required String? childSessionID}) {
+  return PluginMessagePart.subtask(
+    id: "part",
+    sessionID: "backend-session",
+    messageID: "message",
+    prompt: "prompt",
+    description: "description",
+    agent: "explore",
+    taskState: null,
+    childSessionID: childSessionID,
+  );
 }
 
 Map<String, dynamic> _sessionInfo({required String sessionId, required String? parentId}) {

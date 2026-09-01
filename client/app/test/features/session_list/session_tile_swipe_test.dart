@@ -4,11 +4,8 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/features/session_list/session_list_action_dispatcher.dart";
-import "package:sesori_mobile/features/session_list/session_list_panel.dart";
-import "package:sesori_mobile/features/session_list/session_tile.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -42,7 +39,7 @@ void main() {
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
 
-    const dispatcher = SessionListActionDispatcher();
+    const dispatcher = SessionListActionDispatcher(onSessionDeleted: null);
 
     // A router, not a plain MaterialApp: the archive confirmation sheet closes
     // itself through GoRouter, which the lint requires over direct Navigator.
@@ -56,9 +53,10 @@ void main() {
               child: SessionListPanel(
                 projectName: "Project One",
                 onNewSession: () {},
-                onSessionTap: (_) {},
-                sessionMenuEntries: (BuildContext context, Session session) =>
-                    dispatcher.sessionMenuEntries(context: context, session: session),
+                onSessionTap: ({required session}) {},
+                actionDispatcher: dispatcher,
+                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                onBack: null,
               ),
             ),
           ),

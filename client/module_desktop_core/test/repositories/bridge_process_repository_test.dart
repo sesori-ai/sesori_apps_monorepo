@@ -34,6 +34,13 @@ void main() {
       await fixture.dispose();
     });
 
+    test("resolves the launch environment through the process API", () async {
+      processApi.environment = const <String, String>{"PATH": "/user/bin"};
+
+      expect(await repository.resolveEnvironment(), const <String, String>{"PATH": "/user/bin"});
+      expect(processApi.resolveEnvironmentCalls, 1);
+    });
+
     test("spawn hands off raw stdio and emits an unexpected exit", () async {
       final Future<BridgeProcessExit> exit = repository.exits.first;
 
@@ -249,12 +256,20 @@ class _MockIOSink() extends Mock implements IOSink;
 
 class _FakeBridgeProcessApi({required final BridgeProcessApiHandle handle}) implements BridgeProcessApi {
   final List<int> gracefulSignalPids = <int>[];
+  Map<String, String> environment = const <String, String>{};
+  int resolveEnvironmentCalls = 0;
   final List<int> killedTreePids = <int>[];
   bool gracefulSignalResult = true;
   void Function()? onGracefulSignal;
   void Function()? onKill;
   Object? killError;
   Future<void>? killFuture;
+
+  @override
+  Future<Map<String, String>> resolveEnvironment() async {
+    resolveEnvironmentCalls++;
+    return environment;
+  }
 
   @override
   Future<BridgeProcessApiHandle> spawn({

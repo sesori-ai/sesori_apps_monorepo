@@ -11,6 +11,7 @@ extension PluginToolStatusMapping on PluginToolStatus {
     PluginToolStatus.running => ToolStatus.running,
     PluginToolStatus.completed => ToolStatus.completed,
     PluginToolStatus.error => ToolStatus.error,
+    PluginToolStatus.cancelled => ToolStatus.cancelled,
     PluginToolStatus.unknown => ToolStatus.unknown,
   };
 }
@@ -98,7 +99,15 @@ extension PluginMessagePartMapping on PluginMessagePart {
       tool: tool ?? "",
       state: state.toShared(),
     ),
-    PluginMessagePartSubtask(:final id, :final messageID, :final prompt, :final description, :final agent) =>
+    PluginMessagePartSubtask(
+      :final id,
+      :final messageID,
+      :final prompt,
+      :final description,
+      :final agent,
+      :final taskState,
+      :final childSessionID,
+    ) =>
       MessagePart.subtask(
         id: id,
         sessionID: sessionId,
@@ -106,6 +115,10 @@ extension PluginMessagePartMapping on PluginMessagePart {
         prompt: prompt,
         description: description,
         agent: agent,
+        taskState: taskState?.toShared(),
+        // Carried through as the plugin reported it. The live path translates
+        // it in `SessionEventMapper`; the history path in `SessionRepository`.
+        childSessionID: childSessionID,
       ),
     PluginMessagePartStepStart(:final id, :final messageID) => MessagePart.stepStart(
       id: id,

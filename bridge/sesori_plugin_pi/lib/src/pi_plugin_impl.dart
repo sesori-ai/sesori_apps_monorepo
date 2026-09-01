@@ -357,22 +357,33 @@ final class PiPlugin._({
       staleOptions: true,
     );
     final options = await _catalogService.requireOptions(projectId: session.directory);
-    if (command.trim() != command ||
-        command.isEmpty ||
-        !options.commands.any((candidate) => candidate.name == command)) {
+    final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
+    if (command.trim() != command || command.isEmpty || catalogCommand == null) {
       throw const PluginOperationException("sendCommand", statusCode: 400, message: "Unsupported Pi command.");
     }
     try {
-      await _sessionService.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        directory: session.directory,
-        command: command,
-        arguments: arguments,
-        userVisibleArguments: userVisibleArguments,
-        variant: variant,
-        model: model,
-      );
+      final dispatch = _catalogService.isNativeCompactionCommand(command: catalogCommand)
+          ? _sessionService.compact(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            )
+          : _sessionService.sendCommand(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            );
+      await dispatch;
     } on PluginOperationException {
       rethrow;
     } on Object catch (error, stackTrace) {

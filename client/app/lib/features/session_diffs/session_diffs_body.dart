@@ -1,11 +1,10 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/extensions/build_context_x.dart";
-import "../../core/widgets/connection_banner.dart";
 import "models/diff_file_view_model.dart";
 import "models/diff_view_model_builder.dart";
 import "widgets/diff_error_view.dart";

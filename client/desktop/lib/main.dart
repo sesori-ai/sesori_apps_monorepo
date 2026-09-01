@@ -17,6 +17,9 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
+  final AppearanceMode initialAppearance = await getIt<AppearanceStore>().read();
+  final ChatInputMode initialChatInputMode = await getIt<ChatInputModeStore>().read();
+
   try {
     await getIt<WindowHost>().initialize(hidden: hiddenLaunch);
   } on Object catch (error, stackTrace) {
@@ -34,6 +37,28 @@ Future<void> main(List<String> arguments) async {
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.
   getIt<ConnectionService>();
-  runApp(SesoriDesktopApp(hiddenLaunch: hiddenLaunch));
+  // Start local analytics state before building. Authenticated reconciliation
+  // waits until after the first frame so a slow server cannot blank startup;
+  // Profile reflects the service's synchronization state until it settles.
+  final ProductAnalyticsService productAnalyticsService = getIt();
+  await productAnalyticsService.start();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_markProductAnalyticsReady(service: productAnalyticsService));
+  });
+  runApp(
+    SesoriDesktopApp(
+      hiddenLaunch: hiddenLaunch,
+      initialAppearance: initialAppearance,
+      initialChatInputMode: initialChatInputMode,
+    ),
+  );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
+}
+
+Future<void> _markProductAnalyticsReady({required ProductAnalyticsService service}) async {
+  try {
+    await service.markPostSplashReady();
+  } on Object catch (error, stackTrace) {
+    logw("Failed to reconcile product analytics after desktop startup", error, stackTrace);
+  }
 }

@@ -40,12 +40,19 @@ void main() {
     getIt.unregister<LaunchAtLogin>();
     getIt.registerLazySingleton<LaunchAtLogin>(_FakeLaunchAtLogin.new);
 
-    await tester.pumpWidget(const SesoriDesktopApp(hiddenLaunch: false));
+    await tester.pumpWidget(
+      const SesoriDesktopApp(
+        hiddenLaunch: false,
+        initialAppearance: AppearanceMode.system,
+        initialChatInputMode: ChatInputMode.voiceFirst,
+      ),
+    );
     await tester.pump();
     await tester.pump();
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
+    expect(getIt<RouteSource>().currentRoute, AppRouteDef.splash);
     expect(systemTray.initializeCalls, 1);
   });
 }

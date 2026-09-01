@@ -3,13 +3,14 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `ba725ec84`
-- **Plan branch:** `inline-subtask-plan`
-- **Series state:** Step 1/8 plan PR
-  [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open
-- **Next action:** merge the plan, then Step 2/8 (contract + client tile)
-- **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts"; the
-  completed `claude-code-plugin/PROTOCOL.md` is historical and is not edited
+- **Implementation base:** `main` at `86ccc283fb`
+- **Series state:** Steps 1/8 and 2/8 merged; Step 3/8 (Claude subtask
+  lifecycle) PR [#1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247)
+  open (branch `inline-subtask-plan-continue`)
+- **Next action:** merge Step 3/8, then Step 4/8 (sub-agent child sessions)
+- **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
+  Step 3 capture below (CLI 2.1.257); the completed
+  `claude-code-plugin/PROTOCOL.md` is historical and is not edited
 
 ## Locked Decisions
 
@@ -64,14 +65,31 @@
   → `ClaudeSubagentMetaDto`, `deleteSessionDirectory`) from catalog decisions
   (`ClaudeTranscriptCatalogRepository`, `ClaudeSessionRecord.parentId`).
 - [x] No analytics, no tasks-bar change, no `task_progress` rendering.
+- [x] Step 3 implementation refinements (recorded 2026-09-01, code is truth):
+  the `<task-notification>` parser is `ClaudeTaskNotification.tryParse` in
+  `models/`, called by `ClaudeContentMapper` (typed block) and directly by
+  `ClaudeSessionService` on raw user text the way `_trackWakeupSchedule`
+  already reads raw tool_use blocks — the service gains no
+  `ClaudeContentMapper` dependency; `_SessionTurnState.hasWork` is the one
+  "work in flight" predicate; the history mapper replays task lifecycle
+  through a fresh `ClaudeToolTracker` so terminal precedence has one
+  implementation, and `ClaudeTrackedTool.toPart` is the one subtask/tool part
+  builder; a subtask part is first emitted when its input names
+  `description` and `prompt` (the assistant frame or `content_block_stop`),
+  never with placeholder text; completion `output` prefers the envelope's
+  `<result>` over `<summary>` (the system frame has only `summary`, which
+  carries the result text); `deleteSession`/dispose rely on the teardown's
+  `ClaudeSessionProcessExited` reaching `cancelTasks` instead of a second
+  call; `childSessionStatuses` and `isTurnRunning` land with their first
+  consumer in Step 4.
 
 ## Delivery Steps
 
 | Done | Step | Exact PR title | Target | State |
 |---|---|---|---:|---|
-| [ ] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open |
-| [ ] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | Pending |
-| [ ] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | Pending |
+| [x] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) merged |
+| [x] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | [PR #1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) merged |
+| [ ] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | [PR #1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247) open |
 | [ ] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | Pending |
 | [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | Pending |
 | [ ] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | Pending |
@@ -94,16 +112,28 @@
 
 ## Open Questions
 
-- [ ] Does the 2.1.221 floor emit `task_started`/`task_notification`? The
-  lifecycle degrades without them (tool-result finalization plus the
-  `<task-notification>` user-frame parse); confirm during Step 3's live capture
-  if a floor build is available, otherwise record as untested.
-- [ ] Exact live shape of the background `<task-notification>` user frame
-  (whether it carries `isReplay`/`origin`); Step 3 capture.
-- [ ] Whether `system/background_tasks_changed {tasks}` lists live task ids in
-  a shape usable to reconcile `runningTaskIds` (a task whose notification
-  never arrives would otherwise pin the process until abort/exit); Step 3
-  capture decides adopt-or-skip.
+- [ ] Does the 2.1.221 floor emit `task_started`/`task_notification`? No floor
+  build on the dev machine; recorded as untested. The typed substitutes
+  (`asyncLaunched`/`completed` tool result, `<task-notification>` text) are
+  implemented and unit-tested.
+- [x] Live shape of the background notification (Step 3 capture, CLI
+  2.1.257): the CLI does **not** echo the `<task-notification>` user message
+  on stdout even with `--replay-user-messages`; live, only the
+  `system/task_notification` frame carries the outcome (`summary` = the
+  agent's result text). The persisted transcript has the `user` record with
+  `origin: {kind: "task-notification"}`, a plain-string content envelope with
+  `<summary>Agent "…" finished</summary>` and `<result>…</result>`, and
+  `isSidechain: false` / no `isMeta` — so without Step 3 it renders as a user
+  bubble. The wake-up turn after the notification starts with a second
+  `system/init` frame, then assistant text, then `result`.
+- [x] `system/background_tasks_changed {tasks: [{task_id, task_type,
+  description}]}` does list live task ids, but the capture shows it fires
+  *before* the matching `task_started` and, emptied, *before* the
+  `task_notification`. Reconciling the running set from it would either be a
+  no-op (it cannot settle idle without reintroducing the transient idle the
+  notification-opens-the-wake-up-turn rule exists to avoid) or race the
+  frames that follow it. Not adopted; the "notification never arrives"
+  residual stays accepted (abort/delete/exit clear it).
 - [ ] Which frame shapes the CLI emits between an acknowledged interrupt and
   the next turn when the process is kept alive for running sub-agents
   (`keep`); the owner and policy are fixed (`ClaudeSessionProcessRepository`
@@ -122,9 +152,32 @@
   target after the user-review lifecycle amendment, the scoped-stop step the
   user added, two architecture reviews, and the bot rounds; accepted
   deviation, target unchanged.
+- **Step 2:** implemented on `main` at `5ffd05c5e`. Codegen re-run for
+  `sesori_shared`, `sesori_plugin_interface`, and `flutter gen-l10n`.
+  `dart analyze --fatal-infos` clean in `sesori_shared`,
+  `sesori_plugin_interface`, `bridge/app`, and every plugin package;
+  `flutter analyze` clean in `client/app`. `dart test`: shared 358,
+  interface 153, `bridge/app` 2,692, `module_core` 1,315, opencode 434,
+  acp 260, codex 392, pi 260, claude 253 — all pass; `flutter test`
+  `client/app` 853 — all pass. Changed lines: 716 additions / 63 deletions
+  across 53 files (779 changed lines, within the 500-800 target), of which
+  202/37 are non-generated production code; the rest is generated output and
+  the mechanical `childSessionID: null` argument a required nullable field
+  forces at every existing construction site.
+- **Step 2 PR:** [#1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) open
   Per the plan's series note, `TRACKER.md` bookkeeping is excluded from the
   comparison because its count would include the lines that record it; the
   final tracker size is visible in the merged PR.
+- **Step 3:** implemented on `main` at `86ccc283fb`. Codegen re-run for the
+  transcript record DTO (`toolUseResult`, `origin.kind`). `dart analyze
+  --fatal-infos` clean and `dart test` 276/276 in `bridge/sesori_plugin_claude`
+  (18 new tests: frame/envelope parsing, tracker precedence and cancel-all,
+  dispatcher launch→turn end→notification and hidden/visible envelopes,
+  replay incl. resident downgrade and DTO-level `origin`/`toolUseResult`,
+  service busy-past-turn/no-transient-idle/reap deferral/exit/abort, plugin
+  process-exit cancellation). Live capture: `claude` 2.1.257 with the
+  plugin's flags minus the permission tool, one background `Agent` launch;
+  facts in Open Questions. Changed lines: see the PR diff stat.
 - **Final disposition:** pending
 
 ## Plan Review
@@ -227,6 +280,23 @@
   `SessionRepository`/`SessionService.abortSession` in lockstep. The reviewer
   explicitly passed the two-structure lifecycle design, the sweep
   simplification, and the disjoint-union status composition.
+- **Step 3 `architecture-implementation-review` (sub-agent, 2026-09-01), scope
+  commit `573a6b244e`: rejected with one finding, applied in `7d9ecd6658`:**
+  `ClaudeTrackedTool` flattened tool-vs-task into `bool isTask` plus a nullable
+  `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
+  `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
+  parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 3 PR bot round (chatgpt-codex-connector, 2026-09-01):** applied —
+  `ClaudeSessionProcessRepository.teardown` publishes
+  `ClaudeSessionProcessExited` (an abort, delete, reap, or effort restart had
+  removed the process silently, leaving launched sub-agents running in live
+  parts and resident ids; this also supersedes the Step 3 note that
+  delete/dispose rely on the exit event — they now genuinely do);
+  `ClaudeUserMessage.taskNotifications` parsed at the transport boundary
+  replaces the service's raw-content walk. Declined — regression docs stay in
+  Step 7/8; refusing an effort-triggered process replacement while sub-agents
+  run is Step 6/8's scoped-stop decision (the replacement now cancels them
+  observably instead of pinning the session).
 - **Sixth bot round (chatgpt-codex-connector, cubic-dev-ai), applied:**
   side-effect-free `confirm` (no queue clearing, no child fan-out before a
   root `aborted` under `stop`); nested-task lifecycle frames resolved through

@@ -2,26 +2,55 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "core/di/injection.dart";
-import "core/widgets/desktop_connection_banner.dart";
-import "core/widgets/desktop_sse_toast_listener.dart";
-import "features/auth_gate/auth_gate.dart";
-
-final GlobalKey<NavigatorState> _desktopNavigatorKey = GlobalKey<NavigatorState>();
+import "core/routing/desktop_router.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
-/// Owns the eager desktop bridge controller, relay-client connection effects,
-/// Prego themes, and sign-in gate.
-class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) extends StatelessWidget {
+/// Owns app-wide preferences above the router so settings changes immediately
+/// recompose every desktop destination.
+class const SesoriDesktopApp({
+  required final bool hiddenLaunch,
+  required final AppearanceMode initialAppearance,
+  required final ChatInputMode initialChatInputMode,
+  super.key,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: <BlocProvider<dynamic>>[
+        BlocProvider<AppearanceCubit>(
+          create: (_) => AppearanceCubit(
+            store: getIt<AppearanceStore>(),
+            initialMode: initialAppearance,
+          ),
+        ),
+        BlocProvider<ChatInputModeCubit>(
+          create: (_) => ChatInputModeCubit(
+            store: getIt<ChatInputModeStore>(),
+            initialMode: initialChatInputMode,
+          ),
+        ),
+      ],
+      child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+    );
+  }
+}
+
+/// Owns eager desktop supervision and relay-client effects beneath the
+/// preference providers and above all routed destinations.
+class const _DesktopAppShell({required final bool hiddenLaunch}) extends StatelessWidget {
   static const String _appTitle = "Sesori";
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.watch<AppearanceCubit>().state.themeMode;
+
     return MultiBlocProvider(
       providers: <BlocProvider<dynamic>>[
         BlocProvider<ConnectionOverlayCubit>(
@@ -49,6 +78,7 @@ class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) exte
               applicationTerminator: getIt(),
               logRepository: getIt(),
               instanceService: getIt(),
+              takeoverOrchestrator: getIt(),
               logoutTracker: getIt(),
               urlLauncher: getIt(),
               launchAtLogin: getIt(),
@@ -59,16 +89,17 @@ class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) exte
           },
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: _appTitle,
         debugShowCheckedModeBanner: false,
-        navigatorKey: _desktopNavigatorKey,
         theme: buildPregoThemeData(brightness: Brightness.light),
         darkTheme: buildPregoThemeData(brightness: Brightness.dark),
-        themeMode: ThemeMode.system,
-        home: const AuthGate(),
+        themeMode: themeMode,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: desktopRouter,
         builder: (context, child) => _DesktopRootEffects(
-          navigatorKey: _desktopNavigatorKey,
+          navigatorKey: desktopRootNavigatorKey,
           child: child ?? const SizedBox.shrink(),
         ),
       ),
@@ -80,11 +111,11 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return DesktopSseToastListener(
+    return SseToastListener(
       navigatorKey: navigatorKey,
       child: Column(
         children: <Widget>[
-          DesktopConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+          ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
           Expanded(child: child),
         ],
       ),

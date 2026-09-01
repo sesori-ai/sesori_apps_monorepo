@@ -3,10 +3,8 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/widgets/connection_banner.dart";
-import "package:sesori_mobile/features/session_list/session_list_scaffold.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -56,9 +54,15 @@ void main() {
       return resolved;
     }
 
-    testWidgets("returns a banner for bridgeOffline and connectionLost, nothing otherwise", (tester) async {
+    testWidgets("returns a banner for bridgeOffline, reconnecting, and connectionLost, nothing otherwise", (
+      tester,
+    ) async {
       expect(
         await resolveFor(tester, const ConnectionOverlayState.bridgeOffline()),
+        isA<ConnectionBanner>(),
+      );
+      expect(
+        await resolveFor(tester, const ConnectionOverlayState.reconnecting()),
         isA<ConnectionBanner>(),
       );
       expect(
@@ -67,7 +71,6 @@ void main() {
       );
       expect(await resolveFor(tester, const ConnectionOverlayState.hidden(connected: true)), isNull);
       expect(await resolveFor(tester, const ConnectionOverlayState.hidden(connected: false)), isNull);
-      expect(await resolveFor(tester, const ConnectionOverlayState.reconnecting()), isNull);
     });
   });
 
@@ -105,7 +108,10 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner())),
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner()),
+      ),
     );
 
     expect(find.text("Bridge disconnected"), findsOneWidget);
@@ -114,13 +120,34 @@ void main() {
     expect(alert.icon, TablerRegular.broadcast_off);
   });
 
+  testWidgets("renders the warning alert with the reconnecting title", (tester) async {
+    final cubit = StubConnectionOverlayCubit(initialState: const ConnectionOverlayState.reconnecting());
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner.reconnecting()),
+      ),
+    );
+
+    expect(find.text("Reconnecting…"), findsOneWidget);
+    final alert = tester.widget<PregoInlineAlertsNotifications>(find.byType(PregoInlineAlertsNotifications));
+    expect(alert.type, PregoInlineAlertsNotificationsType.warning);
+    expect(alert.icon, TablerRegular.cloud_off);
+    expect(alert.primaryAction, isNull);
+  });
+
   testWidgets("marks the offline banner as a live region so screen readers announce it", (tester) async {
     final handle = tester.ensureSemantics();
     final cubit = StubConnectionOverlayCubit(initialState: const ConnectionOverlayState.bridgeOffline());
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner())),
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner()),
+      ),
     );
 
     // A live region is announced by VoiceOver/TalkBack when it appears without
@@ -195,10 +222,12 @@ void main() {
         home: BlocProvider<SessionListCubit>.value(
           value: sessionListCubit,
           child: SessionListScaffold(
-            onSessionTap: (_) {},
-            sessionMenuEntries: (_, _) => const [],
+            onSessionTap: ({required session}) {},
+            actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+            archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
             onNewSession: () {},
             onBack: null,
+            connectionBanner: const ConnectionBanner(),
           ),
         ),
       ),

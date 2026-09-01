@@ -101,8 +101,12 @@ defaults and queued client sends coherent.
   sender field and retains its prior assistant styling.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
-  than exposing a cancellable bridge-queue entry. Commands reject while that
-  session is busy, and a successful command with no agent run crosses `get_state`
+  than exposing a cancellable bridge-queue entry. The bridge-synthesized
+  `compact` command instead publishes its visible command marker before the
+  running compaction card, accepts on Pi's `compaction_start`, then keeps the
+  resident busy until the native RPC finishes. A rejected native compaction clears
+  its running card. Commands reject while that session is busy, and a successful
+  ordinary command with no agent run crosses `get_state`
   before returning the lane idle.
   Abort rejects queued work and replaces the process so hidden steering or
   follow-up input cannot leak into the next turn. Its control acknowledgement
@@ -114,7 +118,13 @@ defaults and queued client sends coherent.
   before admission and are never fetched, stringified, or silently omitted.
 - Pi discovers models, thinking levels, and extension, prompt-template, prompt,
   and skill commands through bounded approved no-session probes in normalized
-  project directories. Reuse is project-local, refresh always probes, concurrent
+  project directories. Because Pi omits built-in TUI commands from `get_commands`,
+  the plugin appends one `compact` command and dispatches it through Pi's native
+  `compact` RPC with optional user instructions rather than sending `/compact` as
+  a prompt. If an upstream command already owns that name, it remains an ordinary
+  slash command and the native action is not synthesized. Private instructions
+  remain confined to the RPC while the synthetic user marker uses only the
+  user-visible command text. Reuse is project-local, refresh always probes, concurrent
   requests for one project coalesce, and a failed refresh never replaces the
   last coherent snapshot. Dialogs raised during probes are cancelled and never
   enter session UI state. Empty Pi sessions remain lazy until their first prompt
@@ -252,6 +262,9 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- When the software keyboard opens, interactive content resizes above it while
+  the page surface remains painted underneath it. Rounded or translucent iOS
+  keyboards never reveal a black route or platform background around their edges.
 - Transcript rows render in a plain reversed list with newest content at the
   bottom. Following stays pinned through appends and streaming growth; scrolling
   away freezes live row content until reattachment. Sending, queued, retry,
@@ -356,8 +369,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
 - A live append or streaming update moves a detached viewport, an outgoing
-  prompt blanks or duplicates during its sending-to-sent transition, or keyboard
-  and composer insets obscure newest content.
+  prompt blanks or duplicates during its sending-to-sent transition, keyboard
+  and composer insets obscure newest content, or the keyboard reveals a black
+  background around its rounded or translucent edges.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.

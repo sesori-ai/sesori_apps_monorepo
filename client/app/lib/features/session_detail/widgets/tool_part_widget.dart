@@ -1,11 +1,10 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
-import "../../../l10n/app_localizations.dart";
 import "attachment_collection_widget.dart";
 
 class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {
@@ -106,6 +105,11 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
       color: prego.colors.bgBrandSolid,
     ),
     ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
+    ToolStatus.cancelled => Icon(
+      Icons.cancel,
+      size: 16,
+      color: prego.colors.textSecondary,
+    ),
     ToolStatus.unknown => Icon(
       Icons.circle_outlined,
       size: 16,
@@ -118,6 +122,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     ToolStatus.running => loc.sessionDetailToolRunning,
     ToolStatus.completed => loc.sessionDetailToolCompleted,
     ToolStatus.error => loc.sessionDetailToolError,
+    ToolStatus.cancelled => loc.sessionDetailToolCancelled,
     ToolStatus.unknown => loc.sessionDetailToolUnknown,
   };
 }

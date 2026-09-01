@@ -13,6 +13,7 @@ import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
@@ -24,7 +25,6 @@ import "package:sesori_mobile/features/session_detail/widgets/session_detail_mes
 import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";

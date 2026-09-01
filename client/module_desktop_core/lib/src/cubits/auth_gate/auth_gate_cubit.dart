@@ -104,12 +104,8 @@ class AuthGateCubit._create({
   /// Coordinated device-local sign-out. The logout owner stops the supervised
   /// helper before clearing local tokens; step 11 extends that same owner with
   /// unregister handling. AuthManager fences every in-flight auth result.
-  Future<void> signOut() async {
-    await _logoutBestEffort();
-  }
-
-  Future<void> _logoutBestEffort() async {
-    await _logoutOrchestrator.logoutCurrentDevice();
+  Future<DesktopLogoutOutcome> signOut() {
+    return _logoutOrchestrator.logoutCurrentDevice();
   }
 
   void _onAuthState(AuthState authState) {

@@ -3,15 +3,13 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
-import "../../../core/widgets/connection_banner.dart";
-import "../../../core/widgets/session_split/session_split_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
@@ -82,7 +80,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final loc = context.loc;
     final state = context.watch<SessionDetailCubit>().state;
     final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
-    final showLeading = !isSplit || isImperativePaneRoute(context);
+    final isImperative = isImperativePaneRoute(context);
+    final showLeading = !isSplit || isImperative;
     final isBusy = switch (state) {
       SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
         sessionStatus: sessionStatus,
@@ -155,8 +154,21 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       // that starts on the pinned composer overscrolls/bounces the whole page.
       scrollable: false,
       // Toolbar navigation is explicit: unlike Android system back, it must
-      // not be vetoed by the composer's keyboard-dismissal PopScope.
-      onBack: showLeading ? () => context.pop() : null,
+      // not be vetoed by the composer's keyboard-dismissal PopScope. A pushed
+      // child detail still pops to its parent. The base compact detail uses the
+      // typed parent route rather than asking go_router to derive it from
+      // decoded path parameters, which would turn path-like project IDs back
+      // into literal slashes and make the parent URL unmatchable.
+      onBack: showLeading
+          ? () => isImperative
+                ? context.pop()
+                : context.goRoute(
+                    AppRoute.sessions(
+                      projectId: widget.projectId,
+                      projectName: widget.projectName,
+                    ),
+                  )
+          : null,
       automaticallyImplyLeading: showLeading,
       actions: actions.isEmpty ? null : actions,
       slivers: [

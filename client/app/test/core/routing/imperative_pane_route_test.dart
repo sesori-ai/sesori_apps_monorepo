@@ -6,6 +6,16 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
 
 void main() {
+  testWidgets("isImperativePaneRoute is false outside a GoRouter route", (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: _ImperativeProbe()),
+      ),
+    );
+
+    expect(find.text("imperative=false"), findsOneWidget);
+  });
+
   testWidgets("isImperativePaneRoute is false for declarative route matches", (tester) async {
     final router = _router(initialLocation: "/projects/p1/sessions/s1");
 

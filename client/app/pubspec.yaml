@@ -30,9 +30,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_localizations:
-    sdk: flutter
-  intl: any
   material_ui: ^1.1.0
   cupertino_ui: ^1.0.1
 
@@ -53,6 +50,8 @@ dependencies:
     path: ../module_auth
   sesori_dart_core:
     path: ../module_core
+  sesori_app_ui:
+    path: ../module_app_ui
   theme_prego:
     path: ../module_prego
   flutter_secure_storage: ^11.0.0
@@ -82,11 +81,7 @@ dependencies:
   crypto: ^3.0.7
   vector_graphics: ^1.2.3
   image_picker: ^1.2.3
-  flutter_keyboard_visibility:
-    git:
-      url: https://github.com/vespr-wallet/flutter_keyboard_visibility.git
-      ref: a640afe883868faf2709c41daa391e2cd6f1fc7b
-      path: flutter_keyboard_visibility
+  flutter_keyboard_visibility: ^7.0.1
 
 dev_dependencies:
   cryptography: ^2.9.0
@@ -116,8 +111,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-  generate: true
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

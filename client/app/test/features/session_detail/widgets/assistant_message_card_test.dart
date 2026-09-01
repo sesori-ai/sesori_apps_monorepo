@@ -8,6 +8,7 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/assistant_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/attachment_collection_widget.dart";
@@ -15,7 +16,6 @@ import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.d
 import "package:sesori_mobile/features/session_detail/widgets/image_attachment_viewer.dart";
 import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -209,7 +209,13 @@ void main() {
         message: _assistantMessage(
           parts: const [
             MessagePart.tool(id: "tool", sessionID: "session-1", messageID: "assistant-1"),
-            MessagePart.subtask(id: "subtask", sessionID: "session-1", messageID: "assistant-1"),
+            MessagePart.subtask(
+              id: "subtask",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              taskState: null,
+              childSessionID: null,
+            ),
             MessagePart.agent(id: "agent", sessionID: "session-1", messageID: "assistant-1"),
             MessagePart.retry(id: "retry", sessionID: "session-1", messageID: "assistant-1"),
           ],
