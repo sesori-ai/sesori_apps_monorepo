@@ -65,9 +65,10 @@ and keep native close/quit behavior safe.
   and its coordinated logout workflow; it deliberately omits the mobile push-
   notification preference row. Profile and Harnesses pop back to Settings when
   pushed. The analytics service starts before the app, while authenticated
-  preference reconciliation is scheduled after the first rendered frame and
-  before AuthGate can expose Profile, so a slow server cannot leave the window
-  blank. The desktop's one app-wide connection banner remains the only banner
+  preference reconciliation is scheduled after the first rendered frame, so a
+  slow server cannot leave the window blank; Profile reflects synchronization
+  progress until that bounded operation settles. The desktop's one app-wide
+  connection banner remains the only banner
   around these routed views.
 - Appearance and default-input preferences are read before the first desktop
   frame, provided above the router, and persisted through the same shared

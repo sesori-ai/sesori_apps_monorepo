@@ -39,7 +39,7 @@ Future<void> main(List<String> arguments) async {
   getIt<ConnectionService>();
   // Start local analytics state before building. Authenticated reconciliation
   // waits until after the first frame so a slow server cannot blank startup;
-  // AuthGate's checking frame keeps Profile unavailable until then.
+  // Profile reflects the service's synchronization state until it settles.
   final ProductAnalyticsService productAnalyticsService = getIt();
   await productAnalyticsService.start();
   WidgetsBinding.instance.addPostFrameCallback((_) {
