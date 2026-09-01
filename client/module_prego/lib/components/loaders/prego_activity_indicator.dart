@@ -77,8 +77,10 @@ class const PregoActivityIndicator({
 /// the whole frame pipeline busy at 60-120 Hz. Here each step repaints exactly
 /// once and nothing schedules a frame in between, which is the difference
 /// between an idle and a continuously rendering app on Android. The timer
-/// pauses while the app is not in the foreground, where a ticker would have
-/// been frozen anyway, and `animating: false` shows one static frame.
+/// stops while the app is not visible (paused, hidden, or detached), where a
+/// ticker would have been frozen anyway; an inactive-but-visible app (an
+/// unfocused desktop window, a system dialog) keeps spinning because the
+/// spinner is still on screen. `animating: false` shows one static frame.
 class const PregoSteppedActivityIndicator({
   super.key,
   required final Color color,
@@ -122,10 +124,11 @@ class _PregoSteppedActivityIndicatorState() extends State<PregoSteppedActivityIn
 
   void _syncTimer() {
     final lifecycle = WidgetsBinding.instance.lifecycleState;
-    // Unknown (not yet reported) counts as foreground; inactive is still visible.
-    final foreground =
+    // Unknown (not yet reported) counts as visible; inactive is unfocused but
+    // still on screen, so only paused/hidden/detached stop the timer.
+    final visible =
         lifecycle == null || lifecycle == AppLifecycleState.resumed || lifecycle == AppLifecycleState.inactive;
-    final shouldRun = widget.animating && foreground;
+    final shouldRun = widget.animating && visible;
     if (shouldRun == (_timer != null)) return;
     if (shouldRun) {
       _timer = Timer.periodic(PregoSteppedActivityIndicator.stepDuration, (_) {

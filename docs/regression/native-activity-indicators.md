@@ -12,7 +12,8 @@ spinner is `PregoSteppedActivityIndicator`: a derivative of the iOS eight-tick
 indicator at the native medium size, stepped by a plain timer instead of a
 ticker. Its picture only changes when the active tick advances, so it repaints
 exactly eight times per second, registers no ticker, schedules no frame between
-steps, and pauses its timer while the app is not in the foreground. The sparkle
+steps, and stops its timer while the app is not visible (paused, hidden, or
+detached; an unfocused but visible window keeps spinning). The sparkle
 keeps its animated Flutter fallback there. Reduced motion and disabled tickers
 replace the native views with static Flutter frames (the spinner rests on one
 stepped frame; the sparkle rests on its solid keyframe, matching its
@@ -25,7 +26,7 @@ creation.
 Material failure signals: a native-platform spinner or sparkle driving
 continuous Flutter frame production again; the stepped spinner registering a
 ticker, scheduling frames between its eight steps per second, or keeping its
-timer alive while the app is in the background; a native indicator branch
+timer alive while the app is paused, hidden, or detached; a native indicator branch
 reappearing on Android and degrading scroll; crashes,
 frozen or corrupted scene rendering, or leaked native views when an indicator
 scrolls out of view, is inserted and removed repeatedly, or composes with
