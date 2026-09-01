@@ -118,6 +118,16 @@ class _FakePreferenceRepository() extends Mock implements ProductAnalyticsPrefer
   }
 }
 
+class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
+  final events = <AttributionEvent>[];
+
+  @override
+  Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
+    events.add(event);
+    return AnalyticsDeliveryResult.acceptedBySdk;
+  }
+}
+
 class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
@@ -143,6 +153,7 @@ void main() {
   late _FakeAuthSession authSession;
   late _FakePreferenceRepository preferenceRepository;
   late _RecordingAnalyticsRepository analyticsRepository;
+  late _RecordingAttributionRepository attributionRepository;
   late ProductAnalyticsPreferenceService preferenceService;
   late ProductAnalyticsService service;
 
@@ -150,6 +161,7 @@ void main() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    attributionRepository = _RecordingAttributionRepository();
     preferenceService = ProductAnalyticsPreferenceService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       authSession: authSession,
@@ -157,6 +169,7 @@ void main() {
     );
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
+      attributionRepository: attributionRepository,
       preferenceService: preferenceService,
     );
   }
@@ -165,6 +178,7 @@ void main() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    attributionRepository = _RecordingAttributionRepository();
     preferenceService = ProductAnalyticsPreferenceService(
       capability: capability,
       authSession: authSession,
@@ -172,6 +186,7 @@ void main() {
     );
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
+      attributionRepository: attributionRepository,
       preferenceService: preferenceService,
     );
   }
@@ -740,14 +755,20 @@ void main() {
     expect(preferenceRepository.reconcileCalls, isEmpty);
     expect(service.state.availability, isA<ProductAnalyticsInactive>());
     expect(analyticsRepository.calls, isEmpty);
+    const activationOutcome = ProductAnalyticsEvent.sessionMessageSent(
+      submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+    );
     expect(
       await service.logEvent(
-        event: const ProductAnalyticsEvent.sessionMessageSent(
-          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
-        ),
+        event: activationOutcome,
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
       AnalyticsDeliveryResult.failed,
+    );
+    expect(
+      attributionRepository.events,
+      [AttributionEvent.firstSessionRun],
+      reason: "the independent attribution sink is reached before the product preference gate",
     );
 
     preferenceRepository.throwOnLoad = false;
@@ -763,6 +784,29 @@ void main() {
         const ProductAnalyticsEvent.analyticsActivationReady(),
       ],
     );
+  });
+
+  test("only canonical message outcomes report first-session attribution", () async {
+    createService();
+    await service.start();
+
+    await service.logEvent(
+      event: const ProductAnalyticsEvent.sessionCreationFailed(
+        failureReason: AnalyticsSessionCreationFailureReason.serverRejected,
+        workspaceKind: AnalyticsWorkspaceKind.project,
+      ),
+      occurredAtUtc: DateTime.utc(2026, 7, 29),
+    );
+    expect(attributionRepository.events, isEmpty);
+
+    await service.logEvent(
+      event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+        submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+        workspaceKind: AnalyticsWorkspaceKind.project,
+      ),
+      occurredAtUtc: DateTime.utc(2026, 7, 30),
+    );
+    expect(attributionRepository.events, [AttributionEvent.firstSessionRun]);
   });
 
   test("a retried local read cannot overwrite a newer preference request", () async {

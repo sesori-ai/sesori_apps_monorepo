@@ -3,10 +3,12 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
 
+import "../foundation/models/product_analytics/attribution_event.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/product_analytics/product_analytics_preference.dart";
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
+import "../repositories/attribution_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "models/deferred_product_analytics_candidates.dart";
 import "models/product_analytics_state.dart";
@@ -16,6 +18,7 @@ import "product_analytics_preference_service.dart";
 @lazySingleton
 class ProductAnalyticsService({
   required final AnalyticsRepository _analyticsRepository,
+  required final AttributionRepository _attributionRepository,
   required final ProductAnalyticsPreferenceService _preferenceService,
 }) {
   final ProductAnalyticsGenerationEventDispatcher _schemaReadiness = ProductAnalyticsGenerationEventDispatcher();
@@ -60,6 +63,7 @@ class ProductAnalyticsService({
     required DateTime occurredAtUtc,
   }) async {
     if (_disposed) return AnalyticsDeliveryResult.failed;
+    _reportAttributionOutcome(event: event);
     final envelope = ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc);
     final context = _preferenceService.deliveryContext;
     if (context != null) {
@@ -76,6 +80,14 @@ class ProductAnalyticsService({
     final retention = candidates.retain(envelope: envelope);
     _deferredCandidates = retention.candidates;
     return retention.retained ? AnalyticsDeliveryResult.deferredUntilPreference : AnalyticsDeliveryResult.failed;
+  }
+
+  /// Preference-exempt by owner decision. If the attribution sink is not ready
+  /// yet, the repository declines without claiming and the next qualifying
+  /// outcome reports it instead.
+  void _reportAttributionOutcome({required ProductAnalyticsEvent event}) {
+    if (event is! SessionMessageSentEvent && event is! SessionCreatedWithMessageEvent) return;
+    unawaited(_attributionRepository.logEvent(event: AttributionEvent.firstSessionRun));
   }
 
   void _retryActiveGenerationDispatch({required ProductAnalyticsDeliveryContext context}) {

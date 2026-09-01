@@ -5,13 +5,8 @@ import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dar
 import "package:sesori_mobile/core/platform/singular_attribution_startup.dart";
 import "package:singular_flutter_sdk/events.dart";
 
-void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  test("maps closed attribution outcomes to Singular standard events", () async {
-    final eventNames = <String>[];
-    final singular = SingularStaticAdapter.test(start: (_) {}, event: eventNames.add);
-    final startup = SingularAttributionStartup(singular: singular)
+SingularAttributionStartup _eligibleStartup({required SingularStaticAdapter singular}) =>
+    SingularAttributionStartup(singular: singular)
       ..prepare(
         isSupportedPlatform: true,
         ineligibilityReason: null,
@@ -19,34 +14,61 @@ void main() {
         sdkSecret: "sdk-secret",
       )
       ..applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
-    final client = SingularAttributionClient(startup: startup, singular: singular);
 
-    await client.logEvent(event: AttributionEvent.accountCreated);
-    await client.logEvent(event: AttributionEvent.accountLogin);
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    expect(eventNames, [Events.sngCompleteRegistration, Events.sngLogin]);
-  });
-
-  test("does not report events when Singular did not start", () async {
+  test("maps the closed attribution catalog to Singular event names", () async {
     final eventNames = <String>[];
     final singular = SingularStaticAdapter.test(start: (_) {}, event: eventNames.add);
     final client = SingularAttributionClient(
-      startup: SingularAttributionStartup(singular: singular),
+      startup: _eligibleStartup(singular: singular),
       singular: singular,
     );
 
-    await client.logEvent(event: AttributionEvent.accountLogin);
+    expect(client.isReady, isTrue);
+    for (final event in AttributionEvent.values) {
+      await client.logEvent(event: event);
+    }
 
-    expect(eventNames, isEmpty);
+    expect(eventNames, [
+      Events.sngCompleteRegistration,
+      Events.sngLogin,
+      "bridge_paired",
+      "first_session_run",
+    ]);
   });
 
-  test("starts deferred attribution before reporting an authenticated event", () async {
+  test("custom events cannot start Singular while the crawl gate is unresolved", () async {
     var startCount = 0;
     final eventNames = <String>[];
     final singular = SingularStaticAdapter.test(
-      start: (_) {
-        startCount += 1;
-      },
+      start: (_) => startCount += 1,
+      event: eventNames.add,
+    );
+    final client = SingularAttributionClient(
+      startup: SingularAttributionStartup(singular: singular)
+        ..prepare(
+          isSupportedPlatform: true,
+          ineligibilityReason: null,
+          sdkKey: "sdk-key",
+          sdkSecret: "sdk-secret",
+        ),
+      singular: singular,
+    );
+
+    await client.logEvent(event: AttributionEvent.bridgePaired);
+
+    expect(client.isReady, isFalse);
+    expect(startCount, 0);
+    expect(eventNames, isEmpty);
+  });
+
+  test("interactive authentication starts deferred attribution before reporting", () async {
+    var startCount = 0;
+    final eventNames = <String>[];
+    final singular = SingularStaticAdapter.test(
+      start: (_) => startCount += 1,
       event: eventNames.add,
     );
     final startup = SingularAttributionStartup(singular: singular)
@@ -60,8 +82,10 @@ void main() {
     final client = SingularAttributionClient(startup: startup, singular: singular);
 
     await client.logEvent(event: AttributionEvent.accountLogin);
+    await client.logEvent(event: AttributionEvent.firstSessionRun);
 
+    expect(client.isReady, isTrue);
     expect(startCount, 1);
-    expect(eventNames, [Events.sngLogin]);
+    expect(eventNames, [Events.sngLogin, "first_session_run"]);
   });
 }

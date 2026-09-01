@@ -44,6 +44,8 @@ import 'package:sesori_desktop/core/platform/macos_legacy_keychain_client.dart'
     as _i435;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
+import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
+    as _i804;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -105,6 +107,9 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
+    gh.lazySingleton<_i948.AttributionClaimStorage>(
+      () => _i804.NoOpAttributionClaimStorage(),
+    );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(
