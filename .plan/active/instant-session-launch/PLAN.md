@@ -10,6 +10,12 @@
   directly below per the review process. The wire contract, bridge emission,
   timeout, presentation reuse, positional release rule, and compatibility
   posture were found compliant as written.
+- **PR review corrections (Codex, 2026-09-01), applied:** launch identity
+  carried in the sending variant, handoff threaded through the load path's own
+  emissions, command-launch reconciliation with the bridge queue, and the
+  core-widget extraction narrowed to `UserMessageBubble`/`MarkdownMessageImage`
+  so core imports no feature files. The dated-marker request for `launchId`
+  was declined in favor of the shipped `promptId` doc-comment posture.
 - **Plan date:** 2026-08-31
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `f8fd623953`
@@ -193,7 +199,12 @@ duplicate-risk warning.
 - `CreateSessionRequest` gains `String? launchId` — a client-generated
   correlation id (`lch_` + 16 secure-random bytes hex, mirroring
   `_generatePromptId`). Old bridges ignore the extra key; when absent (older
-  clients) the bridge emits no progress.
+  clients) the bridge emits no progress. The field's doc comment states that
+  legacy meaning exactly as `SendPromptRequest.promptId` already does ("null
+  from clients that predate it; the bridge then emits no progress"). No dated
+  compatibility marker is added: absence remains a valid contract for as long
+  as any released client omits the field, the same shipped posture as
+  `promptId`, and there is no honest non-null default for a correlation id.
 - New enum `SessionCreateStage { startingPlugin, preparingWorkspace,
   creatingSession, unknown }` with
   `@JsonKey(unknownEnumValue: SessionCreateStage.unknown)`, so a future stage
@@ -236,12 +247,17 @@ duplicate-risk warning.
   threads it through `SessionRepository.createSessionWithMessage` and
   `SessionApi` (`required String launchId`, internal lockstep — no optional
   parameter).
-- `NewSessionPhaseSending` gains `required SessionCreateStage? stage`
-  (null until the first event; null means "no bridge report — use fallback
-  copy"). The cubit subscribes once to `ConnectionService.events` alongside its
-  existing status subscription; a `session.create.progress` event updates the
-  phase only while sending with a matching `launchId`. Late, foreign, or
-  post-settlement events are ignored by that same match.
+- `NewSessionPhaseSending` gains `required String launchId` and
+  `required SessionCreateStage? stage` (stage null until the first event —
+  fallback copy). Carrying the identity in the sending variant, not in a
+  coordinated nullable cubit field, makes the match exact across retries: a
+  resend after failure enters a new sending phase with a fresh `launchId`, so
+  a late event from the previous attempt can never update it, and settlement
+  discards identity and stage together. The cubit subscribes once to
+  `ConnectionService.events` alongside its existing status subscription; a
+  `session.create.progress` event updates `stage` only when the current phase
+  is sending with the event's `launchId`. Late, foreign, or post-settlement
+  events are ignored by that same match.
 - Both create paths in `SessionApi` switch to `postWithTimeout` with a
   create-specific `Duration(seconds: 120)`. `postWithTimeout` currently
   hardcodes `sensitiveResponse: true`, which would null the raw error body out
@@ -276,15 +292,27 @@ duplicate-risk warning.
   promptId that never goes on the wire, text/command/attachments/agent/model
   from the snapshot and configuration) and stashes it for the created session
   id.
-- `SessionDetailCubit` takes the handoff in its constructor:
+- `SessionDetailCubit` takes the handoff before constructing its initial
+  state, and the value then lives only in state:
   - `SessionDetailState.loading` gains `QueuedSessionSubmission?
-    launchSubmission` (default null) so the loading frame can already render
-    the message;
-  - `SessionDetailLoaded` gains the same nullable field. `_buildLoadedState`
-    drops it when the snapshot already contains a renderable user message;
-    `_onMessageUpdated` clears it in the same emission that upserts the first
-    renderable user message; silent-refresh reconciliation applies the same
-    rule. `showEmptyState` treats a non-null `launchSubmission` as content.
+    launchSubmission` (default null), set on the initial state.
+    `_loadMessages` preserves the current state's `launchSubmission` in every
+    loading emission it makes and passes it into `_buildLoadedState` — the
+    constructor-set value must survive the load path's own emissions, or the
+    continuity is lost on every successful navigation.
+  - `SessionDetailLoaded` gains the same nullable field. Release clears it in
+    the same emission that renders its authoritative replacement:
+    - text submissions: when the transcript contains a user message with
+      renderable content — applied identically by `_buildLoadedState` on
+      snapshots, `_onMessageUpdated` on live events, and silent-refresh
+      reconciliation;
+    - command submissions additionally: when `bridgeQueuedPrompts` first lists
+      the accepted initial command. The bridge sends the initial command
+      through the normal post-create send path, so Claude exposes it as a
+      bridge-queued prompt before its transcript echo; without this rule the
+      same command would render twice in that window. The bridge-queued bubble
+      then owns presentation through the existing queued-to-sent transform.
+  - `showEmptyState` treats a non-null `launchSubmission` as content.
 - Accepted residual: if a *different* user message could ever echo first (no
   known plugin does — initial dispatch precedes any later send on every
   current harness), the bubble would blink out and the submitted message would
@@ -297,11 +325,14 @@ duplicate-risk warning.
   semantics label and an already-localized message list — a single-element list
   renders fixed (stage known), a multi-element list rotates with the existing
   reduced-motion-aware cadence. It knows nothing about sessions or transport.
-- `queued_message_bubble.dart` and its dependency `user_message_card.dart`
-  relocate from `features/session_detail/widgets/` to
-  `client/app/lib/core/widgets/` (the documented shared-widget location), with
-  both features consuming them from there — no new
-  `features/new_session` → `features/session_detail` import is added.
+- The surface extracted to `client/app/lib/core/widgets/` (the documented
+  shared-widget location) is exactly the closure the bubble needs and nothing
+  more: `queued_message_bubble.dart`, plus `UserMessageBubble` and its image
+  builder `MarkdownMessageImage` moved out of `user_message_card.dart` /
+  `text_part_widget.dart`. `UserMessageCard`, `AttachmentCollectionWidget`,
+  and the rest of `text_part_widget.dart` stay in `features/session_detail/`
+  and import the bubble from core. Core widgets import no feature files, and
+  no `features/new_session` → `features/session_detail` import is added.
 - `NewSessionScreen` sending branch replaces the centered `PregoLaunchStatus`
   with a chat-shaped body: the submission rendered through `QueuedMessageBubble`
   with the existing sending presentation (honest — the POST is in flight; no
@@ -413,9 +444,10 @@ ask before expanding scope.
 - Two directly caused structural moves ride their feature steps:
   `queued_session_submission.dart` to `foundation/models/composer/` with the
   cubit-local `_generatePromptId` retired into the model's factory (Step 4),
-  and `queued_message_bubble.dart` + `user_message_card.dart` to
-  `core/widgets/` (Step 5). Both are mechanical relocations demanded by the
-  new consumers, not opportunistic refactors.
+  and `queued_message_bubble.dart` plus the extracted
+  `UserMessageBubble`/`MarkdownMessageImage` to `core/widgets/` (Step 5). Both
+  are mechanical relocations demanded by the new consumers, not opportunistic
+  refactors.
 - No obsolete transport shapes, fields, flags, or database artifacts were
   found; nothing else becomes unreachable.
 
@@ -430,7 +462,7 @@ Series slug `instant-session-launch`; every PR titled
 | 2/7 | `🌿 [instant-session-launch] contracts: session create progress wire surface [step 2/7]` | Shared `launchId` field, `SessionCreateStage`, `session.create.progress` variant, codegen, round-trip/unknown-decode tests, lockstep client switch arms. |
 | 3/7 | `🌿 [instant-session-launch] bridge: report session create progress stages [step 3/7]` | Progress stream on `SessionCreationService`, three boundary emissions, orchestrator wiring, drain close, tests. |
 | 4/7 | `⚙️ [instant-session-launch] client: carry the first message and stages through launch [step 4/7]` | `QueuedSessionSubmission` relocation to `foundation/models/composer/` with single `prm_` id owner, `launchId` generation/threading, 120 s create timeout + non-sensitive `postWithTimeout` option, sending-phase stage state + event subscription, `SessionLaunchHandoffStorage` + `SessionLaunchHandoffRepository`, detail loading/loaded `launchSubmission` + release rule + empty-state guard, cubit tests. |
-| 5/7 | `⚙️ [instant-session-launch] client: render the chat-shaped launch presentation [step 5/7]` | `QueuedMessageBubble`/`UserMessageCard` relocation to `core/widgets/`, `PregoInlineLaunchStatus`, chat-shaped sending body, rail-less bubble presentation, detail-loading handoff view, message-list launch row, localization, widget tests. |
+| 5/7 | `⚙️ [instant-session-launch] client: render the chat-shaped launch presentation [step 5/7]` | `QueuedMessageBubble` + `UserMessageBubble`/`MarkdownMessageImage` extraction to `core/widgets/`, `PregoInlineLaunchStatus`, chat-shaped sending body, rail-less bubble presentation, detail-loading handoff view, message-list launch row, localization, widget tests. |
 | 6/7 | `🌱 [instant-session-launch] docs: reconcile launch regression coverage [step 6/7]` | Reconcile affected regression documents; complete the cleanup audit against the implementation. |
 | 7/7 | `🌿 [instant-session-launch] verify: run launch coverage and retire the plan [step 7/7]` | Run the recorded level/matrix, record results in `TRACKER.md`, move the plan to `.plan/completed/`. |
 
