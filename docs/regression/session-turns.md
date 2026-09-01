@@ -252,6 +252,9 @@ defaults and queued client sends coherent.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
+- When the software keyboard opens, interactive content resizes above it while
+  the page surface remains painted underneath it. Rounded or translucent iOS
+  keyboards never reveal a black route or platform background around their edges.
 - Transcript rows render in a plain reversed list with newest content at the
   bottom. Following stays pinned through appends and streaming growth; scrolling
   away freezes live row content until reattachment. Sending, queued, retry,
@@ -356,8 +359,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - Scrolled transcript text remains clearly visible through the fade and collides
   with the navigation title or floating composer controls.
 - A live append or streaming update moves a detached viewport, an outgoing
-  prompt blanks or duplicates during its sending-to-sent transition, or keyboard
-  and composer insets obscure newest content.
+  prompt blanks or duplicates during its sending-to-sent transition, keyboard
+  and composer insets obscure newest content, or the keyboard reveals a black
+  background around its rounded or translucent edges.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.
