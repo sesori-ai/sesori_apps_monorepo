@@ -1,11 +1,10 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
-import "../../../l10n/app_localizations.dart";
 import "attachment_collection_widget.dart";
 
 class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {

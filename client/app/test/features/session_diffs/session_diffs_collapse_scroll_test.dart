@@ -4,13 +4,13 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
-import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show CatalogRescanService, ConnectionService, ProductAnalyticsService, SessionRepository;
+import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 

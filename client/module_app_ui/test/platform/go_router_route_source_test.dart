@@ -3,8 +3,8 @@ import "dart:async";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/platform/go_router_route_source.dart";
 
 /// Mirrors the production route tree's shape — the session routes nested under
 /// a [ShellRoute] — with placeholder screens, so navigation needs no DI.
@@ -49,11 +49,11 @@ void main() {
 
   setUp(() {
     router = _router();
-    routeSource = GoRouterRouteSource.test(router: router);
+    routeSource = GoRouterRouteSource(router: router);
   });
 
   tearDown(() async {
-    await routeSource.onDispose();
+    await routeSource.dispose();
     router.dispose();
   });
 

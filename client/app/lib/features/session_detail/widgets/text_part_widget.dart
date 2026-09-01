@@ -2,11 +2,11 @@ import "dart:async";
 
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart"
     show isInlineMessageAttachmentWithinSizeLimit, maxInlineMessageAttachmentBytes;
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
 import "image_attachment_viewer.dart";
 

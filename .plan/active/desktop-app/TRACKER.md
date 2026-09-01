@@ -22,7 +22,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 12 | 🚧 Supervised E2E suite + dev-harness retirement | done |
 | — | MT gate B: daily driver (user-run) | done |
 | 13 | ⚙️ Desktop relay-client enablement | done |
-| 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | pending |
+| 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | done |
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | pending |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | pending |
 | 17 | 🚧 Session detail: transcript slice | pending |
@@ -64,8 +64,9 @@ without a duplicate helper; and explicit cross-machine Take Over reclaimed
 ownership without a flip-flop restart war. The user accepted the desktop app as
 the terminal bridge replacement for daily use.
 
-Gate B acceptance removes the gate blocker but does not start Step 14. Step 14
-remains pending until the user explicitly authorizes further work.
+Gate B acceptance removed the gate blocker. The user explicitly authorized
+Step 14 on 2026-09-01; its implementation and focused verification are
+complete.
 
 ## Plan divergence — post-Step 13 Gate B findings (2026-08-31)
 
@@ -93,5 +94,5 @@ PRs:
 
 The helper receives only a login-shell-derived PATH, merged with its inherited
 environment; shell variables, secrets, permissions, and entitlements are not
-copied. The user accepted Gate B on 2026-09-01. Step 14 remains pending until
-the user explicitly authorizes progression.
+copied. The user accepted Gate B and explicitly authorized Step 14 on
+2026-09-01; Step 14 is complete.

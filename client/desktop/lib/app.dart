@@ -2,16 +2,13 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "core/di/injection.dart";
-import "core/widgets/desktop_connection_banner.dart";
-import "core/widgets/desktop_sse_toast_listener.dart";
-import "features/auth_gate/auth_gate.dart";
-
-final GlobalKey<NavigatorState> _desktopNavigatorKey = GlobalKey<NavigatorState>();
+import "core/routing/desktop_router.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
@@ -60,16 +57,17 @@ class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) exte
           },
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: _appTitle,
         debugShowCheckedModeBanner: false,
-        navigatorKey: _desktopNavigatorKey,
         theme: buildPregoThemeData(brightness: Brightness.light),
         darkTheme: buildPregoThemeData(brightness: Brightness.dark),
         themeMode: ThemeMode.system,
-        home: const AuthGate(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: desktopRouter,
         builder: (context, child) => _DesktopRootEffects(
-          navigatorKey: _desktopNavigatorKey,
+          navigatorKey: desktopRootNavigatorKey,
           child: child ?? const SizedBox.shrink(),
         ),
       ),
@@ -81,11 +79,11 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return DesktopSseToastListener(
+    return SseToastListener(
       navigatorKey: navigatorKey,
       child: Column(
         children: <Widget>[
-          DesktopConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+          ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
           Expanded(child: child),
         ],
       ),

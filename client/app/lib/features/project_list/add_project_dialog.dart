@@ -1,13 +1,12 @@
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/extensions/build_context_x.dart";
-import "../../l10n/app_localizations.dart";
 import "new_folder_dialog.dart";
 
 /// Shows the Add Project modal bottom sheet.

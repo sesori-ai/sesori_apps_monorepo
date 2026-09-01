@@ -35,9 +35,7 @@ class ConnectionBanner extends StatelessWidget {
   /// The connection-lost banner: the relay itself is unreachable and
   /// auto-reconnect has given up, so this variant carries a Retry action that
   /// re-triggers a relay reconnect via [onRetry].
-  const new connectionLost({super.key, required VoidCallback onRetry})
-    : _onRetry = onRetry,
-      _isReconnecting = false;
+  const new connectionLost({super.key, required VoidCallback onRetry}) : _onRetry = onRetry, _isReconnecting = false;
 
   /// Reconnect callback for the connection-lost variant; `null` for the
   /// self-healing variants, which offer no action. Its nullness selects the

@@ -10,6 +10,7 @@ on:
       - 'client/module_core/**'
       - 'client/module_auth/**'
       - 'client/module_prego/**'
+      - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
@@ -26,6 +27,7 @@ on:
       - 'client/module_core/**'
       - 'client/module_auth/**'
       - 'client/module_prego/**'
+      - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
@@ -89,6 +91,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: client/module_prego
 
+      - name: Analyze module_app_ui
+        run: dart analyze --fatal-infos
+        working-directory: client/module_app_ui
+
       - name: Run tests for module_core
         run: dart test
         working-directory: client/module_core
@@ -100,6 +106,10 @@ jobs:
       - name: Run tests for module_prego
         run: flutter test
         working-directory: client/module_prego
+
+      - name: Run tests for module_app_ui
+        run: flutter test
+        working-directory: client/module_app_ui
 
       - name: Run tests for client/app
         run: flutter test

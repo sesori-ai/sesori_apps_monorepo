@@ -4,15 +4,14 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:package_info_plus/package_info_plus.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/build_context_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
-import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
 import "widgets/account_row.dart";

@@ -1,0 +1,35 @@
+name: sesori_app_ui
+description: Shared adaptive Flutter UI foundations for Sesori product shells.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.2
+  flutter: ">=3.47.2 <3.48.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_localizations:
+    sdk: flutter
+  go_router: ^18.0.0
+  intl: any
+  material_ui: ^1.1.0
+  rxdart: ^0.28.0
+  sesori_dart_core:
+    path: ../module_core
+  theme_prego:
+    path: ../module_prego
+
+dev_dependencies:
+  bloc_test: ^10.0.0
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.5
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
+
+flutter:
+  generate: true

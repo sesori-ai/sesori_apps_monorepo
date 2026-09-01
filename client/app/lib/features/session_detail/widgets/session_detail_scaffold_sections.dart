@@ -1,9 +1,9 @@
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/remote_failure_view.dart";
 
 /// A floating call-to-action pinned below the top bar when the session has a

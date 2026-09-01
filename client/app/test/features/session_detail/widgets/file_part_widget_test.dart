@@ -12,13 +12,13 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/attachment_collection_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/file_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/image_attachment_viewer.dart";
 import "package:sesori_mobile/features/session_detail/widgets/tool_part_widget.dart";
 import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 

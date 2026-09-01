@@ -1,7 +1,7 @@
 import "package:intl/intl.dart";
 import "package:material_ui/material_ui.dart";
 
-import "../../l10n/app_localizations.dart";
+import "../l10n/app_localizations.dart";
 
 extension BuildContextLocalization on BuildContext {
   bool get isDarkMode {

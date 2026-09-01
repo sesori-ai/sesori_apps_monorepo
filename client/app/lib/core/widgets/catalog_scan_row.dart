@@ -1,10 +1,8 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../../l10n/app_localizations.dart";
-import "../extensions/build_context_x.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);

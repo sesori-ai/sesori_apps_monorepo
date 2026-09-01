@@ -3,17 +3,16 @@ import "dart:math" as math;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/composer_surface_style.dart";
-import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_no_harness_notice.dart";

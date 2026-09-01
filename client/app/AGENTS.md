@@ -28,24 +28,27 @@ lib/
 ├── capabilities/     Voice platform helpers (format, prewarm, recording path, session-safe wake-lock leases)
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
-│   ├── extensions/   BuildContext extensions (localization)
+│   ├── extensions/   Mobile-only Flutter mappings
 │   ├── platform/     FlutterSecureStorageAdapter, FlutterVoiceCapture, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   └── widgets/      Connection overlay, modal bottom sheets
 ├── features/         Screen widgets (login, project_list, session_list, session_detail)
-├── l10n/             Localization (English only)
 └── main.dart         Entry point
 ```
 
+Shared localization, `BuildContext` localization/date helpers, connection UI,
+and GoRouter route observation live in `../module_app_ui/` and are consumed by
+both product shells.
+
 ## UI Guidelines
 
-- Localize all user-facing text in `lib/l10n/app_en.arb`, access via `context.loc.myResource`
+- Localize shared user-facing text in `../module_app_ui/lib/src/l10n/app_en.arb`, access via `context.loc.myResource`
 - English only for now
 - When review feedback claims a shared widget style change unintentionally affects other screens, verify the design intent before preserving older styling. If the design changed for every consumer, keep the shared widget change and explain that in the PR reply.
 
 ## Theming
 
-The app uses the **Prego design system** via `theme_prego`. The theme is wired into `MaterialApp.router` in `main.dart` using `PregoColors`, `PregoTextTheme`, and `PregoDesignSystem` for both light and dark modes.
+The app uses the **Prego design system** via `theme_prego`. Both light and dark themes are wired into `MaterialApp.router` with `buildPregoThemeData`, the same terminal theme-assembly helper used by desktop.
 
 **ALWAYS access colors, text styles, spacing, radius, and shadows through `context.prego`.** Never reach for `Theme.of(context).colorScheme` or `Theme.of(context).textTheme` when a Prego token exists. This ensures every screen stays consistent with the Figma design system.
 
