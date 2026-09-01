@@ -156,8 +156,9 @@ workflows, archive builders, package metadata, and launch wrappers; a
 `pi-release.patch` with the available file-reading or analysis mechanism before
 cleanup, and do not install an EXIT trap that removes it prematurely. If the
 inspection is interrupted, retain the temporary tree until the patch has been
-read or the failure has been recorded; then remove it in an explicit cleanup
-step. The fallback must include the complete tag diff (or a separately
+read or the failure has been recorded. Only after that inspection, run
+`rm -rf "$tmp_repo"` as the explicit cleanup step. The fallback must include
+the complete tag diff (or a separately
 paginated per-commit inventory) before a capability is marked absent. Prefer a
 derived summary of commit titles, changed paths, additions/deletions, and
 selected patches over dumping the full JSON response or patch into the
@@ -348,10 +349,12 @@ executable even after its official digest is verified:
    `try/finally`. On success or rejection, close stdin, wait up to 2 seconds,
    then terminate the entire candidate process tree before removing anything.
    On POSIX, terminate the process group/session with SIGTERM and then SIGKILL
-   only if needed; on Windows, use a Job Object or equivalent recursive
-   process-tree termination (`Stop-Process`/`TerminateProcess`, followed by a
-   forced termination if needed) with the same bounded wait. Do not kill only
-   the parent and assume bundled child processes exited. Tear down
+   only if needed. On Windows, assign the candidate and its descendants to a
+   Job Object configured to terminate members on close, or explicitly enumerate
+   and terminate every descendant (re-enumerating until none remain);
+   `Stop-Process` or `TerminateProcess` alone are not recursive and are
+   insufficient. Use the same bounded wait. Do not kill only the parent and
+   assume bundled child processes exited. Tear down
    the sandbox and remove the temporary archive, extraction root, profile
    roots, project cwd, and probe logs only after child cleanup completes.
 9. If the release changes a command/event surface that Sesori may adopt, run a
@@ -444,11 +447,16 @@ Run focused verification for the changed package and inspect the diff:
 
 ```bash
 (cd bridge/sesori_plugin_pi && dart test && dart analyze --fatal-infos)
-# HEAD comparisons include both staged and unstaged changes.
+# HEAD comparisons include both staged and unstaged tracked changes.
+git status --short
 git diff HEAD --check
 git diff HEAD -- bridge/sesori_plugin_pi
-# Inspect the skill path as well; use `git diff --no-index /dev/null ...` only
-# when it is still untracked and has not yet been staged.
+# Explicitly inspect every untracked production file too. --no-index returns 1
+# for a content difference, which is expected; any other status is an error.
+while IFS= read -r path; do
+  git diff --no-index --check -- /dev/null "$path" || test "$?" -eq 1
+  git diff --no-index -- /dev/null "$path" || test "$?" -eq 1
+done < <(git ls-files --others --exclude-standard -- bridge/sesori_plugin_pi)
 git diff HEAD -- .agents/skills/update-pi-harness/SKILL.md
 ```
 
