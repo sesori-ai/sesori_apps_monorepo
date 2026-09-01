@@ -10,12 +10,15 @@
   directly below per the review process. The wire contract, bridge emission,
   timeout, presentation reuse, positional release rule, and compatibility
   posture were found compliant as written.
-- **PR review corrections (Codex, 2026-09-01), applied:** launch identity
-  carried in the sending variant, handoff threaded through the load path's own
-  emissions, command-launch reconciliation with the bridge queue, and the
-  core-widget extraction narrowed to `UserMessageBubble`/`MarkdownMessageImage`
-  so core imports no feature files. The dated-marker request for `launchId`
-  was declined in favor of the shipped `promptId` doc-comment posture.
+- **PR review corrections (Codex + cubic, 2026-09-01), applied:** launch
+  identity carried in the sending variant, handoff threaded through the load
+  path's own emissions and preserved across `SessionDetailFailed`/Retry,
+  release triggered on the part-update path as well as message envelopes,
+  command-launch reconciliation matched by command name against the bridge
+  queue, and the core-widget extraction narrowed to
+  `UserMessageBubble`/`MarkdownMessageImage` so core imports no feature files.
+  The dated-marker request for `launchId` was declined in favor of the shipped
+  `promptId` doc-comment posture.
 - **Plan date:** 2026-08-31
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `f8fd623953`
@@ -303,15 +306,26 @@ duplicate-risk warning.
   - `SessionDetailLoaded` gains the same nullable field. Release clears it in
     the same emission that renders its authoritative replacement:
     - text submissions: when the transcript contains a user message with
-      renderable content — applied identically by `_buildLoadedState` on
-      snapshots, `_onMessageUpdated` on live events, and silent-refresh
-      reconciliation;
-    - command submissions additionally: when `bridgeQueuedPrompts` first lists
-      the accepted initial command. The bridge sends the initial command
-      through the normal post-create send path, so Claude exposes it as a
-      bridge-queued prompt before its transcript echo; without this rule the
-      same command would render twice in that window. The bridge-queued bubble
-      then owns presentation through the existing queued-to-sent transform.
+      renderable content — applied wherever that content can first appear:
+      `_buildLoadedState` on snapshots, `_onMessageUpdated` on live envelopes,
+      the part-update path for the common empty-envelope-then-
+      `message.part.updated` delivery the cubit already accounts for, and
+      silent-refresh reconciliation;
+    - command submissions additionally: when `bridgeQueuedPrompts` lists a
+      prompt whose `command` equals the submitted command name. The launch
+      submission's local promptId never goes on the wire, so identity matching
+      is impossible by design; the command name is the shared authoritative
+      fact, and a same-named prompt queued by the user in that window would
+      render identical content, making the swap harmless either way. The
+      bridge sends the initial command through the normal post-create send
+      path, so Claude exposes it as a bridge-queued prompt before its
+      transcript echo; without this rule the same command would render twice
+      in that window. The bridge-queued bubble then owns presentation through
+      the existing queued-to-sent transform.
+  - `SessionDetailFailed` carries the same nullable field: a failed initial
+    load preserves the handoff it already consumed, and Retry threads it back
+    into its loading emission — a relay drop between the create response and
+    the snapshot fetch must not cost the promised continuity.
   - `showEmptyState` treats a non-null `launchSubmission` as content.
 - Accepted residual: if a *different* user message could ever echo first (no
   known plugin does — initial dispatch precedes any later send on every
@@ -478,9 +492,10 @@ and 5 are split exactly so state machinery and presentation review separately.
   `dart analyze --fatal-infos`. Prove ordering, launchId gating, in-place
   omission of `preparingWorkspace`, stop-on-failure, drain close.
 - **Step 4:** `client/module_core` cubit/state/repository tests + analysis.
-  Prove stage matching, handoff stash-only-on-emit, release-at-load,
-  release-on-event in one emission, reconciliation on refresh, timeout
-  override on both create paths, unchanged restoration.
+  Prove stage matching, handoff stash-only-on-emit, release-at-load, release
+  on message and part events in one emission, failed-load/Retry preservation,
+  command-name queue release, reconciliation on refresh, timeout override on
+  both create paths, unchanged restoration.
 - **Step 5:** `client/module_prego` + `client/app` widget tests + analysis,
   including reduced-motion, semantics, split view, and the no-blank/no-dupe
   swap frames.
