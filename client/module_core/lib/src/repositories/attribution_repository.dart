@@ -9,7 +9,10 @@ import "models/analytics_delivery_result.dart";
 
 const _attributionDeliveryDeadline = Duration(seconds: 10);
 
-enum _AttributionClaimResult() { claimed, alreadyClaimed }
+enum _AttributionClaimResult() {
+  claimed,
+  alreadyClaimed,
+}
 
 @lazySingleton
 class AttributionRepository._({
@@ -75,11 +78,12 @@ class AttributionRepository._({
   }
 
   Future<_AttributionClaimResult> _persistClaim({required AttributionEvent event}) async {
-    _claimedEvents.add(event);
     if (await _claimStorage.isClaimed(event: event)) {
+      _claimedEvents.add(event);
       return _AttributionClaimResult.alreadyClaimed;
     }
     await _claimStorage.markClaimed(event: event);
+    _claimedEvents.add(event);
     return _AttributionClaimResult.claimed;
   }
 }

@@ -135,7 +135,7 @@ void main() {
     verify(() => api.logEvent(event: AttributionEvent.firstSessionRun)).called(1);
   });
 
-  test("storage uncertainty fails closed without SDK delivery", () async {
+  test("a failed claim read fails this attempt but remains safely retryable", () async {
     claimStorage.throwOnRead = true;
     final repository = buildRepository();
 
@@ -145,6 +145,35 @@ void main() {
     );
     expect(claimStorage.writes, 0);
     verifyNever(() => api.logEvent(event: any(named: "event")));
+
+    claimStorage.throwOnRead = false;
+    expect(
+      await repository.logEvent(event: AttributionEvent.bridgePaired),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    expect(claimStorage.reads, 2);
+    expect(claimStorage.writes, 1);
+    verify(() => api.logEvent(event: AttributionEvent.bridgePaired)).called(1);
+  });
+
+  test("a failed claim write fails this attempt but remains safely retryable", () async {
+    claimStorage.throwOnWrite = true;
+    final repository = buildRepository();
+
+    expect(
+      await repository.logEvent(event: AttributionEvent.firstSessionRun),
+      AnalyticsDeliveryResult.failed,
+    );
+    verifyNever(() => api.logEvent(event: any(named: "event")));
+
+    claimStorage.throwOnWrite = false;
+    expect(
+      await repository.logEvent(event: AttributionEvent.firstSessionRun),
+      AnalyticsDeliveryResult.acceptedBySdk,
+    );
+    expect(claimStorage.reads, 2);
+    expect(claimStorage.writes, 2);
+    verify(() => api.logEvent(event: AttributionEvent.firstSessionRun)).called(1);
   });
 
   test("a failed SDK call remains claimed instead of risking a duplicate", () async {

@@ -13,7 +13,13 @@ class FileAttributionClaimStorage({
   static const _directoryName = "singular_attribution_claims";
 
   @override
-  Future<bool> isClaimed({required AttributionEvent event}) async => (await _claimFile(event: event)).existsSync();
+  Future<bool> isClaimed({required AttributionEvent event}) async {
+    final file = await _claimFile(event: event);
+    // Claim checks can happen during a user interaction, so keep filesystem
+    // metadata work off the Flutter isolate.
+    // ignore: avoid_slow_async_io
+    return await file.exists();
+  }
 
   @override
   Future<void> markClaimed({required AttributionEvent event}) async {
