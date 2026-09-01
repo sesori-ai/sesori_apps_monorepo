@@ -150,7 +150,10 @@ void main() {
       final json = state.toShared().toJson();
 
       expect(json["status"], equals("cancelled"));
-      expect(ToolState.fromJson({...json, "status": "a-status-from-a-newer-bridge"}).status, equals(ToolStatus.unknown));
+      expect(
+        ToolState.fromJson({...json, "status": "a-status-from-a-newer-bridge"}).status,
+        equals(ToolStatus.unknown),
+      );
     });
 
     test("only completed, error, cancelled and unknown are terminal", () {
@@ -257,6 +260,22 @@ void main() {
       expect(shared.shellCommand, equals("git status --short"));
       expect(shared.output, equals(" M file.dart"));
       expect(shared.error, isNull);
+    });
+
+    test("bounds shell commands by runes", () {
+      final command = "😀" * (maxToolOutputLength + 1);
+      final shared = PluginToolState(
+        status: PluginToolStatus.completed,
+        title: null,
+        shellCommand: command,
+        output: "done",
+        error: null,
+        attachments: const [],
+      ).toShared();
+
+      expect(shared.shellCommand?.runes.length, maxToolOutputLength);
+      expect(shared.title, shared.shellCommand);
+      expect(shared.output, "done");
     });
 
     test("round-trips status through JSON using the unchanged wire value", () {

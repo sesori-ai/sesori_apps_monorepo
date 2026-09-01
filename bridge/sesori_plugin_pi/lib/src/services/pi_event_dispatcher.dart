@@ -264,6 +264,7 @@ final class PiEventDispatcher({
         messageId: messageId,
         toolId: part.id,
         name: part.tool ?? "tool",
+        shellCommand: part.state.shellCommand,
       );
       if (tracked == null) {
         parts.add(part);
@@ -482,6 +483,7 @@ final class PiEventDispatcher({
       contentIndex: contentIndex,
       toolId: toolId,
       toolName: toolName,
+      shellCommand: null,
     );
   }
 
@@ -501,6 +503,7 @@ final class PiEventDispatcher({
       contentIndex: contentIndex,
       toolId: decoded.id,
       toolName: decoded.name,
+      shellCommand: _historyMapper.shellCommandForToolCall(toolCall: decoded),
     );
   }
 
@@ -510,19 +513,21 @@ final class PiEventDispatcher({
     required int contentIndex,
     required String toolId,
     required String toolName,
+    required String? shellCommand,
   }) {
     final messageId = state.messageId;
     if (messageId == null) return const [];
-    // The content index identifies the streamed block. Prefer it over the
-    // decoded ids because start metadata and the cumulative end payload must
-    // not produce two visible cards if an upstream id is normalized differently.
-    if (!state.emittedToolContentIndexes.add(contentIndex)) return const [];
     final tool = _tools.pending(
       sessionId: sessionId,
       messageId: messageId,
       toolId: toolId,
       name: toolName,
+      shellCommand: shellCommand,
     );
+    // The content index identifies the streamed block. Prefer it over the
+    // decoded ids because start metadata and the cumulative end payload must
+    // not produce two visible cards if an upstream id is normalized differently.
+    if (!state.emittedToolContentIndexes.add(contentIndex)) return const [];
     // The start event already announced this part; the terminal delta adds no
     // new display state. `message_end` remains authoritative and reconciles it.
     if (tool == null) {

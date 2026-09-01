@@ -31,8 +31,8 @@ sub-agent parts, plus the signal that a tool changed files.
 - Sub-agent, subtask, and agent parts identify their agent and stay attributed
   to the correct session, including work done by a child. Tool state survives a
   reload with the same identity and status; shell commands also retain their
-  command and result. Unknown status renders as the fallback. A backend abort without a turn identifier still finalizes tools
-  in the active turn.
+  command and result. Unknown status renders as the fallback. A backend abort
+  without a turn identifier still finalizes tools in the active turn.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
   identity, terminal state, attachments, and diff content. Presenter failure
   degrades to a generic lightweight tool card instead of dropping the call.

@@ -16,6 +16,7 @@ final class PiToolTracker() {
     required String messageId,
     required String toolId,
     required String name,
+    required String? shellCommand,
   }) {
     if (toolId.isEmpty || name.isEmpty) return null;
     final tools = _sessions.putIfAbsent(sessionId, () => {});
@@ -26,6 +27,9 @@ final class PiToolTracker() {
     tool
       ..messageId = messageId
       ..name = name;
+    if (shellCommand != null) {
+      tool.state = tool.state.copyWith(shellCommand: shellCommand);
+    }
     return tool.snapshot(sessionDiffRequired: false);
   }
 
@@ -38,7 +42,7 @@ final class PiToolTracker() {
     final tool = _sessions[sessionId]?[toolId];
     if (tool == null || tool.isTerminal) return null;
     if (name != null && name.isNotEmpty) tool.name = name;
-    tool.state = state;
+    tool.state = state.copyWith(shellCommand: state.shellCommand ?? tool.state.shellCommand);
     return tool.snapshot(sessionDiffRequired: false);
   }
 
@@ -51,7 +55,7 @@ final class PiToolTracker() {
     final tool = _sessions[sessionId]?[toolId];
     if (tool == null || tool.isTerminal) return null;
     if (name != null && name.isNotEmpty) tool.name = name;
-    tool.state = state;
+    tool.state = state.copyWith(shellCommand: state.shellCommand ?? tool.state.shellCommand);
     final diff = tool.isEdit && !tool.diffEmitted;
     if (diff) tool.diffEmitted = true;
     return tool.snapshot(sessionDiffRequired: diff);

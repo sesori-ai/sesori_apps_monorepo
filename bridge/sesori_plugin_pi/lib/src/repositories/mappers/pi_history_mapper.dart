@@ -79,6 +79,13 @@ final class PiHistoryMapper({
     }
   }
 
+  String? shellCommandForToolCall({required PiToolCallContentDto toolCall}) {
+    final arguments = toolCall.arguments;
+    if (toolCall.name.toLowerCase() != "bash" || arguments is! Map) return null;
+    final command = arguments["command"];
+    return command is String && command.isNotEmpty ? _clip(command) : null;
+  }
+
   PluginMessageWithParts mapAssistantMessage({
     required String sessionId,
     required String messageId,
@@ -162,20 +169,20 @@ final class PiHistoryMapper({
               text: thinking,
             ),
           );
-        case PiToolCallContentDto(:final id, :final name):
+        case final PiToolCallContentDto toolCall:
           parts.add(
             PluginMessagePart.tool(
-              id: id,
+              id: toolCall.id,
               sessionID: sessionId,
               messageID: messageId,
-              tool: name,
-              state: const PluginToolState(
+              tool: toolCall.name,
+              state: PluginToolState(
                 status: PluginToolStatus.pending,
                 title: null,
-                shellCommand: null,
+                shellCommand: shellCommandForToolCall(toolCall: toolCall),
                 output: null,
                 error: null,
-                attachments: [],
+                attachments: const [],
               ),
             ),
           );

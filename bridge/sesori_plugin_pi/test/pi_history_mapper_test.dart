@@ -329,7 +329,7 @@ void main() {
               id: "aborted",
               parentId: "result",
               message: const PiAgentMessageDto.assistant(
-                content: [PiContentDto.toolCall(id: "aborted-tool", name: "bash")],
+                content: [PiContentDto.toolCall(id: "aborted-tool", name: "bash", arguments: null)],
                 provider: null,
                 model: null,
                 stopReason: PiAssistantStopReason.aborted,
@@ -422,8 +422,8 @@ void main() {
             parentId: "user",
             message: const PiAgentMessageDto.assistant(
               content: [
-                PiContentDto.toolCall(id: "tool-1", name: "read"),
-                PiContentDto.toolCall(id: "tool-2", name: "write"),
+                PiContentDto.toolCall(id: "tool-1", name: "read", arguments: null),
+                PiContentDto.toolCall(id: "tool-2", name: "write", arguments: null),
               ],
               provider: null,
               model: null,
@@ -599,7 +599,7 @@ void main() {
 
     test("bounds combined tool-result text while preserving later attachments", () {
       const assistant = PiAgentMessageDto.assistant(
-        content: [PiContentDto.toolCall(id: "call", name: "tool")],
+        content: [PiContentDto.toolCall(id: "call", name: "tool", arguments: null)],
         provider: "provider",
         model: "model",
         stopReason: PiAssistantStopReason.stop,
