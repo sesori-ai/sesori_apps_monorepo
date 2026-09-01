@@ -13,6 +13,11 @@
   six findings applied to this document (process-repository boundary, bridgeId
   persistence, named send/logout owners, `tokenUpdate` deletion, instance
   Layer-1 storage, theme-assembly ownership)
+- **Plan review 2026-09-01 (after step 15):** added D6 (desktop is never a
+  push device; attention alerts derive locally from SSE), folded attention
+  notifications + window-bounds restore into step 20, named the
+  `instant-session-launch` series as a second extraction collision, and
+  completed the step 21 regression-doc list.
 - **Supersedes:** the paused desktop plan formerly in `docs/desktop/`
   (PLAN.md + phase docs), deleted by step 1. Git history preserves it; the
   still-valid decisions are carried into this document.
@@ -89,6 +94,7 @@ change in this plan is step 5 (status semantics + dead-protocol removal).
 | D3 | Window data path = **relay**, exactly like the phone (E2E encrypted; internet required even for a same-machine bridge — accepted). A loopback local data path stays a recorded future consideration in `docs/ROADMAP.md` (the bridge `DebugServer` is the precedent), not work in this plan. |
 | D4 | The control channel stays a **supervision umbilical only**: token authority, supervision prompts, status (relay/registration/aggregate plugin health/session count), lifecycle sentinels. Product data and per-plugin detail never enter it — that is the relay management API's job. |
 | D5 | The old plan is canceled: `docs/desktop/` deleted, pointers repointed, still-valid content carried here. |
+| D6 | The desktop is **never a push device**: it registers no FCM/APNs token, never runs `NotificationRegistrationService`, and omits the notification-preferences surface (step 15 already does). Out-of-window attention (permission asked, question asked) is derived **locally from the relay SSE stream the cockpit already receives** and rendered through a Layer-0 OS-notification adapter (step 20). The phone stays the sole push surface, so one bridge event never notifies twice on one machine. |
 
 ### Carried architecture decisions (from the superseded plan, still valid)
 
@@ -512,11 +518,15 @@ persisted startup read). **This delivers desktop onboarding.** Mobile
 behavior unchanged.
 
 **Step 16 — 🚧 Project list + session list slice + desktop offline strategy.**
-Decouple and move both lists (incl. `session_split`). Bridge-offline /
-never-registered states act through an injected strategy: mobile keeps CLI
-install copy + `reconnectBridge()`; desktop offers **Start the bridge** (drives
-`BridgeProcessService`) — never CLI-install copy (refactor R3's in-plan half;
-"get the desktop app" phone copy belongs to the distribution plan).
+Decouple and move both lists (incl. `session_split`, the session
+archive/delete/force dialogs, the PR-status row, and the project-list first-run
+onboarding view + "why a bridge" sheet — they travel with the lists, not
+later). Bridge-offline / never-registered states **and the first-run
+onboarding view** act through an injected strategy: mobile keeps CLI install
+copy + `reconnectBridge()`; desktop offers **Start the bridge** (drives
+`BridgeProcessService`) — never CLI-install or "connect your computer" copy
+(refactor R3's in-plan half; "get the desktop app" phone copy belongs to the
+distribution plan).
 
 **Step 17 — 🚧 Session detail: transcript slice.** Move the
 transcript/rendering half (streaming messages, markdown/code, tool parts,
@@ -525,9 +535,10 @@ decoupling as in step 15. The desktop shell registers the image-action seams
 this slice resolves (`ImageSaver`/`ImageClipboard`/`ImageSharer` — the mobile
 shell already has desktop-aware `ImageSaver` selection to reuse), or the
 affected actions hide behind explicit capabilities — no dead controls, no
-missing-registration crashes. Coordinate with the in-flight `claude-inline-subtasks`
-series (rebase order agreed at implementation time). *Overage: mechanical move
-churn.*
+missing-registration crashes. Coordinate with the in-flight
+`claude-inline-subtasks` **and `instant-session-launch`** series (both touch
+`session_detail` widgets; rebase order agreed at implementation time). *Overage:
+mechanical move churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
 heavy part).** Relocate voice lifecycle behind `module_core` service seams and
@@ -544,21 +555,44 @@ concern; then move the composer (attachments, pickers, queued prompts). Voice
 on mobile must be regression-clean. *Overage: move churn.*
 
 **Step 19 — ⚙️ Diffs + new-session slice.** Decouple and move
-`session_diffs` + `new_session` (worktree options included).
+`session_diffs` + `new_session` (worktree options included). The
+`instant-session-launch` series rewrites `new_session_screen` and the queued
+submission model; check its tracker before moving and rebase on whichever
+side lands first.
 
-**Step 20 — ⚙️ Desktop cockpit composition.** Final composition over the
-slice-built router (the skeleton landed in step 14): window
-navigation (sidebar/split composition from the adaptive screens), keyboard
-basics (Enter-to-send vs newline, Esc dismissal, text selection), and the
-supervision surfaces (login-required, crash give-up, takeover) integrated
-around the cockpit.
+**Step 20 — 🚧 Desktop cockpit composition + attention notifications.** Final
+composition over the slice-built router (the skeleton landed in step 14):
+window navigation (sidebar/split composition from the adaptive screens),
+keyboard basics (Enter-to-send vs newline, Esc dismissal, text selection), and
+the supervision surfaces (login-required, crash give-up, takeover) integrated
+around the cockpit. **Window bounds restore:** persist size/position in
+desktop-owned Layer-1 storage (step-8 storage pattern) and restore on show,
+clamped to the current display — the fixed 720×620 default is not a daily
+driver. **Attention notifications (D6):** a Layer-0 `DesktopNotifier` adapter
+in `module_desktop_core` (dumb: show a titled notification, emit a click) with
+a shell implementation; a Layer-4 cubit derives "permission asked" and
+"question asked" from the SSE tracker the cockpit already runs, shows an OS
+notification **only while the window is hidden or unfocused**, and on click
+focuses the window and routes to the session. Content is category-level copy
+plus the session title — never prompt, transcript, or tool payload (same
+privacy line as the bridge's push content builder). Auto-dismiss when the
+request resolves, mirroring the in-app `pending_request_auto_dismiss`. No
+new preferences: a single on/off in desktop settings, persisted
+desktop-namespaced (C11). Without this a tray-resident cockpit cannot tell the
+user a session is blocked — the phone gets push, the desktop got nothing.
+*Overage: ~1.7k changed lines for the notifier adapter, bounds storage, and
+composition; the two additions have no legal home in an earlier slice.*
 
 > **MT gate C — cockpit parity + mobile regression (user-run, after step
 > 20).** Desktop: manage harnesses end-to-end (install + login a real one) ·
 > browse projects/sessions · full chat round-trip incl. a permission answer ·
 > diffs · new session (worktree) · bridge-off → Start-the-bridge recovers ·
 > internet-down shows truthful offline while supervision still works · window
-> ergonomics usable. Mobile (real device, release-target platform): login →
+> ergonomics usable, size/position survive relaunch · window hidden to tray +
+> phone-less permission request → OS notification → click focuses the window
+> on that session; request answered elsewhere → notification clears; toggle
+> off → silence · no push token registered by the desktop (phone still
+> notified once). Mobile (real device, release-target platform): login →
 > lists → chat/composer/pickers → voice message → diffs → new session →
 > settings + notifications — unchanged after the extraction, release
 > pipeline dry-run green.
@@ -573,10 +607,14 @@ scope to the affected feature docs (expected: account-and-onboarding,
 plugin-setup-and-lifecycle, plugin-runtime-installation, projects-and-sessions,
 session-creation-and-options, session-turns, questions-and-permissions,
 attachments-and-images, diffs-and-source-control, session-archiving-and-
-deletion, popup-alerts, navigation-transitions, voice-input (mobile-only
-boundary restated), bridge-connectivity, bridge-installation-and-updates
-(desktop app as an install path: still distribution-scope — note only));
-remove stale references.
+deletion, popup-alerts, navigation-transitions, pull-request-monitoring,
+session-history-and-recovery, tools-and-file-changes, permission-auto-approval,
+notifications (desktop = local SSE-derived attention alerts, never push — D6),
+voice-input (mobile-only boundary restated), bridge-connectivity,
+bridge-installation-and-updates (desktop app as an install path: still
+distribution-scope — note only)); remove stale references, including
+`account-and-onboarding.md`'s "desktop shell is not shipped" and
+`projects-and-sessions.md`'s "phone-only" coverage note.
 
 **Step 22 — 🌿 Coverage run, retirement, distribution handoff.** Run the
 recorded coverage (below), record results in the tracker, move the plan to
@@ -614,11 +652,16 @@ intended stops from crashes); log ring buffer + rotating file (crash
 diagnosis; pipe-drain necessity); single-instance lock + persisted
 autostart/last-on prefs (daily-driver behavior); GUI-persisted `bridgeId`
 copy (offline unregister, C8 — `BridgeIdStorage` + tracker write, step 11);
-`module_auth` logout generation (R1 — closes a real race). Deliberately
+`module_auth` logout generation (R1 — closes a real race); persisted window
+bounds + the OS-notification adapter and its attention cubit (step 20 — the
+tray-resident cockpit's only out-of-window signal, D6). Deliberately
 **not** added: per-plugin control DTOs, a loopback data transport, a
 GUI-crash watchdog (C6 trade), a second reconnect driver, any token-push path
 (pull-on-demand is the contract; `tokenUpdate` is deleted in step 5),
-provisioning UI on the control channel, and any multi-bridge machinery.
+provisioning UI on the control channel, any multi-bridge machinery, a desktop
+push registration or notification-preference matrix (D6), and a relay
+pairing/QR path (the room key is delivered in-band over the authenticated
+relay key exchange; the desktop inherits it through `ConnectionService`).
 
 ## Cleanup assessment
 
@@ -643,9 +686,13 @@ provisioning UI on the control channel, and any multi-bridge machinery.
 - **Extraction regression risk (steps 14–19)** is the plan's main risk:
   mitigated by slice-per-PR with mobile analyze/tests green per step, device
   regression at MT gate C, and the `session_split` adaptive precedent.
-- **In-flight UI series overlap** (`claude-inline-subtasks`, drafts touching
-  composer/attachments): sequence extraction slices after checking each
-  series' state at implementation time; never move a screen mid-flight under
-  an active series without rebasing agreement.
+- **In-flight UI series overlap** (`claude-inline-subtasks` — step 2/8 open,
+  touches `subtask_part_widget` and the force dialog; `instant-session-launch`
+  — step 1/7, relocates the queued-submission model and edits
+  `new_session_screen`, `session_detail_body`, `session_detail_loaded_view`,
+  `prompt_send_queue`; drafts touching composer/attachments): sequence
+  extraction slices after checking each series' tracker at implementation
+  time; never move a screen mid-flight under an active series without rebasing
+  agreement.
 - **Windows/Linux verification depth** is limited pre-distribution (recorded
   reduction above).
