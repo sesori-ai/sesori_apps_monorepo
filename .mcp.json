@@ -7,6 +7,15 @@
     "mobile-mcp": {
       "command": "npx",
       "args": ["-y", "@mobilenext/mobile-mcp@1.0.2"]
+    },
+    "peekaboo": {
+      "command": "peekaboo",
+      "args": ["mcp", "--no-remote"]
+    },
+    "agent-device": {
+      "command": "agent-device",
+      "args": ["mcp"],
+      "env": {"AGENT_DEVICE_NO_UPDATE_NOTIFIER": "1"}
     }
   }
 }

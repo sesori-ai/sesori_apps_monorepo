@@ -4,7 +4,18 @@
   "mcp": {
     "mobile-mcp": {
       "type": "local",
-      "command": ["npx", "@mobilenext/mobile-mcp@latest"],
+      "command": ["npx", "-y", "@mobilenext/mobile-mcp@1.0.2"],
+      "enabled": true
+    },
+    "peekaboo": {
+      "type": "local",
+      "command": ["peekaboo", "mcp", "--no-remote"],
+      "enabled": true
+    },
+    "agent-device": {
+      "type": "local",
+      "command": ["agent-device", "mcp"],
+      "environment": {"AGENT_DEVICE_NO_UPDATE_NOTIFIER": "1"},
       "enabled": true
     },
     "figma": {
