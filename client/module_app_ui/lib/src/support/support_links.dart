@@ -2,7 +2,7 @@
 /// "Need help?" menu (Email / Discord / X).
 ///
 /// Kept together so the destinations live in one place rather than being
-/// scattered across widgets. Launched through the DI-registered `UrlLauncher`.
+/// scattered across widgets. Product shells decide how to launch them.
 class const SupportLinks._() {
   static const String email = "mailto:hello@sesori.com";
   static const String discord = "https://discord.gg/5KBC8dV9uR";

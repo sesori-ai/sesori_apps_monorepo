@@ -6,7 +6,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/widgets/catalog_scan_row.dart";
 import "../../core/widgets/project_nav_subtitle.dart";
 import "session_list_content.dart";
 import "session_tile.dart";

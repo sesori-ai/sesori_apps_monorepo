@@ -1,8 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../extensions/build_context_x.dart";
+import "../l10n/app_localizations.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);
@@ -210,7 +212,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with SingleTickerProv
       onAction: widget._onDismiss,
     ),
   };
-
 }
 
 /// What a finished scan found, sessions first.
@@ -246,7 +247,12 @@ String catalogScanCountsLine({required AppLocalizations loc, required CatalogRes
 ///
 /// Four tones rather than one per state, because several states share both a
 /// severity and a treatment; the icon is what tells them apart.
-enum _ScanTone() { working, done, attention, problem }
+enum _ScanTone() {
+  working,
+  done,
+  attention,
+  problem,
+}
 
 /// One state's whole presentation, resolved before anything is built.
 class const _RowContent({

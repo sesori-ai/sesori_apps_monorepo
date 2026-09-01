@@ -20,6 +20,8 @@ dependencies:
   rxdart: ^0.28.0
   sesori_dart_core:
     path: ../module_core
+  sesori_shared:
+    path: ../../shared/sesori_shared
   theme_prego:
     path: ../module_prego
 

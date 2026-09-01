@@ -2,9 +2,8 @@ import "dart:async";
 
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../utils/copy_text_to_clipboard.dart";
 
 /// Small icon button that copies [text] to the clipboard and briefly confirms
 /// with a check mark plus light haptic feedback. Self-contained — no snackbar

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 14 complete (MT gate B accepted 2026-09-01)
+- **Status:** Active — step 15 complete (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -447,7 +447,7 @@ projection cubit.
 
 Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete, and
 MT gate B was accepted on 2026-09-01. The user explicitly authorized Step 14
-that day; its implementation and focused verification are complete.
+that day; Steps 14 and 15 are now implemented and verified.
 
 ### Plan divergence — post-Step 13 Gate B findings (2026-08-31)
 
@@ -479,8 +479,8 @@ two-PR pre-gate follow-up:
 
 The series does not change the original 22-step numbering. Its merge did not
 itself mark Gate B done; the user accepted the gate after running the final
-matrix on 2026-09-01. The user explicitly authorized Step 14 that day; its
-implementation and focused verification are complete.
+matrix on 2026-09-01. The user explicitly authorized Step 14 that day; Steps
+14 and 15 are now implemented and verified.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the

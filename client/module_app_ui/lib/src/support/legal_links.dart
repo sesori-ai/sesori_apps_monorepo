@@ -10,6 +10,13 @@ class const LegalLinks._() {
   static const String terms = "https://sesori.com/terms";
   static const String privacy = "https://sesori.com/privacy";
 
+  static Uri uriFor({required LegalDocument document}) => Uri.parse(
+    switch (document) {
+      LegalDocument.terms => terms,
+      LegalDocument.privacy => privacy,
+    },
+  );
+
   /// The legal document [url] points at, or null when it is some other link.
   static LegalDocument? documentFor(String url) => switch (url) {
     terms => LegalDocument.terms,

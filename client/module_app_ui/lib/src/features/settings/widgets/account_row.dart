@@ -1,7 +1,8 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../../extensions/build_context_x.dart";
 
 /// The signed-in account row from the Figma settings redesign: user avatar,
 /// username with an auth-provider tag, and the signed-in-with subtitle.
@@ -10,8 +11,8 @@ import "package:theme_prego/module_prego.dart";
 /// screen navigates to the profile screen; the profile screen renders it
 /// static.
 ///
-/// The account is sourced from `SettingsCubit` state (which subscribes to the
-/// auth stream), so it stays in sync as the session resolves on launch.
+/// The product shell supplies the current account from its authenticated
+/// session owner, so this row remains presentation-only.
 class const AccountRow({
   super.key,
   required final AuthUser account,

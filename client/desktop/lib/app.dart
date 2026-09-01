@@ -12,13 +12,45 @@ import "core/routing/desktop_router.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
-/// Owns the eager desktop bridge controller, relay-client connection effects,
-/// Prego themes, and sign-in gate.
-class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) extends StatelessWidget {
+/// Owns app-wide preferences above the router so settings changes immediately
+/// recompose every desktop destination.
+class const SesoriDesktopApp({
+  required final bool hiddenLaunch,
+  required final AppearanceMode initialAppearance,
+  required final ChatInputMode initialChatInputMode,
+  super.key,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: <BlocProvider<dynamic>>[
+        BlocProvider<AppearanceCubit>(
+          create: (_) => AppearanceCubit(
+            store: getIt<AppearanceStore>(),
+            initialMode: initialAppearance,
+          ),
+        ),
+        BlocProvider<ChatInputModeCubit>(
+          create: (_) => ChatInputModeCubit(
+            store: getIt<ChatInputModeStore>(),
+            initialMode: initialChatInputMode,
+          ),
+        ),
+      ],
+      child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+    );
+  }
+}
+
+/// Owns eager desktop supervision and relay-client effects beneath the
+/// preference providers and above all routed destinations.
+class const _DesktopAppShell({required final bool hiddenLaunch}) extends StatelessWidget {
   static const String _appTitle = "Sesori";
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.watch<AppearanceCubit>().state.themeMode;
+
     return MultiBlocProvider(
       providers: <BlocProvider<dynamic>>[
         BlocProvider<ConnectionOverlayCubit>(
@@ -62,7 +94,7 @@ class const SesoriDesktopApp({required final bool hiddenLaunch, super.key}) exte
         debugShowCheckedModeBanner: false,
         theme: buildPregoThemeData(brightness: Brightness.light),
         darkTheme: buildPregoThemeData(brightness: Brightness.dark),
-        themeMode: ThemeMode.system,
+        themeMode: themeMode,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: desktopRouter,

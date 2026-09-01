@@ -23,7 +23,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | — | MT gate B: daily driver (user-run) | done |
 | 13 | ⚙️ Desktop relay-client enablement | done |
 | 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | done |
-| 15 | 🚧 Settings + harness management slice (desktop onboarding) | pending |
+| 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | pending |
 | 17 | 🚧 Session detail: transcript slice | pending |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
@@ -65,8 +65,7 @@ ownership without a flip-flop restart war. The user accepted the desktop app as
 the terminal bridge replacement for daily use.
 
 Gate B acceptance removed the gate blocker. The user explicitly authorized
-Step 14 on 2026-09-01; its implementation and focused verification are
-complete.
+Step 14 on 2026-09-01; Steps 14 and 15 are now implemented and verified.
 
 ## Plan divergence — post-Step 13 Gate B findings (2026-08-31)
 

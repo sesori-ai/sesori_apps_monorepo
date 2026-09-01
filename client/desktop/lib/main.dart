@@ -17,6 +17,9 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
+  final AppearanceMode initialAppearance = await getIt<AppearanceStore>().read();
+  final ChatInputMode initialChatInputMode = await getIt<ChatInputModeStore>().read();
+
   try {
     await getIt<WindowHost>().initialize(hidden: hiddenLaunch);
   } on Object catch (error, stackTrace) {
@@ -34,6 +37,12 @@ Future<void> main(List<String> arguments) async {
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.
   getIt<ConnectionService>();
-  runApp(SesoriDesktopApp(hiddenLaunch: hiddenLaunch));
+  runApp(
+    SesoriDesktopApp(
+      hiddenLaunch: hiddenLaunch,
+      initialAppearance: initialAppearance,
+      initialChatInputMode: initialChatInputMode,
+    ),
+  );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
 }

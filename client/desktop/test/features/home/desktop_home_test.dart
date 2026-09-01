@@ -29,7 +29,7 @@ void main() {
     when(() => bridgeControlCubit.takeOver()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.toggleLaunchAtLogin()).thenAnswer((_) async {});
     when(() => bridgeControlCubit.openLogs()).thenAnswer((_) async {});
-    when(() => authGateCubit.signOut()).thenAnswer((_) async {});
+    when(() => authGateCubit.signOut()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
   });
 
   Future<void> pumpHome({required WidgetTester tester, required BridgeControlState state}) {
@@ -53,7 +53,7 @@ void main() {
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
             BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
           ],
-          child: const DesktopHome(user: _user),
+          child: DesktopHome(onOpenSettings: () {}),
         ),
       ),
     );

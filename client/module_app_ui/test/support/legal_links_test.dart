@@ -1,7 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/legal_links.dart";
 
 /// Markdown inline links: `[label](url)`.
 final _markdownLink = RegExp(r"\[[^\]]+\]\(([^)]+)\)");

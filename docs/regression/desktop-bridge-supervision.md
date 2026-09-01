@@ -59,6 +59,16 @@ and keep native close/quit behavior safe.
   and window action for local bridge contention or relay displacement; it
   persists On, performs one stop-and-respawn, and accepts only replacement
   prompts from the fresh helper.
+- The window routes from supervision into the shared settings, profile, and
+  harness-management surfaces without creating another auth/session owner.
+  Desktop injects account state, navigation, external-link/package metadata,
+  and its coordinated logout workflow; it deliberately omits the mobile push-
+  notification preference row. The desktop's one app-wide connection banner
+  remains the only banner around these routed views.
+- Appearance and default-input preferences are read before the first desktop
+  frame, provided above the router, and persisted through the same shared
+  cubits as mobile. Changing appearance in Settings re-themes the whole window
+  immediately rather than only the current route.
 - Open Logs prepares the owner-only active log through Layer-1 storage, then
   resolves it through the desktop log repository and delegates it to the system
   default application, including before the helper emits its first line.
@@ -76,8 +86,8 @@ and keep native close/quit behavior safe.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, and signed-in supervision rendering. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, and explicit Take Over; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, and the shared desktop Settings route with mobile-only notifications omitted. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, app-wide preference persistence, desktop settings/harness composition, and profile logout delegation; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -113,7 +123,8 @@ the status and bounded recent output.
   or the macOS tray icon has an opaque background/wrong light-dark treatment,
   the Dock still shows a hidden window, or secondary tray clicks do nothing.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
-  or an On command can race between logout's helper stop and token clearing.
+  a profile logout bypasses the desktop logout orchestrator, or an On command
+  can race between logout's helper stop and token clearing.
 - Sign-out fails to send the helper unregister command, pre-empts it with a
   competing shutdown, skips the persisted-id fallback, loses the account-bound
   record across a GUI relaunch, submits one account's id with another
@@ -127,7 +138,10 @@ the status and bounded recent output.
   crash output is absent, Open Logs targets a nonexistent/bypassed file, or a
   supervised Full Disk Access warning tells the user to authorize only
   Terminal instead of the process running the bridge.
-- The desktop theme lacks Prego colors, typography, or design-system extension.
+- The desktop theme lacks Prego colors, typography, or design-system extension;
+  a saved appearance flashes the system theme at startup, changing it affects
+  only one route, a routed settings view renders a second connection banner,
+  or desktop exposes a dead mobile-notification preference row.
 
 ## Known Limitations
 
@@ -163,4 +177,6 @@ the status and bounded recent output.
 - `client/module_core/lib/src/repositories/bridge_repository.dart`
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
 - `client/desktop/lib/features/home/desktop_home.dart`
+- `client/desktop/lib/core/routing/desktop_router.dart`
+- `client/module_app_ui/lib/src/features/settings/`
 - `.plan/active/desktop-app/PLAN.md`
