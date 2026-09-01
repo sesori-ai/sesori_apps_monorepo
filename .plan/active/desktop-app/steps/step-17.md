@@ -52,15 +52,15 @@
 
 ## Verification
 
-- `client/module_app_ui`: `asdf exec flutter analyze` passes; the complete
-  suite passes 246 tests. The image/file test changed by the final lazy-provider
+- `client/module_app_ui`: `asdf exec dart analyze --fatal-infos` passes; the
+  complete suite passes 246 tests. The image/file test changed by the final lazy-provider
   lint cleanup was rerun separately and passes 33 tests.
-- `client/app`: `asdf exec flutter analyze` passes; the complete mobile suite
-  passes 687 tests after transcript-test ownership moved to `module_app_ui`.
+- `client/app`: `asdf exec dart analyze --fatal-infos` passes; the complete
+  mobile suite passes 687 tests after transcript-test ownership moved to `module_app_ui`.
   Focused title hydration and child-session routing pass 18 tests after the
   final capability-provider cleanup.
-- `client/desktop`: `asdf exec flutter analyze` passes; the complete desktop
-  suite passes 78 tests, including transcript composition, pending-question
+- `client/desktop`: `asdf exec dart analyze --fatal-infos` passes; the complete
+  desktop suite passes 78 tests, including transcript composition, pending-question
   presentation, Back/child navigation, typed route declaration, image adapter,
   and DI registration coverage.
 - Dart LSP reports zero diagnostics across 122 relevant files.

@@ -52,8 +52,8 @@ Future<void> showImageAttachmentViewer({
   required String? filename,
   required Key heroTag,
 }) {
-  // ignore: no_slop_linter/avoid_navigator_of, the transient viewer must cover the split shell
   final presentation = SessionDetailPresentationScope.read(context);
+  // ignore: no_slop_linter/avoid_navigator_of, the transient viewer must cover the split shell
   final rootNavigator = Navigator.of(context, rootNavigator: true);
   final sourceRoute = ModalRoute.of(context);
   if (sourceRoute == null) throw StateError("Image attachment viewer requires a source route");

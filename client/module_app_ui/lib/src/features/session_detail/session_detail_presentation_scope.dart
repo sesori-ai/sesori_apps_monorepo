@@ -20,14 +20,12 @@ class const SessionDetailPresentationScope({
 }) extends InheritedWidget {
   static SessionDetailPresentationScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<SessionDetailPresentationScope>();
-    assert(scope != null, "SessionDetailPresentationScope was not found in the widget tree");
-    return scope!;
+    return scope ?? (throw StateError("SessionDetailPresentationScope was not found in the widget tree"));
   }
 
   static SessionDetailPresentationScope read(BuildContext context) {
     final scope = context.getInheritedWidgetOfExactType<SessionDetailPresentationScope>();
-    assert(scope != null, "SessionDetailPresentationScope was not found in the widget tree");
-    return scope!;
+    return scope ?? (throw StateError("SessionDetailPresentationScope was not found in the widget tree"));
   }
 
   @override
