@@ -55,7 +55,7 @@ private struct ActivityIndicatorCreationParams {
     } else {
       self.color = nil
     }
-    self.dark = dictionary["dark"] as? Bool ?? false
+    self.dark = (dictionary["dark"] as? NSNumber)?.boolValue ?? false
   }
 }
 

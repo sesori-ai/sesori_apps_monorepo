@@ -121,7 +121,7 @@ void main() {
 
       final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
       expect(platformView.viewType, "sesori/native-activity-indicator");
-      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": false});
+      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": 0});
       expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
       expect(find.byType(PregoSteppedActivityIndicator), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
@@ -136,7 +136,7 @@ void main() {
 
       final platformView = tester.widget<AppKitView>(find.byType(AppKitView));
       expect(platformView.viewType, "sesori/native-activity-indicator");
-      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": false});
+      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": 0});
       expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
       expect(find.byType(PregoSteppedActivityIndicator), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
@@ -158,7 +158,7 @@ void main() {
       expect(find.byKey(const ValueKey<(int?, Brightness)>((0xFF654321, Brightness.light))), findsOneWidget);
       expect(
         tester.widget<UiKitView>(find.byType(UiKitView)).creationParams,
-        {"color": other.toARGB32(), "dark": false},
+        {"color": other.toARGB32(), "dark": 0},
       );
     });
   });
@@ -246,7 +246,7 @@ void main() {
       );
 
       final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
-      expect(platformView.creationParams, {"color": null, "dark": false});
+      expect(platformView.creationParams, {"color": null, "dark": 0});
     });
   });
 
@@ -260,7 +260,7 @@ void main() {
       );
 
       final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
-      expect(platformView.creationParams, {"color": null, "dark": true});
+      expect(platformView.creationParams, {"color": null, "dark": 1});
       expect(find.byKey(const ValueKey<(int?, Brightness)>((null, Brightness.dark))), findsOneWidget);
     });
   });

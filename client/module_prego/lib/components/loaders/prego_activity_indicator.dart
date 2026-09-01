@@ -51,12 +51,13 @@ class const PregoActivityIndicator({
     Brightness.dark => const Color(0xFFEBEBF5),
   };
 
-  /// The native renderers consume this once at creation: an optional tint and
-  /// the app's resolved brightness, so a forced in-app appearance keeps the
-  /// system spinner legible even when the host OS appearance differs.
-  Map<String, Object?> _nativeCreationParams({required Brightness brightness}) => {
+  /// The native renderers consume this once at creation: an optional ARGB
+  /// tint and the app's resolved brightness (`dark` is 1 or 0), so a forced
+  /// in-app appearance keeps the system spinner legible even when the host OS
+  /// appearance differs.
+  Map<String, int?> _nativeCreationParams({required Brightness brightness}) => {
     "color": color?.toARGB32(),
-    "dark": brightness == Brightness.dark,
+    "dark": brightness == Brightness.dark ? 1 : 0,
   };
 
   Widget _animatedIndicator({required Color fallbackColor, required Brightness brightness}) {
