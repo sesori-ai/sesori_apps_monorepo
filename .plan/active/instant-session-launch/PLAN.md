@@ -415,7 +415,10 @@ duplicate-risk warning.
   the message until Retry.
 - `SessionDetailMessageList` renders `launchSubmission` as the oldest overlay
   row (before queued/sending rows), keyed by its local promptId so the row
-  identity is stable across loading/loaded emissions.
+  identity is stable across loading/loaded emissions. While the user is
+  scroll-detached from the newest edge, the release swap behaves exactly like
+  the existing queued-to-sent swap: the frozen message snapshot reconciles on
+  reattach, and no launch-specific detached handling is added.
 - Widget tests: launch view shows the message and stage line in the first
   sending frame; stage text replaces rotation when an event arrives; fallback
   rotation without events; continuity across route replacement; no
