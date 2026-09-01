@@ -104,6 +104,10 @@ class DesktopBridgeTakeoverOrchestrator.forTesting({
     final CompositeSubscription subscriptions = CompositeSubscription();
     _promptTracker.promptsStream.listen((prompts) => _acceptReplacementPrompts(prompts: prompts)).addTo(subscriptions);
     _statusTracker.registrationEvents.listen((_) => settleStartup()).addTo(subscriptions);
+    _logoutTracker.statuses
+        .where((status) => status.locksBridgeControls)
+        .listen((_) => settleStartup())
+        .addTo(subscriptions);
 
     try {
       // Ignore the replayed pre-takeover snapshot. Only states emitted after
@@ -134,6 +138,9 @@ class DesktopBridgeTakeoverOrchestrator.forTesting({
   bool get _logoutInProgress => _logoutTracker.status.locksBridgeControls;
 
   void _acceptReplacementPrompts({required List<ControlPromptRequest> prompts}) {
+    if (_logoutInProgress) {
+      return;
+    }
     for (final ControlPromptRequest prompt in prompts) {
       if (prompt.kind != ControlPromptKind.replaceBridge ||
           !_promptTracker.prompts.any((pending) => identical(pending, prompt))) {

@@ -167,6 +167,24 @@ void main() {
     verifyNever(() => processService.start());
   });
 
+  test("stops approving replacement prompts when logout begins during negotiation", () async {
+    const ControlPromptRequest replacementPrompt = ControlPromptRequest(
+      id: "replace-after-logout",
+      kind: ControlPromptKind.replaceBridge,
+      message: "replace",
+    );
+
+    final Future<void> operation = orchestrator.takeOver();
+    await pumpEventQueue(times: 3);
+    logoutTracker.markInProgress();
+    promptTracker.addPrompt(prompt: replacementPrompt);
+    await pumpEventQueue(times: 2);
+    await operation;
+
+    verify(() => processService.start()).called(1);
+    expect(commandService.answeredPrompts, isEmpty);
+  });
+
   test("settles when the fresh helper reaches local contention", () async {
     final Completer<void> startGate = Completer<void>();
     when(() => processService.start()).thenAnswer((_) async {
