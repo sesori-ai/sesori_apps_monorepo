@@ -46,5 +46,6 @@ the intentional login, settings-modal, and split-view transitions distinct.
 
 - `client/app/lib/core/routing/app_router.dart`
 - `client/app/test/core/routing/app_route_test.dart`
+- `client/app/test/core/routing/imperative_pane_route_test.dart`
 - `client/app/test/core/routing/adaptive_session_route_matrix_test.dart`
 - `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`
