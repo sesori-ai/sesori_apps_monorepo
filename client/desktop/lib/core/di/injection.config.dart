@@ -21,14 +21,26 @@ import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_reso
     as _i964;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
+import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
+    as _i524;
+import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
+    as _i880;
+import 'package:sesori_desktop/core/platform/desktop_image_clipboard.dart'
+    as _i87;
+import 'package:sesori_desktop/core/platform/desktop_image_sharer.dart'
+    as _i500;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
     as _i20;
+import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
+    as _i210;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
 import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
     as _i757;
+import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
+    as _i692;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
@@ -69,6 +81,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i880.DesktopFileSaveClient>(
+      () => _i880.DesktopFileSaveClient(),
+    );
+    gh.lazySingleton<_i210.DesktopPasteboardClient>(
+      () => _i210.DesktopPasteboardClient(),
+    );
+    gh.lazySingleton<_i692.DesktopShareClient>(
+      () => _i692.DesktopShareClient(),
+    );
     gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
       () => _i435.MacOsLegacyKeychainClient(),
     );
@@ -99,6 +120,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i227.DesktopFailureReporter(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i948.ImageClipboard>(
+      () => _i87.DesktopImageClipboard(
+        pasteboardClient: gh<_i210.DesktopPasteboardClient>(),
+      ),
+    );
     gh.lazySingleton<_i316.BridgeProcessEnvironment>(
       () => _i906.IoBridgeProcessEnvironment(),
     );
@@ -110,12 +136,21 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i804.NoOpAttributionClaimStorage(),
     );
+    gh.lazySingleton<_i948.ImageSaver>(
+      () => _i524.DesktopFileImageSaver(
+        fileSaveClient: gh<_i880.DesktopFileSaveClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(
         storage: gh<_i558.FlutterSecureStorage>(),
         macOsKeychainClient: gh<_i435.MacOsLegacyKeychainClient>(),
       ),
+    );
+    gh.lazySingleton<_i948.ImageSharer>(
+      () =>
+          _i500.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
     );
     return this;
   }

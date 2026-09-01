@@ -7,7 +7,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
-import "markdown_styles.dart";
+import "../external_link.dart";
 
 /// Height the loading and failure states occupy, so the sheet opens at a
 /// readable size instead of a thin strip that jumps once the document lands.
@@ -58,7 +58,7 @@ class const _LegalDocumentBody() extends StatelessWidget {
         padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.x3l),
         child: MarkdownBody(
           data: markdown,
-          onTapLink: handleMarkdownLinkTap,
+          onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
           styleSheet: buildLegalMarkdownStyleSheet(prego: prego),
         ),
       ),

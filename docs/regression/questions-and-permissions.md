@@ -87,14 +87,19 @@ reaches the backend so the turn continues.
 - Question choices preserve their distinct selected styling, per-question
   decline semantics, and custom-answer focus/input behavior when their shared
   tappable sheet chrome changes.
+- Mobile and desktop use the same session-detail pending-question and permission
+  presentation. Opening a session on either surface presents the request over
+  that session, sends replies through the owning session cubit, and dismisses it
+  when the pending request settles; shell routing must not duplicate or bypass
+  that ownership.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
 | L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
+| L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
@@ -180,7 +185,10 @@ repeat after process restart without enabling approval-bypass launch flags.
 
 - Bridge pending-interaction and archived-validator services; per-plugin
   approval registries; shared pending permission/question and reply models.
-- Client permission and question surfaces and their auto-dismiss behavior.
+- Shared client permission and question surfaces and their auto-dismiss behavior:
+  `client/module_app_ui/lib/src/features/session_detail/`, composed by
+  `client/app/lib/features/session_detail/` and
+  `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`.
 - `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
   `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
 - Owning tests for pending interaction, reply routes, and pending state without
