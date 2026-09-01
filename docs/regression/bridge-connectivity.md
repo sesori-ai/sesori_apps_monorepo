@@ -34,6 +34,13 @@ explicit restart, and the connection states the app presents.
   roots the same `ConnectionService` beside the supervised control channel, shows
   its relay-client state separately from helper relay status, and hosts the typed
   connection banner at the window root.
+- The client relay socket pings on an interval, so a silently dead network path
+  (Wi-Fi drop, VPN toggle, sleep/wake) surfaces as a socket close and enters
+  reconnect within roughly two ping intervals instead of waiting on request
+  timeouts or relay-side reaping.
+- A reconnect that outlasts the overlay grace window surfaces the reconnecting
+  banner on all surfaces; reconnects that resolve within the window (foreground
+  resume, bridge handover) stay bannerless.
 - The desktop root constructs `ConnectionOverlayCubit` and `SseToastCubit` outside
   the auth-gated content. Backend `tui.toast.show` events reach the desktop Prego
   popup listener rather than being silently consumed; handled shared failures are
@@ -124,6 +131,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns.
+- A dead network path leaving the app claiming connected for minutes, or the
+  reconnecting banner flashing on every routine foreground resume.
 - GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
   auth-required sentinel because teardown cancelled the bootstrap token request.
 - A forced stop leaving a backend alive, targeting only one process-table snapshot,

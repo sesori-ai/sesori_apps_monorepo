@@ -140,6 +140,7 @@
   },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
+  "connectionReconnectingTitle": "Reconnecting…",
   "bridgeDisconnectedTitle": "Bridge disconnected",
   "settingsTitle": "Settings",
   "settingsAccountSignedInWith": "Signed in with {provider}",

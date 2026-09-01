@@ -9,19 +9,27 @@ import "package:theme_prego/module_prego.dart";
 /// desktop router and shared screens exist, the shell owns this equivalent
 /// host so connection state is visible above the auth-gated window.
 class DesktopConnectionBanner extends StatelessWidget {
-  const new({super.key}) : _onRetry = null;
+  const new({super.key}) : _onRetry = null, _isReconnecting = false;
 
-  const new connectionLost({super.key, required VoidCallback onRetry}) : _onRetry = onRetry;
+  const new reconnecting({super.key}) : _onRetry = null, _isReconnecting = true;
+
+  const new connectionLost({super.key, required VoidCallback onRetry})
+    : _onRetry = onRetry,
+      _isReconnecting = false;
 
   final VoidCallback? _onRetry;
+
+  /// Selects the reconnecting variant among the action-less banners.
+  final bool _isReconnecting;
 
   /// Returns the root banner for the states that need one.
   static Widget? maybeFor(BuildContext context) {
     final ConnectionOverlayCubit cubit = context.watch<ConnectionOverlayCubit>();
     return switch (cubit.state) {
       ConnectionOverlayBridgeOffline() => const DesktopConnectionBanner(),
+      ConnectionOverlayReconnecting() => const DesktopConnectionBanner.reconnecting(),
       ConnectionOverlayConnectionLost() => DesktopConnectionBanner.connectionLost(onRetry: cubit.reconnect),
-      ConnectionOverlayHidden() || ConnectionOverlayReconnecting() => null,
+      ConnectionOverlayHidden() => null,
     };
   }
 
@@ -32,10 +40,10 @@ class DesktopConnectionBanner extends StatelessWidget {
       container: true,
       liveRegion: true,
       child: onRetry == null
-          ? const PregoInlineAlertsNotifications(
+          ? PregoInlineAlertsNotifications(
               type: PregoInlineAlertsNotificationsType.warning,
-              title: "Bridge disconnected",
-              icon: TablerRegular.broadcast_off,
+              title: _isReconnecting ? "Reconnecting…" : "Bridge disconnected",
+              icon: _isReconnecting ? TablerRegular.cloud_off : TablerRegular.broadcast_off,
             )
           : PregoInlineAlertsNotifications(
               type: PregoInlineAlertsNotificationsType.error,

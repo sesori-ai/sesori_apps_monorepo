@@ -12,27 +12,40 @@ import "../extensions/build_context_x.dart";
 /// dedicated offline design (the project list's full-screen flows) simply
 /// don't pass it while that design is showing.
 ///
-/// Two variants:
+/// Three variants:
 /// - the default [ConnectionBanner] is the *bridge-offline* alert — purely
 ///   informational, because the relay connection stays alive and reconnects on
 ///   its own the moment the bridge is back;
+/// - [ConnectionBanner.reconnecting] is the *relay-interrupted* alert — the
+///   relay socket dropped and auto-reconnect is still running, so it is
+///   informational too;
 /// - [ConnectionBanner.connectionLost] is the *relay-unreachable* alert, whose
 ///   auto-reconnect has stopped, so it carries a Retry action.
 class ConnectionBanner extends StatelessWidget {
   /// The bridge-offline banner: informational only. The relay connection stays
   /// alive and `ConnectionService` reconnects the moment the bridge is back, so
   /// there is no action to offer.
-  const new({super.key}) : _onRetry = null;
+  const new({super.key}) : _onRetry = null, _isReconnecting = false;
+
+  /// The reconnecting banner: the relay socket dropped and auto-reconnect is
+  /// in progress, so there is no action to offer. Only surfaced once the
+  /// reconnect outlasts [ConnectionOverlayCubit]'s grace window.
+  const new reconnecting({super.key}) : _onRetry = null, _isReconnecting = true;
 
   /// The connection-lost banner: the relay itself is unreachable and
   /// auto-reconnect has given up, so this variant carries a Retry action that
   /// re-triggers a relay reconnect via [onRetry].
-  const new connectionLost({super.key, required VoidCallback onRetry}) : _onRetry = onRetry;
+  const new connectionLost({super.key, required VoidCallback onRetry})
+    : _onRetry = onRetry,
+      _isReconnecting = false;
 
   /// Reconnect callback for the connection-lost variant; `null` for the
-  /// bridge-offline variant, which self-heals and offers no action. Its
-  /// nullness selects the variant at [build] time.
+  /// self-healing variants, which offer no action. Its nullness selects the
+  /// variant at [build] time.
   final VoidCallback? _onRetry;
+
+  /// Selects the reconnecting variant among the action-less banners.
+  final bool _isReconnecting;
 
   /// Returns the banner for [PregoGlassScaffold.banner], or `null` when nothing
   /// should be shown. Watches [ConnectionOverlayCubit] (provided app-wide above
@@ -44,8 +57,9 @@ class ConnectionBanner extends StatelessWidget {
     final cubit = context.watch<ConnectionOverlayCubit>();
     return switch (cubit.state) {
       ConnectionOverlayBridgeOffline() => const ConnectionBanner(),
+      ConnectionOverlayReconnecting() => const ConnectionBanner.reconnecting(),
       ConnectionOverlayConnectionLost() => ConnectionBanner.connectionLost(onRetry: cubit.reconnect),
-      ConnectionOverlayHidden() || ConnectionOverlayReconnecting() => null,
+      ConnectionOverlayHidden() => null,
     };
   }
 
@@ -70,8 +84,8 @@ class ConnectionBanner extends StatelessWidget {
       child: onRetry == null
           ? PregoInlineAlertsNotifications(
               type: PregoInlineAlertsNotificationsType.warning,
-              title: context.loc.bridgeDisconnectedTitle,
-              icon: TablerRegular.broadcast_off,
+              title: _isReconnecting ? context.loc.connectionReconnectingTitle : context.loc.bridgeDisconnectedTitle,
+              icon: _isReconnecting ? TablerRegular.cloud_off : TablerRegular.broadcast_off,
             )
           : PregoInlineAlertsNotifications(
               type: PregoInlineAlertsNotificationsType.error,
