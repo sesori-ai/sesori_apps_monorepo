@@ -24,6 +24,8 @@ class PiCatalogService({
   Future<List<PluginCommand>> getCommands({required String projectId}) async =>
       (await requireOptions(projectId: projectId)).commands;
 
+  bool isNativeCompactionCommand({required PluginCommand command}) => identical(command, _compactionCommand);
+
   Future<PluginSessionOptions> requireOptions({required String projectId}) async {
     final normalized = normalizeProjectDirectory(directory: projectId);
     final tracked = _tracker.snapshotFor(projectId: normalized);

@@ -103,8 +103,9 @@ defaults and queued client sends coherent.
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
   `compact` command instead accepts on Pi's `compaction_start`, then keeps the
-  resident busy until the native RPC finishes. Commands reject while that session
-  is busy, and a successful ordinary command with no agent run crosses `get_state`
+  resident busy until the native RPC finishes. A rejected native compaction clears
+  its running card. Commands reject while that session is busy, and a successful
+  ordinary command with no agent run crosses `get_state`
   before returning the lane idle.
   Abort rejects queued work and replaces the process so hidden steering or
   follow-up input cannot leak into the next turn. Its control acknowledgement
@@ -119,7 +120,10 @@ defaults and queued client sends coherent.
   project directories. Because Pi omits built-in TUI commands from `get_commands`,
   the plugin appends one `compact` command and dispatches it through Pi's native
   `compact` RPC with optional user instructions rather than sending `/compact` as
-  a prompt. Reuse is project-local, refresh always probes, concurrent
+  a prompt. If an upstream command already owns that name, it remains an ordinary
+  slash command and the native action is not synthesized. Private instructions
+  remain confined to the RPC while the synthetic user marker uses only the
+  user-visible command text. Reuse is project-local, refresh always probes, concurrent
   requests for one project coalesce, and a failed refresh never replaces the
   last coherent snapshot. Dialogs raised during probes are cancelled and never
   enter session UI state. Empty Pi sessions remain lazy until their first prompt

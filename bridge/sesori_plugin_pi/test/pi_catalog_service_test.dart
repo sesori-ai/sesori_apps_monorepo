@@ -33,6 +33,7 @@ void main() {
     final compaction = observedOptions.commands.last;
     expect(compaction.description, "Summarize the conversation so far to free up the context window");
     expect(compaction.source, PluginCommandSource.command);
+    expect(service.isNativeCompactionCommand(command: compaction), isTrue);
     expect((reused as PluginSessionOptionsDiscoveryObserved).options, same(observedOptions));
     expect(refreshOptions.commands.map((command) => command.name), [
       "refreshed",
@@ -60,6 +61,7 @@ void main() {
 
     expect(options.commands, hasLength(1));
     expect(options.commands.single.name, PiCatalogService.compactionCommandName);
+    expect(service.isNativeCompactionCommand(command: options.commands.single), isFalse);
   });
 
   test("coalesces same-project probes while different projects probe concurrently", () async {

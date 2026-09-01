@@ -188,8 +188,8 @@ void main() {
         sessionId: session.id,
         promptId: "prompt-compact",
         command: PiCatalogService.compactionCommandName,
-        arguments: "Keep architecture decisions",
-        userVisibleArguments: "Keep architecture decisions",
+        arguments: "secret-instructions",
+        userVisibleArguments: "architecture decisions",
         variant: null,
         agent: "pi",
         model: null,
@@ -198,7 +198,7 @@ void main() {
       unawaited(accepted.then((_) => completed = true));
       final process = await harness.nextSessionProcess();
       final request = await waitForCommand(process: process, type: "compact");
-      expect(request["customInstructions"], "Keep architecture decisions");
+      expect(request["customInstructions"], "secret-instructions");
       expect(process.written.where((frame) => frame["type"] == "prompt"), isEmpty);
       expect(completed, isFalse);
 
@@ -212,6 +212,91 @@ void main() {
       await idle;
 
       expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
+      final visibleText = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .where((event) => event.part.type == PluginMessagePartType.text)
+          .map((event) => event.part.text);
+      expect(visibleText, contains("/compact architecture decisions"));
+      expect(visibleText, everyElement(isNot(contains("secret-instructions"))));
+    });
+
+    test("native compaction failure removes its running card", () async {
+      await harness.plugin.getCommands(projectId: harness.project.path);
+      final session = await harness.plugin.createSession(
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final accepted = harness.plugin.sendCommand(
+        sessionId: session.id,
+        promptId: "prompt-failed-compact",
+        command: PiCatalogService.compactionCommandName,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: "pi",
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      final request = await waitForCommand(process: process, type: "compact");
+      final runningUpdate = harness.plugin.events.firstWhere((event) => event is BridgeSseMessageUpdated);
+      process.emit(frame: {"type": "compaction_start", "reason": "manual"});
+      await accepted;
+      final runningEvent = await runningUpdate;
+      final running = runningEvent as BridgeSseMessageUpdated;
+      final removed = harness.plugin.events.firstWhere((event) => event is BridgeSseMessageRemoved);
+      final failed = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionError);
+      final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      process.emitFailure(id: request["id"]! as String, command: "compact", error: "compaction failed");
+
+      final removedEvent = await removed;
+      expect((removedEvent as BridgeSseMessageRemoved).messageID, running.info["id"]);
+      await Future.wait([failed, idle]);
+      expect(harness.plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("an upstream compact command remains an ordinary slash command", () async {
+      final custom = _Harness(catalogCommand: PiCatalogService.compactionCommandName);
+      addTearDown(custom.dispose);
+      final commands = await custom.plugin.getCommands(projectId: custom.project.path);
+      expect(commands, hasLength(1));
+      expect(commands.single.description, isNull);
+      final session = await custom.plugin.createSession(
+        directory: custom.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final accepted = custom.plugin.sendCommand(
+        sessionId: session.id,
+        promptId: "prompt-custom-compact",
+        command: PiCatalogService.compactionCommandName,
+        arguments: "custom",
+        userVisibleArguments: "custom",
+        variant: null,
+        agent: "pi",
+        model: null,
+      );
+      final process = await custom.nextSessionProcess();
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      expect(prompt["message"], "/compact custom");
+      expect(process.written.where((frame) => frame["type"] == "compact"), isEmpty);
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+      final state = await waitForCommand(process: process, type: "get_state");
+      process.emitResponse(
+        id: state["id"]! as String,
+        command: "get_state",
+        data: const {"isStreaming": false, "pendingMessageCount": 0},
+      );
+      await accepted;
     });
 
     test("wrapped command failures retain the backend stack", () async {
@@ -447,7 +532,7 @@ void main() {
   });
 }
 
-final class _Harness({bool stdinCloseCompletes = true}) {
+final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "review"}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -460,7 +545,7 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       processFactory: ({required spec}) async {
         final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
-        unawaited(_answerProcess(process: process, spec: spec));
+        unawaited(_answerProcess(process: process, spec: spec, catalogCommand: catalogCommand));
         return process;
       },
       commandExecutor: commands,
@@ -515,7 +600,11 @@ final class _Harness({bool stdinCloseCompletes = true}) {
   }
 }
 
-Future<void> _answerProcess({required FakePiProcess process, required PiLaunchSpec spec}) async {
+Future<void> _answerProcess({
+  required FakePiProcess process,
+  required PiLaunchSpec spec,
+  required String catalogCommand,
+}) async {
   final answered = <String>{};
   while (!process.killed && !process.stdinClosed) {
     for (final command in process.written.toList()) {
@@ -561,9 +650,9 @@ Future<void> _answerProcess({required FakePiProcess process, required PiLaunchSp
           process.emitResponse(
             id: id,
             command: type,
-            data: const {
+            data: {
               "commands": [
-                {"name": "review", "source": "extension"},
+                {"name": catalogCommand, "source": "extension"},
               ],
             },
           );

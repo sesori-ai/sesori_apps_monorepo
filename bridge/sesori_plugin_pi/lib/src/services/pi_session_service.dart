@@ -400,7 +400,7 @@ final class PiSessionService({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
-    final (:execution, :visible) = _commandText(
+    final commandText = _commandText(
       command: command,
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,
@@ -411,10 +411,10 @@ final class PiSessionService({
       directory: directory,
       turn: _PiCompactionTurn(
         promptId: promptId,
-        payload: PiPromptPayload(message: execution, images: const []),
+        payload: PiPromptPayload(message: commandText.visible, images: const []),
         model: model,
         variant: variant,
-        userVisibleText: visible,
+        userVisibleText: commandText.visible,
         acceptance: acceptance,
         customInstructions: arguments.isEmpty ? null : arguments,
       ),
@@ -924,6 +924,7 @@ final class PiSessionService({
         StackTrace.current,
       );
     }
+    if (failed && turn is _PiCompactionTurn) _clearCompaction(sessionId: sessionId);
     if (!failed && turn.promptDispatched && !turn.userMessageEmitted) {
       _emitMissingUserMessage(sessionId: sessionId, turn: turn);
     } else if (!turn.userMessageEmitted) {
