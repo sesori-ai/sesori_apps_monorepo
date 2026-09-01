@@ -118,6 +118,15 @@ class _FakePreferenceRepository() extends Mock implements ProductAnalyticsPrefer
   }
 }
 
+class _RecordingAttributionService() extends Mock implements AttributionService {
+  final productOutcomes = <ProductAnalyticsEvent>[];
+
+  @override
+  Future<void> reportProductOutcome({required ProductAnalyticsEvent event}) async {
+    productOutcomes.add(event);
+  }
+}
+
 class _RecordingAnalyticsRepository() extends Mock implements AnalyticsRepository {
   final calls = <({ProductAnalyticsEnvelope envelope, String userKey})>[];
   AnalyticsDeliveryResult result = AnalyticsDeliveryResult.acceptedBySdk;
@@ -143,6 +152,7 @@ void main() {
   late _FakeAuthSession authSession;
   late _FakePreferenceRepository preferenceRepository;
   late _RecordingAnalyticsRepository analyticsRepository;
+  late _RecordingAttributionService attributionService;
   late ProductAnalyticsPreferenceService preferenceService;
   late ProductAnalyticsService service;
 
@@ -150,6 +160,7 @@ void main() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    attributionService = _RecordingAttributionService();
     preferenceService = ProductAnalyticsPreferenceService(
       capability: const AnalyticsRuntimeCapability.enabled(),
       authSession: authSession,
@@ -158,6 +169,7 @@ void main() {
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
       preferenceService: preferenceService,
+      attributionService: attributionService,
     );
   }
 
@@ -165,6 +177,7 @@ void main() {
     authSession = _FakeAuthSession(initialState: const AuthState.authenticated(user: _userA));
     preferenceRepository = _FakePreferenceRepository();
     analyticsRepository = _RecordingAnalyticsRepository();
+    attributionService = _RecordingAttributionService();
     preferenceService = ProductAnalyticsPreferenceService(
       capability: capability,
       authSession: authSession,
@@ -173,6 +186,7 @@ void main() {
     service = ProductAnalyticsService(
       analyticsRepository: analyticsRepository,
       preferenceService: preferenceService,
+      attributionService: attributionService,
     );
   }
 
@@ -740,14 +754,20 @@ void main() {
     expect(preferenceRepository.reconcileCalls, isEmpty);
     expect(service.state.availability, isA<ProductAnalyticsInactive>());
     expect(analyticsRepository.calls, isEmpty);
+    const activationOutcome = ProductAnalyticsEvent.sessionMessageSent(
+      submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+    );
     expect(
       await service.logEvent(
-        event: const ProductAnalyticsEvent.sessionMessageSent(
-          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
-        ),
+        event: activationOutcome,
         occurredAtUtc: DateTime.utc(2026, 7, 30),
       ),
       AnalyticsDeliveryResult.failed,
+    );
+    expect(
+      attributionService.productOutcomes,
+      [activationOutcome],
+      reason: "the independent attribution sink is reached before the product preference gate",
     );
 
     preferenceRepository.throwOnLoad = false;

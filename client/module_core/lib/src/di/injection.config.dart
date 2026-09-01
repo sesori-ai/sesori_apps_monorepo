@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
@@ -118,6 +119,8 @@ import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/analytics_crawl_gate_service.dart'
     as _i317;
+import 'package:sesori_dart_core/src/services/attribution_service.dart'
+    as _i492;
 import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
@@ -379,13 +382,6 @@ extension GetItInjectableX on _i174.GetIt {
         installedAppBuildRepository: gh<_i507.InstalledAppBuildRepository>(),
       ),
     );
-    gh.lazySingleton<_i204.ProductAnalyticsService>(
-      () => _i204.ProductAnalyticsService(
-        analyticsRepository: gh<_i274.AnalyticsRepository>(),
-        preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i415.BridgeSettingsApi>(
       () => _i415.BridgeSettingsApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -422,22 +418,22 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i888.AnalyticsRouteListener>(
-      () => _i888.AnalyticsRouteListener(
-        routeSource: gh<_i366.RouteSource>(),
-        analyticsService: gh<_i204.ProductAnalyticsService>(),
+    gh.lazySingleton<_i492.AttributionService>(
+      () => _i492.AttributionService(
+        repository: gh<_i993.AttributionRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i7.SessionRepository>(
+      () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
     gh.lazySingleton<_i285.InstallationAnalyticsService>(
       () => _i285.InstallationAnalyticsService(
         capability: gh<_i684.AnalyticsRuntimeCapability>(),
         repository: gh<_i274.AnalyticsRepository>(),
-        attributionRepository: gh<_i993.AttributionRepository>(),
+        attributionService: gh<_i492.AttributionService>(),
       ),
-    );
-    gh.lazySingleton<_i7.SessionRepository>(
-      () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
@@ -449,6 +445,14 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
         routeSource: gh<_i366.RouteSource>(),
       ),
+    );
+    gh.lazySingleton<_i204.ProductAnalyticsService>(
+      () => _i204.ProductAnalyticsService(
+        analyticsRepository: gh<_i274.AnalyticsRepository>(),
+        preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
+        attributionService: gh<_i492.AttributionService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(
@@ -502,6 +506,13 @@ extension GetItInjectableX on _i174.GetIt {
         sessionRepository: gh<_i7.SessionRepository>(),
         defaultModelSelector: gh<_i895.DefaultModelSelector>(),
       ),
+    );
+    gh.lazySingleton<_i888.AnalyticsRouteListener>(
+      () => _i888.AnalyticsRouteListener(
+        routeSource: gh<_i366.RouteSource>(),
+        analyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i680.VoiceTranscriptionService>(
       () => _i680.VoiceTranscriptionService(

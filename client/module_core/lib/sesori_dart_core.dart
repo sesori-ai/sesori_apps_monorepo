@@ -161,6 +161,7 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 export "src/services/analytics_crawl_gate_service.dart";
+export "src/services/attribution_service.dart";
 export "src/services/catalog_rescan_service.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";

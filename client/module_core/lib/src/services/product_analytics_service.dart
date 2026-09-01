@@ -8,6 +8,7 @@ import "../foundation/models/product_analytics/product_analytics_preference.dart
 import "../logging/logging.dart";
 import "../repositories/analytics_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
+import "attribution_service.dart";
 import "models/deferred_product_analytics_candidates.dart";
 import "models/product_analytics_state.dart";
 import "product_analytics_generation_event_dispatcher.dart";
@@ -17,6 +18,7 @@ import "product_analytics_preference_service.dart";
 class ProductAnalyticsService({
   required final AnalyticsRepository _analyticsRepository,
   required final ProductAnalyticsPreferenceService _preferenceService,
+  required final AttributionService _attributionService,
 }) {
   final ProductAnalyticsGenerationEventDispatcher _schemaReadiness = ProductAnalyticsGenerationEventDispatcher();
   final ProductAnalyticsGenerationEventDispatcher _activationReadiness = ProductAnalyticsGenerationEventDispatcher();
@@ -60,6 +62,7 @@ class ProductAnalyticsService({
     required DateTime occurredAtUtc,
   }) async {
     if (_disposed) return AnalyticsDeliveryResult.failed;
+    unawaited(_attributionService.reportProductOutcome(event: event));
     final envelope = ProductAnalyticsEnvelope(event: event, occurredAtUtc: occurredAtUtc);
     final context = _preferenceService.deliveryContext;
     if (context != null) {

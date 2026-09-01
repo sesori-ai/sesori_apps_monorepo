@@ -26,9 +26,9 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular
       // can still perform privacy-preserving install attribution without IDFA/GAID.
       ..limitAdvertisingIdentifiers = true
-      // Partner data sharing remains limited until Sesori has a dedicated
-      // attribution-consent design approved for release.
-      ..limitDataSharing = true
+      // Partner data sharing is allowed for campaign attribution. Sesori still
+      // withholds advertising identifiers and sends no custom event properties.
+      ..limitDataSharing = false
       ..skAdNetworkEnabled = true
       ..enableLogging = false;
   }

@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:firebase_analytics/firebase_analytics.dart' as _i398;
 import 'package:firebase_core/firebase_core.dart' as _i982;
@@ -278,17 +279,18 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i681.SingularAttributionClient(
+        startup: gh<_i853.SingularAttributionStartup>(),
+        singular: gh<_i776.SingularStaticAdapter>(),
+        storage: gh<_i948.SecureStorage>(),
+      ),
+    );
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
       () => _i425.FirebaseAnalyticsReleaseCutoffSource(
         remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
       ),
       registerFor: {_firebaseEnabled},
-    );
-    gh.lazySingleton<_i948.AttributionClient>(
-      () => _i681.SingularAttributionClient(
-        startup: gh<_i853.SingularAttributionStartup>(),
-        singular: gh<_i776.SingularStaticAdapter>(),
-      ),
     );
     gh.lazySingleton<_i948.VoiceCapture>(
       () => _i698.FlutterVoiceCapture(

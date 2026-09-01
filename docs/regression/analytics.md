@@ -6,8 +6,8 @@ The mobile client reports a closed set of privacy-safe product events answering 
 adoption questions. Account-linked events carry a server-derived pseudonymous key and are governed by an account
 preference; five bounded account-less authentication events are the only exception: a three-event attempt funnel and
 Firebase's recommended `sign_up`/`login` outcomes. Separately, eligible Android/iOS release builds start Singular for
-install/session attribution and standard authentication conversion events with release-injected credentials. Desktop
-uses a no-op sink, the bridge is excluded, and the warehouse is external.
+install/session attribution, standard authentication conversion events, and two parameter-free activation milestones
+with release-injected credentials. Desktop uses a no-op sink, the bridge is excluded, and the warehouse is external.
 
 ## Required Behavior
 
@@ -49,10 +49,9 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
   newer than the production-submission cutoff defers startup until successful interactive authentication reports its
   first conversion event; a crawler that never authenticates remains off. Authentication may start Singular while the
   remote decision is still pending. Startup and event reporting are best-effort and must not block the app. The
-  configuration limits advertising identifiers and partner data sharing, removes Android advertising-ID permissions,
-  and sets no custom
-  user ID, custom events, deep-link handler, or uninstall token. The Basic Usage Analytics preference does not claim
-  to control this separate attribution scope.
+  configuration limits advertising identifiers, removes Android advertising-ID permissions, permits attribution-data
+  sharing with advertising partners, and sets no custom user ID, event properties, deep-link handler, or uninstall
+  token. The Basic Usage Analytics preference does not control this separate attribution scope.
 - A successful interactive authentication always reports Firebase's `login_attempt_completed`. A server-confirmed
   `created` status additionally reports the recommended `sign_up` event; `existing` reports the recommended `login`
   event; and forward-unknown status reports neither recommended event. `sign_up` and `login` are mutually exclusive,
@@ -62,16 +61,26 @@ uses a no-op sink, the bridge is excluded, and the warehouse is external.
 - The same successful authentication reports Singular's parameter-free standard `sng_login` event. It first reports
   parameter-free `sng_complete_registration` only when the auth server's operation-scoped account status is `created`;
   `existing` and forward-unknown statuses report Singular login only. The client never infers creation from local state.
+- One attribution coordinator owns every Singular dispatch trigger. A successful encrypted `ConnectionConnected`
+  transition reports parameter-free `bridge_paired`; the canonical successful `session_message_sent` or
+  `session_created_with_message` product outcome reports parameter-free `first_session_run` before the product
+  preference gate. The connection listener starts only after the asynchronous crawl-gate result is applied; replayed
+  status recovers an already-established connection, and one qualifying product outcome arriving earlier is retained
+  until that start rather than activating Singular from unresolved configuration. Each custom event is claimed in local
+  installation storage before SDK invocation and is sent at most once across repeated transitions, sessions, accounts,
+  and process restarts. Startup unavailability and storage uncertainty fail closed without claiming or risking a
+  duplicate. Pairing, opening/creating an empty session, offline queueing, permissions/questions, and failed outcomes
+  do not accidentally broaden full activation.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration plus standard-event mapping with fake adapters. |
-| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; first-frame and notification startup proceeding while the crawl gate is unresolved; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; interactive authentication lifting a pending or resolved gate for both SDKs; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; and Singular registration-before-login only for server-confirmed account creation. |
+| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration, partner-sharing posture, standard/custom event mapping, persisted claims, restart deduplication, and concurrent-claim coalescing with fake adapters. |
+| L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; first-frame and notification startup proceeding while the crawl gate is unresolved; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; interactive authentication lifting a pending or resolved gate for both SDKs; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; Singular registration-before-login only for server-confirmed account creation; bridge pairing only from a connected E2E outcome; and first-session attribution from the canonical successful message outcomes even while product analytics is preference-disabled. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
-| L5 Full | Release build against the real analytics properties and Firebase Remote Config: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, an ahead-of-production Play pre-launch report producing no Firebase or Singular rows while the cutoff fetch succeeds, the production submission workflow publishing its exact build cutoff, Singular install/session attribution and standard login/registration events observed without an advertising ID, custom user identity, or event attributes, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
+| L5 Full | Release build against the real analytics properties and Firebase Remote Config: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, an ahead-of-production Play pre-launch report producing no Firebase or Singular rows while the cutoff fetch succeeds, the production submission workflow publishing its exact build cutoff, Singular install/session attribution plus standard login/registration and one-shot `bridge_paired`/`first_session_run` events observed without an advertising ID, custom user identity, or event attributes, repeat pairing/sessions producing no additional custom events, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
 
 ## Exploration Guidance
 
@@ -101,10 +110,10 @@ account against a real property.
   observed; an analytics failure blocks a product outcome; or copy overclaims.
 - Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an
   unauthenticated Android build is newer than a successfully fetched production-submission cutoff; requests an
-  advertising-ID permission, sets a custom user identity, sends custom events,
-  attaches authentication-event attributes, broadens partner sharing, omits login after successful interactive
-  authentication, reports registration
-  without a server-confirmed `created` status, or reports either event for a non-interactive or unsuccessful flow.
+  advertising-ID permission, sets a custom user identity, attaches event properties, disables the owner-approved
+  partner-sharing posture, omits login after successful interactive authentication, reports registration without a
+  server-confirmed `created` status, reports either authentication event for a non-interactive or unsuccessful flow,
+  reports either activation event more than once per installation, or reports activation from any non-qualifying seam.
 
 ## Known Limitations
 
@@ -115,8 +124,8 @@ account against a real property.
   Account-less `sign_up`/`login` outcomes can also include that traffic; use the auth export for registration counts and
   curated account-keyed reporting for product user counts.
 - The preference governs account-linked events here and server reporting only, and a remote change applies on the next
-  authenticated generation, process start, or explicit settings action. It does not stop Singular install/session
-  attribution. Warehouse rollout remains an active plan.
+  authenticated generation, process start, or explicit settings action. It does not stop Singular install/session,
+  authentication, bridge-pairing, or first-session attribution. Warehouse rollout remains an active plan.
 - Singular's bundled iOS privacy manifest declares linked device-ID tracking and advertising/analytics purposes, so
   store-metadata review is a release gate. Vendor-side retention, deletion, and campaign setup are external and cannot
   be proven from this repository.
@@ -129,7 +138,8 @@ account against a real property.
 `client/module_core/lib/src/foundation/models/product_analytics/`; cutoff publication lives in
 `.github/workflows/submit-release.yml`, `.github/workflows/publish-firebase-analytics-release-cutoff.yml`, and
 `.github/scripts/publish_firebase_analytics_release_cutoff.py`; crawl policy lives in
-`client/module_core/lib/src/services/analytics_crawl_gate_service.dart`; account-outcome dispatch lives in
+`client/module_core/lib/src/services/analytics_crawl_gate_service.dart`; attribution trigger ownership lives in
+`client/module_core/lib/src/services/attribution_service.dart`, and authentication analytics orchestration lives in
 `client/module_core/lib/src/services/installation_analytics_service.dart`; Firebase cutoff access and delivery live
 under `client/app/lib/core/platform/`; Singular startup and delivery live under
 `client/app/lib/core/platform/singular/` and `client/app/lib/core/platform/singular_attribution_startup.dart`.
