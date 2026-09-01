@@ -280,6 +280,12 @@
   `SessionRepository`/`SessionService.abortSession` in lockstep. The reviewer
   explicitly passed the two-structure lifecycle design, the sweep
   simplification, and the disjoint-union status composition.
+- **Step 3 `architecture-implementation-review` (sub-agent, 2026-09-01), scope
+  commit `573a6b244e`: rejected with one finding, applied in `7d9ecd6658`:**
+  `ClaudeTrackedTool` flattened tool-vs-task into `bool isTask` plus a nullable
+  `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
+  `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
+  parsing, and the recorded refinements passed; not re-reviewed.
 - **Sixth bot round (chatgpt-codex-connector, cubic-dev-ai), applied:**
   side-effect-free `confirm` (no queue clearing, no child fan-out before a
   root `aborted` under `stop`); nested-task lifecycle frames resolved through
