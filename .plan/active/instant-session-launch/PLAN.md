@@ -530,8 +530,9 @@ and 5 are split exactly so state machinery and presentation review separately.
 - **Step 4:** `client/module_core` cubit/state/repository tests + analysis.
   Prove stage matching, handoff stash-only-on-emit, release-at-load, release
   on message and part events in one emission, failed-load/Retry preservation,
-  command-name queue release, reconciliation on refresh, timeout override on
-  both create paths, unchanged restoration.
+  command-launch release through the `launchId` promptId across queue dedupe
+  and echo swap plus the old-bridge positional fallback, reconciliation on
+  refresh, timeout override on both create paths, unchanged restoration.
 - **Step 5:** `client/module_prego` + `client/app` widget tests + analysis,
   including reduced-motion, semantics, split view, the single-status-line
   sending view, failed-branch bubble rendering, and the no-blank/no-dupe
