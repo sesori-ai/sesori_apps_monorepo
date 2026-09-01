@@ -23,9 +23,13 @@ child sessions with titles, activity, statuses, and unseen state.
   existing binding applies; discovery after a move therefore creates a new project
   rather than mutating the old one. An unknown catalog identifier is never
   interpreted as a path.
-- Opening validates the path and surfaces the git-initialization choice. Hiding
-  delists without destroying sessions or history. Import is explicit, per
-  plugin, atomic, non-destructive, cancellable, and attributes progress.
+- Opening validates the path and surfaces the git-initialization choice. The
+  add-project folder browser keeps hierarchy controls above the folder rows: an
+  up arrow moves to the parent, while Home and Root shortcuts jump to the host
+  user's home directory and filesystem root. Those controls remain available
+  while a navigated directory loads or reports an access failure. Hiding delists
+  without destroying sessions or history. Import is explicit, per plugin,
+  atomic, non-destructive, cancellable, and attributes progress.
 - A completed import reports both the totals it published and, separately, how
   much of that was new. The two are not interchangeable: a re-import of an
   unchanged catalog still publishes every row, so the totals stay at the full
@@ -321,6 +325,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
   `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/app/test/core/widgets/catalog_scan_row_test.dart`,
+  `client/app/test/features/project_list/add_project_dialog_test.dart`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
   `client/app/test/features/session_list/session_list_bar_test.dart`, and
   `client/app/test/features/session_list/session_list_panel_test.dart`
