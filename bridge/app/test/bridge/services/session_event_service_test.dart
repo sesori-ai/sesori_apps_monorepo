@@ -578,6 +578,41 @@ void main() {
       expect(output, isEmpty);
     });
 
+    test("delivers a subtask part whose child reference is not bound yet, without it", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+
+      final output = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 7,
+          event: const BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.subtask(
+              id: "backend-part",
+              sessionID: "backend-root",
+              messageID: "backend-message",
+              prompt: "explore",
+              description: "Explore",
+              agent: "explore",
+              taskState: null,
+              childSessionID: "backend-unpublished-child",
+            ),
+          ),
+        ),
+      );
+
+      final part = (output.single as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      expect(part.sessionID, equals("stable-root"));
+      expect(part.description, equals("Explore"));
+      expect(part.childSessionID, isNull);
+    });
+
     test("releases a pending root and descendants after its durable binding commits", () async {
       final rootEvent = BridgeSseSessionCreated(
         info: _sessionInfo(

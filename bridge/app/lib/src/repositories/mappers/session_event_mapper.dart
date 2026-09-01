@@ -72,6 +72,18 @@ class const SessionEventMapper() {
     };
   }
 
+  /// Backend session ids an event only refers to.
+  ///
+  /// Unlike [backendSessionIds] these never gate delivery: the event is
+  /// translated whether or not they resolve, and an unresolved one becomes
+  /// null. Keeping them out of the required set is what lets a plugin name a
+  /// child session before the bridge has bound it.
+  Set<String> optionalBackendSessionIds({required BridgeSseEvent event}) => switch (event) {
+    BridgeSseTerminalHandoff(:final event) => optionalBackendSessionIds(event: event),
+    BridgeSseMessagePartUpdated(part: PluginMessagePartSubtask(:final childSessionID)) => {?childSessionID},
+    _ => const <String>{},
+  };
+
   BridgeSseEvent? map({
     required BridgeSseEvent event,
     required Map<String, String> sessionIdsByBackendId,
@@ -174,7 +186,18 @@ class const SessionEventMapper() {
         null => null,
       },
       BridgeSseMessagePartUpdated(:final part) => switch (mapped(part.sessionID)) {
-        final sessionId? => BridgeSseMessagePartUpdated(part: part.copyWith(sessionID: sessionId)),
+        final sessionId? => BridgeSseMessagePartUpdated(
+          part: switch (part) {
+            // Only a subtask names a child, and that reference is optional:
+            // one the bridge has not bound yet becomes null rather than
+            // withholding the part.
+            final PluginMessagePartSubtask subtask => subtask.copyWith(
+              sessionID: sessionId,
+              childSessionID: mappedOptional(subtask.childSessionID),
+            ),
+            _ => part.copyWith(sessionID: sessionId),
+          },
+        ),
         null => null,
       },
       BridgeSseMessagePartDelta(:final sessionID, :final messageID, :final partID, :final field, :final delta) =>

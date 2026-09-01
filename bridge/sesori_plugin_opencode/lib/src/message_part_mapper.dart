@@ -81,6 +81,10 @@ class const MessagePartMapper() {
       prompt: raw.prompt,
       description: raw.description,
       agent: raw.agent,
+      // OpenCode reports neither a subtask lifecycle nor the session its work
+      // runs in; the client associates it by title instead.
+      taskState: null,
+      childSessionID: null,
     ),
     AgentPart() => PluginMessagePart.agent(
       id: raw.id,
