@@ -25,8 +25,10 @@ Combine semantic app automation with visual/native-system inspection:
 Both automation servers are declared in `.mcp.json`. Their shared launcher
 refuses to start versions other than Peekaboo 4.2.2 and agent-device 0.20.10.
 Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
-search/describe a tool before calling it. Other supported hosts can load the
-same servers directly.
+search/describe a tool before calling it. The shared `.mcp.json` command is
+repository-relative, so other hosts must launch it with the repository root as
+their working directory. If a host does not guarantee that working directory,
+point its host-specific configuration at the launcher's absolute path instead.
 
 The reviewed host setup for this workflow is:
 
