@@ -415,6 +415,13 @@ token-only local sessions.
 > takeover state + Take-over works. Gate outcome: the desktop app replaces
 > the terminal bridge for daily use.
 
+**MT gate B accepted — 2026-09-01.** The user reported the full macOS-primary
+daily-driver matrix passed on the final merged build after PRs #1222 and #1230:
+autostart/hidden last-On restoration and sticky disable, second-instance focus,
+GUI-crash helper teardown and restoration, live/dead-helper logout, 10+ minute
+sleep/wake recovery, and explicit cross-machine takeover without a restart war.
+The desktop app is accepted as the terminal bridge replacement for daily use.
+
 ### M4 — Cockpit
 
 **Step 13 — ⚙️ Desktop becomes a relay client.** Register the missing
@@ -438,14 +445,15 @@ screen may never land ahead of its root wiring. Token-only local restores hand
 connection startup to a desktop auth/connection coordinator rather than the
 projection cubit.
 
-Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete; the
-next implementation step waits for the user-run MT gate B above.
+Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete, and
+MT gate B was accepted on 2026-09-01. Step 14 remains pending until the user
+explicitly authorizes it.
 
 ### Plan divergence — post-Step 13 Gate B findings (2026-08-31)
 
 The first daily-driver checks exposed three gaps that were not represented at
-the Step 13/14 boundary. This is pre-Gate-B hardening, not Step 14; the
-cockpit extraction remains blocked until the user accepts MT Gate B.
+the Step 13/14 boundary. This was pre-Gate-B hardening, not Step 14; both
+follow-ups merged before the user accepted MT Gate B.
 
 | Finding | Evidence | Revised plan |
 |---|---|---|
@@ -467,11 +475,12 @@ two-PR pre-gate follow-up:
    coverage (PR #1222, merged).
 2. `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` —
    quit semantics, takeover orchestration, shell controls, and lifecycle
-   coverage (PR #1230, open).
+   coverage (PR #1230, merged).
 
-The series does not change the original 22-step numbering or mark Gate B done;
-Step 14 must not begin until the user records the gate outcome and explicitly
-authorizes it.
+The series does not change the original 22-step numbering. Its merge did not
+itself mark Gate B done; the user accepted the gate after running the final
+matrix on 2026-09-01. Step 14 is no longer gate-blocked but remains pending
+until the user explicitly authorizes it.
 
 **Step 14 — ⚙️ Create `module_app_ui` + shared foundations.** New Flutter
 package; move `l10n/` (ownership of `l10n.yaml`/codegen) and the
