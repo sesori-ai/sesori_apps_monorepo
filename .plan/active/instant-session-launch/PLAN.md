@@ -444,6 +444,12 @@ Unchanged from the shipped behavior, restated for completeness:
   progress events arrive; the status line keeps the generic rotating copy. The
   chat-shaped launch, handoff, and release rule are entirely client-side and
   work unchanged. The longer create timeout only widens the success window.
+  One accepted visual limitation: a Claude command launch exposes its accepted
+  command in `bridgeQueuedPrompts` under a bridge-generated id the client
+  cannot match, so the handoff bubble and the server queue row render together
+  for the seconds-long queue window until dispatch/echo. Cosmetic, transient,
+  and self-correcting; per the low-damage compatibility rule it gets no
+  reconciliation machinery.
 - **Old client + new bridge:** no `launchId` is sent, so the bridge emits no
   progress events; even a stray new event tag would be skipped by the shipped
   decoder. Behavior is unchanged.
@@ -612,10 +618,11 @@ wall-clock SLA.
 - The positional release rule could theoretically drop the bubble on a foreign
   first echo; no current plugin can produce one before the initial dispatch,
   and the outcome self-corrects. Accepted residual, no guard.
-- Against an old bridge, a command-launch bubble has no promptId match and
-  falls back to positional release; a same-named user command queued inside
-  the echo window can release it early. Transient, self-correcting, old
-  bridges only. Accepted residual.
+- Against an old bridge, a command-launch bubble has no promptId match: the
+  server queue row and the handoff bubble render together for the queue
+  window, and positional release governs the swap — a same-named user command
+  queued inside the echo window can also release the bubble early. Both are
+  transient, self-correcting, old-bridge-only visuals. Accepted residuals.
 - A 180 s create timeout means a genuinely lost response is detected later
   than today on the launch view. Back remains available throughout, and the
   uncertain-outcome warning semantics are unchanged.
