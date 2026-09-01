@@ -439,9 +439,9 @@ New mutable parts, each justified:
 3. **Client:** one `ConnectionService.events` subscription in
    `NewSessionCubit`, filtered by the current in-flight `launchId`.
 
-State fields (immutable snapshots, not coordination): `stage` on
-`NewSessionPhaseSending`; `launchSubmission` on `SessionDetailLoading` and
-`SessionDetailLoaded`.
+State fields (immutable snapshots, not coordination): `launchId` and `stage`
+on `NewSessionPhaseSending`; `launchSubmission` on `SessionDetailLoading`,
+`SessionDetailLoaded`, and `SessionDetailFailed`.
 
 Deliberately not added: launch registries, stage ordering guards, terminal
 events, retry/timeout machinery for the handoff bubble, echo-correlation state,
