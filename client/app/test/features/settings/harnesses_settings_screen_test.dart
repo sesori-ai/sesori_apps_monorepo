@@ -392,12 +392,15 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets("device-code sheet opens browser explicitly and dismissal does not cancel", (tester) async {
+  testWidgets("dismissed authentication stays gated and can be reopened", (tester) async {
     _useTallSurface(tester);
+    final secondAuthentication = _authenticationRequired.copyWith(
+      setup: _authenticationRequired.setup.copyWith(id: "claude", displayName: "Claude"),
+    );
     await tester.pumpWidget(_app());
     snapshots.add(
       PluginManagementLoadResult.supported(
-        response: _response.copyWith(plugins: [_authenticationRequired]),
+        response: _response.copyWith(plugins: [_authenticationRequired, secondAuthentication]),
         refreshError: null,
       ),
     );
@@ -423,6 +426,15 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
+    expect(
+      tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_claude"))).onTap,
+      isNull,
+    );
+
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    expect(find.text("ABCD-EFGH"), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(1);
   });
 
   testWidgets("device-code sheet copies only the presented one-time code", (tester) async {

@@ -35,10 +35,12 @@ Date: 2026-09-01.
   lifecycle regression documents for the new shared ownership and desktop
   destinations.
 - Review hardening keeps mobile package metadata behind its registered platform
-  client, starts desktop product-analytics preference synchronization before
-  Profile can render, pops pushed Profile/Harnesses routes back to Settings,
-  and serializes harness authentication presentation across rows while allowing
-  an uncertain cancellation challenge to be reopened.
+  client, starts desktop analytics locally before launch and defers authenticated
+  reconciliation until after the first frame, pops pushed Profile/Harnesses back
+  to Settings with a standalone Home fallback, and serializes harness
+  authentication presentation across rows while allowing dismissed and uncertain-
+  cancellation challenges to be reopened. Desktop logout prepares analytics
+  before token clearing and resumes it when token clearing fails.
 
 No database schema, persisted-data format, bridge/client wire contract,
 authentication token authority, or analytics event changed. Mobile behavior is
@@ -72,9 +74,12 @@ package metadata, and shared authentication presentation with no findings.
   integration files.
 - `asdf exec flutter build macos` completed successfully (`Sesori.app`,
   59.6 MB).
-- Review follow-up: all three owning analyzers remained clean; 70 focused
+- First review follow-up: all three owning analyzers remained clean; 70 focused
   mobile settings/harness tests and 4 focused desktop smoke/settings tests
   passed; a fresh macOS release build succeeded (`Sesori.app`, 59.8 MB).
+- Second review follow-up: all four owning analyzers remained clean; 42 focused
+  harness tests, 14 desktop-logout/DI tests, and 4 desktop smoke/settings tests
+  passed; a fresh macOS release build again succeeded (`Sesori.app`, 59.8 MB).
 - `git diff --check` is clean. Windows and Linux desktop builds remain covered
   by the PR's native CI matrix.
 

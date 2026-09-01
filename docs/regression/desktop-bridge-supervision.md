@@ -64,8 +64,10 @@ and keep native close/quit behavior safe.
   Desktop injects account state, navigation, external-link/package metadata,
   and its coordinated logout workflow; it deliberately omits the mobile push-
   notification preference row. Profile and Harnesses pop back to Settings when
-  pushed, and analytics preference synchronization starts before Profile can
-  render. The desktop's one app-wide connection banner remains the only banner
+  pushed. The analytics service starts before the app, while authenticated
+  preference reconciliation is scheduled after the first rendered frame and
+  before AuthGate can expose Profile, so a slow server cannot leave the window
+  blank. The desktop's one app-wide connection banner remains the only banner
   around these routed views.
 - Appearance and default-input preferences are read before the first desktop
   frame, provided above the router, and persisted through the same shared
@@ -81,15 +83,17 @@ and keep native close/quit behavior safe.
   delete attempt has a bounded timeout and is best-effort offline; a confirmed
   deletion clears the local record, while an unconfirmed deletion keeps it for
   a later retry. A different account never submits or clears the record. Local
-  tokens are cleared only after a successful helper stop; if stop fails,
-  authentication remains intact. Other devices are never logged out.
+  analytics preparation runs after that successful stop and before local tokens
+  are cleared; failed token clearing resumes analytics for the still-signed-in
+  session. If stop fails, authentication and analytics remain intact. Other
+  devices are never logged out.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, and the shared desktop Settings route with mobile-only notifications omitted. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, app-wide preference persistence, desktop settings/harness composition, and profile logout delegation; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -144,7 +148,10 @@ the status and bounded recent output.
   a saved appearance flashes the system theme at startup, changing it affects
   only one route, a routed settings view renders a second connection banner,
   desktop exposes a dead mobile-notification preference row, a pushed settings
-  child closes to Home, or Profile leaves usage analytics stuck on Loading.
+  child closes to Home, a standalone child cannot close, startup reconciliation
+  leaves the window blank, Profile leaves usage analytics stuck on Loading, or
+  logout clears auth before analytics preparation and fails to resume analytics
+  when token clearing fails.
 
 ## Known Limitations
 

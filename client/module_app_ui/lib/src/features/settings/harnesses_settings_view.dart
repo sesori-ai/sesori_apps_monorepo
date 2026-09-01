@@ -934,16 +934,9 @@ Future<void> _showAuthenticationSheet({
       child: const _AuthenticationSheet(),
     ),
   );
-  final authentication = switch (cubit.state) {
-    PluginManagementReady(:final authentication) => authentication,
-    PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
-  };
-  if (!cubit.isClosed &&
-      _authenticationChallenge(state: cubit.state) != null &&
-      authentication is! PluginAuthenticationPresentationCancelling &&
-      authentication is! PluginAuthenticationPresentationCancellingUncertain) {
-    cubit.dismissAuthentication();
-  }
+  // Dismissing presentation is not cancellation. Retain the cubit's challenge
+  // until terminal progress settles the upstream operation so peer harnesses
+  // remain gated and the owning row can reopen this same sheet.
 }
 
 class const _AuthenticationSheet() extends StatelessWidget {

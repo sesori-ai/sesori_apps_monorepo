@@ -76,5 +76,10 @@ void _pushRoute({required BuildContext context, required AppRoute route}) {
 
 void _popRoute({required BuildContext context}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  GoRouter.of(context).pop();
+  final GoRouter router = GoRouter.of(context);
+  if (router.canPop()) {
+    router.pop();
+    return;
+  }
+  _goDesktopHome();
 }

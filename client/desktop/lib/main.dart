@@ -37,11 +37,14 @@ Future<void> main(List<String> arguments) async {
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.
   getIt<ConnectionService>();
-  // Profile owns the shared analytics preference control, so synchronize the
-  // service before that route can render instead of leaving it in Loading.
+  // Start local analytics state before building. Authenticated reconciliation
+  // waits until after the first frame so a slow server cannot blank startup;
+  // AuthGate's checking frame keeps Profile unavailable until then.
   final ProductAnalyticsService productAnalyticsService = getIt();
   await productAnalyticsService.start();
-  await productAnalyticsService.markPostSplashReady();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_markProductAnalyticsReady(service: productAnalyticsService));
+  });
   runApp(
     SesoriDesktopApp(
       hiddenLaunch: hiddenLaunch,
@@ -50,4 +53,12 @@ Future<void> main(List<String> arguments) async {
     ),
   );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
+}
+
+Future<void> _markProductAnalyticsReady({required ProductAnalyticsService service}) async {
+  try {
+    await service.markPostSplashReady();
+  } on Object catch (error, stackTrace) {
+    logw("Failed to reconcile product analytics after desktop startup", error, stackTrace);
+  }
 }
