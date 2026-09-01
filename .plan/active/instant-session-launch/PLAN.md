@@ -15,8 +15,11 @@
   path's own emissions and preserved across `SessionDetailFailed`/Retry,
   release triggered on the part-update path as well as message envelopes,
   command-launch reconciliation matched by command name against the bridge
-  queue, and the core-widget extraction narrowed to
-  `UserMessageBubble`/`MarkdownMessageImage` so core imports no feature files.
+  queue, and the core-widget extraction settled on the verified neutral closure
+  (`UserMessageBubble`, `MarkdownMessageImage`, `image_attachment_viewer.dart`)
+  so core imports no feature files. A fourth round then corrected the timeout
+  above the summed cold budget (180 s), removed the double status rail, and
+  rendered the retained bubble on the failed detail branch.
   The dated-marker request for `launchId` was declined in favor of the shipped
   `promptId` doc-comment posture.
 - **Plan date:** 2026-08-31
@@ -186,8 +189,8 @@ duplicate-risk warning.
   session exists and the existing busy surfaces (app-bar activity indicator,
   composer stop affordance, streaming parts) are the honest signal. The line is
   not persisted, not a transcript row, and not a `MessagePart`.
-- **Create timeout rises to 120 s.** The bridge's own budgets already exceed
-  30 s for a dormant launch, and with live stage feedback a longer wait is
+- **Create timeout rises to 180 s.** The bridge's own budgets already exceed
+  30 s for a dormant launch — and sum to ~130 s worst-case cold, and with live stage feedback a longer wait is
   honest. Failure semantics are unchanged; Back still leaves the launch in the
   background. Old-bridge pairings simply keep rotating generic copy for longer
   before the existing uncertain-failure restore.
@@ -262,11 +265,17 @@ duplicate-risk warning.
   is sending with the event's `launchId`. Late, foreign, or post-settlement
   events are ignored by that same match.
 - Both create paths in `SessionApi` switch to `postWithTimeout` with a
-  create-specific `Duration(seconds: 120)`. `postWithTimeout` currently
-  hardcodes `sensitiveResponse: true`, which would null the raw error body out
-  of local create-failure logs; it gains a `sensitiveResponse` parameter so the
-  create path keeps its diagnostically useful error text while the existing
-  attachment caller stays sensitive.
+  create-specific `Duration(seconds: 180)`. The deadline must sit above the
+  complete sequential bridge budget, not inside it: a cold dedicated launch can
+  legitimately spend up to ~130 s (runtime version probe ~10 s + ACP connect
+  15 s + base-branch fetch 30 s + `git worktree add` process budget +
+  backend `session/new` 60 s) before smaller Git/database work and optional
+  command acceptance, so 180 s covers it with transport margin instead of
+  reproducing the uncertain-failure path this change exists to remove.
+  `postWithTimeout` currently hardcodes `sensitiveResponse: true`, which would
+  null the raw error body out of local create-failure logs; it gains a
+  `sensitiveResponse` parameter so the create path keeps its diagnostically
+  useful error text while the existing attachment caller stays sensitive.
 - Tests: stage updates only for the matching in-flight launch; failure
   restoration and background-leave behavior unchanged; timeout override
   applied on both the plain and attachment create paths.
@@ -341,31 +350,42 @@ duplicate-risk warning.
   reduced-motion-aware cadence. It knows nothing about sessions or transport.
 - The surface extracted to `client/app/lib/core/widgets/` (the documented
   shared-widget location) is exactly the closure the bubble needs and nothing
-  more: `queued_message_bubble.dart`, plus `UserMessageBubble` and its image
+  more: `queued_message_bubble.dart`; `UserMessageBubble` and its image
   builder `MarkdownMessageImage` moved out of `user_message_card.dart` /
-  `text_part_widget.dart`. `UserMessageCard`, `AttachmentCollectionWidget`,
-  and the rest of `text_part_widget.dart` stay in `features/session_detail/`
-  and import the bubble from core. Core widgets import no feature files, and
-  no `features/new_session` → `features/session_detail` import is added.
+  `text_part_widget.dart`; and `image_attachment_viewer.dart`, which
+  `MarkdownMessageImage` invokes for tap-to-view and which already imports
+  only packages and `core/` (its other consumers, `text_part_widget.dart` and
+  `file_part_widget.dart`, switch to the core import). `UserMessageCard`,
+  `AttachmentCollectionWidget`, and the rest of `text_part_widget.dart` stay
+  in `features/session_detail/` and import the extracted widgets from core.
+  Core widgets import no feature files, and no
+  `features/new_session` → `features/session_detail` import is added.
 - `NewSessionScreen` sending branch replaces the centered `PregoLaunchStatus`
   with a chat-shaped body: the submission rendered through `QueuedMessageBubble`
-  with the existing sending presentation (honest — the POST is in flight; no
-  cancel affordance exists because creation cannot be cancelled), and
-  `PregoInlineLaunchStatus` beneath it. Stage copy is app-owned in
+  with the new rail-less presentation, and `PregoInlineLaunchStatus` beneath it
+  as the single status line. The bubble's existing sending rail is deliberately
+  not used here — composing it with the stage line would render two
+  simultaneous status rows, and the stage line subsumes its meaning. No cancel
+  affordance exists because creation cannot be cancelled. Stage copy is app-owned in
   `app_en.arb`: "Starting {harness}…" (display name from existing client
   branding), "Setting up workspace…", "Creating session…"; a null/unknown
   stage falls back to the existing rotating `newSessionLoadingMessage1..3`.
   Composer stays unmounted; failure remounts it with the restored draft exactly
   as today.
-- `QueuedMessageBubble` gains one read-only, rail-less presentation for an
-  accepted launch submission (content-only, not outlined), used after the
-  bridge has accepted the input — the later echo swap is then visually
-  invisible.
+- `QueuedMessageBubble` gains one read-only, rail-less presentation
+  (content-only, not outlined) used for the launch submission throughout: on
+  the sending view, where `PregoInlineLaunchStatus` is the only status line,
+  and after acceptance on the detail route — the later echo swap is then
+  visually invisible.
 - `SessionDetailBody` loading branch: when `loading.launchSubmission` is
   non-null, render the same chat-shaped pending view (bubble +
   `PregoInlineLaunchStatus` with the generic rotating copy) instead of the
   centered status, preserving visual continuity across the route replacement.
   Ordinary session opens (null handoff) keep the current centered status.
+- `SessionDetailBody` failed branch: a non-null `failed.launchSubmission`
+  renders the bubble above `SessionDetailErrorView` — retaining the handoff
+  data through failure (Design §4) is pointless if the failure screen blanks
+  the message until Retry.
 - `SessionDetailMessageList` renders `launchSubmission` as the oldest overlay
   row (before queued/sending rows), keyed by its local promptId so the row
   identity is stable across loading/loaded emissions.
@@ -380,7 +400,7 @@ duplicate-risk warning.
 
 Unchanged from the shipped behavior, restated for completeness:
 
-- Definitive rejection, timeout (now 120 s), and response loss on the
+- Definitive rejection, timeout (now 180 s), and response loss on the
   still-current route restore the exact submission with the duplicate-risk
   warning; the launch bubble and status line are simply replaced by the
   restored composer.
@@ -497,7 +517,8 @@ and 5 are split exactly so state machinery and presentation review separately.
   command-name queue release, reconciliation on refresh, timeout override on
   both create paths, unchanged restoration.
 - **Step 5:** `client/module_prego` + `client/app` widget tests + analysis,
-  including reduced-motion, semantics, split view, and the no-blank/no-dupe
+  including reduced-motion, semantics, split view, the single-status-line
+  sending view, failed-branch bubble rendering, and the no-blank/no-dupe
   swap frames.
 
 CI runs the full matrix; the PR monitor owns failures.
@@ -559,7 +580,7 @@ wall-clock SLA.
 - The positional release rule could theoretically drop the bubble on a foreign
   first echo; no current plugin can produce one before the initial dispatch,
   and the outcome self-corrects. Accepted residual, no guard.
-- A 120 s create timeout means a genuinely lost response is detected later
+- A 180 s create timeout means a genuinely lost response is detected later
   than today on the launch view. Back remains available throughout, and the
   uncertain-outcome warning semantics are unchanged.
 - The launch bubble is rendered from client memory until the echo; a client
