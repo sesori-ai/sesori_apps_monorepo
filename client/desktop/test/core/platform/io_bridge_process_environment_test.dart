@@ -9,6 +9,11 @@ void main() {
       var calls = 0;
       String? shell;
       List<String>? capturedArguments;
+      final String shellOutput = <String>[
+        "BASH_FUNC_path%%=() {\nPATH=\$PATH:/injected\n}",
+        "PATH=/shell/bin:/base/bin:/non-\u00e9:relative",
+        "SECRET_FROM_SHELL=do-not-copy",
+      ].join("\u0000");
       final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
         isMacOS: true,
         baseEnvironment: const <String, String>{
@@ -29,16 +34,9 @@ void main() {
               capturedArguments = List<String>.of(arguments);
               expect(environment, isNull);
               expect(timeout, const Duration(seconds: 5));
-              return ProcessResult(
-                1,
-                0,
-                "shell startup output\nSECRET_FROM_SHELL=do-not-copy\n"
-                    "PATH=/shell/bin:/base/bin:/non-\u00e9:relative\n",
-                "",
-              );
+              return ProcessResult(1, 0, shellOutput, "");
             },
         shellTimeout: const Duration(seconds: 5),
-        fallbackPathDirectories: const <String>["/fallback/bin", "/base/bin"],
       );
 
       final Map<String, String> first = await environment.resolve();
@@ -47,8 +45,9 @@ void main() {
       expect(first, same(second));
       expect(calls, 1);
       expect(shell, "/bin/zsh");
-      expect(capturedArguments, ["-ilc", "/usr/bin/env"]);
-      expect(first["PATH"], "/shell/bin:/base/bin:/non-é:/fallback/bin");
+      expect(capturedArguments, ["-ilc", "/usr/bin/env -0"]);
+      expect(first["PATH"], "/shell/bin:/base/bin:/non-é");
+      expect(first["PATH"], isNot(contains("/injected")));
       expect(first["EXISTING_VARIABLE"], isNull);
       expect(first["SECRET_FROM_SHELL"], isNull);
       expect(() => first["PATH"] = "/changed", throwsUnsupportedError);
@@ -81,16 +80,15 @@ void main() {
               );
             },
         shellTimeout: const Duration(seconds: 5),
-        fallbackPathDirectories: const <String>["/fallback/bin"],
       );
 
       final Map<String, String> resolved = await environment.resolve();
 
       expect(invokedShell, configuredShell);
-      expect(resolved["PATH"], "/custom/shell/bin:/base/bin:/fallback/bin");
+      expect(resolved["PATH"], "/custom/shell/bin:/base/bin");
     });
 
-    test("uses fallback paths when the login shell cannot be resolved", () async {
+    test("preserves the inherited environment when the login shell cannot be resolved", () async {
       final IoBridgeProcessEnvironment environment = IoBridgeProcessEnvironment.forTesting(
         isMacOS: true,
         baseEnvironment: const <String, String>{"PATH": "/system/bin"},
@@ -101,12 +99,11 @@ void main() {
           required Duration timeout,
         }) async => ProcessResult(1, 1, "", "login shell unavailable"),
         shellTimeout: const Duration(seconds: 5),
-        fallbackPathDirectories: const <String>["/user/bin"],
       );
 
       final Map<String, String> resolved = await environment.resolve();
 
-      expect(resolved["PATH"], "/system/bin:/user/bin");
+      expect(resolved, isEmpty);
     });
 
     test("does not rewrite non-macOS PATH separators or invoke a shell", () async {
@@ -125,7 +122,6 @@ void main() {
               return ProcessResult(1, 0, "", "");
             },
         shellTimeout: const Duration(seconds: 5),
-        fallbackPathDirectories: const <String>["/unused"],
       );
 
       final Map<String, String> resolved = await environment.resolve();

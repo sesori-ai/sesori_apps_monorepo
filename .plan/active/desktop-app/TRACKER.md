@@ -67,7 +67,8 @@ not grant or persist it.
 These findings are a pre-Gate-B hardening divergence, not a new numbered plan
 step. During review, the environment lookup was kept below the service layer:
 the process API resolves it through the repository, the service rechecks
-cancellation before spawn, and the fallback list remains backend-neutral. The
+cancellation before spawn, and a failed probe preserves the inherited
+environment unchanged. The
 work is intentionally split into two manageable PRs:
 
 | Follow-up | Status | Scope |
