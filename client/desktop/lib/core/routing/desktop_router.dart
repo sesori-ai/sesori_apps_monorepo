@@ -154,10 +154,8 @@ void _pushRoute({required BuildContext context, required AppRoute route}) {
 }
 
 void _popRouteOrGo({required BuildContext context, required AppRoute fallback}) {
-  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  final GoRouter router = GoRouter.of(context);
-  if (router.canPop()) {
-    router.pop();
+  if (context.canPop()) {
+    context.pop();
     return;
   }
   _goRoute(context: context, route: fallback);
