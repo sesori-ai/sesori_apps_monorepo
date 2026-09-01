@@ -312,6 +312,12 @@
   `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
   `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
   parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 4 `architecture-implementation-review` (sub-agent, 2026-09-01), scope
+  branch vs `origin/main`: rejected with one finding, applied in `0a6bd0b67a`:**
+  the tracker still encoded `agent-<id>` as a literal while
+  `ClaudeSubagentSessionId` claimed ownership; it now calls `fromAgentId`.
+  Layering, sweep neutrality, and the recorded refinements passed; not
+  re-reviewed.
 - **Step 3 PR bot round (chatgpt-codex-connector, 2026-09-01):** applied —
   `ClaudeSessionProcessRepository.teardown` publishes
   `ClaudeSessionProcessExited` (an abort, delete, reap, or effort restart had
