@@ -22,11 +22,11 @@ behavior from extension-only behavior, and propose the smallest Sesori changes
 that improve or simplify the integration.
 
 This skill is intentionally Pi-only. Use the repository's multi-harness
-workflow for a multi-harness refresh: read
-`.opencode/skills/update-backend-runtimes/SKILL.md` explicitly with the `read`
-tool from the repository root before proceeding. If that path is absent, stop
-and report the missing handoff rather than assuming this Pi-only workflow covers
-other backends.
+workflow for a multi-harness refresh: open
+`.opencode/skills/update-backend-runtimes/SKILL.md` with the file-reading
+mechanism available to the agent, resolving the path from the repository root,
+before proceeding. If that path is absent, stop and report the missing handoff
+rather than assuming this Pi-only workflow covers other backends.
 
 ## Scope and invariants
 
@@ -89,6 +89,16 @@ compatibility change:
    Download `SHA256SUMS` when present and confirm every line agrees with the
    GitHub asset digest. Do not guess mappings, accept a missing digest, flatten
    an archive, or invoke Pi's installer scripts.
+4. Verify source-to-artifact provenance before treating the assets as eligible
+   for pinning. Resolve the release tag to an immutable commit and inspect the
+   release workflow or other published provenance. Accept a signed/attested
+   artifact whose subject digest is tied to that audited commit, or reproduce
+   each target archive from the exact source tag in a clean build environment
+   and compare the normalized contents and resulting digest. If the upstream
+   project publishes neither verifiable provenance nor a reproducible build
+   path, mark the pin blocked and report why; a GitHub-generated digest and a
+   benign probe prove integrity and basic behavior, not source-to-artifact
+   identity.
 
 ## Phase 2 — Audit the release diff in aggregate
 
@@ -263,9 +273,13 @@ executable even after its official digest is verified:
    `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
    The probe must remain unauthenticated; use a separately authorized and
    explicitly approved procedure if authenticated behavior needs testing.
-6. Verify the absolute entrypoint's `--version` output identifies exactly the
-   candidate release, rather than merely returning success. Preserve the
-   normal environment policy in the production launch design.
+6. Run the separate `--version` process with a bounded 10-second timeout and
+   the same process-group/Job Object cleanup guarantee. If it hangs or exits
+   unexpectedly, terminate its entire process tree before reporting failure;
+   do not let it block the RPC probe or filesystem cleanup. Verify that its
+   output identifies exactly the candidate release, rather than merely
+   returning success. Preserve the normal environment policy in the production
+   launch design.
 7. Launch the extracted entrypoint with exactly these arguments:
 
    ```text
@@ -321,6 +335,8 @@ Before editing the runtime target or production protocol code, report:
 - current target and candidate stable release/date;
 - unchanged PATH minimum;
 - all six asset names, sizes, and verified SHA-256 values;
+- source-to-artifact provenance or reproducible-build evidence, including any
+  blocker;
 - aggregate diff size and the high/medium findings with source links;
 - which findings are truly visible on JSONL/RPC stdout;
 - probe results and any platform limitations;
@@ -341,8 +357,10 @@ explicitly requested, while the runtime/capability PR remains behind this gate.
 ## Phase 5 — Implement only after approval
 
 Enter this phase only after the candidate has passed the sandboxed live probe
-on a suitable host and the user has approved the resulting scope. A skipped or
-failed probe blocks target edits; artifact verification alone is insufficient.
+on a suitable host, source-to-artifact provenance has been verified (or the
+artifacts have been reproducibly rebuilt), and the user has approved the
+resulting scope. A skipped or failed gate blocks target edits; digest or source
+verification alone is insufficient.
 
 For an approved target refresh:
 
