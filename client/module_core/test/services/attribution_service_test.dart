@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -10,11 +8,7 @@ import "package:test/test.dart";
 class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _RecordingAttributionRepository() extends Mock implements AttributionRepository {
-  final readiness = StreamController<void>.broadcast(sync: true);
   final events = <AttributionEvent>[];
-
-  @override
-  Stream<void> get readinessStream => readiness.stream;
 
   @override
   Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
@@ -38,13 +32,11 @@ void main() {
     connectionService = _MockConnectionService();
     statuses = BehaviorSubject.seeded(_connected);
     when(() => connectionService.status).thenAnswer((_) => statuses.stream);
-    when(() => connectionService.currentStatus).thenAnswer((_) => statuses.value);
     service = AttributionService(repository: repository, connectionService: connectionService);
   });
 
   tearDown(() async {
     await service.dispose();
-    await repository.readiness.close();
     await statuses.close();
   });
 
@@ -60,20 +52,5 @@ void main() {
       AttributionEvent.bridgePaired,
       AttributionEvent.bridgePaired,
     ]);
-  });
-
-  test("re-reports an established connection when the sink becomes ready", () async {
-    service.start();
-    await Future<void>.delayed(Duration.zero);
-    repository.readiness.add(null);
-
-    expect(repository.events, [
-      AttributionEvent.bridgePaired,
-      AttributionEvent.bridgePaired,
-    ]);
-
-    statuses.add(const ConnectionStatus.connectionLost(config: _config));
-    repository.readiness.add(null);
-    expect(repository.events, hasLength(2));
   });
 }

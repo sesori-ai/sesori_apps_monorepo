@@ -66,13 +66,12 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   reports parameter-free `bridge_paired`; the canonical successful `session_message_sent` or
   `session_created_with_message` product outcome reports parameter-free `first_session_run` before the product
   preference gate. The connection listener starts only after the asynchronous crawl-gate result is applied; replayed
-  status recovers an already-established connection, and an established connection is re-reported when the sink
-  becomes ready later. The product-outcome service retains one qualifying earlier outcome until the attribution sink
-  becomes ready after either the crawl gate or interactive authentication. The module-core attribution repository
-  claims each one-shot event in app-support storage before SDK invocation; this storage survives process restart and
-  upgrade, is removed with the app, and may be carried over by a platform backup restore, which only undercounts
-  that reinstall. Each event is sent at most once across repeated transitions,
-  sessions, and accounts within that installation. Startup unavailability and storage uncertainty fail closed without
+  status recovers an already-established connection. When the sink is not ready at a qualifying outcome, the
+  repository declines without claiming and the next reconnect or message reports it. The module-core attribution
+  repository claims each one-shot event in app-support storage before SDK invocation; this storage survives process
+  restart and upgrade, is removed with the app, and may be carried over by a platform backup restore, which only
+  undercounts that reinstall. Each event is sent at most once across repeated transitions, sessions, and accounts
+  within that installation. Startup unavailability and storage uncertainty fail closed without
   SDK delivery or duplicate risk. Pairing, opening/creating an empty session, offline queueing,
   permissions/questions, and failed outcomes do not accidentally broaden full activation.
 

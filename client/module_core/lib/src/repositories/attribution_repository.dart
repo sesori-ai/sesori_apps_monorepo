@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
@@ -36,7 +34,6 @@ class AttributionRepository._({
   }) : this._(api: api, claimStorage: claimStorage, deliveryDeadline: deliveryDeadline);
 
   bool get isReady => _api.isReady;
-  Stream<void> get readinessStream => _api.readinessStream;
 
   Future<AnalyticsDeliveryResult> logEvent({required AttributionEvent event}) async {
     try {

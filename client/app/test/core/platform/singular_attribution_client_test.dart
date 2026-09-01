@@ -80,10 +80,8 @@ void main() {
       )
       ..applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
     final client = SingularAttributionClient(startup: startup, singular: singular);
-    final readiness = expectLater(client.readinessStream, emits(isNull));
 
     await client.logEvent(event: AttributionEvent.accountLogin);
-    await readiness;
     await client.logEvent(event: AttributionEvent.firstSessionRun);
 
     expect(client.isReady, isTrue);

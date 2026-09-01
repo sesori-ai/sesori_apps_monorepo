@@ -14,15 +14,11 @@ class AttributionService({
   required final ConnectionService _connectionService,
 }) {
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
-  StreamSubscription<void>? _readinessSubscription;
 
   void start() {
+    // If the sink is not ready at this transition, the repository declines
+    // without claiming and the next reconnect reports it instead.
     _connectionStatusSubscription = _connectionService.status.listen(_reportIfConnected);
-    // A connection established before the sink became ready (deferred Singular
-    // start) is reported once readiness arrives instead of waiting for a reconnect.
-    _readinessSubscription = _repository.readinessStream.listen(
-      (_) => _reportIfConnected(_connectionService.currentStatus),
-    );
   }
 
   void _reportIfConnected(ConnectionStatus status) {
@@ -34,8 +30,6 @@ class AttributionService({
   @disposeMethod
   Future<void> dispose() async {
     await _connectionStatusSubscription?.cancel();
-    await _readinessSubscription?.cancel();
     _connectionStatusSubscription = null;
-    _readinessSubscription = null;
   }
 }
