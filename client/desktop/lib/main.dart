@@ -37,6 +37,11 @@ Future<void> main(List<String> arguments) async {
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.
   getIt<ConnectionService>();
+  // Profile owns the shared analytics preference control, so synchronize the
+  // service before that route can render instead of leaving it in Loading.
+  final ProductAnalyticsService productAnalyticsService = getIt();
+  await productAnalyticsService.start();
+  await productAnalyticsService.markPostSplashReady();
   runApp(
     SesoriDesktopApp(
       hiddenLaunch: hiddenLaunch,

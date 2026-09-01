@@ -34,6 +34,11 @@ Date: 2026-09-01.
 - Updated client architecture guidance and the desktop-supervision and plugin-
   lifecycle regression documents for the new shared ownership and desktop
   destinations.
+- Review hardening keeps mobile package metadata behind its registered platform
+  client, starts desktop product-analytics preference synchronization before
+  Profile can render, pops pushed Profile/Harnesses routes back to Settings,
+  and serializes harness authentication presentation across rows while allowing
+  an uncertain cancellation challenge to be reopened.
 
 No database schema, persisted-data format, bridge/client wire contract,
 authentication token authority, or analytics event changed. Mobile behavior is
@@ -47,7 +52,9 @@ including the shared-package dependency graph, shell-owned DI/routes/platform
 strategies, app-wide preference lifecycle, desktop logout orchestration,
 connection-banner ownership, and the direct `module_app_ui` dependency on
 `sesori_shared`. The latter is an allowed foundation dependency under the
-client architecture rules.
+client architecture rules. A second bounded review approved the review-
+hardening seams for desktop analytics startup, pushed-route ownership, mobile
+package metadata, and shared authentication presentation with no findings.
 
 ## Verification
 
@@ -65,6 +72,9 @@ client architecture rules.
   integration files.
 - `asdf exec flutter build macos` completed successfully (`Sesori.app`,
   59.6 MB).
+- Review follow-up: all three owning analyzers remained clean; 70 focused
+  mobile settings/harness tests and 4 focused desktop smoke/settings tests
+  passed; a fresh macOS release build succeeded (`Sesori.app`, 59.8 MB).
 - `git diff --check` is clean. Windows and Linux desktop builds remain covered
   by the PR's native CI matrix.
 

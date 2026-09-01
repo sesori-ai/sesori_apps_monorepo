@@ -1,12 +1,12 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/platform/package_info_client.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
@@ -62,7 +62,7 @@ class const _MobileSettingsView() extends StatelessWidget {
 
 Future<AppVersionInfo?> _loadAppVersionInfo() async {
   try {
-    final info = await PackageInfo.fromPlatform();
+    final info = await getIt<PackageInfoClient>().read();
     return AppVersionInfo(version: info.version, buildNumber: info.buildNumber);
   } on Object catch (error, stackTrace) {
     logw("Failed to load mobile package information", error, stackTrace);

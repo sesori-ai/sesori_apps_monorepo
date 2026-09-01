@@ -419,6 +419,14 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationCancellingUncertain() ||
       PluginAuthenticationPresentationFailed() => false,
     };
+    final authenticationActive = switch (authentication) {
+      PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => false,
+      PluginAuthenticationPresentationStarting() ||
+      PluginAuthenticationPresentationChallenge() ||
+      PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+      PluginAuthenticationPresentationCancelling() ||
+      PluginAuthenticationPresentationCancellingUncertain() => true,
+    };
     final blocked = _controlsBlocked(action);
     final actionForThisHarness = switch (action) {
       PluginManagementActionInProgress(
@@ -478,8 +486,18 @@ class const _HarnessControlCard({
               trailing: authenticationStarting
                   ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)
                   : null,
-              onTap: blocked || authenticationStarting
+              // Only one authentication flow can exist. Its own row can reopen
+              // a retained challenge after uncertain cancellation; every other
+              // row stays disabled until that flow settles.
+              onTap: blocked || authenticationStarting || (authenticationActive && !authenticationForThisHarness)
                   ? null
+                  : authenticationForThisHarness
+                  ? () => unawaited(
+                      _showAuthenticationSheet(
+                        context: context,
+                        cubit: context.read<PluginManagementCubit>(),
+                      ),
+                    )
                   : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
             ),
           if (showRuntime)

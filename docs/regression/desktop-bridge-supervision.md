@@ -63,8 +63,10 @@ and keep native close/quit behavior safe.
   harness-management surfaces without creating another auth/session owner.
   Desktop injects account state, navigation, external-link/package metadata,
   and its coordinated logout workflow; it deliberately omits the mobile push-
-  notification preference row. The desktop's one app-wide connection banner
-  remains the only banner around these routed views.
+  notification preference row. Profile and Harnesses pop back to Settings when
+  pushed, and analytics preference synchronization starts before Profile can
+  render. The desktop's one app-wide connection banner remains the only banner
+  around these routed views.
 - Appearance and default-input preferences are read before the first desktop
   frame, provided above the router, and persisted through the same shared
   cubits as mobile. Changing appearance in Settings re-themes the whole window
@@ -141,7 +143,8 @@ the status and bounded recent output.
 - The desktop theme lacks Prego colors, typography, or design-system extension;
   a saved appearance flashes the system theme at startup, changing it affects
   only one route, a routed settings view renders a second connection banner,
-  or desktop exposes a dead mobile-notification preference row.
+  desktop exposes a dead mobile-notification preference row, a pushed settings
+  child closes to Home, or Profile leaves usage analytics stuck on Loading.
 
 ## Known Limitations
 

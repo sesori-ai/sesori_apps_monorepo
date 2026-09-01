@@ -43,15 +43,15 @@ final GoRouter desktopRouter = GoRouter(
         ),
         GoRoute(
           path: AppRouteDef.settingsProfile.path,
-          builder: (BuildContext context, GoRouterState state) => const DesktopProfileScreen(
-            onClose: _goDesktopHome,
+          builder: (BuildContext context, GoRouterState state) => DesktopProfileScreen(
+            onClose: () => _popRoute(context: context),
             onLogoutCompleted: _goDesktopHome,
           ),
         ),
         GoRoute(
           path: AppRouteDef.settingsHarnesses.path,
-          builder: (BuildContext context, GoRouterState state) => const DesktopHarnessesSettingsScreen(
-            onClose: _goDesktopHome,
+          builder: (BuildContext context, GoRouterState state) => DesktopHarnessesSettingsScreen(
+            onClose: () => _popRoute(context: context),
           ),
         ),
       ],
@@ -72,4 +72,9 @@ void _goRoute({required BuildContext context, required AppRoute route}) {
 void _pushRoute({required BuildContext context, required AppRoute route}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   unawaited(GoRouter.of(context).push<void>(route.buildPath()));
+}
+
+void _popRoute({required BuildContext context}) {
+  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
+  GoRouter.of(context).pop();
 }

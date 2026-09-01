@@ -132,8 +132,9 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Mobile and desktop show login only for authentication-required harnesses that declare the
   capability. Their shared device-code sheet keeps anti-phishing guidance and the
   selectable/copyable one-time code visible, opens the external browser only on explicit
-  intent, and separates sheet dismissal from cancellation. Terminal progress closes the
-  sheet and refreshes setup.
+  intent, and separates sheet dismissal from cancellation. Only one harness authentication
+  flow can start at a time; an uncertain cancellation challenge can be reopened from its
+  harness row. Terminal progress closes the sheet and refreshes setup.
 - Mobile and desktop offer a per-harness catalog scan on Settings to Harnesses, the pointer
   and screen-reader equivalent of the lists' second-stage pull. It appears only for a harness
   whose reported runtime state is routable, so a setup-blocked or failed harness the bridge
@@ -201,9 +202,10 @@ owned-process exit; and restart.
   without explicit user intent, response loss reported as definite failure, a fast terminal
   event being lost, or stale challenge state surviving reconnect or bridge replacement.
 - Login shown without both capability and authentication-required setup, terminal-only
-  guidance shown despite client login support, sheet dismissal cancelling upstream, a
-  product shell diverging from the shared management view, or a browser/copy failure
-  removing the challenge before the user can retry.
+  guidance shown despite client login support, concurrent harness login rows remaining
+  actionable, an uncertain cancellation becoming impossible to reopen, sheet dismissal
+  cancelling upstream, a product shell diverging from the shared management view, or a
+  browser/copy failure removing the challenge before the user can retry.
 - One failing harness taking down the rest of the bridge, or an empty picker
   instead of the explicit no-harness state when none is usable.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
