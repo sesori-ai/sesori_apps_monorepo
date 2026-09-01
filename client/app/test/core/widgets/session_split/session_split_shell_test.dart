@@ -7,10 +7,6 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/sesori_background_widget.dart";
-import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_breakpoints.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -324,7 +320,12 @@ void main() {
             theme: ThemeData(extensions: [PregoDesignSystem.light]),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const EmptySessionDetailPanel(),
+            home: Builder(
+              builder: (context) => EmptySessionDetailPanel(
+                background: const SesoriBackgroundWidget(),
+                connectionBanner: ConnectionBanner.maybeFor(context),
+              ),
+            ),
           ),
         ),
       );

@@ -349,6 +349,18 @@ abstract class AppLocalizations {
   /// **'Leave it running while you use Sesori from your phone.'**
   String get projectsBridgeOfflineStartBridgeInfo;
 
+  /// Desktop project recovery action that starts or retries the supervised local bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge'**
+  String get projectsDesktopStartBridge;
+
+  /// Desktop-only explanation shown while the local supervised bridge is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the local bridge to load your projects and sessions in Sesori.'**
+  String get projectsDesktopStartBridgeInfo;
+
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:

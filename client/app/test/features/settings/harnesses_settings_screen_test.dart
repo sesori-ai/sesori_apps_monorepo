@@ -348,12 +348,59 @@ void main() {
     expect(find.byKey(const Key("harness_authentication_codex")), findsNothing);
   });
 
-  testWidgets("device-code sheet opens browser explicitly and dismissal does not cancel", (tester) async {
+  testWidgets("one authentication start disables every other harness login", (tester) async {
     _useTallSurface(tester);
+    final startResult = Completer<PluginAuthenticationStartResult>();
+    when(
+      () => service.startAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) => startResult.future);
+    final secondAuthentication = _authenticationRequired.copyWith(
+      setup: _authenticationRequired.setup.copyWith(id: "claude", displayName: "Claude"),
+    );
     await tester.pumpWidget(_app());
     snapshots.add(
       PluginManagementLoadResult.supported(
-        response: _response.copyWith(plugins: [_authenticationRequired]),
+        response: _response.copyWith(plugins: [_authenticationRequired, secondAuthentication]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pump();
+
+    expect(
+      tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_claude"))).onTap,
+      isNull,
+    );
+    verifyNever(() => service.startAuthentication(pluginId: "claude"));
+
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    startResult.complete(
+      const PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationChallengeResponse.deviceCode(
+          verificationUrl: "https://auth.example/device",
+          userCode: "ABCD-EFGH",
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("dismissed authentication stays gated and can be reopened", (tester) async {
+    _useTallSurface(tester);
+    final secondAuthentication = _authenticationRequired.copyWith(
+      setup: _authenticationRequired.setup.copyWith(id: "claude", displayName: "Claude"),
+    );
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired, secondAuthentication]),
         refreshError: null,
       ),
     );
@@ -379,6 +426,15 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
+    expect(
+      tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_claude"))).onTap,
+      isNull,
+    );
+
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    expect(find.text("ABCD-EFGH"), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(1);
   });
 
   testWidgets("device-code sheet copies only the presented one-time code", (tester) async {
@@ -567,7 +623,9 @@ void main() {
       isNull,
     );
 
-    cancelResult.complete(const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()));
+    cancelResult.complete(
+      const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+    );
     await tester.pumpAndSettle();
     expect(
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed,
@@ -577,6 +635,15 @@ void main() {
       tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_cancel"))).onPressed,
       isNotNull,
     );
+
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text("Log in to harness"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    expect(find.text("ABCD-EFGH"), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(1);
   });
 
   testWidgets("dismissing during cancellation preserves terminal settlement", (tester) async {
@@ -1560,5 +1627,4 @@ void main() {
       expect(scanRowText("future-harness", loc.harnessManagementScanDescription), findsOneWidget);
     });
   });
-
 }

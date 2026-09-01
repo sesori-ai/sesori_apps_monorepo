@@ -223,24 +223,33 @@ class BridgeControlCubit._create({
   BridgeControlActivity get _presentationActivity =>
       _logoutStatus.locksBridgeControls ? BridgeControlActivity.signingOut : _activity;
 
-  Future<void> toggleBridge() async {
+  Future<void> toggleBridge() {
+    final BridgeProcessDesiredState target = _toggleTarget(
+      processState: _processService.state,
+      desiredState: _processService.desiredState,
+    );
+    return _setBridgeDesiredState(target: target);
+  }
+
+  /// Requests the supervised bridge to be On without applying toggle
+  /// semantics. Used by desktop recovery surfaces where the only valid intent
+  /// is to start or retry the local bridge.
+  Future<void> startBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.on);
+
+  Future<void> _setBridgeDesiredState({required BridgeProcessDesiredState target}) async {
     if (_controlsLocked) {
       return;
     }
     _activity = BridgeControlActivity.toggling;
     _rebuildMenu();
     try {
-      final BridgeProcessDesiredState target = _toggleTarget(
-        processState: _processService.state,
-        desiredState: _processService.desiredState,
-      );
       await _instanceService.writeBridgeDesiredState(state: target);
       await switch (target) {
         BridgeProcessDesiredState.on => _processService.start(),
         BridgeProcessDesiredState.off => _processService.stop(),
       };
     } on Object catch (error, stackTrace) {
-      logw("Bridge tray lifecycle command failed", error, stackTrace);
+      logw("Desktop bridge lifecycle command failed", error, stackTrace);
     } finally {
       if (!isClosed) {
         _activity = BridgeControlActivity.idle;

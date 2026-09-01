@@ -112,6 +112,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text("Make sure the Bridge is running"), findsOneWidget);
+    expect(find.text("Start the bridge"), findsNothing);
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
 

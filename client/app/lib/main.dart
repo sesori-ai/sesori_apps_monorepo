@@ -16,7 +16,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
-import "core/extensions/appearance_mode_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";

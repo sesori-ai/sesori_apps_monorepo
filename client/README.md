@@ -14,7 +14,7 @@ product, the design catalog, and the shared client modules they consume.
 | `module_desktop_core/` | Pure Dart desktop business logic: bridge supervision, control orchestration, trackers, services, and cubits. |
 | `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
 | `module_prego/` | Shared Flutter design system: theme, fonts, icons, and components. |
-| `module_app_ui/` | Shared Flutter localization, route presentation, context extensions, and adaptive UI. |
+| `module_app_ui/` | Shared Flutter localization, route presentation, context extensions, settings/harness management, and adaptive UI. |
 
 ## Dependency Direction
 
@@ -70,8 +70,9 @@ module_desktop_core/lib/src/
 └── cubits/        desktop state management
 ```
 
-Shared adaptive Flutter widgets live in `module_app_ui`; shell-specific widgets
-and platform plugins stay in `app/` or `desktop/`. Cubits stay in the
+Shared adaptive Flutter widgets and screens live in `module_app_ui`; shell-specific
+DI, navigation callbacks, platform strategies, and plugins stay in `app/` or
+`desktop/`. Cubits stay in the
 appropriate pure Dart module, not in product shells or `module_app_ui`.
 
 ## Dependency Injection

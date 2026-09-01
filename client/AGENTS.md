@@ -36,8 +36,9 @@ client/desktop ───────────→ module_app_ui ───┤
 ```
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
-and adaptive-screen foundations above `module_core`. Product shells own DI,
-platform adapters, and surface-specific composition.
+settings/harness-management screens, and adaptive-screen foundations above
+`module_core`. Product shells own DI, platform adapters, navigation callbacks,
+and surface-specific composition.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the

@@ -436,6 +436,12 @@ private enum AiLoaderSparkle {
       indicator.translatesAutoresizingMaskIntoConstraints = false
       // Content filters only apply to a layer-backed view.
       indicator.wantsLayer = true
+      // The spinner draws its ticks in the label colour at varying alpha:
+      // black under the light appearance, white under dark. A monochrome
+      // filter maps luminance onto the requested colour, so black ticks would
+      // stay black; pin the dark appearance so the ticks are white, which the
+      // filter maps exactly onto the colour while keeping each tick's alpha.
+      indicator.appearance = NSAppearance(named: .darkAqua)
       // NSProgressIndicator has no tint API; a monochrome content filter
       // recolours the spinner to the requested colour.
       if let filter = CIFilter(name: "CIColorMonochrome"), let ciColor = CIColor(color: color) {

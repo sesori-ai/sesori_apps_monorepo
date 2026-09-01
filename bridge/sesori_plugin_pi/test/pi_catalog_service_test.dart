@@ -29,12 +29,39 @@ void main() {
 
     final observedOptions = (observed as PiOptionsObserved).options;
     final refreshOptions = (refresh as PiOptionsObserved).options;
-    expect(observedOptions.commands.single.name, "first");
+    expect(observedOptions.commands.map((command) => command.name), ["first", PiCatalogService.compactionCommandName]);
+    final compaction = observedOptions.commands.last;
+    expect(compaction.description, "Summarize the conversation so far to free up the context window");
+    expect(compaction.source, PluginCommandSource.command);
+    expect(service.isNativeCompactionCommand(command: compaction), isTrue);
     expect((reused as PiOptionsObserved).options, same(observedOptions));
-    expect(refreshOptions.commands.single.name, "refreshed");
+    expect(refreshOptions.commands.map((command) => command.name), [
+      "refreshed",
+      PiCatalogService.compactionCommandName,
+    ]);
     expect(refreshOptions.completeness, PluginSessionOptionsCompleteness.partial);
     expect(repository.projects, [path.normalize(project), path.normalize(project)]);
     expect(tracker.snapshotFor(projectId: project), same(refreshOptions));
+  });
+
+  test("does not duplicate a compact command returned by Pi", () async {
+    final service = _service(
+      repository: _FakeCatalogRepository(
+        results: [
+          _options(
+            command: PiCatalogService.compactionCommandName,
+            completeness: PluginSessionOptionsCompleteness.complete,
+          ),
+        ],
+      ),
+      tracker: PiCatalogTracker(),
+    );
+
+    final options = await service.requireOptions(projectId: path.absolute("project"));
+
+    expect(options.commands, hasLength(1));
+    expect(options.commands.single.name, PiCatalogService.compactionCommandName);
+    expect(service.isNativeCompactionCommand(command: options.commands.single), isFalse);
   });
 
   test("coalesces same-project probes while different projects probe concurrently", () async {

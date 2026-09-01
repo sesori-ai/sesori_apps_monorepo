@@ -195,6 +195,7 @@ extension GetItInjectableX on _i174.GetIt {
         bridgeRepository: gh<_i948.BridgeRepository>(),
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
+        productAnalyticsService: gh<_i948.ProductAnalyticsService>(),
         authSession: gh<_i948.AuthSession>(),
       ),
     );

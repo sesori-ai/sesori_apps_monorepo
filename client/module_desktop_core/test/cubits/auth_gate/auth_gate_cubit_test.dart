@@ -145,8 +145,9 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state, const AuthGateState.signedIn(user: null));
 
-    await cubit.signOut();
+    final outcome = await cubit.signOut();
 
+    expect(outcome, DesktopLogoutOutcome.completed);
     expect(cubit.state, const AuthGateState.signedOut());
     verify(() => authSession.logoutCurrentDevice()).called(1);
 
@@ -190,12 +191,13 @@ void main() {
     verify(() => relayConnectionService.connectForAuthenticatedDestination()).called(1);
   });
 
-  test("signOut delegates to the device-local logout", () async {
+  test("signOut delegates to the device-local logout and returns its outcome", () async {
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
     final AuthGateCubit cubit = await pumpCubit();
 
-    await cubit.signOut();
+    final outcome = await cubit.signOut();
 
+    expect(outcome, DesktopLogoutOutcome.completed);
     verify(() => authSession.logoutCurrentDevice()).called(1);
   });
 
@@ -204,8 +206,9 @@ void main() {
     authStates.add(const AuthState.authenticated(user: _user));
     final AuthGateCubit cubit = await pumpCubit();
 
-    await cubit.signOut();
+    final outcome = await cubit.signOut();
 
+    expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
     expect(cubit.state, const AuthGateState.signedIn(user: _user));
   });
 }
