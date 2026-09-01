@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -155,8 +154,18 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       // that starts on the pinned composer overscrolls/bounces the whole page.
       scrollable: false,
       // Toolbar navigation is explicit: unlike Android system back, it must
-      // not be vetoed by the composer's keyboard-dismissal PopScope.
-      onBack: showLeading ? () => context.pop() : null,
+      // not be vetoed by the composer's keyboard-dismissal PopScope. Navigate
+      // to the typed parent route rather than asking go_router to derive it
+      // from decoded path parameters, which would turn path-like project IDs
+      // back into literal slashes and make the parent URL unmatchable.
+      onBack: showLeading
+          ? () => context.goRoute(
+              AppRoute.sessions(
+                projectId: widget.projectId,
+                projectName: widget.projectName,
+              ),
+            )
+          : null,
       automaticallyImplyLeading: showLeading,
       actions: actions.isEmpty ? null : actions,
       slivers: [
