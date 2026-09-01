@@ -6,9 +6,15 @@ import "plugin_provider.dart";
 
 part "plugin_session_options.freezed.dart";
 
-enum PluginSessionOptionsCompleteness() { partial, complete }
+enum PluginSessionOptionsCompleteness() {
+  partial,
+  complete,
+}
 
-enum PluginSessionOptionsDiscoveryMode() { reuse, refresh }
+enum PluginSessionOptionsDiscoveryMode() {
+  reuse,
+  refresh,
+}
 
 @Freezed(toJson: false)
 sealed class PluginSessionOptions with _$PluginSessionOptions {
@@ -25,6 +31,17 @@ sealed class PluginSessionOptionsDiscoveryResult with _$PluginSessionOptionsDisc
   const factory observed({
     required PluginSessionOptions options,
   }) = PluginSessionOptionsDiscoveryObserved;
+
+  /// The requested option scope has no authenticated provider/model available.
+  ///
+  /// This is scoped to this discovery request. It must not be used for
+  /// plugin-global authentication loss, which is reported through
+  /// `PluginAuthenticationRequiredException`. [actionHint] is plugin-owned,
+  /// privacy-safe presentation text and must never contain raw backend output,
+  /// credential details, account identifiers, or local paths.
+  const factory authenticationRequired({
+    required String actionHint,
+  }) = PluginSessionOptionsDiscoveryAuthenticationRequired;
 
   const factory failed() = PluginSessionOptionsDiscoveryFailed;
 }

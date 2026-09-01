@@ -113,7 +113,7 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
-    test("missing catalog models emit privacy-safe local login guidance", () async {
+    test("missing catalog models return scoped privacy-safe authentication guidance", () async {
       final missingModels = _Harness(catalogModelsAvailable: false);
       addTearDown(missingModels.dispose);
       final events = <BridgeSseEvent>[];
@@ -124,17 +124,15 @@ void main() {
         projectId: missingModels.project.path,
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       );
-      for (var attempt = 0; attempt < 50 && events.isEmpty; attempt++) {
-        await pump();
-      }
+      await pump();
 
-      expect(result, isA<PluginSessionOptionsDiscoveryFailed>());
-      final toast = events.whereType<BridgeSseTuiToastShow>().single;
-      expect(toast.sessionID, isNull);
-      expect(toast.title, "Pi login required");
-      expect(toast.message, contains("/login"));
-      expect(toast.message, isNot(contains("/private")));
-      expect(toast.variant, "warning");
+      expect(
+        result,
+        isA<PluginSessionOptionsDiscoveryAuthenticationRequired>()
+            .having((value) => value.actionHint, "action hint", contains("/login"))
+            .having((value) => value.actionHint, "privacy-safe action hint", isNot(contains("/private"))),
+      );
+      expect(events, isEmpty);
     });
 
     test("starts an empty session through command acceptance and rejects missing paths", () async {

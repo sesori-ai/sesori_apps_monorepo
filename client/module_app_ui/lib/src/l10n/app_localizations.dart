@@ -2011,6 +2011,12 @@ abstract class AppLocalizations {
   /// **'Couldn’t apply updated prompt options. Your message remains queued.'**
   String get sessionDetailPromptOptionsRecoveryFailed;
 
+  /// No description provided for @sessionDetailAuthenticationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider login required'**
+  String get sessionDetailAuthenticationRequired;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:
@@ -2802,6 +2808,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refresh the model list'**
   String get newSessionOptionsRefresh;
+
+  /// Warning title shown when the selected coding harness has no authenticated provider/model available for this project.
+  ///
+  /// In en, this message translates to:
+  /// **'{plugin} login required'**
+  String newSessionAuthenticationRequiredTitle(String plugin);
 
   /// No description provided for @newSessionProjectUnavailable.
   ///

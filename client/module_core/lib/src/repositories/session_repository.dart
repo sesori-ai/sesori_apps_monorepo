@@ -206,9 +206,13 @@ class SessionRepository({
       if (rawErrorString != null) {
         try {
           final response = SessionOptionsErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+          final actionHint = response.actionHint?.trim();
           return switch (response.code) {
             SessionOptionsErrorCode.cacheUnavailable => const SessionOptionsRepositoryCacheUnavailable(),
             SessionOptionsErrorCode.projectNotFound => SessionOptionsRepositoryProjectNotFound(error: error),
+            SessionOptionsErrorCode.authenticationRequired when actionHint != null && actionHint.isNotEmpty =>
+              SessionOptionsRepositoryAuthenticationRequired(actionHint: actionHint),
+            SessionOptionsErrorCode.authenticationRequired => SessionOptionsRepositoryFailure(error: error),
             SessionOptionsErrorCode.refreshFailedRetained => const SessionOptionsRepositoryRefreshFailedRetained(),
             SessionOptionsErrorCode.refreshFailedUnavailable =>
               const SessionOptionsRepositoryRefreshFailedUnavailable(),

@@ -742,7 +742,7 @@ void main() {
 
     expect(find.text("Diffs"), findsOneWidget);
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -830,7 +830,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -838,6 +838,22 @@ void main() {
       find.text("Prompt options changed. Updated settings and retrying your message."),
       findsOneWidget,
     );
+  });
+
+  testWidgets("shows privacy-safe authentication guidance from stale option recovery", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(const SessionDetailAuthenticationRequired(actionHint: "Authenticate locally, then retry."));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text("Provider login required"), findsOneWidget);
+    expect(find.text("Authenticate locally, then retry."), findsOneWidget);
   });
 
   testWidgets("closes an open question when it leaves pending state", (tester) async {

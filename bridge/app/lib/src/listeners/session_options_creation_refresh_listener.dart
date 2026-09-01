@@ -49,6 +49,7 @@ class SessionOptionsCreationRefreshListener({
       );
       switch (outcome) {
         case SessionOptionsAvailable() ||
+            SessionOptionsAuthenticationRequired() ||
             SessionOptionsAutomaticNoOp() ||
             SessionOptionsRefreshFailedRetained() ||
             SessionOptionsRefreshFailedUnavailable():

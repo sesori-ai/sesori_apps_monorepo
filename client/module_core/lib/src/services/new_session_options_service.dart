@@ -34,16 +34,20 @@ sealed class const NewSessionOptionsLoadResult();
 /// background. A silent refresh reaches the bridge as a forced one; the
 /// distinction is that nobody is waiting on it, so it must not overwrite what
 /// the user does while it runs.
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
+enum NewSessionOptionsLoadMode() {
+  dynamicLoad,
+  forcedRefresh,
+  silentRefresh,
+}
 
 /// Loaded options, and whether the bridge served them from a snapshot old
 /// enough to be worth refreshing behind the user's back. Only a cache the
 /// bridge chose not to rediscover is stale; anything just discovered is not.
 final class const NewSessionOptionsLoaded({
-    required final NewSessionOptionsData options,
-    required final NewSessionOptionsSource source,
-    required final bool isStale,
-  }) extends NewSessionOptionsLoadResult;
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+  required final bool isStale,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -51,17 +55,32 @@ final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadRe
 
 final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureRetained({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsAuthenticationRequiredUnavailable({required final String actionHint})
+    extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureUnavailable({required final ApiError error, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsAuthenticationRequiredRetained({
+  required final String actionHint,
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
+
+final class const NewSessionOptionsFailureRetained({
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
+
+final class const NewSessionOptionsFailureUnavailable({
+  required final ApiError error,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsRefreshFailureUnavailable() extends NewSessionOptionsLoadResult;
 
 @lazySingleton
 class NewSessionOptionsService({
-    required final SessionRepository _sessionRepository,
-    required final DefaultModelSelector _defaultModelSelector,
-  }) {
+  required final SessionRepository _sessionRepository,
+  required final DefaultModelSelector _defaultModelSelector,
+}) {
   Future<NewSessionOptionsLoadResult> load({
     required String projectId,
     required String pluginId,
@@ -113,6 +132,14 @@ class NewSessionOptionsService({
         error: error,
         source: NewSessionOptionsSource.aggregate,
       ),
+      SessionOptionsRepositoryAuthenticationRequired(:final actionHint) =>
+        previousOptions == null
+            ? NewSessionOptionsAuthenticationRequiredUnavailable(actionHint: actionHint)
+            : NewSessionOptionsAuthenticationRequiredRetained(
+                actionHint: actionHint,
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       SessionOptionsRepositoryRefreshFailedRetained() =>
         previousOptions == null
             ? const NewSessionOptionsRefreshFailureUnavailable()
@@ -126,12 +153,13 @@ class NewSessionOptionsService({
         // A refresh nobody asked for must not take working options away. The
         // bridge served these moments ago, so the honest answer is that the
         // update failed, not that there is nothing left to choose from.
-        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
-            ? const NewSessionOptionsRefreshFailureUnavailable()
-            : NewSessionOptionsFailureRetained(
-                options: previousOptions,
-                source: NewSessionOptionsSource.aggregate,
-              ),
+        NewSessionOptionsLoadMode.silentRefresh =>
+          previousOptions == null
+              ? const NewSessionOptionsRefreshFailureUnavailable()
+              : NewSessionOptionsFailureRetained(
+                  options: previousOptions,
+                  source: NewSessionOptionsSource.aggregate,
+                ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
@@ -254,9 +282,7 @@ class NewSessionOptionsService({
     final selectedAgentModel = _applyVariantIntent(
       providers: providers,
       model: validatedRestoredModel ?? defaultAgentModel,
-      variantIntent: restoredModel == null || validatedRestoredModel != null
-          ? effectiveSelection?.variant
-          : null,
+      variantIntent: restoredModel == null || validatedRestoredModel != null ? effectiveSelection?.variant : null,
     );
     final stagedCommandName = previousOptions?.stagedCommand?.name;
     final stagedCommand = stagedCommandName == null

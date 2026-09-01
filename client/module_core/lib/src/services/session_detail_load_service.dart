@@ -282,6 +282,15 @@ class SessionDetailLoadService({
           );
         }
         return unavailable;
+      case SessionOptionsRepositoryAuthenticationRequired():
+        if (requireComplete) {
+          return _SessionDetailOptionsFailure(
+            error: StateError("Session options require provider authentication"),
+            stackTrace: StackTrace.current,
+          );
+        }
+        logw("Session options require provider authentication for plugin $pluginId");
+        return unavailable;
       case SessionOptionsRepositoryRefreshFailedRetained():
         if (requireComplete) {
           return _SessionDetailOptionsFailure(

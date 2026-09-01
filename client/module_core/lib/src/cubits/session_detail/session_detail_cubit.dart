@@ -42,31 +42,45 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
-  queuedEvent("queued_event");
+  queuedEvent("queued_event"),
 }
 
-enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
+enum _SessionRefreshAction() {
+  observed,
+  ignored,
+  queued,
+  coalesced,
+  started,
+  completed,
+}
 
-enum _SessionRefreshResult() { applied, failed, waitingForConnection, staleConnection, closed }
+enum _SessionRefreshResult() {
+  applied,
+  failed,
+  waitingForConnection,
+  staleConnection,
+  closed,
+}
 
 class SessionDetailCubit(
-    final ConnectionService _connectionService, {
-    required final SessionDetailLoadService _loadService,
-    required SessionRepository promptDispatcher,
-    required final PermissionRepository _permissionRepository,
-    required final SessionViewingService _sessionViewingService,
-    required final ProjectViewingService _projectViewingService,
-    required final LifecycleSource _lifecycleSource,
-    required final ComposerDraftRepository _composerDraftRepository,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final String _sessionId,
-    required final String _projectId,
-    required final NotificationCanceller _notificationCanceller,
-    required final FailureReporter _failureReporter,
-    /// Cooldown between silent refreshes triggered by staleness events.
+  final ConnectionService _connectionService, {
+  required final SessionDetailLoadService _loadService,
+  required SessionRepository promptDispatcher,
+  required final PermissionRepository _permissionRepository,
+  required final SessionViewingService _sessionViewingService,
+  required final ProjectViewingService _projectViewingService,
+  required final LifecycleSource _lifecycleSource,
+  required final ComposerDraftRepository _composerDraftRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final String _sessionId,
+  required final String _projectId,
+  required final NotificationCanceller _notificationCanceller,
+  required final FailureReporter _failureReporter,
+
+  /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
-  }) extends Cubit<SessionDetailState> {
+}) extends Cubit<SessionDetailState> {
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
@@ -1096,9 +1110,9 @@ class SessionDetailCubit(
 
     if (isClosed) return;
 
-    if (message case
-        MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
-        MessageError(:final providerID, :final modelID, :final agent)) {
+    if (message
+        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
+            MessageError(:final providerID, :final modelID, :final agent)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
@@ -1655,7 +1669,7 @@ class SessionDetailCubit(
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
-              if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+              if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -1704,7 +1718,7 @@ class SessionDetailCubit(
     final pluginId = current.pluginId;
     if (pluginId == null) {
       logw("Could not refresh stale prompt options because the session plugin is unresolved");
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     }
 
@@ -1771,8 +1785,13 @@ class SessionDetailCubit(
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
-        _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        _noticeStream.add(const SessionDetailPromptOptionsUpdated());
         return true;
+      }
+
+      if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
+        _noticeStream.add(SessionDetailAuthenticationRequired(actionHint: actionHint));
+        return false;
       }
 
       final error = switch (result) {
@@ -1780,6 +1799,7 @@ class SessionDetailCubit(
         SessionOptionsRepositoryCacheUnavailable() => null,
         SessionOptionsRepositoryUnsupported() => null,
         SessionOptionsRepositoryProjectNotFound(:final error) => error,
+        SessionOptionsRepositoryAuthenticationRequired() => null,
         SessionOptionsRepositoryRefreshFailedRetained() => null,
         SessionOptionsRepositoryRefreshFailedUnavailable() => null,
         SessionOptionsRepositoryFailure(:final error) => error,
@@ -1789,11 +1809,11 @@ class SessionDetailCubit(
       } else {
         logw("Failed to refresh stale prompt options", error);
       }
-      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     } on Object catch (error, stackTrace) {
       logw("Failed to refresh stale prompt options", error, stackTrace);
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     }
   }
@@ -2223,8 +2243,10 @@ class SessionDetailCubit(
     final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
-      MessageError(:final modelID, :final providerID) =>
-        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageError(
+        :final modelID,
+        :final providerID,
+      ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
     return (

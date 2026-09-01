@@ -16,44 +16,55 @@ const Duration _staleAfter = Duration(days: 1);
 
 sealed class const SessionOptionsOutcome();
 
-final class const SessionOptionsAvailable({required final SessionOptionsResponse response}) extends SessionOptionsOutcome;
+final class const SessionOptionsAvailable({required final SessionOptionsResponse response})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome;
 
 final class const SessionOptionsProjectNotFound() extends SessionOptionsOutcome;
+
+/// Provider authentication/configuration is absent for the requested option
+/// scope. The last-good cache, if any, remains intact but is not served as a
+/// successful refresh because it cannot make the current provider usable.
+final class const SessionOptionsAuthenticationRequired({required final String actionHint})
+    extends SessionOptionsOutcome;
 
 sealed class const SessionOptionsRefreshFailure();
 
 final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
 
 final class const SessionOptionsCaughtRefreshFailure({
-    required final Object cause,
-    required final StackTrace causeStackTrace,
-  }) extends SessionOptionsRefreshFailure {
+  required final Object cause,
+  required final StackTrace causeStackTrace,
+}) extends SessionOptionsRefreshFailure {
   @override
   String toString() => "SessionOptionsCaughtRefreshFailure";
 }
 
-final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
-final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
 class SessionOptionsService({
-    required final SessionOptionsRepository _repository,
-    required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
-    required Map<String, PluginSessionOptionsScope> pluginScopes,
-    required final ServerClock _clock,
-    required final Duration _retention,
-  }) {
-  this{
+  required final SessionOptionsRepository _repository,
+  required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
+  required Map<String, PluginSessionOptionsScope> pluginScopes,
+  required final ServerClock _clock,
+  required final Duration _retention,
+}) {
+  this {
     if (_retention.isNegative) {
       throw ArgumentError.value(_retention, "retention", "must not be negative");
     }
   }
 
-  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
+  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(
+    pluginScopes,
+  );
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
   final KeyedParallelLock<SessionOptionsCacheKey> _invalidationLock = KeyedParallelLock<SessionOptionsCacheKey>();
   final Map<SessionOptionsCacheKey, int> _invalidationEpochs = {};
@@ -225,7 +236,10 @@ class SessionOptionsService({
     if (resolved == null) return;
     final key = resolved.key;
     _invalidationEpochs[key] = _invalidationEpoch(key: key) + 1;
-    await _invalidationLock.use(key: key, operation: () => _repository.delete(key: key));
+    await _invalidationLock.use(
+      key: key,
+      operation: () => _repository.delete(key: key),
+    );
   }
 
   /// Holds a commit until every delete already issued for [key] has settled,
@@ -347,6 +361,8 @@ class SessionOptionsService({
     switch (capture) {
       case SessionOptionsCaptureInactive():
         return const SessionOptionsAutomaticNoOp();
+      case SessionOptionsCaptureAuthenticationRequired(:final actionHint):
+        return SessionOptionsAuthenticationRequired(actionHint: actionHint);
       case SessionOptionsCaptureFailed():
         return await _captureFailure(
           resolved: resolved,
@@ -754,19 +770,22 @@ class SessionOptionsService({
 }
 
 final class const _ResolvedSessionOptions({
-    required final SessionOptionsCacheKey key,
-    required final String projectId,
-    required final String projectPath,
-  });
+  required final SessionOptionsCacheKey key,
+  required final String projectId,
+  required final String projectPath,
+});
 
-enum _RefreshIntent() { reuse, forced }
+enum _RefreshIntent() {
+  reuse,
+  forced,
+}
 
 final class _RefreshCoordinator({
-    required var _RefreshIntent intent,
-    required var int? generation,
-    required var int invalidationEpoch,
-    required var Future<SessionOptionsOutcome> terminal,
-  });
+  required var _RefreshIntent intent,
+  required var int? generation,
+  required var int invalidationEpoch,
+  required var Future<SessionOptionsOutcome> terminal,
+});
 
 sealed class const _CommitAttempt();
 

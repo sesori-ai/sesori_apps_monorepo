@@ -288,6 +288,72 @@ $PluginSessionOptionsCopyWith<$Res> get options {
 /// @nodoc
 
 
+class PluginSessionOptionsDiscoveryAuthenticationRequired implements PluginSessionOptionsDiscoveryResult {
+  const PluginSessionOptionsDiscoveryAuthenticationRequired({required this.actionHint});
+  
+
+ final  String actionHint;
+
+/// Create a copy of PluginSessionOptionsDiscoveryResult
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWith<PluginSessionOptionsDiscoveryAuthenticationRequired> get copyWith => _$PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWithImpl<PluginSessionOptionsDiscoveryAuthenticationRequired>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionOptionsDiscoveryAuthenticationRequired&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,actionHint);
+
+@override
+String toString() {
+  return 'PluginSessionOptionsDiscoveryResult.authenticationRequired(actionHint: $actionHint)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWith<$Res> implements $PluginSessionOptionsDiscoveryResultCopyWith<$Res> {
+  factory $PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWith(PluginSessionOptionsDiscoveryAuthenticationRequired value, $Res Function(PluginSessionOptionsDiscoveryAuthenticationRequired) _then) = _$PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWithImpl;
+@useResult
+$Res call({
+ String actionHint
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWithImpl<$Res>
+    implements $PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWith<$Res> {
+  _$PluginSessionOptionsDiscoveryAuthenticationRequiredCopyWithImpl(this._self, this._then);
+
+  final PluginSessionOptionsDiscoveryAuthenticationRequired _self;
+  final $Res Function(PluginSessionOptionsDiscoveryAuthenticationRequired) _then;
+
+/// Create a copy of PluginSessionOptionsDiscoveryResult
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? actionHint = null,}) {
+  return _then(PluginSessionOptionsDiscoveryAuthenticationRequired(
+actionHint: null == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
 class PluginSessionOptionsDiscoveryFailed implements PluginSessionOptionsDiscoveryResult {
   const PluginSessionOptionsDiscoveryFailed();
   

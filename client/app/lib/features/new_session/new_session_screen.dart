@@ -231,6 +231,11 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
       return (message: loc.newSessionProjectUnavailable, isFailure: true);
     }
     return switch (data.optionsState) {
+      NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint) => (
+        message: actionHint,
+        isFailure: true,
+      ),
       NewSessionOptionsFailureState(:final reason) => (message: reason.localizedMessage(loc), isFailure: true),
       NewSessionOptionsFailureRetainedState() => (message: loc.newSessionOptionsUpdateFailedRetained, isFailure: true),
       NewSessionOptionsRefreshFailureUnavailableState() => (
@@ -309,6 +314,27 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
         ),
       ),
     );
+  }
+
+  ({String pluginId, String displayName, String actionHint})? _authenticationNotice(NewSessionState state) {
+    final actionHint = switch (state.config?.options) {
+      NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint) => actionHint,
+      NewSessionOptionsLoadingState() ||
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() ||
+      null => null,
+    };
+    final plugin = state.agentModelData?.plugin;
+    return actionHint == null || plugin == null
+        ? null
+        : (pluginId: plugin.id, displayName: plugin.displayName, actionHint: actionHint);
   }
 
   /// The options above the composer: which harness runs the session, and
@@ -409,7 +435,11 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
     final modalRoute = ModalRoute.of(context);
 
     return BlocListener<NewSessionCubit, NewSessionState>(
-      listenWhen: (_, current) => current is NewSessionCreated,
+      listenWhen: (previous, current) {
+        final currentAuthentication = _authenticationNotice(current);
+        return current is NewSessionCreated ||
+            (currentAuthentication != null && currentAuthentication != _authenticationNotice(previous));
+      },
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
           // The user may have navigated elsewhere (e.g. opened another
@@ -427,7 +457,16 @@ class _NewSessionBodyState() extends State<_NewSessionBody> {
               readOnly: false,
             ),
           );
+          return;
         }
+        final authentication = _authenticationNotice(state);
+        if (authentication == null) return;
+        _popupAlertPresenter.show(
+          title: context.loc.newSessionAuthenticationRequiredTitle(authentication.displayName),
+          content: PregoPopupAlertContent(message: authentication.actionHint),
+          variant: PregoPopupAlertsNotificationsVariant.warning,
+          duration: const Duration(seconds: 8),
+        );
       },
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,

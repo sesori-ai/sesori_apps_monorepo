@@ -115,12 +115,8 @@ final class PiPlugin._({
   }
 
   static const String pluginId = PiPluginIdentity.id;
-  static const BridgeSseTuiToastShow _missingModelToast = BridgeSseTuiToastShow(
-    sessionID: null,
-    title: "Pi login required",
-    message: "Pi has no model available. Run Pi locally and use /login, then try again.",
-    variant: "warning",
-  );
+  static const String _missingModelActionHint =
+      "Pi has no model available. Run Pi locally and use /login, then try again.";
 
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
@@ -166,10 +162,9 @@ final class PiPlugin._({
     );
     return switch (result) {
       PiOptionsObserved(:final options) => PluginSessionOptionsDiscoveryResult.observed(options: options),
-      PiOptionsNoModels() => () {
-        _eventBuffer.add(_missingModelToast);
-        return const PluginSessionOptionsDiscoveryResult.failed();
-      }(),
+      PiOptionsNoModels() => const PluginSessionOptionsDiscoveryResult.authenticationRequired(
+        actionHint: _missingModelActionHint,
+      ),
       PiOptionsDiscoveryFailed() => const PluginSessionOptionsDiscoveryResult.failed(),
     };
   }
