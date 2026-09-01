@@ -146,8 +146,8 @@ client/desktop ──────────┼→ module_app_ui → module_cor
 
 ## Steps
 
-Sizes are soft-capped at 1,500 changed lines; steps 1, 2, 14, 17, 18 record
-expected overages below. Any step that ships or
+Sizes are soft-capped at 1,500 changed lines; steps 1, 2, 4, 5, 7, 14, 17,
+18, 20 record expected overages below. Any step that ships or
 materially changes user-facing behavior updates the directly affected
 `docs/regression/` feature document in the same PR; step 21 is final
 reconciliation only, never the first write.
@@ -521,7 +521,9 @@ behavior unchanged.
 Decouple and move both lists (incl. `session_split`, the session
 archive/delete/force dialogs, the PR-status row, and the project-list first-run
 onboarding view + "why a bridge" sheet — they travel with the lists, not
-later). Bridge-offline / never-registered states **and the first-run
+later; their `assets/images/projects_onboarding/` images move into
+`module_app_ui`'s declared assets with package-qualified paths, since neither
+`module_app_ui` nor the desktop bundle declares them today). Bridge-offline / never-registered states **and the first-run
 onboarding view** act through an injected strategy: mobile keeps CLI install
 copy + `reconnectBridge()`; desktop offers **Start the bridge** (drives
 `BridgeProcessService`) — never CLI-install or "connect your computer" copy
@@ -565,23 +567,37 @@ composition over the slice-built router (the skeleton landed in step 14):
 window navigation (sidebar/split composition from the adaptive screens),
 keyboard basics (Enter-to-send vs newline, Esc dismissal, text selection), and
 the supervision surfaces (login-required, crash give-up, takeover) integrated
-around the cockpit. **Window bounds restore:** persist size/position in
-desktop-owned Layer-1 storage (step-8 storage pattern) and restore on show,
-clamped to the current display — the fixed 720×620 default is not a daily
-driver. **Attention notifications (D6):** a Layer-0 `DesktopNotifier` adapter
-in `module_desktop_core` (dumb: show a titled notification, emit a click) with
-a shell implementation; a Layer-4 cubit derives "permission asked" and
-"question asked" from the SSE tracker the cockpit already runs, shows an OS
-notification **only while the window is hidden or unfocused**, and on click
-focuses the window and routes to the session. Content is category-level copy
-plus the session title — never prompt, transcript, or tool payload (same
-privacy line as the bridge's push content builder). Auto-dismiss when the
-request resolves, mirroring the in-app `pending_request_auto_dismiss`. No
-new preferences: a single on/off in desktop settings, persisted
-desktop-namespaced (C11). Without this a tray-resident cockpit cannot tell the
-user a session is blocked — the phone gets push, the desktop got nothing.
-*Overage: ~1.7k changed lines for the notifier adapter, bounds storage, and
-composition; the two additions have no legal home in an earlier slice.*
+around the cockpit. **Window bounds restore:** `WindowHost` (Layer 0) gains a
+typed `WindowBounds` model with `getBounds`/`setBounds` and `moved`/`resized`
+events; a Layer-3 `WindowBoundsService` reads the last bounds from
+desktop-owned Layer-1 storage (step-8 storage pattern), clamps them to a
+current display, applies them before first show, and debounce-writes on every
+move/resize — the adapter stays dumb, the shell holds no persistence logic.
+The fixed 720×620 default is not a daily driver. **Attention notifications
+(D6):** reuse the `module_core` `LocalNotificationClient`/`NotificationCanceller`
+seam (mobile's OS-notification contract, already keyed by session for
+cancellation) with a desktop shell implementation — no new notifier
+capability. `WindowHost` also gains a typed focus/visibility state stream
+(`focused` / `unfocused` / `hidden`), since a Cmd-Tab away is not observable
+today. A Layer-3 `DesktopAttentionService` owns the pipeline: it subscribes to
+`ConnectionService.events` directly (the existing `SseEventTracker` ignores
+permission/question events by design and is not extended), classifies
+"permission asked" / "question asked" / resolved, resolves the display title
+through the session repository (the SSE variants carry no title), gates on the
+window state stream and a single desktop-namespaced on/off preference (C11),
+shows through the client **only while the window is hidden or unfocused**,
+cancels for that session on resolve (mirroring the in-app
+`pending_request_auto_dismiss`), and on open-request focuses the window and
+routes to the session. `DesktopLogoutOrchestrator` calls cancel-all as part
+of its sequence so a stale alert never survives an account change (the
+relay subscription ends with logout, so the resolve event never arrives).
+Any cubit here only exposes the preference toggle. Content is category-level
+copy plus the session title — never prompt, transcript, or tool payload (same
+privacy line as the bridge's push content builder). Without this a
+tray-resident cockpit cannot tell the user a session is blocked — the phone
+gets push, the desktop got nothing. *Overage: ~1.7k changed lines for the
+notification client, window seams, bounds service, attention service, and
+composition; the additions have no legal home in an earlier slice.*
 
 > **MT gate C — cockpit parity + mobile regression (user-run, after step
 > 20).** Desktop: manage harnesses end-to-end (install + login a real one) ·
@@ -653,8 +669,8 @@ diagnosis; pipe-drain necessity); single-instance lock + persisted
 autostart/last-on prefs (daily-driver behavior); GUI-persisted `bridgeId`
 copy (offline unregister, C8 — `BridgeIdStorage` + tracker write, step 11);
 `module_auth` logout generation (R1 — closes a real race); persisted window
-bounds + the OS-notification adapter and its attention cubit (step 20 — the
-tray-resident cockpit's only out-of-window signal, D6). Deliberately
+bounds + the desktop `LocalNotificationClient` and `DesktopAttentionService`
+(step 20 — the tray-resident cockpit's only out-of-window signal, D6). Deliberately
 **not** added: per-plugin control DTOs, a loopback data transport, a
 GUI-crash watchdog (C6 trade), a second reconnect driver, any token-push path
 (pull-on-demand is the contract; `tokenUpdate` is deleted in step 5),
@@ -688,8 +704,8 @@ relay key exchange; the desktop inherits it through `ConnectionService`).
   regression at MT gate C, and the `session_split` adaptive precedent.
 - **In-flight UI series overlap** (`claude-inline-subtasks` — step 2/8 open,
   touches `subtask_part_widget` and the force dialog; `instant-session-launch`
-  — step 1/7, relocates the queued-submission model and edits
-  `new_session_screen`, `session_detail_body`, `session_detail_loaded_view`,
+  — step 1/7 in flight; steps 4–5/7 relocate the queued-submission model and
+  edit `new_session_screen`, `session_detail_body`, `session_detail_loaded_view`,
   `prompt_send_queue`; drafts touching composer/attachments): sequence
   extraction slices after checking each series' tracker at implementation
   time; never move a screen mid-flight under an active series without rebasing
