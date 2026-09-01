@@ -1,4 +1,5 @@
 import "../../models/claude_effort_level.dart";
+import "../../models/claude_tool_use_result.dart";
 
 /// One decoded line of a Claude Code transcript.
 ///
@@ -64,6 +65,13 @@ final class const ClaudeTranscriptUserRecord({
   required final Object? content,
   required final bool isMeta,
   required final bool isVisibleInTranscriptOnly,
+
+  /// The typed result of the tool call this record's `tool_result` completes.
+  required final ClaudeToolUseResult toolUseResult,
+
+  /// True when the CLI injected this record to deliver a background task's
+  /// outcome to the model; it is never user-authored.
+  required final bool isTaskNotification,
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,

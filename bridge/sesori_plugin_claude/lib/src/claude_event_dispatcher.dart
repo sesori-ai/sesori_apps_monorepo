@@ -2,6 +2,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "api/models/claude_stream_message.dart";
+import "models/claude_task_notification.dart";
+import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
@@ -46,6 +48,16 @@ final class ClaudeEventDispatcher({
     _tools.forgetSession(sessionId: sessionId);
   }
 
+  /// Cancels every running sub-agent task of [sessionId] — its process is gone
+  /// — and returns the subtask part updates that make that visible.
+  List<BridgeSseEvent> cancelTasks({required String sessionId}) => [
+    for (final task in _tools.cancelAll(sessionId: sessionId)) ..._partEvents(sessionId: sessionId, tool: task),
+  ];
+
+  /// Tool-use ids of the tasks still running inside the session's resident
+  /// process; a replayed task outside this set is dead.
+  Set<String> residentTaskToolUseIds({required String sessionId}) => _tools.runningTaskToolUseIds(sessionId: sessionId);
+
   void _clearStreamedMessages({required String sessionId}) {
     final messageIds = _streamedMessageIds.remove(sessionId);
     if (messageIds == null) return;
@@ -84,6 +96,8 @@ final class ClaudeEventDispatcher({
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
+        ClaudeTaskStartedMessage() => _mapTaskStarted(sessionId: sessionId, message: message),
+        ClaudeTaskNotificationMessage() => _mapTaskNotification(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -163,18 +177,19 @@ final class ClaudeEventDispatcher({
         type: PluginMessagePartType.reasoning,
         text: "",
       ),
-      ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
-        sessionId: sessionId,
-        tool: _tools.start(
-          sessionId: sessionId,
-          messageId: messageId,
-          blockIndex: index,
-          toolId: id,
-          name: name,
-          input: input,
-        ),
-      ),
+      ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) =>
+        _tools
+            .start(
+              sessionId: sessionId,
+              messageId: messageId,
+              blockIndex: index,
+              toolId: id,
+              name: name,
+              input: input,
+            )
+            .toPart(sessionId: sessionId),
       ClaudeMappedToolResultContentBlock() ||
+      ClaudeMappedTaskNotificationContentBlock() ||
       ClaudeMappedImageContentBlock() ||
       ClaudeMappedUnsupportedContentBlock() ||
       ClaudeMappedUnknownContentBlock() => null,
@@ -213,19 +228,15 @@ final class ClaudeEventDispatcher({
       case ClaudeStreamDeltaType.inputJson:
         final partialJson = message.delta["partial_json"];
         if (partialJson is! String) return const [];
-        final tool = _tools.appendInput(
+        return _partEvents(
           sessionId: sessionId,
-          messageId: messageId,
-          blockIndex: index,
-          partialJson: partialJson,
+          tool: _tools.appendInput(
+            sessionId: sessionId,
+            messageId: messageId,
+            blockIndex: index,
+            partialJson: partialJson,
+          ),
         );
-        return tool == null
-            ? const []
-            : [
-                BridgeSseMessagePartUpdated(
-                  part: _toolPart(sessionId: sessionId, tool: tool),
-                ),
-              ];
       case ClaudeStreamDeltaType.other:
         return const [];
     }
@@ -242,10 +253,7 @@ final class ClaudeEventDispatcher({
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
     final completed = _completedStreamedParts[messageId]?.remove(index);
     return [
-      if (tool != null)
-        BridgeSseMessagePartUpdated(
-          part: _toolPart(sessionId: sessionId, tool: tool),
-        ),
+      ..._partEvents(sessionId: sessionId, tool: tool),
       if (tool == null && completed != null) BridgeSseMessagePartUpdated(part: completed),
     ];
   }
@@ -288,19 +296,20 @@ final class ClaudeEventDispatcher({
     for (var offset = 0; offset < mapped.length; offset++) {
       final index = firstBlockIndex + offset;
       final part = switch (mapped[offset]) {
-        ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
-          sessionId: sessionId,
-          tool: _tools.upsertCompleteBlock(
-            sessionId: sessionId,
-            messageId: messageId,
-            blockIndex: index,
-            toolId: id,
-            name: name,
-            input: input,
-          ),
-        ),
+        ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) =>
+          _tools
+              .upsertCompleteBlock(
+                sessionId: sessionId,
+                messageId: messageId,
+                blockIndex: index,
+                toolId: id,
+                name: name,
+                input: input,
+              )
+              .toPart(sessionId: sessionId),
         _ => parts[offset],
       };
+      if (part == null) continue;
       if (_streamedBlocks[messageId]?.contains(index) ?? false) {
         _completedStreamedParts.putIfAbsent(messageId, () => <int, PluginMessagePart>{})[index] = part;
       } else {
@@ -319,6 +328,9 @@ final class ClaudeEventDispatcher({
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
+      // The frame-level typed result belongs to the frame's one tool result;
+      // a frame carrying several cannot attribute it.
+      final typedResult = results.length == 1 ? message.toolUseResult : const ClaudeToolUseResultAbsent();
       final events = <BridgeSseEvent>[];
       for (final result in results) {
         final tool = _tools.complete(
@@ -327,17 +339,18 @@ final class ClaudeEventDispatcher({
           output: result.output,
           isError: result.isError,
           attachments: result.attachments,
+          result: typedResult,
         );
         if (tool == null) continue;
-        events.add(
-          BridgeSseMessagePartUpdated(
-            part: _toolPart(sessionId: sessionId, tool: tool),
-          ),
-        );
+        events.addAll(_partEvents(sessionId: sessionId, tool: tool));
         if (tool.sessionDiffRequired) events.add(BridgeSseSessionDiff(sessionID: sessionId));
         if (tool.todoRefreshRequired) events.add(BridgeSseTodoUpdated(sessionID: sessionId));
       }
       return events;
+    }
+    if (mapped.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?) {
+      final events = _applyTaskNotification(sessionId: sessionId, notification: block.notification);
+      if (events != null) return events;
     }
 
     final messageId = _nonEmptyString(message.uuid);
@@ -364,6 +377,57 @@ final class ClaudeEventDispatcher({
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
     return events;
+  }
+
+  List<BridgeSseEvent> _mapTaskStarted({
+    required String sessionId,
+    required ClaudeTaskStartedMessage message,
+  }) {
+    final toolUseId = message.toolUseId;
+    final taskId = message.taskId;
+    if (toolUseId == null || taskId == null) return const [];
+    return _partEvents(
+      sessionId: sessionId,
+      tool: _tools.taskStarted(sessionId: sessionId, toolUseId: toolUseId, taskId: taskId),
+    );
+  }
+
+  List<BridgeSseEvent> _mapTaskNotification({
+    required String sessionId,
+    required ClaudeTaskNotificationMessage message,
+  }) {
+    final toolUseId = message.toolUseId;
+    final taskId = message.taskId;
+    if (toolUseId == null || taskId == null) return const [];
+    return _partEvents(
+      sessionId: sessionId,
+      tool: _tools.taskNotified(
+        sessionId: sessionId,
+        toolUseId: toolUseId,
+        taskId: taskId,
+        status: message.status,
+        summary: message.summary,
+        result: null,
+      ),
+    );
+  }
+
+  /// Finalizes the task a `<task-notification>` user text names, hiding the
+  /// text; null when it names no task this session knows, so the caller
+  /// renders it as ordinary user text.
+  List<BridgeSseEvent>? _applyTaskNotification({
+    required String sessionId,
+    required ClaudeTaskNotification notification,
+  }) {
+    final tool = _tools.taskNotified(
+      sessionId: sessionId,
+      toolUseId: notification.toolUseId,
+      taskId: notification.taskId,
+      status: notification.status,
+      summary: notification.summary,
+      result: notification.result,
+    );
+    return tool == null ? null : _partEvents(sessionId: sessionId, tool: tool);
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -461,13 +525,10 @@ PluginMessagePart _textPart({
   _ => throw ArgumentError.value(type, "type"),
 };
 
-PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart.fromTool(
-  id: tool.id,
-  sessionID: sessionId,
-  messageID: tool.messageId,
-  tool: tool.name,
-  state: tool.state,
-);
+List<BridgeSseEvent> _partEvents({required String sessionId, required ClaudeTrackedTool? tool}) {
+  final part = tool?.toPart(sessionId: sessionId);
+  return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
+}
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;
 

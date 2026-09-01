@@ -140,6 +140,7 @@ void main() {
         output: "done",
         isError: false,
         attachments: [attachment],
+        result: const ClaudeToolUseResultAbsent(),
       );
       final failure = tracker.complete(
         sessionId: "session-1",
@@ -147,6 +148,7 @@ void main() {
         output: "failed",
         isError: true,
         attachments: const [],
+        result: const ClaudeToolUseResultAbsent(),
       );
 
       expect(success?.messageId, "message-1");
@@ -168,6 +170,7 @@ void main() {
           output: "private output",
           isError: false,
           attachments: const [],
+          result: const ClaudeToolUseResultAbsent(),
         ),
         isNull,
       );
@@ -188,6 +191,7 @@ void main() {
         output: "done",
         isError: false,
         attachments: const [],
+        result: const ClaudeToolUseResultAbsent(),
       );
 
       final lateDelta = tracker.appendInput(
@@ -217,6 +221,7 @@ void main() {
         output: "first failure",
         isError: true,
         attachments: const [],
+        result: const ClaudeToolUseResultAbsent(),
       );
 
       final duplicate = tracker.complete(
@@ -225,6 +230,7 @@ void main() {
         output: "later success",
         isError: false,
         attachments: const [PluginMessageAttachment.metadata(mime: "image/png", filename: null)],
+        result: const ClaudeToolUseResultAbsent(),
       );
 
       expect(first?.sessionDiffRequired, isTrue);
@@ -252,6 +258,7 @@ void main() {
           output: name == "Edit" ? "failed" : "done",
           isError: name == "Edit",
           attachments: const [],
+          result: const ClaudeToolUseResultAbsent(),
         );
         final duplicate = tracker.complete(
           sessionId: name,
@@ -259,6 +266,7 @@ void main() {
           output: "done again",
           isError: false,
           attachments: const [],
+          result: const ClaudeToolUseResultAbsent(),
         );
 
         expect(first?.sessionDiffRequired, isTrue, reason: name);
@@ -283,6 +291,7 @@ void main() {
           output: "done",
           isError: false,
           attachments: const [],
+          result: const ClaudeToolUseResultAbsent(),
         );
 
         expect(result?.sessionDiffRequired, isFalse, reason: name);
@@ -353,4 +362,5 @@ ClaudeTrackedTool? _complete(ClaudeToolTracker tracker, {required String session
   output: "done",
   isError: false,
   attachments: const [],
+  result: const ClaudeToolUseResultAbsent(),
 );
