@@ -86,6 +86,7 @@ void main() {
     expect(find.text("Turn Bridge Off"), findsOneWidget);
     expect(find.text("Launch at login"), findsOneWidget);
     expect(find.text("Enable Launch at Login"), findsOneWidget);
+    expect(find.text("Take Over"), findsNothing);
 
     await tester.tap(find.text("Turn Bridge Off"));
     await tester.tap(find.text("Enable Launch at Login"));
@@ -96,6 +97,20 @@ void main() {
     verify(() => bridgeControlCubit.toggleLaunchAtLogin()).called(1);
     verify(() => bridgeControlCubit.openLogs()).called(1);
     verify(() => authGateCubit.signOut()).called(1);
+  });
+
+  testWidgets("hides Take Over while the bridge is ordinarily stopped", (WidgetTester tester) async {
+    await pumpHome(
+      tester: tester,
+      state: _state(
+        processState: const BridgeProcessStopped(),
+        desiredState: BridgeProcessDesiredState.off,
+        status: BridgeControlStatus.offline,
+        statusLabel: "Bridge: Off",
+      ),
+    );
+
+    expect(find.text("Take Over"), findsNothing);
   });
 
   testWidgets("shows and delegates Take Over when relay ownership is displaced", (WidgetTester tester) async {
@@ -168,7 +183,6 @@ BridgeControlState _state({
   required String statusLabel,
 }) => BridgeControlState(
   trayAvailability: SystemTrayAvailability.available,
-  menu: SystemTrayMenu(entries: const <SystemTrayMenuEntry>[]),
   activity: BridgeControlActivity.idle,
   statusLabel: statusLabel,
   processState: processState,

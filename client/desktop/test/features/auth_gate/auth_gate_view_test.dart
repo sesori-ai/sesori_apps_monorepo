@@ -35,12 +35,11 @@ void main() {
     whenListen(
       bridgeControlCubit,
       const Stream<BridgeControlState>.empty(),
-      initialState: BridgeControlState(
+      initialState: const BridgeControlState(
         trayAvailability: SystemTrayAvailability.available,
-        menu: SystemTrayMenu(entries: const <SystemTrayMenuEntry>[]),
         activity: BridgeControlActivity.idle,
         statusLabel: "Bridge: Off",
-        processState: const BridgeProcessStopped(),
+        processState: BridgeProcessStopped(),
         desiredState: BridgeProcessDesiredState.off,
         toggleTarget: BridgeProcessDesiredState.on,
         launchAtLoginEnabled: false,

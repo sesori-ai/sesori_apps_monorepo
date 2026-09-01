@@ -72,15 +72,6 @@ class BridgeControlCubit._create({
     : super(
         BridgeControlState(
           trayAvailability: SystemTrayAvailability.initializing,
-          menu: _buildMenu(
-            processState: _processService.state,
-            desiredState: _processService.desiredState,
-            status: _statusTracker.status,
-            activity: _logoutTracker.status.locksBridgeControls
-                ? BridgeControlActivity.signingOut
-                : BridgeControlActivity.idle,
-            launchAtLoginEnabled: false,
-          ),
           activity: _logoutTracker.status.locksBridgeControls
               ? BridgeControlActivity.signingOut
               : BridgeControlActivity.idle,
@@ -386,28 +377,19 @@ class BridgeControlCubit._create({
     final BridgeProcessDesiredState desiredState = _processService.desiredState;
     final BridgeControlStatus controlStatus = _statusTracker.status;
     final BridgeControlActivity activity = _presentationActivity;
-    final SystemTrayMenu menu = _buildMenu(
+    final BridgeControlState nextState = BridgeControlState(
+      trayAvailability: _trayAvailability,
+      activity: activity,
+      statusLabel: _statusLabel(processState: processState, status: controlStatus),
       processState: processState,
       desiredState: desiredState,
-      status: controlStatus,
-      activity: activity,
+      toggleTarget: _toggleTarget(processState: processState, desiredState: desiredState),
       launchAtLoginEnabled: _launchAtLoginEnabled,
+      controlStatus: controlStatus,
     );
-    emit(
-      BridgeControlState(
-        trayAvailability: _trayAvailability,
-        menu: menu,
-        activity: activity,
-        statusLabel: _statusLabel(processState: processState, status: controlStatus),
-        processState: processState,
-        desiredState: desiredState,
-        toggleTarget: _toggleTarget(processState: processState, desiredState: desiredState),
-        launchAtLoginEnabled: _launchAtLoginEnabled,
-        controlStatus: controlStatus,
-      ),
-    );
+    emit(nextState);
     if (syncTray && _trayAvailability.isAvailable) {
-      unawaited(_setMenu(menu: menu));
+      unawaited(_setMenu(menu: nextState.menu));
     }
   }
 
@@ -419,74 +401,7 @@ class BridgeControlCubit._create({
     }
   }
 
-  static SystemTrayMenu _buildMenu({
-    required BridgeProcessState processState,
-    required BridgeProcessDesiredState desiredState,
-    required BridgeControlStatus status,
-    required BridgeControlActivity activity,
-    required bool launchAtLoginEnabled,
-  }) {
-    final BridgeProcessDesiredState toggleTarget = _toggleTarget(
-      processState: processState,
-      desiredState: desiredState,
-    );
-    return SystemTrayMenu(
-      entries: <SystemTrayMenuEntry>[
-        const SystemTrayCommandItem(
-          command: SystemTrayCommand.openWindow,
-          label: "Open Sesori",
-          enabled: true,
-        ),
-        const SystemTraySeparator(),
-        SystemTrayTextItem(
-          label: _statusLabel(processState: processState, status: status),
-        ),
-        SystemTrayTextItem(label: "Active sessions: ${status.activeSessionCount}"),
-        const SystemTraySeparator(),
-        if (_canTakeOverFor(
-          processState: processState,
-          status: status,
-        )) ...<SystemTrayMenuEntry>[
-          SystemTrayCommandItem(
-            command: SystemTrayCommand.takeOver,
-            label: "Take Over",
-            enabled: !activity.locksCommands,
-          ),
-          const SystemTraySeparator(),
-        ],
-        SystemTrayCommandItem(
-          command: SystemTrayCommand.toggleBridge,
-          label: toggleTarget == BridgeProcessDesiredState.off ? "Turn Bridge Off" : "Turn Bridge On",
-          enabled: !activity.locksCommands,
-        ),
-        const SystemTraySeparator(),
-        SystemTrayTextItem(label: "Launch at login: ${launchAtLoginEnabled ? "On" : "Off"}"),
-        SystemTrayCommandItem(
-          command: SystemTrayCommand.toggleLaunchAtLogin,
-          label: launchAtLoginEnabled ? "Disable Launch at Login" : "Enable Launch at Login",
-          enabled: !activity.locksCommands,
-        ),
-        const SystemTraySeparator(),
-        SystemTrayCommandItem(
-          command: SystemTrayCommand.quit,
-          label: "Quit Sesori",
-          enabled: !activity.locksCommands,
-        ),
-      ],
-    );
-  }
-
-  bool get _canTakeOver => _canTakeOverFor(
-    processState: _processService.state,
-    status: _statusTracker.status,
-  );
-
-  static bool _canTakeOverFor({
-    required BridgeProcessState processState,
-    required BridgeControlStatus status,
-  }) {
-    return processState is BridgeProcessContention || status.relay == ControlRelayConnectionState.takenOver;
-  }
+  bool get _canTakeOver => state.canTakeOver;
 
   static BridgeProcessDesiredState _toggleTarget({
     required BridgeProcessState processState,

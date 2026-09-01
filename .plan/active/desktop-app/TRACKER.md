@@ -74,7 +74,7 @@ PRs:
 
 | Follow-up | Status | Scope |
 |---|---|---|
-| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | completed | PR #1222 merged: macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
+| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | done | PR #1222 merged: macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
 | `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` | in-progress | PR #1230 open: Quit intent semantics, explicit takeover orchestration/UI, and lifecycle coverage |
 
 The helper receives only a login-shell-derived PATH, merged with its inherited
