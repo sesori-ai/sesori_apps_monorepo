@@ -8,6 +8,8 @@ void main() {
   group("IoBridgeProcessEnvironment", () {
     test("parses NUL-delimited output without losing PATH after oversized records", () async {
       final List<int> output = <int>[
+        ...utf8.encode("login shell banner\n"),
+        0,
         ...utf8.encode("BASH_FUNC_path%%=() {\nPATH=\$PATH:/injected\n}"),
         0,
         ...List<int>.filled(70 * 1024, 120),
@@ -27,7 +29,7 @@ void main() {
       expect(path, isNot(contains("/injected")));
     });
 
-    test("resolves and caches a login-shell PATH without dropping valid Unicode entries", () async {
+    test("coalesces concurrent and refreshes login-shell PATH resolutions", () async {
       var calls = 0;
       String? shell;
       List<String>? capturedArguments;
@@ -60,13 +62,19 @@ void main() {
         shellTimeout: const Duration(seconds: 5),
       );
 
-      final Map<String, String> first = await environment.resolve();
-      final Map<String, String> second = await environment.resolve();
+      final List<Map<String, String>> concurrent = await Future.wait(<Future<Map<String, String>>>[
+        environment.resolve(),
+        environment.resolve(),
+      ]);
+      final Map<String, String> first = concurrent[0];
+      final Map<String, String> second = concurrent[1];
+      final Map<String, String> refreshed = await environment.resolve();
 
       expect(first, same(second));
-      expect(calls, 1);
+      expect(refreshed, isNot(same(first)));
+      expect(calls, 2);
       expect(shell, "/bin/zsh");
-      expect(capturedArguments, ["-ilc", "/usr/bin/env -0"]);
+      expect(capturedArguments, ["-ilc", r"/usr/bin/printf '\000'; /usr/bin/env -0"]);
       expect(first["PATH"], "/shell/bin:/base/bin:/non-é");
       expect(first["PATH"], isNot(contains("/injected")));
       expect(first["EXISTING_VARIABLE"], isNull);

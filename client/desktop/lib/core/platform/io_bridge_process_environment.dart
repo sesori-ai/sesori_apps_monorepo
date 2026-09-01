@@ -51,22 +51,14 @@ class IoBridgeProcessEnvironment.forTesting({
   @visibleForTesting
   this;
 
-  Map<String, String>? _resolution;
   Future<Map<String, String>?>? _resolutionInFlight;
 
   @override
   Future<Map<String, String>> resolve() async {
-    final Map<String, String>? cached = _resolution;
-    if (cached != null) return cached;
-
     final Future<Map<String, String>?> resolution = _resolutionInFlight ??= _resolve();
     try {
       final Map<String, String>? resolved = await resolution;
-      if (resolved == null) {
-        return const <String, String>{};
-      }
-      _resolution = resolved;
-      return resolved;
+      return resolved ?? const <String, String>{};
     } finally {
       if (identical(_resolutionInFlight, resolution)) {
         _resolutionInFlight = null;
@@ -100,7 +92,7 @@ class IoBridgeProcessEnvironment.forTesting({
     try {
       result = await _runProcess(
         executable: shell,
-        arguments: const <String>["-ilc", "/usr/bin/env -0"],
+        arguments: const <String>["-ilc", r"/usr/bin/printf '\000'; /usr/bin/env -0"],
         environment: null,
         timeout: _shellTimeout,
       );
