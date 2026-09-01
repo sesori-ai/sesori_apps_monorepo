@@ -37,8 +37,10 @@ lib/
 ```
 
 Shared localization, `BuildContext` localization/date helpers, connection UI,
-and GoRouter route observation live in `../module_app_ui/` and are consumed by
-both product shells.
+settings/harness-management presentation, and GoRouter route observation live
+in `../module_app_ui/` and are consumed by both product shells. This shell keeps
+mobile DI, routes, notification preferences, package/link strategies, and
+logout composition.
 
 ## UI Guidelines
 

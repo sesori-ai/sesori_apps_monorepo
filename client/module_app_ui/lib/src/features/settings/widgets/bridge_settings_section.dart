@@ -3,11 +3,11 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../extensions/build_context_x.dart";
 import "settings_section.dart";
 
 class const BridgeSettingsSection({super.key}) extends StatelessWidget {
@@ -264,20 +264,20 @@ class _RefreshIntervalSheetState() extends State<_RefreshIntervalSheet> {
           const SizedBox(height: PregoSpacing.x2l),
           PregoSheetActions(
             secondary: PregoButtonsSolid(
-                  key: const Key("pull_request_refresh_cancel"),
-                  label: context.loc.settingsPullRequestRefreshCancel,
-                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                  size: PregoButtonsSolidSize.lg,
-                  fullWidth: true,
-                  onPressed: () => context.pop(),
+              key: const Key("pull_request_refresh_cancel"),
+              label: context.loc.settingsPullRequestRefreshCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(),
             ),
             primary: PregoButtonsSolid(
-                  key: const Key("pull_request_refresh_save"),
-                  label: context.loc.settingsPullRequestRefreshSave,
-                  hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                  size: PregoButtonsSolidSize.lg,
-                  fullWidth: true,
-                  onPressed: _submit,
+              key: const Key("pull_request_refresh_save"),
+              label: context.loc.settingsPullRequestRefreshSave,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: _submit,
             ),
           ),
         ],

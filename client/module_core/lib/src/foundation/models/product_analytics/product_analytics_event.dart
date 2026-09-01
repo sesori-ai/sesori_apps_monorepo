@@ -98,7 +98,7 @@ enum AnalyticsPermissionDecision({required final String wireValue}) {
   reject(wireValue: "reject");
 }
 
-/// Outcome of a phone-triggered managed harness runtime install. Bounded on
+/// Outcome of a client-triggered managed harness runtime install. Bounded on
 /// purpose: the harness identity and any failure text stay off the wire.
 enum AnalyticsHarnessInstallOutcome({required final String wireValue}) {
   completed(wireValue: "completed"),
@@ -304,9 +304,9 @@ final class const SessionAbortSucceededEvent() extends ProductAnalyticsEvent {
   Map<String, String> get parameters => const {};
 }
 
-/// Whether a phone-triggered harness runtime install actually succeeded — the
-/// adoption signal for install-from-phone. Reported at the bridge's terminal
-/// install event, not at the tap.
+/// Whether a client-triggered harness runtime install actually succeeded — the
+/// managed-install adoption signal. Reported at the bridge's terminal install
+/// event, not at the tap.
 final class const HarnessInstallFinishedEvent({required final AnalyticsHarnessInstallOutcome outcome})
     extends ProductAnalyticsEvent {
   @override

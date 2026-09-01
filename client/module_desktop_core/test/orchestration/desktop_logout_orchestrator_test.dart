@@ -11,6 +11,7 @@ void main() {
   late _MockBridgeProcessService processService;
   late _MockControlCommandService controlCommandService;
   late _MockBridgeRepository bridgeRepository;
+  late _MockProductAnalyticsService productAnalyticsService;
   late _MockAuthSession authSession;
   late _MockDesktopInstanceService instanceService;
   late MemoryBridgeIdStorage bridgeIdStorage;
@@ -22,6 +23,9 @@ void main() {
     processService = _MockBridgeProcessService();
     controlCommandService = _MockControlCommandService();
     bridgeRepository = _MockBridgeRepository();
+    productAnalyticsService = _MockProductAnalyticsService();
+    when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
+    when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     instanceService = _MockDesktopInstanceService();
@@ -38,6 +42,7 @@ void main() {
       bridgeRepository: bridgeRepository,
       statusTracker: statusTracker,
       logoutTracker: logoutTracker,
+      productAnalyticsService: productAnalyticsService,
       authSession: authSession,
     );
   });
@@ -60,12 +65,13 @@ void main() {
     when(
       () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
     ).thenAnswer((_) async => operations.add("persist"));
+    when(productAnalyticsService.prepareForLogout).thenAnswer((_) async => operations.add("analytics"));
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async => operations.add("logout"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.completed);
-    expect(operations, <String>["cancel", "persist", "unregister", "stop", "logout"]);
+    expect(operations, <String>["cancel", "persist", "unregister", "stop", "analytics", "logout"]);
   });
 
   test("unregisters through the helper, then confirms deletion before local logout", () async {
@@ -147,6 +153,7 @@ void main() {
 
     expect(outcome, DesktopLogoutOutcome.bridgeStopFailed);
     verify(() => bridgeRepository.deleteBridge(bridgeId: "bridge-stuck")).called(1);
+    verifyNever(productAnalyticsService.prepareForLogout);
     verifyNever(() => authSession.logoutCurrentDevice());
     expect(bridgeIdStorage.bridgeId, isNull);
   });
@@ -235,6 +242,7 @@ void main() {
 
     expect(outcome, DesktopLogoutOutcome.desiredStatePersistenceFailed);
     verifyNever(() => processService.requestStopForLogout());
+    verifyNever(productAnalyticsService.prepareForLogout);
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
@@ -247,17 +255,36 @@ void main() {
     verify(() => instanceService.cancelPendingBridgeRestore()).called(1);
     verify(() => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off)).called(1);
     verifyNever(() => controlCommandService.unregisterAndExit());
+    verifyNever(productAnalyticsService.prepareForLogout);
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
-  test("reports a local-session failure after a successful helper stop", () async {
+  test("continues local logout when analytics preparation fails", () async {
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
+    when(productAnalyticsService.prepareForLogout).thenThrow(StateError("analytics unavailable"));
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    verifyInOrder([
+      productAnalyticsService.prepareForLogout,
+      () => authSession.logoutCurrentDevice(),
+    ]);
+  });
+
+  test("reports a local-session failure and resumes analytics after a successful helper stop", () async {
     when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenThrow(StateError("secure storage unavailable"));
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
 
     expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
-    verify(() => processService.requestStopForLogout()).called(1);
+    verifyInOrder([
+      productAnalyticsService.prepareForLogout,
+      () => authSession.logoutCurrentDevice(),
+      productAnalyticsService.resumeAfterFailedLogout,
+    ]);
   });
 }
 
@@ -266,6 +293,8 @@ class _MockBridgeProcessService() extends Mock implements BridgeProcessService;
 class _MockControlCommandService() extends Mock implements ControlCommandService;
 
 class _MockBridgeRepository() extends Mock implements BridgeRepository;
+
+class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 class _MockAuthSession() extends Mock implements AuthSession;
 

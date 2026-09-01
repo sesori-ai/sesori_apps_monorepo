@@ -15,7 +15,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/login_failed_reason_x.dart";
-import "../../core/legal_links.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/markdown_styles.dart";
