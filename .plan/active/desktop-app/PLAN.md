@@ -446,8 +446,8 @@ connection startup to a desktop auth/connection coordinator rather than the
 projection cubit.
 
 Step 13 merged in PR #1216 on 2026-08-31. The implementation is complete, and
-MT gate B was accepted on 2026-09-01. Step 14 remains pending until the user
-explicitly authorizes it.
+MT gate B was accepted on 2026-09-01. The user explicitly authorized Step 14
+that day; its implementation and focused verification are complete.
 
 ### Plan divergence — post-Step 13 Gate B findings (2026-08-31)
 
