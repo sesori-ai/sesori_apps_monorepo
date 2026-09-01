@@ -27,7 +27,9 @@ and keep native close/quit behavior safe.
   concern. The supervised helper receives a login-shell-derived executable
   search path, so harnesses installed outside launchd's default PATH remain
   discoverable after autostart. Only PATH is derived for the helper; shell
-  variables are not imported or persisted.
+  variables are not imported or persisted. If the login-shell probe fails, the
+  desktop emits no PATH override and preserves the inherited environment
+  unchanged while retaining a bounded diagnostic warning.
 - A `--hidden` launch stays tray-only when the tray is proven available. The
   macOS runner suppresses the native first ordering and the Flutter window
   adapter applies the hidden state as a fallback. If the tray is unavailable

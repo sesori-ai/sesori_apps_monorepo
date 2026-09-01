@@ -4,7 +4,6 @@ import "dart:io";
 
 import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:injectable/injectable.dart";
-import "package:path/path.dart" as path;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
@@ -32,7 +31,6 @@ class IoBridgeProcessEnvironment.forTesting({
   required final Map<String, String> _baseEnvironment,
   required final LaunchEnvironmentProcessRunner _runProcess,
   required final Duration _shellTimeout,
-  required final List<String> _fallbackPathDirectories,
 }) implements BridgeProcessEnvironment {
   new()
     : this.forTesting(
@@ -40,10 +38,6 @@ class IoBridgeProcessEnvironment.forTesting({
         baseEnvironment: Platform.environment,
         runProcess: _runLoginShell,
         shellTimeout: const Duration(seconds: 5),
-        fallbackPathDirectories: _defaultFallbackPathDirectories(
-          environment: Platform.environment,
-          isMacOS: Platform.isMacOS,
-        ),
       );
 
   @visibleForTesting
@@ -59,11 +53,11 @@ class IoBridgeProcessEnvironment.forTesting({
       return const <String, String>{};
     }
     final String? shellPath = await _readLoginShellPath();
-    final String mergedPath = _mergePath(
-      shellPath: shellPath,
-      basePath: _baseEnvironment["PATH"],
-      fallbackPathDirectories: _fallbackPathDirectories,
-    );
+    if (shellPath == null) {
+      // A failed probe must not rewrite the inherited environment based on guesses.
+      return const <String, String>{};
+    }
+    final String mergedPath = _mergePath(shellPath: shellPath, basePath: _baseEnvironment["PATH"]);
     return Map<String, String>.unmodifiable(
       mergedPath.isEmpty ? const <String, String>{} : <String, String>{"PATH": mergedPath},
     );
@@ -75,17 +69,17 @@ class IoBridgeProcessEnvironment.forTesting({
     try {
       result = await _runProcess(
         executable: shell,
-        arguments: const <String>["-ilc", "/usr/bin/env"],
+        arguments: const <String>["-ilc", "/usr/bin/env -0"],
         environment: null,
         timeout: _shellTimeout,
       );
     } on Object catch (error, stackTrace) {
-      logw("Failed to resolve the macOS login-shell PATH; using fallback executable paths", error, stackTrace);
+      logw("Failed to resolve the macOS login-shell PATH; preserving the inherited environment", error, stackTrace);
       return null;
     }
     if (result.exitCode != 0) {
       logw(
-        "The macOS login shell exited with code ${result.exitCode}; using fallback executable paths"
+        "The macOS login shell exited with code ${result.exitCode}; preserving the inherited environment"
         "${_stderrDetails(stderr: result.stderr.toString())}",
       );
       return null;
@@ -94,7 +88,7 @@ class IoBridgeProcessEnvironment.forTesting({
     final String? shellPath = _extractPath(output: result.stdout.toString());
     if (shellPath == null) {
       logw(
-        "The macOS login shell did not return a usable PATH; using fallback executable paths"
+        "The macOS login shell did not return a usable PATH; preserving the inherited environment"
         "${_stderrDetails(stderr: result.stderr.toString())}",
       );
       return null;
@@ -102,22 +96,22 @@ class IoBridgeProcessEnvironment.forTesting({
     return shellPath;
   }
 
-  /// Reads the exported PATH from `env` rather than expanding `$PATH` in the
-  /// shell command. Fish represents PATH as a list and expands a quoted list
-  /// once per entry; `env` serializes it to the single colon-delimited value
-  /// inherited by child processes for every supported shell.
+  /// Reads the exact exported PATH entry from NUL-delimited `env` output.
+  /// NUL framing keeps multiline environment values (including exported shell
+  /// functions) from creating false `PATH=` entries.
   static String? _extractPath({required String output}) {
-    String? shellPath;
-    for (final String line in const LineSplitter().convert(output)) {
-      if (line.startsWith("PATH=")) {
-        shellPath = line.substring("PATH=".length);
+    for (final String entry in output.split("\u0000")) {
+      final int separator = entry.indexOf("=");
+      if (separator <= 0 || entry.substring(0, separator) != "PATH") {
+        continue;
       }
+      return entry.substring(separator + 1);
     }
-    return shellPath;
+    return null;
   }
 
   static String _stderrDetails({required String stderr}) {
-    final String value = stderr.toString().trim();
+    final String value = stderr.trim();
     if (value.isEmpty) return "";
     final String bounded = value.length <= _maxLoggedShellStderrCharacters
         ? value
@@ -190,55 +184,13 @@ class IoBridgeProcessEnvironment.forTesting({
     return utf8.decode(bytes, allowMalformed: true);
   }
 
-  static List<String> _defaultFallbackPathDirectories({
-    required Map<String, String> environment,
-    required bool isMacOS,
-  }) {
-    if (!isMacOS) {
-      return const <String>[];
-    }
-    final String? home = _homeDirectory(environment: environment);
-    final String? configuredAsdfData = environment["ASDF_DATA_DIR"]?.trim();
-    final String? asdfShims = configuredAsdfData != null && configuredAsdfData.startsWith("/")
-        ? path.join(configuredAsdfData, "shims")
-        : home == null
-        ? null
-        : path.join(home, ".asdf", "shims");
-    return <String>[
-      "/opt/homebrew/bin",
-      "/usr/local/bin",
-      if (home != null) ...<String>[
-        path.join(home, ".local", "bin"),
-        ...?asdfShims == null ? null : <String>[asdfShims],
-        path.join(home, ".bun", "bin"),
-        path.join(home, ".sesori", "bin"),
-        path.join(home, ".pub-cache", "bin"),
-        path.join(home, ".cargo", "bin"),
-        path.join(home, ".npm-global", "bin"),
-        path.join(home, ".volta", "bin"),
-      ],
-    ];
-  }
-
-  static String? _homeDirectory({required Map<String, String> environment}) {
-    for (final String key in const <String>["HOME", "USERPROFILE"]) {
-      final String? value = environment[key]?.trim();
-      if (value != null && value.isNotEmpty) {
-        return value;
-      }
-    }
-    return null;
-  }
-
   static String _mergePath({
     required String? shellPath,
     required String? basePath,
-    required List<String> fallbackPathDirectories,
   }) {
     final List<String> candidates = <String>[
       if (shellPath != null) ..._absolutePathEntries(value: shellPath),
       if (basePath != null) ..._absolutePathEntries(value: basePath),
-      ...fallbackPathDirectories,
     ];
     final Set<String> seen = <String>{};
     return candidates.where(seen.add).join(":");
