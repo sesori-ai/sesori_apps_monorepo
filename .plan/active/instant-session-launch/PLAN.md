@@ -314,14 +314,19 @@ duplicate-risk warning.
   (Layer 2, `@lazySingleton`) delegates to it and owns the match-then-consume
   rule — `take({required String sessionId})` returns-and-clears only on a
   matching id and is otherwise inert. No persistence, no timers.
-- On the same success path that emits `NewSessionCreated` (and only there — a
-  background completion after the cubit closed stashes nothing, matching the
-  existing background-failure discipline), `NewSessionCubit` maps the
-  submission snapshot to a `QueuedSessionSubmission` and stashes it for the
+- The stash happens only on the navigation branch. `NewSessionCreated` keeps
+  carrying the session; the screen's created-listener, exactly where it passes
+  the existing hijack guard and immediately before `replaceRoute`, asks the
+  cubit to build and stash the handoff. `NewSessionCubit` owns the mapping
+  from the submission snapshot to a `QueuedSessionSubmission` keyed by the
   created session id. Text submissions get a fresh local `prm_` promptId that
   never goes on the wire; command submissions reuse the launch's `launchId` as
   the promptId, matching the id the bridge used for the initial command send.
-  Content comes from the snapshot and configuration.
+  Content comes from the snapshot and configuration. A skipped navigation
+  (launch route no longer current) stashes nothing, and a background
+  completion after the cubit closed emits nothing — a handoff can never
+  outlive a navigation that does not happen, so attachment bytes are never
+  retained past the route that consumes them.
 - `SessionDetailCubit` takes the handoff before constructing its initial
   state, and the value then lives only in state:
   - `SessionDetailState.loading` gains `required QueuedSessionSubmission?
@@ -434,8 +439,9 @@ Unchanged from the shipped behavior, restated for completeness:
   still-current route restore the exact submission with the duplicate-risk
   warning; the launch bubble and status line are simply replaced by the
   restored composer.
-- Back during launch keeps the background launch; no handoff is stashed unless
-  `NewSessionCreated` is emitted on the still-open cubit.
+- Back during launch keeps the background launch; the handoff is stashed only
+  on the created-listener's navigation branch, so a launch that completes
+  without navigating retains nothing.
 - A launch bubble whose echo never arrives stays rendered as the accepted
   message; the turn's failure surfaces through the existing session
   status/error surfaces, and any later refresh that delivers the echo releases
@@ -491,9 +497,9 @@ New mutable parts, each justified:
 2. **Client:** one single in-memory handoff slot, owned by
    `SessionLaunchHandoffStorage` (Layer 1) behind a delegating
    `SessionLaunchHandoffRepository` (Layer 2) — the only way the detail route
-   can render the message before the bridge lists it; written iff
-   `NewSessionCreated` is emitted, cleared on consume, overwritten by the next
-   launch.
+   can render the message before the bridge lists it; written only on the
+   navigation branch that immediately consumes it, cleared on consume,
+   overwritten by the next launch.
 3. **Client:** one `ConnectionService.events` subscription in
    `NewSessionCubit`, filtered by the current in-flight `launchId`.
 
@@ -551,7 +557,8 @@ and 5 are split exactly so state machinery and presentation review separately.
   omission of `preparingWorkspace`, stop-on-failure, drain close, and the
   initial command send carrying the request's `launchId` as its promptId.
 - **Step 4:** `client/module_core` cubit/state/repository tests + analysis.
-  Prove stage matching, handoff stash-only-on-emit, release-at-load, release
+  Prove stage matching, handoff stash-only-on-navigation (a guarded
+  non-navigating completion retains nothing), release-at-load, release
   on message and part events in one emission, failed-load/Retry preservation,
   command-launch release through the `launchId` promptId across queue dedupe
   and echo swap plus the old-bridge positional fallback, cancel-clear of the
