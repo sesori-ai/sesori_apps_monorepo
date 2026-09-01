@@ -6,19 +6,12 @@ import "../../models/claude_tool_use_result.dart";
 import "../mappers/claude_task_status_mapping.dart";
 
 /// An immutable presentation snapshot of one Claude tool call.
-final class const ClaudeTrackedTool({
+sealed class const ClaudeTrackedTool({
   required final String id,
   required final String messageId,
   required final String name,
   required final Object? input,
   required final PluginToolState state,
-
-  /// Whether this call is an `Agent` launch rendered as a subtask.
-  required final bool isTask,
-
-  /// The sub-agent's transcript id (`agent-<agentId>`) once a task frame or
-  /// tool result named it; always null for ordinary tools.
-  required final String? childSessionId,
 
   /// Whether this update should emit the session's one-shot diff signal.
   required final bool sessionDiffRequired,
@@ -31,29 +24,58 @@ final class const ClaudeTrackedTool({
   /// A task renders only once its input carries the description and prompt
   /// the subtask part requires; while the input is still streaming there is
   /// nothing honest to show, so the caller emits no part.
-  PluginMessagePart? toPart({required String sessionId}) {
-    if (!isTask) {
-      return PluginMessagePart.tool(id: id, sessionID: sessionId, messageID: messageId, tool: name, state: state);
-    }
-    final input = this.input;
-    if (input is! Map) return null;
-    final description = input["description"];
-    final prompt = input["prompt"];
-    if (description is! String || prompt is! String) return null;
-    final agent = input["subagent_type"];
-    return PluginMessagePart.subtask(
+  PluginMessagePart? toPart({required String sessionId}) => switch (this) {
+    ClaudeTrackedToolCall() => PluginMessagePart.tool(
       id: id,
       sessionID: sessionId,
       messageID: messageId,
-      prompt: prompt,
-      description: description,
-      // The CLI runs the general-purpose agent when the call names none.
-      agent: agent is String && agent.isNotEmpty ? agent : "general-purpose",
-      taskState: state,
-      childSessionID: childSessionId,
-    );
-  }
+      tool: name,
+      state: state,
+    ),
+    ClaudeTrackedTask(:final childSessionId) => switch (input) {
+      {"description": final String description, "prompt": final String prompt} => PluginMessagePart.subtask(
+        id: id,
+        sessionID: sessionId,
+        messageID: messageId,
+        prompt: prompt,
+        description: description,
+        // The CLI runs the general-purpose agent when the call names none.
+        agent: switch (input) {
+          {"subagent_type": final String agent} when agent.isNotEmpty => agent,
+          _ => "general-purpose",
+        },
+        taskState: state,
+        childSessionID: childSessionId,
+      ),
+      _ => null,
+    },
+  };
 }
+
+/// An ordinary tool call, rendered as a tool part.
+final class const ClaudeTrackedToolCall({
+  required super.id,
+  required super.messageId,
+  required super.name,
+  required super.input,
+  required super.state,
+  required super.sessionDiffRequired,
+  required super.todoRefreshRequired,
+}) extends ClaudeTrackedTool;
+
+/// An `Agent` launch, rendered as a subtask part.
+final class const ClaudeTrackedTask({
+  /// The sub-agent's transcript id (`agent-<agentId>`) once a task frame or
+  /// tool result named it.
+  required final String? childSessionId,
+  required super.id,
+  required super.messageId,
+  required super.name,
+  required super.input,
+  required super.state,
+  required super.sessionDiffRequired,
+  required super.todoRefreshRequired,
+}) extends ClaudeTrackedTool;
 
 /// Tracks Claude `tool_use` blocks from their streamed start through the
 /// matching `tool_result` block.
@@ -345,27 +367,32 @@ final class _TrackedTool({
   bool get isTodoWrite => kind == _ClaudeToolKind.todoWrite;
   bool get isTask => kind == _ClaudeToolKind.task;
 
-  ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) =>
-      ClaudeTrackedTool(
-        id: id,
-        messageId: messageId,
-        name: name,
-        input: input,
-        state: PluginToolState(
-          status: status,
-          title: null,
-          output: output,
-          error: error,
-          attachments: attachments,
-        ),
-        isTask: isTask,
-        childSessionId: switch (taskId) {
-          final id? when isTask => "agent-$id",
-          _ => null,
-        },
-        sessionDiffRequired: sessionDiffRequired,
-        todoRefreshRequired: todoRefreshRequired,
-      );
+  ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) {
+    final state = PluginToolState(status: status, title: null, output: output, error: error, attachments: attachments);
+    return isTask
+        ? ClaudeTrackedTask(
+            childSessionId: switch (taskId) {
+              final id? => "agent-$id",
+              null => null,
+            },
+            id: id,
+            messageId: messageId,
+            name: name,
+            input: input,
+            state: state,
+            sessionDiffRequired: sessionDiffRequired,
+            todoRefreshRequired: todoRefreshRequired,
+          )
+        : ClaudeTrackedToolCall(
+            id: id,
+            messageId: messageId,
+            name: name,
+            input: input,
+            state: state,
+            sessionDiffRequired: sessionDiffRequired,
+            todoRefreshRequired: todoRefreshRequired,
+          );
+  }
 }
 
 bool _isTerminal(PluginToolStatus status) => status.isTerminal;

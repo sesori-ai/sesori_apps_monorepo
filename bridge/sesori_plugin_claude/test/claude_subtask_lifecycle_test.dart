@@ -81,7 +81,7 @@ void main() {
         name: "Agent",
         input: const <String, Object?>{},
       );
-      expect(started.isTask, isTrue);
+      expect(started, isA<ClaudeTrackedTask>());
       expect(started.toPart(sessionId: _session), isNull);
 
       final complete = _upsertAgent(tracker);
@@ -106,7 +106,7 @@ void main() {
         result: const ClaudeToolUseResultAsyncLaunched(agentId: _agentId),
       );
       expect(launched?.state.status, PluginToolStatus.running);
-      expect(launched?.childSessionId, "agent-$_agentId");
+      expect(launched, isA<ClaudeTrackedTask>().having((t) => t.childSessionId, "child", "agent-$_agentId"));
 
       tracker.beginTurn(sessionId: _session);
       expect(tracker.runningTaskToolUseIds(sessionId: _session), {_toolUseId});
@@ -147,7 +147,7 @@ void main() {
       );
       expect(fallback?.state.status, PluginToolStatus.completed);
       expect(fallback?.state.output, "final report");
-      expect(fallback?.childSessionId, "agent-$_agentId");
+      expect(fallback, isA<ClaudeTrackedTask>().having((t) => t.childSessionId, "child", "agent-$_agentId"));
 
       final stopped = tracker.taskNotified(
         sessionId: _session,
