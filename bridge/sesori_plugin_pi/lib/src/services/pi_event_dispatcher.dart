@@ -471,12 +471,10 @@ final class PiEventDispatcher({
   }) {
     if (contentIndex == null || contentIndex < 0) return const [];
     if (state.messageId == null) return const [];
-    if (toolId == null || toolName == null || toolId.isEmpty || toolName.isEmpty) {
-      // COMPATIBILITY 2026-08-31 (v1.8.3): Pi <= 0.84.2 omits toolcall_start
-      // metadata; keep waiting for toolcall_end. Remove this fallback when
-      // PiRuntimeManifest.minPathVersion is raised to 0.84.3.
-      return const [];
-    }
+    // COMPATIBILITY 2026-08-31 (v1.8.3): Pi <= 0.84.2 omits toolcall_start
+    // metadata; keep waiting for toolcall_end. Remove this fallback when
+    // PiRuntimeManifest.minPathVersion is raised to 0.84.3.
+    if (toolId == null || toolName == null || toolId.isEmpty || toolName.isEmpty) return const [];
     return _emitToolCall(
       sessionId: sessionId,
       state: state,
