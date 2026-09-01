@@ -41,11 +41,24 @@ class const PregoActivityIndicator({
     );
   }
 
-  /// The untinted spinner colour for a surface of [brightness]: the stock
-  /// Cupertino indicator's grey. A null [color] resolves to it for the theme
-  /// brightness; a surface that paints the inverse of the theme (a primary
-  /// button, an inverted alert card) passes the opposite brightness explicitly
-  /// so the spinner stays visible without becoming a brand tint.
+  /// The spinner for a surface whose brightness differs from the theme's (a
+  /// primary button, an inverted alert card). Both the native views and the
+  /// Flutter fallback resolve their natural colour from the theme brightness,
+  /// so the override is expressed as a theme rather than a tint: the native
+  /// spinner stays untinted and simply follows [brightness].
+  static Widget onSurface({required Brightness brightness, required Color? color}) => Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      return Theme(
+        data: theme.copyWith(colorScheme: theme.colorScheme.copyWith(brightness: brightness)),
+        child: PregoActivityIndicator(color: color),
+      );
+    },
+  );
+
+  /// The untinted Flutter-fallback colour for a surface of [brightness]: the
+  /// stock Cupertino indicator's grey. A null [color] resolves to it for the
+  /// theme brightness; see [onSurface] for surfaces that invert the theme.
   static Color naturalColor({required Brightness brightness}) => switch (brightness) {
     Brightness.light => const Color(0xFF3C3C44),
     Brightness.dark => const Color(0xFFEBEBF5),

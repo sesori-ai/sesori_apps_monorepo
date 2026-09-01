@@ -18,8 +18,12 @@ void main() {
     );
   }
 
-  Color spinnerColor(WidgetTester tester) =>
-      tester.widget<PregoActivityIndicator>(find.byType(PregoActivityIndicator)).color ?? const Color(0x00000000);
+  // The indicator stays untinted (null colour); the inverted surface reaches
+  // the Flutter fallback as its resolved brightness.
+  Color spinnerColor(WidgetTester tester) {
+    expect(tester.widget<PregoActivityIndicator>(find.byType(PregoActivityIndicator)).color, isNull);
+    return tester.widget<PregoSteppedActivityIndicator>(find.byType(PregoSteppedActivityIndicator)).color;
+  }
 
   testWidgets("a loading alert on the inverted light-theme card uses the dark-surface grey", (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;

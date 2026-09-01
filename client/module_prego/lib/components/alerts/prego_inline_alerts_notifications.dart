@@ -238,12 +238,12 @@ class const PregoInlineAlertsNotifications({
 
   Widget _buildLeading(PregoColors colors, {required Brightness brightness}) {
     if (_isLoading) {
-      // The card surface is the inverse of the page, so the spinner takes the
-      // untinted grey of the opposite brightness to stay visible.
+      // The card surface is the inverse of the page, so the untinted spinner
+      // follows the opposite brightness to stay visible.
       final inverse = brightness == Brightness.dark ? Brightness.light : Brightness.dark;
       return SizedBox.square(
         dimension: _spinnerSize,
-        child: PregoActivityIndicator(color: PregoActivityIndicator.naturalColor(brightness: inverse)),
+        child: PregoActivityIndicator.onSurface(brightness: inverse, color: null),
       );
     }
     return Icon(icon ?? _defaultIcon, size: _iconSize, color: _iconColor(colors));

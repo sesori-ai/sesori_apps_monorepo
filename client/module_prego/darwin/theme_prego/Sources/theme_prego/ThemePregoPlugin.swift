@@ -49,11 +49,14 @@ private struct ActivityIndicatorCreationParams {
 
   init?(from args: Any?) {
     guard let dictionary = args as? [String: Any] else { return nil }
-    if let color = dictionary["color"] {
-      guard let number = color as? NSNumber else { return nil }
-      self.color = number.int64Value
-    } else {
+    // The codec decodes Dart's null as NSNull; both spellings mean untinted.
+    switch dictionary["color"] {
+    case nil, is NSNull:
       self.color = nil
+    case let number as NSNumber:
+      self.color = number.int64Value
+    default:
+      return nil
     }
     self.dark = (dictionary["dark"] as? NSNumber)?.boolValue ?? false
   }

@@ -60,10 +60,12 @@ class _RenameSheetState() extends State<RenameSheet> {
           ? SizedBox(
               width: 16,
               height: 16,
-              // The primary button paints the inverse of the page surface, so
-              // the spinner takes the untinted grey of the opposite brightness.
-              child: PregoActivityIndicator(
-                color: PregoActivityIndicator.naturalColor(brightness: _inverse(Theme.of(context).brightness)),
+              // The primary button's fill (bgPrimarySolid) paints the inverse
+              // of the page surface, so the untinted spinner follows the
+              // opposite brightness.
+              child: PregoActivityIndicator.onSurface(
+                brightness: _inverse(Theme.of(context).brightness),
+                color: null,
               ),
             )
           : Text(widget.saveLabel),
