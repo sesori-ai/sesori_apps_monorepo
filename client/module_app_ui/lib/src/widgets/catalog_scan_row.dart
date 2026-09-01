@@ -303,7 +303,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
               dimension: _markSize,
               child: switch (content.icon) {
                 final icon? => Icon(icon, size: _markSize, color: foreground),
-                null => PregoActivityIndicator(color: foreground),
+                null => const PregoActivityIndicator(color: null),
               },
             ),
             const SizedBox(width: PregoSpacing.lg),

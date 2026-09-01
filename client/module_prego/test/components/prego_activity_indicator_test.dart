@@ -149,13 +149,13 @@ void main() {
       await tester.pumpWidget(
         wrap(const PregoActivityIndicator(color: color)),
       );
-      expect(find.byKey(ValueKey(color.toARGB32())), findsOneWidget);
+      expect(find.byKey(const ValueKey<int?>(0xFF123456)), findsOneWidget);
 
       await tester.pumpWidget(
         wrap(const PregoActivityIndicator(color: other)),
       );
-      expect(find.byKey(ValueKey(color.toARGB32())), findsNothing);
-      expect(find.byKey(ValueKey(other.toARGB32())), findsOneWidget);
+      expect(find.byKey(const ValueKey<int?>(0xFF123456)), findsNothing);
+      expect(find.byKey(const ValueKey<int?>(0xFF654321)), findsOneWidget);
       expect(
         tester.widget<UiKitView>(find.byType(UiKitView)).creationParams,
         other.toARGB32(),
@@ -237,6 +237,48 @@ void main() {
       expect(find.byType(UiKitView), findsNothing);
       expect(find.byType(AppKitView), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
+    });
+  });
+  testWidgets("a null colour leaves the native spinner untinted", (tester) async {
+    await onPlatform(TargetPlatform.iOS, () async {
+      await tester.pumpWidget(
+        wrap(const PregoActivityIndicator(color: null)),
+      );
+
+      final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
+      expect(platformView.creationParams, isNull);
+    });
+  });
+
+  testWidgets("a null colour gives the Flutter spinner the Cupertino grey for the brightness", (tester) async {
+    await onPlatform(TargetPlatform.android, () async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: const ColorScheme.light()),
+          home: const PregoActivityIndicator(color: null),
+        ),
+      );
+      expect(
+        tester.widget<PregoSteppedActivityIndicator>(find.byType(PregoSteppedActivityIndicator)).color,
+        const Color(0xFF3C3C44),
+      );
+
+      // MaterialApp applies the dark theme from the platform brightness.
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: const ColorScheme.light()),
+          darkTheme: ThemeData(colorScheme: const ColorScheme.dark()),
+          home: const PregoActivityIndicator(color: null),
+        ),
+      );
+      // MaterialApp animates a theme change; read the colour once it settled.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        tester.widget<PregoSteppedActivityIndicator>(find.byType(PregoSteppedActivityIndicator)).color,
+        const Color(0xFFEBEBF5),
+      );
     });
   });
 }

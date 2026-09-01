@@ -7,9 +7,14 @@ import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 
 /// A Prego activity indicator that animates outside Flutter where supported.
+///
+/// A null [color] keeps each platform's natural spinner colour (the system
+/// indicator on iOS/macOS, the Cupertino grey on the Flutter fallback); a
+/// colour tints it. Product surfaces currently pass null everywhere on
+/// purpose — the brand tint read poorly — while the capability stays available.
 class const PregoActivityIndicator({
   super.key,
-  required final Color color,
+  required final Color? color,
 }) extends StatelessWidget {
   static const _nativeViewType = "sesori/native-activity-indicator";
   static const _defaultDimension = 36.0;
@@ -18,6 +23,7 @@ class const PregoActivityIndicator({
   Widget build(BuildContext context) {
     final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final animationsEnabled = !reducedMotion && TickerMode.valuesOf(context).enabled;
+    final fallbackColor = color ?? _defaultFallbackColor(brightness: Theme.of(context).brightness);
 
     return Semantics(
       role: SemanticsRole.loadingSpinner,
@@ -26,17 +32,23 @@ class const PregoActivityIndicator({
           child: SizedBox.square(
             dimension: _defaultDimension,
             child: animationsEnabled
-                ? _animatedIndicator()
-                : PregoSteppedActivityIndicator(color: color, animating: false),
+                ? _animatedIndicator(fallbackColor: fallbackColor)
+                : PregoSteppedActivityIndicator(color: fallbackColor, animating: false),
           ),
         ),
       ),
     );
   }
 
-  Widget _animatedIndicator() {
+  /// The stock Cupertino indicator's untinted colour per brightness.
+  static Color _defaultFallbackColor({required Brightness brightness}) => switch (brightness) {
+    Brightness.light => const Color(0xFF3C3C44),
+    Brightness.dark => const Color(0xFFEBEBF5),
+  };
+
+  Widget _animatedIndicator({required Color fallbackColor}) {
     if (kIsWeb) {
-      return PregoSteppedActivityIndicator(color: color, animating: true);
+      return PregoSteppedActivityIndicator(color: fallbackColor, animating: true);
     }
 
     // Android deliberately has no native branch: a hybrid-composition platform
@@ -46,13 +58,13 @@ class const PregoActivityIndicator({
     final nativeView = switch (defaultTargetPlatform) {
       TargetPlatform.iOS => UiKitView(
         viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
+        creationParams: color?.toARGB32(),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
       TargetPlatform.macOS => AppKitView(
         viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
+        creationParams: color?.toARGB32(),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
@@ -60,11 +72,11 @@ class const PregoActivityIndicator({
     };
 
     if (nativeView == null) {
-      return PregoSteppedActivityIndicator(color: color, animating: true);
+      return PregoSteppedActivityIndicator(color: fallbackColor, animating: true);
     }
     // Native views consume creationParams only at creation, so a colour change
     // (a theme switch while a spinner is visible) must recreate the view.
-    return KeyedSubtree(key: ValueKey(color.toARGB32()), child: nativeView);
+    return KeyedSubtree(key: ValueKey<int?>(color?.toARGB32()), child: nativeView);
   }
 }
 

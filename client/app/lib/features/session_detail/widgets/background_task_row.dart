@@ -52,13 +52,11 @@ class const BackgroundTaskRow({
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
     // The leading slot is a tight 32px wide but leaves its height free. Center
     // re-loosens those constraints around a fixed 16px square.
-    SessionStatusBusy() || SessionStatusRetry() => Center(
+    SessionStatusBusy() || SessionStatusRetry() => const Center(
       heightFactor: 1,
       child: SizedBox.square(
         dimension: 16,
-        child: PregoActivityIndicator(
-          color: prego.colors.bgBrandSolid,
-        ),
+        child: PregoActivityIndicator(color: null),
       ),
     ),
     SessionStatusIdle() || null => Icon(

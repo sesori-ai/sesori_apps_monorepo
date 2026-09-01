@@ -217,7 +217,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
                   color: prego.colors.bgSurface2,
                   child: Center(
                     child: loading
-                        ? PregoActivityIndicator(color: prego.colors.textSecondary)
+                        ? const PregoActivityIndicator(color: null)
                         : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
                   ),
                 ),

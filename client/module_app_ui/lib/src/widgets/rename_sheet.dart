@@ -54,10 +54,10 @@ class _RenameSheetState() extends State<RenameSheet> {
     final action = FilledButton(
       onPressed: _loading || _controller.text.trim().isEmpty ? null : _save,
       child: _loading
-          ? SizedBox(
+          ? const SizedBox(
               width: 16,
               height: 16,
-              child: PregoActivityIndicator(color: context.prego.colors.textWhite),
+              child: PregoActivityIndicator(color: null),
             )
           : Text(widget.saveLabel),
     );

@@ -62,9 +62,9 @@ class _SessionDiffsBodyState() extends State<SessionDiffsBody> {
   List<Widget> _buildContentSlivers({required BuildContext context, required DiffState state}) {
     return switch (state) {
       DiffStateLoading() => [
-        SliverFillRemaining(
+        const SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+          child: Center(child: PregoActivityIndicator(color: null)),
         ),
       ],
       DiffStateFailed(:final error) => [
@@ -97,9 +97,9 @@ class _SessionDiffsBodyState() extends State<SessionDiffsBody> {
     final viewModels = _viewModels;
     if (_isComputing || viewModels == null) {
       return [
-        SliverFillRemaining(
+        const SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+          child: Center(child: PregoActivityIndicator(color: null)),
         ),
       ];
     }
