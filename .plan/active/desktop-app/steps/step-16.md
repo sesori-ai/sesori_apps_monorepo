@@ -28,7 +28,8 @@
   controls until their corresponding plan slices land.
 - Added `BridgeControlCubit.startBridge()` as an explicit desired-On operation.
   It persists On and starts or retries the supervised helper without toggle
-  semantics, so both desktop disconnected variants expose the same safe action.
+  semantics; desktop recovery runs that intent alongside the existing
+  authenticated relay reconnect, so both disconnected variants can reload.
 - Removed the empty-string session-title sentinel. Route composition now keeps a
   missing title nullable and lets canonical session data hydrate it.
 - Moved shared project-dialog and session-presentation tests into
@@ -46,9 +47,9 @@
 
 ## Verification
 
-- `client/module_app_ui`: `asdf exec dart analyze --fatal-infos`; 88 tests pass.
+- `client/module_app_ui`: `asdf exec dart analyze --fatal-infos`; 89 tests pass.
 - `client/app`: `asdf exec dart analyze --fatal-infos`; 844 tests pass.
-- `client/desktop`: `asdf exec dart analyze --fatal-infos`; 69 tests pass.
+- `client/desktop`: `asdf exec dart analyze --fatal-infos`; 70 tests pass.
 - `client/module_desktop_core`: `asdf exec dart analyze --fatal-infos`;
   `asdf exec dart test` passes 201 tests.
 - Focused recovery coverage proves mobile keeps CLI guidance and omits desktop

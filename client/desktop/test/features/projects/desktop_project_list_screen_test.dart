@@ -4,6 +4,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/features/projects/desktop_project_list_screen.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -11,10 +12,13 @@ import "package:theme_prego/module_prego.dart";
 
 void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
+  late _MockProjectListCubit projectListCubit;
 
   setUp(() {
     bridgeControlCubit = _MockBridgeControlCubit();
+    projectListCubit = _MockProjectListCubit();
     when(bridgeControlCubit.startBridge).thenAnswer((_) async {});
+    when(projectListCubit.reconnectBridge).thenAnswer((_) async {});
     whenListen(
       bridgeControlCubit,
       const Stream<BridgeControlState>.empty(),
@@ -30,11 +34,26 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<BridgeControlCubit>.value(
           value: bridgeControlCubit,
-          child: Scaffold(body: DesktopBridgeRecoveryView(bridge: bridge)),
+          child: Scaffold(
+            body: DesktopBridgeRecoveryView(
+              bridge: bridge,
+              onStartBridge: bridgeControlCubit.startBridge,
+            ),
+          ),
         ),
       ),
     );
   }
+
+  test("recovery starts the helper and establishes the relay connection", () async {
+    await recoverDesktopProjectConnection(
+      bridgeControlCubit: bridgeControlCubit,
+      projectListCubit: projectListCubit,
+    );
+
+    verify(bridgeControlCubit.startBridge).called(1);
+    verify(projectListCubit.reconnectBridge).called(1);
+  });
 
   testWidgets("never-registered recovery offers supervised Start without CLI guidance", (tester) async {
     await pumpRecovery(tester: tester, bridge: null);
@@ -81,3 +100,5 @@ const BridgeControlState _bridgeControlState = BridgeControlState(
 );
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;

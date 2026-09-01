@@ -36,7 +36,7 @@ final GoRouter desktopRouter = GoRouter(
         GoRoute(
           path: AppRouteDef.projects.path,
           builder: (BuildContext context, GoRouterState state) => DesktopProjectListScreen(
-            onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
+            onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
             onOpenProject: ({required projectId, required projectName}) => _goRoute(
               context: context,
               route: AppRoute.sessions(projectId: projectId, projectName: projectName),
@@ -64,7 +64,7 @@ final GoRouter desktopRouter = GoRouter(
         GoRoute(
           path: AppRouteDef.settings.path,
           builder: (BuildContext context, GoRouterState state) => DesktopSettingsScreen(
-            onClose: _goDesktopHome,
+            onClose: () => _popRoute(context: context),
             onOpenProfile: () => _pushRoute(context: context, route: const AppRoute.settingsProfile()),
             onOpenHarnesses: () => _pushRoute(
               context: context,

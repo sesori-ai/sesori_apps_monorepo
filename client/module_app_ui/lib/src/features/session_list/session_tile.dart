@@ -106,14 +106,14 @@ class const SessionTile({
       onFullSwipe: isArchived ? onDelete : onArchive,
       leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
       onLeadingFullSwipe: onToggleUnread,
-      // Right-click is the mouse counterpart of long-press. The row announces
-      // itself as one button, so its two lines aren't separate nodes to swipe
-      // past.
+      // Right-click is the mouse counterpart of long-press. The row merges its
+      // two lines into one semantics node and announces a button only when the
+      // shell provides a detail action.
       child: GestureDetector(
         onSecondaryTap: openMenu,
         child: MergeSemantics(
           child: Semantics(
-            button: true,
+            button: onTap != null,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).
             child: Ink(

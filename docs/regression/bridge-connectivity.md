@@ -35,8 +35,9 @@ explicit restart, and the connection states the app presents.
   its relay-client state separately from helper relay status, and hosts the typed
   connection banner at the window root. When project loading reports either no
   registered bridge or a registered-but-offline bridge, desktop recovery asks
-  the supervisor to Start; it never falls through to mobile CLI installation or
-  relay-only reconnect guidance.
+  the supervisor to Start and establishes an authenticated relay client; it
+  never falls through to mobile CLI installation or relay-only reconnect
+  guidance.
 - The client relay socket pings on an interval, so a silently dead network path
   (Wi-Fi drop, VPN toggle, sleep/wake) surfaces as a socket close and enters
   reconnect within roughly two ping intervals instead of waiting on request
@@ -135,7 +136,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns. A desktop disconnected
   project surface offers mobile CLI setup/reconnect instead of supervised Start,
-  or Start applies toggle semantics and turns a desired-On bridge Off.
+  Start applies toggle semantics and turns a desired-On bridge Off, or helper
+  startup never establishes the desktop relay client.
 - A dead network path leaving the app claiming connected for minutes, or the
   reconnecting banner flashing on every routine foreground resume.
 - GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the

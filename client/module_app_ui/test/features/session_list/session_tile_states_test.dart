@@ -31,6 +31,7 @@ void main() {
     bool awaitingInput = false,
     bool isRetrying = false,
     int backgroundTaskCount = 0,
+    bool canOpen = true,
   }) {
     return SessionTile(
       session: session,
@@ -41,7 +42,7 @@ void main() {
       awaitingInput: awaitingInput,
       isRetrying: isRetrying,
       backgroundTaskCount: backgroundTaskCount,
-      onTap: () {},
+      onTap: canOpen ? () {} : null,
       menuEntries: () => const [],
       onArchive: () {},
       onDelete: () {},
@@ -420,6 +421,35 @@ void main() {
         ),
       );
       expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+    });
+
+    testWidgets("does not announce a dead button when the shell has no detail route", (tester) async {
+      final semantics = tester.ensureSemantics();
+
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(
+            title: "My Session",
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+          canOpen: false,
+        ),
+      );
+
+      expect(
+        tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
+        matchesSemantics(
+          label: "plugin-1 session\nMy Session\njust now",
+          isButton: false,
+          hasTapAction: false,
+          hasLongPressAction: true,
+          isFocusable: true,
+          hasFocusAction: true,
+        ),
+      );
+
+      semantics.dispose();
     });
 
     testWidgets("announces the whole row as one button", (tester) async {

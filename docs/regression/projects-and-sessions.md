@@ -94,8 +94,9 @@ state.
   keeps CLI bridge installation, command sharing, and relay reconnect guidance.
   Desktop never offers CLI installation from these surfaces: both an account
   with no registered bridge and a registered-but-disconnected bridge offer the
-  same supervised **Start the bridge** action, which persists desired On and
-  starts or retries the local helper. Desktop lists sessions but exposes no
+  same supervised **Start the bridge** action, which persists desired On,
+  starts or retries the local helper, and establishes an authenticated desktop
+  relay connection. Desktop lists sessions but exposes no
   new-session or session-detail affordance until those desktop capabilities are
   present.
 - Project and session row actions remain swipeable without competing visually
@@ -262,7 +263,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
   start Grok after import.
 - Mobile project recovery loses its CLI installation/reconnect guidance, or a
   desktop project recovery surface shows CLI commands, omits supervised Start,
-  or toggles an already-On desired state to Off instead of retrying start.
+  toggles an already-On desired state to Off instead of retrying start, or
+  starts the helper without establishing the desktop relay connection.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

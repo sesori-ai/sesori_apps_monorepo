@@ -65,9 +65,10 @@ and keep native close/quit behavior safe.
   package metadata, and its coordinated logout workflow; it deliberately omits
   the mobile push-notification preference row. Project recovery never shows
   mobile CLI installation guidance: both never-registered and disconnected
-  states offer supervised **Start the bridge**, which persists desired On and
-  starts or retries rather than applying toggle semantics. Profile and
-  Harnesses pop back to Settings when
+  states offer supervised **Start the bridge**, which persists desired On,
+  starts or retries rather than applying toggle semantics, and establishes the
+  authenticated desktop relay connection. Profile and Harnesses pop back to
+  Settings when
   pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
@@ -97,7 +98,7 @@ and keep native close/quit behavior safe.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, project/session-list navigation, and the shared desktop Settings route with mobile-only notifications omitted. No plugin. |
+| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, and the shared desktop Settings route with mobile-only notifications omitted. No plugin. |
 | L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
@@ -143,7 +144,8 @@ the status and bounded recent output.
   the record/auth state before deletion/teardown is ordered.
 - A failed On/Off action presents or executes the opposite operation instead of
   retrying the failed action, or project recovery toggles desired On to Off,
-  omits Start for either disconnected variant, or exposes mobile CLI commands.
+  omits Start for either disconnected variant, fails to establish the desktop
+  relay connection, or exposes mobile CLI commands.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
   a takeover starts a restart war or approves a non-replacement prompt, recent

@@ -13,6 +13,18 @@ import "../../core/di/injection.dart";
 
 typedef DesktopProjectOpened = void Function({required String projectId, required String projectName});
 
+/// Starts the supervised helper and establishes the authenticated desktop relay
+/// client. Running both operations together lets the relay park in its
+/// bridge-offline state until the helper appears, while coalescing inside each
+/// owning cubit keeps repeated recovery actions safe.
+Future<void> recoverDesktopProjectConnection({
+  required BridgeControlCubit bridgeControlCubit,
+  required ProjectListCubit projectListCubit,
+}) => Future.wait<void>([
+  bridgeControlCubit.startBridge(),
+  projectListCubit.reconnectBridge(),
+]);
+
 /// Desktop composition for the shared project inventory.
 ///
 /// Unlike mobile, both disconnected states recover by starting the supervised
@@ -24,6 +36,11 @@ class const DesktopProjectListScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    Future<void> recover({required BuildContext context}) => recoverDesktopProjectConnection(
+      bridgeControlCubit: context.read<BridgeControlCubit>(),
+      projectListCubit: context.read<ProjectListCubit>(),
+    );
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -55,14 +72,16 @@ class const DesktopProjectListScreen({
         onOpenSettings: ({required context}) => onOpenSettings(),
         onOpenProject: ({required context, required project, required displayName}) =>
             onOpenProject(projectId: project.id, projectName: displayName),
-        disconnectedViewBuilder: ({required context, required state, required bridge}) =>
-            DesktopBridgeRecoveryView(bridge: bridge),
+        disconnectedViewBuilder: ({required context, required state, required bridge}) => DesktopBridgeRecoveryView(
+          bridge: bridge,
+          onStartBridge: () => recover(context: context),
+        ),
         disconnectedActionBuilder: ({required context, required state}) => null,
         connectedEmptyViewBuilder: ({required context}) => _DesktopConnectedEmptyView(
           onAddProject: () => _showAddProject(context: context),
         ),
         connectionBannerBuilder: ({required context}) => null,
-        onRefreshDisconnected: ({required context, required state}) => context.read<BridgeControlCubit>().startBridge(),
+        onRefreshDisconnected: ({required context, required state}) => recover(context: context),
       ),
     );
   }
@@ -79,11 +98,14 @@ class const DesktopProjectListScreen({
 }
 
 /// Desktop-owned supervised recovery shown for both unregistered and offline bridges.
-class const DesktopBridgeRecoveryView({super.key, required final BridgeSummary? bridge}) extends StatelessWidget {
+class const DesktopBridgeRecoveryView({
+  super.key,
+  required final BridgeSummary? bridge,
+  required final Future<void> Function() onStartBridge,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controlState = context.watch<BridgeControlCubit>().state;
-    final controls = context.read<BridgeControlCubit>();
     final bridge = this.bridge;
 
     return Center(
@@ -130,7 +152,7 @@ class const DesktopBridgeRecoveryView({super.key, required final BridgeSummary? 
                 size: PregoButtonsSolidSize.xl,
                 fullWidth: true,
                 isLoading: controlState.activity == BridgeControlActivity.toggling,
-                onPressed: controlState.activity.locksCommands ? null : () => unawaited(controls.startBridge()),
+                onPressed: controlState.activity.locksCommands ? null : () => unawaited(onStartBridge()),
               ),
             ],
           ),
