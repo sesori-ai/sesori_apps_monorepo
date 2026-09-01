@@ -467,7 +467,7 @@ two-PR pre-gate follow-up:
    coverage (PR #1222, merged).
 2. `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` —
    quit semantics, takeover orchestration, shell controls, and lifecycle
-   coverage (current follow-up).
+   coverage (PR #1230, open).
 
 The series does not change the original 22-step numbering or mark Gate B done;
 Step 14 must not begin until the user records the gate outcome and explicitly
