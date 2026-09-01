@@ -3,12 +3,11 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";

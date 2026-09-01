@@ -1,12 +1,14 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_mobile/core/status_colors.dart";
-import "package:sesori_mobile/features/session_list/session_tile.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../helpers/test_helpers.dart";
+Finder findBrandLogo(String pluginId) => find.byWidgetPredicate(
+  (widget) => widget is PregoBrandLogo && widget.pluginId == pluginId,
+  description: "brand artwork for $pluginId",
+);
 
 /// A session row is a title line led by its harness logo and ended by either
 /// the state sparkle or when the session last changed, over an indented
@@ -173,20 +175,40 @@ void main() {
 
   group("the harness leading the title", () {
     testWidgets("marks the row with the backend driving the session", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "opencode")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "opencode"),
+        ),
+      );
       expect(findBrandLogo("opencode"), findsOneWidget);
 
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "codex")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "codex"),
+        ),
+      );
       expect(findBrandLogo("codex"), findsOneWidget);
 
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "claude")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "claude"),
+        ),
+      );
       expect(findBrandLogo("claude"), findsOneWidget);
     });
 
     testWidgets("falls back to a plug for a harness this app doesn't know", (tester) async {
       // A newer bridge can advertise harnesses this build has never heard of;
       // the slot still has to hold something.
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "harness-from-the-future")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
+        ),
+      );
 
       expect(find.byIcon(TablerRegular.plug), findsOneWidget);
     });
@@ -196,10 +218,20 @@ void main() {
 
       // The logo is the row's only backend cue, so two otherwise-identical
       // sessions have to be told apart by ear as well as by eye.
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "opencode")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "opencode"),
+        ),
+      );
       expect(find.bySemanticsLabel(RegExp("OpenCode session")), findsOneWidget);
 
-      await pumpTile(tester, tile(session: testSession(title: "My Session", pluginId: "harness-from-the-future")));
+      await pumpTile(
+        tester,
+        tile(
+          session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
+        ),
+      );
       expect(find.bySemanticsLabel(RegExp("harness-from-the-future session")), findsOneWidget);
 
       semantics.dispose();
@@ -232,7 +264,9 @@ void main() {
 
       await pumpTile(
         tester,
-        tile(session: testSession(title: "My Session", updatedAt: lastYear.millisecondsSinceEpoch)),
+        tile(
+          session: testSession(title: "My Session", updatedAt: lastYear.millisecondsSinceEpoch),
+        ),
       );
 
       expect(find.textContaining("${lastYear.year}"), findsOneWidget);
@@ -246,7 +280,9 @@ void main() {
 
       await pumpTile(
         tester,
-        tile(session: testSession(title: "My Session", updatedAt: thisYear.millisecondsSinceEpoch)),
+        tile(
+          session: testSession(title: "My Session", updatedAt: thisYear.millisecondsSinceEpoch),
+        ),
       );
 
       expect(find.textContaining("${thisYear.year}"), findsNothing);

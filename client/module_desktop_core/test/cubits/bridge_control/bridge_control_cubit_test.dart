@@ -321,6 +321,20 @@ void main() {
       ]);
     });
 
+    test("explicit Start persists On and retries a stopped desired-On bridge", () async {
+      processService.emit(
+        state: const BridgeProcessStopped(),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      await cubit.initialize();
+
+      await cubit.startBridge();
+
+      expect(processService.startCalls, 1);
+      expect(processService.desiredState, BridgeProcessDesiredState.on);
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
+    });
+
     test("a failed start leaves the next toggle targeted at retrying start", () async {
       processService.startError = StateError("spawn failed");
       await cubit.initialize();

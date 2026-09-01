@@ -1,10 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/widgets/rename_sheet.dart";
+import "../../extensions/build_context_x.dart";
+import "../../widgets/rename_sheet.dart";
 
 Future<void> showRenameSessionDialog({
   required BuildContext context,

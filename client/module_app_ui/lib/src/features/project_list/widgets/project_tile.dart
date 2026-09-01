@@ -3,14 +3,20 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:path/path.dart" as p;
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/routing/app_router.dart";
+import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 import "../rename_project_dialog.dart";
+
+typedef ProjectOpenedCallback = void Function({
+  required BuildContext context,
+  required ProjectSummary project,
+  required String displayName,
+});
 
 /// The last segment of [project]'s directory, used as the display-name
 /// fallback when the project has no stored name. The directory comes from the
@@ -63,6 +69,9 @@ class const ProjectTile({
 
   /// Whether the project has activity the user hasn't opened yet.
   required final bool unseen,
+
+  /// Product-shell route action for opening this project's sessions.
+  required final ProjectOpenedCallback onOpen,
 }) extends StatelessWidget {
   /// Wide enough for the longest action label without the panel spanning the
   /// row it is anchored to.
@@ -290,12 +299,7 @@ class const ProjectTile({
   }
 
   void _open({required BuildContext context, required String displayName}) {
-    context.pushRoute(
-      AppRoute.sessions(
-        projectId: project.id,
-        projectName: displayName,
-      ),
-    );
+    onOpen(context: context, project: project, displayName: displayName);
   }
 }
 

@@ -11,6 +11,7 @@ void _showForceDialog({
   required SessionCleanupRejection rejection,
   required bool isDelete,
   required bool deleteWorktree,
+  required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   final loc = context.loc;
 
@@ -60,6 +61,7 @@ void _showForceDialog({
                   sessionId: sessionId,
                   deleteWorktree: deleteWorktree,
                   force: true,
+                  onSessionDeleted: onSessionDeleted,
                 );
               } else {
                 _archiveSession(

@@ -65,7 +65,7 @@ void main() {
             BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
           ],
           child: AuthGateView(
-            child: DesktopHome(onOpenSettings: () {}),
+            child: DesktopHome(onOpenProjects: () {}, onOpenSettings: () {}),
           ),
         ),
       ),

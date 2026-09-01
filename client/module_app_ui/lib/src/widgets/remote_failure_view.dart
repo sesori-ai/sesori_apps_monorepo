@@ -1,8 +1,8 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../extensions/build_context_x.dart";
 import "../extensions/remote_failure_x.dart";
 
 class const RemoteFailureView({

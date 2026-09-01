@@ -1,12 +1,12 @@
-import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
 import "new_folder_dialog.dart";
 
 /// Shows the Add Project modal bottom sheet.
@@ -18,8 +18,11 @@ import "new_folder_dialog.dart";
 /// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
 /// `createDirectory` without relying on the widget tree's BlocProvider (which
 /// lives in the parent screen).
-// ignore: no_slop_linter/prefer_required_named_parameters, shared helper signature used by tests
-Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) {
+Future<void> showAddProjectDialog({
+  required BuildContext context,
+  required ProjectListCubit cubit,
+  required ConnectionService connectionService,
+}) {
   // Capture before presenting: inside the route the top inset reads as 0.
   final topInset = MediaQuery.paddingOf(context).top;
   return showModalBottomSheet<void>(
@@ -29,7 +32,11 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
     backgroundColor: Colors.transparent,
     // The sheet caps itself just below the status bar.
     useSafeArea: false,
-    builder: (_) => AddProjectDialog(cubit: cubit, topInset: topInset),
+    builder: (_) => AddProjectDialog(
+      cubit: cubit,
+      connectionService: connectionService,
+      topInset: topInset,
+    ),
   );
 }
 
@@ -42,6 +49,7 @@ Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) 
 @visibleForTesting
 class const AddProjectDialog({
   required final ProjectListCubit cubit,
+  required final ConnectionService connectionService,
 
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
@@ -327,7 +335,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
             type: MaterialType.transparency,
             child: Column(
               children: [
-                const _FilesystemAccessBanner(),
+                _FilesystemAccessBanner(connectionService: widget.connectionService),
                 if (_currentPath.isNotEmpty)
                   _DirectoryNavigation(
                     currentPath: _currentPath,
@@ -751,10 +759,9 @@ class const _ActionMenu({
 /// granted to the terminal running the bridge). It is scoped to this sheet —
 /// where the user is browsing directories — rather than shown app-wide, since
 /// it is only actionable here.
-class const _FilesystemAccessBanner() extends StatelessWidget {
+class const _FilesystemAccessBanner({required final ConnectionService connectionService}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final connectionService = GetIt.instance<ConnectionService>();
     return StreamBuilder<ConnectionStatus>(
       stream: connectionService.status,
       initialData: connectionService.currentStatus,

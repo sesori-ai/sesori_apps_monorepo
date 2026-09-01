@@ -5,7 +5,6 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/features/session_list/session_list_scaffold.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -109,7 +108,10 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner())),
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner()),
+      ),
     );
 
     expect(find.text("Bridge disconnected"), findsOneWidget);
@@ -123,7 +125,10 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner.reconnecting())),
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner.reconnecting()),
+      ),
     );
 
     expect(find.text("Reconnecting…"), findsOneWidget);
@@ -139,7 +144,10 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner())),
+      _app(
+        cubit: cubit,
+        home: const Scaffold(body: ConnectionBanner()),
+      ),
     );
 
     // A live region is announced by VoiceOver/TalkBack when it appears without
@@ -214,10 +222,12 @@ void main() {
         home: BlocProvider<SessionListCubit>.value(
           value: sessionListCubit,
           child: SessionListScaffold(
-            onSessionTap: (_) {},
-            sessionMenuEntries: (_, _) => const [],
+            onSessionTap: ({required session}) {},
+            actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+            archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
             onNewSession: () {},
             onBack: null,
+            connectionBanner: const ConnectionBanner(),
           ),
         ),
       ),

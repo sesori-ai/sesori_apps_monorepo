@@ -9,12 +9,17 @@ import "package:theme_prego/module_prego.dart";
 
 /// First desktop supervision surface: account, bridge state, lifecycle
 /// controls, diagnostics, and device-local sign-out.
-class const DesktopHome({required final VoidCallback onOpenSettings, super.key}) extends StatelessWidget {
+class const DesktopHome({
+  required final VoidCallback onOpenProjects,
+  required final VoidCallback onOpenSettings,
+  super.key,
+}) extends StatelessWidget {
   static const String _appName = "Sesori";
   static const String _bridgeSupervision = "Bridge supervision";
   static const String _openLogs = "Open Logs";
   static const String _takeOver = "Take Over";
   static const String _recentBridgeOutput = "Recent bridge output";
+  static const String _projects = "Projects";
   static const String _signedIn = "Signed in";
   static const String _settings = "Settings";
   static const String _signOut = "Sign out";
@@ -49,7 +54,11 @@ class const DesktopHome({required final VoidCallback onOpenSettings, super.key})
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  _AccountHeader(user: user, onOpenSettings: onOpenSettings),
+                  _AccountHeader(
+                    user: user,
+                    onOpenProjects: onOpenProjects,
+                    onOpenSettings: onOpenSettings,
+                  ),
                   SizedBox(height: context.prego.spacing.x2l),
                   _SurfaceCard(
                     child: Column(
@@ -154,8 +163,11 @@ class const DesktopHome({required final VoidCallback onOpenSettings, super.key})
   };
 }
 
-class const _AccountHeader({required final AuthUser? user, required final VoidCallback onOpenSettings})
-    extends StatelessWidget {
+class const _AccountHeader({
+  required final AuthUser? user,
+  required final VoidCallback onOpenProjects,
+  required final VoidCallback onOpenSettings,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -169,6 +181,10 @@ class const _AccountHeader({required final AuthUser? user, required final VoidCa
               Text(_accountLabel(), style: context.prego.textTheme.textSm.regular),
             ],
           ),
+        ),
+        TextButton(
+          onPressed: onOpenProjects,
+          child: const Text(DesktopHome._projects),
         ),
         TextButton(
           onPressed: onOpenSettings,

@@ -7,7 +7,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
-import "../extensions/remote_failure_x.dart";
 import "markdown_styles.dart";
 
 /// Height the loading and failure states occupy, so the sheet opens at a

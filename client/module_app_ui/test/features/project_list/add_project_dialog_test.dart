@@ -3,25 +3,30 @@ import "dart:async";
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
 // Mock classes
 // ---------------------------------------------------------------------------
 
 class MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+late ConnectionService _testConnectionService;
+
+Future<void> _showAddProjectDialog(BuildContext context, ProjectListCubit cubit) => showAddProjectDialog(
+  context: context,
+  cubit: cubit,
+  connectionService: _testConnectionService,
+);
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -91,7 +96,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
         return Scaffold(
           floatingActionButton: FloatingActionButton(
             tooltip: loc.addProject,
-            onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+            onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
             child: const Icon(Icons.add),
           ),
           body: switch (state) {
@@ -107,7 +112,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                   Text(loc.addProjectPrompt),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                    onPressed: () => _showAddProjectDialog(context, context.read<ProjectListCubit>()),
                     icon: const Icon(Icons.add),
                     label: Text(loc.addProject),
                   ),
@@ -172,12 +177,11 @@ PregoButtonsSolid _button(WidgetTester tester, Finder finder) => tester.widget<P
 
 void main() {
   setUpAll(() {
-    registerAllFallbackValues();
+    registerCoreFallbackValues();
     registerFallbackValue(OpenProjectGitAction.promptIfNeeded);
   });
 
   late MockProjectListCubit mockCubit;
-  late MockProjectRepository mockProjectRepository;
   late MockConnectionService mockConnectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatusController;
 
@@ -189,8 +193,8 @@ void main() {
 
   setUp(() {
     mockCubit = MockProjectListCubit();
-    mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
+    _testConnectionService = mockConnectionService;
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
@@ -204,31 +208,9 @@ void main() {
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
-
-    final getIt = GetIt.instance;
-    if (getIt.isRegistered<ProjectRepository>()) {
-      getIt.unregister<ProjectRepository>();
-    }
-    getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
-    registerListServices(
-      projectRepository: mockProjectRepository,
-    );
-    if (getIt.isRegistered<ConnectionService>()) {
-      getIt.unregister<ConnectionService>();
-    }
-    getIt.registerSingleton<ConnectionService>(mockConnectionService);
   });
 
-  tearDown(() async {
-    await connectionStatusController.close();
-    final getIt = GetIt.instance;
-    if (getIt.isRegistered<ProjectRepository>()) {
-      getIt.unregister<ProjectRepository>();
-    }
-    if (getIt.isRegistered<ConnectionService>()) {
-      getIt.unregister<ConnectionService>();
-    }
-  });
+  tearDown(() => connectionStatusController.close());
 
   // -------------------------------------------------------------------------
   // FAB
@@ -275,7 +257,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -298,7 +280,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -359,7 +341,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -400,7 +382,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -444,7 +426,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -492,7 +474,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -542,7 +524,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -593,7 +575,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -641,7 +623,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -700,7 +682,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -756,7 +738,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -807,7 +789,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -861,7 +843,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -922,7 +904,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -955,7 +937,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),
@@ -980,7 +962,7 @@ void main() {
           child: Scaffold(
             body: Builder(
               builder: (context) => ElevatedButton(
-                onPressed: () => showAddProjectDialog(context, mockCubit),
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
                 child: const Text("Open"),
               ),
             ),

@@ -4,8 +4,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/widgets/remote_failure_view.dart";
-
 /// A floating call-to-action pinned below the top bar when the session has a
 /// pending question or permission. Rendered as a semantic-tinted liquid-glass
 /// card (brand for questions, success for permissions) so it pops over the chat

@@ -1,32 +1,32 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../sesori_background_widget.dart";
+import "../../extensions/build_context_x.dart";
 
 /// Placeholder panel shown in the right pane when no session is selected
 /// in wide split mode.
-class const EmptySessionDetailPanel({super.key}) extends StatelessWidget {
+///
+/// Product shells inject their background and connection presentation so this
+/// shared panel never assumes a product asset bundle or duplicate banner owner.
+class const EmptySessionDetailPanel({
+  super.key,
+  required final Widget? background,
+  required final Widget? connectionBanner,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final brightness = Theme.of(context).brightness;
     final scrimColor = brightness == Brightness.light ? Colors.white : Colors.black;
 
-    // In the wide split layout neither pane is a PregoGlassScaffold — the list
-    // pane is a bare Column and this placeholder fills the detail pane — so no
-    // top-nav banner slot exists to surface the bridge-offline state. Host it
-    // here at the top of the pane; otherwise the wide `/sessions` route with no
-    // session selected would show no offline messaging at all (the global
-    // offline overlay is gone). Once a session is opened, its own scaffold
-    // carries the banner, so this state never double-shows it.
-    final banner = ConnectionBanner.maybeFor(context);
+    final background = this.background;
+    final connectionBanner = this.connectionBanner;
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Stack(
         children: [
-          const Positioned.fill(child: SesoriBackgroundWidget()),
+          if (background != null) Positioned.fill(child: background),
           Positioned.fill(
             child: ColoredBox(color: scrimColor.withValues(alpha: 0.85)),
           ),
@@ -57,12 +57,12 @@ class const EmptySessionDetailPanel({super.key}) extends StatelessWidget {
               ],
             ),
           ),
-          if (banner != null)
+          if (connectionBanner != null)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: SafeArea(child: banner),
+              child: SafeArea(child: connectionBanner),
             ),
         ],
       ),
