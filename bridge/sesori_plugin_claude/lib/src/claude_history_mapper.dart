@@ -81,7 +81,7 @@ final class const ClaudeHistoryMapper({
             final typedResult = results.length == 1 ? record.toolUseResult : const ClaudeToolUseResultAbsent();
             final toolResults = <ClaudeMappedToolResultContentBlock>[];
             for (final result in results) {
-              if (!tasks.isKnownTask(sessionId: sessionId, toolUseId: result.toolUseId)) {
+              if (!tasks.isKnownTask(toolUseId: result.toolUseId)) {
                 toolResults.add(result);
                 continue;
               }
@@ -101,9 +101,8 @@ final class const ClaudeHistoryMapper({
             continue;
           }
           if (blocks.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?
-              when tasks.isKnownTask(sessionId: sessionId, toolUseId: block.notification.toolUseId)) {
+              when tasks.isKnownTask(toolUseId: block.notification.toolUseId)) {
             tasks.taskNotified(
-              sessionId: sessionId,
               toolUseId: block.notification.toolUseId,
               taskId: block.notification.taskId,
               status: block.notification.status,
@@ -145,7 +144,7 @@ final class const ClaudeHistoryMapper({
     }
 
     for (final toolUseId in tasks.runningTaskToolUseIds(sessionId: sessionId).difference(residentTaskToolUseIds)) {
-      tasks.cancelTask(sessionId: sessionId, toolUseId: toolUseId);
+      tasks.cancelTask(toolUseId: toolUseId);
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -181,10 +180,10 @@ final class const ClaudeHistoryMapper({
       final existingIndex = toolIndexById[part.id];
       if (existingIndex == null) {
         toolIndexById[part.id] = parts.length;
-        final task = tasks.task(sessionId: sessionId, toolUseId: part.id);
+        final task = tasks.task(toolUseId: part.id);
         if (task == null) {
           parts.add(part);
-        } else if (task.toPart(sessionId: sessionId) case final subtask?) {
+        } else if (task.toPart() case final subtask?) {
           parts.add(subtask);
         }
         continue;

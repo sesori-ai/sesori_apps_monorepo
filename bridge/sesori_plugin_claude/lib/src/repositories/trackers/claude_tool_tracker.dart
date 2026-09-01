@@ -9,6 +9,10 @@ import "../mappers/claude_task_status_mapping.dart";
 /// An immutable presentation snapshot of one Claude tool call.
 sealed class const ClaudeTrackedTool({
   required final String id,
+
+  /// The rendered session that owns this call's part: the root, or a child
+  /// session when the call was made by a sub-agent.
+  required final String sessionId,
   required final String messageId,
   required final String name,
   required final Object? input,
@@ -25,7 +29,7 @@ sealed class const ClaudeTrackedTool({
   /// A task renders only once its input carries the description and prompt
   /// the subtask part requires; while the input is still streaming there is
   /// nothing honest to show, so the caller emits no part.
-  PluginMessagePart? toPart({required String sessionId}) => switch (this) {
+  PluginMessagePart? toPart() => switch (this) {
     ClaudeTrackedToolCall() => PluginMessagePart.tool(
       id: id,
       sessionID: sessionId,
@@ -56,6 +60,7 @@ sealed class const ClaudeTrackedTool({
 /// An ordinary tool call, rendered as a tool part.
 final class const ClaudeTrackedToolCall({
   required super.id,
+  required super.sessionId,
   required super.messageId,
   required super.name,
   required super.input,
@@ -70,6 +75,7 @@ final class const ClaudeTrackedTask({
   /// tool result named it.
   required final String? childSessionId,
   required super.id,
+  required super.sessionId,
   required super.messageId,
   required super.name,
   required super.input,
@@ -86,7 +92,12 @@ final class const ClaudeTrackedTask({
 /// launched it; only [cancelAll] and [forgetSession] clear it.
 final class ClaudeToolTracker() {
   final Map<String, _SessionTools> _sessions = {};
-  final Map<String, Map<String, _TrackedTool>> _tasks = {};
+
+  /// Tasks by tool-use id, across sessions: a nested sub-agent's lifecycle
+  /// frames arrive from the root process without the rendered session that
+  /// carried its `tool_use`, so tasks resolve by the process-unique tool id
+  /// and remember the session that owns their part.
+  final Map<String, _TrackedTool> _tasks = {};
 
   ClaudeTrackedTool start({
     required String sessionId,
@@ -153,10 +164,17 @@ final class ClaudeToolTracker() {
   }) {
     final tool = session.tools.putIfAbsent(
       toolId,
-      () => _TrackedTool(id: toolId, messageId: messageId, name: name, input: input, status: status),
+      () => _TrackedTool(
+        id: toolId,
+        sessionId: sessionId,
+        messageId: messageId,
+        name: name,
+        input: input,
+        status: status,
+      ),
     );
     tool.name = name;
-    if (tool.isTask) _tasks.putIfAbsent(sessionId, () => {}).putIfAbsent(toolId, () => tool);
+    if (tool.isTask) _tasks.putIfAbsent(toolId, () => tool);
     return tool;
   }
 
@@ -221,7 +239,7 @@ final class ClaudeToolTracker() {
     required List<PluginMessageAttachment> attachments,
     required ClaudeToolUseResult result,
   }) {
-    final tool = _sessions[sessionId]?.tools[toolId] ?? _tasks[sessionId]?[toolId];
+    final tool = _sessions[sessionId]?.tools[toolId] ?? _tasks[toolId];
     if (tool == null) return null;
     if (tool.isTask) {
       switch (result) {
@@ -253,8 +271,8 @@ final class ClaudeToolTracker() {
   }
 
   /// Binds a `task_started` frame to its launching call.
-  ClaudeTrackedTool? taskStarted({required String sessionId, required String toolUseId, required String taskId}) {
-    final task = _tasks[sessionId]?[toolUseId];
+  ClaudeTrackedTool? taskStarted({required String toolUseId, required String taskId}) {
+    final task = _tasks[toolUseId];
     if (task == null) return null;
     task.taskId ??= taskId;
     if (!_isTerminal(task.status)) task.status = PluginToolStatus.running;
@@ -262,17 +280,16 @@ final class ClaudeToolTracker() {
   }
 
   /// Applies the authoritative terminal notification for a task, replacing
-  /// any tool-result fallback. Returns null when [toolUseId] is not a task in
-  /// this session, so callers keep an unmatched envelope visible.
+  /// any tool-result fallback. Returns null when [toolUseId] is not a known
+  /// task, so callers keep an unmatched envelope visible.
   ClaudeTrackedTool? taskNotified({
-    required String sessionId,
     required String toolUseId,
     required String taskId,
     required ClaudeTaskStatus status,
     required String? summary,
     required String? result,
   }) {
-    final task = _tasks[sessionId]?[toolUseId];
+    final task = _tasks[toolUseId];
     if (task == null) return null;
     final mapped = status.toPluginToolStatus();
     task
@@ -284,34 +301,39 @@ final class ClaudeToolTracker() {
     return task.snapshot(sessionDiffRequired: false);
   }
 
-  bool isKnownTask({required String sessionId, required String toolUseId}) =>
-      _tasks[sessionId]?.containsKey(toolUseId) ?? false;
+  bool isKnownTask({required String toolUseId}) => _tasks.containsKey(toolUseId);
 
-  ClaudeTrackedTool? task({required String sessionId, required String toolUseId}) =>
-      _tasks[sessionId]?[toolUseId]?.snapshot(sessionDiffRequired: false);
+  ClaudeTrackedTool? task({required String toolUseId}) => _tasks[toolUseId]?.snapshot(sessionDiffRequired: false);
 
-  /// The tool-use ids of tasks still running inside the session's process.
+  /// The child session a sub-agent frame's `parent_tool_use_id` belongs to,
+  /// once the launching task knows its sub-agent id.
+  String? childSessionIdForToolUse({required String toolUseId}) => switch (_tasks[toolUseId]) {
+    _TrackedTool(taskId: final id?) => ClaudeSubagentSessionId.fromAgentId(id),
+    _ => null,
+  };
+
+  /// The tool-use ids of tasks owned by [sessionId] that are still running.
   Set<String> runningTaskToolUseIds({required String sessionId}) => {
-    for (final task in _tasks[sessionId]?.values ?? const <_TrackedTool>[])
-      if (!_isTerminal(task.status)) task.id,
+    for (final task in _tasks.values)
+      if (task.sessionId == sessionId && !_isTerminal(task.status)) task.id,
   };
 
   /// Marks one running task cancelled; null when it is unknown or already done.
-  ClaudeTrackedTool? cancelTask({required String sessionId, required String toolUseId}) {
-    final task = _tasks[sessionId]?[toolUseId];
+  ClaudeTrackedTool? cancelTask({required String toolUseId}) {
+    final task = _tasks[toolUseId];
     if (task == null || _isTerminal(task.status)) return null;
     task.status = PluginToolStatus.cancelled;
     return task.snapshot(sessionDiffRequired: false);
   }
 
-  /// Marks every running task cancelled — the process that hosted them is
-  /// gone — and forgets the session's tasks. Returns the updated snapshots.
+  /// Marks every running task owned by [sessionId] cancelled — the process
+  /// that hosted them is gone — and forgets those tasks. Returns the updated
+  /// snapshots.
   List<ClaudeTrackedTool> cancelAll({required String sessionId}) {
     final cancelled = [
-      for (final toolUseId in runningTaskToolUseIds(sessionId: sessionId))
-        ?cancelTask(sessionId: sessionId, toolUseId: toolUseId),
+      for (final toolUseId in runningTaskToolUseIds(sessionId: sessionId)) ?cancelTask(toolUseId: toolUseId),
     ];
-    _tasks.remove(sessionId);
+    _tasks.removeWhere((_, task) => task.sessionId == sessionId);
     return cancelled;
   }
 
@@ -320,7 +342,7 @@ final class ClaudeToolTracker() {
 
   void forgetSession({required String sessionId}) {
     _sessions.remove(sessionId);
-    _tasks.remove(sessionId);
+    _tasks.removeWhere((_, task) => task.sessionId == sessionId);
   }
 }
 
@@ -340,6 +362,7 @@ final class _StreamedToolBlock() {
 
 final class _TrackedTool({
   required final String id,
+  required final String sessionId,
   required final String messageId,
   required var String _name,
   required var Object? input,
@@ -377,6 +400,7 @@ final class _TrackedTool({
               null => null,
             },
             id: id,
+            sessionId: sessionId,
             messageId: messageId,
             name: name,
             input: input,
@@ -386,6 +410,7 @@ final class _TrackedTool({
           )
         : ClaudeTrackedToolCall(
             id: id,
+            sessionId: sessionId,
             messageId: messageId,
             name: name,
             input: input,
