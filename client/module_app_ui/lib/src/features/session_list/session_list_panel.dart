@@ -1,10 +1,12 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
+import "../../widgets/catalog_scan_row.dart";
+import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
@@ -12,10 +14,11 @@ class const SessionListPanel({
   super.key,
   final String? projectName,
   final String? selectedSessionId,
-  required final ValueChanged<Session> onSessionTap,
-  required final SessionMenuEntriesBuilder sessionMenuEntries,
-  required final VoidCallback onNewSession,
-  final VoidCallback? onBack,
+  required final SessionOpenedCallback? onSessionTap,
+  required final SessionListActionDispatcher actionDispatcher,
+  required final Widget archivedEmptyState,
+  required final VoidCallback? onNewSession,
+  required final VoidCallback? onBack,
 }) extends StatelessWidget {
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.
@@ -74,26 +77,28 @@ class const SessionListPanel({
                             ? () => context.read<SessionListCubit>().toggleArchived()
                             : null,
                       ),
-                      const SizedBox(width: 8),
-                      // Same action and icon in both layouts (tests and muscle
-                      // memory target the add icon); only the label drops when
-                      // compact, with the tooltip carrying its meaning instead.
-                      if (compact)
-                        IconButton.filled(
-                          icon: const Icon(Icons.add),
-                          tooltip: loc.sessionListNewSession,
-                          onPressed: onNewSession,
-                        )
-                      else
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                      if (onNewSession != null) ...[
+                        const SizedBox(width: 8),
+                        // Same action and icon in both layouts (tests and muscle
+                        // memory target the add icon); only the label drops when
+                        // compact, with the tooltip carrying its meaning instead.
+                        if (compact)
+                          IconButton.filled(
+                            icon: const Icon(Icons.add),
+                            tooltip: loc.sessionListNewSession,
+                            onPressed: onNewSession,
+                          )
+                        else
+                          FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            onPressed: onNewSession,
+                            icon: const Icon(Icons.add),
+                            label: Text(loc.sessionListNewSession),
                           ),
-                          onPressed: onNewSession,
-                          icon: const Icon(Icons.add),
-                          label: Text(loc.sessionListNewSession),
-                        ),
+                      ],
                     ],
                   );
                 },
@@ -151,7 +156,8 @@ class const SessionListPanel({
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
-          sessionMenuEntries: sessionMenuEntries,
+          actionDispatcher: actionDispatcher,
+          archivedEmptyState: archivedEmptyState,
         ),
       ],
     );

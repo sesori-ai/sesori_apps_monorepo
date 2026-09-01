@@ -6,6 +6,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home.dart";
+import "../../features/projects/desktop_project_list_screen.dart";
+import "../../features/sessions/desktop_session_list_screen.dart";
 import "../../features/settings/desktop_harnesses_settings_screen.dart";
 import "../../features/settings/desktop_profile_screen.dart";
 import "../../features/settings/desktop_settings_screen.dart";
@@ -13,7 +15,7 @@ import "../../features/settings/desktop_settings_screen.dart";
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Desktop routes delivered by the settings and harness-management slice.
+/// Desktop routes delivered through the project/session-list slice.
 ///
 /// [AuthGate] wraps the whole signed-in route set so every destination keeps
 /// the same auth/session owner while navigation changes the child view.
@@ -27,13 +29,42 @@ final GoRouter desktopRouter = GoRouter(
         GoRoute(
           path: AppRouteDef.splash.path,
           builder: (BuildContext context, GoRouterState state) => DesktopHome(
+            onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
             onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
           ),
         ),
         GoRoute(
+          path: AppRouteDef.projects.path,
+          builder: (BuildContext context, GoRouterState state) => DesktopProjectListScreen(
+            onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
+            onOpenProject: ({required projectId, required projectName}) => _goRoute(
+              context: context,
+              route: AppRoute.sessions(projectId: projectId, projectName: projectName),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: AppRouteDef.sessions.path,
+          builder: (BuildContext context, GoRouterState state) {
+            final route = switch (AppRoute.fromDef(
+              def: AppRouteDef.sessions,
+              pathParams: state.pathParameters,
+              queryParams: state.uri.queryParameters,
+            )) {
+              final AppRouteSessions route => route,
+              final route => throw StateError("Route ${route.def.name} is not a sessions route"),
+            };
+            return DesktopSessionListScreen(
+              projectId: route.projectId,
+              projectName: route.projectName,
+              onBack: () => _goRoute(context: context, route: const AppRoute.projects()),
+            );
+          },
+        ),
+        GoRoute(
           path: AppRouteDef.settings.path,
           builder: (BuildContext context, GoRouterState state) => DesktopSettingsScreen(
-            onClose: _goDesktopHome,
+            onClose: () => _popRoute(context: context),
             onOpenProfile: () => _pushRoute(context: context, route: const AppRoute.settingsProfile()),
             onOpenHarnesses: () => _pushRoute(
               context: context,

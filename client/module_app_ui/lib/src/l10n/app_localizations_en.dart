@@ -149,6 +149,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineStartBridgeInfo => 'Leave it running while you use Sesori from your phone.';
 
   @override
+  String get projectsDesktopStartBridge => 'Start the bridge';
+
+  @override
+  String get projectsDesktopStartBridgeInfo => 'Start the local bridge to load your projects and sessions in Sesori.';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override

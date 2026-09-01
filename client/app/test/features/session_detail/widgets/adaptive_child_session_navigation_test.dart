@@ -2,7 +2,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/subtask_part_widget.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -75,9 +74,7 @@ MessagePartSubtask _subtaskPart({String? description, String? childSessionID, To
     prompt: description ?? "",
     description: description ?? "",
     agent: "",
-    taskState: status == null
-        ? null
-        : ToolState(status: status, title: null, output: null, error: null),
+    taskState: status == null ? null : ToolState(status: status, title: null, output: null, error: null),
     childSessionID: childSessionID,
   );
   if (part case final MessagePartSubtask subtask) return subtask;

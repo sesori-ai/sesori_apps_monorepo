@@ -53,7 +53,7 @@ void main() {
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
             BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
           ],
-          child: DesktopHome(onOpenSettings: () {}),
+          child: DesktopHome(onOpenProjects: () {}, onOpenSettings: () {}),
         ),
       ),
     );

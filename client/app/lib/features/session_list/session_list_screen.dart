@@ -1,29 +1,19 @@
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/routing/app_router.dart";
-import "session_list_action_dispatcher.dart";
-import "session_list_scaffold.dart";
+import "archived_sessions_artwork.dart";
 
 class const SessionListScreen({
   super.key,
   required final String projectId,
-  final String? projectName,
+  required final String? projectName,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return _SessionListBody(
-      projectId: projectId,
-      projectName: projectName,
-    );
-  }
-}
-
-class const _SessionListBody({required final String projectId, final String? projectName}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher();
+    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute);
     // The sessions route is the base of the nested pane navigator, so the
     // pane navigator can never pop it; the poppable session shell route (with
     // /projects underneath) lives on the root navigator.
@@ -37,19 +27,37 @@ class const _SessionListBody({required final String projectId, final String? pro
       onNewSession: () {
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName));
       },
-      onSessionTap: (session) {
+      onSessionTap: ({required session}) {
         context.goRoute(
           AppRoute.sessionDetail(
             projectId: projectId,
             projectName: projectName,
             sessionId: session.id,
-            sessionTitle: session.title ?? "",
+            sessionTitle: session.title,
             readOnly: false,
           ),
         );
       },
-      sessionMenuEntries: (BuildContext context, Session session) =>
-          actionDispatcher.sessionMenuEntries(context: context, session: session),
+      actionDispatcher: actionDispatcher,
+      archivedEmptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+      connectionBanner: ConnectionBanner.maybeFor(context),
     );
   }
+}
+
+/// Leaves a deleted session's detail/diffs route when that session is still
+/// the current mobile location. In a narrow list route this is a no-op.
+void closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
+  final routeState = GoRouterState.of(context);
+  if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
+
+  final projectId = routeState.pathParameters[projectIdPathParam];
+  if (projectId == null) return;
+
+  context.goRoute(
+    AppRoute.sessions(
+      projectId: projectId,
+      projectName: routeState.uri.queryParameters[projectNameQueryParam],
+    ),
+  );
 }

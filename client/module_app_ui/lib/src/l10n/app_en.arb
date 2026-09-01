@@ -138,6 +138,14 @@
   "@projectsBridgeOfflineStartBridgeInfo": {
     "description": "Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
   },
+  "projectsDesktopStartBridge": "Start the bridge",
+  "@projectsDesktopStartBridge": {
+    "description": "Desktop project recovery action that starts or retries the supervised local bridge."
+  },
+  "projectsDesktopStartBridgeInfo": "Start the local bridge to load your projects and sessions in Sesori.",
+  "@projectsDesktopStartBridgeInfo": {
+    "description": "Desktop-only explanation shown while the local supervised bridge is unavailable."
+  },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
   "connectionReconnectingTitle": "Reconnecting…",

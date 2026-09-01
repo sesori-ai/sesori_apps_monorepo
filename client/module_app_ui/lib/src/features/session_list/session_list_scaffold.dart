@@ -1,12 +1,13 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/widgets/project_nav_subtitle.dart";
+import "../../extensions/build_context_x.dart";
+import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/project_nav_subtitle.dart";
+import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
 import "session_tile.dart";
 
@@ -14,10 +15,12 @@ class const SessionListScaffold({
   super.key,
   final String? projectName,
   final String? selectedSessionId,
-  required final ValueChanged<Session> onSessionTap,
-  required final SessionMenuEntriesBuilder sessionMenuEntries,
-  required final VoidCallback onNewSession,
+  required final SessionOpenedCallback? onSessionTap,
+  required final SessionListActionDispatcher actionDispatcher,
+  required final Widget archivedEmptyState,
+  required final VoidCallback? onNewSession,
   required final VoidCallback? onBack,
+  required final Widget? connectionBanner,
 }) extends StatelessWidget {
   static const double _newTaskButtonBaseClearance = 96;
 
@@ -56,7 +59,7 @@ class const SessionListScaffold({
       title: projectName ?? loc.sessionListTitle,
       titleMode: PregoTopNavigationTitleMode.backLeading,
       subtitle: buildProjectNavSubtitle(context),
-      banner: ConnectionBanner.maybeFor(context),
+      banner: connectionBanner,
       actions: [
         PregoButtonsIconGlass(
           icon: TablerRegular.archive,
@@ -72,13 +75,15 @@ class const SessionListScaffold({
           },
         ),
       ],
-      floatingActionButton: PregoButtonsSolid(
-        label: loc.sessionListNewTask,
-        leadingIcon: TablerRegular.plus,
-        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-        size: PregoButtonsSolidSize.xl,
-        onPressed: onNewSession,
-      ),
+      floatingActionButton: onNewSession == null
+          ? null
+          : PregoButtonsSolid(
+              label: loc.sessionListNewTask,
+              leadingIcon: TablerRegular.plus,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              size: PregoButtonsSolidSize.xl,
+              onPressed: onNewSession,
+            ),
       // Pull-to-refresh only makes sense once the list has loaded.
       onRefresh: state is SessionListLoaded ? () => refreshSessionList(context) : null,
       deepRefresh: state is SessionListLoaded
@@ -100,9 +105,10 @@ class const SessionListScaffold({
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
-          sessionMenuEntries: sessionMenuEntries,
+          actionDispatcher: actionDispatcher,
+          archivedEmptyState: archivedEmptyState,
         ),
-        if (state is SessionListLoaded && state.sessions.isNotEmpty)
+        if (onNewSession != null && state is SessionListLoaded && state.sessions.isNotEmpty)
           // Clear the floating new-task button and the home indicator.
           SliverToBoxAdapter(
             child: SizedBox(height: _newTaskButtonClearance(context: context)),

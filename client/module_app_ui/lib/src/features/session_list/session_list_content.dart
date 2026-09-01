@@ -1,17 +1,14 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/widgets/remote_failure_view.dart";
-import "session_archived_empty_state.dart";
+import "../../extensions/build_context_x.dart";
+import "../../widgets/remote_failure_view.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
-
-const _actionDispatcher = SessionListActionDispatcher();
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
@@ -33,8 +30,9 @@ class const SessionListContent({
   super.key,
   required final String? projectName,
   final String? selectedSessionId,
-  required final ValueChanged<Session> onSessionTap,
-  required final SessionMenuEntriesBuilder sessionMenuEntries,
+  required final SessionOpenedCallback? onSessionTap,
+  required final SessionListActionDispatcher actionDispatcher,
+  required final Widget archivedEmptyState,
 }) extends StatelessWidget {
   /// Returns the page content as a single sliver per state, so it slots
   /// directly into [PregoGlassScaffold]'s scroll view. Pull-to-refresh and the
@@ -44,6 +42,7 @@ class const SessionListContent({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
+    final onSessionTap = this.onSessionTap;
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -76,13 +75,16 @@ class const SessionListContent({
                   awaitingInput: activityInfo?.awaitingInput ?? false,
                   isRetrying: activityInfo?.isRetrying ?? false,
                   backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
-                  onTap: () => onSessionTap(session),
+                  onTap: onSessionTap == null ? null : () => onSessionTap(session: session),
                   // The list's context, not the row's: archive/delete
                   // unmount the row before their follow-ups run.
-                  menuEntries: () => sessionMenuEntries(context, session),
-                  onArchive: () => _actionDispatcher.handleSessionArchive(context: context, session: session),
-                  onDelete: () => _actionDispatcher.handleSessionDelete(context: context, session: session),
-                  onToggleUnread: () => _actionDispatcher.handleSessionToggleUnread(context: context, session: session),
+                  menuEntries: () => actionDispatcher.sessionMenuEntries(context: context, session: session),
+                  onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
+                  onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
+                  onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(
+                    context: context,
+                    session: session,
+                  ),
                 ),
               );
             },
@@ -90,9 +92,7 @@ class const SessionListContent({
           if (loaded.sessions.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: loaded.showArchived
-                  ? const SessionArchivedEmptyState()
-                  : SessionEmptyState(projectName: projectName),
+              child: loaded.showArchived ? archivedEmptyState : SessionEmptyState(projectName: projectName),
             ),
         ],
       ),

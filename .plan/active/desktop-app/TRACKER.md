@@ -24,7 +24,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 13 | ⚙️ Desktop relay-client enablement | done |
 | 14 | ⚙️ Create `module_app_ui` + l10n/extensions/theme move | done |
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
-| 16 | 🚧 Project/session lists slice + desktop offline strategy | pending |
+| 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | pending |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
 | 19 | ⚙️ Diffs + new-session slice | pending |

@@ -3,19 +3,24 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/routing/app_router.dart";
+import "../../extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
 import "rename_session_dialog.dart";
 
 part "session_cleanup_dialogs.dart";
 part "session_force_dialog.dart";
 part "session_list_actions.dart";
 
-class const SessionListActionDispatcher() {
+typedef SessionDeletedRouteHandler = void Function({
+  required BuildContext context,
+  required String sessionId,
+});
+
+class const SessionListActionDispatcher({required final SessionDeletedRouteHandler? onSessionDeleted}) {
   /// The long-press actions for [session], rendered by [SessionTile] in a
   /// [PregoAnchorMenu] anchored to the row.
   ///
@@ -77,7 +82,12 @@ class const SessionListActionDispatcher() {
   /// Deletes [session] behind the same confirmation flow as the menu entry,
   /// from the row's trailing swipe pill.
   void handleSessionDelete({required BuildContext context, required Session session}) {
-    _showDeleteSheet(context: context, cubit: context.read<SessionListCubit>(), session: session);
+    _showDeleteSheet(
+      context: context,
+      cubit: context.read<SessionListCubit>(),
+      session: session,
+      onSessionDeleted: onSessionDeleted,
+    );
   }
 
   /// Flips [session]'s read state, from the row's leading swipe.

@@ -160,6 +160,13 @@ void main() {
   }
 
   group("connect-your-computer setup onboarding", () {
+    testWidgets("keeps mobile CLI installation and omits desktop supervised start", (tester) async {
+      await pumpConnectSetup(tester);
+
+      expect(find.text("1. Install the bridge"), findsOneWidget);
+      expect(find.text("Start the bridge"), findsNothing);
+    });
+
     testWidgets("tapping the Need help pill logs the menu-open event", (tester) async {
       await pumpConnectSetup(tester);
 

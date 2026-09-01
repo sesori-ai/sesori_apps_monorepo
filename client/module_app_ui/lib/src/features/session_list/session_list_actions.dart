@@ -62,6 +62,7 @@ Future<void> _archiveSession({
       rejection: rejection,
       isDelete: false,
       deleteWorktree: deleteWorktree,
+      onSessionDeleted: null,
     );
   } else {
     PregoPopupAlertPresenter.of(context).show(
@@ -83,6 +84,7 @@ void _showDeleteSheet({
   required BuildContext context,
   required SessionListCubit cubit,
   required Session session,
+  required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   showPregoBottomSheet<void>(
     context: context,
@@ -95,6 +97,7 @@ void _showDeleteSheet({
           cubit: cubit,
           sessionId: session.id,
           deleteWorktree: deleteWorktree,
+          onSessionDeleted: onSessionDeleted,
         );
       },
     ),
@@ -107,6 +110,7 @@ Future<void> _deleteSession({
   required String sessionId,
   bool deleteWorktree = true,
   bool force = false,
+  required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
   final loc = context.loc;
   final success = await cubit.deleteSession(
@@ -121,7 +125,7 @@ Future<void> _deleteSession({
       title: loc.sessionListDeleted,
       variant: PregoPopupAlertsNotificationsVariant.success,
     );
-    _closeDeletedSessionRoute(context: context, sessionId: sessionId);
+    onSessionDeleted?.call(context: context, sessionId: sessionId);
     return;
   }
 
@@ -135,6 +139,7 @@ Future<void> _deleteSession({
       rejection: rejection,
       isDelete: true,
       deleteWorktree: deleteWorktree,
+      onSessionDeleted: onSessionDeleted,
     );
   } else {
     PregoPopupAlertPresenter.of(context).show(
@@ -142,26 +147,4 @@ Future<void> _deleteSession({
       variant: PregoPopupAlertsNotificationsVariant.error,
     );
   }
-}
-
-/// Leaves the deleted session's detail (or diffs) route when it is still the
-/// current location.
-///
-/// In the split layout the detail pane would otherwise keep rendering the
-/// deleted session; returning to the sessions route swaps it for the empty
-/// "select a session" panel. In the narrow layout the sessions route is
-/// already current when deleting from the list, so this is a no-op there.
-void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
-  final routeState = GoRouterState.of(context);
-  if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
-
-  final projectId = routeState.pathParameters[projectIdPathParam];
-  if (projectId == null) return;
-
-  context.goRoute(
-    AppRoute.sessions(
-      projectId: projectId,
-      projectName: routeState.uri.queryParameters[projectNameQueryParam],
-    ),
-  );
 }

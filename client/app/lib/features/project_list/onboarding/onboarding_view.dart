@@ -21,7 +21,7 @@ part of "../project_list_screen.dart";
 /// The connection itself is not restated here — the design puts the machine
 /// identity in the top navigation, and this screen only reports it when the
 /// bridge is *not* connected ([_BridgeOfflineView]).
-class const _ConnectedEmptyView() extends StatelessWidget {
+class const _ConnectedEmptyView({required final VoidCallback onAddProject}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -54,7 +54,7 @@ class const _ConnectedEmptyView() extends StatelessWidget {
                   label: loc.projectsEmptyAddProject,
                   hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                   size: PregoButtonsSolidSize.xl,
-                  onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+                  onPressed: onAddProject,
                 ),
               ],
             ),

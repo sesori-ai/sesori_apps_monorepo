@@ -1,10 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/status_colors.dart";
+import "../../extensions/build_context_x.dart";
+import "../../extensions/status_colors.dart";
 import "pr_status_row.dart";
 import "session_row_metrics.dart";
 
@@ -15,7 +15,7 @@ import "session_row_metrics.dart";
 /// hide the row optimistically, unmounting it before their cubit calls resolve,
 /// which would silently skip the follow-up the actions run afterwards (undo
 /// snackbar, closing a deleted session's detail route).
-typedef SessionMenuEntriesBuilder = List<PregoMenuEntry> Function(BuildContext context, Session session);
+typedef SessionOpenedCallback = void Function({required Session session});
 
 /// A single session row: a title line led by the harness driving the session
 /// and ended by how it is doing, over an indented footer with the workspace
@@ -53,11 +53,14 @@ class const SessionTile({
   final bool awaitingInput = false,
   final bool isRetrying = false,
   final int backgroundTaskCount = 0,
-  required final VoidCallback onTap,
+
+  /// Opens the session when the product shell provides a detail destination.
+  /// Desktop leaves this null until the transcript slice lands.
+  required final VoidCallback? onTap,
 
   /// Builds this row's long-press actions; the session — and the stable
   /// context the actions run against — are already closed over by the list,
-  /// like [onTap] and the swipe callbacks (see [SessionMenuEntriesBuilder]).
+  /// like [onTap] and the swipe callbacks.
   required final List<PregoMenuEntry> Function() menuEntries,
 
   /// Archives this session: the trailing swipe's primary pill on an
@@ -103,14 +106,14 @@ class const SessionTile({
       onFullSwipe: isArchived ? onDelete : onArchive,
       leadingPrimaryActionBuilder: (context, close) => _markUnreadAction(context: context, close: close),
       onLeadingFullSwipe: onToggleUnread,
-      // Right-click is the mouse counterpart of long-press. The row announces
-      // itself as one button, so its two lines aren't separate nodes to swipe
-      // past.
+      // Right-click is the mouse counterpart of long-press. The row merges its
+      // two lines into one semantics node and announces a button only when the
+      // shell provides a detail action.
       child: GestureDetector(
         onSecondaryTap: openMenu,
         child: MergeSemantics(
           child: Semantics(
-            button: true,
+            button: onTap != null,
             // Ink rather than a plain colour so the tap ripple stays visible
             // over the selected tint (a widget's own colour would cover it).
             child: Ink(

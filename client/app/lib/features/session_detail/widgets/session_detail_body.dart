@@ -10,7 +10,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
-import "../../../core/widgets/session_split/session_split_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
