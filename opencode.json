@@ -9,13 +9,12 @@
     },
     "peekaboo": {
       "type": "local",
-      "command": ["peekaboo", "mcp", "--no-remote"],
+      "command": ["./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh", "peekaboo"],
       "enabled": true
     },
     "agent-device": {
       "type": "local",
-      "command": ["agent-device", "mcp"],
-      "environment": {"AGENT_DEVICE_NO_UPDATE_NOTIFIER": "1"},
+      "command": ["./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh", "agent-device"],
       "enabled": true
     },
     "figma": {

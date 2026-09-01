@@ -22,9 +22,11 @@ Combine semantic app automation with visual/native-system inspection:
   crash diagnostics, and profiling. Do not add an MCP when a first-party CLI is
   clearer and more reliable.
 
-Both automation servers are declared in `.mcp.json`. Pi accesses them lazily
-through `pi-mcp-adapter`; use its `mcp` proxy to search/describe a tool before
-calling it. Other supported hosts can load the same servers directly.
+Both automation servers are declared in `.mcp.json`. Their shared launcher
+refuses to start versions other than Peekaboo 4.2.2 and agent-device 0.20.10.
+Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
+search/describe a tool before calling it. Other supported hosts can load the
+same servers directly.
 
 The reviewed host setup for this workflow is:
 
@@ -35,11 +37,16 @@ brew install steipete/tap/peekaboo
 brew pin peekaboo
 npm install --global --ignore-scripts agent-device@0.20.10
 pi install npm:pi-mcp-adapter@2.31.0
+./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh check
 ```
 
-Restart Pi after installing the adapter. Treat version changes as executable
-third-party dependency updates: inspect their source/release integrity and
-repeat the MCP handshake plus host preflight before adopting them.
+The Homebrew tap may advance before a fresh install. The final check must report
+exactly Peekaboo 4.2.2 and agent-device 0.20.10; if it does not, stop and install
+the reviewed formula/package revision rather than changing the expected
+version. Restart Pi after installing the adapter. Treat version changes as
+executable third-party dependency updates: inspect their source/release
+integrity and repeat the MCP handshake plus host preflight before adopting
+them.
 
 ## Safety first
 
@@ -48,7 +55,7 @@ launching, inspect live processes:
 
 ```bash
 ps ax -o pid=,ppid=,etime=,command= | \
-  rg '[s]esori-bridge|/[S]esori\.app/Contents/MacOS/' || true
+  rg '[s]esori-bridge|/[b]ridge/app/build/cli/bundle/bin/bridge|/[S]esori\.app/Contents/MacOS/' || true
 ```
 
 If a standalone bridge or another desktop build is active, do not kill it,
@@ -69,7 +76,7 @@ Run these once per machine/toolchain change:
 
 ```bash
 flutter doctor -v
-peekaboo --version
+./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh check
 peekaboo permissions --json --no-remote
 agent-device --version
 agent-device doctor --platform macos --json

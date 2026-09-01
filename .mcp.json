@@ -9,13 +9,12 @@
       "args": ["-y", "@mobilenext/mobile-mcp@1.0.2"]
     },
     "peekaboo": {
-      "command": "peekaboo",
-      "args": ["mcp", "--no-remote"]
+      "command": "./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh",
+      "args": ["peekaboo"]
     },
     "agent-device": {
-      "command": "agent-device",
-      "args": ["mcp"],
-      "env": {"AGENT_DEVICE_NO_UPDATE_NOTIFIER": "1"}
+      "command": "./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh",
+      "args": ["agent-device"]
     }
   }
 }
