@@ -22,6 +22,7 @@ export "src/di/injection.dart";
 export "src/foundation/bridge_process_desired_state.dart";
 export "src/foundation/control_channel_server.dart";
 export "src/foundation/platform/bridge_executable_path_resolver.dart";
+export "src/foundation/platform/bridge_process_environment.dart";
 export "src/foundation/platform/desktop_application_support_directory.dart";
 export "src/foundation/platform/desktop_application_terminator.dart";
 export "src/foundation/platform/launch_at_login.dart";

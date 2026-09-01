@@ -52,3 +52,32 @@ deletion hardening. Step 13 merged in PR #1216 on 2026-08-31 with 13/13 CI
 checks passing. The desktop relay client and token-only startup handoff are
 complete. MT gate B remains pending; do not begin Step 14 until the user-run
 daily-driver checkpoint is recorded.
+
+## Plan divergence — post-Step 13 Gate B findings (2026-08-31)
+
+The first daily-driver checks found that the persisted On intent was lost on
+app Quit, the rendered local/relay takeover state had no explicit reclaim
+action, and launchd's minimal PATH hid user-installed harnesses. The initial
+incomplete-file-permissions hypothesis was not confirmed: the GUI/helper ran
+under the same user with executable files, and the observed `gh` failure was
+`ENOENT` rather than `EACCES`/`EPERM`. Full Disk Access remains a manual
+permission for the process that accesses the protected folder; the desktop does
+not grant or persist it.
+
+These findings are a pre-Gate-B hardening divergence, not a new numbered plan
+step. During review, the environment lookup was kept below the service layer:
+the repository resolves it through the process API, the service rechecks
+cancellation before spawn, each supervised start refreshes PATH while
+concurrent callers share one probe, and a failed probe preserves the inherited
+environment unchanged. The
+work is intentionally split into two manageable PRs:
+
+| Follow-up | Status | Scope |
+|---|---|---|
+| `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` | in-progress | macOS-only PATH enrichment at the supervised process boundary, setup diagnostics, and regression coverage |
+| `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` | in-progress | Quit intent semantics, explicit takeover orchestration/UI, and lifecycle coverage |
+
+The helper receives only a login-shell-derived PATH, merged with its inherited
+environment; shell variables, secrets, permissions, and entitlements are not
+copied. Gate B stays user-owned and Step 14 stays blocked until the user
+records the documented gate outcome and explicitly authorizes progression.

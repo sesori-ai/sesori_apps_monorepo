@@ -2626,13 +2626,13 @@ abstract class AppLocalizations {
   /// No description provided for @fetchDirectoryPermissionDenied.
   ///
   /// In en, this message translates to:
-  /// **'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security → Full Disk Access, then retry.'**
+  /// **'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the process running the bridge (the Sesori app/helper or Terminal) in System Settings → Privacy & Security → Full Disk Access, then retry.'**
   String get fetchDirectoryPermissionDenied;
 
   /// No description provided for @addProjectPermissionDenied.
   ///
   /// In en, this message translates to:
-  /// **'The bridge can\'t access that folder. Grant the terminal running the bridge Full Disk Access on your Mac, then try again.'**
+  /// **'The bridge can\'t access that folder. Grant the process running the bridge (the Sesori app/helper or Terminal) Full Disk Access on your Mac, then try again.'**
   String get addProjectPermissionDenied;
 
   /// No description provided for @filesystemAccessDegradedTitle.
@@ -2644,7 +2644,7 @@ abstract class AppLocalizations {
   /// No description provided for @filesystemAccessDegradedBody.
   ///
   /// In en, this message translates to:
-  /// **'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security.'**
+  /// **'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the process running the bridge (the Sesori app/helper or Terminal) in System Settings → Privacy & Security.'**
   String get filesystemAccessDegradedBody;
 
   /// No description provided for @questionReplyFailed.

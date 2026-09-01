@@ -759,7 +759,7 @@ class const BridgeRuntimeRunner._() {
       // startup, so default to "ok" (no degraded warning) on error.
       var filesystemAccessOk = true;
       try {
-        final diagnostics = BridgeDiagnostics();
+        final diagnostics = BridgeDiagnostics(isSupervised: options.isSupervised);
         filesystemAccessOk = await diagnostics.checkFilesystemAccess();
         await diagnostics.checkGitAvailable();
       } on Object catch (error, stackTrace) {

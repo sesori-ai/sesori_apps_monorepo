@@ -84,6 +84,9 @@ class BridgeProcessRepository.forTesting({
 
   int? get activePid => _active?.handle.pid;
 
+  /// Resolves the child environment through the Layer-1 process boundary.
+  Future<Map<String, String>> resolveEnvironment() => _processApi.resolveEnvironment();
+
   Future<BridgeProcessStreams> spawn({
     required String executable,
     required List<String> arguments,

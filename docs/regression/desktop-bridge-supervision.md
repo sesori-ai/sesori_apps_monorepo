@@ -24,7 +24,14 @@ and keep native close/quit behavior safe.
   flipping an in-app flag. Development builds resolve the repository helper
   from the desktop executable path when a login service supplies `/` as the
   working directory; packaged-layout resolution remains a distribution-plan
-  concern.
+  concern. The supervised helper receives a login-shell-derived executable
+  search path, so harnesses installed outside launchd's default PATH remain
+  discoverable after autostart. Only PATH is derived for the helper; shell
+  variables are not imported or persisted. If the login-shell probe fails, the
+  desktop emits no PATH override and preserves the inherited environment
+  unchanged while retaining a bounded diagnostic warning. Each supervised
+  start resolves PATH again so a bridge restart can discover newly installed
+  harnesses; concurrent resolution callers still share one in-flight probe.
 - A `--hidden` launch stays tray-only when the tray is proven available. The
   macOS runner suppresses the native first ordering and the Flutter window
   adapter applies the hidden state as a fallback. If the tray is unavailable
@@ -87,7 +94,8 @@ at different handshake phases and inspect the status and bounded recent output.
   or bridge restore begins before the control dispatcher owns its event stream.
 - Repeated launch-at-login enables create duplicate registrations, disabling
   leaves a stale login item, a login-launched development build cannot find its
-  repository helper, `--hidden` startup hides the app without a usable tray,
+  repository helper or its PATH-installed harnesses, `--hidden` startup hides
+  the app without a usable tray,
   the macOS window flashes or remains visible during hidden startup, or a normal
   manual launch unexpectedly starts hidden.
 - Close hides the only surface when no tray host exists, ignores a close during
@@ -105,7 +113,9 @@ at different handshake phases and inspect the status and bounded recent output.
   retrying the failed action.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
-  recent crash output is absent, or Open Logs targets a nonexistent/bypassed file.
+  recent crash output is absent, Open Logs targets a nonexistent/bypassed file,
+  or a supervised Full Disk Access warning tells the user to authorize only
+  Terminal instead of the process running the bridge.
 - The desktop theme lacks Prego colors, typography, or design-system extension.
 
 ## Known Limitations
@@ -119,8 +129,11 @@ at different handshake phases and inspect the status and bounded recent output.
   smoke coverage; automated tests prove translation and fallback behavior.
 - Non-provisioned/ad-hoc macOS development builds may show one Keychain
   authorization prompt per existing credential item; this is macOS item ACL
-  behavior and is separate from the entitlement workaround. Stable signing for
-  distributed builds belongs to the later desktop-distribution plan.
+  behavior and is separate from the entitlement workaround. Full Disk Access is
+  likewise attributed to the process that accesses the protected folder; a
+  Terminal grant is not transferred to a separately launched desktop/helper
+  process. Stable signing for distributed builds belongs to the later
+  desktop-distribution plan.
 - Login registration is owned by the current desktop executable path. A
   development build moved or rebuilt at a different path must be re-enabled;
   the dev resolver can locate the repository helper from an executable inside
@@ -130,6 +143,8 @@ at different handshake phases and inspect the status and bounded recent output.
 ## Sources
 
 - `client/module_desktop_core/lib/src/cubits/bridge_control/`
+- `client/module_desktop_core/lib/src/foundation/platform/bridge_process_environment.dart`
+- `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_logout_orchestrator.dart`
 - `client/module_desktop_core/lib/src/api/bridge_id_storage.dart`
 - `client/module_core/lib/src/api/bridge_api.dart`

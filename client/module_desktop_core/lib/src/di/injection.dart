@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
     show AuthSession, AuthTokenProvider, BridgeRepository, ConnectionService;
 
 import "../foundation/platform/bridge_executable_path_resolver.dart";
+import "../foundation/platform/bridge_process_environment.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/desktop_application_terminator.dart";
 import "injection.config.dart";
@@ -22,6 +23,7 @@ import "injection.config.dart";
     AuthTokenProvider,
     ConnectionService,
     BridgeExecutablePathResolver,
+    BridgeProcessEnvironment,
     BridgeRepository,
     DesktopApplicationSupportDirectory,
     DesktopApplicationTerminator,

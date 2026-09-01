@@ -56,5 +56,15 @@ fallback ownership, and DI boundaries.
 - A clean macOS application build passed, including explicit LaunchAgent
   argument forwarding. Linux/Windows native-runner compilation is covered by
   the desktop CI matrix on their respective hosts.
+
+## Post-step hardening
+
+The subsequent supervision follow-up keeps app Quit from rewriting persisted
+bridge intent and adds an explicit Take Over action for local or relay
+contention. Because launchd does not carry the terminal PATH, the supervised
+helper now receives a login-shell-derived PATH override; this restores
+installed harness discovery without copying shell variables or changing file
+permissions/entitlements.
+
 - Manual reboot/login Gate B coverage remains pending; the user-run gate will
   verify hidden tray startup, disable persistence, and no-tray visible fallback.

@@ -1379,18 +1379,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fetchDirectoryPermissionDenied =>
-      'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security → Full Disk Access, then retry.';
+      'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the process running the bridge (the Sesori app/helper or Terminal) in System Settings → Privacy & Security → Full Disk Access, then retry.';
 
   @override
   String get addProjectPermissionDenied =>
-      'The bridge can\'t access that folder. Grant the terminal running the bridge Full Disk Access on your Mac, then try again.';
+      'The bridge can\'t access that folder. Grant the process running the bridge (the Sesori app/helper or Terminal) Full Disk Access on your Mac, then try again.';
 
   @override
   String get filesystemAccessDegradedTitle => 'Limited folder access';
 
   @override
   String get filesystemAccessDegradedBody =>
-      'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security.';
+      'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the process running the bridge (the Sesori app/helper or Terminal) in System Settings → Privacy & Security.';
 
   @override
   String get questionReplyFailed => 'Failed to send answer. Please try again.';
