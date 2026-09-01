@@ -286,6 +286,17 @@
   `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
   `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
   parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 3 PR bot round (chatgpt-codex-connector, 2026-09-01):** applied —
+  `ClaudeSessionProcessRepository.teardown` publishes
+  `ClaudeSessionProcessExited` (an abort, delete, reap, or effort restart had
+  removed the process silently, leaving launched sub-agents running in live
+  parts and resident ids; this also supersedes the Step 3 note that
+  delete/dispose rely on the exit event — they now genuinely do);
+  `ClaudeUserMessage.taskNotifications` parsed at the transport boundary
+  replaces the service's raw-content walk. Declined — regression docs stay in
+  Step 7/8; refusing an effort-triggered process replacement while sub-agents
+  run is Step 6/8's scoped-stop decision (the replacement now cancels them
+  observably instead of pinning the session).
 - **Sixth bot round (chatgpt-codex-connector, cubic-dev-ai), applied:**
   side-effect-free `confirm` (no queue clearing, no child fan-out before a
   root `aborted` under `stop`); nested-task lifecycle frames resolved through
