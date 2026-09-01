@@ -212,6 +212,7 @@ void main() {
       await idle;
 
       expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
+      expect(events.whereType<BridgeSseMessageUpdated>().first.info["promptId"], "prompt-compact");
       final visibleText = events
           .whereType<BridgeSseMessagePartUpdated>()
           .where((event) => event.part.type == PluginMessagePartType.text)

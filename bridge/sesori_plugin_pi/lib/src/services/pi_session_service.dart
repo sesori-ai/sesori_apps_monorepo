@@ -704,7 +704,11 @@ final class PiSessionService({
         }
         if (event is PiCompactionStartEvent) {
           for (final turn in generationTurns.whereType<_PiCompactionTurn>()) {
-            if (turn.promptDispatched && !turn.acceptance.isCompleted) turn.acceptance.complete();
+            if (!turn.promptDispatched) continue;
+            if (!turn.userMessageEmitted) {
+              _emitMissingUserMessage(sessionId: processFrame.sessionId, turn: turn);
+            }
+            if (!turn.acceptance.isCompleted) turn.acceptance.complete();
           }
         }
         final now = _clock.now();

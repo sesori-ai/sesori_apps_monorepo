@@ -102,7 +102,8 @@ defaults and queued client sends coherent.
 - Pi slash commands are accepted by their correlated response or a matching
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
-  `compact` command instead accepts on Pi's `compaction_start`, then keeps the
+  `compact` command instead publishes its visible command marker before the
+  running compaction card, accepts on Pi's `compaction_start`, then keeps the
   resident busy until the native RPC finishes. A rejected native compaction clears
   its running card. Commands reject while that session is busy, and a successful
   ordinary command with no agent run crosses `get_state`
