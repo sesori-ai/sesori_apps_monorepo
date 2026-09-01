@@ -477,13 +477,10 @@ Import is one complete observation of one plugin, not synchronization.
 - `DELETE /plugin/import` requests cooperative cancellation.
 - `GET /plugin/import` returns the latest status for initial load/reconnect and
   diagnostics; clients subscribe to SSE rather than polling.
-- A repeatable headless `--import-plugin <id>` run option requests an explicit
-  import after that plugin starts.
 - Startup requests one automatic hydration for each operational plugin missing
   the current projection-version completion row.
 
-The equivalent start triggers are `POST /plugin/import`, headless
-`--import-plugin`, and startup hydration. All invoke
+`POST /plugin/import` and startup hydration both invoke
 `CatalogImportService.start({pluginId, trigger})`; duplicate starts join the
 existing operation. `DELETE /plugin/import` invokes
 `CatalogImportService.cancel({pluginId})`. `GET /plugin/import` reads
@@ -957,8 +954,8 @@ PR-level implementation plan:
 
 - Implement `CatalogImportRepository` and `CatalogImportService` with the
   semantics in section 6.
-- Add routes, typed status/progress, SSE delivery, headless trigger, startup
-  hydration, and console progress.
+- Add routes, typed status/progress, SSE delivery, startup hydration, and
+  console progress.
 - Move Codex rollout enumeration off the bridge isolate.
 - Keep normal project/root-session reads on the previous path until hydration
   success and shadow comparisons are testable.
@@ -1034,8 +1031,7 @@ PR-level implementation plan:
    the same validation before touching only the in-memory control. A missing id
    throws `CatalogImportPluginNotSelectedException` before plugin or DAO access.
 8. Duplicate starts for that selected plugin join the one stored future/control.
-   An explicit or headless
-   join sets `explicitImportRequested`, so a completed hydration marker cannot
+   An explicit join sets `explicitImportRequested`, so a completed hydration marker cannot
    suppress that operation; an automatic join sets `hydrationMarkerRequested`,
    so the shared operation records the marker even if an explicit trigger won
    the start race. Automatic-only starts map an existing current-version marker
@@ -1066,32 +1062,22 @@ PR-level implementation plan:
     `start`/`dispose`; the runner constructs and starts it only in standalone
     mode, registers its disposal with `BridgeShutdownCoordinator`, and it renders
     coarse progress from its one subscription through `Console`.
-12. Add repeatable `--import-plugin <id>` as an args `addMultiOption`, store its
-    ordered values in `BridgeCliOptions.importPluginIds`, and validate every
-    value against the selected descriptor in `RunCommand` before authentication,
-    plugin probing, or startup-mutex acquisition. Repeated equal ids are retained
-    and harmless because `start` joins them. Supervised and standalone modes both
-    honor the trigger; supervised mode omits only Console rendering.
-13. After `BridgeRuntime.create` has installed both SSE and optional Console
+12. After `BridgeRuntime.create` has installed both SSE and optional Console
     subscribers, but before starting DebugServer or `OrchestratorSession.run`,
-    the runner calls non-blocking `start(automatic)` for the selected plugin and
-    then `start(headless)` for each ordered CLI value. Automatic-first ordering
-    and the join rules above yield one import and an atomic hydration marker when
-    startup and headless triggers overlap; relay startup is not blocked by
-    backend enumeration.
-14. In `client/module_core`, update the exhaustive shared-event switches in
+    the runner calls non-blocking `start(automatic)` for the selected plugin;
+    relay startup is not blocked by backend enumeration.
+13. In `client/module_core`, update the exhaustive shared-event switches in
     `capabilities/server_connection/models/sse_event.dart`,
     `services/sse_event_tracker.dart`,
     `cubits/session_list/session_list_cubit.dart`, and
     `cubits/session_detail/session_detail_cubit.dart` to classify catalog import
     progress as a global, non-session event with no Stage 8 UI behavior. Add the
     focused decoding/classification assertions required by those consumers.
-15. Add repository/service/handler/orchestrator/runner tests for native and
+14. Add repository/service/handler/orchestrator/runner tests for native and
     derived enumeration, recursive ancestry, complete `knownDirectories`,
     tombstones, idempotence, stale-write guards, transaction rollback,
     cancellation boundaries, duplicate/overlapping triggers, version markers,
-    selected-plugin rejection, route responses, SSE, Console lifecycle, and CLI
-    parsing. Add
+    selected-plugin rejection, route responses, SSE, and Console lifecycle. Add
     `bridge/app/tool/benchmarks/import_concurrency_benchmark.dart` with catalog
     read latency, publication duration, scheduling lag, RSS, database size, and
     Stage-1A fixture metadata. Keep client import APIs/UI and project/root list
@@ -1103,7 +1089,7 @@ Stage 5 workspace and file matrix:
 |---|---|---|
 | `shared/sesori_shared` | Three new import DTO sources, barrel export, additive `SesoriSseEvent` variant, generated Freezed/JSON parts | DTO/SSE JSON round trips; fatal analysis; full package tests |
 | `bridge/sesori_plugin_codex` | `session_rollout_reader.dart`, new `repositories/codex_catalog_repository.dart`, `codex_plugin_impl.dart` | repository mapping and isolate-responsiveness tests; fatal analysis; full package tests |
-| `bridge/app` | project/session DAOs; canonical-layer import repository/control/service/listener and three handlers; `Orchestrator`, `BridgeRuntime`, runner, CLI options and `bin/bridge.dart`; benchmark | focused import/route/runtime tests; fatal analysis; full app tests and benchmark AOT compile |
+| `bridge/app` | project/session DAOs; canonical-layer import repository/control/service/listener and three handlers; `Orchestrator`, `BridgeRuntime`, runner; benchmark | focused import/route/runtime tests; fatal analysis; full app tests and benchmark AOT compile |
 | `client/module_core` | Exhaustive event classification only; no API, repository, cubit state, or UI feature | focused SSE decoding/classification tests; fatal analysis; full module tests; downstream app/desktop analysis |
 | `docs/parallel-plugins` | pointer, Stage 5 plan/findings/risk evidence | plan consistency and `git diff --check` |
 
@@ -1281,9 +1267,8 @@ PR-level implementation plan:
 4. In `bridge/app/bin/bridge.dart`, register `plugin` with `addMultiOption` and
    `splitCommas: false`, then construct one `PluginCliOptionsMapper` per selected
    descriptor so all selected namespaced options are accepted in one parse.
-   Parse an insertion-ordered `Map<String, PluginConfig>`, run every descriptor's
-   `validateConfig` in selected order, and validate every `--import-plugin`
-   against the complete selected set before sleep-prevention work,
+   Parse an insertion-ordered `Map<String, PluginConfig>` and run every
+   descriptor's `validateConfig` in selected order before sleep-prevention work,
    authentication, availability I/O, predecessor waiting, or startup-lock/
    takeover work.
    Carry the ordered ids/configs through `BridgeCliOptions`, `runBridgeApp`, and
@@ -1589,8 +1574,7 @@ PR-level implementation plan:
     `CatalogImportPluginUnavailableException` for an enabled id absent from the
     operational repository map maps to HTTP 503 `plugin unavailable`.
     Automatic hydration starts once for each operational id in enabled order
-    after SSE/Console subscribers exist; ordered `--import-plugin` triggers then
-    join or start their selected ids. One plugin's failed/cancelled import
+    after SSE/Console subscribers exist. One plugin's failed/cancelled import
     publishes its typed terminal progress and does not cancel another pipeline.
 18. Keep one shared `SessionEventService`, one
     `SessionEventTracker({required int maxPendingEntriesPerPlugin})`, and one
@@ -2267,7 +2251,7 @@ affected locked decision and updates the owning section in the same PR.
   was 78,004,224 bytes, and the database was 35,700,736 bytes. These are local
   directional results; Stage 9 still owns fixed-host gating. Schema v11 and all
   migration/generated artifacts are unchanged.
-- **Stage 5:** The selected plugin now has explicit HTTP/headless import and one
+- **Stage 5:** The selected plugin now has explicit HTTP import and one
   automatic projection-v1 hydration. `CatalogImportService` owns one joinable,
   cancellable operation while `CatalogImportRepository` enumerates outside the
   database, validates complete ancestry, and publishes exact project/session
