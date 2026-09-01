@@ -1,7 +1,6 @@
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/application_support_directory_client.dart";
 import "package:sesori_mobile/core/platform/file_attribution_claim_storage.dart";
 
@@ -25,25 +24,25 @@ void main() {
   });
 
   test("persists independent one-shot claims across storage instances", () async {
-    expect(await storage.isClaimed(event: AttributionEvent.bridgePaired), isFalse);
-    expect(await storage.isClaimed(event: AttributionEvent.firstSessionRun), isFalse);
+    expect(await storage.isClaimed(claimKey: "bridge_paired_v1"), isFalse);
+    expect(await storage.isClaimed(claimKey: "first_session_run_v1"), isFalse);
 
-    await storage.markClaimed(event: AttributionEvent.bridgePaired);
+    await storage.markClaimed(claimKey: "bridge_paired_v1");
 
-    expect(await storage.isClaimed(event: AttributionEvent.bridgePaired), isTrue);
-    expect(await storage.isClaimed(event: AttributionEvent.firstSessionRun), isFalse);
+    expect(await storage.isClaimed(claimKey: "bridge_paired_v1"), isTrue);
+    expect(await storage.isClaimed(claimKey: "first_session_run_v1"), isFalse);
 
     final restartedStorage = FileAttributionClaimStorage(
       directoryClient: ApplicationSupportDirectoryClient.forTesting(
         load: () async => applicationSupportDirectory,
       ),
     );
-    expect(await restartedStorage.isClaimed(event: AttributionEvent.bridgePaired), isTrue);
+    expect(await restartedStorage.isClaimed(claimKey: "bridge_paired_v1"), isTrue);
   });
 
   test("a new app-container directory starts with no claims", () async {
-    await storage.markClaimed(event: AttributionEvent.firstSessionRun);
-    expect(await storage.isClaimed(event: AttributionEvent.firstSessionRun), isTrue);
+    await storage.markClaimed(claimKey: "first_session_run_v1");
+    expect(await storage.isClaimed(claimKey: "first_session_run_v1"), isTrue);
 
     final newInstallationDirectory = await Directory.systemTemp.createTemp("sesori-attribution-reinstall-");
     addTearDown(() {
@@ -57,6 +56,6 @@ void main() {
       ),
     );
 
-    expect(await reinstalledStorage.isClaimed(event: AttributionEvent.firstSessionRun), isFalse);
+    expect(await reinstalledStorage.isClaimed(claimKey: "first_session_run_v1"), isFalse);
   });
 }

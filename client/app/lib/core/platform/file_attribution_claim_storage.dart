@@ -10,11 +10,11 @@ import "application_support_directory_client.dart";
 class FileAttributionClaimStorage({
   required final ApplicationSupportDirectoryClient _directoryClient,
 }) implements AttributionClaimStorage {
-  static const _directoryName = "singular_attribution_claims";
+  static const _directoryName = "attribution_claims";
 
   @override
-  Future<bool> isClaimed({required AttributionEvent event}) async {
-    final file = await _claimFile(event: event);
+  Future<bool> isClaimed({required String claimKey}) async {
+    final file = await _claimFile(claimKey: claimKey);
     // Claim checks can happen during a user interaction, so keep filesystem
     // metadata work off the Flutter isolate.
     // ignore: avoid_slow_async_io
@@ -22,24 +22,14 @@ class FileAttributionClaimStorage({
   }
 
   @override
-  Future<void> markClaimed({required AttributionEvent event}) async {
-    final file = await _claimFile(event: event);
+  Future<void> markClaimed({required String claimKey}) async {
+    final file = await _claimFile(claimKey: claimKey);
     await file.parent.create(recursive: true);
     await file.writeAsString("claimed", flush: true);
   }
 
-  Future<File> _claimFile({required AttributionEvent event}) async {
+  Future<File> _claimFile({required String claimKey}) async {
     final root = await _directoryClient.directory;
-    return File(p.join(root.path, _directoryName, _fileName(event: event)));
+    return File(p.join(root.path, _directoryName, claimKey));
   }
-
-  String _fileName({required AttributionEvent event}) => switch (event) {
-    AttributionEvent.bridgePaired => "bridge_paired_v1",
-    AttributionEvent.firstSessionRun => "first_session_run_v1",
-    AttributionEvent.accountCreated || AttributionEvent.accountLogin => throw ArgumentError.value(
-      event,
-      "event",
-      "Only one-shot attribution events can be claimed",
-    ),
-  };
 }

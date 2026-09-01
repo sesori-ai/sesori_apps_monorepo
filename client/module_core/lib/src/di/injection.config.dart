@@ -342,13 +342,6 @@ extension GetItInjectableX on _i174.GetIt {
         deviceIdStorage: gh<_i407.NotificationPreferencesDeviceIdStorage>(),
       ),
     );
-    gh.lazySingleton<_i285.InstallationAnalyticsService>(
-      () => _i285.InstallationAnalyticsService(
-        capability: gh<_i684.AnalyticsRuntimeCapability>(),
-        attributionRepository: gh<_i993.AttributionRepository>(),
-        repository: gh<_i274.AnalyticsRepository>(),
-      ),
-    );
     gh.lazySingleton<_i659.NotificationRegistrationService>(
       () => _i659.NotificationRegistrationService(
         repository: gh<_i471.NotificationRepository>(),
@@ -437,6 +430,13 @@ extension GetItInjectableX on _i174.GetIt {
         preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i285.InstallationAnalyticsService>(
+      () => _i285.InstallationAnalyticsService(
+        capability: gh<_i684.AnalyticsRuntimeCapability>(),
+        repository: gh<_i274.AnalyticsRepository>(),
+        attributionRepository: gh<_i993.AttributionRepository>(),
+      ),
     );
     gh.lazySingleton<_i492.AttributionService>(
       () => _i492.AttributionService(

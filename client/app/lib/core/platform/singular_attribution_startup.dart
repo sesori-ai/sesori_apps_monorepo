@@ -71,13 +71,13 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   bool _start({required SingularConfig config}) {
     try {
       _singular.start(config: config);
-      _isStarted = true;
-      _readinessController.add(null);
-      return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to start Singular attribution", error, stackTrace);
       return false;
     }
+    _isStarted = true;
+    _readinessController.add(null);
+    return true;
   }
 
   @disposeMethod

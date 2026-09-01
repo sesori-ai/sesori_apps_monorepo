@@ -26,11 +26,9 @@ class SingularAttributionClient({
       AttributionEvent.bridgePaired => "bridge_paired",
       AttributionEvent.firstSessionRun => "first_session_run",
     };
-    final canReport = switch (event) {
-      AttributionEvent.accountCreated ||
-      AttributionEvent.accountLogin => _startup.activateAfterInteractiveAuthentication(),
-      AttributionEvent.bridgePaired || AttributionEvent.firstSessionRun => _startup.isStarted,
-    };
+    // Only interactive authentication may lift a deferred start; one-shot
+    // activation events require Singular to be running already.
+    final canReport = event.isOneShot ? _startup.isStarted : _startup.activateAfterInteractiveAuthentication();
     if (!canReport) return;
     _singular.event(eventName: eventName);
   }

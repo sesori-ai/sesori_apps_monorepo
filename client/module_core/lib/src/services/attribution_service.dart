@@ -7,23 +7,25 @@ import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/product_analytics/attribution_event.dart";
 import "../repositories/attribution_repository.dart";
 
-/// Opens crawl-gated attribution delivery and owns the bridge-pairing listener.
+/// Owns the bridge-pairing attribution trigger.
 @lazySingleton
 class AttributionService({
   required final AttributionRepository _repository,
   required final ConnectionService _connectionService,
 }) {
   StreamSubscription<ConnectionStatus>? _connectionStatusSubscription;
-  bool _started = false;
+  StreamSubscription<void>? _readinessSubscription;
 
-  Future<void> start() {
-    if (_started) return Future<void>.value();
-    _started = true;
-    _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
-    return Future<void>.value();
+  void start() {
+    _connectionStatusSubscription = _connectionService.status.listen(_reportIfConnected);
+    // A connection established before the sink became ready (deferred Singular
+    // start) is reported once readiness arrives instead of waiting for a reconnect.
+    _readinessSubscription = _repository.readinessStream.listen(
+      (_) => _reportIfConnected(_connectionService.currentStatus),
+    );
   }
 
-  void _onConnectionStatusChanged(ConnectionStatus status) {
+  void _reportIfConnected(ConnectionStatus status) {
     if (status is ConnectionConnected) {
       unawaited(_repository.logEvent(event: AttributionEvent.bridgePaired));
     }
@@ -32,6 +34,8 @@ class AttributionService({
   @disposeMethod
   Future<void> dispose() async {
     await _connectionStatusSubscription?.cancel();
+    await _readinessSubscription?.cancel();
     _connectionStatusSubscription = null;
+    _readinessSubscription = null;
   }
 }

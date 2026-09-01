@@ -111,7 +111,7 @@ Future<void> bootstrapSesoriApp({
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
-  required Future<void> Function() startAttributionFn,
+  required void Function() startAttributionFn,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
@@ -177,11 +177,11 @@ Future<void> bootstrapSesoriApp({
 Future<void> _completeAnalyticsStartup({
   required Future<AnalyticsStoreCrawlGate> crawlGate,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
-  required Future<void> Function() startAttributionFn,
+  required void Function() startAttributionFn,
 }) async {
   try {
     applySingularCrawlGateFn(crawlGate: await crawlGate);
-    await startAttributionFn();
+    startAttributionFn();
   } on Object catch (error, stackTrace) {
     logw("Error completing analytics startup", error, stackTrace);
   }

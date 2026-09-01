@@ -1,8 +1,7 @@
-import "../models/product_analytics/attribution_event.dart";
-
-/// App-container persistence for the attribution events claimed once per install.
+/// App-container persistence for one-shot attribution claim markers, keyed by
+/// `AttributionEvent.claimKey`.
 abstract interface class AttributionClaimStorage() {
-  Future<bool> isClaimed({required AttributionEvent event});
+  Future<bool> isClaimed({required String claimKey});
 
-  Future<void> markClaimed({required AttributionEvent event});
+  Future<void> markClaimed({required String claimKey});
 }

@@ -41,7 +41,7 @@ void main() {
 
     void initializeDeepLinks() => events.add("deepLinks");
 
-    Future<void> startAttribution() async => events.add("attribution");
+    void startAttribution() => events.add("attribution");
 
     Future<void> startProductAnalytics() async => events.add("productAnalytics");
 
@@ -143,7 +143,7 @@ void main() {
         throw StateError("startup failed");
       },
       initializeDeepLinks: () => events.add("deepLinks"),
-      startAttributionFn: () async => events.add("attribution"),
+      startAttributionFn: () => events.add("attribution"),
       startProductAnalyticsFn: () async => events.add("productAnalytics"),
       startAnalyticsRouteListenerFn: () async => events.add("analyticsRoutes"),
       startNotificationStartupFn: () async => events.add("notificationStartup"),

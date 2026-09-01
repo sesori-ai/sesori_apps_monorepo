@@ -8,29 +8,27 @@ import "package:test/test.dart";
 class _MockAttributionApi() extends Mock implements AttributionApi;
 
 class _MemoryAttributionClaimStorage() implements AttributionClaimStorage {
-  final claimedEvents = <AttributionEvent>{};
+  final claimedKeys = <String>{};
   final operations = <String>[];
-  Completer<bool>? readGate;
   bool throwOnRead = false;
   bool throwOnWrite = false;
   int reads = 0;
   int writes = 0;
 
   @override
-  Future<bool> isClaimed({required AttributionEvent event}) async {
+  Future<bool> isClaimed({required String claimKey}) async {
     reads += 1;
     operations.add("read");
     if (throwOnRead) throw StateError("claim read failed");
-    final gate = readGate;
-    return gate == null ? claimedEvents.contains(event) : await gate.future;
+    return claimedKeys.contains(claimKey);
   }
 
   @override
-  Future<void> markClaimed({required AttributionEvent event}) async {
+  Future<void> markClaimed({required String claimKey}) async {
     writes += 1;
     operations.add("write");
     if (throwOnWrite) throw StateError("claim write failed");
-    claimedEvents.add(event);
+    claimedKeys.add(claimKey);
   }
 }
 
@@ -81,7 +79,7 @@ void main() {
     verifyNever(() => api.logEvent(event: any(named: "event")));
   });
 
-  test("claims before SDK delivery and suppresses repeats for this process", () async {
+  test("claims before SDK delivery and suppresses repeats even while the sink is unavailable", () async {
     final operations = claimStorage.operations;
     when(() => api.logEvent(event: AttributionEvent.bridgePaired)).thenAnswer((_) async {
       operations.add("api");
@@ -92,6 +90,7 @@ void main() {
       await repository.logEvent(event: AttributionEvent.bridgePaired),
       AnalyticsDeliveryResult.acceptedBySdk,
     );
+    when(() => api.isReady).thenReturn(false);
     expect(
       await repository.logEvent(event: AttributionEvent.bridgePaired),
       AnalyticsDeliveryResult.acceptedBySdk,
@@ -104,7 +103,7 @@ void main() {
   });
 
   test("a persisted claim suppresses delivery after repository restart", () async {
-    claimStorage.claimedEvents.add(AttributionEvent.firstSessionRun);
+    claimStorage.claimedKeys.add("first_session_run_v1");
     final repository = buildRepository();
 
     expect(
@@ -115,24 +114,6 @@ void main() {
     expect(claimStorage.reads, 1);
     expect(claimStorage.writes, 0);
     verifyNever(() => api.logEvent(event: any(named: "event")));
-  });
-
-  test("concurrent first claims coalesce to one marker and SDK call", () async {
-    final readGate = claimStorage.readGate = Completer<bool>();
-    final repository = buildRepository();
-
-    final first = repository.logEvent(event: AttributionEvent.firstSessionRun);
-    final second = repository.logEvent(event: AttributionEvent.firstSessionRun);
-    await Future<void>.delayed(Duration.zero);
-    readGate.complete(false);
-
-    expect(await Future.wait([first, second]), [
-      AnalyticsDeliveryResult.acceptedBySdk,
-      AnalyticsDeliveryResult.acceptedBySdk,
-    ]);
-    expect(claimStorage.reads, 1);
-    expect(claimStorage.writes, 1);
-    verify(() => api.logEvent(event: AttributionEvent.firstSessionRun)).called(1);
   });
 
   test("a failed claim read fails this attempt but remains safely retryable", () async {

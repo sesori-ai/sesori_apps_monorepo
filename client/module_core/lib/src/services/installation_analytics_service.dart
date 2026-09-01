@@ -9,20 +9,15 @@ import "../repositories/analytics_repository.dart";
 import "../repositories/attribution_repository.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 
-enum LoginAttemptFailureCause() {
-  authentication,
-  launch,
-  cancelled,
-  timeout,
-  unknown,
-}
+enum LoginAttemptFailureCause() { authentication, launch, cancelled, timeout, unknown }
 
 @lazySingleton
 class InstallationAnalyticsService({
-  required final AnalyticsRuntimeCapability _capability,
-  required final AttributionRepository _attributionRepository,
-  required final AnalyticsRepository _repository,
-}) {
+    required final AnalyticsRuntimeCapability _capability,
+    required final AnalyticsRepository _repository,
+    required final AttributionRepository _attributionRepository,
+  }) {
+
   Future<AnalyticsDeliveryResult> loginAttemptStarted({required AuthProvider provider}) {
     return _log(
       event: InstallationAnalyticsEvent.loginAttemptStarted(
@@ -40,20 +35,8 @@ class InstallationAnalyticsService({
     // wait for the store-crawl suspension to lift.
     final results = await Future.wait([
       _activateThenLogOutcomes(provider: analyticsProvider, accountStatus: accountStatus),
-      _reportAuthenticationAttribution(accountStatus: accountStatus),
+      _logAttribution(accountStatus: accountStatus),
     ]);
-
-    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
-        ? AnalyticsDeliveryResult.acceptedBySdk
-        : AnalyticsDeliveryResult.failed;
-  }
-
-  Future<AnalyticsDeliveryResult> _reportAuthenticationAttribution({required AccountStatus accountStatus}) async {
-    final results = <AnalyticsDeliveryResult>[];
-    if (accountStatus == AccountStatus.created) {
-      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
-    }
-    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
 
     return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
         ? AnalyticsDeliveryResult.acceptedBySdk
@@ -109,6 +92,18 @@ class InstallationAnalyticsService({
     LoginAttemptFailureCause.timeout => AnalyticsLoginFailureKind.timeout,
     LoginAttemptFailureCause.unknown => AnalyticsLoginFailureKind.unknown,
   };
+
+  Future<AnalyticsDeliveryResult> _logAttribution({required AccountStatus accountStatus}) async {
+    final results = <AnalyticsDeliveryResult>[];
+    if (accountStatus == AccountStatus.created) {
+      results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountCreated));
+    }
+    results.add(await _attributionRepository.logEvent(event: AttributionEvent.accountLogin));
+
+    return results.every((result) => result == AnalyticsDeliveryResult.acceptedBySdk)
+        ? AnalyticsDeliveryResult.acceptedBySdk
+        : AnalyticsDeliveryResult.failed;
+  }
 
   Future<AnalyticsDeliveryResult> _log({required InstallationAnalyticsEvent event}) async {
     if (!_capability.isEnabled) {
