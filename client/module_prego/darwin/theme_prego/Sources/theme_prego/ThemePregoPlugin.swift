@@ -5,7 +5,6 @@ import Foundation
   import UIKit
 #elseif os(macOS)
   import AppKit
-  import CoreImage
   import FlutterMacOS
 #endif
 
@@ -405,25 +404,21 @@ private enum AiLoaderSparkle {
     }
 
     func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
-      guard let color = args as? NSNumber else {
+      // The shared creation contract carries the requested colour for iOS;
+      // the macOS spinner deliberately keeps its system appearance colour
+      // (a monochrome-filtered tint looked worse and read poorly), so the
+      // argument is validated but not applied here.
+      guard args is NSNumber else {
         preconditionFailure("Invalid native activity indicator creation arguments")
       }
-      let components = ColorComponents(fromARGB: color.int64Value)
-      return NativeActivityIndicatorView(
-        color: NSColor(
-          red: components.red,
-          green: components.green,
-          blue: components.blue,
-          alpha: components.alpha
-        )
-      )
+      return NativeActivityIndicatorView()
     }
   }
 
   private final class NativeActivityIndicatorView: NSView {
     private let indicator = NSProgressIndicator()
 
-    init(color: NSColor) {
+    init() {
       super.init(frame: .zero)
 
       // The Flutter wrapper owns the loading-spinner semantics; hide both the
@@ -434,21 +429,6 @@ private enum AiLoaderSparkle {
       indicator.isIndeterminate = true
       indicator.isDisplayedWhenStopped = true
       indicator.translatesAutoresizingMaskIntoConstraints = false
-      // Content filters only apply to a layer-backed view.
-      indicator.wantsLayer = true
-      // The spinner draws its ticks in the label colour at varying alpha:
-      // black under the light appearance, white under dark. A monochrome
-      // filter maps luminance onto the requested colour, so black ticks would
-      // stay black; pin the dark appearance so the ticks are white, which the
-      // filter maps exactly onto the colour while keeping each tick's alpha.
-      indicator.appearance = NSAppearance(named: .darkAqua)
-      // NSProgressIndicator has no tint API; a monochrome content filter
-      // recolours the spinner to the requested colour.
-      if let filter = CIFilter(name: "CIColorMonochrome"), let ciColor = CIColor(color: color) {
-        filter.setValue(ciColor, forKey: "inputColor")
-        filter.setValue(1.0, forKey: "inputIntensity")
-        indicator.contentFilters = [filter]
-      }
       addSubview(indicator)
       NSLayoutConstraint.activate([
         indicator.centerXAnchor.constraint(equalTo: centerXAnchor),

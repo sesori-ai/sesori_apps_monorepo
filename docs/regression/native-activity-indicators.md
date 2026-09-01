@@ -30,7 +30,9 @@ timer alive while the app is paused, hidden, or detached; a native indicator bra
 reappearing on Android and degrading scroll; crashes,
 frozen or corrupted scene rendering, or leaked native views when an indicator
 scrolls out of view, is inserted and removed repeatedly, or composes with
-glass and blur; an indicator ignoring its requested colours or theme switches;
+glass and blur; an iOS native or Flutter indicator ignoring its requested
+colours or theme switches (the macOS native spinner deliberately keeps its
+system appearance colour);
 sparkles in a list twinkling in lockstep despite distinct phases; the native
 sparkle keyframes visibly diverging from the Flutter fallback; reduce motion
 still animating.
