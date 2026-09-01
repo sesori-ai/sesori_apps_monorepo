@@ -22,6 +22,9 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? cwd,
     @JsonKey(fromJson: _timestampOrNull) required DateTime? timestamp,
     @JsonKey(fromJson: _boolOrNull) required bool? isSidechain,
+
+    /// The sub-agent that wrote the record; null on a root session's records.
+    @JsonKey(fromJson: _stringOrNull) required String? agentId,
     @JsonKey(fromJson: _stringOrNull) required String? gitBranch,
     @JsonKey(fromJson: _stringOrNull) required String? version,
     @JsonKey(fromJson: _stringOrNull) required String? aiTitle,

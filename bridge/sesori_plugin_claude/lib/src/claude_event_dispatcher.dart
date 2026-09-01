@@ -28,7 +28,19 @@ final class ClaudeEventDispatcher({
   /// index >= 1 is finalized under a second part id and renders twice.
   final Map<String, int> _assistantBlockCounts = {};
 
-  void beginTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+  /// The root directory each session runs in, recorded at [beginTurn] so a
+  /// child session can be constructed without asking the plugin.
+  final Map<String, String> _directories = {};
+
+  /// Child sessions announced with `session.created`, and the subset still
+  /// running, per root. Presentation state over the tracker's task map.
+  final Map<String, Set<String>> _announcedChildren = {};
+  final Map<String, Set<String>> _busyChildren = {};
+
+  void beginTurn({required String sessionId, required String directory}) {
+    _directories[sessionId] = directory;
+    _resetTurn(sessionId: sessionId);
+  }
 
   /// Clears completed-turn stream state.
   void completeTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
@@ -46,13 +58,29 @@ final class ClaudeEventDispatcher({
     _models.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
+    _directories.remove(sessionId);
+    _announcedChildren.remove(sessionId);
+    _busyChildren.remove(sessionId);
   }
 
   /// Cancels every running sub-agent task of [sessionId] — its process is gone
-  /// — and returns the subtask part updates that make that visible.
+  /// — and returns the subtask part updates and child idle statuses that make
+  /// that visible.
   List<BridgeSseEvent> cancelTasks({required String sessionId}) => [
     for (final task in _tools.cancelAll(sessionId: sessionId)) ..._partEvents(sessionId: sessionId, tool: task),
   ];
+
+  /// Statuses of the child sessions this dispatcher announced, for every root.
+  Map<String, PluginSessionStatus> childSessionStatuses() => {
+    for (final entry in _announcedChildren.entries)
+      for (final childId in entry.value)
+        childId: _busyChildren[entry.key]?.contains(childId) ?? false
+            ? const PluginSessionStatus.busy()
+            : const PluginSessionStatus.idle(),
+  };
+
+  /// The child sessions of [sessionId] still running.
+  List<String> busyChildSessionIds({required String sessionId}) => [...?_busyChildren[sessionId]];
 
   /// Tool-use ids of the tasks still running inside the session's resident
   /// process; a replayed task outside this set is dead.
@@ -501,6 +529,45 @@ final class ClaudeEventDispatcher({
       ),
     ];
   }
+
+  /// The part update for [tool], wrapped in the child-session lifecycle a task
+  /// implies: `session.created` + busy the first time its sub-agent id is
+  /// known, and idle once it is terminal. Order matters — the bridge binds the
+  /// child on `created` before it translates the part's `childSessionID`.
+  List<BridgeSseEvent> _partEvents({required String sessionId, required ClaudeTrackedTool? tool}) {
+    final part = tool?.toPart(sessionId: sessionId);
+    final directory = _directories[sessionId];
+    if (tool is! ClaudeTrackedTask || tool.childSessionId == null || directory == null) {
+      return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
+    }
+    final childId = tool.childSessionId;
+    final terminal = tool.state.status.isTerminal;
+    final announced = _announcedChildren.putIfAbsent(sessionId, () => {});
+    final busy = _busyChildren.putIfAbsent(sessionId, () => {});
+    final events = <BridgeSseEvent>[];
+    if (childId != null && announced.add(childId)) {
+      events.add(
+        BridgeSseSessionCreated(
+          info: PluginSession(
+            id: childId,
+            projectID: directory,
+            directory: directory,
+            parentID: sessionId,
+            title: switch (tool.input) {
+              {"description": final String description} => description,
+              _ => null,
+            },
+            time: null,
+          ).toJson(),
+        ),
+      );
+      if (!terminal) busy.add(childId);
+      events.add(_childStatus(childId: childId, busy: !terminal));
+    }
+    if (part != null) events.add(BridgeSseMessagePartUpdated(part: part));
+    if (childId != null && terminal && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));
+    return events;
+  }
 }
 
 PluginMessagePart _textPart({
@@ -525,10 +592,10 @@ PluginMessagePart _textPart({
   _ => throw ArgumentError.value(type, "type"),
 };
 
-List<BridgeSseEvent> _partEvents({required String sessionId, required ClaudeTrackedTool? tool}) {
-  final part = tool?.toPart(sessionId: sessionId);
-  return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
-}
+BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
+  sessionID: childId,
+  status: (busy ? const shared.SessionStatus.busy() : const shared.SessionStatus.idle()).toJson(),
+);
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;
 

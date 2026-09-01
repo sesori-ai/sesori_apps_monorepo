@@ -14,11 +14,20 @@ final class const ClaudeHistoryMapper({
   /// resident process is still running. Any other replayed task that never
   /// reached a terminal record is dead — sub-agents die with their process —
   /// and renders as cancelled.
+  ///
+  /// [agentId] selects child mode: a sub-agent transcript's records are
+  /// sidechain records stamped with the **parent's** session id, so they are
+  /// attributed by agent id instead of the root's session-id cross-check.
   List<PluginMessageWithParts> map({
     required String sessionId,
+    required String? agentId,
     required List<ClaudeTranscriptRecord> records,
     required Set<String> residentTaskToolUseIds,
   }) {
+    bool skip(ClaudeTranscriptAttributedRecord record) => switch (agentId) {
+      null => (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId),
+      final agentId => record.agentId != agentId,
+    };
     final entries = <_ClaudeHistoryEntry>[];
     final assistantsByMessageId = <String, _AssistantHistoryMessage>{};
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
@@ -29,7 +38,7 @@ final class const ClaudeHistoryMapper({
     for (final record in records) {
       switch (record) {
         case ClaudeTranscriptAssistantRecord():
-          if (_skipRecord(record: record, sessionId: sessionId)) continue;
+          if (skip(record)) continue;
           final blocks = _content.map(content: record.content);
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
@@ -59,7 +68,7 @@ final class const ClaudeHistoryMapper({
             }
           }
         case ClaudeTranscriptUserRecord():
-          if (_skipRecord(record: record, sessionId: sessionId) || record.isMeta || record.isVisibleInTranscriptOnly) {
+          if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
             continue;
           }
           final blocks = _content.map(content: record.content);
@@ -202,9 +211,6 @@ final class const ClaudeHistoryMapper({
     );
   }
 }
-
-bool _skipRecord({required ClaudeTranscriptAttributedRecord record, required String sessionId}) =>
-    (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId);
 
 sealed class const _ClaudeHistoryEntry();
 

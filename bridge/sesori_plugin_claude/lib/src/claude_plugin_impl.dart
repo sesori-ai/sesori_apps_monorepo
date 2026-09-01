@@ -11,6 +11,7 @@ import "claude_history_mapper.dart";
 import "models/claude_agent_selection.dart";
 import "models/claude_effort_level.dart";
 import "models/claude_permission_mode.dart";
+import "models/claude_subagent_session_id.dart";
 import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/claude_session_process_repository.dart";
 import "repositories/claude_transcript_catalog_repository.dart";
@@ -192,10 +193,14 @@ final class ClaudePlugin({
   Future<void> deleteWorkspace({required String projectId, required String worktreePath}) async {}
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
+  Future<List<PluginSession>> getChildSessions(String sessionId) => _transcripts.getChildSessions(sessionId: sessionId);
 
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => _sessions.sessionStatuses;
+  // Roots from the session service, children from the dispatcher: disjoint ids.
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {
+    ..._sessions.sessionStatuses,
+    ..._eventDispatcher.childSessionStatuses(),
+  };
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
@@ -206,6 +211,7 @@ final class ClaudePlugin({
     try {
       return _history.map(
         sessionId: sessionId,
+        agentId: ClaudeSubagentSessionId.agentIdOf(sessionId),
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
         residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
       );
@@ -391,10 +397,12 @@ final class ClaudePlugin({
       (byProject[directory] ??= []).add(
         PluginActiveSession(
           id: entry.key,
-          mainAgentRunning: running,
+          // Busy also covers background-only activity; the main agent runs only
+          // while a turn does.
+          mainAgentRunning: _sessions.isTurnRunning(sessionId: entry.key),
           awaitingInput: awaitingInput,
           isRetrying: entry.value is PluginSessionStatusRetry,
-          childSessionIds: const [],
+          childSessionIds: _eventDispatcher.busyChildSessionIds(sessionId: entry.key),
         ),
       );
     }
@@ -472,7 +480,7 @@ final class ClaudePlugin({
     _validateModel(model, operation: operation, staleOptions: false);
     final effort = _effort(variant, operation: operation, staleOptions: false);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: false);
-    _eventDispatcher.beginTurn(sessionId: sessionId);
+    _eventDispatcher.beginTurn(sessionId: sessionId, directory: directory);
     try {
       await _sessions.enqueueInitialTurn(
         sessionId: sessionId,
@@ -559,7 +567,7 @@ final class ClaudePlugin({
       id: record.id,
       projectID: directory,
       directory: directory,
-      parentID: null,
+      parentID: record.parentId,
       title: record.title,
       time: createdAt == null || updatedAt == null
           ? null
@@ -622,7 +630,11 @@ final class ClaudePlugin({
 
   void _handleTurnDispatched(ClaudeTurnDispatched event) {
     _unstartedSessions.remove(event.sessionId);
-    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId);
+    if (!event.isSteering) {
+      if (_directoryForSession(event.sessionId) case final directory?) {
+        _eventDispatcher.beginTurn(sessionId: event.sessionId, directory: directory);
+      }
+    }
     final command = event.command;
     if (command == null) return;
     final visible = event.displayText;

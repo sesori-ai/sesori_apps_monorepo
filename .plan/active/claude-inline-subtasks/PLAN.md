@@ -807,8 +807,10 @@ Verification: `dart analyze --fatal-infos` and `dart test` in
 
 Scope:
 
-- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`:
-  `readSubagentMeta`, `deleteSessionDirectory`; no classification.
+- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`
+  (hand-written tolerant DTO; implementation refinement 2026-09-01, see
+  `TRACKER.md`): `readSubagentMeta`, `deleteDirectory`; no classification.
+  `models/claude_subagent_session_id.dart` owns the `agent-<agentId>` rule.
 - `claude_transcript_catalog_repository.dart` + `ClaudeSessionRecord.parentId`:
   child detection, `agent-` id resolution, legacy exclusion, root/child
   delete decisions, roots-only `getSessions`.

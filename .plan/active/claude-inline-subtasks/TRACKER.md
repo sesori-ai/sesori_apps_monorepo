@@ -4,10 +4,9 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 and 2/8 merged; Step 3/8 (Claude subtask
-  lifecycle) PR [#1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247)
-  open (branch `inline-subtask-plan-continue`)
-- **Next action:** merge Step 3/8, then Step 4/8 (sub-agent child sessions)
+- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 (sub-agent child
+  sessions) in PR (branch `claude-subagent-child-sessions`)
+- **Next action:** merge Step 4/8, then Step 5/8 (live sub-agent streaming)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -82,6 +81,24 @@
   `ClaudeSessionProcessExited` reaching `cancelTasks` instead of a second
   call; `childSessionStatuses` and `isTurnRunning` land with their first
   consumer in Step 4.
+- [x] Step 4 implementation refinements (recorded 2026-09-01, code is truth):
+  the `agent-<agentId>` id rule has one owner, `ClaudeSubagentSessionId`
+  (`models/`), used by the tracker, the catalog, and the plugin;
+  `ClaudeSubagentMetaDto` is a hand-written tolerant DTO (four optional
+  fields do not earn a generated union); `ClaudeTranscriptApi` gains
+  `readSubagentMeta`, `deleteDirectory`, and the `subagentMetaPath` rule;
+  child records reuse the root's `cwd`/branch/version and take `createdAt`
+  from the meta file's mtime; `getChildSessions` is a catalog scan filtered by
+  `parentId` (no live-only children — the CLI writes the child transcript at
+  spawn); a live child `PluginSession` carries `time: null`, like a
+  transcript-derived root with no timestamps; `ClaudeHistoryMapper.map`
+  takes `agentId` for child mode (records attributed by `agentId`, since
+  sub-agent records carry the parent's session id and `isSidechain: true`);
+  the dispatcher announces a child on the first agent-id-bearing update and
+  emits its idle status on the same update when it is already terminal
+  (foreground agents appear at completion); `childSessionStatuses()` reports
+  every announced child across roots and `busyChildSessionIds` feeds
+  `PluginActiveSession.childSessionIds`.
 
 ## Delivery Steps
 
@@ -89,8 +106,8 @@
 |---|---|---|---:|---|
 | [x] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) merged |
 | [x] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | [PR #1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) merged |
-| [ ] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | [PR #1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247) open |
-| [ ] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | Pending |
+| [x] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | [PR #1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247) merged |
+| [ ] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | In PR |
 | [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | Pending |
 | [ ] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | Pending |
 | [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | Pending |
@@ -177,7 +194,16 @@
   service busy-past-turn/no-transient-idle/reap deferral/exit/abort, plugin
   process-exit cancellation). Live capture: `claude` 2.1.257 with the
   plugin's flags minus the permission tool, one background `Agent` launch;
-  facts in Open Questions. Changed lines: see the PR diff stat.
+  facts in Open Questions. Merged as `c683beb290` after one architecture
+  finding and two bot rounds (see Plan Review).
+- **Step 4:** implemented on `main` at `c683beb290`. Codegen re-run for the
+  transcript record DTO (`agentId`). `dart analyze --fatal-infos` clean in
+  `bridge/sesori_plugin_claude` and `bridge/app`; `dart test` 283/283 in the
+  plugin (7 new: id rule, catalog children/orphans/legacy, roots-only paging,
+  root/child delete, child-mode replay, dispatcher child created→busy→idle
+  and cancel/forget) and the bridge tool-finalization suite 12/12 (1 new:
+  open subtask swept to cancelled, terminal and OpenCode-shaped parts
+  untouched). Changed lines: see the PR diff stat.
 - **Final disposition:** pending
 
 ## Plan Review

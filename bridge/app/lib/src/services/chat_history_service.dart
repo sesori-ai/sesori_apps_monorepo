@@ -522,12 +522,16 @@ class ChatHistoryService({
     );
   }
 
-  /// Whether any served part is a tool still reported as `pending`/`running`.
+  /// Whether any served part is a tool or subtask still reported as
+  /// `pending`/`running`.
   bool _containsOpenToolPart({required ChatHistoryPage page}) {
     for (final message in page.messages) {
       for (final part in message.parts) {
-        if (part is! MessagePartTool) continue;
-        final status = part.state.status;
+        final status = switch (part) {
+          MessagePartTool(:final state) => state.status,
+          MessagePartSubtask(:final taskState) => taskState?.status,
+          _ => null,
+        };
         if (status == ToolStatus.pending || status == ToolStatus.running) return true;
       }
     }

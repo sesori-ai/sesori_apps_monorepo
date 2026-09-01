@@ -37,6 +37,37 @@ void main() {
       expect(_stateOf(stored["t3"]!).output, "done", reason: "terminal parts stay untouched");
     });
 
+    test("finalizes an open subtask part to cancelled without error text", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _subtaskPart(id: "s1", messageId: "m1", status: ToolStatus.running),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _subtaskPart(id: "s2", messageId: "m1", status: ToolStatus.completed),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _subtaskPart(id: "s3", messageId: "m1", status: null),
+      );
+
+      final finalized = await history.service.finalizeOpenToolParts(sessionId: "ses_a");
+
+      expect(finalized.map((shapes) => shapes.inlinePart.id), ["s1"]);
+      final stored = await _storedParts(history: history, sessionId: "ses_a");
+      final swept = stored["s1"]! as MessagePartSubtask;
+      expect(swept.taskState?.status, ToolStatus.cancelled);
+      expect(swept.taskState?.error, isNull);
+      expect(swept.childSessionID, "child-1");
+      expect((stored["s2"]! as MessagePartSubtask).taskState?.status, ToolStatus.completed);
+      expect((stored["s3"]! as MessagePartSubtask).taskState, isNull, reason: "OpenCode shape is untouched");
+    });
+
     test("keeps title and output of a finalized part", () async {
       final history = createTestChatHistory();
       await history.service.captureMessage(
@@ -256,6 +287,20 @@ MessagePart _toolPart({
   tool: "Edit",
   state: ToolState(status: status, title: title, output: output, error: null),
 );
+
+MessagePart _subtaskPart({required String id, required String messageId, required ToolStatus? status}) =>
+    MessagePart.subtask(
+      id: id,
+      sessionID: "ses_a",
+      messageID: messageId,
+      prompt: "do the thing",
+      description: "Sub-agent",
+      agent: "general-purpose",
+      taskState: status == null
+          ? null
+          : ToolState(status: status, title: null, output: null, error: null, attachments: const []),
+      childSessionID: "child-1",
+    );
 
 MessagePart _textPart({required String id, required String messageId, required String text}) => MessagePart.text(
   id: id,

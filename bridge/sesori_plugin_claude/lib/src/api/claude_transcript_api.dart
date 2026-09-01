@@ -6,6 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "models/claude_subagent_meta_dto.dart";
 import "models/claude_transcript_record_dto.dart";
 
 /// Layer-1 filesystem boundary for Claude Code's on-disk transcripts.
@@ -97,6 +98,30 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     if (!file.existsSync()) return;
     file.deleteSync();
   }
+
+  /// Removes a directory tree, e.g. a root session's `<session-id>/` folder
+  /// holding its `subagents/`. A missing directory is not an error.
+  void deleteDirectory({required String directoryPath}) {
+    final directory = Directory(directoryPath);
+    if (!directory.existsSync()) return;
+    directory.deleteSync(recursive: true);
+  }
+
+  /// The `<stem>.meta.json` beside a sub-agent transcript, or null when it is
+  /// absent or unreadable. What the meta *means* is the catalog's decision.
+  ClaudeSubagentMetaDto? readSubagentMeta({required String transcriptPath}) {
+    final file = File(subagentMetaPath(transcriptPath: transcriptPath));
+    if (!file.existsSync()) return null;
+    try {
+      return ClaudeSubagentMetaDto.fromJson(jsonDecodeMap(file.readAsStringSync()));
+    } on Object catch (error) {
+      Log.w("[claude] skipping unreadable subagent meta (error=${_decodeErrorForLog(error)})");
+      return null;
+    }
+  }
+
+  static String subagentMetaPath({required String transcriptPath}) =>
+      "${transcriptPath.substring(0, transcriptPath.length - ".jsonl".length)}.meta.json";
 
   /// Reads whole lines until [maxLines] newlines have been seen, so a bounded
   /// header read of a 17 MiB transcript touches only its first few kilobytes.

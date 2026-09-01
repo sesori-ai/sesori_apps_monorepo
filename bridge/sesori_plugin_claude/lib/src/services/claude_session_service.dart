@@ -126,6 +126,13 @@ final class ClaudeSessionService({
           (entry.value.hasWork ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
 
+  /// Whether the main agent itself is mid-turn — a queued or self-started turn —
+  /// as opposed to the session being busy only because background tasks run.
+  bool isTurnRunning({required String sessionId}) => switch (_turns[sessionId]) {
+    final state? => state.pending > 0 || state.selfStartedTurn != null,
+    null => false,
+  };
+
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
   List<PluginQueuedPrompt> queuedPrompts({required String sessionId}) {
     final state = _turns[sessionId];
