@@ -38,8 +38,12 @@ import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
+import 'package:sesori_mobile/core/platform/application_support_directory_client.dart'
+    as _i441;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
+import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
+    as _i968;
 import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
@@ -126,6 +130,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
+      () => _i441.ApplicationSupportDirectoryClient(),
+    );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i1024.PackageInfoClient>(
@@ -172,6 +179,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i140.ComposerImagePicker>(
       () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
+    );
+    gh.lazySingleton<_i948.AttributionClaimStorage>(
+      () => _i968.FileAttributionClaimStorage(
+        directoryClient: gh<_i441.ApplicationSupportDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
     gh.lazySingleton<_i982.FirebaseApp>(
@@ -279,18 +291,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i948.AttributionClient>(
-      () => _i681.SingularAttributionClient(
-        startup: gh<_i853.SingularAttributionStartup>(),
-        singular: gh<_i776.SingularStaticAdapter>(),
-        storage: gh<_i948.SecureStorage>(),
-      ),
-    );
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
       () => _i425.FirebaseAnalyticsReleaseCutoffSource(
         remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
       ),
       registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.AttributionClient>(
+      () => _i681.SingularAttributionClient(
+        startup: gh<_i853.SingularAttributionStartup>(),
+        singular: gh<_i776.SingularStaticAdapter>(),
+      ),
     );
     gh.lazySingleton<_i948.VoiceCapture>(
       () => _i698.FlutterVoiceCapture(

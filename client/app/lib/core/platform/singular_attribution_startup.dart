@@ -12,6 +12,8 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   SingularConfig? _pendingCrawlGateConfig;
   SingularConfig? _deferredStartConfig;
 
+  bool get isStarted => _isStarted;
+
   /// Prepares SDK configuration without starting Singular. The asynchronous
   /// crawl-gate decision can then complete after the first frame.
   void prepare({

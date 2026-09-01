@@ -57,6 +57,8 @@ import 'package:sesori_dart_core/src/foundation/platform/analytics_release_cutof
     as _i345;
 import 'package:sesori_dart_core/src/foundation/platform/attachment_thumbnail_storage.dart'
     as _i894;
+import 'package:sesori_dart_core/src/foundation/platform/attribution_claim_storage.dart'
+    as _i275;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
     as _i14;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
@@ -316,6 +318,12 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i197.ProductAnalyticsPreferenceStorage>(),
       ),
     );
+    gh.lazySingleton<_i993.AttributionRepository>(
+      () => _i993.AttributionRepository(
+        api: gh<_i556.AttributionApi>(),
+        claimStorage: gh<_i275.AttributionClaimStorage>(),
+      ),
+    );
     gh.lazySingleton<_i37.ViewDeclarationApi>(
       () => _i37.ViewDeclarationApi(
         connectionService: gh<_i369.ConnectionService>(),
@@ -368,9 +376,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),
-    );
-    gh.lazySingleton<_i993.AttributionRepository>(
-      () => _i993.AttributionRepository(api: gh<_i556.AttributionApi>()),
     );
     gh.lazySingleton<_i857.RelayHttpApiClient>(
       () => _i857.RelayHttpApiClient(gh<_i369.ConnectionService>()),
