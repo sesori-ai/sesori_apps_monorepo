@@ -25,6 +25,8 @@ class const ImperativePaneRouteScope({
 bool isImperativePaneRoute(BuildContext context) {
   final scoped = ImperativePaneRouteScope.maybeOf(context);
   if (scoped != null) return scoped.isImperative;
+  // ignore: no_slop_linter/avoid_raw_go_router, checks router ancestry without performing navigation
+  if (GoRouter.maybeOf(context) == null) return false;
 
   return isImperativePaneState(context: context, state: GoRouterState.of(context));
 }
