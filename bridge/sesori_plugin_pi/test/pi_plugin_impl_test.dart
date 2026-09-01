@@ -113,6 +113,30 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
+    test("missing catalog models emit privacy-safe local login guidance", () async {
+      final missingModels = _Harness(catalogModelsAvailable: false);
+      addTearDown(missingModels.dispose);
+      final events = <BridgeSseEvent>[];
+      final subscription = missingModels.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final result = await missingModels.plugin.getSessionOptions(
+        projectId: missingModels.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      for (var attempt = 0; attempt < 50 && events.isEmpty; attempt++) {
+        await pump();
+      }
+
+      expect(result, isA<PluginSessionOptionsDiscoveryFailed>());
+      final toast = events.whereType<BridgeSseTuiToastShow>().single;
+      expect(toast.sessionID, isNull);
+      expect(toast.title, "Pi login required");
+      expect(toast.message, contains("/login"));
+      expect(toast.message, isNot(contains("/private")));
+      expect(toast.variant, "warning");
+    });
+
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
         directory: harness.project.path,
@@ -395,7 +419,7 @@ void main() {
   });
 }
 
-final class _Harness({bool stdinCloseCompletes = true}) {
+final class _Harness({bool stdinCloseCompletes = true, bool catalogModelsAvailable = true}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -408,7 +432,13 @@ final class _Harness({bool stdinCloseCompletes = true}) {
       processFactory: ({required spec}) async {
         final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
-        unawaited(_answerProcess(process: process, spec: spec));
+        unawaited(
+          _answerProcess(
+            process: process,
+            spec: spec,
+            catalogModelsAvailable: catalogModelsAvailable,
+          ),
+        );
         return process;
       },
       commandExecutor: commands,
@@ -463,7 +493,11 @@ final class _Harness({bool stdinCloseCompletes = true}) {
   }
 }
 
-Future<void> _answerProcess({required FakePiProcess process, required PiLaunchSpec spec}) async {
+Future<void> _answerProcess({
+  required FakePiProcess process,
+  required PiLaunchSpec spec,
+  required bool catalogModelsAvailable,
+}) async {
   final answered = <String>{};
   while (!process.killed && !process.stdinClosed) {
     for (final command in process.written.toList()) {
@@ -486,13 +520,20 @@ Future<void> _answerProcess({required FakePiProcess process, required PiLaunchSp
             },
           );
         case "get_available_models":
+          if (!catalogModelsAvailable) {
+            process.emitStderrRaw(
+              bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix} /private/provider/path\n"),
+            );
+          }
           process.emitResponse(
             id: id,
             command: type,
-            data: const {
-              "models": [
-                {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
-              ],
+            data: {
+              "models": catalogModelsAvailable
+                  ? const [
+                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+                    ]
+                  : const <Object?>[],
             },
           );
         case "set_model":

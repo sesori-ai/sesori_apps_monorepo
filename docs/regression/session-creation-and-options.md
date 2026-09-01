@@ -154,7 +154,10 @@ variant, and worktree mode, and creating the session with its first input.
   before prompting.
 - Pi likewise discovers every advertised model and its available thinking levels within
   the existing total probe deadline, so catalog size alone never makes a healthy refresh
-  partial or leaves an older complete cache in place.
+  partial or leaves an older complete cache in place. A missing model catalog is a failed
+  discovery rather than an empty cached snapshot and emits an app-wide warning directing
+  the user to run Pi's local `/login`; provider diagnostics and local paths never enter
+  that guidance.
 
 ## Regression Levels
 
@@ -188,7 +191,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 ## Failure Signals
 
 - Options are empty or stale where a discovery failure should be an explicit
-  error, or a partial observation overwrites a complete cache.
+  error, a partial observation overwrites a complete cache, or Pi reports no
+  models without local `/login` guidance.
 - A successful creation does not become the next per-plugin prefill, a failed
   creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
