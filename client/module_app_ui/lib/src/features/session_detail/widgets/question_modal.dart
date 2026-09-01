@@ -7,8 +7,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../platform/external_link_opener.dart";
 import "../../../widgets/markdown_styles.dart";
-import "../session_detail_markdown_link_handler.dart";
 import "pending_request_auto_dismiss.dart";
 
 /// Bottom sheet that presents all server-driven questions within a single
@@ -28,6 +28,7 @@ class const QuestionModal({
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
   required final double topInset,
+  required final ExternalLinkOpener openExternalLink,
 }) extends StatefulWidget {
   /// Opens the question modal as a content-sized bottom sheet and returns a
   /// [Future] that completes when the sheet is dismissed (by answer, reject,
@@ -42,6 +43,7 @@ class const QuestionModal({
     required void Function(String requestId) onReject,
     required Stream<bool> isPendingStream,
     required bool Function() isPending,
+    required ExternalLinkOpener openExternalLink,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -60,6 +62,7 @@ class const QuestionModal({
           onReply: onReply,
           onReject: onReject,
           topInset: topInset,
+          openExternalLink: openExternalLink,
         ),
       ),
     );
@@ -346,7 +349,7 @@ class _QuestionModalState() extends State<QuestionModal> {
                             MarkdownBody(
                               data: info.question,
                               selectable: true,
-                              onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+                              onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
                               styleSheet: buildSessionMarkdownStyleSheet(
                                 prego: prego,
                                 paragraphStyle: prego.textTheme.textSm.medium,

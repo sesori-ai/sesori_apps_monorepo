@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -38,7 +39,9 @@ class const DesktopSessionDetailScreen({
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
         projectId: projectId,
-        notificationCanceller: getIt<NotificationCanceller>(),
+        // Desktop does not produce local session notifications until the
+        // attention-notification slice, so there is nothing to cancel here.
+        notificationCanceller: null,
         failureReporter: getIt<FailureReporter>(),
       ),
       child: _SessionActivityAnalyticsOwner(
@@ -49,10 +52,11 @@ class const DesktopSessionDetailScreen({
           readOnly: readOnly,
           onBack: onBack,
           onOpenSession: onOpenSession,
-          messageImageRepository: getIt<MessageImageRepository>(),
-          imageSaver: getIt<ImageSaver>(),
-          imageClipboard: getIt<ImageClipboard>(),
-          imageSharer: getIt<ImageSharer>(),
+          messageImageRepository: getIt.get<MessageImageRepository>,
+          imageSaver: getIt.get<ImageSaver>,
+          imageClipboard: getIt.get<ImageClipboard>,
+          imageSharer: getIt.get<ImageSharer>,
+          canShareImages: defaultTargetPlatform != TargetPlatform.linux,
         ),
       ),
     );
@@ -67,18 +71,20 @@ class const DesktopSessionDetailView({
   required final bool readOnly,
   required final VoidCallback onBack,
   required final SessionDetailSessionOpener onOpenSession,
-  required final MessageImageRepository messageImageRepository,
-  required final ImageSaver imageSaver,
-  required final ImageClipboard imageClipboard,
-  required final ImageSharer imageSharer,
+  required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
+  required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
+  required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
+  required final SessionDetailCapabilityProvider<ImageSharer> imageSharer,
+  required final bool canShareImages,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SessionDetailPresentationScope(
-      messageImageRepository: () => messageImageRepository,
-      imageSaver: () => imageSaver,
-      imageClipboard: () => imageClipboard,
-      imageSharer: () => imageSharer,
+      messageImageRepository: messageImageRepository,
+      imageSaver: imageSaver,
+      imageClipboard: imageClipboard,
+      imageSharer: imageSharer,
+      canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
       child: SessionDetailBody(
@@ -104,11 +110,16 @@ class const _SessionActivityAnalyticsOwner({required final Widget child}) extend
 
 class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
+  bool? _wasRouteVisible;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
+    if (isRouteVisible && _wasRouteVisible == false) {
+      context.read<SessionDetailCubit>().reassertViewingSession();
+    }
+    _wasRouteVisible = isRouteVisible;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(

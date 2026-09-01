@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -73,6 +74,7 @@ class const _MobileSessionDetailBody({
       imageSaver: getIt.get<ImageSaver>,
       imageClipboard: getIt.get<ImageClipboard>,
       imageSharer: getIt.get<ImageSharer>,
+      canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
       openExternalLink: openExternalLink,
       openSession:
           ({
@@ -130,11 +132,16 @@ class const _SessionActivityAnalyticsOwner({required final Widget child}) extend
 
 class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
+  bool? _wasRouteVisible;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
+    if (isRouteVisible && _wasRouteVisible == false) {
+      context.read<SessionDetailCubit>().reassertViewingSession();
+    }
+    _wasRouteVisible = isRouteVisible;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(

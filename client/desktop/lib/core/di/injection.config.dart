@@ -17,6 +17,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storage.dart'
+    as _i93;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
@@ -41,6 +43,8 @@ import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart
     as _i757;
 import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
     as _i692;
+import 'package:sesori_desktop/core/platform/desktop_temporary_directory_client.dart'
+    as _i61;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
@@ -89,6 +93,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i692.DesktopShareClient>(
       () => _i692.DesktopShareClient(),
+    );
+    gh.lazySingleton<_i61.DesktopTemporaryDirectoryClient>(
+      () => _i61.DesktopTemporaryDirectoryClient(),
     );
     gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
       () => _i435.MacOsLegacyKeychainClient(),
@@ -142,6 +149,11 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
+    gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
+      () => _i93.DesktopAttachmentThumbnailStorage(
+        temporaryDirectoryClient: gh<_i61.DesktopTemporaryDirectoryClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(
         storage: gh<_i558.FlutterSecureStorage>(),

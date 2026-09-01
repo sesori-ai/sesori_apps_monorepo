@@ -55,10 +55,13 @@ content the transcript renders live and after reload.
   deleting the retired account scope.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
-  copy, share, and save on the original, and an unknown shape degrades safely.
-  The shared transcript receives these capabilities from its product shell:
-  mobile keeps its existing platform adapters, while desktop uses the native
-  file selector, pasteboard, and system share sheet. The root image-viewer route
+  copy and save on the original, plus share where the product shell has a
+  registered platform implementation; unsupported actions are omitted, and an
+  unknown shape degrades safely. The shared transcript receives these
+  capabilities from its product shell: mobile keeps its existing platform
+  adapters, while desktop uses the native file selector and pasteboard and uses
+  the system share sheet on macOS and Windows. Linux omits Share because the
+  current share plugin has no Linux implementation. The root image-viewer route
   retains the same injected capability scope even when it is above the session
   route's navigator.
 - Capable clients request stored references for normal history pages and live
@@ -66,8 +69,9 @@ content the transcript renders live and after reload.
   original loads and decodes. Stored thumbnails preserve the source aspect ratio;
   only the square collection presentation center-crops them, and the Hero flight
   reveals the full thumbnail while resizing toward its contained bounds. The
-  decoded original then fades in without resetting viewer state. Copy, share,
-  and save enable only after that decode succeeds. Failure retains the thumbnail
+  decoded original then fades in without resetting viewer state. Available
+  copy, share, and save actions enable only after that decode succeeds. Failure
+  retains the thumbnail
   with an explicit accessible original retry; closing the viewer releases Cubit
   bytes and evicts the full-resolution image provider from Flutter's image cache,
   and scrolling never starts an original request. Reduced motion skips the

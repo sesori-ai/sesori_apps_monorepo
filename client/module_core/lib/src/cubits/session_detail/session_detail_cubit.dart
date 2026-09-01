@@ -42,31 +42,45 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
-  queuedEvent("queued_event");
+  queuedEvent("queued_event"),
 }
 
-enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
+enum _SessionRefreshAction() {
+  observed,
+  ignored,
+  queued,
+  coalesced,
+  started,
+  completed,
+}
 
-enum _SessionRefreshResult() { applied, failed, waitingForConnection, staleConnection, closed }
+enum _SessionRefreshResult() {
+  applied,
+  failed,
+  waitingForConnection,
+  staleConnection,
+  closed,
+}
 
 class SessionDetailCubit(
-    final ConnectionService _connectionService, {
-    required final SessionDetailLoadService _loadService,
-    required SessionRepository promptDispatcher,
-    required final PermissionRepository _permissionRepository,
-    required final SessionViewingService _sessionViewingService,
-    required final ProjectViewingService _projectViewingService,
-    required final LifecycleSource _lifecycleSource,
-    required final ComposerDraftRepository _composerDraftRepository,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final String _sessionId,
-    required final String _projectId,
-    required final NotificationCanceller _notificationCanceller,
-    required final FailureReporter _failureReporter,
-    /// Cooldown between silent refreshes triggered by staleness events.
+  final ConnectionService _connectionService, {
+  required final SessionDetailLoadService _loadService,
+  required SessionRepository promptDispatcher,
+  required final PermissionRepository _permissionRepository,
+  required final SessionViewingService _sessionViewingService,
+  required final ProjectViewingService _projectViewingService,
+  required final LifecycleSource _lifecycleSource,
+  required final ComposerDraftRepository _composerDraftRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final String _sessionId,
+  required final String _projectId,
+  required final NotificationCanceller? _notificationCanceller,
+  required final FailureReporter _failureReporter,
+
+  /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
-  }) extends Cubit<SessionDetailState> {
+}) extends Cubit<SessionDetailState> {
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
@@ -1096,9 +1110,9 @@ class SessionDetailCubit(
 
     if (isClosed) return;
 
-    if (message case
-        MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
-        MessageError(:final providerID, :final modelID, :final agent)) {
+    if (message
+        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
+            MessageError(:final providerID, :final modelID, :final agent)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
@@ -1950,7 +1964,14 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller.cancelForSession(sessionId: _sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+  }
+
+  /// Restores this loaded session as the active view after a pushed child route
+  /// is removed. The initial load and refresh paths own their own declarations;
+  /// an unloaded or failed route must not mark the session seen.
+  void reassertViewingSession() {
+    if (state is SessionDetailLoaded) _sessionViewingService.setViewingSession(_sessionId);
   }
 
   // ---------------------------------------------------------------------------
@@ -2080,7 +2101,7 @@ class SessionDetailCubit(
   }) async {
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller.cancelForSession(sessionId: sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: sessionId);
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;
@@ -2223,8 +2244,10 @@ class SessionDetailCubit(
     final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
-      MessageError(:final modelID, :final providerID) =>
-        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageError(
+        :final modelID,
+        :final providerID,
+      ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
     return (

@@ -14,6 +14,7 @@ class const SessionDetailPresentationScope({
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
   required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
   required final SessionDetailCapabilityProvider<ImageSharer> imageSharer,
+  required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
   required super.child,
@@ -34,6 +35,7 @@ class const SessionDetailPresentationScope({
       imageSaver != oldWidget.imageSaver ||
       imageClipboard != oldWidget.imageClipboard ||
       imageSharer != oldWidget.imageSharer ||
+      canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession;
 }

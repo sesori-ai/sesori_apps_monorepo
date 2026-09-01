@@ -2,26 +2,27 @@ import "dart:async";
 
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/module_prego.dart";
 
-import "../utils/copy_text_to_clipboard.dart";
+import "../../theme/prego_theme.dart";
 
-/// Small icon button that copies [text] to the clipboard and briefly confirms
-/// with a check mark plus light haptic feedback. Self-contained — no snackbar
-/// or popup-alert dependency, so it is safe to embed inside a
-/// [SelectionArea] (e.g. message cards, code blocks, tool output).
-class const CopyIconButton({
+typedef PregoCopyAction = Future<bool> Function();
+
+/// Compact copy action for selectable content.
+///
+/// [onCopy] owns the platform operation and its failure logging. Returning
+/// `true` briefly replaces the copy glyph with a success check and requests
+/// best-effort light haptic feedback.
+class const PregoCopyIconButton({
   super.key,
-  required final String text,
+  required final PregoCopyAction onCopy,
   final String? tooltip,
   final double iconSize = 16,
 }) extends StatefulWidget {
   @override
-  State<CopyIconButton> createState() => _CopyIconButtonState();
+  State<PregoCopyIconButton> createState() => _PregoCopyIconButtonState();
 }
 
-class _CopyIconButtonState() extends State<CopyIconButton> {
-  /// How long the check mark stays visible after a successful copy.
+class _PregoCopyIconButtonState() extends State<PregoCopyIconButton> {
   static const _confirmationDuration = Duration(milliseconds: 1500);
 
   bool _copied = false;
@@ -34,19 +35,21 @@ class _CopyIconButtonState() extends State<CopyIconButton> {
   }
 
   Future<void> _copy() async {
-    if (!await copyTextToClipboard(text: widget.text, operation: "text")) return;
-    // Haptic is best-effort; its failure must not hide the success state.
-    try {
-      await HapticFeedback.lightImpact();
-    } on Object catch (_) {
-      // Nothing to do — haptics are unavailable on this platform/state.
-    }
-    if (!mounted) return;
+    if (!await widget.onCopy() || !mounted) return;
     setState(() => _copied = true);
     _resetTimer?.cancel();
     _resetTimer = Timer(_confirmationDuration, () {
       if (mounted) setState(() => _copied = false);
     });
+    unawaited(_requestHapticFeedback());
+  }
+
+  Future<void> _requestHapticFeedback() async {
+    try {
+      await HapticFeedback.lightImpact();
+    } on Object {
+      // Haptics are optional platform feedback; copy success remains valid.
+    }
   }
 
   @override

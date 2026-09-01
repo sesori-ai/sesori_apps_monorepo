@@ -75,27 +75,35 @@ class _FakeImageSharer() implements ImageSharer {
   }) async {}
 }
 
-Widget _presentationScope({required Widget child}) {
+Widget _presentationScope({required Widget child, required bool canShareImages}) {
   final dependencies = GetIt.instance;
   return SessionDetailPresentationScope(
     messageImageRepository: dependencies.get<MessageImageRepository>,
     imageSaver: dependencies.get<ImageSaver>,
     imageClipboard: dependencies.get<ImageClipboard>,
     imageSharer: dependencies.get<ImageSharer>,
+    canShareImages: canShareImages,
     openExternalLink: ({required url, required mode}) => dependencies<UrlLauncher>().launch(url, mode: mode),
     openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
     child: child,
   );
 }
 
-Widget _app({required Widget child, ThemeMode themeMode = ThemeMode.light}) {
+Widget _app({
+  required Widget child,
+  ThemeMode themeMode = ThemeMode.light,
+  bool canShareImages = true,
+}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
     themeMode: themeMode,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: _presentationScope(child: Scaffold(body: child)),
+    home: _presentationScope(
+      canShareImages: canShareImages,
+      child: Scaffold(body: child),
+    ),
   );
 }
 
@@ -148,7 +156,10 @@ Future<GoRouter> _pumpSessionShellApp({
   await tester.pumpWidget(
     MaterialApp.router(
       routerConfig: router,
-      builder: (context, child) => _presentationScope(child: child ?? const SizedBox.shrink()),
+      builder: (context, child) => _presentationScope(
+        canShareImages: true,
+        child: child ?? const SizedBox.shrink(),
+      ),
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -824,6 +835,26 @@ void main() {
 
     expect(identical(imageClipboard.copiedBytes, memoryImage.bytes), isTrue);
     expect(find.text("Image copied to clipboard"), findsOneWidget);
+  });
+
+  testWidgets("omits image sharing when the product shell does not support it", (tester) async {
+    const attachment = MessageAttachment.inlineImage(
+      mime: "image/png",
+      base64: _pngBase64,
+      filename: "linux.png",
+    );
+    await tester.pumpWidget(
+      _app(
+        canShareImages: false,
+        child: const FilePartWidget(sessionId: "session-1", attachment: attachment),
+      ),
+    );
+
+    await _openImageViewer(tester: tester);
+
+    expect(find.byIcon(Icons.content_copy), findsOneWidget);
+    expect(find.byIcon(Icons.share_outlined), findsNothing);
+    expect(find.byIcon(Icons.download_outlined), findsOneWidget);
   });
 
   testWidgets("Hero flight targets the contained image bounds from the square crop", (tester) async {

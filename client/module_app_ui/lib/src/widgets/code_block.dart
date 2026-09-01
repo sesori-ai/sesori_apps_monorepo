@@ -5,7 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../extensions/text_style_x.dart";
 import "../utils/code_highlighter.dart";
-import "copy_icon_button.dart";
+import "../utils/copy_text_to_clipboard.dart";
 
 /// [MarkdownBody.builders] entry for fenced code blocks (the `pre` element).
 ///
@@ -131,7 +131,10 @@ class _CodeBlockState() extends State<CodeBlock> {
                       ),
                     ),
                   ),
-                  CopyIconButton(text: widget.code, tooltip: widget.copyTooltip),
+                  PregoCopyIconButton(
+                    onCopy: () => copyTextToClipboard(text: widget.code, operation: "code block"),
+                    tooltip: widget.copyTooltip,
+                  ),
                 ],
               ),
             ),

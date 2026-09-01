@@ -81,6 +81,7 @@ Widget _buildApp({
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
+            canShareImages: true,
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(

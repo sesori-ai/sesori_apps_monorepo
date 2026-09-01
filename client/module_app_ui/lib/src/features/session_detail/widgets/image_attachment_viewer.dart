@@ -66,6 +66,7 @@ Future<void> showImageAttachmentViewer({
       imageSaver: presentation.imageSaver,
       imageClipboard: presentation.imageClipboard,
       imageSharer: presentation.imageSharer,
+      canShareImages: presentation.canShareImages,
       openExternalLink: presentation.openExternalLink,
       openSession: presentation.openSession,
       child: switch (image) {
@@ -735,17 +736,18 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                     onPressed: () => unawaited(actionsCubit.copy()),
                     icon: Icon(Icons.content_copy, color: prego.colors.textPrimary),
                   ),
-                  Builder(
-                    builder: (buttonContext) => IconButton(
-                      tooltip: context.loc.sessionDetailImageShare,
-                      onPressed: () => unawaited(
-                        actionsCubit.share(
-                          origin: _shareOrigin(originContext: buttonContext),
+                  if (SessionDetailPresentationScope.read(context).canShareImages)
+                    Builder(
+                      builder: (buttonContext) => IconButton(
+                        tooltip: context.loc.sessionDetailImageShare,
+                        onPressed: () => unawaited(
+                          actionsCubit.share(
+                            origin: _shareOrigin(originContext: buttonContext),
+                          ),
                         ),
+                        icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
                       ),
-                      icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
                     ),
-                  ),
                   IconButton(
                     tooltip: context.loc.sessionDetailImageSave,
                     onPressed: () => unawaited(actionsCubit.save()),

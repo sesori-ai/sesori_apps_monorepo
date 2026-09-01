@@ -9,9 +9,9 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 
 import "../../../extensions/text_style_x.dart";
-import "../../../widgets/copy_icon_button.dart";
+import "../../../platform/external_link_opener.dart";
+import "../../../utils/copy_text_to_clipboard.dart";
 import "../../../widgets/markdown_styles.dart";
-import "../session_detail_markdown_link_handler.dart";
 import "pending_request_auto_dismiss.dart";
 
 /// Bottom sheet that presents a tool permission request from the AI assistant.
@@ -33,6 +33,7 @@ class const PermissionModal({
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
   required final double topInset,
+  required final ExternalLinkOpener openExternalLink,
 }) extends StatelessWidget {
   /// Opens the permission modal as a bottom sheet.
   ///
@@ -50,6 +51,7 @@ class const PermissionModal({
     onReply,
     required Stream<bool> isPendingStream,
     required bool Function() isPending,
+    required ExternalLinkOpener openExternalLink,
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -67,6 +69,7 @@ class const PermissionModal({
           permission: permission,
           onReply: onReply,
           topInset: topInset,
+          openExternalLink: openExternalLink,
         ),
       ),
     );
@@ -174,7 +177,7 @@ class const PermissionModal({
                               child: MarkdownBody(
                                 data: permission.description,
                                 selectable: true,
-                                onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+                                onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
                                 styleSheet:
                                     buildSessionMarkdownStyleSheet(
                                       prego: prego,
@@ -191,8 +194,11 @@ class const PermissionModal({
                               ),
                             ),
                             SizedBox(width: prego.spacing.xs),
-                            CopyIconButton(
-                              text: permission.description,
+                            PregoCopyIconButton(
+                              onCopy: () => copyTextToClipboard(
+                                text: permission.description,
+                                operation: "permission description",
+                              ),
                               tooltip: context.loc.sessionDetailCopy,
                             ),
                           ],

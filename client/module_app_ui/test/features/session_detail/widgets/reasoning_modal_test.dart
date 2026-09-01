@@ -90,8 +90,13 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
     supportedLocales: AppLocalizations.supportedLocales,
     home: BlocProvider<SessionDetailCubit>.value(
       value: cubit,
-      child: const Scaffold(
-        body: ReasoningModal(partId: "part-1", messageId: "msg-1", topInset: 0),
+      child: Scaffold(
+        body: ReasoningModal(
+          partId: "part-1",
+          messageId: "msg-1",
+          topInset: 0,
+          openExternalLink: ({required url, required mode}) async => true,
+        ),
       ),
     ),
   );
@@ -121,7 +126,12 @@ Widget _buildShowApp({required SessionDetailCubit cubit, required double statusB
               builder: (context) => Center(
                 child: FilledButton(
                   key: _openModalKey,
-                  onPressed: () => ReasoningModal.show(context, partId: "part-1", messageId: "msg-1"),
+                  onPressed: () => ReasoningModal.show(
+                    context,
+                    partId: "part-1",
+                    messageId: "msg-1",
+                    openExternalLink: ({required url, required mode}) async => true,
+                  ),
                   child: const Text("open"),
                 ),
               ),

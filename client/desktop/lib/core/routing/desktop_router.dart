@@ -84,6 +84,7 @@ final GoRouter desktopRouter = GoRouter(
               final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
             };
             return DesktopSessionDetailScreen(
+              key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
               projectId: route.projectId,
               sessionId: route.sessionId,
               sessionTitle: route.sessionTitle,

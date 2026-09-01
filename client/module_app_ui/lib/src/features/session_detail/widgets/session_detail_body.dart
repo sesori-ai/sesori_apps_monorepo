@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../session_detail_presentation_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
@@ -248,6 +249,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       question: question,
       isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
       isPending: isPending,
+      openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
       onReply: (requestId, answers) async {
         final success = await context.read<SessionDetailCubit>().replyToQuestion(
           requestId: requestId,
@@ -284,6 +286,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       permission: permission,
       isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
       isPending: isPending,
+      openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
       onReply:
           ({
             required String requestId,

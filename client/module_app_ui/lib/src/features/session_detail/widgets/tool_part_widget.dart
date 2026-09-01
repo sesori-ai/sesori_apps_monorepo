@@ -6,7 +6,7 @@ import "../../../extensions/build_context_x.dart";
 
 import "../../../extensions/text_style_x.dart";
 import "../../../l10n/app_localizations.dart";
-import "../../../widgets/copy_icon_button.dart";
+import "../../../utils/copy_text_to_clipboard.dart";
 import "attachment_collection_widget.dart";
 
 class const ToolPartWidget({super.key, required final MessagePartTool part}) extends StatelessWidget {
@@ -237,7 +237,11 @@ class _ToolOutputBlockState() extends State<_ToolOutputBlock> {
                   PositionedDirectional(
                     top: 0,
                     end: 0,
-                    child: CopyIconButton(text: output, tooltip: loc.sessionDetailCopy, iconSize: 14),
+                    child: PregoCopyIconButton(
+                      onCopy: () => copyTextToClipboard(text: output, operation: "tool output"),
+                      tooltip: loc.sessionDetailCopy,
+                      iconSize: 14,
+                    ),
                   ),
                 ],
               ),

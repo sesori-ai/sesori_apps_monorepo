@@ -49,6 +49,7 @@ GoRouter _createRouter({
                     onReject: (requestId) => capture.onReject(requestId: requestId),
                     isPendingStream: capture.pendingStream,
                     isPending: () => capture.isPending,
+                    openExternalLink: ({required url, required mode}) async => true,
                   );
                 },
                 child: const Text("Open question modal"),

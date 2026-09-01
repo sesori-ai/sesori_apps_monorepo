@@ -8,9 +8,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-
+import "../../../platform/external_link_opener.dart";
 import "../../../widgets/markdown_styles.dart";
-import "../session_detail_markdown_link_handler.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "scroll_follow_tracker.dart";
@@ -43,6 +42,7 @@ class const ReasoningModal({
   /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
   /// before presenting and threaded through.
   required final double topInset,
+  required final ExternalLinkOpener openExternalLink,
 }) extends StatefulWidget {
   /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
   /// context's [SessionDetailCubit] into the sheet's own route.
@@ -53,6 +53,7 @@ class const ReasoningModal({
     BuildContext context, {
     required String partId,
     required String messageId,
+    required ExternalLinkOpener openExternalLink,
   }) {
     final cubit = context.read<SessionDetailCubit>();
     // Capture before presenting: inside the route the top inset reads as 0.
@@ -70,6 +71,7 @@ class const ReasoningModal({
           partId: partId,
           messageId: messageId,
           topInset: topInset,
+          openExternalLink: openExternalLink,
         ),
       ),
     );
@@ -167,7 +169,7 @@ class _ReasoningModalState() extends State<ReasoningModal> {
                 child: MarkdownBody(
                   data: data.text,
                   selectable: false,
-                  onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+                  onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
                   styleSheet: buildSessionMarkdownStyleSheet(
                     prego: prego,
                     paragraphStyle: prego.textTheme.textXs.regular.copyWith(

@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -16,6 +17,8 @@ const _permission = SesoriPermissionAsked(
   description: _command,
   allowAlways: true,
 );
+
+Future<bool> _ignoreExternalLink({required Uri url, required UrlLaunchMode mode}) async => true;
 
 class _ReplyCapture() {
   String? requestId;
@@ -36,6 +39,7 @@ class _ReplyCapture() {
 GoRouter _createRouter({
   required SesoriPermissionAsked permission,
   required _ReplyCapture capture,
+  ExternalLinkOpener openExternalLink = _ignoreExternalLink,
 }) {
   return GoRouter(
     routes: [
@@ -53,6 +57,7 @@ GoRouter _createRouter({
                     onReply: capture.onReply,
                     isPendingStream: const Stream<bool>.empty(),
                     isPending: () => true,
+                    openExternalLink: openExternalLink,
                   );
                 },
                 child: const Text("Open permission modal"),
@@ -110,8 +115,33 @@ void main() {
     expect(codeBlockDecoration.color, isNot(detailDecoration.color));
     expect((codeBlockDecoration.border! as Border).top.color, colors.borderSecondary);
 
-    final copyButton = tester.widget<CopyIconButton>(find.byType(CopyIconButton));
-    expect(copyButton.text, _command);
+    expect(find.byType(PregoCopyIconButton), findsOneWidget);
+  });
+
+  testWidgets("uses the presenting route's link opener inside the bottom sheet", (tester) async {
+    final capture = _ReplyCapture();
+    Uri? openedUrl;
+    UrlLaunchMode? openedMode;
+    final router = _createRouter(
+      permission: _permission.copyWith(description: "Read [the docs](https://example.com/docs)"),
+      capture: capture,
+      openExternalLink: ({required url, required mode}) async {
+        openedUrl = url;
+        openedMode = mode;
+        return true;
+      },
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+    markdown.onTapLink!("the docs", "https://example.com/docs", "the docs");
+    await tester.pump();
+
+    expect(openedUrl, Uri.parse("https://example.com/docs"));
+    expect(openedMode, UrlLaunchMode.externalApp);
+    expect(tester.takeException(), isNull);
   });
 
   for (final replyCase in const [

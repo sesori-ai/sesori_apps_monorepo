@@ -3,7 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-
+import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
 
 class const ReasoningPartCard({
@@ -175,7 +175,12 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
   }
 
   void _showFullText({required BuildContext context}) {
-    ReasoningModal.show(context, partId: widget.partId, messageId: widget.messageId);
+    ReasoningModal.show(
+      context,
+      partId: widget.partId,
+      messageId: widget.messageId,
+      openExternalLink: SessionDetailPresentationScope.read(context).openExternalLink,
+    );
   }
 
   /// Returns the first non-empty physical line of [text], or the empty

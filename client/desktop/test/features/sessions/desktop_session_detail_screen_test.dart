@@ -116,6 +116,10 @@ void main() {
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(cubit.clearNotifications).thenReturn(null);
+    var messageImageRepositoryResolutions = 0;
+    var imageSaverResolutions = 0;
+    var imageClipboardResolutions = 0;
+    var imageSharerResolutions = 0;
 
     await tester.pumpWidget(
       BlocProvider<SessionDetailCubit>.value(
@@ -131,10 +135,23 @@ void main() {
             readOnly: false,
             onBack: () {},
             onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-            messageImageRepository: _MockMessageImageRepository(),
-            imageSaver: _MockImageSaver(),
-            imageClipboard: _MockImageClipboard(),
-            imageSharer: _MockImageSharer(),
+            messageImageRepository: () {
+              messageImageRepositoryResolutions++;
+              return _MockMessageImageRepository();
+            },
+            imageSaver: () {
+              imageSaverResolutions++;
+              return _MockImageSaver();
+            },
+            imageClipboard: () {
+              imageClipboardResolutions++;
+              return _MockImageClipboard();
+            },
+            imageSharer: () {
+              imageSharerResolutions++;
+              return _MockImageSharer();
+            },
+            canShareImages: true,
           ),
         ),
       ),
@@ -145,6 +162,10 @@ void main() {
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
     expect(loadedView.bottomControls, isNull);
+    expect(messageImageRepositoryResolutions, 0);
+    expect(imageSaverResolutions, 0);
+    expect(imageClipboardResolutions, 0);
+    expect(imageSharerResolutions, 0);
 
     await tester.tap(find.text("1 pending question"));
     await tester.pumpAndSettle();
@@ -184,10 +205,11 @@ void main() {
                   sessionTitle: sessionTitle,
                   readOnly: readOnly,
                 ),
-            messageImageRepository: _MockMessageImageRepository(),
-            imageSaver: _MockImageSaver(),
-            imageClipboard: _MockImageClipboard(),
-            imageSharer: _MockImageSharer(),
+            messageImageRepository: _MockMessageImageRepository.new,
+            imageSaver: _MockImageSaver.new,
+            imageClipboard: _MockImageClipboard.new,
+            imageSharer: _MockImageSharer.new,
+            canShareImages: true,
           ),
         ),
       ),
