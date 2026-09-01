@@ -759,11 +759,12 @@ Scope:
   (marker-prefix parse; never rendered).
 - `claude_tool_tracker.dart`: `task` kind; per-session task map surviving
   turns; terminal rules; `cancelAll(sessionId)`.
-- `claude_event_dispatcher.dart`: subtask part builder; task frame handling;
-  consumes the typed notification block; `cancelTasks(sessionId:)`,
-  `residentTaskToolUseIds(sessionId:)`, `childSessionStatuses(sessionId:)`
-  accessors (the last is used by Step 4). Forwarded sub-agent frames stay
-  dropped until Step 5.
+- `claude_event_dispatcher.dart`: task frame handling; consumes the typed
+  notification block; `cancelTasks(sessionId:)` and
+  `residentTaskToolUseIds(sessionId:)` accessors (`childSessionStatuses` lands
+  with its consumer in Step 4). The one subtask/tool part builder is
+  `ClaudeTrackedTool.toPart`, shared with replay. Forwarded sub-agent frames
+  stay dropped until Step 5.
 - `claude_history_mapper.dart` + transcript DTO/record: `toolUseResult`,
   `agentId`; `map(..., residentTaskToolUseIds)` owns the running→cancelled
   downgrade.
@@ -773,9 +774,11 @@ Scope:
   it before `forgetSession`.
 - `models/claude_task_type.dart`: closed `ClaudeTaskType` (`subAgent` for
   `local_agent`, `other`), parsed on `ClaudeTaskStartedMessage`.
-- `services/claude_session_service.dart`: `ClaudeContentMapper` becomes a
-  required constructor dependency (descriptor wiring updated);
-  `_SessionTurnState.runningTaskIds` (`{taskId → ClaudeTaskType}`) tracked
+- `services/claude_session_service.dart`: parses `<task-notification>` text
+  through the shared `ClaudeTaskNotification.tryParse` (in `models/`) directly
+  on raw user content, the way `_trackWakeupSchedule` reads raw tool_use
+  blocks, so no `ClaudeContentMapper` dependency is added (implementation
+  refinement 2026-09-01, see `TRACKER.md`); `_SessionTurnState.runningTaskIds` (`{taskId → ClaudeTaskType}`) tracked
   from `ClaudeTaskStartedMessage`/`ClaudeTaskNotificationMessage` in
   `_handleProcessEvent` (beside `_trackWakeupSchedule`), cleared on process
   exit and abort; folded into `sessionStatuses`, `_syncWorkState`,

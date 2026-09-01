@@ -9,6 +9,9 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_task_notification.dart";
+import "../models/claude_task_type.dart";
+import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
@@ -62,6 +65,15 @@ final class _SessionTurnState() {
   /// wakeup fires.
   DateTime? wakeupAt;
 
+  /// Background tasks (sub-agents, shells, workflows) the resident process is
+  /// running, by task id. They live only inside that process, so while any is
+  /// present the session is busy and the idle reap must not tear it down. The
+  /// type is kept for the scoped-stop rejection count.
+  final Map<String, ClaudeTaskType> runningTaskIds = {};
+
+  /// Whether the CLI is doing anything the bridge must keep the process for.
+  bool get hasWork => pending > 0 || selfStartedTurn != null || runningTaskIds.isNotEmpty;
+
   final List<_QueuedPrompt> queue = [];
 
   /// Prompt ids dispatched most recently, newest last. Bounds the idempotent
@@ -112,9 +124,7 @@ final class ClaudeSessionService({
     for (final entry in _turns.entries)
       entry.key:
           _retryStatuses[entry.key] ??
-          (entry.value.pending > 0 || entry.value.selfStartedTurn != null
-              ? const PluginSessionStatus.busy()
-              : const PluginSessionStatus.idle()),
+          (entry.value.hasWork ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
 
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
@@ -462,7 +472,7 @@ final class ClaudeSessionService({
       await activeAbort.future;
       return;
     }
-    if (state.pending == 0 && state.selfStartedTurn == null) {
+    if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
       return;
     }
@@ -489,8 +499,11 @@ final class ClaudeSessionService({
         // allowing that transport backlog to enter the next user turn.
         await _processes.teardown(sessionId: sessionId);
       }
-      if (state.selfStartedTurn != null && identical(_turns[sessionId], state)) {
-        _endSelfStartedTurn(sessionId: sessionId, state: state);
+      // Every resident task died with the process.
+      state.runningTaskIds.clear();
+      if (identical(_turns[sessionId], state)) {
+        _completeSelfStartedTurn(state: state);
+        _settleIdle(sessionId: sessionId, state: state);
       }
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
@@ -502,7 +515,7 @@ final class ClaudeSessionService({
     return () async {
       final activeSessionIds = <String>{
         for (final entry in _turns.entries)
-          if (entry.value.pending > 0 || entry.value.selfStartedTurn != null) entry.key,
+          if (entry.value.hasWork) entry.key,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
@@ -557,12 +570,17 @@ final class ClaudeSessionService({
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
     if (outcome is ClaudeTurnFailed) _emit(BridgeSseSessionError(sessionID: sessionId));
-    if (state.pending == 0 && state.selfStartedTurn == null) {
-      _emit(BridgeSseSessionIdle(sessionID: sessionId));
-      _emit(const BridgeSseProjectUpdated());
-      _syncWorkState();
-      _scheduleIdleReap(sessionId: sessionId, state: state);
-    }
+    _settleIdle(sessionId: sessionId, state: state);
+  }
+
+  /// Publishes idle and arms the reap once nothing keeps the process busy —
+  /// no queued turn, no self-started turn, no running task.
+  void _settleIdle({required String sessionId, required _SessionTurnState state}) {
+    if (state.hasWork) return;
+    _emit(BridgeSseSessionIdle(sessionID: sessionId));
+    _emit(const BridgeSseProjectUpdated());
+    _syncWorkState();
+    _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 
   void _scheduleIdleReap({required String sessionId, required _SessionTurnState state}) {
@@ -572,11 +590,7 @@ final class ClaudeSessionService({
     unawaited(() async {
       while (true) {
         await _clock.delay(duration: idleTimeout);
-        if (_disposed ||
-            !identical(_turns[sessionId], state) ||
-            state.pending != 0 ||
-            state.selfStartedTurn != null ||
-            state.idleGeneration != generation) {
+        if (_disposed || !identical(_turns[sessionId], state) || state.hasWork || state.idleGeneration != generation) {
           return;
         }
         final wakeupAt = state.wakeupAt;
@@ -604,11 +618,8 @@ final class ClaudeSessionService({
     }());
   }
 
-  void _syncWorkState() => _workState.set(
-    _turns.values.any((state) => state.pending > 0 || state.selfStartedTurn != null)
-        ? PluginWorkState.busy
-        : PluginWorkState.idle,
-  );
+  void _syncWorkState() =>
+      _workState.set(_turns.values.any((state) => state.hasWork) ? PluginWorkState.busy : PluginWorkState.idle);
 
   void _emit(BridgeSseEvent event) {
     if (!_events.isClosed) _events.add(event);
@@ -633,6 +644,7 @@ final class ClaudeSessionService({
         // Transition before arming: a frame that both begins a self-started
         // turn and carries a new `ScheduleWakeup` must keep the new schedule.
         _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
+        _trackRunningTasks(sessionId: event.sessionId, message: event.message);
         _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
         _settleRetry(sessionId: event.sessionId, message: event.message);
         final request = event.controlRequest;
@@ -640,13 +652,60 @@ final class ClaudeSessionService({
       case ClaudeSessionProcessExited():
         final state = _turns[event.sessionId];
         if (state != null) {
-          // The wakeup timer died with the process and `--resume` does not
-          // rearm it.
+          // The wakeup timer and every resident task died with the process,
+          // and `--resume` does not rearm or restart them.
           state.wakeupAt = null;
-          if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: event.sessionId, state: state);
+          final hadWork = state.selfStartedTurn != null || state.runningTaskIds.isNotEmpty;
+          state.runningTaskIds.clear();
+          _completeSelfStartedTurn(state: state);
+          // Only work this exit ended may settle idle: the reap's own teardown
+          // exits an already-idle session and must not rearm the reap.
+          if (hadWork) _settleIdle(sessionId: event.sessionId, state: state);
         }
         _approvals.cancelForSession(sessionId: event.sessionId);
     }
+  }
+
+  /// Mirrors the resident process's running background tasks from its typed
+  /// task frames. On a CLI without task frames the same ids arrive through the
+  /// launching call's typed tool result and the `<task-notification>` text.
+  void _trackRunningTasks({required String sessionId, required ClaudeStreamMessage message}) {
+    final state = _turns[sessionId];
+    if (state == null) return;
+    switch (message) {
+      case ClaudeTaskStartedMessage(taskId: final taskId?):
+        state.runningTaskIds[taskId] = message.taskType;
+      case ClaudeTaskNotificationMessage(taskId: final taskId?):
+        state.runningTaskIds.remove(taskId);
+      case ClaudeUserMessage(parentToolUseId: null):
+        switch (message.toolUseResult) {
+          case ClaudeToolUseResultAsyncLaunched(:final agentId):
+            state.runningTaskIds.putIfAbsent(agentId, () => ClaudeTaskType.subAgent);
+          case ClaudeToolUseResultCompleted(agentId: final agentId?):
+            state.runningTaskIds.remove(agentId);
+          case ClaudeToolUseResultCompleted() || ClaudeToolUseResultAbsent() || ClaudeToolUseResultUnknown():
+            break;
+        }
+        for (final notification in _taskNotifications(message)) {
+          state.runningTaskIds.remove(notification.taskId);
+        }
+      case ClaudeStreamMessage():
+        break;
+    }
+  }
+
+  /// Every `<task-notification>` envelope in a user frame's text blocks.
+  List<ClaudeTaskNotification> _taskNotifications(ClaudeUserMessage message) {
+    final content = message.message["content"];
+    final texts = switch (content) {
+      final String text => [text],
+      final List<Object?> blocks => [
+        for (final block in blocks)
+          if (block is Map && block["type"] == "text" && block["text"] is String) block["text"]! as String,
+      ],
+      _ => const <String>[],
+    };
+    return [for (final text in texts) ?ClaudeTaskNotification.tryParse(text)];
   }
 
   /// Mirrors the CLI's pending `ScheduleWakeup` timer from the tool calls that
@@ -677,13 +736,26 @@ final class ClaudeSessionService({
   /// as busy/idle exactly like an enqueued turn.
   ///
   /// Only frames that prove turn activity begin one: token stream, assistant
-  /// content, or a permission ask. Bookkeeping frames (`init`, `status`,
-  /// unknown types) do not, so post-turn stragglers cannot re-busy a session.
+  /// content, a permission ask, or a background task's completion (the CLI
+  /// follows it with a wake-up turn, so busy spans launch → task → wake-up
+  /// without a transient idle). Bookkeeping frames (`init`, `status`, unknown
+  /// types) do not, so post-turn stragglers cannot re-busy a session, and
+  /// forwarded sub-agent frames do not either: they are task activity, already
+  /// held by [_SessionTurnState.runningTaskIds].
   void _trackSelfStartedTurn({required String sessionId, required ClaudeStreamMessage message}) {
     final state = _turns[sessionId];
     if (state == null) return;
     switch (message) {
-      case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
+      case ClaudeStreamEventMessage(parentToolUseId: final String _) ||
+          ClaudeAssistantMessage(parentToolUseId: final String _):
+        break;
+      case ClaudeUserMessage() when _taskNotifications(message).isEmpty:
+        break;
+      case ClaudeStreamEventMessage() ||
+          ClaudeAssistantMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeUserMessage():
         if (state.selfStartedTurn != null || state.pending > 0) return;
         state.selfStartedTurn = Completer<void>();
         // A live turn supersedes the pending-wakeup estimate that started it.
@@ -710,11 +782,7 @@ final class ClaudeSessionService({
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {
     _completeSelfStartedTurn(state: state);
-    if (state.pending != 0) return;
-    _emit(BridgeSseSessionIdle(sessionID: sessionId));
-    _emit(const BridgeSseProjectUpdated());
-    _syncWorkState();
-    _scheduleIdleReap(sessionId: sessionId, state: state);
+    _settleIdle(sessionId: sessionId, state: state);
   }
 
   void _completeSelfStartedTurn({required _SessionTurnState state}) {

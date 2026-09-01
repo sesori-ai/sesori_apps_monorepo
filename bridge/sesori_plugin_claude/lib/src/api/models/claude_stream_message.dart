@@ -1,4 +1,7 @@
 import "../../models/claude_permission_mode.dart";
+import "../../models/claude_task_status.dart";
+import "../../models/claude_task_type.dart";
+import "../../models/claude_tool_use_result.dart";
 
 /// One line of the CLI's stream-json stdout.
 ///
@@ -58,6 +61,24 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "task_started" => ClaudeTaskStartedMessage(
+            taskId: _stringOrNull(json["task_id"]),
+            toolUseId: _stringOrNull(json["tool_use_id"]),
+            description: _stringOrNull(json["description"]),
+            taskType: ClaudeTaskType.parse(json["task_type"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
+          "task_notification" => ClaudeTaskNotificationMessage(
+            taskId: _stringOrNull(json["task_id"]),
+            toolUseId: _stringOrNull(json["tool_use_id"]),
+            status: ClaudeTaskStatus.parse(json["status"]),
+            summary: _stringOrNull(json["summary"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
           "hook_started" => ClaudeHookStartedMessage(
             hookId: _stringOrNull(json["hook_id"]),
             hookName: _stringOrNull(json["hook_name"]),
@@ -84,6 +105,7 @@ sealed class const ClaudeStreamMessage({
         return ClaudeUserMessage(
           message: _mapOrEmpty(json["message"]),
           parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
+          toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"]),
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
@@ -226,6 +248,31 @@ final class const ClaudeTaskProgressMessage({
   }
 }
 
+/// `system`/`task_started` — a background task (sub-agent, shell, workflow)
+/// began inside the resident process. For an `Agent` call [taskId] is the
+/// sub-agent id, which is also its transcript stem `agent-<taskId>`.
+final class const ClaudeTaskStartedMessage({
+  required final String? taskId,
+  required final String? toolUseId,
+  required final String? description,
+  required final ClaudeTaskType taskType,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
+
+/// `system`/`task_notification` — a background task reached a terminal state.
+/// Authoritative over the launching call's own tool result.
+final class const ClaudeTaskNotificationMessage({
+  required final String? taskId,
+  required final String? toolUseId,
+  required final ClaudeTaskStatus status,
+  required final String? summary,
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
+
 /// `tool_progress` — periodic elapsed-time progress for a running tool call.
 final class const ClaudeToolProgressMessage({
   required final String? toolUseId,
@@ -269,7 +316,10 @@ final class const ClaudeHookStartedMessage({
   required super.raw,
 }) extends ClaudeStreamMessage;
 
-enum ClaudeHookPhase() { progress, response }
+enum ClaudeHookPhase() {
+  progress,
+  response,
+}
 
 /// `system`/`hook_progress` and `system`/`hook_response` — streamed and final
 /// output from a running hook. `exitCode` only arrives with the final frame.
@@ -407,6 +457,9 @@ final class const ClaudeAssistantMessage({
 final class const ClaudeUserMessage({
   required final Map<String, Object?> message,
   required final String? parentToolUseId,
+
+  /// The frame-level typed result of the tool call this frame completes.
+  required final ClaudeToolUseResult toolUseResult,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,

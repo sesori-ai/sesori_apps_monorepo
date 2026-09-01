@@ -101,6 +101,7 @@ void main() {
       final messages = mapper.map(
         sessionId: _sessionId,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
       );
 
       expect(messages, hasLength(2));
@@ -177,6 +178,7 @@ IMPORTANT: Do NOT create new worktrees.
       final messages = mapper.map(
         sessionId: _sessionId,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
       );
 
       expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
@@ -200,6 +202,7 @@ IMPORTANT: Do NOT create new worktrees.
       final messages = mapper.map(
         sessionId: _sessionId,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
       );
 
       expect((messages.single.info as PluginMessageAssistant).variant, isNull);
@@ -239,6 +242,7 @@ IMPORTANT: Do NOT create new worktrees.
         mapper.map(
           sessionId: _sessionId,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+          residentTaskToolUseIds: const {},
         ),
         isEmpty,
       );
@@ -267,9 +271,62 @@ IMPORTANT: Do NOT create new worktrees.
         mapper.map(
           sessionId: _sessionId,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+          residentTaskToolUseIds: const {},
         ),
         isEmpty,
       );
+    });
+
+    test("reads the typed tool-use result and task-notification origin from the transcript", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "assistant",
+            uuid: "agent-call",
+            messageId: "agent-message",
+            content: const [
+              {
+                "type": "tool_use",
+                "id": "toolu-agent",
+                "name": "Agent",
+                "input": {"description": "Say hi", "prompt": "hi please"},
+              },
+            ],
+          ),
+          {
+            ..._messageRecord(
+              type: "user",
+              uuid: "agent-launch",
+              content: const [
+                {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+              ],
+            ),
+            "toolUseResult": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
+          },
+          {
+            ..._messageRecord(
+              type: "user",
+              uuid: "agent-notify",
+              content:
+                  "<task-notification>\n<task-id>abc123</task-id>\n<tool-use-id>toolu-agent</tool-use-id>\n"
+                  '<status>failed</status>\n<summary>Agent "Say hi" failed</summary>\n</task-notification>',
+            ),
+            "origin": {"kind": "task-notification"},
+          },
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
+      );
+
+      final part = messages.single.parts.single as PluginMessagePartSubtask;
+      expect(part.childSessionID, "agent-abc123");
+      expect(part.taskState?.status, PluginToolStatus.error);
+      expect(part.taskState?.error, 'Agent "Say hi" failed');
     });
 
     test("does not convert a missing transcript into empty history", () async {

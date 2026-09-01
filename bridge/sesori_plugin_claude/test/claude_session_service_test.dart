@@ -610,6 +610,85 @@ void main() {
       await harness.waitForIdle();
     });
 
+    test("a running background task keeps the session busy past its turn until the wake-up turn settles", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), isEmpty);
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+
+      // The notification itself opens the wake-up turn: no transient idle.
+      process.emit(_taskNotificationFrame());
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), isEmpty);
+
+      process.emit(_assistantTextFrame(text: "Agent completed with result: hi"));
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      harness.clock.elapse();
+      await pump();
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+    });
+
+    test("a forwarded sub-agent frame after the root result does not open a root turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_result());
+      await harness.waitForIdle();
+
+      process.emit({..._assistantTextFrame(text: "child output"), "parent_tool_use_id": "toolu-agent"});
+      await pump();
+
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+    });
+
+    test("a process exit cancels the running tasks it hosted and settles idle", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+
+      process.exit(1);
+      await harness.waitForIdle();
+
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+    });
+
+    test("abort tears down a session whose only work is a background task", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      final abort = harness.service.abort(sessionId: testSessionId);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      await abort;
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+    });
+
     test("delete waits for an in-flight idle teardown", () async {
       await harness.dispose();
       harness = _ServiceHarness(stdinCloseCompletes: false);
@@ -801,6 +880,26 @@ Map<String, Object?> _replayOf(Map<String, Object?> written, {required String uu
 };
 
 Future<PluginSessionStatus> _status(_ServiceHarness harness) async => harness.service.sessionStatuses[testSessionId]!;
+
+Map<String, Object?> _taskStartedFrame() => {
+  "type": "system",
+  "subtype": "task_started",
+  "session_id": testSessionId,
+  "task_id": "agent-task-1",
+  "tool_use_id": "toolu-agent",
+  "description": "Say hi",
+  "task_type": "local_agent",
+};
+
+Map<String, Object?> _taskNotificationFrame() => {
+  "type": "system",
+  "subtype": "task_notification",
+  "session_id": testSessionId,
+  "task_id": "agent-task-1",
+  "tool_use_id": "toolu-agent",
+  "status": "completed",
+  "summary": "hi",
+};
 
 Map<String, Object?> _scheduleWakeupFrame({required int delaySeconds}) => _assistantFrame(
   content: [
