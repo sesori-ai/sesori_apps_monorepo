@@ -10,7 +10,7 @@ class const PiRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.84.1");
 
   /// The latest stable Pi release targeted by this plugin.
-  static const String targetVersion = "0.84.2";
+  static const String targetVersion = "0.84.4";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
@@ -19,14 +19,14 @@ class const PiRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "pi-darwin-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "c996e888b7f7dce44bcf24f69176ac646c44139d3916bd49a6b28e5a8c5e3a65",
+        sha256: "c68e3ac4d05b4e282aaab2e6c76f161d3e9e68f19a22e38913cbfaadb6c800f0",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "pi-darwin-x64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "808cf02a93cd601d3ea05d47dc15c45074b120ac81decc8644cd3e40a35824e6",
+        sha256: "7a042d6413065421387001a4986190a1a03186c95a695f4dee0bdc76e60de8f7",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -35,14 +35,14 @@ class const PiRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "pi-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "d15372da9e4b4c5fef9fd15bed76d7f5f1720dd39fe7cde0ec62e5b65ad63ef1",
+        sha256: "135580f6b942151646e67b8b866d987d28ce3cff5a497030775ddd29659f943d",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "pi-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "906fbe787fd225c4ac624fe7ebd5b1d55a60e0f5c7ef51795d231564f9ee1c13",
+        sha256: "c2f3c3e6a1850bd87654cc3ca8811013272397c3d042a4e2a64c43ee1b423972",
         archiveBinaryName: "pi",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -51,14 +51,14 @@ class const PiRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "pi-windows-arm64.zip",
         format: ArchiveFormat.zip,
-        sha256: "092e2b276e0066efcb3d860465591c2e32ea48ee90395d34ceda0d84d8ff4470",
+        sha256: "6b2726efc34a9158ab06bf7b981f7bcccf15de9ea236a3f4ef7a894a78aa386e",
         archiveBinaryName: "pi.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "pi-windows-x64.zip",
         format: ArchiveFormat.zip,
-        sha256: "741fc1ae1afecb573ac2888e011188ff446b3940f4aabe1583f60bf55be8a3d0",
+        sha256: "03b2318774f18721e959d9f8f3340a9f942e7aa516fb7030d3007a12a40a4a97",
         archiveBinaryName: "pi.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),

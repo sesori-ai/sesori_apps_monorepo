@@ -63,11 +63,25 @@ void main() {
     expect(cubit.reconnectCalls, 1);
   });
 
-  testWidgets("does not render for connected or reconnecting states", (WidgetTester tester) async {
+  testWidgets("renders the reconnecting warning without an action", (WidgetTester tester) async {
+    final _MockConnectionOverlayCubit cubit = _MockConnectionOverlayCubit();
+    addTearDown(cubit.close);
+    whenListen(
+      cubit,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.reconnecting(),
+    );
+
+    await pumpBanner(tester: tester, cubit: cubit);
+
+    expect(find.text("Reconnecting…"), findsOneWidget);
+    expect(find.text("Reconnect"), findsNothing);
+  });
+
+  testWidgets("does not render for hidden states", (WidgetTester tester) async {
     for (final ConnectionOverlayState state in <ConnectionOverlayState>[
       const ConnectionOverlayState.hidden(connected: true),
       const ConnectionOverlayState.hidden(connected: false),
-      const ConnectionOverlayState.reconnecting(),
     ]) {
       final _MockConnectionOverlayCubit cubit = _MockConnectionOverlayCubit();
       addTearDown(cubit.close);

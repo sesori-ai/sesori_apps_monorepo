@@ -12,6 +12,10 @@ the intentional login, settings-modal, and split-view transitions distinct.
   Android.
 - Compact session-list, session-detail, new-session, and diff navigation uses
   the same platform transition. Split-view pane changes fade instead of sliding.
+- The base compact session-detail toolbar returns to the typed sessions route.
+  This keeps path-like project identifiers percent-encoded and matchable instead
+  of reconstructing the parent URL from decoded route parameters. A child or
+  background-task detail opened with a push still pops to its parent detail.
 - Settings and modal harness settings rise from the bottom on every platform;
   settings child pages use the standard platform push.
 - Login uses its intentional fade and logo hero motion.
@@ -34,8 +38,14 @@ the intentional login, settings-modal, and split-view transitions distinct.
 - iOS or macOS uses no transition, or Android loses its configured transition.
 - A settings child rises as a modal, or the settings modal slides horizontally.
 - Compact and split session layouts use each other's transition.
+- Returning from a base compact session detail produces an unmatchable sessions
+  URL, especially when a project identifier contains filesystem-path separators,
+  or a pushed child detail returns to the sessions list instead of its parent.
 
 ## Sources
 
 - `client/app/lib/core/routing/app_router.dart`
 - `client/app/test/core/routing/app_route_test.dart`
+- `client/app/test/core/routing/imperative_pane_route_test.dart`
+- `client/app/test/core/routing/adaptive_session_route_matrix_test.dart`
+- `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`

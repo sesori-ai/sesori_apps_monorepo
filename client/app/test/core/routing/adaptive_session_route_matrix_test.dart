@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/session_list/session_tile.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 import "adaptive_session_router_test_harness.dart";
@@ -172,6 +173,41 @@ void main() {
       }
 
       addTearDown(() => tester.binding.setSurfaceSize(null));
+    });
+
+    testWidgets("detail toolbar back returns path-like project IDs to their sessions route", (tester) async {
+      const projectId = "/Users/example/workspace/project";
+      final detailLocation = const AppRoute.sessionDetail(
+        projectId: projectId,
+        projectName: "Project One",
+        sessionId: "session-1",
+        sessionTitle: "Session One",
+        readOnly: false,
+      ).buildPath();
+      final sessionsLocation = const AppRoute.sessions(
+        projectId: projectId,
+        projectName: "Project One",
+      ).buildPath();
+      final harness = AdaptiveSessionRouterTestHarness();
+      await tester.binding.setSurfaceSize(const Size(390, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      addTearDown(harness.tearDown);
+      await harness.setUp(
+        initialLocation: detailLocation,
+        currentRouteDef: AppRouteDef.sessionDetail,
+        sessionsByProject: {
+          projectId: [adaptiveTestSession(projectId: projectId, id: "session-1", title: "Session One")],
+        },
+      );
+
+      await tester.pumpWidget(harness.buildApp());
+      await _pumpDiffFrames(tester);
+
+      await tester.tap(find.byIcon(TablerRegular.chevron_left));
+      await tester.pumpAndSettle();
+
+      expect(harness.currentLocation, sessionsLocation);
+      expect(find.text("Session One"), findsOneWidget);
     });
 
     testWidgets("shrinking from wide detail to 390 keeps the same full-screen detail route", (tester) async {

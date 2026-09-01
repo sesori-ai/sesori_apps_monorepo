@@ -39,13 +39,13 @@ void main() {
       final processes = _Processes(
         outputs: const [
           _Output(stdout: "0.84.0\n", exitCode: 0),
-          _Output(stdout: "0.84.2\n", exitCode: 0),
+          _Output(stdout: "0.84.4\n", exitCode: 0),
         ],
       );
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.84.2/pi"));
-      expect(processes.executables, ["pi", contains("/state/pi/0.84.2/pi")]);
+      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.84.4/pi"));
+      expect(processes.executables, ["pi", contains("/state/pi/0.84.4/pi")]);
     });
 
     test("inspectSetup checks only version and preserves the environment", () async {

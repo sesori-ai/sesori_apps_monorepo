@@ -22,7 +22,9 @@ sealed class ConnectionOverlayState with _$ConnectionOverlayState {
   /// bannerless offline states.
   const factory hidden({required bool connected}) = ConnectionOverlayHidden;
 
-  /// A subtle reconnecting indicator: the relay dropped and is auto-reconnecting.
+  /// The relay dropped and auto-reconnect has been running for longer than the
+  /// cubit's grace window — shown as a warning banner. Reconnects that resolve
+  /// within the grace window never surface this state.
   const factory reconnecting() = ConnectionOverlayReconnecting;
 
   /// The blocking "connection lost" card with Reconnect / Disconnect actions.

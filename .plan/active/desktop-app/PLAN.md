@@ -464,10 +464,10 @@ two-PR pre-gate follow-up:
 
 1. `🌿 [desktop-app] Restore supervised harness discovery [step 1/2]` —
    launch-context PATH handling, setup diagnostics, and focused regression
-   coverage (PR #1222, open).
+   coverage (PR #1222, merged).
 2. `🚧 [desktop-app] Preserve bridge intent and add Take Over [step 2/2]` —
    quit semantics, takeover orchestration, shell controls, and lifecycle
-   coverage (successor local until PR #1222 merges).
+   coverage (current follow-up).
 
 The series does not change the original 22-step numbering or mark Gate B done;
 Step 14 must not begin until the user records the gate outcome and explicitly

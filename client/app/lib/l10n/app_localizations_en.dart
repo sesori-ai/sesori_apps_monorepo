@@ -155,6 +155,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectionLostReconnect => 'Reconnect';
 
   @override
+  String get connectionReconnectingTitle => 'Reconnecting…';
+
+  @override
   String get bridgeDisconnectedTitle => 'Bridge disconnected';
 
   @override
@@ -1308,6 +1311,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get emptyDirectory => 'This directory is empty';
+
+  @override
+  String get parentDirectory => 'Parent directory';
+
+  @override
+  String get folderPickerHome => '~ Home';
+
+  @override
+  String get folderPickerRoot => '/ Root';
 
   @override
   String get fetchDirectoryFailed => 'Could not load directory contents';

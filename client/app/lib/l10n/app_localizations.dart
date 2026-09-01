@@ -361,6 +361,12 @@ abstract class AppLocalizations {
   /// **'Reconnect'**
   String get connectionLostReconnect;
 
+  /// No description provided for @connectionReconnectingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnecting…'**
+  String get connectionReconnectingTitle;
+
   /// No description provided for @bridgeDisconnectedTitle.
   ///
   /// In en, this message translates to:
@@ -2490,6 +2496,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This directory is empty'**
   String get emptyDirectory;
+
+  /// Accessibility label for the arrow button that navigates to the parent folder in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent directory'**
+  String get parentDirectory;
+
+  /// Shortcut button that jumps to the host user's home directory in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'~ Home'**
+  String get folderPickerHome;
+
+  /// Shortcut button that jumps to the host filesystem root in the add-project browser.
+  ///
+  /// In en, this message translates to:
+  /// **'/ Root'**
+  String get folderPickerRoot;
 
   /// No description provided for @fetchDirectoryFailed.
   ///

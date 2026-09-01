@@ -39,7 +39,13 @@ void main() {
       await registeredStream.close();
     });
 
-    ConnectionOverlayCubit buildCubit() => ConnectionOverlayCubit(mockConnectionService, mockRegisteredBridgesService);
+    ConnectionOverlayCubit buildCubit({
+      Duration reconnectingGrace = ConnectionOverlayCubit.defaultReconnectingGrace,
+    }) => ConnectionOverlayCubit(
+      mockConnectionService,
+      mockRegisteredBridgesService,
+      reconnectingGrace: reconnectingGrace,
+    );
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "starts hidden and not connected when disconnected and not registered",
@@ -50,13 +56,13 @@ void main() {
     );
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
-      "maps connection statuses to overlay states",
-      build: buildCubit,
+      "maps connection statuses to overlay states, surfacing reconnecting after the grace window",
+      build: () => buildCubit(reconnectingGrace: const Duration(milliseconds: 100)),
       act: (_) async {
         statusStream.add(connectionLost);
         await Future<void>.delayed(Duration.zero);
         statusStream.add(reconnecting);
-        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
         statusStream.add(connected);
         await Future<void>.delayed(Duration.zero);
       },
@@ -65,6 +71,22 @@ void main() {
         ConnectionOverlayState.reconnecting(),
         ConnectionOverlayState.hidden(connected: true),
       ],
+    );
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "a reconnect that resolves within the grace window never surfaces the banner",
+      build: () => buildCubit(reconnectingGrace: const Duration(milliseconds: 300)),
+      act: (_) async {
+        statusStream.add(connected);
+        await Future<void>.delayed(Duration.zero);
+        statusStream.add(reconnecting);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        statusStream.add(connected);
+        // Waits past the grace deadline to prove the pending surface was
+        // cancelled, not merely still counting down.
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      },
+      expect: () => const [ConnectionOverlayState.hidden(connected: true)],
     );
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
