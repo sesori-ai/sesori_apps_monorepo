@@ -49,15 +49,22 @@ class _RenameSheetState() extends State<RenameSheet> {
     }
   }
 
+  static Brightness _inverse(Brightness brightness) =>
+      brightness == Brightness.dark ? Brightness.light : Brightness.dark;
+
   @override
   Widget build(BuildContext context) {
     final action = FilledButton(
       onPressed: _loading || _controller.text.trim().isEmpty ? null : _save,
       child: _loading
-          ? const SizedBox(
+          ? SizedBox(
               width: 16,
               height: 16,
-              child: PregoActivityIndicator(color: null),
+              // The primary button paints the inverse of the page surface, so
+              // the spinner takes the untinted grey of the opposite brightness.
+              child: PregoActivityIndicator(
+                color: PregoActivityIndicator.naturalColor(brightness: _inverse(Theme.of(context).brightness)),
+              ),
             )
           : Text(widget.saveLabel),
     );

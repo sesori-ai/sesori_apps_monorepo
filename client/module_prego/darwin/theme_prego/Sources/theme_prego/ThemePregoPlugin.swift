@@ -41,6 +41,24 @@ private struct ColorComponents {
   }
 }
 
+/// What the Dart spinner sends when it creates a native indicator: an optional
+/// ARGB tint and whether the app's resolved theme is dark.
+private struct ActivityIndicatorCreationParams {
+  let color: Int64?
+  let dark: Bool
+
+  init?(from args: Any?) {
+    guard let dictionary = args as? [String: Any] else { return nil }
+    if let color = dictionary["color"] {
+      guard let number = color as? NSNumber else { return nil }
+      self.color = number.int64Value
+    } else {
+      self.color = nil
+    }
+    self.dark = dictionary["dark"] as? Bool ?? false
+  }
+}
+
 /// The three keyframe colours and phase offset the Dart sparkle sends when
 /// it creates a native twinkle view.
 private struct AiLoaderCreationParams {
@@ -200,33 +218,30 @@ private enum AiLoaderSparkle {
       viewIdentifier viewId: Int64,
       arguments args: Any?
     ) -> FlutterPlatformView {
-      // A nil colour keeps the system spinner colour; a tint is still honoured
-      // when a caller asks for one.
-      var tint: UIColor?
-      if let color = args as? NSNumber {
-        let components = ColorComponents(fromARGB: color.int64Value)
-        tint = UIColor(
-          red: components.red,
-          green: components.green,
-          blue: components.blue,
-          alpha: components.alpha
-        )
-      } else if args != nil {
+      guard let params = ActivityIndicatorCreationParams(from: args) else {
         preconditionFailure("Invalid native activity indicator creation arguments")
       }
-      return NativeActivityIndicatorPlatformView(frame: frame, color: tint)
+      return NativeActivityIndicatorPlatformView(frame: frame, params: params)
     }
   }
 
   private final class NativeActivityIndicatorPlatformView: UIView, FlutterPlatformView {
     private let indicator = UIActivityIndicatorView(style: .medium)
 
-    init(frame: CGRect, color: UIColor?) {
+    init(frame: CGRect, params: ActivityIndicatorCreationParams) {
       super.init(frame: frame)
 
       isAccessibilityElement = false
       accessibilityElementsHidden = true
-      if let color { indicator.color = color }
+      // Follow the app's resolved appearance rather than the host's: a forced
+      // in-app dark mode must not leave dark ticks on dark Flutter surfaces.
+      indicator.overrideUserInterfaceStyle = params.dark ? .dark : .light
+      // A nil colour keeps the system spinner colour; a tint is still honoured
+      // when a caller asks for one.
+      if let color = params.color {
+        let c = ColorComponents(fromARGB: color)
+        indicator.color = UIColor(red: c.red, green: c.green, blue: c.blue, alpha: c.alpha)
+      }
       indicator.hidesWhenStopped = false
       indicator.translatesAutoresizingMaskIntoConstraints = false
       addSubview(indicator)
@@ -407,29 +422,28 @@ private enum AiLoaderSparkle {
     }
 
     func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
-      // A nil colour keeps the system spinner colour; a tint is still honoured
-      // when a caller asks for one.
-      var tint: NSColor?
-      if let color = args as? NSNumber {
-        let components = ColorComponents(fromARGB: color.int64Value)
-        tint = NSColor(
-          red: components.red,
-          green: components.green,
-          blue: components.blue,
-          alpha: components.alpha
-        )
-      } else if args != nil {
+      guard let params = ActivityIndicatorCreationParams(from: args) else {
         preconditionFailure("Invalid native activity indicator creation arguments")
       }
-      return NativeActivityIndicatorView(color: tint)
+      return NativeActivityIndicatorView(params: params)
     }
   }
 
   private final class NativeActivityIndicatorView: NSView {
     private let indicator = NSProgressIndicator()
 
-    init(color: NSColor?) {
+    init(params: ActivityIndicatorCreationParams) {
       super.init(frame: .zero)
+      // Follow the app's resolved appearance rather than the host's: a forced
+      // in-app dark mode must not leave dark ticks on dark Flutter surfaces.
+      indicator.appearance = NSAppearance(named: params.dark ? .darkAqua : .aqua)
+      // A nil colour keeps the system spinner colour; a tint is still honoured
+      // when a caller asks for one.
+      var color: NSColor?
+      if let argb = params.color {
+        let c = ColorComponents(fromARGB: argb)
+        color = NSColor(red: c.red, green: c.green, blue: c.blue, alpha: c.alpha)
+      }
 
       // The Flutter wrapper owns the loading-spinner semantics; hide both the
       // container and the native indicator from VoiceOver.

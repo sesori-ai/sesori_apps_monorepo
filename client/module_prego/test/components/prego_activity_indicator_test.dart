@@ -121,7 +121,7 @@ void main() {
 
       final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
       expect(platformView.viewType, "sesori/native-activity-indicator");
-      expect(platformView.creationParams, color.toARGB32());
+      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": false});
       expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
       expect(find.byType(PregoSteppedActivityIndicator), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
@@ -136,7 +136,7 @@ void main() {
 
       final platformView = tester.widget<AppKitView>(find.byType(AppKitView));
       expect(platformView.viewType, "sesori/native-activity-indicator");
-      expect(platformView.creationParams, color.toARGB32());
+      expect(platformView.creationParams, {"color": color.toARGB32(), "dark": false});
       expect(platformView.hitTestBehavior, PlatformViewHitTestBehavior.transparent);
       expect(find.byType(PregoSteppedActivityIndicator), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
@@ -149,16 +149,16 @@ void main() {
       await tester.pumpWidget(
         wrap(const PregoActivityIndicator(color: color)),
       );
-      expect(find.byKey(const ValueKey<int?>(0xFF123456)), findsOneWidget);
+      expect(find.byKey(const ValueKey<(int?, Brightness)>((0xFF123456, Brightness.light))), findsOneWidget);
 
       await tester.pumpWidget(
         wrap(const PregoActivityIndicator(color: other)),
       );
-      expect(find.byKey(const ValueKey<int?>(0xFF123456)), findsNothing);
-      expect(find.byKey(const ValueKey<int?>(0xFF654321)), findsOneWidget);
+      expect(find.byKey(const ValueKey<(int?, Brightness)>((0xFF123456, Brightness.light))), findsNothing);
+      expect(find.byKey(const ValueKey<(int?, Brightness)>((0xFF654321, Brightness.light))), findsOneWidget);
       expect(
         tester.widget<UiKitView>(find.byType(UiKitView)).creationParams,
-        other.toARGB32(),
+        {"color": other.toARGB32(), "dark": false},
       );
     });
   });
@@ -246,7 +246,22 @@ void main() {
       );
 
       final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
-      expect(platformView.creationParams, isNull);
+      expect(platformView.creationParams, {"color": null, "dark": false});
+    });
+  });
+
+  testWidgets("the native spinner is told the app's resolved brightness", (tester) async {
+    await onPlatform(TargetPlatform.iOS, () async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: const ColorScheme.dark()),
+          home: const PregoActivityIndicator(color: null),
+        ),
+      );
+
+      final platformView = tester.widget<UiKitView>(find.byType(UiKitView));
+      expect(platformView.creationParams, {"color": null, "dark": true});
+      expect(find.byKey(const ValueKey<(int?, Brightness)>((null, Brightness.dark))), findsOneWidget);
     });
   });
 

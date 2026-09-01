@@ -157,14 +157,14 @@ class const PregoInlineAlertsNotifications({
               PregoSpacing.lg, // 12
               PregoSpacing.lg, // 12
             ),
-            child: _buildBody(prego),
+            child: _buildBody(prego, brightness: Theme.of(context).brightness),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBody(PregoDesignSystem prego) {
+  Widget _buildBody(PregoDesignSystem prego, {required Brightness brightness}) {
     final colors = prego.colors;
     final hasBelow = supportingText != null || additionalContent != null;
 
@@ -173,7 +173,7 @@ class const PregoInlineAlertsNotifications({
     final titleRow = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _buildLeading(colors),
+        _buildLeading(colors, brightness: brightness),
         const SizedBox(width: _leadingGap),
         Expanded(
           child: Text(
@@ -236,11 +236,14 @@ class const PregoInlineAlertsNotifications({
     );
   }
 
-  Widget _buildLeading(PregoColors colors) {
+  Widget _buildLeading(PregoColors colors, {required Brightness brightness}) {
     if (_isLoading) {
-      return const SizedBox.square(
+      // The card surface is the inverse of the page, so the spinner takes the
+      // untinted grey of the opposite brightness to stay visible.
+      final inverse = brightness == Brightness.dark ? Brightness.light : Brightness.dark;
+      return SizedBox.square(
         dimension: _spinnerSize,
-        child: PregoActivityIndicator(color: null),
+        child: PregoActivityIndicator(color: PregoActivityIndicator.naturalColor(brightness: inverse)),
       );
     }
     return Icon(icon ?? _defaultIcon, size: _iconSize, color: _iconColor(colors));
