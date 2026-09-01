@@ -120,8 +120,22 @@ both public tags still resolve to those exact commits before using any diff:
 ```bash
 old_commit_sha="<recorded full 40-hex old-release commit>"
 new_commit_sha="<recorded full 40-hex new-release commit>"
-test "$(gh api repos/earendil-works/pi/commits/v<old> --jq .sha)" = "$old_commit_sha"
-test "$(gh api repos/earendil-works/pi/commits/v<new> --jq .sha)" = "$new_commit_sha"
+resolved_old_sha="$(gh api repos/earendil-works/pi/commits/v<old> --jq .sha)" || {
+  echo "ERROR: could not resolve v<old>; restart the audit" >&2
+  exit 1
+}
+if [ "$resolved_old_sha" != "$old_commit_sha" ]; then
+  echo "ERROR: v<old> no longer resolves to $old_commit_sha; restart the audit" >&2
+  exit 1
+fi
+resolved_new_sha="$(gh api repos/earendil-works/pi/commits/v<new> --jq .sha)" || {
+  echo "ERROR: could not resolve v<new>; restart the audit" >&2
+  exit 1
+}
+if [ "$resolved_new_sha" != "$new_commit_sha" ]; then
+  echo "ERROR: v<new> no longer resolves to $new_commit_sha; restart the audit" >&2
+  exit 1
+fi
 gh api "repos/earendil-works/pi/compare/${old_commit_sha}...${new_commit_sha}"
 ```
 
@@ -141,8 +155,22 @@ git clone --filter=blob:none --no-checkout --quiet \
   https://github.com/earendil-works/pi.git "$tmp_repo/pi"
 git -C "$tmp_repo/pi" fetch --quiet --no-tags origin \
   refs/tags/v<old>:refs/tags/v<old> refs/tags/v<new>:refs/tags/v<new>
-test "$(git -C "$tmp_repo/pi" rev-parse "refs/tags/v<old>^{commit}")" = "$old_commit_sha"
-test "$(git -C "$tmp_repo/pi" rev-parse "refs/tags/v<new>^{commit}")" = "$new_commit_sha"
+resolved_old_sha="$(git -C "$tmp_repo/pi" rev-parse "refs/tags/v<old>^{commit}")" || {
+  echo "ERROR: local v<old> tag cannot be resolved; restart the audit" >&2
+  exit 1
+}
+if [ "$resolved_old_sha" != "$old_commit_sha" ]; then
+  echo "ERROR: local v<old> tag moved from $old_commit_sha; restart the audit" >&2
+  exit 1
+fi
+resolved_new_sha="$(git -C "$tmp_repo/pi" rev-parse "refs/tags/v<new>^{commit}")" || {
+  echo "ERROR: local v<new> tag cannot be resolved; restart the audit" >&2
+  exit 1
+}
+if [ "$resolved_new_sha" != "$new_commit_sha" ]; then
+  echo "ERROR: local v<new> tag moved from $new_commit_sha; restart the audit" >&2
+  exit 1
+fi
 git -C "$tmp_repo/pi" diff --name-status "$old_commit_sha" "$new_commit_sha"
 git -C "$tmp_repo/pi" diff --stat "$old_commit_sha" "$new_commit_sha"
 git -C "$tmp_repo/pi" diff --no-ext-diff --no-textconv "$old_commit_sha" "$new_commit_sha" -- \
@@ -451,11 +479,31 @@ Run focused verification for the changed package and inspect the diff:
 git status --short
 git diff HEAD --check
 git diff HEAD -- bridge/sesori_plugin_pi
-# Explicitly inspect every untracked production file too. --no-index returns 1
-# for a content difference, which is expected; any other status is an error.
+# Explicitly inspect every untracked production file too. A --no-index
+# difference returns 1, which is expected; preserve and inspect each status.
 while IFS= read -r path; do
-  git diff --no-index --check -- /dev/null "$path" || test "$?" -eq 1
-  git diff --no-index -- /dev/null "$path" || test "$?" -eq 1
+  if git diff --no-index --check -- /dev/null "$path"; then
+    check_status=0
+  else
+    check_status=$?
+  fi
+  case "$check_status" in
+    0|1) ;;
+    *)
+      echo "ERROR: whitespace/check failure in untracked file: $path" >&2
+      exit 1
+      ;;
+  esac
+
+  if git diff --no-index -- /dev/null "$path"; then
+    diff_status=0
+  else
+    diff_status=$?
+  fi
+  if test "$diff_status" -ne 0 && test "$diff_status" -ne 1; then
+    echo "ERROR: could not inspect untracked file: $path" >&2
+    exit 1
+  fi
 done < <(git ls-files --others --exclude-standard -- bridge/sesori_plugin_pi)
 git diff HEAD -- .agents/skills/update-pi-harness/SKILL.md
 ```
@@ -476,8 +524,13 @@ multiline PR body with these sections:
 - `## Verification`
 
 Use the repository's implementation-complexity emoji prefix, commit and push
-when the task is ready for review, open the PR, and start the PR monitor
-immediately. Never enable auto-merge; the user merges.
+when the task is ready for review, open the PR, and, when `pr_monitor` is
+available, load the `monitor-pr` skill and start it immediately. Never enable
+auto-merge; the user merges. If `pr_monitor` is unavailable in the current
+agent interface, do not invent a substitute or create sleeps/polling loops:
+leave the PR open, report that automated monitoring/readiness is unavailable,
+and wait for an explicit host or user notification before handling follow-up
+feedback.
 
 The final implementation report must state the old/new target, unchanged
 minimum, six digest status, adopted/deferred findings, probe result, tests,
