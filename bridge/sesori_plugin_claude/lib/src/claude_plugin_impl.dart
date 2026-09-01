@@ -441,6 +441,12 @@ final class ClaudePlugin({
     required String? command,
     required int attachmentCount,
   }) async {
+    // A sub-agent transcript is not a Claude process session: nothing can be
+    // resumed under its id, so a write to it is refused rather than spawning a
+    // CLI that fails.
+    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) {
+      throw PluginOperationException(operation, statusCode: 400, message: "sub-agent sessions are read-only");
+    }
     _validateModel(model, operation: operation, staleOptions: true);
     final effort = _effort(variant, operation: operation, staleOptions: true);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
