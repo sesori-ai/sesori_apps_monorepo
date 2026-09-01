@@ -314,10 +314,13 @@ duplicate-risk warning.
   (Layer 2, `@lazySingleton`) delegates to it and owns the match-then-consume
   rule — `take({required String sessionId})` returns-and-clears only on a
   matching id and is otherwise inert. No persistence, no timers.
-- The stash happens only on the navigation branch. `NewSessionCreated` keeps
-  carrying the session; the screen's created-listener, exactly where it passes
-  the existing hijack guard and immediately before `replaceRoute`, asks the
-  cubit to build and stash the handoff. `NewSessionCubit` owns the mapping
+- The stash happens only on the navigation branch. `NewSessionCreated` gains
+  the originating `NewSessionSubmissionSnapshot` alongside the session — a
+  created launch always has exactly one submission that produced it, so the
+  snapshot stays reachable in state rather than in a cubit field. The screen's
+  created-listener, exactly where it passes the existing hijack guard and
+  immediately before `replaceRoute`, asks the cubit to build and stash the
+  handoff from that state-carried snapshot. `NewSessionCubit` owns the mapping
   from the submission snapshot to a `QueuedSessionSubmission` keyed by the
   created session id. Text submissions get a fresh local `prm_` promptId that
   never goes on the wire; command submissions reuse the launch's `launchId` as
