@@ -29,7 +29,8 @@ and keep native close/quit behavior safe.
   discoverable after autostart. Only PATH is derived for the helper; shell
   variables are not imported or persisted. If the login-shell probe fails, the
   desktop emits no PATH override and preserves the inherited environment
-  unchanged while retaining a bounded diagnostic warning.
+  unchanged while retaining a bounded diagnostic warning; a failed probe is
+  retried on a later environment resolution rather than cached as permanent.
 - A `--hidden` launch stays tray-only when the tray is proven available. The
   macOS runner suppresses the native first ordering and the Flutter window
   adapter applies the hidden state as a fallback. If the tray is unavailable

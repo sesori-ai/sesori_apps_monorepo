@@ -66,7 +66,7 @@ not grant or persist it.
 
 These findings are a pre-Gate-B hardening divergence, not a new numbered plan
 step. During review, the environment lookup was kept below the service layer:
-the process API resolves it through the repository, the service rechecks
+the repository resolves it through the process API, the service rechecks
 cancellation before spawn, and a failed probe preserves the inherited
 environment unchanged. The
 work is intentionally split into two manageable PRs:

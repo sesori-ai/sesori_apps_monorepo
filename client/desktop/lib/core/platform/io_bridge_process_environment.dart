@@ -7,8 +7,16 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
+/// Result of the bounded process used to inspect the login-shell environment.
 @visibleForTesting
-typedef LaunchEnvironmentProcessRunner = Future<ProcessResult> Function({
+class const LaunchEnvironmentProcessResult({
+  required final int exitCode,
+  required final String? path,
+  required final String stderr,
+});
+
+@visibleForTesting
+typedef LaunchEnvironmentProcessRunner = Future<LaunchEnvironmentProcessResult> Function({
   required String executable,
   required List<String> arguments,
   required Map<String, String>? environment,
@@ -43,21 +51,44 @@ class IoBridgeProcessEnvironment.forTesting({
   @visibleForTesting
   this;
 
-  Future<Map<String, String>>? _resolution;
+  Map<String, String>? _resolution;
+  Future<Map<String, String>?>? _resolutionInFlight;
 
   @override
-  Future<Map<String, String>> resolve() => _resolution ??= _resolve();
+  Future<Map<String, String>> resolve() async {
+    final Map<String, String>? cached = _resolution;
+    if (cached != null) return cached;
 
-  Future<Map<String, String>> _resolve() async {
+    final Future<Map<String, String>?> resolution = _resolutionInFlight ??= _resolve();
+    try {
+      final Map<String, String>? resolved = await resolution;
+      if (resolved == null) {
+        return const <String, String>{};
+      }
+      _resolution = resolved;
+      return resolved;
+    } finally {
+      if (identical(_resolutionInFlight, resolution)) {
+        _resolutionInFlight = null;
+      }
+    }
+  }
+
+  Future<Map<String, String>?> _resolve() async {
     if (!_isMacOS) {
       return const <String, String>{};
     }
     final String? shellPath = await _readLoginShellPath();
     if (shellPath == null) {
       // A failed probe must not rewrite the inherited environment based on guesses.
-      return const <String, String>{};
+      return null;
     }
-    final String mergedPath = _mergePath(shellPath: shellPath, basePath: _baseEnvironment["PATH"]);
+    final Iterable<String> shellEntries = _absolutePathEntries(value: shellPath);
+    if (shellEntries.isEmpty) {
+      logw("The macOS login shell returned no usable absolute PATH entries; preserving the inherited environment");
+      return null;
+    }
+    final String mergedPath = _mergePath(shellEntries: shellEntries, basePath: _baseEnvironment["PATH"]);
     return Map<String, String>.unmodifiable(
       mergedPath.isEmpty ? const <String, String>{} : <String, String>{"PATH": mergedPath},
     );
@@ -65,7 +96,7 @@ class IoBridgeProcessEnvironment.forTesting({
 
   Future<String?> _readLoginShellPath() async {
     final String shell = _shellExecutable(environment: _baseEnvironment);
-    final ProcessResult result;
+    final LaunchEnvironmentProcessResult result;
     try {
       result = await _runProcess(
         executable: shell,
@@ -80,34 +111,62 @@ class IoBridgeProcessEnvironment.forTesting({
     if (result.exitCode != 0) {
       logw(
         "The macOS login shell exited with code ${result.exitCode}; preserving the inherited environment"
-        "${_stderrDetails(stderr: result.stderr.toString())}",
+        "${_stderrDetails(stderr: result.stderr)}",
       );
       return null;
     }
 
-    final String? shellPath = _extractPath(output: result.stdout.toString());
+    final String? shellPath = result.path;
     if (shellPath == null) {
       logw(
         "The macOS login shell did not return a usable PATH; preserving the inherited environment"
-        "${_stderrDetails(stderr: result.stderr.toString())}",
+        "${_stderrDetails(stderr: result.stderr)}",
       );
       return null;
     }
     return shellPath;
   }
 
-  /// Reads the exact exported PATH entry from NUL-delimited `env` output.
-  /// NUL framing keeps multiline environment values (including exported shell
-  /// functions) from creating false `PATH=` entries.
-  static String? _extractPath({required String output}) {
-    for (final String entry in output.split("\u0000")) {
-      final int separator = entry.indexOf("=");
-      if (separator <= 0 || entry.substring(0, separator) != "PATH") {
-        continue;
+  /// Parses a NUL-delimited environment stream without retaining its full
+  /// output. The PATH record is kept independently from bounded diagnostics,
+  /// so startup noise cannot evict it from a fixed-size tail.
+  @visibleForTesting
+  static Future<String?> parsePathStream({required Stream<List<int>> stream}) => _readPathStream(stream: stream);
+
+  static Future<String?> _readPathStream({required Stream<List<int>> stream}) async {
+    final List<int> recordBytes = <int>[];
+    String? shellPath;
+    bool recordTruncated = false;
+
+    void inspectRecord() {
+      if (!recordTruncated && shellPath == null) {
+        final String record = utf8.decode(recordBytes, allowMalformed: true);
+        final int separator = record.indexOf("=");
+        if (separator > 0 && record.substring(0, separator) == "PATH") {
+          shellPath = record.substring(separator + 1);
+        }
       }
-      return entry.substring(separator + 1);
+      recordBytes.clear();
+      recordTruncated = false;
     }
-    return null;
+
+    await for (final List<int> chunk in stream) {
+      for (final int byte in chunk) {
+        if (byte == 0) {
+          inspectRecord();
+        } else if (!recordTruncated) {
+          if (recordBytes.length >= _maxCapturedShellRecordBytes) {
+            recordTruncated = true;
+          } else {
+            recordBytes.add(byte);
+          }
+        }
+      }
+    }
+    if (recordBytes.isNotEmpty || recordTruncated) {
+      inspectRecord();
+    }
+    return shellPath;
   }
 
   static String _stderrDetails({required String stderr}) {
@@ -146,8 +205,9 @@ class IoBridgeProcessEnvironment.forTesting({
   }
 
   static const int _maxCapturedShellOutputBytes = 64 * 1024;
+  static const int _maxCapturedShellRecordBytes = 64 * 1024;
 
-  static Future<ProcessResult> _runLoginShell({
+  static Future<LaunchEnvironmentProcessResult> _runLoginShell({
     required String executable,
     required List<String> arguments,
     required Map<String, String>? environment,
@@ -161,12 +221,12 @@ class IoBridgeProcessEnvironment.forTesting({
       mode: ProcessStartMode.normal,
     );
     try {
-      final (int exitCode, String stdout, String stderr) = await (
+      final (int exitCode, String? path, String stderr) = await (
         process.exitCode,
-        _readOutputTail(stream: process.stdout),
+        _readPathStream(stream: process.stdout),
         _readOutputTail(stream: process.stderr),
       ).wait.timeout(timeout);
-      return ProcessResult(process.pid, exitCode, stdout, stderr);
+      return LaunchEnvironmentProcessResult(exitCode: exitCode, path: path, stderr: stderr);
     } on Object {
       process.kill(ProcessSignal.sigkill);
       rethrow;
@@ -185,11 +245,11 @@ class IoBridgeProcessEnvironment.forTesting({
   }
 
   static String _mergePath({
-    required String? shellPath,
+    required Iterable<String> shellEntries,
     required String? basePath,
   }) {
     final List<String> candidates = <String>[
-      if (shellPath != null) ..._absolutePathEntries(value: shellPath),
+      ...shellEntries,
       if (basePath != null) ..._absolutePathEntries(value: basePath),
     ];
     final Set<String> seen = <String>{};
