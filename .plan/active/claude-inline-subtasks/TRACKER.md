@@ -61,7 +61,7 @@
   `<task-notification>` parser (`ClaudeMappedTaskNotificationContentBlock` in
   `ClaudeContentMapper`) serve both live and replay paths.
 - [x] Child enumeration splits dumb reads (`ClaudeTranscriptApi.readSubagentMeta`
-  → `ClaudeSubagentMetaDto`, `deleteSessionDirectory`) from catalog decisions
+  → `ClaudeSubagentMetaDto`, `deleteDirectory`) from catalog decisions
   (`ClaudeTranscriptCatalogRepository`, `ClaudeSessionRecord.parentId`).
 - [x] No analytics, no tasks-bar change, no `task_progress` rendering.
 - [x] Step 3 implementation refinements (recorded 2026-09-01, code is truth):
@@ -84,8 +84,8 @@
 - [x] Step 4 implementation refinements (recorded 2026-09-01, code is truth):
   the `agent-<agentId>` id rule has one owner, `ClaudeSubagentSessionId`
   (`models/`), used by the tracker, the catalog, and the plugin;
-  `ClaudeSubagentMetaDto` is a hand-written tolerant DTO (four optional
-  fields do not earn a generated union); `ClaudeTranscriptApi` gains
+  `ClaudeSubagentMetaDto` is a Freezed DTO with tolerant converters (the
+  bridge workspace forbids manual JSON parsing); `ClaudeTranscriptApi` gains
   `readSubagentMeta`, `deleteDirectory`, and the `subagentMetaPath` rule;
   child records reuse the root's `cwd`/branch/version and take `createdAt`
   from the meta file's mtime; `getChildSessions` is a catalog scan filtered by

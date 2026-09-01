@@ -61,6 +61,11 @@ final class ClaudeEventDispatcher({
     _directories.remove(sessionId);
     _announcedChildren.remove(sessionId);
     _busyChildren.remove(sessionId);
+    // A deleted child must also leave its root's membership sets, or it keeps
+    // reporting a status and blocks a later re-announcement.
+    for (final children in [..._announcedChildren.values, ..._busyChildren.values]) {
+      children.remove(sessionId);
+    }
   }
 
   /// Cancels every running sub-agent task of [sessionId] — its process is gone

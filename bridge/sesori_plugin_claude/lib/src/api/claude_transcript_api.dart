@@ -107,17 +107,13 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     directory.deleteSync(recursive: true);
   }
 
-  /// The `<stem>.meta.json` beside a sub-agent transcript, or null when it is
-  /// absent or unreadable. What the meta *means* is the catalog's decision.
+  /// The `<stem>.meta.json` beside a sub-agent transcript, or null when there
+  /// is none. Read and decode failures throw; what a missing or broken meta
+  /// *means* is the catalog's decision.
   ClaudeSubagentMetaDto? readSubagentMeta({required String transcriptPath}) {
     final file = File(subagentMetaPath(transcriptPath: transcriptPath));
     if (!file.existsSync()) return null;
-    try {
-      return ClaudeSubagentMetaDto.fromJson(jsonDecodeMap(file.readAsStringSync()));
-    } on Object catch (error) {
-      Log.w("[claude] skipping unreadable subagent meta (error=${_decodeErrorForLog(error)})");
-      return null;
-    }
+    return ClaudeSubagentMetaDto.fromJson(jsonDecodeMap(file.readAsStringSync()));
   }
 
   static String subagentMetaPath({required String transcriptPath}) =>

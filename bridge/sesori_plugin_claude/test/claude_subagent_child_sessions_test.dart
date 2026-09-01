@@ -159,6 +159,16 @@ void main() {
       dispatcher.forgetSession(sessionId: _root);
       expect(dispatcher.childSessionStatuses(), isEmpty);
     });
+
+    test("forgetting a deleted child removes it from its root's statuses", () {
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+
+      dispatcher.forgetSession(sessionId: _child);
+
+      expect(dispatcher.childSessionStatuses(), isEmpty);
+      expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
+    });
   });
 }
 

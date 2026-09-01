@@ -5,6 +5,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
 
 import "../api/claude_transcript_api.dart";
+import "../api/models/claude_subagent_meta_dto.dart";
 import "../api/models/claude_transcript_record_dto.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_subagent_session_id.dart";
@@ -212,17 +213,29 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     final id = _childIdFromPath(path);
     final root = roots[_rootIdOfChildPath(path)];
     if (id == null || root == null) return null;
-    final meta = _transcriptApi.readSubagentMeta(transcriptPath: path);
+    final ClaudeSubagentMetaDto? meta;
+    final DateTime? createdAt;
+    final DateTime? updatedAt;
+    try {
+      meta = _transcriptApi.readSubagentMeta(transcriptPath: path);
+      createdAt = _transcriptApi.lastModified(
+        transcriptPath: ClaudeTranscriptApi.subagentMetaPath(transcriptPath: path),
+      );
+      updatedAt = _transcriptApi.lastModified(transcriptPath: path);
+    } on Object catch (error, stackTrace) {
+      // A child racing its own deletion, or a corrupt meta, costs one child in
+      // this scan; the rest of the catalog still lists.
+      Log.w("[claude] skipping unreadable subagent transcript $path", error, stackTrace);
+      return null;
+    }
     return ClaudeSessionRecord(
       id: id,
       transcriptPath: path,
       parentId: root.id,
       cwd: root.cwd,
       title: meta?.description,
-      createdAt: _transcriptApi.lastModified(
-        transcriptPath: ClaudeTranscriptApi.subagentMetaPath(transcriptPath: path),
-      ),
-      updatedAt: _transcriptApi.lastModified(transcriptPath: path),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
       gitBranch: root.gitBranch,
       cliVersion: root.cliVersion,
     );

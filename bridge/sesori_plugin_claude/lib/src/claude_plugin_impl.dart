@@ -630,11 +630,7 @@ final class ClaudePlugin({
 
   void _handleTurnDispatched(ClaudeTurnDispatched event) {
     _unstartedSessions.remove(event.sessionId);
-    if (!event.isSteering) {
-      if (_directoryForSession(event.sessionId) case final directory?) {
-        _eventDispatcher.beginTurn(sessionId: event.sessionId, directory: directory);
-      }
-    }
+    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId, directory: event.directory);
     final command = event.command;
     if (command == null) return;
     final visible = event.displayText;

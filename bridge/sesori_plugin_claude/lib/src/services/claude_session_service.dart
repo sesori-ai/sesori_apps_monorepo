@@ -16,6 +16,10 @@ import "../repositories/claude_session_process_repository.dart";
 /// A queued prompt that the service wrote to Claude's stdin.
 final class const ClaudeTurnDispatched({
   required final String sessionId,
+
+  /// The normalized directory the turn was dispatched in, so consumers need
+  /// not resolve it again.
+  required final String directory,
   required final String promptId,
   required final String? displayText,
   required final String? command,
@@ -359,6 +363,7 @@ final class ClaudeSessionService({
             _dispatches.add(
               ClaudeTurnDispatched(
                 sessionId: sessionId,
+                directory: directory,
                 promptId: entry.id,
                 displayText: entry.displayText,
                 command: entry.command,
