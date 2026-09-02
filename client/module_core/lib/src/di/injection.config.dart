@@ -61,6 +61,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_claim_stora
     as _i275;
 import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart'
     as _i14;
+import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
+    as _i65;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
@@ -125,6 +127,8 @@ import 'package:sesori_dart_core/src/services/attribution_service.dart'
     as _i492;
 import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
+import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
+    as _i705;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -191,6 +195,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
+    );
+    gh.lazySingleton<_i705.ComposerAttachmentDispatcher>(
+      () => _i705.ComposerAttachmentDispatcher(
+        imagePicker: gh<_i65.ComposerImagePicker>(),
+      ),
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),

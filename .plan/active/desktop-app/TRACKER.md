@@ -26,7 +26,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | done |
-| 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
+| 18 | 🚧 Composer slice + voice/media seams (R2) | done |
 | 19 | ⚙️ Diffs + new-session slice | pending |
 | 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
@@ -95,3 +95,13 @@ The helper receives only a login-shell-derived PATH, merged with its inherited
 environment; shell variables, secrets, permissions, and entitlements are not
 copied. The user accepted Gate B and explicitly authorized Step 14 on
 2026-09-01; Step 14 is complete.
+
+## Verification Log
+
+- **Step 18:** changed lines (informational, not a pass/fail check):
+  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD | awk
+  '{ additions += $1; deletions += $2 } END { print additions, deletions,
+  additions + deletions }'` = `1331 additions / 598 deletions / 1929 total`.
+  This is 429 lines over the 1,500-line soft target; accepted deviation from
+  moving the existing composer and its tests into shared presentation while
+  adding both shell capability composition and regression coverage.

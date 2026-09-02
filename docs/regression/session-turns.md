@@ -293,20 +293,24 @@ defaults and queued client sends coherent.
   then settles closed on release. System-back edges remain reserved on iOS and
   Android gesture navigation, mouse drags remain available for text selection,
   and a horizontal drag inside a fenced code block scrolls only that block.
-- Mobile and desktop compose the same transcript presentation for messages,
-  queued prompts, tool and subtask output, errors, pending interactions, links,
-  image viewing, and child-session navigation. Each shell owns routing, external
-  link policy, image platform adapters, banners, and bottom controls. Mobile
-  supplies its voice/text composer and diff action; desktop currently supplies
-  neither, so unsupported controls are absent rather than inert.
+- Mobile and desktop compose the same transcript and composer presentation for
+  messages, queued prompts, tool and subtask output, errors, pending
+  interactions, links, image viewing, child-session navigation, text input,
+  commands, agent/model selection, abort, and declared image attachments. Each
+  shell owns routing, external-link policy, image and keyboard adapters, banners,
+  voice capability, and bottom-control composition. Mobile supplies real voice
+  capture and its diff action. Desktop declares voice unsupported and always
+  presents an effective text-first composer even when the saved cross-surface
+  preference is voice-first; it omits both the voice entry and diff action
+  rather than exposing dead controls.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: representative transcript content renders through the shared session-detail view, the desktop session route is present, and desktop omits composer and diff controls. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: representative transcript content renders through the shared session-detail view, the desktop session route is present, desktop renders the text-first composer and declared attachment action without resolving voice capture, and desktop omits the diff control. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
-| L3 Release | Client end to end (phone for composer and turn control; desktop for transcript presentation), every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per phone send; streaming and queued feedback render on both surfaces, while composer, sending, and abort controls render on phone; a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, "main agent only" leaves the tile running and its wake-up turn later arrives, "stop all" cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
+| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, "main agent only" leaves the tile running and its wake-up turn later arrives, "stop all" cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
@@ -416,8 +420,6 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   metadata such as bold, italics, and hyperlink destinations
   (`flutter/flutter#104206`).
 - L3 and above need live backends; an omitted plugin is partial coverage.
-  Composer, send, and abort end-to-end coverage remains phone-only until the
-  desktop composer is implemented.
 - Session-detail refresh behavior is under active investigation, so refresh
   churn is recorded as evidence rather than judged pass or fail.
 - The bridge's queued prompts live in plugin memory and do not survive a

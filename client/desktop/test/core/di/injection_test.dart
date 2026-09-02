@@ -2,6 +2,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storage.dart";
+import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
 import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
 import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
@@ -80,9 +81,11 @@ void main() {
     expect(getIt<ControlCommandService>(), isA<ControlCommandService>());
   });
 
-  test("desktop bootstrap resolves the complete message-image dependency graph", () {
+  test("desktop bootstrap resolves the complete image dependency graph", () {
     configureDesktopDependencies();
 
+    expect(getIt<ComposerImagePicker>(), isA<DesktopComposerImagePicker>());
+    expect(getIt<ComposerAttachmentDispatcher>(), isA<ComposerAttachmentDispatcher>());
     expect(getIt<AttachmentThumbnailStorage>(), isA<DesktopAttachmentThumbnailStorage>());
     expect(getIt<MessageThumbnailCacheService>(), isA<MessageThumbnailCacheService>());
     expect(getIt<MessageImageRepository>(), isA<MessageImageRepository>());

@@ -21,6 +21,8 @@ import 'package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storag
     as _i93;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
+import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
+    as _i925;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
 import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
@@ -99,6 +101,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
       () => _i435.MacOsLegacyKeychainClient(),
+    );
+    gh.lazySingleton<_i948.ComposerImagePicker>(
+      () => _i925.DesktopComposerImagePicker(),
     );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),

@@ -2,23 +2,22 @@ import "dart:async";
 
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
+import "package:flutter/scheduler.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../capabilities/media/composer_image_picker.dart";
-import "../../../core/di/injection.dart";
-import "../../../core/widgets/command_picker_sheet.dart";
-import "../../../core/widgets/composer_surface_style.dart";
+import "../../../extensions/build_context_x.dart";
+import "../composer_presentation_scope.dart";
+import "command_picker_sheet.dart";
 import "composer_options_accordion.dart";
+import "composer_surface_style.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
@@ -110,7 +109,7 @@ class const PromptInput({
   /// text-first mode, which prompt the compact pill invites.
   required final bool hasMessages,
   required final PromptSubmitCallback onSend,
-  required final VoidCallback onVoiceTranscriptionCompleted,
+  required final VoidCallback? onVoiceTranscriptionCompleted,
   required final ValueChanged<ComposerDraft> onDraftChanged,
   required final VoidCallback onDraftCleared,
   required final VoidCallback onAbort,
@@ -159,8 +158,9 @@ class _PromptInputState() extends State<PromptInput> {
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
-  StreamSubscription<ChatInputMode>? _chatInputModeSub;
   Timer? _minimumRecordingDurationTimer;
+  late final ComposerVoiceSupport _voiceSupport;
+  bool _capabilitiesInitialized = false;
 
   /// Keeps the typing layout mounted after the keyboard affordance was tapped
   /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
@@ -171,7 +171,6 @@ class _PromptInputState() extends State<PromptInput> {
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
   /// not on every keystroke.
   bool _hasText = false;
-  late ChatInputMode _chatInputMode;
 
   /// Active interaction ids live in the sealed variants. The latest id remains
   /// available after completion so delayed success feedback can be suppressed
@@ -192,11 +191,17 @@ class _PromptInputState() extends State<PromptInput> {
   /// draft — they live and die with this composer.
   final List<ComposerAttachment> _attachments = [];
 
-  VoiceInputCubit get _voiceCubit => context.read<VoiceInputCubit>();
+  VoiceInputCubit get _voiceCubit {
+    if (!_voiceSupport.isSupported) {
+      throw StateError("VoiceInputCubit is unavailable when composer voice support is disabled");
+    }
+    return context.read<VoiceInputCubit>();
+  }
 
-  ComposerImagePicker get _imagePicker => getIt<ComposerImagePicker>();
+  ComposerAttachmentDispatcher get _attachmentDispatcher =>
+      ComposerPresentationScope.read(context).attachmentDispatcher();
 
-  ImageClipboard get _imageClipboard => getIt<ImageClipboard>();
+  ImageClipboard get _imageClipboard => ComposerPresentationScope.read(context).imageClipboard();
 
   @override
   void initState() {
@@ -205,25 +210,30 @@ class _PromptInputState() extends State<PromptInput> {
       pasteImageOrText: _pasteImageOrText,
       controller: _controller,
     );
-    final chatInputModeCubit = context.read<ChatInputModeCubit>();
-    _chatInputMode = chatInputModeCubit.state;
-    _chatInputModeSub = chatInputModeCubit.stream.listen((inputMode) {
-      if (!mounted || _chatInputMode == inputMode) return;
-      _updateComposerState(update: () => _chatInputMode = inputMode);
-    });
     _applyDraft(draft: widget.initialDraft, notify: false);
     _restoreInitialAttachments();
-    _syncSurfaceStyle();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
-    _voiceStateSub = _voiceCubit.stream.listen(_handleVoiceStateChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final capabilities = ComposerPresentationScope.of(context);
+    if (!_capabilitiesInitialized) {
+      _voiceSupport = capabilities.voiceSupport;
+      _capabilitiesInitialized = true;
+      if (_voiceSupport.isSupported) {
+        _voiceStateSub = _voiceCubit.stream.listen(_handleVoiceStateChanged);
+      }
+    }
+    _syncSurfaceStyle();
   }
 
   @override
   void dispose() {
     _voiceStateSub?.cancel();
-    _chatInputModeSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
     _cancelDragProgress.dispose();
     _controller.dispose();
@@ -281,7 +291,8 @@ class _PromptInputState() extends State<PromptInput> {
   /// Whether the session composer leads with hold-to-talk voice input (the
   /// default) or with the tap-to-type field. Chosen in settings; the cubit
   /// lives above the router, so flipping it re-shapes this composer live.
-  bool get _isVoiceFirst => _chatInputMode == ChatInputMode.voiceFirst;
+  bool get _isVoiceFirst =>
+      _voiceSupport.isSupported && ComposerPresentationScope.read(context).inputMode == ChatInputMode.voiceFirst;
 
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
@@ -291,7 +302,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
   ComposerSurfaceLayout get _restingLayout => resolveComposerSurfaceLayout(
-    inputMode: _chatInputMode,
+    inputMode: _isVoiceFirst ? ChatInputMode.voiceFirst : ChatInputMode.textFirst,
     showsTypingLayout: _showsTypingLayout,
   );
 
@@ -310,9 +321,14 @@ class _PromptInputState() extends State<PromptInput> {
 
   void _syncSurfaceStyle() {
     final surfaceStyle = _surfaceStyle;
-    if (widget.surfaceStyleController.value != surfaceStyle) {
-      widget.surfaceStyleController.value = surfaceStyle;
+    if (widget.surfaceStyleController.value == surfaceStyle) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncSurfaceStyle();
+      });
+      return;
     }
+    widget.surfaceStyleController.value = surfaceStyle;
   }
 
   bool get _releaseRequestedWhileStarting => switch (_voiceInteraction) {
@@ -392,10 +408,12 @@ class _PromptInputState() extends State<PromptInput> {
 
     _isSubmitting = true;
     try {
-      final voiceState = _voiceCubit.state;
-      if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
-        await _voiceCubit.discard();
-        if (!mounted) return;
+      if (_voiceSupport.isSupported) {
+        final voiceState = _voiceCubit.state;
+        if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
+          await _voiceCubit.discard();
+          if (!mounted) return;
+        }
       }
 
       widget.onSend(
@@ -810,7 +828,7 @@ class _PromptInputState() extends State<PromptInput> {
       _applyDraft(draft: nextDraft, notify: true);
       unawaited(_playSuccessFeedback(interactionId: transcribing.id));
       _scrollToDraftEndAfterLayout();
-      widget.onVoiceTranscriptionCompleted();
+      widget.onVoiceTranscriptionCompleted?.call();
       if (!_isVoiceFirst) _focusComposerField();
     }
     _resetVoicePresentation();
@@ -1016,7 +1034,10 @@ class _PromptInputState() extends State<PromptInput> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    _renderedVoiceState = context.watch<VoiceInputCubit>().state;
+    final capabilities = ComposerPresentationScope.of(context);
+    _renderedVoiceState = capabilities.voiceSupport.isSupported
+        ? context.watch<VoiceInputCubit>().state
+        : const VoiceInputState.idle();
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -1043,10 +1064,12 @@ class _PromptInputState() extends State<PromptInput> {
           ?widget.header,
           // A focused composer consumes the first route pop so Android back
           // dismisses the keyboard before a later back leaves the screen.
-          KeyboardVisibilityBuilder(
-            builder: (context, isKeyboardVisible) {
+          Builder(
+            builder: (context) {
               final shouldDismissKeyboardBeforePop =
-                  Theme.of(context).platform == TargetPlatform.android && _focusNode.hasFocus && isKeyboardVisible;
+                  Theme.of(context).platform == TargetPlatform.android &&
+                  _focusNode.hasFocus &&
+                  capabilities.isKeyboardVisible;
               return PopScope(
                 canPop: !shouldDismissKeyboardBeforePop,
                 onPopInvokedWithResult: (didPop, _) {
@@ -1629,7 +1652,7 @@ class _PromptInputState() extends State<PromptInput> {
       spacing: PregoSpacing.sm,
       children: [
         // The mic owns the hold gesture, so only the primary action collapses.
-        _buildMicButton(context),
+        if (_voiceSupport.isSupported) _buildMicButton(context),
         _buildCollapsibleTrailing(
           visible: _voicePresentation != _VoicePresentation.recording,
           child: _buildPrimaryActionButton(context),
@@ -1664,7 +1687,7 @@ class _PromptInputState() extends State<PromptInput> {
     // stopped supporting attachments, which the strip must not outlive.
     final draftIdentity = widget.draftIdentity;
     try {
-      final attachment = await _imagePicker.pickImage();
+      final attachment = await _attachmentDispatcher.pickImage();
       if (!mounted ||
           draftIdentity != widget.draftIdentity ||
           widget.attachmentsSupported != true ||
@@ -1710,7 +1733,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (bytes == null) return _PasteImageResult.noImage;
 
     try {
-      final attachment = _imagePicker.attachmentFromBytes(bytes: bytes, filename: null);
+      final attachment = _attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null);
       if (_stageAttachment(attachment: attachment)) return _PasteImageResult.handled;
       // The staged strip is already at its aggregate budget, so no image was
       // added; fall back so the clipboard's text is not swallowed.

@@ -9,12 +9,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/widgets/desktop_composer_presentation_scope.dart";
 
-/// Desktop composition for the shared interactive transcript.
-///
-/// Message composition remains product-owned and arrives in the next desktop
-/// slice. Transcript actions, child-session navigation, permissions, questions,
-/// and image actions remain available here.
+/// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
   super.key,
   required final String projectId,
@@ -44,19 +41,21 @@ class const DesktopSessionDetailScreen({
         notificationCanceller: null,
         failureReporter: getIt<FailureReporter>(),
       ),
-      child: _SessionActivityAnalyticsOwner(
-        child: DesktopSessionDetailView(
-          projectId: projectId,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
-          onBack: onBack,
-          onOpenSession: onOpenSession,
-          messageImageRepository: getIt.get<MessageImageRepository>,
-          imageSaver: getIt.get<ImageSaver>,
-          imageClipboard: getIt.get<ImageClipboard>,
-          imageSharer: getIt.get<ImageSharer>,
-          canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+      child: DesktopComposerPresentationScope(
+        child: _SessionActivityAnalyticsOwner(
+          child: DesktopSessionDetailView(
+            projectId: projectId,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+            onBack: onBack,
+            onOpenSession: onOpenSession,
+            messageImageRepository: getIt.get<MessageImageRepository>,
+            imageSaver: getIt.get<ImageSaver>,
+            imageClipboard: getIt.get<ImageClipboard>,
+            imageSharer: getIt.get<ImageSharer>,
+            canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+          ),
         ),
       ),
     );
@@ -95,9 +94,12 @@ class const DesktopSessionDetailView({
         banner: null,
         onBack: onBack,
         onShowDiffs: null,
-        // Desktop exposes the complete interactive transcript first; the
-        // product-owned composer is added by the next plan slice.
-        bottomControlsBuilder: null,
+        bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+            SessionDetailComposerControls(
+              projectId: projectId,
+              sessionId: sessionId,
+              state: state,
+            ),
       ),
     );
   }

@@ -1,11 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../../core/routing/app_router.dart";
-import "../../../core/routing/current_project_name.dart";
+import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
+import "../session_detail_presentation_scope.dart";
 
 /// A single background task as a row inside the tasks card. Shows the
 /// session's status icon, title + status text, and a disclosure chevron that
@@ -25,14 +24,11 @@ class const BackgroundTaskRow({
 
     return PregoListTile(
       isLast: isLast,
-      onTap: () => context.pushRoute(
-        AppRoute.sessionDetail(
-          projectId: projectId ?? session.projectID,
-          projectName: currentProjectName(context),
-          sessionId: session.id,
-          readOnly: true,
-          sessionTitle: session.title,
-        ),
+      onTap: () => SessionDetailPresentationScope.read(context).openSession(
+        projectId: projectId ?? session.projectID,
+        sessionId: session.id,
+        readOnly: true,
+        sessionTitle: session.title,
       ),
       leading: _statusIcon(status: status, prego: prego),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),

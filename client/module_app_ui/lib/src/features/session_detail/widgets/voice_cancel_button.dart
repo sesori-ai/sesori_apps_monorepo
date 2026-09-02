@@ -2,8 +2,9 @@ import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../../extensions/build_context_x.dart";
 
 /// The cancel target shown in the accordion's place while a hold-to-talk
 /// recording runs.

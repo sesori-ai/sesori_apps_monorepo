@@ -1,9 +1,10 @@
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../../extensions/build_context_x.dart";
 
 /// Stops the session, asking for scope when the bridge refuses a plain stop
 /// because sub-agents are still running.
