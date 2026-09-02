@@ -544,6 +544,22 @@
       }
     }
   },
+  "sessionDetailStopScopeMessageMainIdle": "{count, plural, =1{The main agent is done, but 1 sub-agent is still working. Stop it?} other{The main agent is done, but {count} sub-agents are still working. Stop them?}}",
+  "@sessionDetailStopScopeMessageMainIdle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailStopSubAgentsOnly": "{count, plural, =1{Stop 1 sub-agent} other{Stop {count} sub-agents}}",
+  "@sessionDetailStopSubAgentsOnly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailStopMainAgentOnly": "Stop main agent only",
   "sessionDetailStopAll": "{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}",
   "@sessionDetailStopAll": {

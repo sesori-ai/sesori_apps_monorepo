@@ -511,13 +511,15 @@ final class ClaudeSessionService({
         state.queue.clear();
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
-      _approvals.cancelForSession(sessionId: sessionId);
       if (keepTasks) {
-        // The process stays resident for its tasks; the interrupted turn's own
-        // result settles the pending/self-started turn through the normal path
-        // and the running set keeps the session busy until the tasks report.
+        // The process stays resident for its tasks, so pending approvals are left
+        // alone: a kept sub-agent may be waiting on one, and the interrupted
+        // main turn resolves its own. The interrupted turn's result settles the
+        // pending/self-started turn through the normal path; waiting for it here
+        // keeps the abort fence up so a follow-up send cannot join that turn.
         try {
           await _processes.interrupt(sessionId: sessionId);
+          await Future.wait([...state.settlements, ?state.selfStartedTurn?.future]);
           return const PluginAbortAccepted(workKept: true);
         } on Object catch (error, stack) {
           // A process that will not take the interrupt cannot be trusted to keep
@@ -525,6 +527,7 @@ final class ClaudeSessionService({
           Log.w("[claude] interrupt failed for $sessionId; stopping everything", error, stack);
         }
       }
+      _approvals.cancelForSession(sessionId: sessionId);
       // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
       // not rearm it, so a pending wakeup cannot survive an abort.
       state.wakeupAt = null;

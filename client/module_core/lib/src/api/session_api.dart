@@ -350,8 +350,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       final SessionAbortRejection rejection;
       try {
         rejection = SessionAbortRejection.fromJson(jsonDecodeMap(rawBody));
-      } on Object catch (e) {
-        logw("Failed to parse 409 abort rejection body: ${e.toString()}");
+      } on Object catch (e, st) {
+        logw("Failed to parse 409 abort rejection body", e, st);
         return response;
       }
       throw SessionAbortApiRejectedException(rejection: rejection);

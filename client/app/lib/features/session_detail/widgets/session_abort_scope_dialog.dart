@@ -21,7 +21,11 @@ Future<void> stopSessionWithScope({required BuildContext context, required Sessi
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(loc.sessionDetailStopScopeTitle),
-        content: Text(loc.sessionDetailStopScopeMessage(count)),
+        content: Text(
+          rejection.mainAgentRunning
+              ? loc.sessionDetailStopScopeMessage(count)
+              : loc.sessionDetailStopScopeMessageMainIdle(count),
+        ),
         actions: [
           TextButton(
             onPressed: () => dialogContext.pop(),
@@ -35,7 +39,7 @@ Future<void> stopSessionWithScope({required BuildContext context, required Sessi
           TextButton(
             onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.stop),
             child: Text(
-              loc.sessionDetailStopAll(count),
+              rejection.mainAgentRunning ? loc.sessionDetailStopAll(count) : loc.sessionDetailStopSubAgentsOnly(count),
               style: TextStyle(color: context.prego.colors.fgErrorPrimary),
             ),
           ),

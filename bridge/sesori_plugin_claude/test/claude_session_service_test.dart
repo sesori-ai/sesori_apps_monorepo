@@ -734,8 +734,9 @@ void main() {
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
-      expect(await abort, isA<PluginAbortAccepted>());
+      // The abort resolves only once the interrupted turn's result settles.
       process.emit(_result());
+      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
       await pump();
 
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);

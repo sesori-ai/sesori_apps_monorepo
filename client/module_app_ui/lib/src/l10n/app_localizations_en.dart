@@ -896,6 +896,28 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionDetailStopScopeMessageMainIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The main agent is done, but $count sub-agents are still working. Stop them?',
+      one: 'The main agent is done, but 1 sub-agent is still working. Stop it?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailStopSubAgentsOnly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Stop $count sub-agents',
+      one: 'Stop 1 sub-agent',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionDetailStopMainAgentOnly => 'Stop main agent only';
 
   @override
