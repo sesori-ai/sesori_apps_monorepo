@@ -67,9 +67,10 @@ and keep native close/quit behavior safe.
   mobile CLI installation guidance: both never-registered and disconnected
   states offer supervised **Start the bridge**, which persists desired On,
   starts or retries rather than applying toggle semantics, and establishes the
-  authenticated desktop relay connection. Profile and Harnesses pop back to
-  Settings when
-  pushed. The analytics service starts before the app, while authenticated
+  authenticated desktop relay connection. Session rows open a typed detail
+  route that composes the shared transcript, pending interactions, child-session
+  navigation, links, and image actions; unsupported composer and diff controls
+  are omitted. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
   progress until that bounded operation settles. The desktop's one app-wide
@@ -98,8 +99,8 @@ and keep native close/quit behavior safe.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, and the shared desktop Settings route with mobile-only notifications omitted. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, shared desktop Settings with mobile-only notifications omitted, and the typed session-detail route. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -159,7 +160,9 @@ the status and bounded recent output.
   child closes to Home, a standalone child cannot close, startup reconciliation
   leaves the window blank, Profile leaves usage analytics stuck on Loading, or
   logout clears auth before analytics preparation and fails to resume analytics
-  when token clearing fails.
+  when token clearing fails. A desktop session row cannot reach its typed detail
+  route, Back cannot return to the session list, a child-session link loses its
+  typed route data, or unsupported composer/diff controls are rendered.
 
 ## Known Limitations
 
@@ -197,8 +200,10 @@ the status and bounded recent output.
 - `client/desktop/lib/features/home/desktop_home.dart`
 - `client/desktop/lib/features/projects/desktop_project_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
+- `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/module_app_ui/lib/src/features/project_list/`
 - `client/module_app_ui/lib/src/features/session_list/`
+- `client/module_app_ui/lib/src/features/session_detail/`
 - `client/module_app_ui/lib/src/features/settings/`
 - `.plan/active/desktop-app/PLAN.md`
