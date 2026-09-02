@@ -50,7 +50,7 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, repeatable `--import-plugin`, etc.); every registered plugin contributes namespaced options |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags; every registered plugin contributes namespaced options; the retired import flag is a hidden warning-only no-op |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/foundation/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/foundation/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
