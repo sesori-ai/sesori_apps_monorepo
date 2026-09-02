@@ -397,10 +397,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
 - A plain stop kills running Claude sub-agents without asking, the scope dialog
-  appears when none run, a confirmed stop with the main agent idle tears the
-  process down or leaves the session stuck busy, a killed sub-agent leaves the
-  session busy or the stop request hanging, or dismissing the dialog stops
-  anything.
+  appears when none run, a confirmed stop leaves a sub-agent running or the
+  session stuck busy, a killed sub-agent leaves the session busy or the stop
+  request hanging, or dismissing the dialog stops anything.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
   loses text, reasoning, tool, status, or terminal failure output.
