@@ -74,7 +74,7 @@ class SessionDetailCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final String _sessionId,
   required final String _projectId,
-  required final NotificationCanceller _notificationCanceller,
+  required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
 
   /// Cooldown between silent refreshes triggered by staleness events.
@@ -1970,7 +1970,14 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller.cancelForSession(sessionId: _sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+  }
+
+  /// Restores this loaded session as the active view after a pushed child route
+  /// is removed. The initial load and refresh paths own their own declarations;
+  /// an unloaded or failed route must not mark the session seen.
+  void reassertViewingSession() {
+    if (state is SessionDetailLoaded) _sessionViewingService.setViewingSession(_sessionId);
   }
 
   // ---------------------------------------------------------------------------
@@ -2100,7 +2107,7 @@ class SessionDetailCubit(
   }) async {
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller.cancelForSession(sessionId: sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: sessionId);
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;

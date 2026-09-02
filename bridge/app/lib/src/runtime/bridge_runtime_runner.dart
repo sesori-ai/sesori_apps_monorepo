@@ -86,7 +86,6 @@ import "../server/repositories/terminal_prompt_repository.dart";
 import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
-import "../services/catalog_import_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -648,12 +647,6 @@ class const BridgeRuntimeRunner._() {
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
         setupById: setupById,
       );
-      for (final importPluginId in options.importPluginIds) {
-        if (!startupPolicy.eligiblePluginIds.contains(importPluginId)) {
-          Console.error('Cannot import plugin "$importPluginId" because it is not eligible.');
-          return 1;
-        }
-      }
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
       final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
@@ -697,12 +690,6 @@ class const BridgeRuntimeRunner._() {
       if (startAbortController.isAborted) {
         Log.i("Plugin start aborted as requested.");
         return 0;
-      }
-      for (final importPluginId in options.importPluginIds) {
-        if (!activePluginRuntime.startAllowedPluginIds.contains(importPluginId)) {
-          Console.error('Cannot import plugin "$importPluginId" because it is unavailable.');
-          return 1;
-        }
       }
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
@@ -828,13 +815,6 @@ class const BridgeRuntimeRunner._() {
         catalogImportConsoleListener.start();
       }
       activeRuntime.catalogHydrationListener.start();
-      for (final headlessPluginId in options.importPluginIds) {
-        if (!activePluginRuntime.startAllowedPluginIds.contains(headlessPluginId)) continue;
-        activeRuntime.catalogImportService.start(
-          pluginId: headlessPluginId,
-          trigger: CatalogImportTrigger.headless,
-        );
-      }
 
       registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // start() synchronously subscribes local route-trigger listeners before

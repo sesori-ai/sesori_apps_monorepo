@@ -954,6 +954,54 @@ void main() {
       },
     );
 
+    test("clearNotifications is a no-op when the shell has no notification integration", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: null,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(cubit.clearNotifications, returnsNormally);
+    });
+
+    test("reassertViewingSession restores a loaded parent after child navigation", () async {
+      final sessionViewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: sessionViewingService,
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      clearInteractions(sessionViewingService);
+
+      cubit.reassertViewingSession();
+
+      verify(() => sessionViewingService.setViewingSession(sessionId)).called(1);
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE message.updated adds message to state",
       build: () {

@@ -143,7 +143,7 @@ void main() {
       expect(complete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(stopped.whereType<BridgeSseMessagePartUpdated>().single.part.text, "answer");
 
-      mapper.beginTurn(sessionId: "session-1");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
       final replayed = _map(
         mapper,
         _assistant(
@@ -669,6 +669,7 @@ void main() {
       final history = const ClaudeHistoryMapper(content: ClaudeContentMapper())
           .map(
             sessionId: "session-1",
+            agentId: null,
             records: [
               ClaudeTranscriptAssistantRecord(
                 id: "msg-1",
@@ -678,6 +679,7 @@ void main() {
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,
+                agentId: null,
                 gitBranch: null,
                 version: null,
                 sessionId: "session-1",
@@ -688,15 +690,19 @@ void main() {
                 content: resultContent,
                 isMeta: false,
                 isVisibleInTranscriptOnly: false,
+                toolUseResult: const ClaudeToolUseResultAbsent(),
+                isTaskNotification: false,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,
+                agentId: null,
                 gitBranch: null,
                 version: null,
                 sessionId: "session-1",
                 raw: const {},
               ),
             ],
+            residentTaskToolUseIds: const {},
           )
           .single;
 
@@ -716,7 +722,7 @@ void main() {
           ],
         ),
       );
-      mapper.beginTurn(sessionId: "session-1");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
       final staleDelta = _map(
         mapper,
         _stream(

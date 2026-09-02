@@ -53,10 +53,13 @@ class const _DesktopSettingsView({
       onOpenNotifications: null,
       onOpenHarnesses: onOpenHarnesses,
       openSupportLink: ({required url}) async {
-        await openDesktopExternalLink(url: url);
+        await openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },
       openLegalDocument: ({required document}) async {
-        await openDesktopExternalLink(url: LegalLinks.uriFor(document: document));
+        await openDesktopExternalLink(
+          url: LegalLinks.uriFor(document: document),
+          mode: UrlLaunchMode.externalApp,
+        );
       },
       loadAppVersionInfo: _loadAppVersionInfo,
       footerLogo: null,

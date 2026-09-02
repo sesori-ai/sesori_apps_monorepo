@@ -221,8 +221,9 @@ database-only.
 
 `POST /plugin/import`, `DELETE /plugin/import`, and `GET /plugin/import` start,
 cancel, and report per-plugin operations. Progress is also emitted as
-plugin-attributed SSE. Repeated `--import-plugin <id>` flags provide the same
-start trigger for headless operation. Import absence is non-destructive.
+plugin-attributed SSE. Connected Sesori apps expose these operations through
+the deeper pull-to-refresh stage and Settings > Harnesses. Import absence is
+non-destructive.
 
 ## 9. Parallel Runtime And Client Behavior
 

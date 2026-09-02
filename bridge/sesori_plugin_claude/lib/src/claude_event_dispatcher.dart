@@ -2,6 +2,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "api/models/claude_stream_message.dart";
+import "models/claude_task_notification.dart";
+import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
@@ -26,7 +28,25 @@ final class ClaudeEventDispatcher({
   /// index >= 1 is finalized under a second part id and renders twice.
   final Map<String, int> _assistantBlockCounts = {};
 
-  void beginTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
+  /// The root directory each session runs in, recorded at [beginTurn] so a
+  /// child session can be constructed without asking the plugin.
+  final Map<String, String> _directories = {};
+
+  /// Child sessions announced with `session.created`, and the subset still
+  /// running, per root. Presentation state over the tracker's task map.
+  final Map<String, Set<String>> _announcedChildren = {};
+  final Map<String, Set<String>> _busyChildren = {};
+
+  /// Child session → root session. Nested sub-agents are flattened under the
+  /// root, so this is one level deep by construction.
+  final Map<String, String> _roots = {};
+
+  String _rootOf(String sessionId) => _roots[sessionId] ?? sessionId;
+
+  void beginTurn({required String sessionId, required String directory}) {
+    _directories[sessionId] = directory;
+    _resetTurn(sessionId: sessionId);
+  }
 
   /// Clears completed-turn stream state.
   void completeTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
@@ -39,12 +59,52 @@ final class ClaudeEventDispatcher({
   }
 
   void forgetSession({required String sessionId}) {
+    for (final childId in _announcedChildren.remove(sessionId) ?? const <String>{}) {
+      _forgetRendered(sessionId: childId);
+      _roots.remove(childId);
+    }
+    _forgetRendered(sessionId: sessionId);
+    _directories.remove(sessionId);
+    _busyChildren.remove(sessionId);
+    // A deleted child must also leave its root's membership sets, or it keeps
+    // reporting a status and blocks a later re-announcement.
+    if (_roots.remove(sessionId) case final root?) {
+      _announcedChildren[root]?.remove(sessionId);
+      _busyChildren[root]?.remove(sessionId);
+    }
+  }
+
+  void _forgetRendered({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _models.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
+
+  /// Cancels every running sub-agent task of root [sessionId] and its children
+  /// — their process is gone — and returns the subtask part updates and child
+  /// idle statuses that make that visible.
+  List<BridgeSseEvent> cancelTasks({required String sessionId}) => [
+    for (final owner in {sessionId, ...?_announcedChildren[sessionId]})
+      for (final task in _tools.cancelAll(sessionId: owner)) ..._partEvents(tool: task),
+  ];
+
+  /// Statuses of the child sessions this dispatcher announced, for every root.
+  Map<String, PluginSessionStatus> childSessionStatuses() => {
+    for (final entry in _announcedChildren.entries)
+      for (final childId in entry.value)
+        childId: _busyChildren[entry.key]?.contains(childId) ?? false
+            ? const PluginSessionStatus.busy()
+            : const PluginSessionStatus.idle(),
+  };
+
+  /// The child sessions of [sessionId] still running.
+  List<String> busyChildSessionIds({required String sessionId}) => [...?_busyChildren[sessionId]];
+
+  /// Tool-use ids of the tasks still running inside the session's resident
+  /// process; a replayed task outside this set is dead.
+  Set<String> residentTaskToolUseIds({required String sessionId}) => _tools.runningTaskToolUseIds(sessionId: sessionId);
 
   void _clearStreamedMessages({required String sessionId}) {
     final messageIds = _streamedMessageIds.remove(sessionId);
@@ -72,11 +132,22 @@ final class ClaudeEventDispatcher({
 
   List<BridgeSseEvent> map({required ClaudeStreamMessage message, DateTime? now}) {
     if (message.sessionId case final sessionId? when sessionId.isNotEmpty) {
+      // A forwarded sub-agent frame renders in that sub-agent's child session,
+      // resolved from the launching task; before the task knows its sub-agent
+      // id there is no session to render into, so the frame is dropped.
       if (message
-          case ClaudeAssistantMessage(parentToolUseId: final String _) ||
-              ClaudeUserMessage(parentToolUseId: final String _) ||
-              ClaudeStreamEventMessage(parentToolUseId: final String _)) {
-        return const [];
+          case ClaudeAssistantMessage(:final String parentToolUseId) ||
+              ClaudeUserMessage(:final String parentToolUseId) ||
+              ClaudeStreamEventMessage(:final String parentToolUseId)) {
+        final childId = _tools.childSessionIdForToolUse(toolUseId: parentToolUseId);
+        if (childId == null) return const [];
+        _roots[childId] = _rootOf(sessionId);
+        return switch (message) {
+          ClaudeStreamEventMessage() => _mapStream(sessionId: childId, message: message),
+          ClaudeAssistantMessage() => _mapAssistant(sessionId: childId, message: message),
+          ClaudeUserMessage() => _mapUser(sessionId: childId, message: message, promptId: null),
+          _ => const [],
+        };
       }
       return switch (message) {
         ClaudeStreamEventMessage() => _mapStream(sessionId: sessionId, message: message),
@@ -84,6 +155,8 @@ final class ClaudeEventDispatcher({
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
+        ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
+        ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -163,18 +236,19 @@ final class ClaudeEventDispatcher({
         type: PluginMessagePartType.reasoning,
         text: "",
       ),
-      ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
-        sessionId: sessionId,
-        tool: _tools.start(
-          sessionId: sessionId,
-          messageId: messageId,
-          blockIndex: index,
-          toolId: id,
-          name: name,
-          input: input,
-        ),
-      ),
+      ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) =>
+        _tools
+            .start(
+              sessionId: sessionId,
+              messageId: messageId,
+              blockIndex: index,
+              toolId: id,
+              name: name,
+              input: input,
+            )
+            .toPart(),
       ClaudeMappedToolResultContentBlock() ||
+      ClaudeMappedTaskNotificationContentBlock() ||
       ClaudeMappedImageContentBlock() ||
       ClaudeMappedUnsupportedContentBlock() ||
       ClaudeMappedUnknownContentBlock() => null,
@@ -213,19 +287,14 @@ final class ClaudeEventDispatcher({
       case ClaudeStreamDeltaType.inputJson:
         final partialJson = message.delta["partial_json"];
         if (partialJson is! String) return const [];
-        final tool = _tools.appendInput(
-          sessionId: sessionId,
-          messageId: messageId,
-          blockIndex: index,
-          partialJson: partialJson,
+        return _partEvents(
+          tool: _tools.appendInput(
+            sessionId: sessionId,
+            messageId: messageId,
+            blockIndex: index,
+            partialJson: partialJson,
+          ),
         );
-        return tool == null
-            ? const []
-            : [
-                BridgeSseMessagePartUpdated(
-                  part: _toolPart(sessionId: sessionId, tool: tool),
-                ),
-              ];
       case ClaudeStreamDeltaType.other:
         return const [];
     }
@@ -242,10 +311,7 @@ final class ClaudeEventDispatcher({
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
     final completed = _completedStreamedParts[messageId]?.remove(index);
     return [
-      if (tool != null)
-        BridgeSseMessagePartUpdated(
-          part: _toolPart(sessionId: sessionId, tool: tool),
-        ),
+      ..._partEvents(tool: tool),
       if (tool == null && completed != null) BridgeSseMessagePartUpdated(part: completed),
     ];
   }
@@ -288,19 +354,20 @@ final class ClaudeEventDispatcher({
     for (var offset = 0; offset < mapped.length; offset++) {
       final index = firstBlockIndex + offset;
       final part = switch (mapped[offset]) {
-        ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) => _toolPart(
-          sessionId: sessionId,
-          tool: _tools.upsertCompleteBlock(
-            sessionId: sessionId,
-            messageId: messageId,
-            blockIndex: index,
-            toolId: id,
-            name: name,
-            input: input,
-          ),
-        ),
+        ClaudeMappedToolUseContentBlock(:final id, :final name, :final input) =>
+          _tools
+              .upsertCompleteBlock(
+                sessionId: sessionId,
+                messageId: messageId,
+                blockIndex: index,
+                toolId: id,
+                name: name,
+                input: input,
+              )
+              .toPart(),
         _ => parts[offset],
       };
+      if (part == null) continue;
       if (_streamedBlocks[messageId]?.contains(index) ?? false) {
         _completedStreamedParts.putIfAbsent(messageId, () => <int, PluginMessagePart>{})[index] = part;
       } else {
@@ -319,6 +386,9 @@ final class ClaudeEventDispatcher({
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
     if (results.isNotEmpty) {
+      // The frame-level typed result belongs to the frame's one tool result;
+      // a frame carrying several cannot attribute it.
+      final typedResult = results.length == 1 ? message.toolUseResult : const ClaudeToolUseResultAbsent();
       final events = <BridgeSseEvent>[];
       for (final result in results) {
         final tool = _tools.complete(
@@ -327,17 +397,18 @@ final class ClaudeEventDispatcher({
           output: result.output,
           isError: result.isError,
           attachments: result.attachments,
+          result: typedResult,
         );
         if (tool == null) continue;
-        events.add(
-          BridgeSseMessagePartUpdated(
-            part: _toolPart(sessionId: sessionId, tool: tool),
-          ),
-        );
+        events.addAll(_partEvents(tool: tool));
         if (tool.sessionDiffRequired) events.add(BridgeSseSessionDiff(sessionID: sessionId));
         if (tool.todoRefreshRequired) events.add(BridgeSseTodoUpdated(sessionID: sessionId));
       }
       return events;
+    }
+    if (mapped.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?) {
+      final events = _applyTaskNotification(sessionId: sessionId, notification: block.notification);
+      if (events != null) return events;
     }
 
     final messageId = _nonEmptyString(message.uuid);
@@ -364,6 +435,51 @@ final class ClaudeEventDispatcher({
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
     return events;
+  }
+
+  List<BridgeSseEvent> _mapTaskStarted({
+    required ClaudeTaskStartedMessage message,
+  }) {
+    final toolUseId = message.toolUseId;
+    final taskId = message.taskId;
+    if (toolUseId == null || taskId == null) return const [];
+    return _partEvents(
+      tool: _tools.taskStarted(toolUseId: toolUseId, taskId: taskId),
+    );
+  }
+
+  List<BridgeSseEvent> _mapTaskNotification({
+    required ClaudeTaskNotificationMessage message,
+  }) {
+    final toolUseId = message.toolUseId;
+    final taskId = message.taskId;
+    if (toolUseId == null || taskId == null) return const [];
+    return _partEvents(
+      tool: _tools.taskNotified(
+        toolUseId: toolUseId,
+        taskId: taskId,
+        status: message.status,
+        summary: message.summary,
+        result: null,
+      ),
+    );
+  }
+
+  /// Finalizes the task a `<task-notification>` user text names, hiding the
+  /// text; null when it names no task this session knows, so the caller
+  /// renders it as ordinary user text.
+  List<BridgeSseEvent>? _applyTaskNotification({
+    required String sessionId,
+    required ClaudeTaskNotification notification,
+  }) {
+    final tool = _tools.taskNotified(
+      toolUseId: notification.toolUseId,
+      taskId: notification.taskId,
+      status: notification.status,
+      summary: notification.summary,
+      result: notification.result,
+    );
+    return tool == null ? null : _partEvents(tool: tool);
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -437,6 +553,49 @@ final class ClaudeEventDispatcher({
       ),
     ];
   }
+
+  /// The part update for [tool], wrapped in the child-session lifecycle a task
+  /// implies: `session.created` + busy the first time its sub-agent id is
+  /// known, and idle once it is terminal. Order matters — the bridge binds the
+  /// child on `created` before it translates the part's `childSessionID`.
+  List<BridgeSseEvent> _partEvents({required ClaudeTrackedTool? tool}) {
+    final part = tool?.toPart();
+    // Children of children are flattened under the root: one directory, one
+    // parent, one place to look for them.
+    final root = tool == null ? null : _rootOf(tool.sessionId);
+    final directory = root == null ? null : _directories[root];
+    if (tool is! ClaudeTrackedTask || tool.childSessionId == null || root == null || directory == null) {
+      return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
+    }
+    final childId = tool.childSessionId;
+    final terminal = tool.state.status.isTerminal;
+    final announced = _announcedChildren.putIfAbsent(root, () => {});
+    final busy = _busyChildren.putIfAbsent(root, () => {});
+    final events = <BridgeSseEvent>[];
+    if (childId != null && announced.add(childId)) {
+      _roots[childId] = root;
+      events.add(
+        BridgeSseSessionCreated(
+          info: PluginSession(
+            id: childId,
+            projectID: directory,
+            directory: directory,
+            parentID: root,
+            title: switch (tool.input) {
+              {"description": final String description} => description,
+              _ => null,
+            },
+            time: null,
+          ).toJson(),
+        ),
+      );
+      if (!terminal) busy.add(childId);
+      events.add(_childStatus(childId: childId, busy: !terminal));
+    }
+    if (part != null) events.add(BridgeSseMessagePartUpdated(part: part));
+    if (childId != null && terminal && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));
+    return events;
+  }
 }
 
 PluginMessagePart _textPart({
@@ -461,12 +620,9 @@ PluginMessagePart _textPart({
   _ => throw ArgumentError.value(type, "type"),
 };
 
-PluginMessagePart _toolPart({required String sessionId, required ClaudeTrackedTool tool}) => PluginMessagePart.fromTool(
-  id: tool.id,
-  sessionID: sessionId,
-  messageID: tool.messageId,
-  tool: tool.name,
-  state: tool.state,
+BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
+  sessionID: childId,
+  status: (busy ? const shared.SessionStatus.busy() : const shared.SessionStatus.idle()).toJson(),
 );
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;

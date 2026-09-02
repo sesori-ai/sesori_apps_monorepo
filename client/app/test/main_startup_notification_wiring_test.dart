@@ -41,6 +41,8 @@ void main() {
 
     void initializeDeepLinks() => events.add("deepLinks");
 
+    void startAttribution() => events.add("attribution");
+
     Future<void> startProductAnalytics() async => events.add("productAnalytics");
 
     Future<void> startAnalyticsRouteListener() async => events.add("analyticsRoutes");
@@ -70,6 +72,7 @@ void main() {
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
       initializeDeepLinks: initializeDeepLinks,
+      startAttributionFn: startAttribution,
       startProductAnalyticsFn: startProductAnalytics,
       startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
       startNotificationStartupFn: startNotificationStartup,
@@ -112,6 +115,7 @@ void main() {
         "readChatInputMode",
         "runApp",
         "singularAttribution.suspend",
+        "attribution",
         "notificationStartup.done",
       ],
     );
@@ -139,6 +143,7 @@ void main() {
         throw StateError("startup failed");
       },
       initializeDeepLinks: () => events.add("deepLinks"),
+      startAttributionFn: () => events.add("attribution"),
       startProductAnalyticsFn: () async => events.add("productAnalytics"),
       startAnalyticsRouteListenerFn: () async => events.add("analyticsRoutes"),
       startNotificationStartupFn: () async => events.add("notificationStartup"),

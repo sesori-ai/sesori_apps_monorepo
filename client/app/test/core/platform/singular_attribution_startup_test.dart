@@ -45,7 +45,7 @@ void main() {
       containsPair("secretKey", "test-sdk-secret"),
     );
     expect(startedConfigs.single.toMap, containsPair("limitAdvertisingIdentifiers", true));
-    expect(startedConfigs.single.toMap, containsPair("limitDataSharing", true));
+    expect(startedConfigs.single.toMap, containsPair("limitDataSharing", false));
     expect(startedConfigs.single.toMap, containsPair("skAdNetworkEnabled", true));
     expect(startedConfigs.single.toMap, containsPair("enableLogging", false));
     expect(startedConfigs.single.toMap, isNot(contains("customUserId")));

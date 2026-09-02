@@ -5,6 +5,7 @@ export 'components/alerts/prego_inline_alerts_notifications.dart';
 export 'components/alerts/prego_popup_alerts_notifications.dart';
 export 'components/badges/prego_tag.dart';
 export 'components/buttons/prego_buttons_icon_glass.dart';
+export 'components/buttons/prego_copy_icon_button.dart';
 export 'components/buttons/prego_picker_button.dart';
 export 'components/buttons/prego_switch.dart';
 export 'components/icons/prego_avatar_user.dart';

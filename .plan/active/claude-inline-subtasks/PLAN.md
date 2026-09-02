@@ -373,7 +373,7 @@ History replay, in `ClaudeHistoryMapper`:
     `listTranscriptPaths` walk already yields `subagents/agent-*.jsonl`; it
     gains `readSubagentMeta(transcriptPath:) → ClaudeSubagentMetaDto?`
     (Freezed DTO in `api/models/claude_subagent_meta_dto.dart`: `agentType`,
-    `description`, `toolUseId`, `spawnDepth`), `deleteSessionDirectory(...)`,
+    `description`, `toolUseId`, `spawnDepth`), `deleteDirectory(...)`,
     and reuses `lastModified`. No classification logic.
   - `ClaudeTranscriptCatalogRepository` (Layer 2) owns child detection from
     the walk (an `agent-*.jsonl` under `subagents/` whose grandparent directory
@@ -426,7 +426,7 @@ History replay, in `ClaudeHistoryMapper`:
   surfaces (`session.created`/`session.status` events, `getSessionStatuses`,
   `childSessionIds`); no bridge/app change is needed for that.
 - Delete: root deletion also removes `<root>/` (its `subagents/`) through the
-  API's `deleteSessionDirectory`; child deletion removes the `.jsonl` and
+  API's `deleteDirectory`; child deletion removes the `.jsonl` and
   `.meta.json`. Rename/archive on a child are no-ops, as today for OpenCode
   children.
 - Legacy flat `agent-<slug>-<hex>.jsonl` transcripts stay excluded (no title,
@@ -759,11 +759,12 @@ Scope:
   (marker-prefix parse; never rendered).
 - `claude_tool_tracker.dart`: `task` kind; per-session task map surviving
   turns; terminal rules; `cancelAll(sessionId)`.
-- `claude_event_dispatcher.dart`: subtask part builder; task frame handling;
-  consumes the typed notification block; `cancelTasks(sessionId:)`,
-  `residentTaskToolUseIds(sessionId:)`, `childSessionStatuses(sessionId:)`
-  accessors (the last is used by Step 4). Forwarded sub-agent frames stay
-  dropped until Step 5.
+- `claude_event_dispatcher.dart`: task frame handling; consumes the typed
+  notification block; `cancelTasks(sessionId:)` and
+  `residentTaskToolUseIds(sessionId:)` accessors (`childSessionStatuses` lands
+  with its consumer in Step 4). The one subtask/tool part builder is
+  `ClaudeTrackedTool.toPart`, shared with replay. Forwarded sub-agent frames
+  stay dropped until Step 5.
 - `claude_history_mapper.dart` + transcript DTO/record: `toolUseResult`,
   `agentId`; `map(..., residentTaskToolUseIds)` owns the running→cancelled
   downgrade.
@@ -773,9 +774,11 @@ Scope:
   it before `forgetSession`.
 - `models/claude_task_type.dart`: closed `ClaudeTaskType` (`subAgent` for
   `local_agent`, `other`), parsed on `ClaudeTaskStartedMessage`.
-- `services/claude_session_service.dart`: `ClaudeContentMapper` becomes a
-  required constructor dependency (descriptor wiring updated);
-  `_SessionTurnState.runningTaskIds` (`{taskId → ClaudeTaskType}`) tracked
+- `services/claude_session_service.dart`: parses `<task-notification>` text
+  through the shared `ClaudeTaskNotification.tryParse` (in `models/`) directly
+  on raw user content, the way `_trackWakeupSchedule` reads raw tool_use
+  blocks, so no `ClaudeContentMapper` dependency is added (implementation
+  refinement 2026-09-01, see `TRACKER.md`); `_SessionTurnState.runningTaskIds` (`{taskId → ClaudeTaskType}`) tracked
   from `ClaudeTaskStartedMessage`/`ClaudeTaskNotificationMessage` in
   `_handleProcessEvent` (beside `_trackWakeupSchedule`), cleared on process
   exit and abort; folded into `sessionStatuses`, `_syncWorkState`,
@@ -804,8 +807,9 @@ Verification: `dart analyze --fatal-infos` and `dart test` in
 
 Scope:
 
-- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`:
-  `readSubagentMeta`, `deleteSessionDirectory`; no classification.
+- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`
+  (Freezed): `readSubagentMeta`, `deleteDirectory`; no classification.
+  `models/claude_subagent_session_id.dart` owns the `agent-<agentId>` rule.
 - `claude_transcript_catalog_repository.dart` + `ClaudeSessionRecord.parentId`:
   child detection, `agent-` id resolution, legacy exclusion, root/child
   delete decisions, roots-only `getSessions`.

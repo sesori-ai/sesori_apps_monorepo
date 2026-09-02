@@ -7,6 +7,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/core/di/injection.dart";
+import "package:sesori_mobile/core/platform/file_attribution_claim_storage.dart";
 import "package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_client.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cutoff_source.dart";
@@ -54,6 +55,7 @@ void main() {
 
   test("Singular attribution resolves independently of Firebase", () {
     expect(getIt<AttributionClient>(), isA<SingularAttributionClient>());
+    expect(getIt<AttributionClaimStorage>(), isA<FileAttributionClaimStorage>());
     expect(getIt<SingularStaticAdapter>(), isA<SingularStaticAdapter>());
     expect(getIt<InstallationAnalyticsService>(), isA<InstallationAnalyticsService>());
   });

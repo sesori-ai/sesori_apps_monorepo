@@ -11,12 +11,20 @@ class SingularAttributionClient({
   required final SingularStaticAdapter _singular,
 }) implements AttributionClient {
   @override
+  bool get isReady => _startup.isStarted;
+
+  @override
   Future<void> logEvent({required AttributionEvent event}) async {
     final eventName = switch (event) {
       AttributionEvent.accountCreated => Events.sngCompleteRegistration,
       AttributionEvent.accountLogin => Events.sngLogin,
+      AttributionEvent.bridgePaired => "bridge_paired",
+      AttributionEvent.firstSessionRun => "first_session_run",
     };
-    if (!_startup.activateAfterInteractiveAuthentication()) return;
+    // Only interactive authentication may lift a deferred start; one-shot
+    // activation events require Singular to be running already.
+    final canReport = event.isOneShot ? _startup.isStarted : _startup.activateAfterInteractiveAuthentication();
+    if (!canReport) return;
     _singular.event(eventName: eventName);
   }
 }

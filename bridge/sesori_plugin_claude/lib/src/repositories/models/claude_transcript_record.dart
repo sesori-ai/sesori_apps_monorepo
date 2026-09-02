@@ -1,4 +1,5 @@
 import "../../models/claude_effort_level.dart";
+import "../../models/claude_tool_use_result.dart";
 
 /// One decoded line of a Claude Code transcript.
 ///
@@ -50,6 +51,10 @@ sealed class const ClaudeTranscriptAttributedRecord({
   /// but a small number of session files also carry sidechain records, so this
   /// flag is checked in addition to the filename.
   required final bool? isSidechain,
+
+  /// The sub-agent that wrote the record. Sub-agent transcripts carry the
+  /// **parent's** [sessionId], so this is what attributes them.
+  required final String? agentId,
   required final String? gitBranch,
 
   /// The CLI version that wrote the record.
@@ -64,9 +69,17 @@ final class const ClaudeTranscriptUserRecord({
   required final Object? content,
   required final bool isMeta,
   required final bool isVisibleInTranscriptOnly,
+
+  /// The typed result of the tool call this record's `tool_result` completes.
+  required final ClaudeToolUseResult toolUseResult,
+
+  /// True when the CLI injected this record to deliver a background task's
+  /// outcome to the model; it is never user-authored.
+  required final bool isTaskNotification,
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,
+  required super.agentId,
   required super.gitBranch,
   required super.version,
   required super.sessionId,
@@ -87,6 +100,7 @@ final class const ClaudeTranscriptAssistantRecord({
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,
+  required super.agentId,
   required super.gitBranch,
   required super.version,
   required super.sessionId,
@@ -103,6 +117,7 @@ final class const ClaudeTranscriptUnreplayableMessageRecord({
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,
+  required super.agentId,
   required super.gitBranch,
   required super.version,
   required super.sessionId,
@@ -115,6 +130,7 @@ final class const ClaudeTranscriptContextRecord({
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,
+  required super.agentId,
   required super.gitBranch,
   required super.version,
   required super.sessionId,
