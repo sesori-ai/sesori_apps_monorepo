@@ -307,6 +307,14 @@ IMPORTANT: Do NOT create new worktrees.
               {"type": "text", "text": "You've hit your session limit"},
             ],
           ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "api-error-record-continuation",
+            messageId: "synthetic-error-message",
+            model: "<synthetic>",
+            isApiErrorMessage: true,
+            content: const [],
+          ),
         ],
       );
 
@@ -326,6 +334,32 @@ IMPORTANT: Do NOT create new worktrees.
       expect((error.info as PluginMessageError).modelID, "claude-test-model");
       expect((error.info as PluginMessageError).providerID, "anthropic");
       expect(error.parts, isEmpty);
+    });
+
+    test("uses the live fallback for a persisted API failure without text", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "assistant",
+            uuid: "empty-api-error-record",
+            messageId: "empty-synthetic-error-message",
+            model: "<synthetic>",
+            isApiErrorMessage: true,
+            content: const [],
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
+      );
+
+      final error = messages.single.info as PluginMessageError;
+      expect(error.errorMessage, "Claude Code could not complete the API request.");
     });
 
     test("reads the typed tool-use result and task-notification origin from the transcript", () async {

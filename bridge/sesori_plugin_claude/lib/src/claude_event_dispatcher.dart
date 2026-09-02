@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "api/models/claude_stream_message.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
+import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
@@ -331,6 +332,7 @@ final class ClaudeEventDispatcher({
     final mapped = _content.map(content: message.message["content"]);
     if (message.error != ClaudeAssistantError.none) {
       _mappedApiErrorSessions.add(sessionId);
+      final error = mapClaudeApiError(blocks: mapped, status: message.apiErrorStatus);
       return [
         BridgeSseMessageUpdated(
           info: PluginMessage.error(
@@ -340,8 +342,8 @@ final class ClaudeEventDispatcher({
             modelID: _models[sessionId],
             providerID: "anthropic",
             variant: null,
-            errorName: _apiErrorName(status: message.apiErrorStatus),
-            errorMessage: _apiErrorMessage(blocks: mapped) ?? "Claude Code could not complete the API request.",
+            errorName: error.name,
+            errorMessage: error.message,
             time: _messageTime(message.timestamp),
           ).toJson(),
         ),
@@ -662,16 +664,6 @@ PluginMessageTime? _messageTime(DateTime? timestamp) =>
 
 String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Claude Code is retrying the request.";
 
-String? _apiErrorMessage({required List<ClaudeMappedContentBlock> blocks}) {
-  final text = [
-    for (final block in blocks)
-      if (block case ClaudeMappedTextContentBlock(:final text)) text,
-  ].join("\n");
-  return text.isEmpty ? null : text;
-}
-
-String _apiErrorName({required int? status}) => status == 401 || status == 403 ? "authentication_failed" : "api_error";
-
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
   if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
     return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
@@ -683,7 +675,7 @@ String _apiErrorName({required int? status}) => status == 401 || status == 403 ?
 
 ({String name, String message}) _resultErrorFallback(ClaudeResultMessage result) {
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {
-    return (name: _apiErrorName(status: result.apiErrorStatus), message: "Claude Code authentication failed.");
+    return (name: claudeApiErrorName(status: result.apiErrorStatus), message: "Claude Code authentication failed.");
   }
   return switch (result.terminalReason) {
     ClaudeTerminalReason.budgetExhausted => (
@@ -699,7 +691,7 @@ String _apiErrorName({required int? status}) => status == 401 || status == 403 ?
       message: "Claude Code could not produce valid structured output.",
     ),
     ClaudeTerminalReason.apiError => (
-      name: _apiErrorName(status: result.apiErrorStatus),
+      name: claudeApiErrorName(status: result.apiErrorStatus),
       message: result.apiErrorStatus == null
           ? "Claude Code could not complete the API request."
           : "Claude Code could not complete the API request (HTTP ${result.apiErrorStatus}).",
