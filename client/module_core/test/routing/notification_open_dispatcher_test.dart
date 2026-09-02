@@ -303,6 +303,7 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionTitle,
   }) async {}
 
+  @override
   Future<void> dispose() async {
     await _notificationOpenedController.close();
   }
