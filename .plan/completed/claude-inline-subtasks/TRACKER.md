@@ -498,3 +498,15 @@ implementation PR. E2E testing is performed after each PR merges.
   Accepted limitation: a root whose only resident work is a non-sub-agent
   background task is busy but absent from the activity summary (no contract
   slot); recorded in the risk table.
+
+### Harness follow-ups (2026-09-02)
+
+`architecture-plan-review` of `HARNESS_FOLLOWUPS.md` via sub-agent: rejected
+once with six findings, all applied without re-review: one Layer-2
+`AcpChildSessionTracker` owns child lifecycle (no plugin/mapper split); the
+scoped-stop policy lives once in `AcpPlugin.abortSession` over an abstract
+`cancelChild` API seam; a shared tool-call classification seam replaces
+per-harness suppression; Codex root status stays busy while children run and
+its tracker is placed beside `CodexToolLifecycleTracker`; the older-adapter
+fallback for DeepSeek was dropped with the protocol version fixed at 2 and the
+manifest pinned to 0.1.3; "helper" naming removed.

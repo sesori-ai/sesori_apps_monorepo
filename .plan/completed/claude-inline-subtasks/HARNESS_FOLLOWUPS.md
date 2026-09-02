@@ -34,8 +34,32 @@ verdicts and versions are recorded in the capability matrix.
 ## Shared Rules
 
 - Backend payloads, DTOs, and lifecycle mapping stay inside the owning plugin
-  package. The generic ACP plugin gains only backend-neutral seams, and only
-  when the Grok work (its first consumer) needs them; DeepSeek reuses them.
+  package. The generic ACP plugin gains exactly four backend-neutral seams,
+  introduced by the Grok chain (their first consumer) and reused by DeepSeek:
+  1. `AcpChildSessionTracker`
+     (`bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_child_session_tracker.dart`),
+     a Layer-2 tracker owned by the base `AcpEventMapper`, mirroring the Claude
+     split. It is the single owner of child lifecycle: harness mappers feed it
+     typed spawn/finish facts and it emits the child `session.created`, busy/idle
+     status, and the `subtask` part; it exposes `childStatuses`,
+     `busyChildIds`, and `runningChildren` (each with an `isBackground` flag).
+     `AcpPlugin` makes no lifecycle decision: it composes the disjoint union in
+     `getSessionStatuses`, reads `busyChildIds` in `_finishTurn` to defer the
+     root idle emission and in the summary for `childSessionIds`, and clears
+     the tracker on process exit and `forgetSession`. The child directory is
+     `directoryForSession(root)`, never the launch directory.
+  2. A protected tool-call classification method on `AcpEventMapper` that lets a
+     harness mapper declare a spawn `tool_call` as the opening of a subtask
+     tile instead of a tool card, so one tile renders per child.
+  3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
+     running children rejects with the count, `mainAgentRunning = pending > 0`,
+     and `mainAgentOnlySupported = every running child isBackground`; `keep`
+     sends `session/cancel` only; `stop` sends `session/cancel` plus
+     `cancelChild` per running child. `interruptActiveWork` uses `stop`.
+  4. One abstract backend seam `cancelChild({sessionId, childSessionId})` on
+     the per-harness ACP API; Grok and DeepSeek supply only the request shape.
+  Harness subclasses therefore override payload parsing and `cancelChild`, and
+  nothing else.
 - Child session ids are the harness's own session or thread ids. Parentage is
   data on the session record, never an id prefix.
 - One child equals one tile. Progress events do not update the tile; only
@@ -109,7 +133,11 @@ verdicts and versions are recorded in the capability matrix.
   live spawn map. Children inherit the parent's directory so their events carry
   the parent's project id. Child history reads by thread id; the copied parent
   prefix is trimmed only if the 0.148.0 probe still shows it.
-- **Tiles.** A per-parent `CodexSubAgentTracker`: `spawnAgent` opens a
+- **Tiles.** A per-parent `CodexSubAgentTracker`
+  (`repositories/codex_sub_agent_tracker.dart`, beside
+  `CodexToolLifecycleTracker`), fed by `CodexPlugin._handleNotification` with
+  the mapper rendering from tracker output, as the existing composition does:
+  `spawnAgent` opens a
   `subtask` part (`messageID` = item id, `prompt`, description from agent path
   or nickname, `childSessionID` = first receiver thread, `taskState` pending
   then running on `started`); `completed` completes, `interrupted` and
@@ -120,8 +148,12 @@ verdicts and versions are recorded in the capability matrix.
   `turn/completed`.
 - **Live streaming.** Nothing to route: child items already arrive under the
   child thread id and render once the child session exists.
-- **Busy accounting.** Summary iterates roots; `childSessionIds` are the busy
-  children; `mainAgentRunning` is the root's own turn.
+- **Busy accounting.** The root status stays busy while the tracker holds a
+  running child: the idle transition after the root `turn/completed` is
+  deferred until the last child completes, interrupts, or closes, so the idle
+  reaper and safe stops never kill a running child and the completion push
+  fires once. Summary iterates roots; `childSessionIds` are the busy children;
+  `mainAgentRunning` is the root's own turn.
 - **Scoped stop.** `confirm` with busy children rejects with the count and
   `mainAgentRunning`. `stop` interrupts the root then each busy child.
   `keep` interrupts the root only and returns `workKept: true` if the probe
@@ -189,42 +221,37 @@ verdicts and versions are recorded in the capability matrix.
 - **Ownership.** `GrokEventMapper extends AcpEventMapper` overrides
   `mapExtension`; Freezed DTOs parse the snake_case payloads into a sealed
   `GrokSubagentUpdate` (`spawned | progress | finished`) with a closed status
-  enum. The generic ACP plugin gains three backend-neutral seams, introduced
-  here because Grok is their first consumer and DeepSeek the second: a helper
-  that emits a live child (created, busy status, subtask part), a child-status
-  map merged into `getSessionStatuses` and the summary's `childSessionIds`,
-  and an `abortSession` decision hook.
+  enum and feed `AcpChildSessionTracker` (Shared Rules, seam 1). This chain
+  introduces the four shared seams.
 - **Tiles.** `subagent_spawned` emits the child session (`parentID` = root,
   title = description, directory = root's), busy status, and a `subtask` part
   (`agent` = subagent type, `childSessionID` = child session id, running).
   `subagent_progress` is ignored. `subagent_finished` completes, errors, or
   cancels and sets the child idle. If the spawn also arrives as a standard
-  `tool_call` for `spawn_subagent`, the mapper suppresses that tool card so one
-  tile renders (probe decides).
+  `tool_call` for `spawn_subagent`, the Grok mapper classifies it as the tile
+  opening through seam 2 (probe decides whether it arrives).
 - **Child history and streaming.** Child `session/update`s flow through the
   existing mapper once the child exists. `getSessionMessages(child)` works if
   `session/load` accepts child ids (probe). If `session/load` does not replay
   `x.ai` frames, the parent tile after reload degrades to a `spawn_subagent`
   tool card; accepted and recorded in the matrix.
-- **Busy accounting.** Root idle emission is deferred while children run and
-  released on the last `subagent_finished`; process exit cancels tracked
-  children.
-- **Scoped stop.** `confirm` rejects with the running count. `stop` sends
-  `session/cancel` plus `x.ai/subagent/cancel` per child. `keep` sends
-  `session/cancel` only. `mainAgentOnlySupported` is true when every running
-  child is background (they survive a turn cancel by documented behavior); if
-  the spawn payload exposes no background flag and the probe shows a
-  foreground child dying with the parent tool call, report false as for
-  OpenCode.
+- **Busy accounting.** Through seam 1: root idle is deferred while
+  `busyChildIds` is non-empty and released on the last `subagent_finished`;
+  process exit clears the tracker.
+- **Scoped stop.** Through seam 3; `GrokAcpApi.cancelChild` sends
+  `x.ai/subagent/cancel {subagentId}`. `isBackground` comes from the spawn
+  payload; if it exposes no background flag and the probe shows a foreground
+  child dying with the parent tool call, every child is recorded as
+  foreground, so `mainAgentOnlySupported` is false as for OpenCode.
 
 ### PRs
 
 | Emoji | Description | Scope |
 |---|---|---|
-| ⚙️ | `grok: parse sub-agent lifecycle notifications` | DTOs, `GrokEventMapper.mapExtension`, ACP live-child helper, subtask part and child created/status emission, mapper fixtures from the probe |
-| ⚙️ | `acp: child sessions keep the root busy` | child-status map, idle deferral, summary `childSessionIds`, exit cleanup, Grok `getChildSessions`/`sessionParentId` |
+| ⚙️ | `grok: parse sub-agent lifecycle notifications` | DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker` (seam 1) and the tool-call classification (seam 2), mapper fixtures from the probe |
+| ⚙️ | `acp: child sessions keep the root busy` | `AcpPlugin` composes tracker statuses, idle deferral in `_finishTurn`, summary `childSessionIds`, exit cleanup, Grok `getChildSessions`/`sessionParentId` |
 | 🌿 | `grok: child session history` | `session/load` for child ids, parent replay of `x.ai` frames if replayed |
-| ⚙️ | `grok: scoped stop for sub-agents` | `abortSession` hook, `x.ai/subagent/cancel` in the Grok API, `mainAgentOnlySupported` rule, `interruptActiveWork` uses stop |
+| ⚙️ | `grok: scoped stop for sub-agents` | policy in `AcpPlugin.abortSession` (seam 3), `cancelChild` seam and its Grok request (seam 4), `interruptActiveWork` uses stop |
 | 🌱 | `docs: record Grok Build sub-agent coverage` | matrix footnote ¹⁰ resolved, regression docs |
 
 ### Open questions (probe with `grok --no-auto-update agent --no-leader stdio`)
@@ -291,20 +318,21 @@ verdicts and versions are recorded in the capability matrix.
   `ctx.subagents.interrupt`. History replay folds the same start/end info into
   the `_meta` envelope of the parent's `subagent` tool call so a reload
   rebuilds the tile from one page.
-- **Plugin.** DTOs, tracker, and mapping live in `sesori_plugin_deepseek`,
-  reusing the ACP seams introduced by the Grok chain. `tool_call` for
-  `subagent*` opens a `subtask` tile; `started` binds `childSessionID` and
-  label; `ended` maps `aborted` to cancelled and `error`, `max-tokens`,
-  `refusal` to error. Adapter exit cancels open tiles. The tracker survives the
+- **Plugin.** DTOs and payload parsing live in `sesori_plugin_deepseek`;
+  lifecycle goes through `AcpChildSessionTracker` (seam 1). The `subagent*`
+  `tool_call` is classified as the tile opening (seam 2); `started` binds
+  `childSessionID`, label, and `isBackground` from `mode`; `ended` maps
+  `aborted` to cancelled and `error`, `max-tokens`, `refusal` to error.
+  Adapter exit clears the tracker. Tracker state is independent of the
   per-turn `_liveTools` clear.
-- **Busy accounting.** Root busy while any tracked child runs;
-  `mainAgentRunning` is `pending > 0`.
-- **Scoped stop.** `confirm` rejects with the count and
-  `mainAgentOnlySupported: everyRunningChildIsBackground`. `keep` (only when
-  supported) sends `session/cancel`. `stop` sends `session/cancel` plus
-  `deepseek/subagent/interrupt` per running child; uninterruptible one-shot
-  fork jobs are reported honestly in the matrix. On an adapter without v2
-  metadata the plugin keeps today's behavior.
+- **Busy accounting and scoped stop.** Through seams 1 and 3;
+  `DeepSeekAcpApi.cancelChild` sends `deepseek/subagent/interrupt`.
+  Uninterruptible one-shot fork jobs are recorded as foreground, so they
+  never make `mainAgentOnlySupported` true, and the matrix notes they cannot
+  be stopped alone.
+- **Adapter version.** `EXTENSION_PROTOCOL_VERSION` becomes 2 and the runtime
+  manifest pins adapter 0.1.3, which the plugin always launches; no fallback
+  path for an older adapter exists because no flow runs one.
 
 ### PRs
 
@@ -312,8 +340,8 @@ verdicts and versions are recorded in the capability matrix.
 |---|---|---|---|
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | listeners, child records, `deepseek/subagent`, `_meta` history fold, schema and fixtures, protocol version 2 |
 | adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | `deepseek/subagent/interrupt`, schema, version bump, release checksums |
-| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, tracker, mapper, history fold, runtime manifest target 0.1.3, ACP seam reuse |
-| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `abortSession` override, `interruptSubagent` API, mixed foreground/background policy tests |
+| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, mapper feeding seams 1 and 2, history fold, runtime manifest target 0.1.3; lands after the Grok lifecycle PRs |
+| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `DeepSeekAcpApi.cancelChild` (seam 4), mixed foreground/background policy tests through seam 3 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | matrix footnote ⁹ resolved, regression docs |
 
 ### Open questions (probe)
@@ -326,8 +354,6 @@ verdicts and versions are recorded in the capability matrix.
    result?
 3. Does the parent report idle while a continuable child runs, and does its
    later "subagent reported" turn arrive with no inflight prompt?
-4. Protocol version: bump to 2 with the plugin accepting 1 or higher
-   (proposed), or detect by notification presence.
 
 ## Non-Goals
 
