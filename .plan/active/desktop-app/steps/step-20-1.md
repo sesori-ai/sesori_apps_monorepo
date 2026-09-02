@@ -37,8 +37,21 @@
 - Dart LSP reports zero diagnostics across all 12 changed production Dart files.
 - `git diff --check` passes.
 - A clean `asdf exec flutter build macos` succeeds (65.7 MB reported by Flutter), and `codesign --verify --deep --strict` accepts the resulting app bundle.
-- The pinned implementation range changes 23 files with 914 additions and 63 deletions (977 total changed lines), below the 1,500-line soft cap. This measurement excludes this evidence-only commit.
 - Real display rearrangement and relaunch ergonomics remain part of user-run MT Gate C after all three Step 20 slices.
+
+### Line-budget reproduction
+
+The reviewed implementation head is `e763e0513c221464d3ae5050bc27d5dcd03cc21b`. The measurement is intentionally
+not self-inclusive: it excludes the later evidence-only commit that created this file.
+
+```bash
+base=$(git merge-base 74d84c4ddcd4818ea2b435088f014cdfd5229c9a e763e0513c221464d3ae5050bc27d5dcd03cc21b)
+git diff --numstat "$base" e763e0513c221464d3ae5050bc27d5dcd03cc21b \
+  | awk '{ additions += $1; deletions += $2 } END { print additions, deletions, additions + deletions }'
+# 914 63 977
+```
+
+The 914 additions plus 63 deletions reconcile to 977 total changed lines across 23 files, below the 1,500-line soft cap.
 
 ## Acceptance
 
