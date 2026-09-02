@@ -7,11 +7,13 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -987,6 +989,33 @@ void main() {
       await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+    });
+
+    test("a refused confirm stop returns the rejection and leaves queued work untouched", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      const rejection = SessionAbortRejection(runningSubAgentCount: 2, mainAgentRunning: true);
+      when(
+        () => mockSessionRepository.abortSession(sessionId: _sessionId, subAgents: SessionAbortSubAgentPolicy.confirm),
+      ).thenThrow(SessionAbortRejectedException(rejection: rejection, innerError: StateError("409")));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+
+      final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
+
+      expect(outcome, isA<SessionAbortRejected>().having((o) => o.rejection, "rejection", rejection));
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
     });
 
     test("cancel removes the entry on success and on not-found, keeps it on transport failure", () async {

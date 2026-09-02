@@ -2213,10 +2213,12 @@ class SessionDetailCubit(
   /// are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
-      final current = state;
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
       if (root case ErrorResponse(:final error)) throw error;
 
+      // Read state after the await: an abort-driven status or transcript event
+      // may have landed meanwhile and must not be overwritten by a stale copy.
+      final current = state;
       if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
         _promptQueue.clear();
         _staleOptionsRecoveryAttemptedPromptIds.clear();
