@@ -2,7 +2,8 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks` (follow-ups to the completed series)
+- **Plan slug:** `claude-inline-subtasks` (the plan is reactivated under
+  `.plan/active` until the three coverage PRs merge, then moved back)
 - **Plan date:** 2026-09-02
 - **Base:** `main` at `6e9028c4c6`
 - **Delivery:** PRs titled `<emoji> [claude-inline-subtasks] <description>` with
@@ -45,8 +46,10 @@ verdicts and versions are recorded in the capability matrix.
      `busyChildIds`, and `runningChildren` (each with an `isBackground` flag).
      `AcpPlugin` makes no lifecycle decision: it composes the disjoint union in
      `getSessionStatuses`, reads `busyChildIds` in `_finishTurn` to defer the
-     root idle emission and in the summary for `childSessionIds`, and clears
-     the tracker on process exit and `forgetSession`. The child directory is
+     root idle emission, in `_syncWorkState` so `PluginWorkState` stays busy
+     and the lifecycle service never suspends the process while a child runs,
+     and in the summary for `childSessionIds`; it clears the tracker on
+     process exit and `forgetSession`. The child directory is
      `directoryForSession(root)`, never the launch directory.
   2. A protected tool-call classification method on `AcpEventMapper` that lets a
      harness mapper declare a spawn `tool_call` as the opening of a subtask
@@ -55,7 +58,11 @@ verdicts and versions are recorded in the capability matrix.
      running children rejects with the count, `mainAgentRunning = pending > 0`,
      and `mainAgentOnlySupported = every running child isBackground`; `keep`
      sends `session/cancel` only; `stop` sends `session/cancel` plus
-     `cancelChild` per running child. `interruptActiveWork` uses `stop`.
+     `cancelChild` per cancellable child. Each running child also carries
+     `canCancel`; when a non-cancellable child survives a `stop`, the result is
+     `PluginAbortAccepted(workKept: true)` and the root stays busy until that
+     child finishes, so the partial stop is never reported as complete.
+     `interruptActiveWork` uses `stop`.
   4. One abstract backend seam `cancelChild({sessionId, childSessionId})` on
      the per-harness ACP API; Grok and DeepSeek supply only the request shape.
   Harness subclasses therefore override payload parsing and `cancelChild`, and
@@ -92,8 +99,9 @@ verdicts and versions are recorded in the capability matrix.
   completed | failed | interrupted | errored | shutdown | notFound`). Item
   `subAgentActivity` (`kind`: `started | interacted | interrupted |
   completed`; `agentThreadId`, `agentPath`). Upstream `main` has renamed the
-  item to `collabToolCall` with `receiverThreadId`/`newThreadId`; 0.148.0 does
-  not carry those strings, so the parser accepts both type names.
+  item to `collabToolCall`; 0.148.0 does not carry that shape, so the parser
+  accepts only `collabAgentToolCall` and is updated when the pinned release
+  changes and a probe confirms the new shape.
 - Parent-owned children reject `turn/start` and `turn/steer`
   (`direct app-server input is not allowed for multi-agent v2 sub-agents`);
   `turn/interrupt` is allowed on them. `thread/delete` and `thread/archive`
@@ -124,7 +132,7 @@ verdicts and versions are recorded in the capability matrix.
   the parent, nickname, role, source, and agent-path fields. A new Freezed
   parser yields sealed `CodexCollabItem` (`spawnAgent`, `wait`, `closeAgent`,
   `sendInput`, `resumeAgent`, `unknown`) and `CodexSubAgentActivity` with
-  closed enums and `unknown` fallbacks.
+  closed enums and `unknown` fallbacks (only the 0.148.0 item names).
 - **Child sessions.** `CodexThreadRecord.parentId`; `thread/started` with a
   parent emits `Session(parentID: parent, title: nickname ?? agentPath)`.
   The catalog maps `thread_source == subagent` rollouts with their parent and
@@ -310,8 +318,12 @@ verdicts and versions are recorded in the capability matrix.
   childSessionId, stopReason, summary?}` (bounded text of the last assistant
   message). Mode derives from the open `subagent`/`subagent_fork` call's
   `run_in_background` argument with the tool defaults; label from
-  `subagent/descriptor`. When several calls are open, `toolCallId` is null and
-  the label matches. Child transcripts: the adapter projects events for
+  `subagent/descriptor`. `toolCallId` is required: `subagent/start` fires
+  inside the spawning tool execution, so the adapter records the executing
+  tool call per parent and binds the child to it, buffering the notification
+  until the call is known. If the probe shows a case where no call can be
+  resolved, the plugin opens a lifecycle-derived tile from `started` alone;
+  labels are never used for correlation. Child transcripts: the adapter projects events for
   sessions whose header `parentSession` is an owned root as ordinary
   `session/update`s under the child id. New method
   `deepseek/subagent/interrupt {sessionId, childSessionId}` calls
@@ -327,12 +339,16 @@ verdicts and versions are recorded in the capability matrix.
   per-turn `_liveTools` clear.
 - **Busy accounting and scoped stop.** Through seams 1 and 3;
   `DeepSeekAcpApi.cancelChild` sends `deepseek/subagent/interrupt`.
-  Uninterruptible one-shot fork jobs are recorded as foreground, so they
-  never make `mainAgentOnlySupported` true, and the matrix notes they cannot
-  be stopped alone.
-- **Adapter version.** `EXTENSION_PROTOCOL_VERSION` becomes 2 and the runtime
-  manifest pins adapter 0.1.3, which the plugin always launches; no fallback
-  path for an older adapter exists because no flow runs one.
+  Uninterruptible one-shot fork jobs are recorded with `canCancel: false`
+  and as foreground, so they never make `mainAgentOnlySupported` true, a
+  `stop` that leaves one running reports `workKept: true`, and the matrix
+  notes they cannot be stopped alone.
+- **Adapter version.** `EXTENSION_PROTOCOL_VERSION` becomes 2. The runtime
+  manifest raises `targetVersion` and `minPathVersion` to 0.1.3, so an
+  explicitly configured or PATH adapter below 0.1.3 is reported by setup as
+  needing an update instead of failing at initialization; setup tests cover
+  the floor. With the floor raised no flow launches a v1 adapter, so the
+  plugin has no v1 fallback path.
 
 ### PRs
 
@@ -340,7 +356,7 @@ verdicts and versions are recorded in the capability matrix.
 |---|---|---|---|
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | listeners, child records, `deepseek/subagent`, `_meta` history fold, schema and fixtures, protocol version 2 |
 | adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | `deepseek/subagent/interrupt`, schema, version bump, release checksums |
-| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, mapper feeding seams 1 and 2, history fold, runtime manifest target 0.1.3; lands after the Grok lifecycle PRs |
+| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, mapper feeding seams 1 and 2, history fold, runtime manifest target and PATH floor 0.1.3 with setup tests; lands after the Grok lifecycle PRs |
 | monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `DeepSeekAcpApi.cancelChild` (seam 4), mixed foreground/background policy tests through seam 3 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | matrix footnote ⁹ resolved, regression docs |
 
