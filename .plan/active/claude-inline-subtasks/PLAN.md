@@ -684,8 +684,9 @@ idle only after its last running task and the wake-up turn settle; a plain
 stop while sub-agents run is refused and confirmed as main-agent-only or full
 stop), `notifications.md` (completion fires once, after the last sub-agent
 settles), `plugin-setup-and-lifecycle.md` (idle reap and safe stop defer
-while a Claude task runs), `popup-alerts.md` (the stop-scope confirmation
-dialog).
+while a Claude task runs). `popup-alerts.md` was listed for the stop-scope
+dialog but covers the transient alert surface, not modal dialogs; the dialog
+is documented under `session-turns.md` instead (Step 7 decision, 2026-09-02).
 
 Highest level needed: **L4**. Matrix: Claude plugin for all new behavior;
 OpenCode representative proof that a `state: null` subtask part still renders

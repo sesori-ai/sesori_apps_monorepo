@@ -91,7 +91,14 @@ reconnect or restart.
   kept fresh across an abrupt bridge death — including when the status is
   unobservable, since a stopped backend hosts no live tool. Finalization never
   advances the session's freshness marks, and a genuinely running tool swept by
-  the turn-start race is corrected by its next live capture.
+  the turn-start race is corrected by its next live capture. An open subtask
+  part is swept the same way but to `cancelled` with no error text; because a
+  root stays busy while any of its sub-agents runs, a live background
+  sub-agent is never swept, only one whose bridge died.
+- Claude sub-agent transcripts (`<root>/subagents/agent-<agentId>.jsonl`)
+  replay as child sessions with stable message and part identities, so an open
+  child screen converges after a reload without duplicates; nested sub-agents
+  replay under the root.
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages, applies thinking-level changes to later assistant and
   error messages on that branch, and omits compaction and branch-summary
@@ -161,6 +168,9 @@ rules where supported.
   the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
+- After a bridge restart an idle Claude root still shows a running subtask tile,
+  or a busy root's live background sub-agent tile is swept to cancelled; a
+  child transcript duplicates its parts after reload.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
 - Grok replay mutates live defaults during initialize, stamps messages from an
