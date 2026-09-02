@@ -150,6 +150,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Attachments and images](attachments-and-images.md)
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
+- [Creator recording](creator-recording.md)
 - [Design catalog](design-catalog.md)
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Diffs and source control](diffs-and-source-control.md)

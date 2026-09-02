@@ -12,7 +12,10 @@ import "../../core/widgets/legal_document_sheet.dart";
 import "../../core/widgets/sesori_logo.dart";
 
 /// Mobile-shell composition for the shared settings view.
-class const SettingsScreen({super.key}) extends StatelessWidget {
+class const SettingsScreen({
+  super.key,
+  required final VoidCallback? onOpenCreatorRecording,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -31,12 +34,12 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
           ),
         ),
       ],
-      child: const _MobileSettingsView(),
+      child: _MobileSettingsView(onOpenCreatorRecording: onOpenCreatorRecording),
     );
   }
 }
 
-class const _MobileSettingsView() extends StatelessWidget {
+class const _MobileSettingsView({required final VoidCallback? onOpenCreatorRecording}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SettingsView(
@@ -48,6 +51,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       onOpenHarnesses: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed),
       ),
+      onOpenCreatorRecording: onOpenCreatorRecording,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },

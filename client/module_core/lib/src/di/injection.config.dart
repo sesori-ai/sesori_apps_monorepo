@@ -63,6 +63,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart
     as _i14;
 import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
     as _i65;
+import 'package:sesori_dart_core/src/foundation/platform/creator_recording.dart'
+    as _i518;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
@@ -89,6 +91,8 @@ import 'package:sesori_dart_core/src/repositories/chat_input_mode_store.dart'
     as _i901;
 import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart'
     as _i198;
+import 'package:sesori_dart_core/src/repositories/creator_recording_repository.dart'
+    as _i397;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -129,6 +133,8 @@ import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
     as _i705;
+import 'package:sesori_dart_core/src/services/creator_recording_service.dart'
+    as _i570;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -248,6 +254,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i835.LegalApi>(
       () => _i835.LegalApi(client: gh<_i442.HttpApiClient>()),
+    );
+    gh.lazySingleton<_i397.CreatorRecordingRepository>(
+      () => _i397.CreatorRecordingRepository(
+        recording: gh<_i518.CreatorRecording>(),
+      ),
     );
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
@@ -384,6 +395,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i28.SessionUnseenTracker(
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
+      ),
+    );
+    gh.lazySingleton<_i570.CreatorRecordingService>(
+      () => _i570.CreatorRecordingService(
+        repository: gh<_i397.CreatorRecordingRepository>(),
       ),
     );
     gh.lazySingleton<_i857.RelayHttpApiClient>(

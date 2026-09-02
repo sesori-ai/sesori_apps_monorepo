@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/creator_recording/creator_recording_sheet.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -47,15 +48,26 @@ const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com",
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 
-Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputMode}) {
+Widget _app({
+  required AppearanceCubit appearance,
+  ChatInputModeCubit? chatInputMode,
+  CreatorRecordingCubit? creatorRecording,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
-          value: StubConnectionOverlayCubit(),
-          child: const SettingsScreen(),
-        ),
+        builder: (context, state) {
+          final creatorRecordingCubit = context.read<CreatorRecordingCubit>();
+          return BlocProvider<ConnectionOverlayCubit>.value(
+            value: StubConnectionOverlayCubit(),
+            child: SettingsScreen(
+              onOpenCreatorRecording: creatorRecordingCubit.state.capture is CreatorRecordingUnsupported
+                  ? null
+                  : () => showCreatorRecordingSheet(context: context, cubit: creatorRecordingCubit),
+            ),
+          );
+        },
       ),
       GoRoute(
         path: "/settings/profile",
@@ -74,6 +86,10 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
   return MultiBlocProvider(
     providers: [
       BlocProvider<AppearanceCubit>.value(value: appearance),
+      if (creatorRecording != null)
+        BlocProvider<CreatorRecordingCubit>.value(value: creatorRecording)
+      else
+        BlocProvider<CreatorRecordingCubit>(create: (_) => StubCreatorRecordingCubit()),
       if (chatInputMode != null)
         BlocProvider<ChatInputModeCubit>.value(value: chatInputMode)
       else
@@ -217,6 +233,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Basic Usage Analytics"), findsOneWidget);
+  });
+
+  testWidgets("iOS creator recording entry opens the local capture sheet", (tester) async {
+    _useTallSurface(tester);
+    final creatorRecording = StubCreatorRecordingCubit(
+      initialState: const CreatorRecordingState(
+        capture: CreatorRecordingIdle(),
+        library: CreatorRecordingLibraryLoaded(recordings: []),
+        export: CreatorRecordingExportIdle(),
+      ),
+    );
+    addTearDown(creatorRecording.close);
+
+    await tester.pumpWidget(
+      _app(appearance: appearance, creatorRecording: creatorRecording),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Creator recording"));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        "Record Sesori with your front camera and microphone. "
+        "Move the circular camera anywhere while you navigate.",
+      ),
+      findsOneWidget,
+    );
+    expect(find.text("No recordings yet."), findsOneWidget);
   });
 
   testWidgets("Harnesses follows Notifications and navigates without changing other sections", (tester) async {

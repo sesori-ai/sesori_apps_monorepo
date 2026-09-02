@@ -52,6 +52,7 @@ class const _DesktopSettingsView({
       // preference capability.
       onOpenNotifications: null,
       onOpenHarnesses: onOpenHarnesses,
+      onOpenCreatorRecording: null,
       openSupportLink: ({required url}) async {
         await openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },

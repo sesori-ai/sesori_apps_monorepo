@@ -1,9 +1,11 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../../features/creator_recording/creator_recording_sheet.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
@@ -82,11 +84,20 @@ extension AppRouteToGoRoute on AppRouteDef {
   }
 
   Widget _buildScreen({required BuildContext context, required GoRouterState state}) {
-    return AppRoute.fromDef(
+    final route = AppRoute.fromDef(
       def: this,
       pathParams: state.pathParameters,
       queryParams: state.uri.queryParameters,
-    ).screen;
+    );
+    if (route is AppRouteSettings) {
+      final creatorRecordingCubit = context.read<CreatorRecordingCubit>();
+      return SettingsScreen(
+        onOpenCreatorRecording: creatorRecordingCubit.state.capture is CreatorRecordingUnsupported
+            ? null
+            : () => showCreatorRecordingSheet(context: context, cubit: creatorRecordingCubit),
+      );
+    }
+    return route.screen;
   }
 }
 
@@ -100,7 +111,7 @@ extension on AppRoute {
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
-      AppRouteSettings() => const SettingsScreen(),
+      AppRouteSettings() => const SettingsScreen(onOpenCreatorRecording: null),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
       AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
       AppRouteSettingsProfile() => const ProfileScreen(),

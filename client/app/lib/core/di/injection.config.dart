@@ -24,6 +24,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
+import 'package:sesori_mobile/capabilities/creator_recording/creator_recording_channel_client.dart'
+    as _i56;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
@@ -65,6 +67,8 @@ import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage
     as _i963;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
     as _i111;
+import 'package:sesori_mobile/core/platform/flutter_creator_recording.dart'
+    as _i228;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
     as _i274;
 import 'package:sesori_mobile/core/platform/flutter_image_sharer.dart' as _i617;
@@ -111,6 +115,9 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
+    gh.lazySingleton<_i56.CreatorRecordingChannelClient>(
+      () => _i56.CreatorRecordingChannelClient(),
+    );
     gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
     gh.lazySingleton<_i361.RecorderPrewarmClient>(
       () => _i361.RecorderPrewarmClient(),
@@ -149,6 +156,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i363.FlutterOAuthDeviceDescriptorProvider(
         gh<_i833.DeviceInfoPlugin>(),
+      ),
+    );
+    gh.lazySingleton<_i948.CreatorRecording>(
+      () => _i228.FlutterCreatorRecording(
+        channelClient: gh<_i56.CreatorRecordingChannelClient>(),
+        sharePlusClient: gh<_i1019.SharePlusClient>(),
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());

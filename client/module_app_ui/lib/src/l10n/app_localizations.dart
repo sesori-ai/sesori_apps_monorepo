@@ -421,6 +421,168 @@ abstract class AppLocalizations {
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
 
+  /// No description provided for @settingsCreatorRecordingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator recording'**
+  String get settingsCreatorRecordingTitle;
+
+  /// No description provided for @creatorRecordingSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator recording'**
+  String get creatorRecordingSheetTitle;
+
+  /// No description provided for @creatorRecordingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Record Sesori with your front camera and microphone. Move the circular camera anywhere while you navigate.'**
+  String get creatorRecordingDescription;
+
+  /// No description provided for @creatorRecordingLocalOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Recordings stay on this iPhone until you explicitly share or delete them.'**
+  String get creatorRecordingLocalOnly;
+
+  /// No description provided for @creatorRecordingPortraitOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator recording currently works in portrait orientation only.'**
+  String get creatorRecordingPortraitOnly;
+
+  /// No description provided for @creatorRecordingPrepare.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up camera'**
+  String get creatorRecordingPrepare;
+
+  /// No description provided for @creatorRecordingPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting up camera…'**
+  String get creatorRecordingPreparing;
+
+  /// No description provided for @creatorRecordingStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start recording'**
+  String get creatorRecordingStart;
+
+  /// No description provided for @creatorRecordingStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting recording…'**
+  String get creatorRecordingStarting;
+
+  /// No description provided for @creatorRecordingActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording is active. Move the camera bubble as you navigate, then tap its red stop button.'**
+  String get creatorRecordingActive;
+
+  /// No description provided for @creatorRecordingSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving video and source layers…'**
+  String get creatorRecordingSaving;
+
+  /// No description provided for @creatorRecordingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording saved'**
+  String get creatorRecordingSaved;
+
+  /// No description provided for @creatorRecordingSavedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved recordings'**
+  String get creatorRecordingSavedSection;
+
+  /// No description provided for @creatorRecordingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No recordings yet.'**
+  String get creatorRecordingEmpty;
+
+  /// No description provided for @creatorRecordingExportVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get creatorRecordingExportVideo;
+
+  /// No description provided for @creatorRecordingExportLayers.
+  ///
+  /// In en, this message translates to:
+  /// **'Layers'**
+  String get creatorRecordingExportLayers;
+
+  /// No description provided for @creatorRecordingDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get creatorRecordingDelete;
+
+  /// No description provided for @creatorRecordingDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete recording?'**
+  String get creatorRecordingDeleteTitle;
+
+  /// No description provided for @creatorRecordingDeleteDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently removes the final video and every source layer from this iPhone.'**
+  String get creatorRecordingDeleteDescription;
+
+  /// No description provided for @creatorRecordingCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get creatorRecordingCancel;
+
+  /// No description provided for @creatorRecordingRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get creatorRecordingRetry;
+
+  /// No description provided for @creatorRecordingCameraPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow camera access in iPhone Settings to show and record your face.'**
+  String get creatorRecordingCameraPermissionDenied;
+
+  /// No description provided for @creatorRecordingMicrophonePermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow microphone access in iPhone Settings to record narration.'**
+  String get creatorRecordingMicrophonePermissionDenied;
+
+  /// No description provided for @creatorRecordingPortraitRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate your iPhone to portrait, then try again.'**
+  String get creatorRecordingPortraitRequired;
+
+  /// No description provided for @creatorRecordingUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen recording is unavailable while AirPlay, mirroring, or another recorder is active.'**
+  String get creatorRecordingUnavailable;
+
+  /// No description provided for @creatorRecordingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The recording could not be completed. Try again and check available storage.'**
+  String get creatorRecordingFailed;
+
+  /// No description provided for @creatorRecordingShareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The recording is saved, but the share sheet could not be opened.'**
+  String get creatorRecordingShareFailed;
+
   /// No description provided for @settingsSectionBridge.
   ///
   /// In en, this message translates to:

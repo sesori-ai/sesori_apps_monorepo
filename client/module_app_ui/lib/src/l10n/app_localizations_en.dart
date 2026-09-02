@@ -187,6 +187,93 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
+  String get settingsCreatorRecordingTitle => 'Creator recording';
+
+  @override
+  String get creatorRecordingSheetTitle => 'Creator recording';
+
+  @override
+  String get creatorRecordingDescription =>
+      'Record Sesori with your front camera and microphone. Move the circular camera anywhere while you navigate.';
+
+  @override
+  String get creatorRecordingLocalOnly => 'Recordings stay on this iPhone until you explicitly share or delete them.';
+
+  @override
+  String get creatorRecordingPortraitOnly => 'Creator recording currently works in portrait orientation only.';
+
+  @override
+  String get creatorRecordingPrepare => 'Set up camera';
+
+  @override
+  String get creatorRecordingPreparing => 'Setting up camera…';
+
+  @override
+  String get creatorRecordingStart => 'Start recording';
+
+  @override
+  String get creatorRecordingStarting => 'Starting recording…';
+
+  @override
+  String get creatorRecordingActive =>
+      'Recording is active. Move the camera bubble as you navigate, then tap its red stop button.';
+
+  @override
+  String get creatorRecordingSaving => 'Saving video and source layers…';
+
+  @override
+  String get creatorRecordingSaved => 'Recording saved';
+
+  @override
+  String get creatorRecordingSavedSection => 'Saved recordings';
+
+  @override
+  String get creatorRecordingEmpty => 'No recordings yet.';
+
+  @override
+  String get creatorRecordingExportVideo => 'Video';
+
+  @override
+  String get creatorRecordingExportLayers => 'Layers';
+
+  @override
+  String get creatorRecordingDelete => 'Delete';
+
+  @override
+  String get creatorRecordingDeleteTitle => 'Delete recording?';
+
+  @override
+  String get creatorRecordingDeleteDescription =>
+      'This permanently removes the final video and every source layer from this iPhone.';
+
+  @override
+  String get creatorRecordingCancel => 'Cancel';
+
+  @override
+  String get creatorRecordingRetry => 'Try again';
+
+  @override
+  String get creatorRecordingCameraPermissionDenied =>
+      'Allow camera access in iPhone Settings to show and record your face.';
+
+  @override
+  String get creatorRecordingMicrophonePermissionDenied =>
+      'Allow microphone access in iPhone Settings to record narration.';
+
+  @override
+  String get creatorRecordingPortraitRequired => 'Rotate your iPhone to portrait, then try again.';
+
+  @override
+  String get creatorRecordingUnavailable =>
+      'Screen recording is unavailable while AirPlay, mirroring, or another recorder is active.';
+
+  @override
+  String get creatorRecordingFailed => 'The recording could not be completed. Try again and check available storage.';
+
+  @override
+  String get creatorRecordingShareFailed => 'The recording is saved, but the share sheet could not be opened.';
+
+  @override
   String get settingsSectionBridge => 'Bridge';
 
   @override

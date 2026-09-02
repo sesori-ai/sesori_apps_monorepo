@@ -39,6 +39,7 @@ class const SettingsView({
   required final VoidCallback onOpenProfile,
   required final VoidCallback? onOpenNotifications,
   required final VoidCallback onOpenHarnesses,
+  required final VoidCallback? onOpenCreatorRecording,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -49,6 +50,7 @@ class const SettingsView({
     final loc = context.loc;
     final account = this.account;
     final onOpenNotifications = this.onOpenNotifications;
+    final onOpenCreatorRecording = this.onOpenCreatorRecording;
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -109,6 +111,13 @@ class const SettingsView({
                       trailing: const Icon(TablerRegular.chevron_right),
                       onTap: onOpenHarnesses,
                     ),
+                    if (onOpenCreatorRecording != null)
+                      PregoGroupedRow(
+                        icon: TablerRegular.camera_selfie,
+                        title: Text(loc.settingsCreatorRecordingTitle),
+                        trailing: const Icon(TablerRegular.chevron_right),
+                        onTap: onOpenCreatorRecording,
+                      ),
                   ],
                 ),
                 const SizedBox(height: PregoSpacing.xl),
