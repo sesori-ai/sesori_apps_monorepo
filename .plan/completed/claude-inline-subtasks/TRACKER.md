@@ -4,9 +4,13 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 6/8 merged; Step 7/8 (regression docs) PR [#1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) open
-  (branch `claude-inline-subtasks-regression-docs`)
-- **Next action:** merge Step 7/8, then Step 8/8 (run the L4 matrix, retire)
+- **Series state:** Steps 1/8 to 7/8 merged, including the L4-found fix
+  [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
+  also made the scoped stop harness-neutral (OpenCode honors it; rejections
+  declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
+  Step 8/8 (retire) in PR
+- **Next action:** merge the Step 8/8 retirement PR; harness follow-ups
+  (Codex, Grok, DeepSeek, Cursor tile-only) are tracked in the capability matrix
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -141,8 +145,8 @@
 | [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
 | [x] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) merged |
 | [x] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | [PR #1254](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1254) merged |
-| [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) open |
-| [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | Pending |
+| [x] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) |
+| [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | In PR |
 
 ## Step 1 Checklist
 
@@ -275,7 +279,55 @@
   (reap/safe-stop deferral). `popup-alerts.md` deliberately untouched: it
   documents the transient alert surface, not modal dialogs. `git diff
   --check` clean.
-- **Final disposition:** pending
+- **Step 8 (L4 matrix, 2026-09-02):** run through the authoritative boundaries
+  on the release-target bridge host (macOS, source-run bridge, slot 1, Claude
+  Code CLI 2.1.257, Haiku) and the release-target phone (iOS simulator
+  `sesori-dev-1`, debug build), bridge debug port for headless checks. Nine
+  Claude root sessions, one OpenCode session; privacy-safe evidence only.
+  - Pass — live lifecycle (headless bridge + live plugin): a background
+    `Agent` launch renders one subtask part keyed by the tool-use id with
+    `childSessionID` bound to the bridge child id; the child session lists with
+    the meta description as title under its root; root and child report busy
+    while the sub-agent runs after the launching turn ended; the notification
+    completes the part with the result text, the wake-up turn renders, and the
+    root returns to idle once.
+  - Pass — replay (headless bridge): the child transcript replays with the
+    prompt and text attributed to the child id; a reload of the root shows the
+    same completed part and child id.
+  - Pass — scoped stop (headless + phone): `confirm` → 409 with
+    `{runningSubAgentCount: 1, mainAgentRunning}`; `keep` with the main agent
+    idle → 200, sub-agent continues and completes, wake-up turn renders, one
+    idle; `stop` → 200, part `cancelled`, child idle, process gone. Phone:
+    session list shows Running, tile shows Running, Stop opens the dialog with
+    the idle-main copy, Cancel leaves the sub-agent running, confirming
+    cancels the tile live; with the main agent streaming the dialog shows the
+    both-running copy and only the stop-everything action.
+  - Pass — abrupt bridge death (headless bridge): a `running` subtask part
+    persisted before `kill -9` reads `cancelled` with no error text after
+    restart (unobservable-status sweep).
+  - Pass — phone rendering (client end to end): completed tile
+    `Write essay · general-purpose · Done`, tap opens the read-only child
+    transcript, tasks bar shows the child; roots only in the session list.
+  - Partial — OpenCode representative: a delegated task produced `tool` parts
+    (name `task`) and a child session, not a `subtask` part with a null
+    lifecycle, so the live null-lifecycle rendering was not exercised; it
+    remains covered by the Step 2 widget tests.
+  - Not run — notifications end to end (no push device); the single-completion
+    rule is covered by the busy-span behavior observed live and by unit tests.
+  - Defects found and fixed in
+    [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257): `keep`
+    with an idle main agent sent an interrupt that killed the sub-agent, and a
+    `stopped` notification opened a wake-up turn that never closed (session
+    pinned busy, abort hung). Limitation discovered: the CLI's interrupt also
+    stops background agents, so main-agent-only exists only while the main
+    agent is idle; `keep` during a live turn is refused (recorded in
+    `session-turns.md`).
+  - Residue: scratch project `/tmp/sesori-l4-project` and its Claude
+    transcripts on the host; slot-1 data dir retained per the testing skill.
+- **Final disposition:** L4 matrix executed; Claude coverage passed after the
+  #1257 fix, OpenCode representative proof partial (widget-test covered),
+  notifications end to end not run. Plan retired with those two limitations
+  recorded here and in the regression documents.
 
 ## Plan Review
 
