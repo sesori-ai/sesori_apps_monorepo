@@ -739,6 +739,7 @@ final class ClaudeSessionService({
         for (final notification in message.taskNotifications) {
           state.runningTaskIds.remove(notification.taskId);
         }
+        if (message.taskNotifications.isNotEmpty) _settleIdle(sessionId: sessionId, state: state);
       case ClaudeStreamMessage():
         break;
     }
@@ -785,11 +786,13 @@ final class ClaudeSessionService({
       case ClaudeStreamEventMessage(parentToolUseId: final String _) ||
           ClaudeAssistantMessage(parentToolUseId: final String _):
         break;
-      case ClaudeUserMessage() when message.taskNotifications.isEmpty:
-        break;
       // A stopped task was killed (an interrupt, a stop_task); the CLI runs no
-      // wake-up turn for it, so opening one here would pin the session busy.
+      // wake-up turn for it, so opening one here would pin the session busy. A
+      // user frame carrying only stopped notifications (or none) is the same.
       case ClaudeTaskNotificationMessage(status: ClaudeTaskStatus.stopped):
+        break;
+      case ClaudeUserMessage()
+          when message.taskNotifications.every((notification) => notification.status == ClaudeTaskStatus.stopped):
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||
