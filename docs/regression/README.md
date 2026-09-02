@@ -159,6 +159,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
 - [Claude Code authentication](claude-code-authentication.md)
+- [Creator recording](creator-recording.md)
 - [Design catalog](design-catalog.md)
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Desktop cockpit shell](desktop-cockpit-shell.md)

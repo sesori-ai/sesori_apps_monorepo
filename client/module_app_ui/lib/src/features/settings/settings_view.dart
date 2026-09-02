@@ -40,6 +40,7 @@ class const SettingsView({
   required final VoidCallback onOpenHarnesses,
   required final VoidCallback onOpenDefaultInput,
   required final Widget? additionalSettings,
+  required final VoidCallback? onOpenCreatorRecording,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -52,6 +53,7 @@ class const SettingsView({
     final account = this.account;
     final onOpenNotifications = this.onOpenNotifications;
     final additionalSettings = this.additionalSettings;
+    final onOpenCreatorRecording = this.onOpenCreatorRecording;
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -133,18 +135,26 @@ class const SettingsView({
                     ],
                   ),
                 ),
-                if (onOpenNotifications != null) ...[
+                if (onOpenNotifications != null || onOpenCreatorRecording != null) ...[
                   const SizedBox(height: PregoSpacing.xl),
                   SettingsSection(
                     title: loc.settingsSectionPreferences,
                     child: PregoGroupedRows(
                       children: [
-                        PregoGroupedRow(
-                          icon: TablerRegular.bell,
-                          title: Text(loc.settingsNotificationsTitle),
-                          trailing: const Icon(TablerRegular.chevron_right),
-                          onTap: onOpenNotifications,
-                        ),
+                        if (onOpenNotifications != null)
+                          PregoGroupedRow(
+                            icon: TablerRegular.bell,
+                            title: Text(loc.settingsNotificationsTitle),
+                            trailing: const Icon(TablerRegular.chevron_right),
+                            onTap: onOpenNotifications,
+                          ),
+                        if (onOpenCreatorRecording != null)
+                          PregoGroupedRow(
+                            icon: TablerRegular.camera_selfie,
+                            title: Text(loc.settingsCreatorRecordingTitle),
+                            trailing: const Icon(TablerRegular.chevron_right),
+                            onTap: onOpenCreatorRecording,
+                          ),
                       ],
                     ),
                   ),
