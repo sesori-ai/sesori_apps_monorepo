@@ -21,7 +21,7 @@ Future<void> main(List<String> arguments) async {
   final ChatInputMode initialChatInputMode = await getIt<ChatInputModeStore>().read();
 
   try {
-    await getIt<WindowHost>().initialize(hidden: hiddenLaunch);
+    await startupOrchestrator.initializeWindow(hidden: hiddenLaunch);
   } on Object catch (error, stackTrace) {
     try {
       await getIt.reset();

@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:injectable/injectable.dart";
@@ -6,8 +7,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
+import "../foundation/platform/window_host.dart";
 
-/// Layer-1 persistence boundary for desktop-owned last desired bridge state.
+/// Layer-1 persistence boundary for desktop-owned instance state.
 @lazySingleton
 class DesktopInstanceStorage._create({
   required final DesktopApplicationSupportDirectory _applicationSupportDirectory,
@@ -17,6 +19,7 @@ class DesktopInstanceStorage._create({
 
   static const String _directoryName = "desktop-instance";
   static const String _desiredStateFileName = "bridge-desired-state";
+  static const String _windowBoundsFileName = "window-bounds";
 
   Future<BridgeProcessDesiredState> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
@@ -35,13 +38,46 @@ class DesktopInstanceStorage._create({
   }
 
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) async {
-    final File file = await _desiredStateFile();
+    final File file = await _fileNamed(fileName: _desiredStateFileName);
     await file.parent.create(recursive: true);
     await file.writeAsString(state.name, flush: true);
   }
 
-  Future<File> _desiredStateFile() async {
+  Future<WindowBounds?> readWindowBounds() async {
+    final File file = await _fileNamed(fileName: _windowBoundsFileName);
+    // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
+    if (!await file.exists()) {
+      return null;
+    }
+    final List<String> components = const LineSplitter().convert(await file.readAsString());
+    if (components.length != 4) {
+      logw("Ignoring invalid persisted desktop window bounds");
+      return null;
+    }
+    final left = double.tryParse(components[0]);
+    final top = double.tryParse(components[1]);
+    final width = double.tryParse(components[2]);
+    final height = double.tryParse(components[3]);
+    if (left == null || top == null || width == null || height == null) {
+      logw("Ignoring invalid persisted desktop window bounds");
+      return null;
+    }
+    return WindowBounds(left: left, top: top, width: width, height: height);
+  }
+
+  Future<void> writeWindowBounds({required WindowBounds bounds}) async {
+    final File file = await _fileNamed(fileName: _windowBoundsFileName);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(
+      <double>[bounds.left, bounds.top, bounds.width, bounds.height].join("\n"),
+      flush: true,
+    );
+  }
+
+  Future<File> _desiredStateFile() => _fileNamed(fileName: _desiredStateFileName);
+
+  Future<File> _fileNamed({required String fileName}) async {
     final Directory root = await _applicationSupportDirectory.resolve();
-    return File(path.join(root.path, _directoryName, _desiredStateFileName));
+    return File(path.join(root.path, _directoryName, fileName));
   }
 }
