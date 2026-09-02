@@ -178,7 +178,28 @@ verdicts and versions are recorded in the capability matrix.
 | ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
 | 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
 
-### Open questions (probe)
+### Probe results (0.148.0, 2026-09-02, details in `followups/codex-probe.md`)
+
+- Children never emit `thread/started`; a child first appears as
+  `thread/status/changed` followed by the parent's `subAgentActivity started`
+  (`agentThreadId`, `agentPath`). No `spawnAgent` collab item was emitted, only
+  `wait`, and `receiverThreadIds` was empty on every collab item, so the tile
+  opens on `subAgentActivity started` and the tracker reads the child through
+  `thread/read` (which returns `parentThreadId` and `agentNickname`).
+- No `subAgentActivity completed | interrupted` was emitted; child completion
+  is derived from the child's own `turn/completed` and idle status.
+- A parent interrupt does not stop children, so `keep` is honored and
+  `mainAgentOnlySupported` is true for Codex. A child `turn/interrupt`
+  requires `turnId`, which arrives on the same connection in the child's
+  `turn/started` and is tracked per child.
+- Parent rollouts persist the `spawn_agent`/`wait_agent` function calls and
+  `sub_agent_activity started` only; child rollouts copy the parent history
+  only with `fork_turns: true`. Replay opens tiles from `sub_agent_activity
+  started` and closes them from the child rollout's state.
+- `thread/list {parentThreadId}` returned nothing; catalog children come from
+  rollout metadata.
+
+### Open questions (resolved by the probe unless noted)
 
 1. Does 0.148.0 emit `thread/started` for V2 children on our connection, and
    are `receiverThreadIds` present at `item/started` or only `item/completed`?
