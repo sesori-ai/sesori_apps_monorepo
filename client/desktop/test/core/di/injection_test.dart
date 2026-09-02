@@ -9,7 +9,6 @@ import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
 import "package:sesori_desktop/core/platform/desktop_image_sharer.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
 import "package:sesori_desktop/core/platform/no_op_analytics_client.dart";
-import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -34,10 +33,7 @@ void main() {
   });
 
   test("4-phase DI bootstrap lets LoginCubit be constructed with no missing registrations", () async {
-    configureDesktopDependencies(
-      router: desktopRouter,
-      routerReady: Future<void>.value(),
-    );
+    configureDesktopDependencies();
     getIt.unregister<SecureStorage>();
     getIt.registerLazySingleton<SecureStorage>(_InMemorySecureStorage.new);
 
@@ -86,10 +82,7 @@ void main() {
   });
 
   test("desktop bootstrap resolves the complete image dependency graph", () {
-    configureDesktopDependencies(
-      router: desktopRouter,
-      routerReady: Future<void>.value(),
-    );
+    configureDesktopDependencies();
 
     expect(getIt<ComposerImagePicker>(), isA<DesktopComposerImagePicker>());
     expect(getIt<ComposerAttachmentDispatcher>(), isA<ComposerAttachmentDispatcher>());

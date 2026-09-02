@@ -7,15 +7,11 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "app.dart";
 import "core/di/injection.dart";
 import "core/platform/desktop_launch_arguments.dart";
-import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
-  configureDesktopDependencies(
-    router: desktopRouter,
-    routerReady: desktopRouterReady,
-  );
+  configureDesktopDependencies();
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;

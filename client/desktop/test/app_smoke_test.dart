@@ -2,7 +2,6 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
-import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 class _InMemorySecureStorage() implements SecureStorage {
@@ -26,10 +25,7 @@ void main() {
   });
 
   testWidgets("cold start with no session lands on the login view", (WidgetTester tester) async {
-    configureDesktopDependencies(
-      router: desktopRouter,
-      routerReady: desktopRouterReady,
-    );
+    configureDesktopDependencies();
     // The secure-storage plugin has no platform channel under flutter_test;
     // swap in an in-memory fake so the gate's local-session check completes.
     getIt.unregister<SecureStorage>();
@@ -53,7 +49,6 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    await expectLater(desktopRouterReady, completes);
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);

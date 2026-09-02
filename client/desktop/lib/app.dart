@@ -101,13 +101,10 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: desktopRouter,
-        builder: (context, child) {
-          scheduleDesktopRouterReady();
-          return _DesktopRootEffects(
-            navigatorKey: desktopRootNavigatorKey,
-            child: child ?? const SizedBox.shrink(),
-          );
-        },
+        builder: (context, child) => _DesktopRootEffects(
+          navigatorKey: desktopRootNavigatorKey,
+          child: child ?? const SizedBox.shrink(),
+        ),
       ),
     );
   }
