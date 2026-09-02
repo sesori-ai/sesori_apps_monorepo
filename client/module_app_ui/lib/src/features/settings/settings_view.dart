@@ -45,6 +45,7 @@ class const SettingsView({
   /// Switches to a computer picked from the Bridge section's computer entry.
   required final ComputerSwitchCallback onSwitchComputer,
   required final Widget? additionalSettings,
+  required final VoidCallback? onOpenCreatorRecording,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -57,6 +58,7 @@ class const SettingsView({
     final account = this.account;
     final onOpenNotifications = this.onOpenNotifications;
     final additionalSettings = this.additionalSettings;
+    final onOpenCreatorRecording = this.onOpenCreatorRecording;
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -154,6 +156,13 @@ class const SettingsView({
                         ),
                         onTap: onOpenDefaultInput,
                       ),
+                      if (onOpenCreatorRecording != null)
+                        PregoGroupedRow(
+                          icon: TablerRegular.camera_selfie,
+                          title: Text(loc.settingsCreatorRecordingTitle),
+                          trailing: const Icon(TablerRegular.chevron_right),
+                          onTap: onOpenCreatorRecording,
+                        ),
                     ],
                   ),
                 ),

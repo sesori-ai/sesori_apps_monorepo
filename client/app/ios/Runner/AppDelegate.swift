@@ -5,6 +5,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var recorderPrewarmService: RecorderPrewarmService?
+  private var creatorRecordingService: CreatorRecordingService?
 
   override func application(
     _ application: UIApplication,
@@ -19,6 +20,12 @@ import UIKit
     recorderPrewarmService = RecorderPrewarmService(
       channel: FlutterMethodChannel(
         name: RecorderPrewarmService.channelName,
+        binaryMessenger: messenger
+      )
+    )
+    creatorRecordingService = CreatorRecordingService(
+      channel: FlutterMethodChannel(
+        name: CreatorRecordingService.channelName,
         binaryMessenger: messenger
       )
     )

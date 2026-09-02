@@ -47,6 +47,47 @@ class StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFi
   Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
+/// Unsupported creator-recording state for widget tests not exercising iOS capture.
+class StubCreatorRecordingCubit({
+  CreatorRecordingState initialState = const CreatorRecordingState(
+    capture: CreatorRecordingUnsupported(),
+    library: CreatorRecordingLibraryLoaded(recordings: []),
+    export: CreatorRecordingExportIdle(),
+  ),
+}) extends Cubit<CreatorRecordingState> implements CreatorRecordingCubit {
+  this : super(initialState);
+
+  @override
+  Future<bool> preparePreview() async => false;
+
+  @override
+  Future<bool> start() async => false;
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dismissPreview() async {}
+
+  @override
+  Future<void> refreshLibrary() async {}
+
+  @override
+  Future<void> deleteRecording({required CreatorRecordingArtifact artifact}) async {}
+
+  @override
+  Future<void> shareRecording({
+    required CreatorRecordingArtifact artifact,
+    required CreatorRecordingExportKind kind,
+  }) async {}
+
+  @override
+  void acknowledgeCaptureOutcome() {}
+
+  @override
+  void acknowledgeShareFailure() {}
+}
+
 /// The session page's Changes button reads its line totals from
 /// [DiffSummaryCubit], so any harness that pumps that button must provide one.
 class StubDiffSummaryCubit({DiffSummaryState initialState = const DiffSummaryState.unknown()})

@@ -14,7 +14,10 @@ import "../../core/widgets/feedback_voice_input_scope.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 
 /// Mobile-shell composition for the shared settings view.
-class const SettingsScreen({super.key}) extends StatelessWidget {
+class const SettingsScreen({
+  super.key,
+  required final VoidCallback? onOpenCreatorRecording,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -50,12 +53,12 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
           ),
         ),
       ],
-      child: const _MobileSettingsView(),
+      child: _MobileSettingsView(onOpenCreatorRecording: onOpenCreatorRecording),
     );
   }
 }
 
-class const _MobileSettingsView() extends StatelessWidget {
+class const _MobileSettingsView({required final VoidCallback? onOpenCreatorRecording}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SettingsView(
@@ -74,6 +77,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       onSwitchComputer: ({required bridgeId, required source}) =>
           unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
       additionalSettings: null,
+      onOpenCreatorRecording: onOpenCreatorRecording,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },

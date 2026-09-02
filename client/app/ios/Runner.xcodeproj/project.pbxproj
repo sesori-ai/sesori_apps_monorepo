@@ -14,6 +14,9 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		A6C0D0022F80000100C0FFEE /* RecorderPrewarmService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6C0D0012F80000100C0FFEE /* RecorderPrewarmService.swift */; };
+		B1C0D0112FA0000100C0FFEE /* CreatorRecordingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0D0012FA0000100C0FFEE /* CreatorRecordingService.swift */; };
+		B1C0D0122FA0000100C0FFEE /* CreatorRecordingCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0D0022FA0000100C0FFEE /* CreatorRecordingCapture.swift */; };
+		B1C0D0132FA0000100C0FFEE /* CreatorRecordingCompositor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C0D0032FA0000100C0FFEE /* CreatorRecordingCompositor.swift */; };
 		A7C4B0012F90000100C0FFEE /* AdServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A7C4B0022F90000100C0FFEE /* AdServices.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
@@ -56,6 +59,9 @@
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		A6C0D0012F80000100C0FFEE /* RecorderPrewarmService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecorderPrewarmService.swift; sourceTree = "<group>"; };
+		B1C0D0012FA0000100C0FFEE /* CreatorRecordingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatorRecordingService.swift; sourceTree = "<group>"; };
+		B1C0D0022FA0000100C0FFEE /* CreatorRecordingCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatorRecordingCapture.swift; sourceTree = "<group>"; };
+		B1C0D0032FA0000100C0FFEE /* CreatorRecordingCompositor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatorRecordingCompositor.swift; sourceTree = "<group>"; };
 		A7C4B0022F90000100C0FFEE /* AdServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AdServices.framework; path = System/Library/Frameworks/AdServices.framework; sourceTree = SDKROOT; };
 		7884E86A2EC3DD0500D736F3 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		7884E86B2EC3DD0500D736F4 /* RunnerRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RunnerRelease.entitlements; sourceTree = "<group>"; };
@@ -154,6 +160,9 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				A6C0D0012F80000100C0FFEE /* RecorderPrewarmService.swift */,
+				B1C0D0012FA0000100C0FFEE /* CreatorRecordingService.swift */,
+				B1C0D0022FA0000100C0FFEE /* CreatorRecordingCapture.swift */,
+				B1C0D0032FA0000100C0FFEE /* CreatorRecordingCompositor.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
@@ -318,6 +327,9 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				A6C0D0022F80000100C0FFEE /* RecorderPrewarmService.swift in Sources */,
+				B1C0D0112FA0000100C0FFEE /* CreatorRecordingService.swift in Sources */,
+				B1C0D0122FA0000100C0FFEE /* CreatorRecordingCapture.swift in Sources */,
+				B1C0D0132FA0000100C0FFEE /* CreatorRecordingCompositor.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 			);
