@@ -5,8 +5,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
 
 import "../api/claude_transcript_api.dart";
+import "../api/models/claude_subagent_meta_dto.dart";
 import "../api/models/claude_transcript_record_dto.dart";
 import "../models/claude_effort_level.dart";
+import "../models/claude_subagent_session_id.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
 
@@ -15,16 +17,28 @@ import "models/claude_transcript_record.dart";
 /// Holds no peer repository: everything it needs comes from its Layer-1
 /// transcript API, and any composition with the process catalog happens a layer
 /// up.
+///
+/// Two transcript kinds are sessions here: a root `<uuid>.jsonl`, and a
+/// sub-agent `<root-uuid>/subagents/agent-<agentId>.jsonl` whose root is in the
+/// same scan. The older flat `agent-<slug>-<hex>.jsonl` layout beside the root
+/// has no meta file and no tool link, and stays excluded.
 class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _transcriptApi}) {
   /// Builds the catalog synchronously.
   ///
   /// Public and overridable so tests can bypass the isolate; call
   /// [listSessionRecordsInIsolate] in production.
   List<ClaudeSessionRecord> listSessionRecords() {
-    final records = <ClaudeSessionRecord>[];
-    for (final path in _listTranscriptPaths()) {
-      final record = _readSessionRecord(path);
-      if (record != null) records.add(record);
+    final paths = _listTranscriptPaths();
+    final roots = <String, ClaudeSessionRecord>{};
+    for (final path in paths) {
+      if (_rootIdFromPath(path) == null) continue;
+      final record = _readRootRecord(path);
+      if (record != null) roots[record.id] = record;
+    }
+    final records = roots.values.toList();
+    for (final path in paths) {
+      final child = _readChildRecord(path, roots: roots);
+      if (child != null) records.add(child);
     }
 
     // Newest first, undated last, so an unreadable header never displaces a
@@ -55,7 +69,8 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   Future<List<ClaudeTranscriptRecord>> readTranscriptRecordsInIsolate({required String sessionId}) =>
       Isolate.run(() => readTranscriptRecords(sessionId: sessionId));
 
-  /// Every session, for bridge-derived project discovery.
+  /// Every session — roots and their sub-agent children — for bridge-derived
+  /// project discovery.
   ///
   /// [knownDirectories] is part of the discovery contract so a plugin can keep
   /// sessions the bridge already tracks while hiding its own noise. Claude has
@@ -66,7 +81,7 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     return records.map(_toPluginSession).toList(growable: false);
   }
 
-  /// Sessions for one bridge-derived project, paginated.
+  /// Root sessions for one bridge-derived project, paginated.
   Future<List<PluginSession>> getSessions({
     required String projectId,
     required int? start,
@@ -75,6 +90,7 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     final records = await listSessionRecordsInIsolate();
     final target = normalizeProjectDirectory(directory: projectId);
     final sessions = records
+        .where((record) => record.parentId == null)
         .map(_toPluginSession)
         .where((session) => session.directory == target)
         .toList(growable: false);
@@ -86,33 +102,50 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     return sessions.sublist(from, until);
   }
 
+  /// The sub-agent sessions persisted under one root.
+  Future<List<PluginSession>> getChildSessions({required String sessionId}) async {
+    final records = await listSessionRecordsInIsolate();
+    return records.where((record) => record.parentId == sessionId).map(_toPluginSession).toList(growable: false);
+  }
+
   /// Resolves a transcript by session id without reading any file.
   String? findTranscriptPath({required String sessionId}) {
     for (final path in _listTranscriptPaths()) {
-      if (_sessionIdFromTranscriptName(p.basename(path)) == sessionId) return path;
+      if (_rootIdFromPath(path) == sessionId || _childIdFromPath(path) == sessionId) return path;
     }
     return null;
   }
 
   ClaudeSessionRecord? findSessionById({required String sessionId}) {
     final path = findTranscriptPath(sessionId: sessionId);
-    return path == null ? null : _readSessionRecord(path);
+    if (path == null) return null;
+    if (_rootIdFromPath(path) != null) return _readRootRecord(path);
+    final rootId = _rootIdOfChildPath(path);
+    final root = rootId == null ? null : findSessionById(sessionId: rootId);
+    return root == null ? null : _readChildRecord(path, roots: {root.id: root});
   }
 
-  /// Deletes a session's transcript. Returns false only when it was not found.
+  /// Deletes a session's transcript — for a root also its `<id>/` directory
+  /// holding the sub-agent transcripts, for a child also its meta file.
+  /// Returns false only when it was not found.
   bool deleteSession({required String sessionId}) {
     final path = findTranscriptPath(sessionId: sessionId);
     if (path == null) return false;
     _transcriptApi.deleteTranscript(transcriptPath: path);
+    if (_rootIdFromPath(path) != null) {
+      _transcriptApi.deleteDirectory(directoryPath: p.join(p.dirname(path), sessionId));
+    } else {
+      _transcriptApi.deleteTranscript(transcriptPath: ClaudeTranscriptApi.subagentMetaPath(transcriptPath: path));
+    }
     return true;
   }
 
   List<String> _listTranscriptPaths() => _transcriptApi.listTranscriptPaths();
 
-  /// Reads one transcript's header into a catalog record, or null when it is
-  /// not a session.
-  ClaudeSessionRecord? _readSessionRecord(String path) {
-    final id = _sessionIdFromTranscriptName(p.basename(path));
+  /// Reads one root transcript's header into a catalog record, or null when it
+  /// is not a session.
+  ClaudeSessionRecord? _readRootRecord(String path) {
+    final id = _rootIdFromPath(path);
     if (id == null) return null;
 
     final List<ClaudeTranscriptLineDto> header;
@@ -164,12 +197,47 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     return ClaudeSessionRecord(
       id: id,
       transcriptPath: path,
+      parentId: null,
       cwd: cwd,
       title: title,
       createdAt: createdAt,
       updatedAt: updatedAt ?? createdAt,
       gitBranch: gitBranch,
       cliVersion: cliVersion,
+    );
+  }
+
+  /// A sub-agent transcript under a root present in [roots]: a meta read and
+  /// two stats, no header scan. Null for anything else.
+  ClaudeSessionRecord? _readChildRecord(String path, {required Map<String, ClaudeSessionRecord> roots}) {
+    final id = _childIdFromPath(path);
+    final root = roots[_rootIdOfChildPath(path)];
+    if (id == null || root == null) return null;
+    final ClaudeSubagentMetaDto? meta;
+    final DateTime? createdAt;
+    final DateTime? updatedAt;
+    try {
+      meta = _transcriptApi.readSubagentMeta(transcriptPath: path);
+      createdAt = _transcriptApi.lastModified(
+        transcriptPath: ClaudeTranscriptApi.subagentMetaPath(transcriptPath: path),
+      );
+      updatedAt = _transcriptApi.lastModified(transcriptPath: path);
+    } on Object catch (error, stackTrace) {
+      // A child racing its own deletion, or a corrupt meta, costs one child in
+      // this scan; the rest of the catalog still lists.
+      Log.w("[claude] skipping unreadable subagent transcript $path", error, stackTrace);
+      return null;
+    }
+    return ClaudeSessionRecord(
+      id: id,
+      transcriptPath: path,
+      parentId: root.id,
+      cwd: root.cwd,
+      title: meta?.description,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      gitBranch: root.gitBranch,
+      cliVersion: root.cliVersion,
     );
   }
 
@@ -181,7 +249,7 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
       id: record.id,
       projectID: directory,
       directory: directory,
-      parentID: null,
+      parentID: record.parentId,
       title: record.title,
       time: created == null || updated == null
           ? null
@@ -190,16 +258,36 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   }
 }
 
-/// The transcript filename minus `.jsonl`, or null when it is not a session id.
+/// The root session id a `<uuid>.jsonl` path names, or null.
 ///
-/// This is the catalog's primary filter, not a formality: subagent transcripts
-/// share the `projects/` tree and are named `agent-<slug>-<hex>.jsonl`. On the
+/// This is the catalog's primary filter, not a formality: legacy flat subagent
+/// transcripts share the `projects/` tree as `agent-<slug>-<hex>.jsonl`. On the
 /// machine this was measured on they were 1,695 of 1,888 files, so accepting
 /// every `.jsonl` would have reported roughly ten times too many sessions.
-String? _sessionIdFromTranscriptName(String fileName) {
+String? _rootIdFromPath(String path) {
+  final stem = _stem(path);
+  return stem != null && _uuidPattern.hasMatch(stem) ? stem : null;
+}
+
+/// The child session id an `<root>/subagents/agent-<agentId>.jsonl` path names,
+/// or null — including for the legacy flat layout, which has no `subagents/`.
+String? _childIdFromPath(String path) {
+  final stem = _stem(path);
+  if (stem == null || ClaudeSubagentSessionId.agentIdOf(stem) == null) return null;
+  return _rootIdOfChildPath(path) == null ? null : stem;
+}
+
+String? _rootIdOfChildPath(String path) {
+  final subagents = p.dirname(path);
+  if (p.basename(subagents) != "subagents") return null;
+  final root = p.basename(p.dirname(subagents));
+  return _uuidPattern.hasMatch(root) ? root : null;
+}
+
+String? _stem(String path) {
+  final fileName = p.basename(path);
   if (!fileName.endsWith(".jsonl")) return null;
-  final stem = fileName.substring(0, fileName.length - ".jsonl".length);
-  return _uuidPattern.hasMatch(stem) ? stem : null;
+  return fileName.substring(0, fileName.length - ".jsonl".length);
 }
 
 final RegExp _uuidPattern = RegExp(
@@ -232,6 +320,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
+        agentId: dto.agentId,
         gitBranch: dto.gitBranch,
         version: dto.version,
         sessionId: dto.sessionId,
@@ -252,6 +341,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
+        agentId: dto.agentId,
         gitBranch: dto.gitBranch,
         version: dto.version,
         sessionId: dto.sessionId,
@@ -268,6 +358,7 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       cwd: dto.cwd,
       timestamp: dto.timestamp,
       isSidechain: dto.isSidechain,
+      agentId: dto.agentId,
       gitBranch: dto.gitBranch,
       version: dto.version,
       sessionId: dto.sessionId,
@@ -291,6 +382,7 @@ ClaudeTranscriptUnreplayableMessageRecord _unreplayableMessageRecord({required C
     cwd: dto.cwd,
     timestamp: dto.timestamp,
     isSidechain: dto.isSidechain,
+    agentId: dto.agentId,
     gitBranch: dto.gitBranch,
     version: dto.version,
     sessionId: dto.sessionId,

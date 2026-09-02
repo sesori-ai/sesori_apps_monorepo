@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
+import "../../models/claude_subagent_session_id.dart";
 import "../../models/claude_task_status.dart";
 import "../../models/claude_tool_use_result.dart";
 import "../mappers/claude_task_status_mapping.dart";
@@ -372,7 +373,7 @@ final class _TrackedTool({
     return isTask
         ? ClaudeTrackedTask(
             childSessionId: switch (taskId) {
-              final id? => "agent-$id",
+              final id? => ClaudeSubagentSessionId.fromAgentId(id),
               null => null,
             },
             id: id,
