@@ -337,7 +337,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         // captured [topNav] instance stays identical across those rebuilds, so
         // the bar itself short-circuits.
         Builder(
-          builder: (barContext) => MediaQuery.removePadding(context: barContext, removeTop: true, child: topNav),
+          builder: (barContext) => MediaQuery.removePadding(
+            context: barContext,
+            removeTop: true,
+            child: SelectionContainer.disabled(child: topNav),
+          ),
         ),
       ],
     );
@@ -721,12 +725,13 @@ class const _LargeTitleSliver({
       ),
     );
 
+    final nonSelectableTitleContent = SelectionContainer.disabled(child: titleContent);
     return SliverToBoxAdapter(
       child: PregoSizeObserver(
         onSizeChanged: (size) => onHeightChanged(size.height),
         child: pulledExtent == null
-            ? titleContent
-            : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: titleContent),
+            ? nonSelectableTitleContent
+            : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: nonSelectableTitleContent),
       ),
     );
   }

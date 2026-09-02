@@ -15,14 +15,14 @@ typedef DesktopProjectOpened = void Function({required String projectId, require
 
 /// Starts the supervised helper and establishes the authenticated desktop relay
 /// client. Running both operations together lets the relay park in its
-/// bridge-offline state until the helper appears, while coalescing inside each
-/// owning cubit keeps repeated recovery actions safe.
-Future<void> recoverDesktopProjectConnection({
+/// bridge-offline state until the helper appears, while coalescing inside the
+/// owning bridge and relay controllers keeps repeated recovery actions safe.
+Future<void> recoverDesktopConnection({
   required BridgeControlCubit bridgeControlCubit,
-  required ProjectListCubit projectListCubit,
+  required Future<void> Function() reconnectRelay,
 }) => Future.wait<void>([
   bridgeControlCubit.startBridge(),
-  projectListCubit.reconnectBridge(),
+  reconnectRelay(),
 ]);
 
 /// Desktop composition for the shared project inventory.
@@ -36,9 +36,9 @@ class const DesktopProjectListScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    Future<void> recover({required BuildContext context}) => recoverDesktopProjectConnection(
+    Future<void> recover({required BuildContext context}) => recoverDesktopConnection(
       bridgeControlCubit: context.read<BridgeControlCubit>(),
-      projectListCubit: context.read<ProjectListCubit>(),
+      reconnectRelay: context.read<ProjectListCubit>().reconnectBridge,
     );
 
     return MultiBlocProvider(

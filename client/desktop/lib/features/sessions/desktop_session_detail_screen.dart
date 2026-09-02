@@ -37,9 +37,7 @@ class const DesktopSessionDetailScreen({
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
         projectId: projectId,
-        // Desktop does not produce local session notifications until the
-        // attention-notification slice, so there is nothing to cancel here.
-        notificationCanceller: null,
+        notificationCanceller: getIt<NotificationCanceller>(),
         failureReporter: getIt<FailureReporter>(),
       ),
       child: DesktopComposerPresentationScope(

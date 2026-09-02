@@ -19,6 +19,7 @@ class const MobileComposerPresentationScope({
         voiceSupport: ComposerVoiceSupport.supported,
         inputMode: inputMode,
         isKeyboardVisible: isKeyboardVisible,
+        sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
         attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
         imageClipboard: getIt.get<ImageClipboard>,
         child: child,

@@ -303,6 +303,7 @@ void main() {
               voiceSupport: ComposerVoiceSupport.supported,
               inputMode: ChatInputMode.voiceFirst,
               isKeyboardVisible: false,
+              sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(

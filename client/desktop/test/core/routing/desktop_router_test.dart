@@ -9,7 +9,7 @@ import "package:sesori_desktop/features/settings/desktop_harnesses_settings_scre
 
 void main() {
   test("desktop registers typed new-session and diff routes", () {
-    final paths = _shellRoutes().map((route) => route.path);
+    final paths = _routeRegistrations().map((registration) => registration.path);
 
     expect(paths, containsAll([AppRouteDef.newSession.path, AppRouteDef.sessionDiffs.path]));
   });
@@ -67,12 +67,29 @@ void main() {
   });
 }
 
-Iterable<GoRoute> _shellRoutes() {
-  final shell = buildDesktopRoutes().single as ShellRoute;
-  return shell.routes.whereType<GoRoute>();
+Iterable<_RouteRegistration> _routeRegistrations({
+  List<RouteBase>? routes,
+  String parentPath = "",
+}) sync* {
+  for (final route in routes ?? buildDesktopRoutes()) {
+    switch (route) {
+      case GoRoute(:final path, :final routes):
+        final fullPath = path.startsWith("/") ? path : "${parentPath.endsWith("/") ? parentPath : "$parentPath/"}$path";
+        yield _RouteRegistration(path: fullPath, route: route);
+        yield* _routeRegistrations(routes: routes, parentPath: fullPath);
+      case ShellRoute(:final routes):
+        yield* _routeRegistrations(routes: routes, parentPath: parentPath);
+      case StatefulShellRoute():
+        throw UnsupportedError("Desktop routing does not use StatefulShellRoute");
+    }
+  }
 }
 
-GoRoute _routeWithPath(String path) => _shellRoutes().singleWhere((route) => route.path == path);
+GoRoute _routeWithPath(String path) {
+  return _routeRegistrations().singleWhere((registration) => registration.path == path).route;
+}
+
+class const _RouteRegistration({required final String path, required final GoRoute route});
 
 class _FakeBuildContext() extends Fake implements BuildContext;
 
