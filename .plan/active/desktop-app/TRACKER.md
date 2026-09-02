@@ -33,6 +33,21 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
 
+## Step 20 replacement series
+
+PR #1265 was closed unmerged on 2026-09-02 because its 5,611-line scope was too
+broad for efficient review. Its implementation remains the source for this
+fixed, sequential replacement series; only one PR is opened at a time.
+
+| Slice | Fixed PR title | Status |
+|---|---|---|
+| 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | in-progress |
+| 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | pending |
+| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | pending |
+
+MT Gate C remains after all three slices. The top-level Step 20 row stays
+`in-progress` until the replacement series is complete.
+
 ## MT Gate A — accepted 2026-08-30
 
 The user accepted the macOS manual gate after browser login/session restore,

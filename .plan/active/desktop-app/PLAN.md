@@ -595,9 +595,36 @@ Any cubit here only exposes the preference toggle. Content is category-level
 copy plus the session title — never prompt, transcript, or tool payload (same
 privacy line as the bridge's push content builder). Without this a
 tray-resident cockpit cannot tell the user a session is blocked — the phone
-gets push, the desktop got nothing. *Overage: ~1.7k changed lines for the
-notification client, window seams, bounds service, attention service, and
-composition; the additions have no legal home in an earlier slice.*
+gets push, the desktop got nothing.
+
+**Step 20 delivery reset (2026-09-02).** PR #1265 was closed unmerged after its
+5,611-line, six-package scope caused repeated whole-feature review churn. The
+approved behavior is retained but delivered as this fixed replacement series,
+with one PR open at a time:
+
+1. `⚙️ [desktop-app] Restore desktop window bounds [step 1/3]` — typed bounds
+   and window events, desktop-instance persistence, display-aware clamping,
+   restore before first show, debounced writes, and terminal-Quit flushing.
+2. `🚧 [desktop-app] Compose the desktop cockpit [step 2/3]` — persistent
+   cockpit navigation, project/session route ownership, supervision recovery,
+   Enter/Shift+Enter with IME protection, safe Escape behavior, and selectable
+   transcript/diff source without navigation or gutter metadata.
+3. `🚧 [desktop-app] Add desktop attention notifications [step 3/3]` — shared
+   notification contract changes, native desktop client, persisted preference,
+   account-bound SSE attention, open routing, and logout/auth-loss cleanup.
+
+The split changes delivery order, not the approved architecture or MT Gate C.
+Slice 1 is independently valid and remains below the 1,500-line soft cap.
+Slices 2 and 3 may exceed that cap because each keeps its production flow with
+its directly proving tests; another split would either expose an unused cockpit
+or notification contract or separate account-ending cleanup from the service
+that owns native writes. Mutable-state budget: slice 1 adds one bounds service
+with a debounce timer, event subscription, and serialized pending write; slice
+2 adds no persisted state; slice 3 adds one persisted preference plus the
+bounded pending-request/generation/write-lane state needed for account-safe
+notification replacement and cleanup. It deliberately adds no desktop push
+registration, migration/backfill, compatibility shim, global coordination
+registry, or background retry worker.
 
 > **MT gate C — cockpit parity + mobile regression (user-run, after step
 > 20).** Desktop: manage harnesses end-to-end (install + login a real one) ·
