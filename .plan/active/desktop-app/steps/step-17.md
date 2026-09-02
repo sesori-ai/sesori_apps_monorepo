@@ -62,7 +62,7 @@
 ## Verification
 
 - `client/module_prego`: `asdf exec dart analyze --fatal-infos` passes; the
-  complete suite passes 262 tests, including the shared copy confirmation.
+  complete suite passes 267 tests, including the shared copy confirmation.
 - `client/module_core`: `asdf exec dart analyze --fatal-infos` passes; the
   complete suite passes 1,477 tests, including optional notification cancellation
   and parent-session viewing restoration.
