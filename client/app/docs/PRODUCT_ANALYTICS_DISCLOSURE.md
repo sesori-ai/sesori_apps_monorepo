@@ -29,9 +29,10 @@ The control does not stop:
   `sign_up`/`login` outcomes, carrying only a pinned sign-in provider, bounded
   failure kind, or pinned authentication method;
 - Singular's release-only install/session attribution, SDK-generated device
-  identifier, and parameter-free standard authentication conversion events;
-  this integration limits advertising identifiers and partner data sharing and
-  sets no Sesori user identity;
+  identifier, parameter-free standard authentication conversion events, and
+  the parameter-free `bridge_paired` / `first_session_run` activation events;
+  this integration limits advertising identifiers, permits attribution-data
+  sharing with advertising partners, and sets no Sesori user identity;
 - account and bridge records required to operate Sesori;
 - behavior from an older app version; or
 - a remote supported installation until it next establishes authentication or
@@ -53,6 +54,15 @@ events carry no provider, account identifier, or other event attributes. Neither
 Firebase nor Singular authentication outcomes are sent for session restore,
 token refresh, failure, cancellation, or a displaced attempt.
 
+Singular also receives `bridge_paired` the first time this installation reaches
+a successful encrypted bridge connection and `first_session_run` the first time
+a user-authored message or command is successfully accepted by a coding session,
+including session creation with an initial message. Each is persisted and sent
+at most once per installation with no properties. Opening or creating an empty
+session, offline queueing, answering a permission/question, and failed outcomes
+do not qualify. These behavioral attribution events remain outside the Basic
+Usage Analytics control by owner decision.
+
 ## Singular attribution release gate
 
 The release lanes require and inject Singular's build credentials. The bundled
@@ -66,11 +76,14 @@ a production release. The existing Basic Usage Analytics switch does not
 control this attribution SDK.
 
 This scope deliberately removes Android's Google Play Services and AdServices
-advertising-ID permissions, sets `limitAdvertisingIdentifiers=true` and
-`limitDataSharing=true`, and does not set a custom user ID, log custom Singular
-events, attach attributes to the standard authentication events, handle
-Singular Links, or register uninstall tokens. Broadening any of those boundaries
-requires a separate privacy and product decision.
+advertising-ID permissions and keeps `limitAdvertisingIdentifiers=true`.
+`limitDataSharing=false` permits Singular to share attribution data with
+advertising partners for campaign measurement; it does not add IDFA/GAID
+collection or an ATT prompt. Sesori sets no custom user ID, attaches no
+attributes to standard authentication events, sends no properties with the two
+closed activation events, does not handle Singular Links, and does not register
+uninstall tokens. Broadening any of those boundaries requires a separate privacy
+and product decision.
 
 ## Retention and deletion limits
 
@@ -99,6 +112,9 @@ requires a separate privacy and product decision.
 - [ ] Confirm Firebase receives mutually exclusive `sign_up`/`login` outcomes,
       GA4 marks only `sign_up` as a key event, and neither is used as the
       canonical account-registration count.
+- [ ] Confirm the public policy and store declarations disclose partner
+      attribution-data sharing plus the preference-independent, parameter-free
+      activation events.
 - [ ] Confirm Singular retention/deletion settings and record product/privacy
       counsel approval before a production release.
 - [ ] Record product/privacy counsel approval and the first approved app version

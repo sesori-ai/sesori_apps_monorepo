@@ -114,6 +114,7 @@ export "src/foundation/models/product_analytics/product_analytics_preference.dar
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/analytics_release_cutoff_source.dart";
 export "src/foundation/platform/attachment_thumbnail_storage.dart";
+export "src/foundation/platform/attribution_claim_storage.dart";
 export "src/foundation/platform/attribution_client.dart";
 export "src/foundation/platform/image_clipboard.dart";
 export "src/foundation/platform/image_saver.dart";
@@ -161,6 +162,7 @@ export "src/routing/analytics_route_listener.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 export "src/services/analytics_crawl_gate_service.dart";
+export "src/services/attribution_service.dart";
 export "src/services/catalog_rescan_service.dart";
 export "src/services/composer_draft_calculator.dart";
 export "src/services/foreground_notification_dispatcher.dart";
