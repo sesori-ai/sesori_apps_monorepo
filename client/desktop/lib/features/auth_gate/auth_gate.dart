@@ -39,8 +39,8 @@ class const AuthGateView({required final Widget child, super.key}) extends State
         unawaited(context.read<AuthGateCubit>().onSignedInDestinationReady());
       },
       child: switch (state) {
-        AuthGateChecking() => Scaffold(
-          body: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+        AuthGateChecking() => const Scaffold(
+          body: Center(child: PregoActivityIndicator(color: null)),
         ),
         AuthGateSignedOut() => const LoginScreen(),
         AuthGateSignedIn() => child,

@@ -122,16 +122,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       if (isBusy)
         // A status indicator, not a button — sized to the glass button's 40×40
         // footprint so the bar height stays stable as work starts and stops.
-        SizedBox(
+        const SizedBox(
           width: 40,
           height: 40,
           child: Center(
             child: SizedBox(
               width: 20,
               height: 20,
-              child: PregoActivityIndicator(
-                color: context.prego.colors.bgBrandSolid,
-              ),
+              child: PregoActivityIndicator(color: null),
             ),
           ),
         ),

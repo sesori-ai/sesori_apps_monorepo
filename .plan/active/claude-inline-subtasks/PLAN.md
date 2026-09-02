@@ -373,7 +373,7 @@ History replay, in `ClaudeHistoryMapper`:
     `listTranscriptPaths` walk already yields `subagents/agent-*.jsonl`; it
     gains `readSubagentMeta(transcriptPath:) → ClaudeSubagentMetaDto?`
     (Freezed DTO in `api/models/claude_subagent_meta_dto.dart`: `agentType`,
-    `description`, `toolUseId`, `spawnDepth`), `deleteSessionDirectory(...)`,
+    `description`, `toolUseId`, `spawnDepth`), `deleteDirectory(...)`,
     and reuses `lastModified`. No classification logic.
   - `ClaudeTranscriptCatalogRepository` (Layer 2) owns child detection from
     the walk (an `agent-*.jsonl` under `subagents/` whose grandparent directory
@@ -426,7 +426,7 @@ History replay, in `ClaudeHistoryMapper`:
   surfaces (`session.created`/`session.status` events, `getSessionStatuses`,
   `childSessionIds`); no bridge/app change is needed for that.
 - Delete: root deletion also removes `<root>/` (its `subagents/`) through the
-  API's `deleteSessionDirectory`; child deletion removes the `.jsonl` and
+  API's `deleteDirectory`; child deletion removes the `.jsonl` and
   `.meta.json`. Rename/archive on a child are no-ops, as today for OpenCode
   children.
 - Legacy flat `agent-<slug>-<hex>.jsonl` transcripts stay excluded (no title,
@@ -807,8 +807,9 @@ Verification: `dart analyze --fatal-infos` and `dart test` in
 
 Scope:
 
-- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`:
-  `readSubagentMeta`, `deleteSessionDirectory`; no classification.
+- `claude_transcript_api.dart` + `api/models/claude_subagent_meta_dto.dart`
+  (Freezed): `readSubagentMeta`, `deleteDirectory`; no classification.
+  `models/claude_subagent_session_id.dart` owns the `agent-<agentId>` rule.
 - `claude_transcript_catalog_repository.dart` + `ClaudeSessionRecord.parentId`:
   child detection, `agent-` id resolution, legacy exclusion, root/child
   delete decisions, roots-only `getSessions`.

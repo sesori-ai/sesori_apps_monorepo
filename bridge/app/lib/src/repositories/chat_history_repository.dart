@@ -326,14 +326,23 @@ class ChatHistoryRepository({
         );
         continue;
       }
-      if (json["type"] != "tool") continue;
-      final Object? rawState = json["state"];
+      // A subtask's lifecycle lives in `taskState`; its sub-agent died with the
+      // process, which is a cancellation, not a tool error.
+      final Object? rawState = switch (json["type"]) {
+        "tool" => json["state"],
+        "subtask" => json["taskState"],
+        _ => null,
+      };
       if (rawState is! Map<String, dynamic>) continue;
       final status = rawState["status"];
       if (status != "pending" && status != "running") continue;
 
-      rawState["status"] = "error";
-      rawState["error"] = "The turn ended before this tool reported a result.";
+      if (json["type"] == "subtask") {
+        rawState["status"] = "cancelled";
+      } else {
+        rawState["status"] = "error";
+        rawState["error"] = "The turn ended before this tool reported a result.";
+      }
       await _chatHistoryDao.upsertPart(
         row: row.copyWith(partJson: jsonEncode(json), updatedAt: updatedAt),
       );

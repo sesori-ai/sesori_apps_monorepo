@@ -103,10 +103,10 @@ class _ProfileViewState() extends State<ProfileView> {
                       icon: TablerRegular.logout,
                       title: Text(loc.settingsLogout),
                       trailing: _isLoggingOut
-                          ? SizedBox(
+                          ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+                              child: PregoActivityIndicator(color: null),
                             )
                           : null,
                       onTap: _isLoggingOut ? null : () => unawaited(_logout()),

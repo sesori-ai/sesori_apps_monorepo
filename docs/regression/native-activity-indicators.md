@@ -30,7 +30,11 @@ timer alive while the app is paused, hidden, or detached; a native indicator bra
 reappearing on Android and degrading scroll; crashes,
 frozen or corrupted scene rendering, or leaked native views when an indicator
 scrolls out of view, is inserted and removed repeatedly, or composes with
-glass and blur; an indicator ignoring its requested colours or theme switches;
+glass and blur; an indicator ignoring a requested colour or a theme switch — product surfaces
+request no brand tint, so every spinner shows its platform's natural colour
+for the app's resolved brightness (native views receive that brightness and
+surfaces that invert the page ask for the opposite natural grey) while the
+tint capability stays available;
 sparkles in a list twinkling in lockstep despite distinct phases; the native
 sparkle keyframes visibly diverging from the Flutter fallback; reduce motion
 still animating.

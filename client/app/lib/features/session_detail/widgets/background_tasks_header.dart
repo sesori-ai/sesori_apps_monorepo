@@ -24,13 +24,11 @@ class const BackgroundTasksHeader({
       leading: hasRunning
           // The leading slot is a tight 32px wide but leaves its height free.
           // Center re-loosens those constraints around a fixed 16px square.
-          ? Center(
+          ? const Center(
               heightFactor: 1,
               child: SizedBox.square(
                 dimension: 16,
-                child: PregoActivityIndicator(
-                  color: prego.colors.bgBrandSolid,
-                ),
+                child: PregoActivityIndicator(color: null),
               ),
             )
           : Icon(

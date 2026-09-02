@@ -45,9 +45,9 @@ class const NotificationSettingsView({
               vertical: _contentTopPadding,
             ),
             child: switch (state) {
-              NotificationPreferencesLoading() => Padding(
-                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
-                child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+              NotificationPreferencesLoading() => const Padding(
+                padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
+                child: Center(child: PregoActivityIndicator(color: null)),
               ),
               NotificationPreferencesAccountUnavailable() => const _NotificationPreferencesUnavailable(),
               NotificationPreferencesLoadFailed() => const _NotificationPreferencesFailure(),
@@ -162,8 +162,8 @@ class const _NotificationToggleRow({
             child: SizedBox(
               key: ValueKey("notification_preference_loading_${category.name}"),
               width: context.prego.spacing.spacing16,
-              child: Center(
-                child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+              child: const Center(
+                child: PregoActivityIndicator(color: null),
               ),
             ),
           )

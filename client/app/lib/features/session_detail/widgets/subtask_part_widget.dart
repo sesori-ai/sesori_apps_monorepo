@@ -31,9 +31,7 @@ class const SubtaskPartWidget({
     // A backend that reports the subtask's own lifecycle is authoritative for
     // it. Otherwise the child session's status is the only signal available.
     final status = part.taskState?.status;
-    final childStatus = childSession == null
-        ? null
-        : childStatuses[childSession.id] ?? const SessionStatus.idle();
+    final childStatus = childSession == null ? null : childStatuses[childSession.id] ?? const SessionStatus.idle();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -112,12 +110,10 @@ class const SubtaskPartWidget({
   }
 
   Widget _subtaskStatusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
-    ToolStatus.pending || ToolStatus.running => SizedBox(
+    ToolStatus.pending || ToolStatus.running => const SizedBox(
       width: 16,
       height: 16,
-      child: PregoActivityIndicator(
-        color: prego.colors.bgBrandSolid,
-      ),
+      child: PregoActivityIndicator(color: null),
     ),
     ToolStatus.completed => Icon(
       Icons.check_circle,
@@ -143,12 +139,10 @@ class const SubtaskPartWidget({
   };
 
   Widget _sessionStatusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
-    SessionStatusBusy() || SessionStatusRetry() => SizedBox(
+    SessionStatusBusy() || SessionStatusRetry() => const SizedBox(
       width: 16,
       height: 16,
-      child: PregoActivityIndicator(
-        color: prego.colors.bgBrandSolid,
-      ),
+      child: PregoActivityIndicator(color: null),
     ),
     SessionStatusIdle() => Icon(
       Icons.check_circle,

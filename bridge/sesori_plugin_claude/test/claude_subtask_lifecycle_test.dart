@@ -282,6 +282,7 @@ void main() {
     test("replays a finished background agent as one completed subtask and no user bubble", () {
       final messages = mapper.map(
         sessionId: _session,
+        agentId: null,
         records: [
           _agentRecord(),
           _launchResultRecord(),
@@ -302,11 +303,13 @@ void main() {
     test("a still-running task is cancelled unless its resident process still runs it", () {
       final dead = mapper.map(
         sessionId: _session,
+        agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
         residentTaskToolUseIds: const {},
       );
       final live = mapper.map(
         sessionId: _session,
+        agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
         residentTaskToolUseIds: const {_toolUseId},
       );
@@ -318,6 +321,7 @@ void main() {
     test("a foreground result finalizes without a notification and injected records never render", () {
       final messages = mapper.map(
         sessionId: _session,
+        agentId: null,
         records: [
           _agentRecord(),
           _userRecord(
@@ -405,6 +409,7 @@ ClaudeTranscriptAssistantRecord _agentRecord() => const ClaudeTranscriptAssistan
   cwd: "/tmp/project",
   timestamp: null,
   isSidechain: false,
+  agentId: null,
   gitBranch: null,
   version: null,
   sessionId: _session,
@@ -441,6 +446,7 @@ ClaudeTranscriptUserRecord _userRecord({
   cwd: "/tmp/project",
   timestamp: null,
   isSidechain: false,
+  agentId: null,
   gitBranch: null,
   version: null,
   sessionId: _session,

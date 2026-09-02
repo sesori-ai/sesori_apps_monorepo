@@ -100,6 +100,7 @@ void main() {
 
       final messages = mapper.map(
         sessionId: _sessionId,
+        agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
       );
@@ -177,6 +178,7 @@ IMPORTANT: Do NOT create new worktrees.
 
       final messages = mapper.map(
         sessionId: _sessionId,
+        agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
       );
@@ -201,6 +203,7 @@ IMPORTANT: Do NOT create new worktrees.
 
       final messages = mapper.map(
         sessionId: _sessionId,
+        agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
       );
@@ -241,6 +244,7 @@ IMPORTANT: Do NOT create new worktrees.
       expect(
         mapper.map(
           sessionId: _sessionId,
+          agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
           residentTaskToolUseIds: const {},
         ),
@@ -270,6 +274,7 @@ IMPORTANT: Do NOT create new worktrees.
       expect(
         mapper.map(
           sessionId: _sessionId,
+          agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
           residentTaskToolUseIds: const {},
         ),
@@ -319,6 +324,7 @@ IMPORTANT: Do NOT create new worktrees.
 
       final messages = mapper.map(
         sessionId: _sessionId,
+        agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
       );

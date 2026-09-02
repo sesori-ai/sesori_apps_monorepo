@@ -123,9 +123,9 @@ class const _StatusRow({required final String message}) extends StatelessWidget 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        SizedBox.square(
+        const SizedBox.square(
           dimension: 16,
-          child: PregoActivityIndicator(color: Theme.of(context).colorScheme.primary),
+          child: PregoActivityIndicator(color: null),
         ),
         const SizedBox(width: 12),
         Flexible(child: Text(message)),
