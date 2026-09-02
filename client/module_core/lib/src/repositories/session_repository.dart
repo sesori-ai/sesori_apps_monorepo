@@ -60,8 +60,9 @@ class SessionRepository({
     }
   }
 
-  Future<ApiResponse<void>> abortSession({required String sessionId}) {
-    return _api.abortSession(sessionId: sessionId);
+  /// Propagates [SessionAbortApiRejectedException] for a refused `confirm`.
+  Future<ApiResponse<void>> abortSession({required String sessionId, required SessionAbortSubAgentPolicy subAgents}) {
+    return _api.abortSession(sessionId: sessionId, subAgents: subAgents);
   }
 
   Future<ApiResponse<void>> markSessionSeen({required String sessionId, required bool read}) {

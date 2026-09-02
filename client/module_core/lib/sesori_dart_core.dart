@@ -85,6 +85,7 @@ export "src/cubits/project_list/add_project_outcome.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
 export "src/cubits/session_detail/queued_session_submission.dart";
+export "src/cubits/session_detail/session_abort_outcome.dart";
 export "src/cubits/session_detail/session_detail_cubit.dart";
 export "src/cubits/session_detail/session_detail_notice.dart";
 export "src/cubits/session_detail/session_detail_resolvers.dart";

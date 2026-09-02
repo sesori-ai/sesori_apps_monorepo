@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -42,7 +43,7 @@ void main() {
       addTearDown(startedSubscription.cancel);
       addTearDown(subscription.cancel);
 
-      final abortFuture = service.abortSession(sessionId: "session-1");
+      final abortFuture = service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop);
       await abortStarted.future;
 
       expect(startedSessionIds, equals(["session-1"]));
@@ -70,7 +71,7 @@ void main() {
       addTearDown(failedSubscription.cancel);
 
       await expectLater(
-        service.abortSession(sessionId: "session-1"),
+        service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
         throwsA(isA<StateError>()),
       );
 
@@ -88,7 +89,10 @@ void main() {
       addTearDown(startedSubscription.cancel);
       addTearDown(failedSubscription.cancel);
 
-      await expectLater(service.abortSession(sessionId: "missing"), throwsStateError);
+      await expectLater(
+        service.abortSession(sessionId: "missing", subAgents: SessionAbortSubAgentPolicy.stop),
+        throwsStateError,
+      );
 
       expect(startedSessionIds, ["missing"]);
       expect(failedSessionIds, ["missing"]);
@@ -102,8 +106,12 @@ class _FakeSessionRepository() implements SessionRepository {
   Object? resolutionError;
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<SessionAbortResult> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) async {
     await onAbort?.call(sessionId: sessionId);
+    return const SessionAborted();
   }
 
   @override

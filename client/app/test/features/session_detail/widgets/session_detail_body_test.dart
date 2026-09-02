@@ -226,6 +226,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
+    registerFallbackValue(SessionAbortSubAgentPolicy.stop);
   });
 
   Finder semanticsWithLabel(String label) =>
@@ -1405,7 +1406,8 @@ void main() {
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
-    when(() => cubit.abort()).thenAnswer((_) async {});
+    when(() => cubit.abort(subAgents: any(named: "subAgents")))
+        .thenAnswer((_) async => const SessionAbortOutcome.aborted());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     // Bounded pumps throughout: the busy status keeps an activity indicator
@@ -1417,7 +1419,7 @@ void main() {
     // reachable next to the keyboard button even in the resting voice pill.
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.tap(find.byIcon(TablerSolid.player_stop));
-    verify(() => cubit.abort()).called(1);
+    verify(() => cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm)).called(1);
 
     // Typed text flips the same button back to send: sending queues while the
     // agent works, so it must stay reachable.

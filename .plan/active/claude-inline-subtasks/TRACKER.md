@@ -4,9 +4,9 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 4/8 merged; Step 5/8 (live sub-agent
-  streaming) PR [#1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) open (branch `claude-subagent-streaming`)
-- **Next action:** merge Step 5/8, then Step 6/8 (scoped stop)
+- **Series state:** Steps 1/8 to 5/8 merged; Step 6/8 (scoped stop) in PR
+  (branch `claude-scoped-stop`)
+- **Next action:** merge Step 6/8, then Step 7/8 (regression docs)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -111,6 +111,25 @@
   on a root cover its children's tasks and rendered state; a forwarded frame
   arriving before the launching task knows its sub-agent id is dropped (no
   session exists to render it into).
+- [x] Step 6 implementation refinements (recorded 2026-09-02, code is truth):
+  the plugin contract is `abortSession({sessionId, subAgents:
+  PluginAbortSubAgentPolicy}) → PluginAbortResult` (`PluginAbortAccepted` |
+  `PluginAbortRejectedSubAgentsRunning`), non-Claude plugins wrap their
+  existing abort and answer accepted; the bridge repository returns a sealed
+  `SessionAbortResult` (`SessionAborted` | `SessionAbortRejected`) mapped in
+  `plugin_to_shared_mapping.dart`; `SessionAbortService` emits
+  `abortedSessions` only for an accepted non-`keep` stop and
+  `abortFailedSessions` (clear pending) for `keep` and rejections; the Claude
+  `keep` path interrupts and returns without touching `wakeupAt` or the
+  running set, and `ClaudeSessionProcessRepository` closes the interrupt
+  window at the first `task_notification` that arrives while no turn is
+  active (a `sendTurn` also closes it, as before); the client has no
+  `capabilities/session/SessionService` abort seam (none exists), so
+  `SessionApi` → `SessionRepository` → `SessionDetailCubit.abort({subAgents})`
+  returning a sealed `SessionAbortOutcome` is the whole chain, the 409 body is
+  the shared `SessionAbortRejection` (no module_core mirror), and the scope
+  dialog lives in `client/app/.../session_abort_scope_dialog.dart` next to
+  the view that owns the stop button, reusing the existing cancel label.
 
 ## Delivery Steps
 
@@ -120,8 +139,8 @@
 | [x] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | [PR #1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) merged |
 | [x] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | [PR #1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247) merged |
 | [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
-| [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) open |
-| [ ] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | Pending |
+| [x] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) merged |
+| [ ] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | In PR |
 | [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | Pending |
 | [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | Pending |
 
@@ -224,6 +243,23 @@
   frames route into the child session only once its id is known; a nested
   Agent call inside a child binds through the root's `task_started`, renders
   its part in the child, and its grandchild is flattened under the root).
+- **Step 5:** merged as `8ff7fba910`; both bot rounds declined (tool-use ids
+  are globally unique Anthropic block ids).
+- **Step 6:** implemented on `main` at `8ff7fba910` (branch `claude-scoped-stop`;
+  rebased across the desktop transcripts move of the loaded view into
+  `module_app_ui`, so the stop dialog is wired from
+  `client/app/.../session_detail_composer_controls.dart`). Codegen re-run for `sesori_shared`
+  (`AbortSessionRequest`, `SessionAbortRejection`) and `flutter gen-l10n`.
+  `dart analyze --fatal-infos` clean in shared, interface, bridge/app, every
+  plugin, `client/module_core`; `flutter analyze` clean in `client/app`.
+  Tests: Claude 289/289 (3 new: confirm refused with count and
+  `mainAgentRunning`, keep leaves the process and tasks resident and settles
+  once after the wake-up turn, stop tears down), acp 275, codex 380, opencode
+  425, pi 291, bridge/app routing+services+repository 516, module_core
+  session-detail+repositories 350, client body test 94 — all pass. Changed
+  lines 1,257 across 49 files including generated code and the mechanical
+  `subAgents` argument at every plugin, fake, and test call site; the
+  non-generated production change is well inside the 600-1,000 target.
 - **Final disposition:** pending
 
 ## Plan Review

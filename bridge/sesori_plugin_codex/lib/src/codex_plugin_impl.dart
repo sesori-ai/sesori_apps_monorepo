@@ -799,7 +799,15 @@ class CodexPlugin._({
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    await _abortSession(sessionId: sessionId);
+    return const PluginAbortAccepted();
+  }
+
+  Future<void> _abortSession({required String sessionId}) async {
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId];
     if (turnId == null) {
@@ -920,7 +928,7 @@ class CodexPlugin._({
       if (activeSessionIds.isEmpty) return const <String>{};
 
       await Future.wait([
-        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+        for (final sessionId in activeSessionIds) _abortSession(sessionId: sessionId),
       ]);
       await _notificationWork;
       if (currentWorkState != PluginWorkState.idle) {
@@ -1169,7 +1177,7 @@ class CodexPlugin._({
     _advanceTurnEvidenceRevision(sessionId);
     if (_activeTurnByThread.containsKey(sessionId)) {
       try {
-        await abortSession(sessionId: sessionId);
+        await _abortSession(sessionId: sessionId);
       } on Object catch (error, stackTrace) {
         Log.w("[codex] failed to abort session $sessionId before deletion; continuing", error, stackTrace);
       }

@@ -1714,7 +1714,7 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       await expectLater(
-        repository.abortSession(sessionId: "unknown"),
+        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.lastGetMessagesSessionId, isNull);
@@ -2525,7 +2525,7 @@ void main() {
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
-        () => repository.abortSession(sessionId: "gone"),
+        () => repository.abortSession(sessionId: "gone", subAgents: SessionAbortSubAgentPolicy.stop),
         () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
@@ -2934,8 +2934,12 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
     lastAbortSessionId = sessionId;
+    return const PluginAbortAccepted();
   }
 
   @override

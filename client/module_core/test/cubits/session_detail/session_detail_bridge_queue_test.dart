@@ -971,7 +971,12 @@ void main() {
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
-      when(() => mockSessionRepository.abortSession(sessionId: _sessionId)).thenAnswer(
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: any(named: "subAgents"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(null),
       );
       final cubit = await createLoadedCubit();
@@ -979,7 +984,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
 
-      await cubit.abort();
+      await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
     });
@@ -1248,7 +1253,12 @@ void main() {
     });
 
     test("abort drops locally staged sends", () async {
-      when(() => mockSessionRepository.abortSession(sessionId: _sessionId)).thenAnswer(
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: any(named: "subAgents"),
+        ),
+      ).thenAnswer(
         (_) async => ApiResponse.success(null),
       );
       final sendCompleter = Completer<ApiResponse<void>>();
@@ -1274,7 +1284,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isNotEmpty);
 
-      await cubit.abort();
+      await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);

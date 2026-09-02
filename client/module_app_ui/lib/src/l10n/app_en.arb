@@ -535,6 +535,24 @@
   "sessionDetailNoCommands": "No slash commands are available for this project.",
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",
+  "sessionDetailStopScopeTitle": "Sub-agents are running",
+  "sessionDetailStopScopeMessage": "{count, plural, =1{This session has 1 sub-agent still working. Stop only the main agent, or stop everything?} other{This session has {count} sub-agents still working. Stop only the main agent, or stop everything?}}",
+  "@sessionDetailStopScopeMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailStopMainAgentOnly": "Stop main agent only",
+  "sessionDetailStopAll": "{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}",
+  "@sessionDetailStopAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailThinking": "Thinking...",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",

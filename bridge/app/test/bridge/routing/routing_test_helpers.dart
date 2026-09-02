@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/repositories/mappers/pull_request_mapper.dart"
 import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
+import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
@@ -578,7 +579,10 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
-  Future<void> abortSession({required String sessionId}) async {}
+  Future<SessionAbortResult> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) async => const SessionAborted();
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
@@ -1085,8 +1089,12 @@ class FakeSessionRepository({
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async => null;
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
-    await _plugin.abortSession(sessionId: sessionId);
+  Future<SessionAbortResult> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) async {
+    await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin());
+    return const SessionAborted();
   }
 
   @override

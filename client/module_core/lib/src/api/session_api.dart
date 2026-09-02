@@ -12,6 +12,9 @@ import "client/relay_http_client.dart";
 
 class const SessionCleanupApiRejectedException({required final SessionCleanupRejection rejection}) implements Exception;
 
+/// A `confirm` stop the bridge refused because sub-agents are running.
+class const SessionAbortApiRejectedException({required final SessionAbortRejection rejection}) implements Exception;
+
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
   static const Duration _attachmentRequestTimeout = Duration(minutes: 2);
@@ -332,12 +335,28 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
-  Future<ApiResponse<SuccessEmptyResponse>> abortSession({required String sessionId}) {
-    return _client.post(
+  /// Stops a session with the given sub-agent scope. A 409 carrying a
+  /// [SessionAbortRejection] surfaces as [SessionAbortApiRejectedException].
+  Future<ApiResponse<SuccessEmptyResponse>> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) async {
+    final response = await _client.post(
       "/session/abort",
       fromJson: SuccessEmptyResponse.fromJson,
-      body: SessionIdRequest(sessionId: sessionId),
+      body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents),
     );
+    if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final String rawBody))) {
+      final SessionAbortRejection rejection;
+      try {
+        rejection = SessionAbortRejection.fromJson(jsonDecodeMap(rawBody));
+      } on Object catch (e) {
+        logw("Failed to parse 409 abort rejection body: ${e.toString()}");
+        return response;
+      }
+      throw SessionAbortApiRejectedException(rejection: rejection);
+    }
+    return response;
   }
 
   /// Marks a session read ([read] == true) or unread ([read] == false).

@@ -239,7 +239,7 @@ void main() {
       while (plugin.lastSendCommandSessionId == null) {
         await Future<void>.delayed(Duration.zero);
       }
-      final abort = abortService.abortSession(sessionId: "s1");
+      final abort = abortService.abortSession(sessionId: "s1", subAgents: SessionAbortSubAgentPolicy.stop);
       final prompt = service.sendPrompt(
         promptId: "prompt-1",
         sessionId: "s1",

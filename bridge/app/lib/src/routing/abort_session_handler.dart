@@ -1,25 +1,30 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/session_abort_result.dart";
 import "../services/session_abort_service.dart";
 import "request_handler.dart";
 
-/// Handles `POST /session/:id/abort` — aborts in-progress session execution.
+/// Handles `POST /session/abort` — stops in-progress session execution.
 class AbortSessionHandler({
   required final SessionAbortService _sessionAbortService,
-}) extends BodyRequestHandler<SessionIdRequest, SuccessEmptyResponse> {
+}) extends BodyRequestHandler<AbortSessionRequest, SuccessEmptyResponse> {
   this
     : super(
         HttpMethod.post,
         "/session/abort",
-        fromJson: SessionIdRequest.fromJson,
+        fromJson: AbortSessionRequest.fromJson,
       );
 
   @override
   Future<SuccessEmptyResponse> handle(
     RelayRequest request, {
-    required SessionIdRequest body,
+    required AbortSessionRequest body,
   }) async {
-    await _sessionAbortService.abortSession(sessionId: body.sessionId);
+    final result = await _sessionAbortService.abortSession(sessionId: body.sessionId, subAgents: body.subAgents);
+    if (result case SessionAbortRejected(:final rejection)) {
+      // The app parses the 409 body as SessionAbortRejection JSON.
+      throw buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
+    }
     return const SuccessEmptyResponse();
   }
 }

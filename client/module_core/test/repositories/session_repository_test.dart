@@ -10,7 +10,11 @@ import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
 
-enum _LegacyOptionsFailureSource() { agents, providers, commands }
+enum _LegacyOptionsFailureSource() {
+  agents,
+  providers,
+  commands,
+}
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -40,14 +44,13 @@ void main() {
     final repository = SessionRepository(api: api);
 
     when(() => api.getMessages(sessionId: "session-1", limit: null, before: null)).thenAnswer(
-      (_) async =>
-          ApiResponse.success(
-            const MessageWithPartsResponse(
-              messages: <MessageWithParts>[],
-              nextCursor: null,
-              replayedPromptDefaults: null,
-            ),
-          ),
+      (_) async => ApiResponse.success(
+        const MessageWithPartsResponse(
+          messages: <MessageWithParts>[],
+          nextCursor: null,
+          replayedPromptDefaults: null,
+        ),
+      ),
     );
     when(() => api.getPendingQuestions(sessionId: "session-1")).thenAnswer(
       (_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
@@ -79,7 +82,8 @@ void main() {
       (_) async => ApiResponse.success(const CommandListResponse(items: <CommandInfo>[])),
     );
     when(
-      () => api.sendMessage(promptId: any(named: "promptId"), 
+      () => api.sendMessage(
+        promptId: any(named: "promptId"),
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -90,7 +94,7 @@ void main() {
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
     when(
-      () => api.abortSession(sessionId: "session-1"),
+      () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
     ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
     when(
       () => api.replyToQuestion(
@@ -112,7 +116,8 @@ void main() {
     await repository.listAgents(projectId: "project-1", pluginId: "plugin-1");
     await repository.listProviders(projectId: "project-1", pluginId: "plugin-1");
     await repository.listCommands(projectId: "project-1", pluginId: "plugin-1");
-    await repository.sendMessage(promptId: "prompt-1", 
+    await repository.sendMessage(
+      promptId: "prompt-1",
       attachments: const [],
       sessionId: "session-1",
       text: "hello",
@@ -121,7 +126,7 @@ void main() {
       variant: const SessionVariant(id: "xhigh"),
       command: "review",
     );
-    await repository.abortSession(sessionId: "session-1");
+    await repository.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop);
     await repository.replyToQuestion(
       requestId: "question-1",
       sessionId: "session-1",
@@ -139,7 +144,8 @@ void main() {
     verify(() => api.listProviders(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(() => api.listCommands(projectId: "project-1", pluginId: "plugin-1")).called(1);
     verify(
-      () => api.sendMessage(promptId: "prompt-1", 
+      () => api.sendMessage(
+        promptId: "prompt-1",
         attachments: const [],
         sessionId: "session-1",
         text: "hello",
@@ -149,7 +155,7 @@ void main() {
         command: "review",
       ),
     ).called(1);
-    verify(() => api.abortSession(sessionId: "session-1")).called(1);
+    verify(() => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop)).called(1);
     verify(
       () => api.replyToQuestion(
         requestId: "question-1",

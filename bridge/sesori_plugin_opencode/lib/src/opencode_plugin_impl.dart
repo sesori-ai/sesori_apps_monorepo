@@ -12,7 +12,11 @@ import "prompt_message_tracker.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
-enum _StaleSessionOption() { agent, model, variant }
+enum _StaleSessionOption() {
+  agent,
+  model,
+  variant,
+}
 
 String formatDroppedSseFrameLog({
   required String category,
@@ -609,7 +613,15 @@ class OpenCodePlugin._({
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    await _abortSession(sessionId: sessionId);
+    return const PluginAbortAccepted();
+  }
+
+  Future<void> _abortSession({required String sessionId}) {
     final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     return _call(
       () => _service.repository.api.abortSession(
@@ -626,7 +638,7 @@ class OpenCodePlugin._({
       if (activeSessionIds.isEmpty) return const <String>{};
 
       await Future.wait([
-        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+        for (final sessionId in activeSessionIds) _abortSession(sessionId: sessionId),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);

@@ -7,6 +7,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../api/session_api.dart" show SessionAbortApiRejectedException;
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -31,6 +32,7 @@ import "../../utils/model_filter/default_model_selector.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
+import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -2202,37 +2204,41 @@ class SessionDetailCubit(
     emit(current.copyWith(stagedCommand: null));
   }
 
-  Future<void> abort() async {
+  /// Stops the session with the given sub-agent scope.
+  ///
+  /// `confirm` is a side-effect-free probe: nothing local changes until the
+  /// bridge accepts. On acceptance the local prompt queue is cleared (stop
+  /// means "run nothing further"; the bridge clears its own queue), and under
+  /// `stop` every busy child session is aborted too — plugins whose children
+  /// are real sessions keep today's stop-everything behavior.
+  Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
       final current = state;
-      // Stop means "run nothing further": staged local sends must not fire on
-      // the next drain. The bridge clears its own queue as part of the abort.
+      final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
+      if (root case ErrorResponse(:final error)) throw error;
+
       if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
         _promptQueue.clear();
         _staleOptionsRecoveryAttemptedPromptIds.clear();
         _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
       }
-      final futures = <Future<ApiResponse<void>>>[_sessionRepository.abortSession(sessionId: _sessionId)];
-
-      // Also abort any active child sessions (busy or retrying).
-      if (current is SessionDetailLoaded) {
-        for (final entry in current.childStatuses.entries) {
-          final status = entry.value;
-          if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_sessionRepository.abortSession(sessionId: entry.key));
-          }
-        }
-      }
-
-      final results = await Future.wait(futures);
-      for (final result in results) {
-        if (result case ErrorResponse(:final error)) {
-          throw error;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+        final results = await Future.wait([
+          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+            if (status is SessionStatusBusy || status is SessionStatusRetry)
+              _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
+        ]);
+        for (final result in results) {
+          if (result case ErrorResponse(:final error)) throw error;
         }
       }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
+      return const SessionAbortOutcome.aborted();
+    } on SessionAbortApiRejectedException catch (e) {
+      return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
+      return const SessionAbortOutcome.aborted();
     }
   }
 

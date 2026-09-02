@@ -413,6 +413,11 @@ final class ClaudeSessionProcessRepository({
         }
       case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
         process.turnActive = true;
+      case ClaudeTaskNotificationMessage() when process.interrupted && !process.turnActive:
+        // A stop that kept the process resident for its tasks: the interrupted
+        // turn has settled, and this notification opens the wake-up turn that
+        // must render again, so the post-interrupt window closes here.
+        process.interrupted = false;
       case final ClaudeResultMessage message:
         final outcome = process.interrupted
             ? const ClaudeTurnInterrupted()

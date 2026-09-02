@@ -1711,6 +1711,30 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get sessionDetailAbort;
 
+  /// No description provided for @sessionDetailStopScopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents are running'**
+  String get sessionDetailStopScopeTitle;
+
+  /// No description provided for @sessionDetailStopScopeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{This session has 1 sub-agent still working. Stop only the main agent, or stop everything?} other{This session has {count} sub-agents still working. Stop only the main agent, or stop everything?}}'**
+  String sessionDetailStopScopeMessage(int count);
+
+  /// No description provided for @sessionDetailStopMainAgentOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop main agent only'**
+  String get sessionDetailStopMainAgentOnly;
+
+  /// No description provided for @sessionDetailStopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}'**
+  String sessionDetailStopAll(int count);
+
   /// No description provided for @sessionDetailThinking.
   ///
   /// In en, this message translates to:
