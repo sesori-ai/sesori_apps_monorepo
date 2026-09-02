@@ -14,6 +14,7 @@ import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
 import "../../services/desktop_instance_service.dart";
+import "../../services/desktop_relay_connection_service.dart";
 import "../../services/window_bounds_service.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
@@ -36,6 +37,7 @@ class BridgeControlCubit._create({
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
   required final DesktopInstanceService _instanceService,
+  required final DesktopRelayConnectionService _relayConnectionService,
   required final DesktopBridgeTakeoverOrchestrator _takeoverOrchestrator,
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
@@ -51,6 +53,7 @@ class BridgeControlCubit._create({
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
     required DesktopInstanceService instanceService,
+    required DesktopRelayConnectionService relayConnectionService,
     required DesktopBridgeTakeoverOrchestrator takeoverOrchestrator,
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
@@ -65,6 +68,7 @@ class BridgeControlCubit._create({
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
          instanceService: instanceService,
+         relayConnectionService: relayConnectionService,
          takeoverOrchestrator: takeoverOrchestrator,
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
@@ -238,9 +242,14 @@ class BridgeControlCubit._create({
   }
 
   /// Requests the supervised bridge to be On without applying toggle
-  /// semantics. Used by desktop recovery surfaces where the only valid intent
-  /// is to start or retry the local bridge.
+  /// semantics. Used when only the local helper needs recovery.
   Future<void> startBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.on);
+
+  /// Recovers both desktop connection owners through their Layer-3 services.
+  Future<void> recoverConnection() => Future.wait<void>([
+    startBridge(),
+    _relayConnectionService.recoverForAuthenticatedDestination(),
+  ]);
 
   Future<void> _setBridgeDesiredState({required BridgeProcessDesiredState target}) async {
     if (_controlsLocked) {

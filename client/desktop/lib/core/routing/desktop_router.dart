@@ -67,7 +67,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
         onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
         onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
-        onRecoverBridge: _recoverDesktopCockpitConnection,
+        onRecoverBridge: ({required context}) => context.read<BridgeControlCubit>().recoverConnection(),
         child: child,
       ),
     ),
@@ -381,19 +381,6 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
       projectName: routeState.uri.queryParameters[projectNameQueryParam],
     ),
   );
-}
-
-Future<void> _recoverDesktopCockpitConnection({required BuildContext context}) => recoverDesktopConnection(
-  bridgeControlCubit: context.read<BridgeControlCubit>(),
-  reconnectRelay: () => _reconnectDesktopRelay(connectionService: getIt<ConnectionService>()),
-);
-
-Future<void> _reconnectDesktopRelay({required ConnectionService connectionService}) async {
-  if (connectionService.currentStatus is ConnectionDisconnected) {
-    await connectionService.connectWithFreshAuthToken();
-    return;
-  }
-  await connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
 }
 
 void _goDesktopHome() {

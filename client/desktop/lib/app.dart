@@ -80,6 +80,7 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               applicationTerminator: getIt(),
               logRepository: getIt(),
               instanceService: getIt(),
+              relayConnectionService: getIt(),
               takeoverOrchestrator: getIt(),
               logoutTracker: getIt(),
               urlLauncher: getIt(),
