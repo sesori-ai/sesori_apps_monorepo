@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** Active - Step 1/8 plan
+- **Status:** Completed 2026-09-02 (Step 8/8; L4 matrix recorded in `TRACKER.md`)
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
