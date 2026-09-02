@@ -616,20 +616,9 @@ class OpenCodePlugin._({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async {
-    await _abortSession(sessionId: sessionId);
-    return const PluginAbortAccepted(workKept: false);
-  }
+  }) => _call(() => _service.abortSession(sessionId: sessionId, subAgents: subAgents));
 
-  Future<void> _abortSession({required String sessionId}) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    return _call(
-      () => _service.repository.api.abortSession(
-        sessionId: sessionId,
-        directory: directory,
-      ),
-    );
-  }
+  Future<void> _abortSession({required String sessionId}) => _call(() => _service.abortRoot(sessionId: sessionId));
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) {

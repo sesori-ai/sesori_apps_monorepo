@@ -724,33 +724,55 @@ void main() {
       expect(harness.service.currentWorkState, PluginWorkState.busy);
     });
 
-    test("a keep stop interrupts the main agent but leaves the process and its tasks resident", () async {
+    test("a keep stop during a live main turn is refused: the CLI interrupt would kill the sub-agents", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_taskStartedFrame());
       await pump();
 
-      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
-      final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
-      // The abort resolves only once the interrupted turn's result settles.
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
+
+      expect(result, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
+    test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
       process.emit(_result());
-      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
       await pump();
 
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
-      expect(harness.service.currentWorkState, PluginWorkState.busy, reason: "the sub-agent still runs");
-      expect(harness.events.whereType<BridgeSseSessionIdle>(), isEmpty);
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
 
-      // The kept sub-agent finishes and its wake-up turn renders and settles.
-      process.emit(_taskNotificationFrame());
-      process.emit(_assistantTextFrame(text: "Agent completed with result: hi"));
+      expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("a stopped task notification settles the session instead of opening a wake-up turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
       process.emit(_result());
-      await harness.waitForIdle();
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
 
+      process.emit({..._taskNotificationFrame(), "status": "stopped"});
+      await pump();
+
+      // The task is gone and nothing else runs: idle is settled now, and the
+      // abort must not hang either.
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
       expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      expect(await abort.timeout(const Duration(seconds: 2)), isA<PluginAbortAccepted>());
     });
 
     test("a stop tears the process down and cancels its tasks; keep with no tasks does the same", () async {
@@ -1022,3 +1044,7 @@ Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> conten
 };
 
 int _frameSequence = 0;
+
+Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
+    .where((frame) => frame["type"] == "control_request")
+    .map((frame) => (frame["request"]! as Map)["subtype"] as String?);

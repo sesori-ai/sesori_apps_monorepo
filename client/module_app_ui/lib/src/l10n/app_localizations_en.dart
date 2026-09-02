@@ -889,8 +889,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'This session has $count sub-agents still working. Stop only the main agent, or stop everything?',
-      one: 'This session has 1 sub-agent still working. Stop only the main agent, or stop everything?',
+      other: 'The main agent and $count sub-agents are still working.',
+      one: 'The main agent and 1 sub-agent are still working.',
     );
     return '$_temp0';
   }

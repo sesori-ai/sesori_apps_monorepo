@@ -76,15 +76,20 @@ defaults and queued client sends coherent.
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
-- Stop is scoped. The client first asks with `confirm`; while Claude sub-agents
+- Stop is scoped for every harness that runs sub-agents (Claude tasks, OpenCode
+  child sessions). The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
-  mid-turn, and the app offers "Stop main agent only" (only while the main
-  agent runs) and "Stop main agent and N sub-agents"; dismissing leaves
-  everything running. `keep` interrupts the main agent but leaves the process
-  and its sub-agents resident, so their later wake-up turn still renders and
-  the completion push is not suppressed; `stop` interrupts and tears down,
-  cancelling every sub-agent. With no sub-agents running, stop behaves as
-  before with no dialog. An older app stops everything; an older bridge
+  mid-turn, and the app shows a confirmation: with the main agent idle, "Stop N
+  sub-agents"; with the main agent running, "Stop main agent and N sub-agents".
+  Dismissing leaves everything running. "Stop main agent only" (`keep`) is
+  offered only when the rejection declares `mainAgentOnlySupported`; neither
+  current harness can interrupt a running main agent without its sub-agents,
+  so both report false and refuse `keep` during a live main turn with the
+  running count. With the main agent idle `keep` is honored: the Claude process
+  stays resident, the sub-agents continue, their later wake-up turn renders,
+  and the completion push is not suppressed. `stop` interrupts and tears
+  down, cancelling every sub-agent. With no sub-agents running, stop behaves
+  as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
@@ -310,7 +315,7 @@ defaults and queued client sends coherent.
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: representative transcript content renders through the shared session-detail view, the desktop session route is present, desktop renders the text-first composer and declared attachment action without resolving voice capture, and desktop omits the diff control. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
-| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, "main agent only" leaves the tile running and its wake-up turn later arrives, "stop all" cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
+| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
@@ -393,10 +398,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shows a transient idle between the task notification and its wake-up turn; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
-- A plain stop kills running Claude sub-agents without asking, the scope dialog
-  appears when none run, "main agent only" tears the process down or leaves the
-  session stuck busy after the kept sub-agents finish, or dismissing the dialog
-  stops anything.
+- A plain stop kills running Claude sub-agents or OpenCode child sessions
+  without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
+  session stuck busy, a killed sub-agent leaves the session busy or the stop
+  request hanging, or dismissing the dialog stops anything.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
   loses text, reasoning, tool, status, or terminal failure output.
@@ -446,6 +451,14 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - A Claude task that never reports a notification keeps the session busy and
   its process resident until a stop, delete, or exit; `background_tasks_changed`
   is not used to reconcile because it precedes the frames it would race.
+- Claude Code's only stop primitive (`interrupt`, observed on 2.1.257) stops
+  background sub-agents along with a running main turn, so a main-agent-only
+  stop exists only while the main agent is idle; interrupting a live main turn
+  always stops its sub-agents.
+- OpenCode aborts a foreground task child together with its root (the task
+  tool cancels it), while background children outlive a root abort; `stop`
+  therefore aborts each running child explicitly, and the tracker cannot tell
+  the two kinds apart, so main-agent-only is not offered while the root runs.
 - Untested Hermes gap (remove this entry once verified): reasoning streaming
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part
