@@ -70,8 +70,8 @@ class const _YoloSettingsRow() extends StatelessWidget {
         title: Text(context.loc.settingsYoloTitle),
         subtitle: Text(_yoloDescription(context: context, state: state)),
         trailing: switch (state) {
-          BridgeSettingsLoading() || BridgeSettingsReadyFull(yoloMutation: YoloMutationInProgress()) =>
-            PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+          BridgeSettingsLoading() ||
+          BridgeSettingsReadyFull(yoloMutation: YoloMutationInProgress()) => const PregoActivityIndicator(color: null),
           BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) => Text(
             context.loc.settingsPullRequestRefreshUnavailable,
             style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
@@ -151,7 +151,7 @@ Widget _trailing({required BuildContext context, required BridgeSettingsState st
     BridgeSettingsLoading() ||
     BridgeSettingsReady(
       pullRequestRefreshMutation: PullRequestRefreshMutationInProgress(),
-    ) => PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+    ) => const PregoActivityIndicator(color: null),
     BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported()) => Text(
       context.loc.settingsPullRequestRefreshUnavailable,
       style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),

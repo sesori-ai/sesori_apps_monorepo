@@ -93,12 +93,10 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
   }
 
   Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
-    ToolStatus.pending || ToolStatus.running => SizedBox(
+    ToolStatus.pending || ToolStatus.running => const SizedBox(
       width: 16,
       height: 16,
-      child: PregoActivityIndicator(
-        color: prego.colors.bgBrandSolid,
-      ),
+      child: PregoActivityIndicator(color: null),
     ),
     ToolStatus.completed => Icon(
       Icons.check_circle,

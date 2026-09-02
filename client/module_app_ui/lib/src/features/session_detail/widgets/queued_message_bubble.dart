@@ -42,10 +42,10 @@ class const QueuedMessageBubble({
     final status = switch (presentation) {
       SendingMessageBubblePresentation() => _status(
         prego: prego,
-        icon: ExcludeSemantics(
+        icon: const ExcludeSemantics(
           child: SizedBox.square(
             dimension: 14,
-            child: PregoActivityIndicator(color: prego.colors.textTertiary),
+            child: PregoActivityIndicator(color: null),
           ),
         ),
         label: loc.sessionDetailSendingMessage,

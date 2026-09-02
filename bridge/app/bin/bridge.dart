@@ -97,10 +97,9 @@ class RunCommand() extends cli.Command<void> {
         help: 'Show version and exit',
       )
       ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
-      ..addMultiOption(
-        'import-plugin',
-        help: 'Import an eligible plugin catalog after startup. Repeatable.',
-      );
+      // Keep accepting the retired option so existing invocations receive the
+      // actionable warning in [run] instead of an unknown-option error.
+      ..addMultiOption('import-plugin', hide: true);
     for (final plugin in knownPlugins) {
       _pluginCliMappers[plugin.id]!.register(parser: argParser, options: plugin.options);
     }
@@ -133,6 +132,13 @@ class RunCommand() extends cli.Command<void> {
   Future<void> run() async {
     final results = argResults!;
 
+    if (results.wasParsed('import-plugin')) {
+      Console.warning(
+        'The --import-plugin option is deprecated and no longer does anything. '
+        'Re-import harnesses from the Sesori app by pulling to refresh or opening Settings > Harnesses.',
+      );
+    }
+
     if (results['version'] as bool) {
       stdout.writeln(appVersion);
       return;
@@ -162,13 +168,6 @@ class RunCommand() extends cli.Command<void> {
       usageException(e.message);
     } on PluginConfigException catch (e) {
       usageException(e.message);
-    }
-    for (final importPluginId in options.importPluginIds) {
-      if (!knownPlugins.any((plugin) => plugin.id == importPluginId)) {
-        usageException(
-          'Cannot import unknown plugin "$importPluginId".',
-        );
-      }
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
 

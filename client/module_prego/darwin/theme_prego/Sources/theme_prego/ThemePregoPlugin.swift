@@ -41,6 +41,27 @@ private struct ColorComponents {
   }
 }
 
+/// What the Dart spinner sends when it creates a native indicator: an optional
+/// ARGB tint and whether the app's resolved theme is dark.
+private struct ActivityIndicatorCreationParams {
+  let color: Int64?
+  let dark: Bool
+
+  init?(from args: Any?) {
+    guard let dictionary = args as? [String: Any] else { return nil }
+    // The codec decodes Dart's null as NSNull; both spellings mean untinted.
+    switch dictionary["color"] {
+    case nil, is NSNull:
+      self.color = nil
+    case let number as NSNumber:
+      self.color = number.int64Value
+    default:
+      return nil
+    }
+    self.dark = (dictionary["dark"] as? NSNumber)?.boolValue ?? false
+  }
+}
+
 /// The three keyframe colours and phase offset the Dart sparkle sends when
 /// it creates a native twinkle view.
 private struct AiLoaderCreationParams {
@@ -200,31 +221,30 @@ private enum AiLoaderSparkle {
       viewIdentifier viewId: Int64,
       arguments args: Any?
     ) -> FlutterPlatformView {
-      guard let color = args as? NSNumber else {
+      guard let params = ActivityIndicatorCreationParams(from: args) else {
         preconditionFailure("Invalid native activity indicator creation arguments")
       }
-      let components = ColorComponents(fromARGB: color.int64Value)
-      return NativeActivityIndicatorPlatformView(
-        frame: frame,
-        color: UIColor(
-          red: components.red,
-          green: components.green,
-          blue: components.blue,
-          alpha: components.alpha
-        )
-      )
+      return NativeActivityIndicatorPlatformView(frame: frame, params: params)
     }
   }
 
   private final class NativeActivityIndicatorPlatformView: UIView, FlutterPlatformView {
     private let indicator = UIActivityIndicatorView(style: .medium)
 
-    init(frame: CGRect, color: UIColor) {
+    init(frame: CGRect, params: ActivityIndicatorCreationParams) {
       super.init(frame: frame)
 
       isAccessibilityElement = false
       accessibilityElementsHidden = true
-      indicator.color = color
+      // Follow the app's resolved appearance rather than the host's: a forced
+      // in-app dark mode must not leave dark ticks on dark Flutter surfaces.
+      indicator.overrideUserInterfaceStyle = params.dark ? .dark : .light
+      // A nil colour keeps the system spinner colour; a tint is still honoured
+      // when a caller asks for one.
+      if let color = params.color {
+        let c = ColorComponents(fromARGB: color)
+        indicator.color = UIColor(red: c.red, green: c.green, blue: c.blue, alpha: c.alpha)
+      }
       indicator.hidesWhenStopped = false
       indicator.translatesAutoresizingMaskIntoConstraints = false
       addSubview(indicator)
@@ -405,26 +425,28 @@ private enum AiLoaderSparkle {
     }
 
     func create(withViewIdentifier viewId: Int64, arguments args: Any?) -> NSView {
-      guard let color = args as? NSNumber else {
+      guard let params = ActivityIndicatorCreationParams(from: args) else {
         preconditionFailure("Invalid native activity indicator creation arguments")
       }
-      let components = ColorComponents(fromARGB: color.int64Value)
-      return NativeActivityIndicatorView(
-        color: NSColor(
-          red: components.red,
-          green: components.green,
-          blue: components.blue,
-          alpha: components.alpha
-        )
-      )
+      return NativeActivityIndicatorView(params: params)
     }
   }
 
   private final class NativeActivityIndicatorView: NSView {
     private let indicator = NSProgressIndicator()
 
-    init(color: NSColor) {
+    init(params: ActivityIndicatorCreationParams) {
       super.init(frame: .zero)
+      // Follow the app's resolved appearance rather than the host's: a forced
+      // in-app dark mode must not leave dark ticks on dark Flutter surfaces.
+      indicator.appearance = NSAppearance(named: params.dark ? .darkAqua : .aqua)
+      // A nil colour keeps the system spinner colour; a tint is still honoured
+      // when a caller asks for one.
+      var color: NSColor?
+      if let argb = params.color {
+        let c = ColorComponents(fromARGB: argb)
+        color = NSColor(red: c.red, green: c.green, blue: c.blue, alpha: c.alpha)
+      }
 
       // The Flutter wrapper owns the loading-spinner semantics; hide both the
       // container and the native indicator from VoiceOver.
@@ -434,17 +456,16 @@ private enum AiLoaderSparkle {
       indicator.isIndeterminate = true
       indicator.isDisplayedWhenStopped = true
       indicator.translatesAutoresizingMaskIntoConstraints = false
-      // Content filters only apply to a layer-backed view.
-      indicator.wantsLayer = true
-      // The spinner draws its ticks in the label colour at varying alpha:
-      // black under the light appearance, white under dark. A monochrome
-      // filter maps luminance onto the requested colour, so black ticks would
-      // stay black; pin the dark appearance so the ticks are white, which the
-      // filter maps exactly onto the colour while keeping each tick's alpha.
-      indicator.appearance = NSAppearance(named: .darkAqua)
-      // NSProgressIndicator has no tint API; a monochrome content filter
-      // recolours the spinner to the requested colour.
-      if let filter = CIFilter(name: "CIColorMonochrome"), let ciColor = CIColor(color: color) {
+      if let color, let filter = CIFilter(name: "CIColorMonochrome"), let ciColor = CIColor(color: color) {
+        // Content filters only apply to a layer-backed view.
+        indicator.wantsLayer = true
+        // The spinner draws its ticks in the label colour at varying alpha:
+        // black under the light appearance, white under dark. A monochrome
+        // filter maps luminance onto the requested colour, so black ticks
+        // would stay black; pin the dark appearance so the ticks are white,
+        // which the filter maps exactly onto the colour while keeping each
+        // tick's alpha. NSProgressIndicator has no tint API of its own.
+        indicator.appearance = NSAppearance(named: .darkAqua)
         filter.setValue(ciColor, forKey: "inputColor")
         filter.setValue(1.0, forKey: "inputIntensity")
         indicator.contentFilters = [filter]

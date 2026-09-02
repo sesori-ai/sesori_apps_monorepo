@@ -49,6 +49,9 @@ class _RenameSheetState() extends State<RenameSheet> {
     }
   }
 
+  static Brightness _inverse(Brightness brightness) =>
+      brightness == Brightness.dark ? Brightness.light : Brightness.dark;
+
   @override
   Widget build(BuildContext context) {
     final action = FilledButton(
@@ -57,7 +60,13 @@ class _RenameSheetState() extends State<RenameSheet> {
           ? SizedBox(
               width: 16,
               height: 16,
-              child: PregoActivityIndicator(color: context.prego.colors.textWhite),
+              // The primary button's fill (bgPrimarySolid) paints the inverse
+              // of the page surface, so the untinted spinner follows the
+              // opposite brightness.
+              child: PregoActivityIndicator.onSurface(
+                brightness: _inverse(Theme.of(context).brightness),
+                color: null,
+              ),
             )
           : Text(widget.saveLabel),
     );

@@ -44,10 +44,10 @@ class const _LegalDocumentBody() extends StatelessWidget {
     final state = context.watch<LegalDocumentCubit>().state;
 
     return switch (state) {
-      LegalDocumentLoading() => SizedBox(
+      LegalDocumentLoading() => const SizedBox(
         height: _placeholderHeight,
         child: Center(
-          child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary),
+          child: PregoActivityIndicator(color: null),
         ),
       ),
       LegalDocumentFailed(:final reason) => _FailureView(reason: reason),

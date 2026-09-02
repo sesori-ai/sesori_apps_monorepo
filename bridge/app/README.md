@@ -126,7 +126,6 @@ Bridge core flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--import-plugin` | *(none)* | Start an import for this eligible plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--data-dir` | platform Sesori data directory | Override account-bound storage for tokens, bridge ID, database, and onboarding markers. Transcript attachment bytes remain in the shared platform attachment root. |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
@@ -208,9 +207,6 @@ legacy `pluginId` still always means OpenCode.
 
 # Disable Cursor for subsequent bridge starts
 ./dist/bridge-macos-arm64 config plugins disable cursor
-
-# Import Codex after startup
-./dist/bridge-macos-arm64 --import-plugin codex
 
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout

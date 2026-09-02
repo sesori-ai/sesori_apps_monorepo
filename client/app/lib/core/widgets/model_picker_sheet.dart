@@ -179,7 +179,7 @@ class _ModelPickerSheetState() extends State<ModelPickerSheet> {
           const SizedBox(height: 4),
           Expanded(
             child: switch (_rows) {
-              null => Center(child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary)),
+              null => const Center(child: PregoActivityIndicator(color: null)),
               final rows => _buildModelList(context: context, rows: rows),
             },
           ),

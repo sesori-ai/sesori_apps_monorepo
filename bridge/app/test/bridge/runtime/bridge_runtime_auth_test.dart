@@ -185,7 +185,6 @@ BridgeCliOptions _options({required String authBackendUrl}) {
     dataDirectory: '/tmp/sesori-test-data',
     debugPort: null,
     logLevelName: 'info',
-    importPluginIds: const [],
     controlUrl: null,
   );
 }
