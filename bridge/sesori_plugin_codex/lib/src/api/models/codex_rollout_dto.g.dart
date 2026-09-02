@@ -134,7 +134,20 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
       timestamp: json['timestamp'] as String?,
       modelProvider: json['model_provider'] as String?,
       cliVersion: json['cli_version'] as String?,
+      parentThreadId: json['parent_thread_id'] as String?,
+      threadSource: $enumDecodeNullable(
+        _$CodexRolloutThreadSourceEnumMap,
+        json['thread_source'],
+        unknownValue: CodexRolloutThreadSource.unknown,
+      ),
+      agentNickname: json['agent_nickname'] as String?,
+      agentPath: json['agent_path'] as String?,
     );
+
+const _$CodexRolloutThreadSourceEnumMap = {
+  CodexRolloutThreadSource.subagent: 'subagent',
+  CodexRolloutThreadSource.unknown: 'unknown',
+};
 
 _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
