@@ -88,8 +88,10 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<key>NSCameraUsageDescription</key>
+		<string>Camera access lets you include a movable front-camera video layer in creator recordings</string>
 		<key>NSMicrophoneUsageDescription</key>
-		<string>Microphone access is needed for voice-to-text transcription</string>
+		<string>Microphone access is needed for voice transcription and narration in creator recordings</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>Photos access is needed to save images from coding sessions</string>
 		<key>NSPhotoLibraryUsageDescription</key>

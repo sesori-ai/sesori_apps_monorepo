@@ -67,6 +67,7 @@ class const _DesktopSettingsView({
       onOpenHarnesses: onOpenHarnesses,
       onOpenDefaultInput: onOpenDefaultInput,
       additionalSettings: const DesktopAttentionPreferenceSection(),
+      onOpenCreatorRecording: null,
       openSupportLink: ({required url}) async {
         await openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },
