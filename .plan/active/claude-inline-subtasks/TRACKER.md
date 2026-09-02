@@ -332,6 +332,9 @@
   `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
   `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
   parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 5 `architecture-implementation-review` (sub-agent, 2026-09-02), scope
+  branch vs `origin/main`: approved, no findings; its out-of-scope note about
+  two unused `sessionId` parameters on the dispatcher task mappers was applied.**
 - **Step 4 `architecture-implementation-review` (sub-agent, 2026-09-01), scope
   branch vs `origin/main`: rejected with one finding, applied in `0a6bd0b67a`:**
   the tracker still encoded `agent-<id>` as a literal while

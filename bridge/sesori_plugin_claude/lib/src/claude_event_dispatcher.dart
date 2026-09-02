@@ -155,8 +155,8 @@ final class ClaudeEventDispatcher({
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
-        ClaudeTaskStartedMessage() => _mapTaskStarted(sessionId: sessionId, message: message),
-        ClaudeTaskNotificationMessage() => _mapTaskNotification(sessionId: sessionId, message: message),
+        ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
+        ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -438,7 +438,6 @@ final class ClaudeEventDispatcher({
   }
 
   List<BridgeSseEvent> _mapTaskStarted({
-    required String sessionId,
     required ClaudeTaskStartedMessage message,
   }) {
     final toolUseId = message.toolUseId;
@@ -450,7 +449,6 @@ final class ClaudeEventDispatcher({
   }
 
   List<BridgeSseEvent> _mapTaskNotification({
-    required String sessionId,
     required ClaudeTaskNotificationMessage message,
   }) {
     final toolUseId = message.toolUseId;
