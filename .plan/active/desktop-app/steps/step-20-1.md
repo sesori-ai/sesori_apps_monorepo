@@ -4,7 +4,7 @@
 - **Complexity:** `⚙️`
 - **User value:** Desktop window size and position survive relaunch and remain usable after display changes.
 - **Dependencies:** Step 19
-- **Pinned implementation range:** `74d84c4ddcd4818ea2b435088f014cdfd5229c9a..e763e0513c221464d3ae5050bc27d5dcd03cc21b`
+- **Pinned implementation range:** `74d84c4ddcd4818ea2b435088f014cdfd5229c9a..34cf314c807259174c99c7649f33256522fbddd9`
 
 ## Scope
 
@@ -21,7 +21,8 @@
 - Added `WindowBoundsService` as the Layer-3 owner of persisted-value validation, display selection, usable-work-area clamping, restoration, debounce, retry after failed writes, and final flushing.
 - Kept `FlutterWindowHost` as a native adapter for `window_manager` and `screen_retriever`; it applies service-owned bounds before show but owns no persistence policy.
 - Routed startup through `DesktopStartupOrchestrator.initializeWindow()` and made terminal Quit await `WindowBoundsService.dispose()` before `WindowHost.dispose()`.
-- Kept the existing centered 720×620 fallback and a 560×480 minimum where the current display can accommodate it.
+- Kept the existing centered 720×620 fallback and a 560×480 minimum where the selected display can accommodate it; compact work areas receive a display-adjusted native minimum.
+- Suppressed MainMenu.xib's first native window ordering on every macOS launch so Dart restores bounds before the first visible show.
 - Updated the desktop supervision regression contract and recorded the three-PR Step 20 replacement after closing oversized PR #1265 unmerged.
 
 ## Architecture Review
@@ -32,7 +33,7 @@
 
 ## Verification
 
-- `client/module_desktop_core`: `asdf exec dart analyze --fatal-infos` passes; the full suite passes 215 tests.
+- `client/module_desktop_core`: `asdf exec dart analyze --fatal-infos` passes; the full suite passes 216 tests.
 - `client/desktop`: `asdf exec dart analyze --fatal-infos` passes; the full suite passes 97 tests.
 - Dart LSP reports zero diagnostics across all 12 changed production Dart files.
 - `git diff --check` passes.
@@ -41,22 +42,24 @@
 
 ### Line-budget reproduction
 
-The reviewed implementation head is `e763e0513c221464d3ae5050bc27d5dcd03cc21b`. The measurement is intentionally
-not self-inclusive: it excludes the later evidence-only commit that created this file.
+The implementation head is `34cf314c807259174c99c7649f33256522fbddd9`. The measurement is intentionally
+not self-inclusive: it excludes only the later evidence-only commit that updates this section.
 
 ```bash
-base=$(git merge-base 74d84c4ddcd4818ea2b435088f014cdfd5229c9a e763e0513c221464d3ae5050bc27d5dcd03cc21b)
-git diff --numstat "$base" e763e0513c221464d3ae5050bc27d5dcd03cc21b \
+base=$(git merge-base 74d84c4ddcd4818ea2b435088f014cdfd5229c9a 34cf314c807259174c99c7649f33256522fbddd9)
+git diff --numstat "$base" 34cf314c807259174c99c7649f33256522fbddd9 \
   | awk '{ additions += $1; deletions += $2 } END { print additions, deletions, additions + deletions }'
-# 914 63 977
+# 1016 72 1088
 ```
 
-The 914 additions plus 63 deletions reconcile to 977 total changed lines across 23 files, below the 1,500-line soft cap.
+The 1,016 additions plus 72 deletions reconcile to 1,088 total changed lines across 25 files, below the 1,500-line soft cap.
 
 ## Acceptance
 
 - [x] Valid saved bounds are clamped to a current display and applied before first show.
 - [x] Missing, invalid, or undiscoverable bounds use the centered default.
+- [x] Compact display work areas reduce the native minimum instead of forcing restored bounds off-screen.
+- [x] macOS suppresses the XIB frame until the adapter performs the post-restoration show.
 - [x] Move and resize observations debounce persistence, and a failed write does not poison a later write.
 - [x] Terminal Quit flushes final bounds before native window disposal.
 - [x] The adapter remains policy-free and persistence follows Layer 1 → Layer 2 → Layer 3 ownership.
