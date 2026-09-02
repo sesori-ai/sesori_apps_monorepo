@@ -395,7 +395,13 @@ final class PiPlugin._({
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) => _sessionService.abort(sessionId: sessionId);
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    await _sessionService.abort(sessionId: sessionId);
+    return const PluginAbortAccepted(workKept: false);
+  }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) =>
       _sessionService.interruptActiveWork(budget: budget);

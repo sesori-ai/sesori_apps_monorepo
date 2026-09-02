@@ -68,6 +68,10 @@ final class _ResidentProcess({
   late final StreamSubscription<ClaudeStreamMessage> messages;
   final Queue<_PendingTurn> pendingTurns = Queue<_PendingTurn>();
   bool interrupted = false;
+
+  /// The interrupted turn's result has arrived; the next turn to start is new
+  /// work and closes the post-interrupt window.
+  bool interruptSettled = false;
   bool turnActive = false;
 
   Future<void> cancelMessages() => messages.cancel();
@@ -204,6 +208,7 @@ final class ClaudeSessionProcessRepository({
     }
 
     process.interrupted = false;
+    process.interruptSettled = false;
     // A resident process can absorb several stdin messages into one agent turn.
     // User echoes mark which queued messages joined that turn, and its result
     // settles exactly that started prefix.
@@ -388,6 +393,13 @@ final class ClaudeSessionProcessRepository({
   }
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
+    // A turn starting after the interrupted turn settled is new work — the
+    // wake-up turn a kept sub-agent triggers, or the notification that opens
+    // it — so the post-interrupt window closes and its frames render again.
+    if (!process.turnActive && process.interruptSettled && _startsNewTurn(message)) {
+      process.interrupted = false;
+      process.interruptSettled = false;
+    }
     switch (message) {
       case ClaudeUserMessage(parentToolUseId: null):
         // Claude normally marks stdin echoes with `isReplay`, but attachment
@@ -414,6 +426,7 @@ final class ClaudeSessionProcessRepository({
       case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
         process.turnActive = true;
       case final ClaudeResultMessage message:
+        if (process.interrupted) process.interruptSettled = true;
         final outcome = process.interrupted
             ? const ClaudeTurnInterrupted()
             : message.isError
@@ -533,3 +546,11 @@ List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [
       ],
     },
 ];
+
+/// Frames that prove a new turn (or the task completion that opens one).
+bool _startsNewTurn(ClaudeStreamMessage message) => switch (message) {
+  ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage() => true,
+  ClaudeTaskNotificationMessage() => true,
+  ClaudeUserMessage(:final taskNotifications) => taskNotifications.isNotEmpty,
+  ClaudeStreamMessage() => false,
+};

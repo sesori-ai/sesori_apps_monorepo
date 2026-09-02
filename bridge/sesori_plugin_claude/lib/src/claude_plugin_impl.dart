@@ -295,9 +295,8 @@ final class ClaudePlugin({
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
-    await _sessions.abort(sessionId: sessionId);
-  }
+  Future<PluginAbortResult> abortSession({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) =>
+      _sessions.abort(sessionId: sessionId, subAgents: subAgents);
 
   @override
   // Claude declares plugin-scoped options, so projectId does not select a catalog.
@@ -590,6 +589,19 @@ final class ClaudePlugin({
       return;
     }
     if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
+      // Between an acknowledged interrupt and the interrupted turn's result the
+      // CLI can still stream that turn's output; a full stop tears the process
+      // down, a main-agent-only stop keeps it, so assistant output is dropped
+      // here. User echoes still render (they are the prompt's transcript identity)
+      // and so do forwarded sub-agent frames, which belong to the kept work.
+      if (interrupted) {
+        switch (message) {
+          case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null):
+            return;
+          case ClaudeStreamMessage():
+            break;
+        }
+      }
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
           sessionId: event.sessionId,

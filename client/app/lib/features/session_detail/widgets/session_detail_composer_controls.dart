@@ -9,6 +9,7 @@ import "../../../core/widgets/agent_model_buttons.dart";
 import "../../../core/widgets/composer_surface_style.dart";
 import "background_tasks_bar.dart";
 import "prompt_input.dart";
+import "session_abort_scope_dialog.dart";
 
 /// Mobile-owned composer controls injected below the shared transcript view.
 class const SessionDetailComposerControls({
@@ -96,7 +97,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               onVoiceTranscriptionCompleted: context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted,
               onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(draft: draft),
               onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
-              onAbort: () => context.read<SessionDetailCubit>().abort(),
+              onAbort: () => stopSessionWithScope(context: context, cubit: context.read<SessionDetailCubit>()),
               surfaceStyleController: _composerSurfaceStyle,
               header: null,
               composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(

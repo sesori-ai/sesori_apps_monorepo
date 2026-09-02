@@ -475,31 +475,66 @@ final class ClaudeSessionService({
     _emitQueueUpdate(sessionId: sessionId, state: state);
   }
 
-  Future<void> abort({required String sessionId}) async {
+  /// Stops the session's work with the given sub-agent scope.
+  ///
+  /// `confirm` is refused while typed sub-agents run, with no side effect, so
+  /// the caller can ask the user. `keep` interrupts the main agent but leaves
+  /// the process resident so its tasks continue and their notifications wake
+  /// it as usual; `stop` (and `keep` with nothing resident) interrupts and
+  /// tears the process down, cancelling every task with it.
+  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
-    if (state == null) return;
+    if (state == null) return const PluginAbortAccepted(workKept: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
+      // The in-flight abort may have kept work this caller wants stopped; run
+      // the requested scope once its fence releases.
       await activeAbort.future;
-      return;
+      return await abort(sessionId: sessionId, subAgents: subAgents);
+    }
+    final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
+    if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: state.pending > 0 || state.selfStartedTurn != null,
+      );
     }
     if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return;
+      return const PluginAbortAccepted(workKept: false);
     }
+    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
     final aborting = Completer<void>();
     state.aborting = aborting;
     try {
       state.generation++;
       state.idleGeneration++;
-      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
-      // not rearm it, so a pending wakeup cannot survive an abort.
-      state.wakeupAt = null;
       if (state.queue.isNotEmpty) {
         state.queue.clear();
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
+      if (keepTasks) {
+        // The process stays resident for its tasks, so pending approvals are left
+        // alone: a kept sub-agent may be waiting on one, and the interrupted
+        // main turn resolves its own. The interrupted turn's result settles the
+        // pending/self-started turn through the normal path; waiting for it here
+        // keeps the abort fence up so a follow-up send cannot join that turn.
+        try {
+          await _processes.interrupt(sessionId: sessionId);
+          await Future.wait([...state.settlements, ?state.selfStartedTurn?.future]);
+          // Reported from what survived the wait: a task that finished meanwhile,
+          // or a process that died with its tasks, leaves nothing kept.
+          return PluginAbortAccepted(workKept: state.runningTaskIds.isNotEmpty);
+        } on Object catch (error, stack) {
+          // A process that will not take the interrupt cannot be trusted to keep
+          // anything; fall through to the full teardown below.
+          Log.w("[claude] interrupt failed for $sessionId; stopping everything", error, stack);
+        }
+      }
       _approvals.cancelForSession(sessionId: sessionId);
+      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
+      // not rearm it, so a pending wakeup cannot survive an abort.
+      state.wakeupAt = null;
       try {
         await _processes.interrupt(sessionId: sessionId);
       } on Object catch (error, stack) {
@@ -516,6 +551,7 @@ final class ClaudeSessionService({
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
       }
+      return const PluginAbortAccepted(workKept: false);
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();
@@ -530,7 +566,8 @@ final class ClaudeSessionService({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+        for (final sessionId in activeSessionIds)
+          abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
