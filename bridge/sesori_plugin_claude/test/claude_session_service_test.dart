@@ -753,6 +753,40 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
     });
 
+    test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
+
+      expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("a stopped task notification settles the session instead of opening a wake-up turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+
+      process.emit({..._taskNotificationFrame(), "status": "stopped"});
+      await pump();
+
+      // The task is gone and nothing else runs; the abort must not hang either.
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      expect(await abort.timeout(const Duration(seconds: 2)), isA<PluginAbortAccepted>());
+    });
+
     test("a stop tears the process down and cancels its tasks; keep with no tasks does the same", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
@@ -1022,3 +1056,7 @@ Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> conten
 };
 
 int _frameSequence = 0;
+
+Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
+    .where((frame) => frame["type"] == "control_request")
+    .map((frame) => (frame["request"]! as Map)["subtype"] as String?);

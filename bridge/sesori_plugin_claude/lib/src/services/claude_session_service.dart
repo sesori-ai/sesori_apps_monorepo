@@ -9,6 +9,7 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -516,12 +517,18 @@ final class ClaudeSessionService({
       if (keepTasks) {
         // The process stays resident for its tasks, so pending approvals are left
         // alone: a kept sub-agent may be waiting on one, and the interrupted
-        // main turn resolves its own. The interrupted turn's result settles the
-        // pending/self-started turn through the normal path; waiting for it here
-        // keeps the abort fence up so a follow-up send cannot join that turn.
+        // main turn resolves its own. With no main turn running there is nothing
+        // to interrupt — and the CLI's interrupt would stop the background
+        // agents too (observed on 2.1.257), so it is only sent for a live turn.
+        // The interrupted turn's result settles the pending/self-started turn
+        // through the normal path; waiting for the turns that existed at this
+        // point keeps the abort fence up so a follow-up send cannot join them.
+        final interruptedTurns = [...state.settlements, ?state.selfStartedTurn?.future];
         try {
-          await _processes.interrupt(sessionId: sessionId);
-          await Future.wait([...state.settlements, ?state.selfStartedTurn?.future]);
+          if (interruptedTurns.isNotEmpty) {
+            await _processes.interrupt(sessionId: sessionId);
+            await Future.wait(interruptedTurns);
+          }
           // Reported from what survived the wait: a task that finished meanwhile,
           // or a process that died with its tasks, leaves nothing kept.
           return PluginAbortAccepted(workKept: state.runningTaskIds.isNotEmpty);
@@ -784,6 +791,10 @@ final class ClaudeSessionService({
           ClaudeAssistantMessage(parentToolUseId: final String _):
         break;
       case ClaudeUserMessage() when message.taskNotifications.isEmpty:
+        break;
+      // A stopped task was killed (an interrupt, a stop_task); the CLI runs no
+      // wake-up turn for it, so opening one here would pin the session busy.
+      case ClaudeTaskNotificationMessage(status: ClaudeTaskStatus.stopped):
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||
