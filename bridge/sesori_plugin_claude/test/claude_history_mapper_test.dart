@@ -282,6 +282,52 @@ IMPORTANT: Do NOT create new worktrees.
       );
     });
 
+    test("replays CLI API failures as one error instead of a synthetic assistant", () async {
+      _writeTranscript(
+        temp: temp,
+        records: [
+          _messageRecord(
+            type: "assistant",
+            uuid: "real-assistant-record",
+            messageId: "real-assistant-message",
+            model: "claude-test-model",
+            content: const [
+              {"type": "text", "text": "answer"},
+            ],
+          ),
+          _messageRecord(
+            type: "assistant",
+            uuid: "api-error-record",
+            messageId: "synthetic-error-message",
+            model: "<synthetic>",
+            isApiErrorMessage: true,
+            apiErrorStatus: 429,
+            error: "rate_limit",
+            content: const [
+              {"type": "text", "text": "You've hit your session limit"},
+            ],
+          ),
+        ],
+      );
+
+      final messages = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        residentTaskToolUseIds: const {},
+      );
+
+      expect(messages, hasLength(2));
+      final error = messages.last;
+      expect(error.info, isA<PluginMessageError>());
+      expect(error.info.id, "synthetic-error-message");
+      expect((error.info as PluginMessageError).errorName, "api_error");
+      expect((error.info as PluginMessageError).errorMessage, "You've hit your session limit");
+      expect((error.info as PluginMessageError).modelID, "claude-test-model");
+      expect((error.info as PluginMessageError).providerID, "anthropic");
+      expect(error.parts, isEmpty);
+    });
+
     test("reads the typed tool-use result and task-notification origin from the transcript", () async {
       _writeTranscript(
         temp: temp,
@@ -355,6 +401,9 @@ Map<String, Object?> _messageRecord({
   bool? isSidechain,
   bool? isMeta,
   bool? isVisibleInTranscriptOnly,
+  bool? isApiErrorMessage,
+  int? apiErrorStatus,
+  String? error,
 }) => {
   "type": type,
   "sessionId": _sessionId,
@@ -363,6 +412,9 @@ Map<String, Object?> _messageRecord({
   "isSidechain": ?isSidechain,
   "isMeta": ?isMeta,
   "isVisibleInTranscriptOnly": ?isVisibleInTranscriptOnly,
+  "isApiErrorMessage": ?isApiErrorMessage,
+  "apiErrorStatus": ?apiErrorStatus,
+  "error": ?error,
   "effort": ?effort,
   "message": {"id": ?messageId, "model": ?model, "content": content},
 };

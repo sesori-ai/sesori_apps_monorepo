@@ -569,6 +569,51 @@ void main() {
       expect(contextOnly, isEmpty);
     });
 
+    test("renders a synthetic API failure once with the transcript message identity", () {
+      _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
+      final assistantEvents = _map(
+        mapper,
+        {
+          "type": "assistant",
+          "session_id": "session-1",
+          "uuid": "assistant-error-frame",
+          "error": "rate_limit",
+          "api_error_status": 429,
+          "timestamp": "2026-08-10T10:00:00.000Z",
+          "message": {
+            "id": "synthetic-error-message",
+            "model": "<synthetic>",
+            "content": [
+              {"type": "text", "text": "You've hit your session limit"},
+            ],
+          },
+        },
+      );
+      final resultEvents = _map(
+        mapper,
+        {
+          "type": "result",
+          "subtype": "success",
+          "session_id": "session-1",
+          "uuid": "separate-result-identity",
+          "is_error": true,
+          "terminal_reason": "api_error",
+          "api_error_status": 429,
+          "result": "You've hit your session limit",
+        },
+      );
+
+      final info = shared.Message.fromJson((assistantEvents.single as BridgeSseMessageUpdated).info);
+      expect(info, isA<shared.MessageError>());
+      final error = info as shared.MessageError;
+      expect(error.id, "synthetic-error-message");
+      expect(error.errorName, "api_error");
+      expect(error.errorMessage, "You've hit your session limit");
+      expect(error.modelID, "claude-opus-5");
+      expect(error.time?.created, DateTime.utc(2026, 8, 10, 10).millisecondsSinceEpoch);
+      expect(resultEvents, isEmpty, reason: "the terminal result describes the same API failure");
+    });
+
     test("maps retry and terminal errors without replacing backend text", () {
       final before = DateTime.now().millisecondsSinceEpoch;
       final retry =

@@ -18,6 +18,7 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<int>> _streamedBlocks = {};
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
+  final Set<String> _mappedApiErrorSessions = {};
 
   /// Content blocks already carried by `assistant` frames, per message id.
   ///
@@ -54,6 +55,7 @@ final class ClaudeEventDispatcher({
   void _resetTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    _mappedApiErrorSessions.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
   }
@@ -77,6 +79,7 @@ final class ClaudeEventDispatcher({
   void _forgetRendered({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
@@ -326,6 +329,24 @@ final class ClaudeEventDispatcher({
     _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
+    if (message.error != ClaudeAssistantError.none) {
+      _mappedApiErrorSessions.add(sessionId);
+      return [
+        BridgeSseMessageUpdated(
+          info: PluginMessage.error(
+            id: messageId,
+            sessionID: sessionId,
+            agent: "claude",
+            modelID: _models[sessionId],
+            providerID: "anthropic",
+            variant: null,
+            errorName: _apiErrorName(status: message.apiErrorStatus),
+            errorMessage: _apiErrorMessage(blocks: mapped) ?? "Claude Code could not complete the API request.",
+            time: _messageTime(message.timestamp),
+          ).toJson(),
+        ),
+      ];
+    }
     // Counted before any filtering so a skipped block still occupies its
     // ordinal, exactly as it does in the stream and the transcript.
     final firstBlockIndex = _assistantBlockCounts[messageId] ?? 0;
@@ -509,6 +530,8 @@ final class ClaudeEventDispatcher({
     if (!message.isError && message.subtype == ClaudeResultSubtype.success && message.permissionDenials.isEmpty) {
       return const [];
     }
+    final mappedApiError = _mappedApiErrorSessions.remove(sessionId);
+    if (mappedApiError && message.isError) return const [];
     final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
     final error = _resultError(message);
@@ -639,6 +662,16 @@ PluginMessageTime? _messageTime(DateTime? timestamp) =>
 
 String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Claude Code is retrying the request.";
 
+String? _apiErrorMessage({required List<ClaudeMappedContentBlock> blocks}) {
+  final text = [
+    for (final block in blocks)
+      if (block case ClaudeMappedTextContentBlock(:final text)) text,
+  ].join("\n");
+  return text.isEmpty ? null : text;
+}
+
+String _apiErrorName({required int? status}) => status == 401 || status == 403 ? "authentication_failed" : "api_error";
+
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
   if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
     return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
@@ -650,7 +683,7 @@ String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Clau
 
 ({String name, String message}) _resultErrorFallback(ClaudeResultMessage result) {
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {
-    return (name: "authentication_failed", message: "Claude Code authentication failed.");
+    return (name: _apiErrorName(status: result.apiErrorStatus), message: "Claude Code authentication failed.");
   }
   return switch (result.terminalReason) {
     ClaudeTerminalReason.budgetExhausted => (
@@ -666,7 +699,7 @@ String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Clau
       message: "Claude Code could not produce valid structured output.",
     ),
     ClaudeTerminalReason.apiError => (
-      name: "api_error",
+      name: _apiErrorName(status: result.apiErrorStatus),
       message: result.apiErrorStatus == null
           ? "Claude Code could not complete the API request."
           : "Claude Code could not complete the API request (HTTP ${result.apiErrorStatus}).",

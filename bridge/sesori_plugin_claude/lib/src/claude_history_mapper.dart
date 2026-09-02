@@ -31,6 +31,7 @@ final class const ClaudeHistoryMapper({
     final entries = <_ClaudeHistoryEntry>[];
     final assistantsByMessageId = <String, _AssistantHistoryMessage>{};
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
+    String? lastRealModel;
     // Task lifecycle replays through the same tracker the live path uses, so
     // terminal precedence has exactly one implementation.
     final tasks = ClaudeToolTracker();
@@ -41,6 +42,7 @@ final class const ClaudeHistoryMapper({
           if (skip(record)) continue;
           final blocks = _content.map(content: record.content);
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
+          if (record.model case final model? when model != "<synthetic>") lastRealModel = model;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
               id: record.id,
@@ -67,6 +69,28 @@ final class const ClaudeHistoryMapper({
               );
             }
           }
+        case ClaudeTranscriptApiErrorRecord():
+          if (skip(record)) continue;
+          final errorMessage = _apiErrorMessage(blocks: _content.map(content: record.content));
+          if (errorMessage == null) continue;
+          entries.add(
+            _ErrorHistoryMessage(
+              message: PluginMessageWithParts(
+                info: PluginMessage.error(
+                  id: record.id,
+                  sessionID: sessionId,
+                  agent: "claude",
+                  modelID: lastRealModel,
+                  providerID: "anthropic",
+                  variant: null,
+                  errorName: _apiErrorName(status: record.apiErrorStatus),
+                  errorMessage: errorMessage,
+                  time: _messageTime(record.timestamp),
+                ),
+                parts: const [],
+              ),
+            ),
+          );
         case ClaudeTranscriptUserRecord():
           if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
             continue;
@@ -150,7 +174,7 @@ final class const ClaudeHistoryMapper({
     final messages = <PluginMessageWithParts>[];
     for (final entry in entries) {
       switch (entry) {
-        case _UserHistoryMessage(:final message):
+        case _UserHistoryMessage(:final message) || _ErrorHistoryMessage(:final message):
           messages.add(message);
         case _AssistantHistoryMessage():
           final message = _buildAssistant(entry: entry, sessionId: sessionId, tasks: tasks);
@@ -215,6 +239,8 @@ sealed class const _ClaudeHistoryEntry();
 
 final class const _UserHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
 
+final class const _ErrorHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
+
 final class _AssistantHistoryMessage({
   required final String id,
   required final DateTime? timestamp,
@@ -226,3 +252,13 @@ final class _AssistantHistoryMessage({
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);
+
+String? _apiErrorMessage({required List<ClaudeMappedContentBlock> blocks}) {
+  final text = [
+    for (final block in blocks)
+      if (block case ClaudeMappedTextContentBlock(:final text)) text,
+  ].join("\n");
+  return text.isEmpty ? null : text;
+}
+
+String _apiErrorName({required int? status}) => status == 401 || status == 403 ? "authentication_failed" : "api_error";
