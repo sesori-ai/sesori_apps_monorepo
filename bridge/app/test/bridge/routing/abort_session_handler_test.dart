@@ -36,7 +36,7 @@ void main() {
     test("extracts sessionId from request body", () async {
       await handler.handle(
         makeRequest("POST", "/session/abort"),
-        body: const SessionIdRequest(sessionId: "s1"),
+        body: const AbortSessionRequest(sessionId: "s1"),
       );
 
       expect(plugin.lastAbortSessionId, equals("s1"));
@@ -45,7 +45,7 @@ void main() {
     test("returns 200", () async {
       final response = await handler.handle(
         makeRequest("POST", "/session/abort"),
-        body: const SessionIdRequest(sessionId: "s1"),
+        body: const AbortSessionRequest(sessionId: "s1"),
       );
 
       expect(response, equals(const SuccessEmptyResponse()));

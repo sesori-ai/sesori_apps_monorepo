@@ -821,13 +821,18 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.abort();
+        await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.abortSession(sessionId: sessionId)).called(1);
+        verify(
+          () => mockSessionService.abortSession(
+            sessionId: sessionId,
+            subAgents: any(named: "subAgents"),
+          ),
+        ).called(1);
       },
     );
 
@@ -2833,7 +2838,10 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.abortSession(sessionId: any(named: "sessionId")),
+    () => service.abortSession(
+      sessionId: any(named: "sessionId"),
+      subAgents: any(named: "subAgents"),
+    ),
   ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.replyToQuestion(

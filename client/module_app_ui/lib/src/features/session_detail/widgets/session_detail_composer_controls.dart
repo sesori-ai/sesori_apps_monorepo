@@ -8,6 +8,7 @@ import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
+import "session_abort_scope_dialog.dart";
 import "session_detail_loaded_view.dart";
 
 /// Shared session composer controls injected below the transcript view.
@@ -96,7 +97,10 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 : null,
             onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(draft: draft),
             onDraftCleared: context.read<SessionDetailCubit>().clearComposerDraft,
-            onAbort: () => context.read<SessionDetailCubit>().abort(),
+            onAbort: () => stopSessionWithScope(
+              context: context,
+              cubit: context.read<SessionDetailCubit>(),
+            ),
             surfaceStyleController: _composerSurfaceStyle,
             header: null,
             composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(

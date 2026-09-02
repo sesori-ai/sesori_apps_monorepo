@@ -879,9 +879,10 @@ Scope:
   non-sub-agent-only tasks), and that `keep` leaves the running set, reap
   deferral, and child statuses intact and renders the later wake-up turn.
 - `client`: `SessionApi.abortSession({sessionId, subAgents})` sends
-  `AbortSessionRequest` and parses the 409 → `SessionAbortRejectedException`;
-  `SessionRepository.abortSession` and `capabilities/session/SessionService.
-  abortSession` updated in lockstep; `SessionDetailCubit.abort({subAgents})`
+  `AbortSessionRequest` and parses the 409 → `SessionAbortApiRejectedException`;
+  `SessionRepository.abortSession` updated in lockstep (there is no
+  `capabilities/session/SessionService` abort seam — implementation
+  refinement 2026-09-02, see `TRACKER.md`); `SessionDetailCubit.abort({subAgents})`
   sealed outcome, side-effect-free `confirm` (queue clearing and the child
   fan-out only after a root `aborted` under `stop`, queue clearing also on
   `keep`); stop action sends `confirm`, shows the scope dialog on rejection,
