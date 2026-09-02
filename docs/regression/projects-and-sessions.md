@@ -282,7 +282,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   starts the helper without establishing the desktop relay connection. A
   desktop session row cannot open its typed detail route, child-session
   navigation loses project/session/read-only identity, or unsupported desktop
-  voice or diff controls render as dead actions.
+  voice, attachment, or diff controls render as dead actions.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

@@ -80,7 +80,7 @@
   complete suite passes 1,484 tests, including the shared picker/clipboard
   attachment dispatcher and shared raster validation.
 - `client/module_app_ui`: `asdf exec dart analyze --fatal-infos` passes; the
-  complete suite passes 249 tests, including unsupported-voice text-first
+  complete suite passes 250 tests, including unsupported-voice text-first
   fallback without a `VoiceInputCubit`.
 - `client/app`: `asdf exec dart analyze --fatal-infos` passes; the complete
   mobile suite passes 686 tests, including picker adaptation, voice lifecycle,

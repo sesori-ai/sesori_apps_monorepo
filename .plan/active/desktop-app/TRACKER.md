@@ -101,7 +101,7 @@ copied. The user accepted Gate B and explicitly authorized Step 14 on
 - **Step 18:** changed lines (informational, not a pass/fail check):
   `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD | awk
   '{ additions += $1; deletions += $2 } END { print additions, deletions,
-  additions + deletions }'` = `1243 additions / 596 deletions / 1839 total`.
-  This is 339 lines over the 1,500-line soft target; accepted deviation from
+  additions + deletions }'` = `1331 additions / 598 deletions / 1929 total`.
+  This is 429 lines over the 1,500-line soft target; accepted deviation from
   moving the existing composer and its tests into shared presentation while
   adding both shell capability composition and regression coverage.

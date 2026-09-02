@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
+import "package:flutter/scheduler.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
@@ -320,9 +321,14 @@ class _PromptInputState() extends State<PromptInput> {
 
   void _syncSurfaceStyle() {
     final surfaceStyle = _surfaceStyle;
-    if (widget.surfaceStyleController.value != surfaceStyle) {
-      widget.surfaceStyleController.value = surfaceStyle;
+    if (widget.surfaceStyleController.value == surfaceStyle) return;
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncSurfaceStyle();
+      });
+      return;
     }
+    widget.surfaceStyleController.value = surfaceStyle;
   }
 
   bool get _releaseRequestedWhileStarting => switch (_voiceInteraction) {
