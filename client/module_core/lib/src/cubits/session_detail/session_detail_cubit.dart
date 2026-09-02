@@ -2237,6 +2237,9 @@ class SessionDetailCubit(
     } on SessionAbortRejectedException catch (e) {
       return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
+      // The bridge may have accepted a probe whose response was lost; only the
+      // typed rejection proves nothing happened, so the queue is cleared here too.
+      _clearLocalPromptQueue();
       loge("Failed to abort session(s)", e, st);
       return const SessionAbortOutcome.failed();
     }

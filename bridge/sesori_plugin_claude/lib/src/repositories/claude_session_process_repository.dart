@@ -393,6 +393,13 @@ final class ClaudeSessionProcessRepository({
   }
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
+    // A turn starting after the interrupted turn settled is new work — the
+    // wake-up turn a kept sub-agent triggers, or the notification that opens
+    // it — so the post-interrupt window closes and its frames render again.
+    if (!process.turnActive && process.interruptSettled && _startsNewTurn(message)) {
+      process.interrupted = false;
+      process.interruptSettled = false;
+    }
     switch (message) {
       case ClaudeUserMessage(parentToolUseId: null):
         // Claude normally marks stdin echoes with `isReplay`, but attachment
@@ -417,13 +424,6 @@ final class ClaudeSessionProcessRepository({
           return promptId;
         }
       case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
-        // A turn starting after the interrupted turn settled is new work — the
-        // wake-up turn a kept sub-agent triggers — so the post-interrupt window
-        // closes here and its frames render again.
-        if (!process.turnActive && process.interruptSettled) {
-          process.interrupted = false;
-          process.interruptSettled = false;
-        }
         process.turnActive = true;
       case final ClaudeResultMessage message:
         if (process.interrupted) process.interruptSettled = true;
@@ -546,3 +546,11 @@ List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [
       ],
     },
 ];
+
+/// Frames that prove a new turn (or the task completion that opens one).
+bool _startsNewTurn(ClaudeStreamMessage message) => switch (message) {
+  ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage() => true,
+  ClaudeTaskNotificationMessage() => true,
+  ClaudeUserMessage(:final taskNotifications) => taskNotifications.isNotEmpty,
+  ClaudeStreamMessage() => false,
+};
