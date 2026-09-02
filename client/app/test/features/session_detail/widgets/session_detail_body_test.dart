@@ -19,11 +19,7 @@ import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
 import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
-import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
-import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
-import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
-import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
-import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
+import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -38,6 +34,12 @@ class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements 
 class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
+
+class MockImageSaver() extends Mock implements ImageSaver;
+
+class MockImageSharer() extends Mock implements ImageSharer;
+
+class MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
@@ -55,6 +57,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
 }) {
+  final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
     initialLocation: startAtPreviousScreen ? "/previous" : "/",
     routes: [
@@ -73,12 +76,29 @@ Widget _buildApp({
         path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
-          child: const SessionDetailBody(
-            projectId: "project-1",
-            projectName: null,
-            sessionId: "session-1",
-            sessionTitle: "Session",
-            readOnly: false,
+          child: SessionDetailPresentationScope(
+            messageImageRepository: MockMessageImageRepository.new,
+            imageSaver: MockImageSaver.new,
+            imageClipboard: () => imageClipboard,
+            imageSharer: MockImageSharer.new,
+            canShareImages: true,
+            openExternalLink: ({required url, required mode}) async => false,
+            openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+            child: SessionDetailBody(
+              projectId: "project-1",
+              sessionId: "session-1",
+              sessionTitle: "Session",
+              readOnly: false,
+              banner: null,
+              onBack: context.pop,
+              onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
+              bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+                  SessionDetailComposerControls(
+                    projectId: projectId,
+                    sessionId: sessionId,
+                    state: state,
+                  ),
+            ),
           ),
         ),
       ),

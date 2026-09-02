@@ -1,7 +1,11 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
+import "package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storage.dart";
 import "package:sesori_desktop/core/platform/desktop_failure_reporter.dart";
+import "package:sesori_desktop/core/platform/desktop_file_image_saver.dart";
+import "package:sesori_desktop/core/platform/desktop_image_clipboard.dart";
+import "package:sesori_desktop/core/platform/desktop_image_sharer.dart";
 import "package:sesori_desktop/core/platform/desktop_route_source.dart";
 import "package:sesori_desktop/core/platform/no_op_analytics_client.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -62,6 +66,9 @@ void main() {
     expect(getIt.isRegistered<DesktopStartupOrchestrator>(), isTrue);
     expect(getIt<RelayCryptoService>(), isA<RelayCryptoService>());
     expect(getIt<FailureReporter>(), isA<DesktopFailureReporter>());
+    expect(getIt<ImageSaver>(), isA<DesktopFileImageSaver>());
+    expect(getIt<ImageClipboard>(), isA<DesktopImageClipboard>());
+    expect(getIt<ImageSharer>(), isA<DesktopImageSharer>());
     expect(getIt<RouteSource>(), isA<DesktopRouteSource>());
     final ConnectionService connectionService = getIt<ConnectionService>();
     expect(connectionService.currentStatus, isA<ConnectionDisconnected>());
@@ -73,18 +80,11 @@ void main() {
     expect(getIt<ControlCommandService>(), isA<ControlCommandService>());
   });
 
-  test("desktop bootstrap leaves the mobile thumbnail cache unbound and unresolved", () {
+  test("desktop bootstrap resolves the complete message-image dependency graph", () {
     configureDesktopDependencies();
 
-    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isFalse);
-    expect(getIt.isRegistered<MessageThumbnailCacheService>(), isTrue);
-    expect(
-      getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(),
-      isFalse,
-    );
-    expect(
-      getIt.checkLazySingletonInstanceExists<MessageImageRepository>(),
-      isFalse,
-    );
+    expect(getIt<AttachmentThumbnailStorage>(), isA<DesktopAttachmentThumbnailStorage>());
+    expect(getIt<MessageThumbnailCacheService>(), isA<MessageThumbnailCacheService>());
+    expect(getIt<MessageImageRepository>(), isA<MessageImageRepository>());
   });
 }

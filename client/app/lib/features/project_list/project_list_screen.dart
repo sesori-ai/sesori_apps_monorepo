@@ -12,7 +12,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/bridge_install.dart";
 import "../../core/di/injection.dart";
-import "../../core/extensions/text_style_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/connection_graphic.dart";

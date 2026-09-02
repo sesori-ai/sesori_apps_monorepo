@@ -7,6 +7,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home.dart";
 import "../../features/projects/desktop_project_list_screen.dart";
+import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/sessions/desktop_session_list_screen.dart";
 import "../../features/settings/desktop_harnesses_settings_screen.dart";
 import "../../features/settings/desktop_profile_screen.dart";
@@ -58,6 +59,54 @@ final GoRouter desktopRouter = GoRouter(
               projectId: route.projectId,
               projectName: route.projectName,
               onBack: () => _goRoute(context: context, route: const AppRoute.projects()),
+              onSessionTap: ({required session}) => _pushRoute(
+                context: context,
+                route: AppRoute.sessionDetail(
+                  projectId: route.projectId,
+                  projectName: route.projectName,
+                  sessionId: session.id,
+                  sessionTitle: session.title,
+                  readOnly: false,
+                ),
+              ),
+            );
+          },
+        ),
+        GoRoute(
+          path: AppRouteDef.sessionDetail.path,
+          builder: (BuildContext context, GoRouterState state) {
+            final route = switch (AppRoute.fromDef(
+              def: AppRouteDef.sessionDetail,
+              pathParams: state.pathParameters,
+              queryParams: state.uri.queryParameters,
+            )) {
+              final AppRouteSessionDetail route => route,
+              final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
+            };
+            return DesktopSessionDetailScreen(
+              key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
+              projectId: route.projectId,
+              sessionId: route.sessionId,
+              sessionTitle: route.sessionTitle,
+              readOnly: route.readOnly,
+              onBack: () => _popRouteOrGo(
+                context: context,
+                fallback: AppRoute.sessions(
+                  projectId: route.projectId,
+                  projectName: route.projectName,
+                ),
+              ),
+              onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+                  _pushRoute(
+                    context: context,
+                    route: AppRoute.sessionDetail(
+                      projectId: projectId,
+                      projectName: route.projectName,
+                      sessionId: sessionId,
+                      sessionTitle: sessionTitle,
+                      readOnly: readOnly,
+                    ),
+                  ),
             );
           },
         ),
@@ -103,6 +152,14 @@ void _goRoute({required BuildContext context, required AppRoute route}) {
 void _pushRoute({required BuildContext context, required AppRoute route}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   unawaited(GoRouter.of(context).push<void>(route.buildPath()));
+}
+
+void _popRouteOrGo({required BuildContext context, required AppRoute fallback}) {
+  if (context.canPop()) {
+    context.pop();
+    return;
+  }
+  _goRoute(context: context, route: fallback);
 }
 
 void _popRoute({required BuildContext context}) {

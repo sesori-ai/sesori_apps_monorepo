@@ -1,8 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:re_highlight/re_highlight.dart';
-
-import '../../../core/extensions/text_style_x.dart';
-import '../../../core/utils/syntax_highlight.dart';
+import 'package:sesori_app_ui/sesori_app_ui.dart';
 
 /// Static helper for syntax highlighting diff lines.
 /// Must call [initialize] once before using [highlightLine].
