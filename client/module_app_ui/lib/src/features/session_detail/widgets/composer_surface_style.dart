@@ -6,7 +6,7 @@ import "package:theme_prego/module_prego.dart";
 enum ComposerSurfaceLayout({required final PregoComposerSurfaceStyle surfaceStyle}) {
   holdToTalk(surfaceStyle: PregoComposerSurfaceStyle.subtle),
   compact(surfaceStyle: PregoComposerSurfaceStyle.emphasized),
-  typing(surfaceStyle: PregoComposerSurfaceStyle.emphasized);
+  typing(surfaceStyle: PregoComposerSurfaceStyle.emphasized),
 }
 
 ComposerSurfaceLayout resolveComposerSurfaceLayout({

@@ -19,6 +19,8 @@ class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
 
+class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
+
 const _question = SesoriQuestionAsked(
   id: "question-1",
   sessionID: "session-1",
@@ -106,8 +108,19 @@ SessionDetailLoaded _loadedState() {
   );
 }
 
+Widget _composerScope({required Widget child, required ComposerCapabilityProvider<ImageClipboard> imageClipboard}) {
+  return ComposerPresentationScope(
+    voiceSupport: ComposerVoiceSupport.unsupported,
+    inputMode: ChatInputMode.textFirst,
+    isKeyboardVisible: false,
+    attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
+    imageClipboard: imageClipboard,
+    child: child,
+  );
+}
+
 void main() {
-  testWidgets("desktop renders an interactive transcript without composer controls", (tester) async {
+  testWidgets("desktop renders the transcript and text-first composer", (tester) async {
     final cubit = _MockSessionDetailCubit();
     final state = _loadedState();
     when(() => cubit.state).thenReturn(state);
@@ -116,6 +129,15 @@ void main() {
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(cubit.clearNotifications).thenReturn(null);
+    when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(
+      () => cubit.sendMessage(
+        text: "Desktop follow-up",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async {});
     var messageImageRepositoryResolutions = 0;
     var imageSaverResolutions = 0;
     var imageClipboardResolutions = 0;
@@ -128,30 +150,36 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DesktopSessionDetailView(
-            projectId: "project-1",
-            sessionId: "session-1",
-            sessionTitle: "Desktop session",
-            readOnly: false,
-            onBack: () {},
-            onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-            messageImageRepository: () {
-              messageImageRepositoryResolutions++;
-              return _MockMessageImageRepository();
-            },
-            imageSaver: () {
-              imageSaverResolutions++;
-              return _MockImageSaver();
-            },
+          home: _composerScope(
             imageClipboard: () {
               imageClipboardResolutions++;
               return _MockImageClipboard();
             },
-            imageSharer: () {
-              imageSharerResolutions++;
-              return _MockImageSharer();
-            },
-            canShareImages: true,
+            child: DesktopSessionDetailView(
+              projectId: "project-1",
+              sessionId: "session-1",
+              sessionTitle: "Desktop session",
+              readOnly: false,
+              onBack: () {},
+              onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+              messageImageRepository: () {
+                messageImageRepositoryResolutions++;
+                return _MockMessageImageRepository();
+              },
+              imageSaver: () {
+                imageSaverResolutions++;
+                return _MockImageSaver();
+              },
+              imageClipboard: () {
+                imageClipboardResolutions++;
+                return _MockImageClipboard();
+              },
+              imageSharer: () {
+                imageSharerResolutions++;
+                return _MockImageSharer();
+              },
+              canShareImages: true,
+            ),
           ),
         ),
       ),
@@ -161,11 +189,31 @@ void main() {
     expect(find.text("Desktop transcript"), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
-    expect(loadedView.bottomControls, isNull);
+    expect(loadedView.bottomControls, isA<SessionDetailComposerControls>());
+    expect(find.bySemanticsLabel("Start recording"), findsNothing);
     expect(messageImageRepositoryResolutions, 0);
     expect(imageSaverResolutions, 0);
     expect(imageClipboardResolutions, 0);
     expect(imageSharerResolutions, 0);
+
+    await tester.tap(find.text("Follow up..."));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), "Desktop follow-up");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    verify(
+      () => cubit.sendMessage(
+        text: "Desktop follow-up",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).called(1);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(TablerRegular.photo), findsOneWidget);
 
     await tester.tap(find.text("1 pending question"));
     await tester.pumpAndSettle();
@@ -182,6 +230,7 @@ void main() {
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     when(cubit.clearNotifications).thenReturn(null);
+    when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     var backCalls = 0;
     ({String projectId, String sessionId, String? sessionTitle, bool readOnly})? openedSession;
 
@@ -192,24 +241,27 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: DesktopSessionDetailView(
-            projectId: "project-1",
-            sessionId: "session-1",
-            sessionTitle: "Desktop session",
-            readOnly: false,
-            onBack: () => backCalls++,
-            onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
-                openedSession = (
-                  projectId: projectId,
-                  sessionId: sessionId,
-                  sessionTitle: sessionTitle,
-                  readOnly: readOnly,
-                ),
-            messageImageRepository: _MockMessageImageRepository.new,
-            imageSaver: _MockImageSaver.new,
+          home: _composerScope(
             imageClipboard: _MockImageClipboard.new,
-            imageSharer: _MockImageSharer.new,
-            canShareImages: true,
+            child: DesktopSessionDetailView(
+              projectId: "project-1",
+              sessionId: "session-1",
+              sessionTitle: "Desktop session",
+              readOnly: false,
+              onBack: () => backCalls++,
+              onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+                  openedSession = (
+                    projectId: projectId,
+                    sessionId: sessionId,
+                    sessionTitle: sessionTitle,
+                    readOnly: readOnly,
+                  ),
+              messageImageRepository: _MockMessageImageRepository.new,
+              imageSaver: _MockImageSaver.new,
+              imageClipboard: _MockImageClipboard.new,
+              imageSharer: _MockImageSharer.new,
+              canShareImages: true,
+            ),
           ),
         ),
       ),

@@ -1,7 +1,8 @@
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../../extensions/build_context_x.dart";
 
 /// Fullscreen editor for the composer text, opened from the composer's
 /// expand button so long prompts can be read and edited comfortably.

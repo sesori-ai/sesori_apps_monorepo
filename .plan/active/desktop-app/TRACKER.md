@@ -26,7 +26,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | done |
-| 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
+| 18 | 🚧 Composer slice + voice/media seams (R2) | done |
 | 19 | ⚙️ Diffs + new-session slice | pending |
 | 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |

@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 15 complete (MT gate B accepted 2026-09-01)
+- **Status:** Active — step 18 complete (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
