@@ -13,7 +13,6 @@ void main() {
   late _MockBridgeRepository bridgeRepository;
   late _MockProductAnalyticsService productAnalyticsService;
   late _MockDesktopAttentionService attentionService;
-  late _MockNotificationCanceller notificationCanceller;
   late _MockAuthSession authSession;
   late _MockDesktopInstanceService instanceService;
   late MemoryBridgeIdStorage bridgeIdStorage;
@@ -29,10 +28,8 @@ void main() {
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     attentionService = _MockDesktopAttentionService();
-    when(attentionService.suspendForLogout).thenAnswer((_) async {});
+    when(attentionService.suspendAndClearForLogout).thenAnswer((_) async {});
     when(attentionService.resumeAfterLogoutAttempt).thenReturn(null);
-    notificationCanceller = _MockNotificationCanceller();
-    when(notificationCanceller.cancelAll).thenAnswer((_) async {});
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     instanceService = _MockDesktopInstanceService();
@@ -51,7 +48,6 @@ void main() {
       logoutTracker: logoutTracker,
       productAnalyticsService: productAnalyticsService,
       attentionService: attentionService,
-      notificationCanceller: notificationCanceller,
       authSession: authSession,
     );
   });
@@ -255,6 +251,26 @@ void main() {
     verifyNever(() => authSession.logoutCurrentDevice());
   });
 
+  test("failed logout waits for attention cleanup before resuming alerts", () async {
+    final attentionCleanup = Completer<void>();
+    when(attentionService.suspendAndClearForLogout).thenAnswer((_) => attentionCleanup.future);
+    when(
+      () => instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off),
+    ).thenThrow(StateError("application support is read-only"));
+
+    var completed = false;
+    final outcomeFuture = orchestrator.logoutCurrentDevice();
+    unawaited(outcomeFuture.then((_) => completed = true));
+    await pumpEventQueue();
+
+    expect(completed, isFalse);
+    verifyNever(attentionService.resumeAfterLogoutAttempt);
+
+    attentionCleanup.complete();
+    expect(await outcomeFuture, DesktopLogoutOutcome.desiredStatePersistenceFailed);
+    verify(attentionService.resumeAfterLogoutAttempt).called(1);
+  });
+
   test("does not clear authentication when the helper cannot stop", () async {
     when(() => processService.requestStopForLogout()).thenThrow(StateError("helper remained alive"));
 
@@ -290,36 +306,36 @@ void main() {
 
     expect(outcome, DesktopLogoutOutcome.completed);
     verifyInOrder([
-      notificationCanceller.cancelAll,
+      attentionService.suspendAndClearForLogout,
       () => authSession.logoutCurrentDevice(),
     ]);
   });
 
   test("waits for in-flight alerts before notification cleanup and credential clearing", () async {
     final settlement = Completer<void>();
-    when(attentionService.suspendForLogout).thenAnswer((_) => settlement.future);
+    when(attentionService.suspendAndClearForLogout).thenAnswer((_) => settlement.future);
     when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
 
     final outcomeFuture = orchestrator.logoutCurrentDevice();
     await pumpEventQueue();
 
-    verifyNever(notificationCanceller.cancelAll);
     verifyNever(() => authSession.logoutCurrentDevice());
 
     settlement.complete();
     expect(await outcomeFuture, DesktopLogoutOutcome.completed);
     verifyInOrder([
-      attentionService.suspendForLogout,
-      notificationCanceller.cancelAll,
+      attentionService.suspendAndClearForLogout,
       () => authSession.logoutCurrentDevice(),
       attentionService.resumeAfterLogoutAttempt,
     ]);
   });
 
-  test("notification cleanup failure does not prevent local logout", () async {
+  test("attention cleanup failure does not prevent local logout", () async {
     when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
-    when(notificationCanceller.cancelAll).thenThrow(StateError("native notifications unavailable"));
+    when(
+      attentionService.suspendAndClearForLogout,
+    ).thenAnswer((_) => Future<void>.error(StateError("native notifications unavailable")));
     when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
 
     final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
@@ -336,8 +352,8 @@ void main() {
 
     expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
     verifyInOrder([
+      attentionService.suspendAndClearForLogout,
       productAnalyticsService.prepareForLogout,
-      notificationCanceller.cancelAll,
       () => authSession.logoutCurrentDevice(),
       productAnalyticsService.resumeAfterFailedLogout,
     ]);
@@ -353,8 +369,6 @@ class _MockBridgeRepository() extends Mock implements BridgeRepository;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
-
-class _MockNotificationCanceller() extends Mock implements NotificationCanceller;
 
 class _MockAuthSession() extends Mock implements AuthSession;
 

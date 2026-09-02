@@ -59,14 +59,33 @@ void main() {
     final secondSelectionArea = find.ancestor(of: secondSource, matching: find.byType(SelectionArea)).evaluate().single;
     expect(identical(firstSelectionArea, secondSelectionArea), isTrue);
 
+    final selectionDisabled = find.byWidgetPredicate(
+      (widget) => widget is SelectionContainer && widget.delegate == null,
+    );
+    final titleElements = find.text("File Changes").evaluate().toList(growable: false);
+    expect(titleElements, isNotEmpty);
+    for (final titleElement in titleElements) {
+      expect(
+        find.ancestor(
+          of: find.byElementPredicate((element) => identical(element, titleElement)),
+          matching: selectionDisabled,
+        ),
+        findsOneWidget,
+        reason: "every rendered navigation title should stay outside copied source",
+      );
+    }
+    expect(
+      find.ancestor(of: find.text("notes.txt"), matching: selectionDisabled),
+      findsOneWidget,
+      reason: "per-file header metadata should stay outside copied source",
+    );
+
     final firstLine = find.ancestor(of: firstSource, matching: find.byType(DiffLineWidget));
     expect(firstLine, findsOneWidget);
     expect(
       find.descendant(
         of: firstLine,
-        matching: find.byWidgetPredicate(
-          (widget) => widget is SelectionContainer && widget.delegate == null,
-        ),
+        matching: selectionDisabled,
       ),
       findsNWidgets(2),
       reason: "line-number and +/- gutters should each disable selection",

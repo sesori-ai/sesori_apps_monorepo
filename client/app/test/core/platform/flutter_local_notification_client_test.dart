@@ -100,6 +100,7 @@ void main() {
         sessionId: sessionId,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
 
       verify(
@@ -123,6 +124,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
       await Future<void>.delayed(const Duration(milliseconds: 2));
       await client.show(
@@ -132,6 +134,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
 
       final capturedIds = verify(
@@ -158,6 +161,7 @@ void main() {
         sessionId: "s1",
         projectId: "p1",
         sessionTitle: "Session Title",
+        accountId: null,
       );
 
       final captured = verify(
@@ -185,6 +189,7 @@ void main() {
         sessionId: "ses_1",
         projectId: "proj_1",
         sessionTitle: "Title",
+        accountId: null,
       );
 
       expect(

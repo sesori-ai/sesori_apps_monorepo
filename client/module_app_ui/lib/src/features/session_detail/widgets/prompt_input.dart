@@ -94,6 +94,26 @@ final class _ComposerPasteAction({
   bool consumesKey(PasteTextIntent intent) => callingAction?.consumesKey(intent) ?? false;
 }
 
+final class _ComposerSendShortcutActivator({
+  required final TextEditingController controller,
+  required final SingleActivator activator,
+}) extends ShortcutActivator {
+  final TextEditingController _controller = controller;
+  final SingleActivator _activator = activator;
+
+  @override
+  Iterable<LogicalKeyboardKey>? get triggers => _activator.triggers;
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    final composing = _controller.value.composing;
+    return (!composing.isValid || composing.isCollapsed) && _activator.accepts(event, state);
+  }
+
+  @override
+  String debugDescribeKeys() => _activator.debugDescribeKeys();
+}
+
 typedef PromptSubmitCallback = void Function({
   required ComposerDraft draft,
   required String? command,
@@ -1466,10 +1486,19 @@ class _PromptInputState() extends State<PromptInput> {
                     // Shift+Enter does not match it and reaches the multiline
                     // field as a newline.
                     bindings: <ShortcutActivator, VoidCallback>{
-                      const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
-                      const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                      _ComposerSendShortcutActivator(
+                        controller: _controller,
+                        activator: const SingleActivator(LogicalKeyboardKey.enter, meta: true),
+                      ): _handleSend,
+                      _ComposerSendShortcutActivator(
+                        controller: _controller,
+                        activator: const SingleActivator(LogicalKeyboardKey.enter, control: true),
+                      ): _handleSend,
                       if (sendKeyPolicy == ComposerSendKeyPolicy.enterSends)
-                        const SingleActivator(LogicalKeyboardKey.enter): _handleSend,
+                        _ComposerSendShortcutActivator(
+                          controller: _controller,
+                          activator: const SingleActivator(LogicalKeyboardKey.enter),
+                        ): _handleSend,
                     },
                     child: TextField(
                       controller: _controller,

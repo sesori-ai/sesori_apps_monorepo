@@ -51,13 +51,15 @@ class DesktopAttentionService({
   StreamSubscription<AuthState>? _authSubscription;
   final Map<String, Set<_DesktopAttentionRequest>> _pendingRequests = {};
   final Map<String, int> _attentionGenerations = {};
+  final Map<String, Future<void>> _sessionNotificationWrites = {};
   final Set<Future<void>> _inFlightNotifications = {};
+  Future<bool>? _notificationInitialization;
   WindowHostState _windowState = WindowHostState.hidden;
   NotificationOpenRequest? _pendingOpenRequest;
   bool _notificationsAvailable = false;
   bool _logoutSuspended = false;
   bool _authCleanupInProgress = false;
-  bool _deferUnauthenticatedOpen = true;
+  bool _deferInitialOpenUntilAuthenticated = false;
   bool _started = false;
   bool _disposed = false;
   int _nextAttentionGeneration = 0;
@@ -85,12 +87,16 @@ class DesktopAttentionService({
       logw("Failed to read the desktop attention-notification preference; using enabled", error, stackTrace);
     }
 
-    try {
-      await _localNotificationClient.initialize();
-      _notificationsAvailable = true;
-    } on Object catch (error, stackTrace) {
-      loge("Failed to initialize desktop attention notifications", error, stackTrace);
-    }
+    await _prepareInitialOpenDeferral();
+    // Linux can deliver its launch activation through the initialize callback,
+    // so the broadcast stream must have a listener before initialization.
+    _notificationOpenSubscription = _localNotificationClient.notificationOpenedStream.listen(
+      (request) => _onNotificationOpen(request: request),
+      onError: (Object error, StackTrace stackTrace) {
+        loge("Desktop local-notification open stream failed", error, stackTrace);
+      },
+    );
+    await _ensureNotificationsAvailable();
 
     _connectionEventSubscription = _connectionService.events.listen(
       (event) => _onConnectionEvent(event: event),
@@ -99,15 +105,9 @@ class DesktopAttentionService({
       },
     );
     _windowStateSubscription = _windowHost.states.listen(
-      (state) => _windowState = state,
+      (state) => _onWindowState(state: state),
       onError: (Object error, StackTrace stackTrace) {
         loge("Desktop attention window-state stream failed", error, stackTrace);
-      },
-    );
-    _notificationOpenSubscription = _localNotificationClient.notificationOpenedStream.listen(
-      (request) => _onNotificationOpen(request: request),
-      onError: (Object error, StackTrace stackTrace) {
-        loge("Desktop local-notification open stream failed", error, stackTrace);
       },
     );
     _authSubscription = _authSession.authStateStream.listen(
@@ -117,15 +117,59 @@ class DesktopAttentionService({
       },
     );
 
-    if (_notificationsAvailable) {
-      try {
-        final initialOpen = await _localNotificationClient.getInitialNotificationOpen();
-        if (initialOpen != null) {
-          _onNotificationOpen(request: initialOpen);
-        }
-      } on Object catch (error, stackTrace) {
-        loge("Failed to read the initial desktop notification open", error, stackTrace);
+    try {
+      // Consume launch metadata even when native initialization failed after
+      // reading it, so a later account cannot inherit this startup open.
+      final initialOpen = await _localNotificationClient.getInitialNotificationOpen();
+      if (initialOpen != null) {
+        _onNotificationOpen(request: initialOpen);
       }
+    } on Object catch (error, stackTrace) {
+      loge("Failed to read the initial desktop notification open", error, stackTrace);
+    }
+  }
+
+  Future<void> _prepareInitialOpenDeferral() async {
+    if (_authSession.currentState is AuthAuthenticated) {
+      return;
+    }
+    try {
+      _deferInitialOpenUntilAuthenticated = await _authSession.hasLocallyValidSession();
+    } on Object catch (error, stackTrace) {
+      _deferInitialOpenUntilAuthenticated = false;
+      logw(
+        "Failed to determine whether a desktop notification open belongs to a restorable session",
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  Future<bool> _ensureNotificationsAvailable() {
+    if (_notificationsAvailable) {
+      return Future<bool>.value(true);
+    }
+    final existing = _notificationInitialization;
+    if (existing != null) {
+      return existing;
+    }
+    final operation = _initializeNotifications();
+    _notificationInitialization = operation;
+    return operation.whenComplete(() {
+      if (identical(_notificationInitialization, operation)) {
+        _notificationInitialization = null;
+      }
+    });
+  }
+
+  Future<bool> _initializeNotifications() async {
+    try {
+      await _localNotificationClient.initialize();
+      _notificationsAvailable = true;
+      return true;
+    } on Object catch (error, stackTrace) {
+      loge("Failed to initialize desktop attention notifications", error, stackTrace);
+      return false;
     }
   }
 
@@ -133,6 +177,7 @@ class DesktopAttentionService({
     if (_disposed) {
       throw StateError("DesktopAttentionService is disposed");
     }
+    final wasEnabled = _preference.value.isEnabled;
     if (preference == _preference.value) {
       return;
     }
@@ -143,6 +188,18 @@ class DesktopAttentionService({
       await _settleAndCancelAll(
         failureMessage: "Failed to clear desktop notifications after disabling attention alerts",
       );
+      return;
+    }
+    if (!wasEnabled && preference.isEnabled) {
+      _resumePendingAttention();
+    }
+  }
+
+  void _onWindowState({required WindowHostState state}) {
+    final wasFocused = _windowState == WindowHostState.focused;
+    _windowState = state;
+    if (wasFocused && state != WindowHostState.focused) {
+      _resumePendingAttention();
     }
   }
 
@@ -231,6 +288,9 @@ class DesktopAttentionService({
       return;
     }
     _localNotificationClient.cancelForSession(sessionId: sessionId);
+    if (_attentionGenerations[sessionId] == generation && !_pendingRequests.containsKey(sessionId)) {
+      _attentionGenerations.remove(sessionId);
+    }
   }
 
   void _queueAttention({
@@ -241,9 +301,37 @@ class DesktopAttentionService({
     if (_logoutSuspended || _authCleanupInProgress) {
       return;
     }
-    final operation = _showAttention(sessionId: sessionId, kind: kind, generation: generation);
+    final previous = _sessionNotificationWrites[sessionId];
+    final operation = _runSerializedAttention(
+      previous: previous,
+      sessionId: sessionId,
+      kind: kind,
+      generation: generation,
+    );
+    _sessionNotificationWrites[sessionId] = operation;
     _inFlightNotifications.add(operation);
-    unawaited(operation.whenComplete(() => _inFlightNotifications.remove(operation)));
+    unawaited(
+      operation.whenComplete(() {
+        _inFlightNotifications.remove(operation);
+        if (identical(_sessionNotificationWrites[sessionId], operation)) {
+          _sessionNotificationWrites.remove(sessionId);
+        }
+      }),
+    );
+  }
+
+  Future<void> _runSerializedAttention({
+    required Future<void>? previous,
+    required String sessionId,
+    required _DesktopAttentionKind kind,
+    required int generation,
+  }) async {
+    try {
+      await previous;
+      await _showAttention(sessionId: sessionId, kind: kind, generation: generation);
+    } on Object catch (error, stackTrace) {
+      loge("Unexpected desktop attention operation failure", error, stackTrace);
+    }
   }
 
   Future<void> _showAttention({
@@ -251,7 +339,9 @@ class DesktopAttentionService({
     required _DesktopAttentionKind kind,
     required int generation,
   }) async {
-    if (!_shouldShowAttention(sessionId: sessionId, generation: generation)) {
+    if (!_shouldAttemptAttention(sessionId: sessionId, generation: generation) ||
+        !await _ensureNotificationsAvailable() ||
+        !_shouldShowAttention(sessionId: sessionId, generation: generation)) {
       return;
     }
 
@@ -274,6 +364,10 @@ class DesktopAttentionService({
     if (!_shouldShowAttention(sessionId: sessionId, generation: generation)) {
       return;
     }
+    final authState = _authSession.currentState;
+    if (authState is! AuthAuthenticated) {
+      return;
+    }
     try {
       await _localNotificationClient.show(
         title: session.title ?? "Sesori",
@@ -285,29 +379,35 @@ class DesktopAttentionService({
         sessionId: session.id,
         projectId: session.projectID,
         sessionTitle: session.title,
+        accountId: authState.user.id,
       );
     } on Object catch (error, stackTrace) {
       logw("Failed to show a desktop attention notification", error, stackTrace);
     }
   }
 
-  bool _shouldShowAttention({required String sessionId, required int generation}) {
+  bool _shouldAttemptAttention({required String sessionId, required int generation}) {
     return !_logoutSuspended &&
         !_authCleanupInProgress &&
         _attentionGenerations[sessionId] == generation &&
         (_pendingRequests[sessionId]?.isNotEmpty ?? false) &&
-        _notificationsAvailable &&
         _preference.value.isEnabled &&
         _windowState != WindowHostState.focused &&
         _authSession.currentState is AuthAuthenticated;
   }
 
-  /// Stops new alerts synchronously and waits for already-started native
-  /// notification writes so logout can cancel them in a deterministic order.
-  Future<void> suspendForLogout() {
+  bool _shouldShowAttention({required String sessionId, required int generation}) {
+    return _notificationsAvailable && _shouldAttemptAttention(sessionId: sessionId, generation: generation);
+  }
+
+  /// Stops new alerts synchronously, waits for already-started native writes,
+  /// and clears every delivered alert before logout can remove credentials.
+  Future<void> suspendAndClearForLogout() {
     _logoutSuspended = true;
     _invalidateAllAttention();
-    return _settleInFlightNotifications();
+    return _settleAndCancelAll(
+      failureMessage: "Failed to clear desktop notifications before logout",
+    );
   }
 
   /// Restores attention handling when a logout attempt finishes. A successful
@@ -389,10 +489,14 @@ class DesktopAttentionService({
     if (_logoutSuspended || _authCleanupInProgress) {
       return;
     }
-    if (_authSession.currentState is! AuthAuthenticated) {
-      if (_deferUnauthenticatedOpen) {
+    final authState = _authSession.currentState;
+    if (authState is! AuthAuthenticated) {
+      if (_deferInitialOpenUntilAuthenticated) {
         _pendingOpenRequest = request;
       }
+      return;
+    }
+    if (request.accountId != authState.user.id) {
       return;
     }
     unawaited(_openNotification(request: request));
@@ -401,15 +505,15 @@ class DesktopAttentionService({
   void _onAuthState({required AuthState state}) {
     switch (state) {
       case AuthAuthenticated():
-        _deferUnauthenticatedOpen = true;
+        _deferInitialOpenUntilAuthenticated = false;
         final pending = _pendingOpenRequest;
-        if (pending == null) {
-          return;
+        if (pending != null) {
+          _pendingOpenRequest = null;
+          _onNotificationOpen(request: pending);
         }
-        _pendingOpenRequest = null;
-        unawaited(_openNotification(request: pending));
+        _resumePendingAttention();
       case AuthUnauthenticated() || AuthFailed():
-        _deferUnauthenticatedOpen = false;
+        _deferInitialOpenUntilAuthenticated = false;
         _pendingOpenRequest = null;
         _pendingRequests.clear();
         _attentionGenerations.clear();

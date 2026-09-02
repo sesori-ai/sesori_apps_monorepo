@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LocalNotificationPayload {
 
- String? get sessionId; String? get projectId; String? get sessionTitle;
+ String? get sessionId; String? get projectId; String? get sessionTitle; String? get accountId;
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $LocalNotificationPayloadCopyWith<LocalNotificationPayload> get copyWith => _$Lo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
 
 @override
 String toString() {
-  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle)';
+  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $LocalNotificationPayloadCopyWith<$Res>  {
   factory $LocalNotificationPayloadCopyWith(LocalNotificationPayload value, $Res Function(LocalNotificationPayload) _then) = _$LocalNotificationPayloadCopyWithImpl;
 @useResult
 $Res call({
- String? sessionId, String? projectId, String? sessionTitle
+ String? sessionId, String? projectId, String? sessionTitle, String? accountId
 });
 
 
@@ -66,11 +66,12 @@ class _$LocalNotificationPayloadCopyWithImpl<$Res>
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,}) {
   return _then(LocalNotificationPayload(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
+as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -83,12 +84,13 @@ as String?,
 @JsonSerializable()
 
 class _LocalNotificationPayload implements LocalNotificationPayload {
-  const _LocalNotificationPayload({required this.sessionId, required this.projectId, required this.sessionTitle});
+  const _LocalNotificationPayload({required this.sessionId, required this.projectId, required this.sessionTitle, required this.accountId});
   factory _LocalNotificationPayload.fromJson(Map<String, dynamic> json) => _$LocalNotificationPayloadFromJson(json);
 
 @override final  String? sessionId;
 @override final  String? projectId;
 @override final  String? sessionTitle;
+@override final  String? accountId;
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
@@ -103,16 +105,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
 
 @override
 String toString() {
-  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle)';
+  return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
 }
 
 
@@ -123,7 +125,7 @@ abstract mixin class _$LocalNotificationPayloadCopyWith<$Res> implements $LocalN
   factory _$LocalNotificationPayloadCopyWith(_LocalNotificationPayload value, $Res Function(_LocalNotificationPayload) _then) = __$LocalNotificationPayloadCopyWithImpl;
 @override @useResult
 $Res call({
- String? sessionId, String? projectId, String? sessionTitle
+ String? sessionId, String? projectId, String? sessionTitle, String? accountId
 });
 
 
@@ -140,11 +142,12 @@ class __$LocalNotificationPayloadCopyWithImpl<$Res>
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,}) {
   return _then(_LocalNotificationPayload(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
+as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

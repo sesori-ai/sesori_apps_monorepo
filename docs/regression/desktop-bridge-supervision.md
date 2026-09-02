@@ -87,9 +87,11 @@ and keep native close/quit behavior safe.
   capability. A project-scoped nested route owns one session-list cubit: narrow
   windows show one destination, while wide windows keep the selectable session
   inventory beside new-session, transcript, and diff content. Desktop Enter
-  sends from the inline composer, Shift+Enter inserts a newline, Escape first
-  releases active text editing and otherwise dismisses only popup routes, and
-  transcript/diff source text retains native selection/context-menu behavior.
+  sends from the inline composer, Shift+Enter inserts a newline, and active IME
+  composition retains Enter for candidate confirmation. Escape first releases
+  active text editing and otherwise dismisses only popup routes. Transcript/diff
+  source text retains native selection/context-menu behavior while navigation,
+  file-header, line-number, and prefix chrome stays outside copied diff source.
   Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
@@ -187,9 +189,12 @@ the status and bounded recent output.
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
   typed route data, New task or file changes cannot reach their typed routes, or
-  desktop renders unsupported voice/attachment controls, Enter inserts a newline instead of sending, Shift+Enter sends,
-  Escape pops an ordinary cockpit page or steals a closer modal/editor handler, source text cannot be selected, or wide
-  session navigation recreates/discards its project-scoped inventory.
+  desktop renders unsupported voice/attachment controls, Enter inserts a newline
+  instead of sending, Shift+Enter sends, an IME candidate-confirmation Enter
+  submits the draft, Escape pops an ordinary cockpit page or steals a closer
+  modal/editor handler, source text cannot be selected, copied source includes
+  navigation/file/gutter chrome, or wide session navigation recreates/discards
+  its project-scoped inventory.
 
 ## Known Limitations
 

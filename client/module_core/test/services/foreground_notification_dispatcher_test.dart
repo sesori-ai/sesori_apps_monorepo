@@ -134,6 +134,7 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? accountId,
   }) async {
     shownNotifications.add(
       ShownNotification(

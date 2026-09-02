@@ -93,6 +93,7 @@ void main() {
             "sessionId": "session-1",
             "projectId": "project-1",
             "sessionTitle": "Session title",
+            "accountId": "user-1",
           }),
         ),
       ),
@@ -103,6 +104,7 @@ void main() {
     final first = await client.getInitialNotificationOpen();
     expect(first?.sessionId, "session-1");
     expect(first?.projectId, "project-1");
+    expect(first?.accountId, "user-1");
     expect(await client.getInitialNotificationOpen(), isNull);
   });
 
@@ -138,6 +140,7 @@ void main() {
       sessionId: "session-1",
       projectId: "project-1",
       sessionTitle: "Session title",
+      accountId: "user-1",
     );
 
     final verification = verify(
@@ -157,6 +160,7 @@ void main() {
         "sessionId": "session-1",
         "projectId": "project-1",
         "sessionTitle": "Session title",
+        "accountId": "user-1",
       },
     );
   });
@@ -171,6 +175,7 @@ void main() {
           "sessionId": "session-1",
           "projectId": "project-1",
           "sessionTitle": "Session title",
+          "accountId": "user-1",
         }),
       ),
     );
@@ -179,6 +184,7 @@ void main() {
     expect(request.sessionId, "session-1");
     expect(request.projectId, "project-1");
     expect(request.sessionTitle, "Session title");
+    expect(request.accountId, "user-1");
   });
 
   test("rejects malformed and incomplete notification payloads", () {

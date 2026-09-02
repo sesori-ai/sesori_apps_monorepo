@@ -41,8 +41,9 @@ that baseline, and the branch and worktree facts a session carries.
   shell boundaries. Each shell retains navigation and connection-banner policy;
   the desktop root remains the sole owner of its app-wide banner. Diff source
   lines share native selection/context-menu behavior across rows without
-  copying line-number or +/- gutter metadata, including inside the desktop
-  cockpit's wide right pane.
+  copying navigation titles, change-count subtitles, file-header metadata,
+  line numbers, or +/- gutters, including inside the desktop cockpit's wide
+  right pane.
 
 ## Regression Levels
 
@@ -68,7 +69,8 @@ and in-place sessions, and default versus explicit base branches.
   error, or an archived or missing worktree errors instead of returning nothing.
 - Line counts disagree with content, especially untracked or deletion-only,
   diff source text cannot be selected across rows through its native context
-  menu, or copied source includes line-number or +/- gutter metadata.
+  menu, or copied source includes navigation, change-count, file-header,
+  line-number, or +/- gutter metadata.
 - Diffs never refresh after a mutating tool completes, a moved project makes
   git run in the old directory, or a supported root-session file-changes action
   cannot reach the typed shared diff route on mobile or desktop.

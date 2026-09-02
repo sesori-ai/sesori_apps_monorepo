@@ -38,7 +38,6 @@ class DesktopLogoutOrchestrator({
   required final DesktopLogoutTracker logoutTracker,
   required final ProductAnalyticsService productAnalyticsService,
   required final DesktopAttentionService attentionService,
-  required final NotificationCanceller notificationCanceller,
   required final AuthSession authSession,
 }) {
   static const Duration _bridgeDeletionTimeout = Duration(seconds: 10);
@@ -51,7 +50,6 @@ class DesktopLogoutOrchestrator({
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
   final ProductAnalyticsService _productAnalyticsService = productAnalyticsService;
   final DesktopAttentionService _attentionService = attentionService;
-  final NotificationCanceller _notificationCanceller = notificationCanceller;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
 
@@ -61,12 +59,16 @@ class DesktopLogoutOrchestrator({
       return existing;
     }
     _logoutTracker.markInProgress();
-    final attentionSettlement = _attentionService.suspendForLogout();
+    final attentionCleanup = _suspendAndClearAttentionForLogout();
     final Future<DesktopLogoutOutcome> rawOperation = _performLogout(
-      attentionSettlement: attentionSettlement,
+      attentionCleanup: attentionCleanup,
+    );
+    final joinedOperation = _joinAttentionCleanup(
+      logoutOperation: rawOperation,
+      attentionCleanup: attentionCleanup,
     );
     late final Future<DesktopLogoutOutcome> operation;
-    operation = rawOperation.whenComplete(() {
+    operation = joinedOperation.whenComplete(() {
       _attentionService.resumeAfterLogoutAttempt();
       _logoutTracker.markIdle();
       if (identical(_activeLogout, operation)) {
@@ -77,7 +79,20 @@ class DesktopLogoutOrchestrator({
     return operation;
   }
 
-  Future<DesktopLogoutOutcome> _performLogout({required Future<void> attentionSettlement}) async {
+  Future<DesktopLogoutOutcome> _joinAttentionCleanup({
+    required Future<DesktopLogoutOutcome> logoutOperation,
+    required Future<void> attentionCleanup,
+  }) async {
+    try {
+      return await logoutOperation;
+    } finally {
+      // Early persistence/stop failures must not resume attention while the
+      // service's asynchronous cancel-all operation is still completing.
+      await attentionCleanup;
+    }
+  }
+
+  Future<DesktopLogoutOutcome> _performLogout({required Future<void> attentionCleanup}) async {
     _instanceService.cancelPendingBridgeRestore();
     try {
       await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
@@ -140,14 +155,7 @@ class DesktopLogoutOrchestrator({
       logw("Failed to prepare product analytics for desktop logout", error, stackTrace);
     }
 
-    await attentionSettlement;
-    try {
-      await _notificationCanceller.cancelAll();
-    } on Object catch (error, stackTrace) {
-      // Notification cleanup is best effort, but must run before account clear
-      // so a delivered alert cannot silently carry into the next account.
-      logw("Failed to clear desktop notifications before logout", error, stackTrace);
-    }
+    await attentionCleanup;
 
     try {
       await _authSession.logoutCurrentDevice();
@@ -156,6 +164,16 @@ class DesktopLogoutOrchestrator({
       await _resumeProductAnalyticsAfterFailedLogout();
       logw("Device-local sign-out failed", error, stackTrace);
       return DesktopLogoutOutcome.localSessionClearFailed;
+    }
+  }
+
+  Future<void> _suspendAndClearAttentionForLogout() async {
+    try {
+      await _attentionService.suspendAndClearForLogout();
+    } on Object catch (error, stackTrace) {
+      // The attention owner normally absorbs native cleanup failures. Preserve
+      // best-effort logout if an unexpected service-level failure escapes.
+      logw("Failed to settle desktop attention before logout", error, stackTrace);
     }
   }
 

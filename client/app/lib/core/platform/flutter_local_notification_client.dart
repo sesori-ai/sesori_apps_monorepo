@@ -108,6 +108,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: tapEvent.sessionTitle,
+        accountId: tapEvent.accountId,
       );
     } catch (error, stackTrace) {
       logw("Failed to parse local notification payload", error, stackTrace);
@@ -130,6 +131,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? accountId,
   }) async {
     final id = sessionId == null
         ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
@@ -149,6 +151,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        accountId: accountId,
       ).toJson(),
     );
 

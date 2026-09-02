@@ -37,6 +37,37 @@ void main() {
     expect(tester.widget<TextField>(field).controller?.text, "First line\nSecond line");
   });
 
+  testWidgets("desktop Enter preserves an active IME composition", (tester) async {
+    var sendCount = 0;
+    await _pumpComposer(
+      tester: tester,
+      sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      onSend: ({required draft, required command, required attachments}) => sendCount++,
+    );
+
+    final field = find.byType(TextField);
+    final controller = tester.widget<TextField>(field).controller!;
+    controller.value = const TextEditingValue(
+      text: "候補",
+      selection: TextSelection.collapsed(offset: 2),
+      composing: TextRange(start: 0, end: 2),
+    );
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(sendCount, 0);
+
+    controller.value = const TextEditingValue(
+      text: "Confirmed",
+      selection: TextSelection.collapsed(offset: 9),
+    );
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(sendCount, 1);
+  });
+
   testWidgets("mobile plain Enter does not send and modifier Enter still sends", (tester) async {
     var sendCount = 0;
     await _pumpComposer(

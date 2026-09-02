@@ -223,7 +223,6 @@ extension GetItInjectableX on _i174.GetIt {
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
         productAnalyticsService: gh<_i948.ProductAnalyticsService>(),
         attentionService: gh<_i404.DesktopAttentionService>(),
-        notificationCanceller: gh<_i948.NotificationCanceller>(),
         authSession: gh<_i948.AuthSession>(),
       ),
     );
