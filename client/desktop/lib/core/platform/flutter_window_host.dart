@@ -20,7 +20,6 @@ class FlutterWindowHost.forTesting({
   this;
 
   static const Size _defaultSize = Size(720, 620);
-  static const Size _minimumSize = Size(WindowBoundsService.minimumWidth, WindowBoundsService.minimumHeight);
 
   final StreamController<WindowHostEvent> _events = StreamController<WindowHostEvent>.broadcast(sync: true);
   final StreamController<WindowHostState> _states = StreamController<WindowHostState>.broadcast(sync: true);
@@ -39,7 +38,11 @@ class FlutterWindowHost.forTesting({
   Stream<WindowHostState> get states => _states.stream;
 
   @override
-  Future<void> initialize({required bool hidden, required WindowBounds? initialBounds}) async {
+  Future<void> initialize({
+    required bool hidden,
+    required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
+  }) async {
     _ensureNotDisposed();
     if (_initialized) {
       throw StateError("WindowHost is already initialized");
@@ -56,7 +59,7 @@ class FlutterWindowHost.forTesting({
             final bounds? => Size(bounds.width, bounds.height),
             null => _defaultSize,
           },
-          minimumSize: _minimumSize,
+          minimumSize: Size(minimumSize.width, minimumSize.height),
           center: initialBounds == null,
           backgroundColor: const Color(0x00000000),
           title: "Sesori",

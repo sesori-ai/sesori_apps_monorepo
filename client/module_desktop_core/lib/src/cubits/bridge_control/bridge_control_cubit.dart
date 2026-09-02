@@ -14,6 +14,7 @@ import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
 import "../../services/desktop_instance_service.dart";
+import "../../services/window_bounds_service.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
 import "../../trackers/desktop_logout_tracker.dart";
@@ -31,6 +32,7 @@ class BridgeControlCubit._create({
   required final BridgeStatusTracker _statusTracker,
   required final SystemTray _systemTray,
   required final WindowHost _windowHost,
+  required final WindowBoundsService _windowBoundsService,
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
   required final DesktopInstanceService _instanceService,
@@ -45,6 +47,7 @@ class BridgeControlCubit._create({
     required BridgeStatusTracker statusTracker,
     required SystemTray systemTray,
     required WindowHost windowHost,
+    required WindowBoundsService windowBoundsService,
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
     required DesktopInstanceService instanceService,
@@ -58,6 +61,7 @@ class BridgeControlCubit._create({
          statusTracker: statusTracker,
          systemTray: systemTray,
          windowHost: windowHost,
+         windowBoundsService: windowBoundsService,
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
          instanceService: instanceService,
@@ -364,6 +368,11 @@ class BridgeControlCubit._create({
       await _systemTray.dispose();
     } on Object catch (error, stackTrace) {
       logw("Failed to dispose the system tray during desktop quit", error, stackTrace);
+    }
+    try {
+      await _windowBoundsService.dispose();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to flush desktop window bounds during quit", error, stackTrace);
     }
     try {
       await _windowHost.dispose();

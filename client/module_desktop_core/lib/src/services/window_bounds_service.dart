@@ -35,12 +35,11 @@ class WindowBoundsService._create({
          persistenceDebounce: persistenceDebounce,
        );
 
-  static const double minimumWidth = 560;
-  static const double minimumHeight = 480;
+  static const WindowSize minimumSize = WindowSize(width: 560, height: 480);
 
   StreamSubscription<WindowHostEvent>? _eventSubscription;
   Timer? _persistenceTimer;
-  Future<void> _pendingWrite = Future<void>.value();
+  Future<void>? _pendingWrite;
   bool _initialized = false;
   bool _disposed = false;
 
@@ -61,7 +60,11 @@ class WindowBoundsService._create({
       logw("Failed to restore desktop window bounds; using the default window", error, stackTrace);
     }
 
-    await _windowHost.initialize(hidden: hidden, initialBounds: initialBounds);
+    await _windowHost.initialize(
+      hidden: hidden,
+      initialBounds: initialBounds,
+      minimumSize: minimumSize,
+    );
     _eventSubscription = _windowHost.events.listen(
       (event) => _onWindowEvent(event: event),
       onError: (Object error, StackTrace stackTrace) {
@@ -118,7 +121,8 @@ class WindowBoundsService._create({
   }
 
   void _queuePersistence() {
-    _pendingWrite = _pendingWrite.then((_) => _persistCurrentBounds());
+    final pendingWrite = _pendingWrite;
+    _pendingWrite = pendingWrite == null ? _persistCurrentBounds() : pendingWrite.then((_) => _persistCurrentBounds());
   }
 
   Future<void> _persistCurrentBounds() async {
@@ -171,8 +175,8 @@ class WindowBoundsService._create({
   }
 
   static WindowBounds _clampToDisplay({required WindowBounds bounds, required WindowBounds display}) {
-    final minimumUsableWidth = math.min(minimumWidth, display.width);
-    final minimumUsableHeight = math.min(minimumHeight, display.height);
+    final minimumUsableWidth = math.min(minimumSize.width, display.width);
+    final minimumUsableHeight = math.min(minimumSize.height, display.height);
     final width = bounds.width.clamp(minimumUsableWidth, display.width).toDouble();
     final height = bounds.height.clamp(minimumUsableHeight, display.height).toDouble();
     final left = bounds.left.clamp(display.left, display.right - width).toDouble();
@@ -196,7 +200,14 @@ class WindowBoundsService._create({
     }
     _disposed = true;
     _flushScheduledPersistence();
-    await _eventSubscription?.cancel();
-    await _pendingWrite;
+    try {
+      await _eventSubscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to stop desktop window-bounds observation", error, stackTrace);
+    }
+    final pendingWrite = _pendingWrite;
+    if (pendingWrite != null) {
+      await pendingWrite;
+    }
   }
 }

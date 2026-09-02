@@ -87,7 +87,11 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostState> get states => const Stream<WindowHostState>.empty();
 
   @override
-  Future<void> initialize({required bool hidden, required WindowBounds? initialBounds}) async {}
+  Future<void> initialize({
+    required bool hidden,
+    required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
+  }) async {}
 
   @override
   Future<WindowBounds> getBounds() async => const WindowBounds(left: 0, top: 0, width: 720, height: 620);

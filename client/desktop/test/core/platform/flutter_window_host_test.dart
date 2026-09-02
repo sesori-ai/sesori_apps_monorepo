@@ -7,6 +7,8 @@ import "package:sesori_desktop/core/platform/flutter_window_host.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:window_manager/window_manager.dart";
 
+const _minimumSize = WindowSize(width: 560, height: 480);
+
 void main() {
   setUpAll(() {
     registerFallbackValue(const WindowOptions());
@@ -49,7 +51,7 @@ void main() {
     final host = createHost();
     addTearDown(host.dispose);
 
-    await host.initialize(hidden: false, initialBounds: null);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
     final event = host.events.first;
     host.onWindowClose();
@@ -75,7 +77,7 @@ void main() {
     addTearDown(host.dispose);
     const bounds = WindowBounds(left: 80, top: 90, width: 1000, height: 760);
 
-    await host.initialize(hidden: false, initialBounds: bounds);
+    await host.initialize(hidden: false, initialBounds: bounds, minimumSize: _minimumSize);
 
     final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
     expect(options.size, const Size(1000, 760));
@@ -92,7 +94,7 @@ void main() {
     final host = createHost();
     addTearDown(host.dispose);
 
-    await host.initialize(hidden: true, initialBounds: null);
+    await host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize);
 
     verifyInOrder(<void Function()>[
       () => manager.setSkipTaskbar(true),
@@ -106,7 +108,7 @@ void main() {
   test("translates bounds and attached display work areas", () async {
     final host = createHost();
     addTearDown(host.dispose);
-    await host.initialize(hidden: false, initialBounds: null);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     clearInteractions(manager);
     when(manager.getBounds).thenAnswer((_) async => const Rect.fromLTWH(-20, 30, 860, 640));
     when(() => manager.setBounds(any())).thenAnswer((_) async {});
@@ -129,7 +131,7 @@ void main() {
   test("emits move and resize events plus focus and visibility states", () async {
     final host = createHost();
     addTearDown(host.dispose);
-    await host.initialize(hidden: false, initialBounds: null);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     final events = <WindowHostEvent>[];
     final states = <WindowHostState>[];
     final eventSubscription = host.events.listen(events.add);
@@ -159,7 +161,7 @@ void main() {
   test("show focuses the restored window and hide updates visibility", () async {
     final host = createHost();
     addTearDown(host.dispose);
-    await host.initialize(hidden: false, initialBounds: null);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     clearInteractions(manager);
 
     await host.hide();
@@ -180,7 +182,7 @@ void main() {
     final host = createHost();
     when(() => manager.waitUntilReadyToShow(any())).thenThrow(StateError("native window unavailable"));
 
-    await expectLater(host.initialize(hidden: false, initialBounds: null), throwsStateError);
+    await expectLater(host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize), throwsStateError);
 
     verify(() => manager.removeListener(host)).called(1);
     verify(() => manager.setPreventClose(false)).called(1);
@@ -189,7 +191,7 @@ void main() {
 
   test("dispose removes its listener and restores native close behavior", () async {
     final host = createHost();
-    await host.initialize(hidden: false, initialBounds: null);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
 
     await host.dispose();
 
