@@ -168,6 +168,8 @@ class BridgeControlCubit._create({
 
   void _onWindowEvent({required WindowHostEvent event}) {
     switch (event) {
+      case WindowHostEvent.moved || WindowHostEvent.resized:
+        return;
       case WindowHostEvent.closeRequested:
         if (_trayAvailability.isAvailable) {
           unawaited(hideWindow());

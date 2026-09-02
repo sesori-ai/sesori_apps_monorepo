@@ -7,6 +7,7 @@ import "../foundation/platform/bridge_executable_path_resolver.dart";
 import "../foundation/platform/bridge_process_environment.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/desktop_application_terminator.dart";
+import "../foundation/platform/window_host.dart";
 import "injection.config.dart";
 
 // Phase 4 of the desktop 4-phase DI init (see client/AGENTS.md):
@@ -28,6 +29,7 @@ import "injection.config.dart";
     BridgeRepository,
     DesktopApplicationSupportDirectory,
     DesktopApplicationTerminator,
+    WindowHost,
   ],
 )
 void configureDesktopCoreDependencies(GetIt getIt) => getIt.init();
