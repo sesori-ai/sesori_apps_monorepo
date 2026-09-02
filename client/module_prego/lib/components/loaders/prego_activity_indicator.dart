@@ -7,9 +7,14 @@ import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 
 /// A Prego activity indicator that animates outside Flutter where supported.
+///
+/// A null [color] keeps each platform's natural spinner colour (the system
+/// indicator on iOS/macOS, the Cupertino grey on the Flutter fallback); a
+/// colour tints it. Product surfaces currently pass null everywhere on
+/// purpose — the brand tint read poorly — while the capability stays available.
 class const PregoActivityIndicator({
   super.key,
-  required final Color color,
+  required final Color? color,
 }) extends StatelessWidget {
   static const _nativeViewType = "sesori/native-activity-indicator";
   static const _defaultDimension = 36.0;
@@ -18,6 +23,8 @@ class const PregoActivityIndicator({
   Widget build(BuildContext context) {
     final reducedMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final animationsEnabled = !reducedMotion && TickerMode.valuesOf(context).enabled;
+    final brightness = Theme.of(context).brightness;
+    final fallbackColor = color ?? naturalColor(brightness: brightness);
 
     return Semantics(
       role: SemanticsRole.loadingSpinner,
@@ -26,17 +33,49 @@ class const PregoActivityIndicator({
           child: SizedBox.square(
             dimension: _defaultDimension,
             child: animationsEnabled
-                ? _animatedIndicator()
-                : PregoSteppedActivityIndicator(color: color, animating: false),
+                ? _animatedIndicator(fallbackColor: fallbackColor, brightness: brightness)
+                : PregoSteppedActivityIndicator(color: fallbackColor, animating: false),
           ),
         ),
       ),
     );
   }
 
-  Widget _animatedIndicator() {
+  /// The spinner for a surface whose brightness differs from the theme's (a
+  /// primary button, an inverted alert card). Both the native views and the
+  /// Flutter fallback resolve their natural colour from the theme brightness,
+  /// so the override is expressed as a theme rather than a tint: the native
+  /// spinner stays untinted and simply follows [brightness].
+  static Widget onSurface({required Brightness brightness, required Color? color}) => Builder(
+    builder: (context) {
+      final theme = Theme.of(context);
+      return Theme(
+        data: theme.copyWith(colorScheme: theme.colorScheme.copyWith(brightness: brightness)),
+        child: PregoActivityIndicator(color: color),
+      );
+    },
+  );
+
+  /// The untinted Flutter-fallback colour for a surface of [brightness]: the
+  /// stock Cupertino indicator's grey. A null [color] resolves to it for the
+  /// theme brightness; see [onSurface] for surfaces that invert the theme.
+  static Color naturalColor({required Brightness brightness}) => switch (brightness) {
+    Brightness.light => const Color(0xFF3C3C44),
+    Brightness.dark => const Color(0xFFEBEBF5),
+  };
+
+  /// The native renderers consume this once at creation: an optional ARGB
+  /// tint and the app's resolved brightness (`dark` is 1 or 0), so a forced
+  /// in-app appearance keeps the system spinner legible even when the host OS
+  /// appearance differs.
+  Map<String, int?> _nativeCreationParams({required Brightness brightness}) => {
+    "color": color?.toARGB32(),
+    "dark": brightness == Brightness.dark ? 1 : 0,
+  };
+
+  Widget _animatedIndicator({required Color fallbackColor, required Brightness brightness}) {
     if (kIsWeb) {
-      return PregoSteppedActivityIndicator(color: color, animating: true);
+      return PregoSteppedActivityIndicator(color: fallbackColor, animating: true);
     }
 
     // Android deliberately has no native branch: a hybrid-composition platform
@@ -46,13 +85,13 @@ class const PregoActivityIndicator({
     final nativeView = switch (defaultTargetPlatform) {
       TargetPlatform.iOS => UiKitView(
         viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
+        creationParams: _nativeCreationParams(brightness: brightness),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
       TargetPlatform.macOS => AppKitView(
         viewType: _nativeViewType,
-        creationParams: color.toARGB32(),
+        creationParams: _nativeCreationParams(brightness: brightness),
         creationParamsCodec: const StandardMessageCodec(),
         hitTestBehavior: PlatformViewHitTestBehavior.transparent,
       ),
@@ -60,11 +99,15 @@ class const PregoActivityIndicator({
     };
 
     if (nativeView == null) {
-      return PregoSteppedActivityIndicator(color: color, animating: true);
+      return PregoSteppedActivityIndicator(color: fallbackColor, animating: true);
     }
-    // Native views consume creationParams only at creation, so a colour change
-    // (a theme switch while a spinner is visible) must recreate the view.
-    return KeyedSubtree(key: ValueKey(color.toARGB32()), child: nativeView);
+    // Native views consume creationParams only at creation, so a colour or
+    // brightness change (a theme switch while a spinner is visible) must
+    // recreate the view.
+    return KeyedSubtree(
+      key: ValueKey<(int?, Brightness)>((color?.toARGB32(), brightness)),
+      child: nativeView,
+    );
   }
 }
 

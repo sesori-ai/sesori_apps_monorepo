@@ -171,9 +171,9 @@ class const _LoadingView() extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: context.loc.harnessesLoading,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
-        child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+      child: const Padding(
+        padding: EdgeInsetsDirectional.only(top: PregoSpacing.x4l),
+        child: Center(child: PregoActivityIndicator(color: null)),
       ),
     );
   }
@@ -280,7 +280,7 @@ class const _ReadyView({required final PluginManagementReady state}) extends Sta
                   title: Text(loc.harnessManagementDefaultTimeout),
                   subtitle: Text(loc.harnessManagementDefaultTimeoutDescription),
                   trailing: defaultTimeoutActionInProgress
-                      ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)
+                      ? const PregoActivityIndicator(color: null)
                       : Text(_timeoutLabel(context: context, minutes: response.defaultIdleTimeoutMins)),
                   onTap: _controlsBlocked(state.action)
                       ? null
@@ -462,7 +462,7 @@ class const _HarnessControlCard({
               ],
             ),
             subtitle: actionHint == null ? null : Text(actionHint),
-            trailing: actionForThisHarness ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+            trailing: actionForThisHarness ? const PregoActivityIndicator(color: null) : null,
           ),
           _FactRow(
             title: loc.harnessesSetupStatus,
@@ -483,9 +483,7 @@ class const _HarnessControlCard({
                     : loc.harnessAuthenticationLogIn,
               ),
               subtitle: Text(loc.harnessAuthenticationDescription),
-              trailing: authenticationStarting
-                  ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)
-                  : null,
+              trailing: authenticationStarting ? const PregoActivityIndicator(color: null) : null,
               // Only one authentication flow can exist. Its own row can reopen
               // a retained challenge after uncertain cancellation; every other
               // row stays disabled until that flow settles.
@@ -537,7 +535,7 @@ class const _HarnessControlCard({
                   PluginInstallProgress() => loc.harnessManagementInstallInProgress,
                 },
               ),
-              trailing: installing ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              trailing: installing ? const PregoActivityIndicator(color: null) : null,
               // Also blocked between the tap and the first progress event: the
               // command returns as soon as the bridge accepts it, long before
               // any phase arrives.
@@ -589,7 +587,7 @@ class const _HarnessControlCard({
               icon: TablerRegular.refresh_dot,
               title: Text(loc.harnessManagementScan),
               subtitle: Text(scanRejectionText ?? loc.harnessManagementScanDescription),
-              trailing: scanning ? PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary) : null,
+              trailing: scanning ? const PregoActivityIndicator(color: null) : null,
               onTap: blocked || scanning
                   ? null
                   : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
@@ -970,9 +968,9 @@ class const _AuthenticationSheet() extends StatelessWidget {
     final state = context.watch<PluginManagementCubit>().state;
     final challenge = _authenticationChallenge(state: state);
     if (challenge == null) {
-      return Padding(
-        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-        child: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+      return const Padding(
+        padding: EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Center(child: PregoActivityIndicator(color: null)),
       );
     }
 
