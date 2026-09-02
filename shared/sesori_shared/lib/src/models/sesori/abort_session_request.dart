@@ -45,6 +45,13 @@ sealed class SessionAbortRejection with _$SessionAbortRejection {
     /// Whether the main agent itself is mid-turn, which decides whether a
     /// "main agent only" stop is worth offering.
     required bool mainAgentRunning,
+
+    /// Whether a `keep` stop (main agent only) is honored while the main agent
+    /// runs. Backends whose interrupt also stops sub-agents report false.
+    // COMPATIBILITY 2026-09-02 (v1.8.3): bridges before this field only refuse
+    // when the backend cannot keep sub-agents; drop the default once no such
+    // bridge is in production use.
+    @Default(false) bool mainAgentOnlySupported,
   }) = _SessionAbortRejection;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionAbortRejectionFromJson(json);

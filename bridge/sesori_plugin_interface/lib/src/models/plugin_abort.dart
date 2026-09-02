@@ -22,4 +22,8 @@ final class const PluginAbortAccepted({required final bool workKept}) extends Pl
 final class const PluginAbortRejectedSubAgentsRunning({
   required final int runningSubAgentCount,
   required final bool mainAgentRunning,
+
+  /// Whether the plugin can interrupt a running main agent while leaving its
+  /// sub-agents alive (`keep`). Claude cannot: its interrupt stops both.
+  required final bool mainAgentOnlySupported,
 }) extends PluginAbortResult;

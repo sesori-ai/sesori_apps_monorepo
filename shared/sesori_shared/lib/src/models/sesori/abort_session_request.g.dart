@@ -34,6 +34,7 @@ _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(
       runningSubAgentCount: (json['runningSubAgentCount'] as num).toInt(),
       mainAgentRunning: json['mainAgentRunning'] as bool,
+      mainAgentOnlySupported: json['mainAgentOnlySupported'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionAbortRejectionToJson(
@@ -41,4 +42,5 @@ Map<String, dynamic> _$SessionAbortRejectionToJson(
 ) => <String, dynamic>{
   'runningSubAgentCount': instance.runningSubAgentCount,
   'mainAgentRunning': instance.mainAgentRunning,
+  'mainAgentOnlySupported': instance.mainAgentOnlySupported,
 };

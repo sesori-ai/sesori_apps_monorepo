@@ -617,7 +617,36 @@ class OpenCodePlugin._({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
-    await _abortSession(sessionId: sessionId);
+    final tracker = _service.tracker;
+    final children = tracker.activeChildSessionIds(rootId: sessionId);
+    final mainAgentRunning = tracker.isTurnRunning(sessionId: sessionId);
+    if (children.isNotEmpty) {
+      switch (subAgents) {
+        case PluginAbortSubAgentPolicy.confirm:
+          return PluginAbortRejectedSubAgentsRunning(
+            runningSubAgentCount: children.length,
+            mainAgentRunning: mainAgentRunning,
+            // Aborting the root cancels the task tool and with it a foreground
+            // child, so the main agent cannot be stopped on its own.
+            mainAgentOnlySupported: false,
+          );
+        case PluginAbortSubAgentPolicy.keep when mainAgentRunning:
+          return PluginAbortRejectedSubAgentsRunning(
+            runningSubAgentCount: children.length,
+            mainAgentRunning: true,
+            mainAgentOnlySupported: false,
+          );
+        case PluginAbortSubAgentPolicy.keep:
+          return const PluginAbortAccepted(workKept: true);
+        case PluginAbortSubAgentPolicy.stop:
+          break;
+      }
+    }
+    // Background children outlive a root abort, so each one is aborted too.
+    await Future.wait([
+      _abortSession(sessionId: sessionId),
+      for (final child in children) _abortSession(sessionId: child),
+    ]);
     return const PluginAbortAccepted(workKept: false);
   }
 

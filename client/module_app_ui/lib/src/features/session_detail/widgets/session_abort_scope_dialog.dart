@@ -35,9 +35,6 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(loc.sessionDetailStopScopeTitle),
-        // Claude's only stop primitive interrupts the sub-agents along with a
-        // running main agent, so main-agent-only is not offered while it runs;
-        // with the main agent idle, stopping means stopping the sub-agents.
         content: Text(
           rejection.mainAgentRunning
               ? loc.sessionDetailStopScopeMessage(count)
@@ -48,6 +45,11 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
             onPressed: () => dialogContext.pop(),
             child: Text(loc.sessionListDeleteConfirmCancel),
           ),
+          if (rejection.mainAgentRunning && rejection.mainAgentOnlySupported)
+            TextButton(
+              onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.keep),
+              child: Text(loc.sessionDetailStopMainAgentOnly),
+            ),
           TextButton(
             onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.stop),
             child: Text(

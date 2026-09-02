@@ -76,16 +76,18 @@ defaults and queued client sends coherent.
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
-- Stop is scoped. The client first asks with `confirm`; while Claude sub-agents
+- Stop is scoped for every harness that runs sub-agents (Claude tasks, OpenCode
+  child sessions). The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
   mid-turn, and the app shows a confirmation: with the main agent idle, "Stop N
   sub-agents"; with the main agent running, "Stop main agent and N sub-agents".
-  Dismissing leaves everything running. `keep` (main agent only) is honored
-  only while no main turn runs — the process stays resident, the sub-agents
-  continue, their later wake-up turn renders, and the completion push is not
-  suppressed; during a live main turn `keep` is refused with the running
-  count, because the CLI's interrupt also stops background agents, and the
-  client never offers it then. `stop` interrupts and tears
+  Dismissing leaves everything running. "Stop main agent only" (`keep`) is
+  offered only when the rejection declares `mainAgentOnlySupported`; neither
+  current harness can interrupt a running main agent without its sub-agents,
+  so both report false and refuse `keep` during a live main turn with the
+  running count. With the main agent idle `keep` is honored: the Claude process
+  stays resident, the sub-agents continue, their later wake-up turn renders,
+  and the completion push is not suppressed. `stop` interrupts and tears
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
@@ -453,6 +455,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   background sub-agents along with a running main turn, so a main-agent-only
   stop exists only while the main agent is idle; interrupting a live main turn
   always stops its sub-agents.
+- OpenCode aborts a foreground task child together with its root (the task
+  tool cancels it), while background children outlive a root abort; `stop`
+  therefore aborts each running child explicitly, and the tracker cannot tell
+  the two kinds apart, so main-agent-only is not offered while the root runs.
 - Untested Hermes gap (remove this entry once verified): reasoning streaming
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part

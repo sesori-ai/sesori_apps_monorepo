@@ -500,6 +500,7 @@ final class ClaudeSessionService({
       return PluginAbortRejectedSubAgentsRunning(
         runningSubAgentCount: runningSubAgents,
         mainAgentRunning: state.pending > 0 || state.selfStartedTurn != null,
+        mainAgentOnlySupported: false,
       );
     }
     if (!state.hasWork) {
@@ -512,7 +513,11 @@ final class ClaudeSessionService({
     // caller learns the scope cannot be honored instead of losing the work.
     final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
     if (keepTasks && (state.pending > 0 || state.selfStartedTurn != null)) {
-      return PluginAbortRejectedSubAgentsRunning(runningSubAgentCount: runningSubAgents, mainAgentRunning: true);
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: true,
+        mainAgentOnlySupported: false,
+      );
     }
     final aborting = Completer<void>();
     state.aborting = aborting;

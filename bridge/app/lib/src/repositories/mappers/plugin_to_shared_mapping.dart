@@ -25,8 +25,11 @@ extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
 }
 
 extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
-  SessionAbortRejection toShared() =>
-      SessionAbortRejection(runningSubAgentCount: runningSubAgentCount, mainAgentRunning: mainAgentRunning);
+  SessionAbortRejection toShared() => SessionAbortRejection(
+    runningSubAgentCount: runningSubAgentCount,
+    mainAgentRunning: mainAgentRunning,
+    mainAgentOnlySupported: mainAgentOnlySupported,
+  );
 }
 
 /// Maps a plugin-normalized attachment into the shared wire contract.
