@@ -589,6 +589,11 @@ final class ClaudePlugin({
       return;
     }
     if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
+      // Between an acknowledged interrupt and the interrupted turn's result the
+      // CLI can still stream that turn's output; a full stop tears the process
+      // down, a main-agent-only stop keeps it, so assistant output is dropped
+      // here. User echoes still render: they are the prompt's transcript identity.
+      if (interrupted && (message is ClaudeAssistantMessage || message is ClaudeStreamEventMessage)) return;
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
           sessionId: event.sessionId,

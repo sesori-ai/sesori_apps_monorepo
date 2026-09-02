@@ -13,6 +13,19 @@ import "package:theme_prego/module_prego.dart";
 /// free. On rejection the dialog offers "main agent only" (only while the main
 /// agent runs) and "stop everything"; dismissing it leaves everything running.
 Future<void> stopSessionWithScope({required BuildContext context, required SessionDetailCubit cubit}) async {
+  // One probe-and-dialog sequence per session at a time: a second tap while the
+  // first is in flight would stack a stale dialog over the fresh one.
+  if (!_stopping.add(cubit)) return;
+  try {
+    await _stopSessionWithScope(context: context, cubit: cubit);
+  } finally {
+    _stopping.remove(cubit);
+  }
+}
+
+final Set<SessionDetailCubit> _stopping = {};
+
+Future<void> _stopSessionWithScope({required BuildContext context, required SessionDetailCubit cubit}) async {
   final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
   if (outcome case SessionAbortRejected(:final rejection) when context.mounted) {
     final loc = context.loc;

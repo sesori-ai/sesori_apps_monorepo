@@ -487,8 +487,10 @@ final class ClaudeSessionService({
     if (state == null) return const PluginAbortAccepted(workKept: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
+      // The in-flight abort may have kept work this caller wants stopped; run
+      // the requested scope once its fence releases.
       await activeAbort.future;
-      return const PluginAbortAccepted(workKept: false);
+      return await abort(sessionId: sessionId, subAgents: subAgents);
     }
     final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
     if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
@@ -520,7 +522,9 @@ final class ClaudeSessionService({
         try {
           await _processes.interrupt(sessionId: sessionId);
           await Future.wait([...state.settlements, ?state.selfStartedTurn?.future]);
-          return const PluginAbortAccepted(workKept: true);
+          // Reported from what survived the wait: a task that finished meanwhile,
+          // or a process that died with its tasks, leaves nothing kept.
+          return PluginAbortAccepted(workKept: state.runningTaskIds.isNotEmpty);
         } on Object catch (error, stack) {
           // A process that will not take the interrupt cannot be trusted to keep
           // anything; fall through to the full teardown below.
