@@ -147,6 +147,74 @@ void main() {
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
     });
 
+    test("routes forwarded sub-agent frames into the child session once its id is known", () {
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
+      final early = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "too early")));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.completeTurn(sessionId: _root);
+
+      final routed = dispatcher.map(message: ClaudeStreamMessage.parse(_childTextFrame(text: "hi")));
+
+      expect(early, isEmpty, reason: "no child session exists before the sub-agent id is known");
+      expect(routed.map((event) => event.runtimeType), [BridgeSseMessageUpdated, BridgeSseMessagePartUpdated]);
+      expect(shared.Message.fromJson((routed[0] as BridgeSseMessageUpdated).info).sessionID, _child);
+      final part = (routed[1] as BridgeSseMessagePartUpdated).part;
+      expect(part.sessionID, _child);
+      expect(part.text, "hi");
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
+    });
+
+    test("a nested Agent call inside a child binds through the root's task frames and flattens under the root", () {
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(
+        message: ClaudeStreamMessage.parse({
+          "type": "assistant",
+          "session_id": _root,
+          "parent_tool_use_id": _toolUseId,
+          "message": {
+            "id": "child-msg-2",
+            "model": "claude-opus-5",
+            "content": [
+              {
+                "type": "tool_use",
+                "id": "toolu-nested",
+                "name": "Agent",
+                "input": {"description": "Nested", "prompt": "go deeper"},
+              },
+            ],
+          },
+        }),
+      );
+
+      final started = dispatcher.map(
+        message: ClaudeStreamMessage.parse({
+          "type": "system",
+          "subtype": "task_started",
+          "session_id": _root,
+          "task_id": "nested-agent",
+          "tool_use_id": "toolu-nested",
+          "task_type": "local_agent",
+        }),
+      );
+
+      expect(started.map((event) => event.runtimeType), [
+        BridgeSseSessionCreated,
+        BridgeSseSessionStatus,
+        BridgeSseMessagePartUpdated,
+      ]);
+      final created = (started[0] as BridgeSseSessionCreated).info;
+      expect(created["id"], "agent-nested-agent");
+      expect(created["parentID"], _root, reason: "nested children are flattened under the root");
+      expect(created["directory"], "/workspace");
+      final part = (started[2] as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      expect(part.sessionID, _child, reason: "the part renders in the session that made the call");
+      expect(part.childSessionID, "agent-nested-agent");
+      expect(dispatcher.busyChildSessionIds(sessionId: _root), unorderedEquals([_child, "agent-nested-agent"]));
+
+      expect(dispatcher.cancelTasks(sessionId: _root).whereType<BridgeSseSessionStatus>(), hasLength(2));
+    });
+
     test("cancelTasks idles the announced child and forgetSession drops it", () {
       dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
       dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
@@ -259,6 +327,19 @@ Map<String, Object?> _launchResultFrame() => {
     ],
   },
   "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": _agentId},
+};
+
+Map<String, Object?> _childTextFrame({required String text}) => {
+  "type": "assistant",
+  "session_id": _root,
+  "parent_tool_use_id": _toolUseId,
+  "message": {
+    "id": "child-msg-1",
+    "model": "claude-haiku-4-5",
+    "content": [
+      {"type": "text", "text": text},
+    ],
+  },
 };
 
 Map<String, Object?> _taskStartedFrame() => {

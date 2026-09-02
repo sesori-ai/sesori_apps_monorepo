@@ -4,9 +4,9 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 3/8 merged; Step 4/8 (sub-agent child
-  sessions) PR [#1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) open (branch `claude-subagent-child-sessions`)
-- **Next action:** merge Step 4/8, then Step 5/8 (live sub-agent streaming)
+- **Series state:** Steps 1/8 to 4/8 merged; Step 5/8 (live sub-agent
+  streaming) PR [#1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) open (branch `claude-subagent-streaming`)
+- **Next action:** merge Step 5/8, then Step 6/8 (scoped stop)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -99,6 +99,18 @@
   (foreground agents appear at completion); `childSessionStatuses()` reports
   every announced child across roots and `busyChildSessionIds` feeds
   `PluginActiveSession.childSessionIds`.
+- [x] Step 5 implementation refinements (recorded 2026-09-01, code is truth):
+  the tracker's task map is indexed by tool-use id across sessions and each
+  task remembers its owning rendered session (`ClaudeTrackedTool.sessionId`),
+  so `taskStarted`/`taskNotified`/`isKnownTask`/`task`/`cancelTask` resolve
+  by tool-use id alone while `runningTaskToolUseIds`/`cancelAll`/
+  `forgetSession` stay per owner; `childSessionIdForToolUse` maps a
+  `parent_tool_use_id` to its child session; the dispatcher keeps a
+  child→root map, announces nested children under the root (flattened, one
+  level), keys announced/busy sets by root, and `cancelTasks`/`forgetSession`
+  on a root cover its children's tasks and rendered state; a forwarded frame
+  arriving before the launching task knows its sub-agent id is dropped (no
+  session exists to render it into).
 
 ## Delivery Steps
 
@@ -107,8 +119,8 @@
 | [x] | 1/8 | `🌱 [claude-inline-subtasks] docs: plan inline Claude sub-agent subtasks [step 1/8]` | 450-650 | [PR #1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) merged |
 | [x] | 2/8 | `⚙️ [claude-inline-subtasks] contract: subtask lifecycle state, cancelled status, child link [step 2/8]` | 500-800 | [PR #1044](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1044) merged |
 | [x] | 3/8 | `🚧 [claude-inline-subtasks] claude: live and replayed subtask lifecycle for Agent calls [step 3/8]` | 900-1,300 | [PR #1247](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1247) merged |
-| [ ] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) open |
-| [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | Pending |
+| [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
+| [ ] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) open |
 | [ ] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | Pending |
 | [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | Pending |
 | [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | Pending |
@@ -204,6 +216,14 @@
   and cancel/forget) and the bridge tool-finalization suite 12/12 (1 new:
   open subtask swept to cancelled, terminal and OpenCode-shaped parts
   untouched). Changed lines: see the PR diff stat.
+- **Step 4:** merged as `911b6935f1` after one architecture finding and three
+  bot rounds (see Plan Review).
+- **Step 5:** implemented on `main` at `911b6935f1` (branch
+  `claude-subagent-streaming`). `dart analyze
+  --fatal-infos` clean; `dart test` 285/285 in the plugin (2 new: forwarded
+  frames route into the child session only once its id is known; a nested
+  Agent call inside a child binds through the root's `task_started`, renders
+  its part in the child, and its grandchild is flattened under the root).
 - **Final disposition:** pending
 
 ## Plan Review
@@ -312,6 +332,9 @@
   `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
   `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
   parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 5 `architecture-implementation-review` (sub-agent, 2026-09-02), scope
+  branch vs `origin/main`: approved, no findings; its out-of-scope note about
+  two unused `sessionId` parameters on the dispatcher task mappers was applied.**
 - **Step 4 `architecture-implementation-review` (sub-agent, 2026-09-01), scope
   branch vs `origin/main`: rejected with one finding, applied in `0a6bd0b67a`:**
   the tracker still encoded `agent-<id>` as a literal while

@@ -84,11 +84,11 @@ void main() {
         input: const <String, Object?>{},
       );
       expect(started, isA<ClaudeTrackedTask>());
-      expect(started.toPart(sessionId: _session), isNull);
+      expect(started.toPart(), isNull);
 
       final complete = _upsertAgent(tracker);
       expect(
-        complete.toPart(sessionId: _session),
+        complete.toPart(),
         isA<PluginMessagePartSubtask>()
             .having((p) => p.description, "description", "Say hi")
             .having((p) => p.agent, "agent", "general-purpose")
@@ -114,7 +114,6 @@ void main() {
       expect(tracker.runningTaskToolUseIds(sessionId: _session), {_toolUseId});
 
       final notified = tracker.taskNotified(
-        sessionId: _session,
         toolUseId: _toolUseId,
         taskId: _agentId,
         status: ClaudeTaskStatus.completed,
@@ -152,7 +151,6 @@ void main() {
       expect(fallback, isA<ClaudeTrackedTask>().having((t) => t.childSessionId, "child", "agent-$_agentId"));
 
       final stopped = tracker.taskNotified(
-        sessionId: _session,
         toolUseId: _toolUseId,
         taskId: _agentId,
         status: ClaudeTaskStatus.stopped,
@@ -162,7 +160,6 @@ void main() {
       expect(stopped?.state.status, PluginToolStatus.cancelled);
 
       final failed = tracker.taskNotified(
-        sessionId: _session,
         toolUseId: _toolUseId,
         taskId: _agentId,
         status: ClaudeTaskStatus.failed,
@@ -185,19 +182,18 @@ void main() {
         input: _agentInput,
       );
       tracker.taskNotified(
-        sessionId: _session,
         toolUseId: "toolu-done",
         taskId: "other",
         status: ClaudeTaskStatus.completed,
         summary: null,
         result: null,
       );
-      expect(tracker.taskStarted(sessionId: _session, toolUseId: "toolu-unknown", taskId: "x"), isNull);
+      expect(tracker.taskStarted(toolUseId: "toolu-unknown", taskId: "x"), isNull);
 
       final cancelled = tracker.cancelAll(sessionId: _session);
       expect(cancelled.map((t) => t.id), [_toolUseId]);
       expect(cancelled.single.state.status, PluginToolStatus.cancelled);
-      expect(tracker.task(sessionId: _session, toolUseId: _toolUseId), isNull);
+      expect(tracker.task(toolUseId: _toolUseId), isNull);
       expect(tracker.cancelAll(sessionId: _session), isEmpty);
     });
   });
