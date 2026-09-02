@@ -41,7 +41,7 @@ fixed, sequential replacement series; only one PR is opened at a time.
 
 | Slice | Fixed PR title | Status |
 |---|---|---|
-| 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | in-progress |
+| 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | done |
 | 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | pending |
 | 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | pending |
 
