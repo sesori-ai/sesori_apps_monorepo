@@ -724,33 +724,20 @@ void main() {
       expect(harness.service.currentWorkState, PluginWorkState.busy);
     });
 
-    test("a keep stop interrupts the main agent but leaves the process and its tasks resident", () async {
+    test("a keep stop during a live main turn is a full stop: the CLI interrupt would kill the sub-agents", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_taskStartedFrame());
-      await pump();
 
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
-      // The abort resolves only once the interrupted turn's result settles.
-      process.emit(_result());
-      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
-      await pump();
-
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
-      expect(harness.service.currentWorkState, PluginWorkState.busy, reason: "the sub-agent still runs");
-      expect(harness.events.whereType<BridgeSseSessionIdle>(), isEmpty);
-
-      // The kept sub-agent finishes and its wake-up turn renders and settles.
-      process.emit(_taskNotificationFrame());
-      process.emit(_assistantTextFrame(text: "Agent completed with result: hi"));
-      process.emit(_result());
+      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isFalse));
       await harness.waitForIdle();
 
-      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
     });
 
     test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {

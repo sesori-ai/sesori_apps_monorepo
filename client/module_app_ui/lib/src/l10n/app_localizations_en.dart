@@ -889,8 +889,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'This session has $count sub-agents still working. Stop only the main agent, or stop everything?',
-      one: 'This session has 1 sub-agent still working. Stop only the main agent, or stop everything?',
+      other: 'The main agent and $count sub-agents are still working. Stopping interrupts all of them.',
+      one: 'The main agent and 1 sub-agent are still working. Stopping interrupts both of them.',
     );
     return '$_temp0';
   }
@@ -916,9 +916,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get sessionDetailStopMainAgentOnly => 'Stop main agent only';
 
   @override
   String sessionDetailStopAll(int count) {

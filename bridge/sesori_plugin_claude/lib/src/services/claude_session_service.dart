@@ -479,10 +479,12 @@ final class ClaudeSessionService({
   /// Stops the session's work with the given sub-agent scope.
   ///
   /// `confirm` is refused while typed sub-agents run, with no side effect, so
-  /// the caller can ask the user. `keep` interrupts the main agent but leaves
-  /// the process resident so its tasks continue and their notifications wake
-  /// it as usual; `stop` (and `keep` with nothing resident) interrupts and
-  /// tears the process down, cancelling every task with it.
+  /// the caller can ask the user. `keep` leaves the process resident so its
+  /// tasks continue and their notifications wake the main agent as usual — but
+  /// only while no main turn runs, because the CLI's interrupt would stop the
+  /// sub-agents too; `stop`, and `keep` during a live main turn or with
+  /// nothing resident, interrupts and tears the process down, cancelling every
+  /// task with it.
   Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
     if (state == null) return const PluginAbortAccepted(workKept: false);
@@ -504,7 +506,14 @@ final class ClaudeSessionService({
       _approvals.cancelForSession(sessionId: sessionId);
       return const PluginAbortAccepted(workKept: false);
     }
-    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
+    // The CLI's only stop primitive, `interrupt`, also stops background agents
+    // (observed on 2.1.257), so sub-agents can be kept only when no main turn
+    // needs interrupting; a `keep` during a live main turn is a full stop.
+    final keepTasks =
+        subAgents == PluginAbortSubAgentPolicy.keep &&
+        state.runningTaskIds.isNotEmpty &&
+        state.pending == 0 &&
+        state.selfStartedTurn == null;
     final aborting = Completer<void>();
     state.aborting = aborting;
     try {
@@ -515,28 +524,11 @@ final class ClaudeSessionService({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
       if (keepTasks) {
-        // The process stays resident for its tasks, so pending approvals are left
-        // alone: a kept sub-agent may be waiting on one, and the interrupted
-        // main turn resolves its own. With no main turn running there is nothing
-        // to interrupt — and the CLI's interrupt would stop the background
-        // agents too (observed on 2.1.257), so it is only sent for a live turn.
-        // The interrupted turn's result settles the pending/self-started turn
-        // through the normal path; waiting for the turns that existed at this
-        // point keeps the abort fence up so a follow-up send cannot join them.
-        final interruptedTurns = [...state.settlements, ?state.selfStartedTurn?.future];
-        try {
-          if (interruptedTurns.isNotEmpty) {
-            await _processes.interrupt(sessionId: sessionId);
-            await Future.wait(interruptedTurns);
-          }
-          // Reported from what survived the wait: a task that finished meanwhile,
-          // or a process that died with its tasks, leaves nothing kept.
-          return PluginAbortAccepted(workKept: state.runningTaskIds.isNotEmpty);
-        } on Object catch (error, stack) {
-          // A process that will not take the interrupt cannot be trusted to keep
-          // anything; fall through to the full teardown below.
-          Log.w("[claude] interrupt failed for $sessionId; stopping everything", error, stack);
-        }
+        // Nothing to interrupt: the main agent is idle and only background tasks
+        // run. The process stays resident for them, pending approvals are left
+        // alone (a kept sub-agent may be waiting on one), and the running set
+        // keeps the session busy until the tasks report and wake the main agent.
+        return const PluginAbortAccepted(workKept: true);
       }
       _approvals.cancelForSession(sessionId: sessionId);
       // Teardown kills the CLI's in-process wakeup timer, and `--resume` does

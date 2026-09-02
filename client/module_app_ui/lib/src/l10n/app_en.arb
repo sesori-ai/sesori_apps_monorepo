@@ -536,7 +536,7 @@
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",
   "sessionDetailStopScopeTitle": "Sub-agents are running",
-  "sessionDetailStopScopeMessage": "{count, plural, =1{This session has 1 sub-agent still working. Stop only the main agent, or stop everything?} other{This session has {count} sub-agents still working. Stop only the main agent, or stop everything?}}",
+  "sessionDetailStopScopeMessage": "{count, plural, =1{The main agent and 1 sub-agent are still working. Stopping interrupts both of them.} other{The main agent and {count} sub-agents are still working. Stopping interrupts all of them.}}",
   "@sessionDetailStopScopeMessage": {
     "placeholders": {
       "count": {
@@ -560,7 +560,6 @@
       }
     }
   },
-  "sessionDetailStopMainAgentOnly": "Stop main agent only",
   "sessionDetailStopAll": "{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}",
   "@sessionDetailStopAll": {
     "placeholders": {

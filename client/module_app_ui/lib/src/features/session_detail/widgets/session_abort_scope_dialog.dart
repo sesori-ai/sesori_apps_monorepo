@@ -11,8 +11,8 @@ import "../../../extensions/build_context_x.dart";
 ///
 /// The first request is a `confirm` probe: with no sub-agents running the
 /// bridge performs it as a plain stop, and only a rejection is side-effect
-/// free. On rejection the dialog offers "main agent only" (only while the main
-/// agent runs) and "stop everything"; dismissing it leaves everything running.
+/// free. On rejection the dialog confirms the stop of everything that runs;
+/// dismissing it leaves everything running.
 Future<void> stopSessionWithScope({required BuildContext context, required SessionDetailCubit cubit}) async {
   // One probe-and-dialog sequence per session at a time: a second tap while the
   // first is in flight would stack a stale dialog over the fresh one.
@@ -35,6 +35,9 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(loc.sessionDetailStopScopeTitle),
+        // Claude's only stop primitive interrupts the sub-agents along with a
+        // running main agent, so main-agent-only is not offered while it runs;
+        // with the main agent idle, stopping means stopping the sub-agents.
         content: Text(
           rejection.mainAgentRunning
               ? loc.sessionDetailStopScopeMessage(count)
@@ -45,11 +48,6 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
             onPressed: () => dialogContext.pop(),
             child: Text(loc.sessionListDeleteConfirmCancel),
           ),
-          if (rejection.mainAgentRunning)
-            TextButton(
-              onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.keep),
-              child: Text(loc.sessionDetailStopMainAgentOnly),
-            ),
           TextButton(
             onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.stop),
             child: Text(

@@ -1720,7 +1720,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailStopScopeMessage.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{This session has 1 sub-agent still working. Stop only the main agent, or stop everything?} other{This session has {count} sub-agents still working. Stop only the main agent, or stop everything?}}'**
+  /// **'{count, plural, =1{The main agent and 1 sub-agent are still working. Stopping interrupts both of them.} other{The main agent and {count} sub-agents are still working. Stopping interrupts all of them.}}'**
   String sessionDetailStopScopeMessage(int count);
 
   /// No description provided for @sessionDetailStopScopeMessageMainIdle.
@@ -1734,12 +1734,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{Stop 1 sub-agent} other{Stop {count} sub-agents}}'**
   String sessionDetailStopSubAgentsOnly(int count);
-
-  /// No description provided for @sessionDetailStopMainAgentOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'Stop main agent only'**
-  String get sessionDetailStopMainAgentOnly;
 
   /// No description provided for @sessionDetailStopAll.
   ///
