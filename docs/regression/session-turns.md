@@ -83,8 +83,9 @@ defaults and queued client sends coherent.
   Dismissing leaves everything running. `keep` (main agent only) is honored
   only while no main turn runs — the process stays resident, the sub-agents
   continue, their later wake-up turn renders, and the completion push is not
-  suppressed; during a live main turn `keep` behaves as `stop`, because the
-  CLI's interrupt also stops background agents. `stop` interrupts and tears
+  suppressed; during a live main turn `keep` is refused with the running
+  count, because the CLI's interrupt also stops background agents, and the
+  client never offers it then. `stop` interrupts and tears
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
