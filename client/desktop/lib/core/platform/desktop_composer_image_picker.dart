@@ -26,6 +26,9 @@ class DesktopComposerImagePicker.forTesting({
   Future<ComposerPickedImage?> pickImage() async {
     final file = await _openFile(acceptedTypeGroups: const [_imageTypes]);
     if (file == null) return null;
+    if (await file.length() > maxComposerPromptAttachmentBytes) {
+      throw const AttachmentTooLargeError();
+    }
     return ComposerPickedImage(
       bytes: await file.readAsBytes(),
       filename: file.name,

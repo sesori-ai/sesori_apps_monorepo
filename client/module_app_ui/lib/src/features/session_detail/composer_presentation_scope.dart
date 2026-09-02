@@ -3,9 +3,10 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// Whether the product shell supplies a real voice-capture implementation for
 /// this composer.
-// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors.
-// ignore: use_primary_constructors
-enum ComposerVoiceSupport { supported, unsupported }
+enum ComposerVoiceSupport({required final bool isSupported}) {
+  supported(isSupported: true),
+  unsupported(isSupported: false),
+}
 
 typedef ComposerCapabilityProvider<T> = T Function();
 

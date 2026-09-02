@@ -98,8 +98,9 @@ state.
   starts or retries the local helper, and establishes an authenticated desktop
   relay connection. Desktop session rows open the typed session-detail route,
   preserve nullable titles, and let child-session links push another typed
-  detail route. Desktop still exposes no new-session affordance, and its detail
-  surface omits composer and diff controls until those capabilities are present.
+  detail route. Desktop session detail exposes the shared effective text-first
+  composer with declared image attachments while omitting unavailable voice
+  and diff controls. Desktop still exposes no new-session affordance.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -268,7 +269,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   starts the helper without establishing the desktop relay connection. A
   desktop session row cannot open its typed detail route, child-session
   navigation loses project/session/read-only identity, or unsupported desktop
-  composer or diff controls render as dead actions.
+  voice or diff controls render as dead actions.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
@@ -294,9 +295,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 
 ## Known Limitations
 
-- Client end-to-end catalog coverage remains phone-only. Desktop exposes project
-  and session lists plus transcript detail, but not session creation or desktop
-  composer/diff controls.
+- Client end-to-end catalog coverage remains phone-only because desktop does
+  not yet expose session creation or diffs. Desktop does expose project/session
+  inventory plus transcript and effective text-first composer detail.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.

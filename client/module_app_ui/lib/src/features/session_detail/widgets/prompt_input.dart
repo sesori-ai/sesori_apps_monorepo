@@ -191,7 +191,7 @@ class _PromptInputState() extends State<PromptInput> {
   final List<ComposerAttachment> _attachments = [];
 
   VoiceInputCubit get _voiceCubit {
-    if (_voiceSupport != ComposerVoiceSupport.supported) {
+    if (!_voiceSupport.isSupported) {
       throw StateError("VoiceInputCubit is unavailable when composer voice support is disabled");
     }
     return context.read<VoiceInputCubit>();
@@ -223,7 +223,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (!_capabilitiesInitialized) {
       _voiceSupport = capabilities.voiceSupport;
       _capabilitiesInitialized = true;
-      if (_voiceSupport == ComposerVoiceSupport.supported) {
+      if (_voiceSupport.isSupported) {
         _voiceStateSub = _voiceCubit.stream.listen(_handleVoiceStateChanged);
       }
     }
@@ -291,8 +291,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// default) or with the tap-to-type field. Chosen in settings; the cubit
   /// lives above the router, so flipping it re-shapes this composer live.
   bool get _isVoiceFirst =>
-      _voiceSupport == ComposerVoiceSupport.supported &&
-      ComposerPresentationScope.read(context).inputMode == ChatInputMode.voiceFirst;
+      _voiceSupport.isSupported && ComposerPresentationScope.read(context).inputMode == ChatInputMode.voiceFirst;
 
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
@@ -403,7 +402,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     _isSubmitting = true;
     try {
-      if (_voiceSupport == ComposerVoiceSupport.supported) {
+      if (_voiceSupport.isSupported) {
         final voiceState = _voiceCubit.state;
         if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
           await _voiceCubit.discard();
@@ -1030,7 +1029,7 @@ class _PromptInputState() extends State<PromptInput> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final capabilities = ComposerPresentationScope.of(context);
-    _renderedVoiceState = capabilities.voiceSupport == ComposerVoiceSupport.supported
+    _renderedVoiceState = capabilities.voiceSupport.isSupported
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
@@ -1647,7 +1646,7 @@ class _PromptInputState() extends State<PromptInput> {
       spacing: PregoSpacing.sm,
       children: [
         // The mic owns the hold gesture, so only the primary action collapses.
-        if (_voiceSupport == ComposerVoiceSupport.supported) _buildMicButton(context),
+        if (_voiceSupport.isSupported) _buildMicButton(context),
         _buildCollapsibleTrailing(
           visible: _voicePresentation != _VoicePresentation.recording,
           child: _buildPrimaryActionButton(context),

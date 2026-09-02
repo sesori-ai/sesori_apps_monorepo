@@ -543,18 +543,18 @@ missing-registration crashes. Coordinate with the in-flight
 mechanical move churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
-heavy part).** Relocate voice lifecycle behind `module_core` service seams and
-media picking behind a platform seam (recording stays a mobile shell
-adapter). The move fixes the existing layer skip rather than enshrining it: a
-Layer-2 `VoiceRepository` wraps `VoiceApi`, the relocated transcription
-service consumes the repository, and recorder/file/wake-lock stay foundation
-capabilities implemented per shell. The desktop shell declares **explicit capability values, never
-silent no-ops**: voice unsupported → text-first composer with voice entry
-hidden (the `voiceFirst` default must not apply), and attachments use a real
-desktop file picker (or the affordance is hidden until one exists) — no
-visible control may be dead. Keyboard-visibility becomes a mobile-injected
-concern; then move the composer (attachments, pickers, queued prompts). Voice
-on mobile must be regression-clean. *Overage: move churn.*
+heavy part).** Reuse the voice lifecycle already layered in `module_core` as
+`VoiceApi` → Layer-2 `VoiceRepository` → `VoiceTranscriptionService`, with
+recorder/file/wake-lock remaining foundation capabilities implemented by the
+mobile shell. Put media picking behind a new foundation platform seam and move
+the reusable composer presentation (attachments, pickers, and background-task
+controls) into `module_app_ui`. The desktop shell declares **explicit capability
+values, never silent no-ops**: voice unsupported → effective text-first
+composer with voice entry hidden (the `voiceFirst` preference must not apply),
+and attachments use a real desktop file picker (or the affordance is hidden
+until one exists) — no visible control may be dead. Keyboard visibility becomes
+a mobile-injected concern. Voice on mobile must be regression-clean. *Overage:
+move churn.*
 
 **Step 19 — ⚙️ Diffs + new-session slice.** Decouple and move
 `session_diffs` + `new_session` (worktree options included). The

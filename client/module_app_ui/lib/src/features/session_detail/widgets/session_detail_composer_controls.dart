@@ -92,7 +92,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                   inputMode: command == null ? draft.inputMode : ComposerInputMode.typed,
                   attachments: attachments,
                 ),
-            onVoiceTranscriptionCompleted: composerCapabilities.voiceSupport == ComposerVoiceSupport.supported
+            onVoiceTranscriptionCompleted: composerCapabilities.voiceSupport.isSupported
                 ? context.read<SessionDetailCubit>().reportVoiceTranscriptionCompleted
                 : null,
             onDraftChanged: (draft) => context.read<SessionDetailCubit>().saveComposerDraft(draft: draft),

@@ -393,8 +393,6 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   metadata such as bold, italics, and hyperlink destinations
   (`flutter/flutter#104206`).
 - L3 and above need live backends; an omitted plugin is partial coverage.
-  Composer, send, and abort end-to-end coverage remains phone-only until the
-  desktop composer is implemented.
 - Session-detail refresh behavior is under active investigation, so refresh
   churn is recorded as evidence rather than judged pass or fail.
 - The bridge's queued prompts live in plugin memory and do not survive a

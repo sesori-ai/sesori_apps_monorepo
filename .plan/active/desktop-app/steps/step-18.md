@@ -38,15 +38,17 @@
   text-first mode, so a persisted mobile `voiceFirst` preference cannot expose
   dead voice UI. Desktop does not construct or register a fake voice Cubit.
 - Added the pure-Dart `ComposerImagePicker` foundation-platform contract and
-  `ComposerAttachmentDispatcher`, which centralizes filename normalization,
-  raster-signature sniffing, and outbound size enforcement for picker and
-  clipboard bytes. The role-named dispatcher is deliberately not presented as
-  a repository-backed domain service.
+  `ComposerAttachmentDispatcher`, which centralizes filename normalization and
+  outbound size enforcement for picker and clipboard bytes. A shared supported-
+  raster format helper now owns MIME/signature matching for both staging and
+  transcript image loading. The role-named dispatcher is deliberately not
+  presented as a repository-backed domain service.
 - Adapted mobile `image_picker` to the raw-byte contract and added a real desktop
   `file_selector` adapter filtered to supported raster extensions. The desktop
   adapter owns its external-function test seam directly rather than depending
-  on another shell platform implementation. Registered the desktop picker and
-  shared dispatcher in generated DI.
+  on another shell platform implementation, and preflights file length before
+  materializing bytes. Registered the desktop picker and shared dispatcher in
+  generated DI.
 - Added the shared composer to interactive desktop session detail. Read-only and
   archived sessions retain the existing omission behavior; diff controls remain
   Step 19 scope.
@@ -75,8 +77,8 @@
 ## Verification
 
 - `client/module_core`: `asdf exec dart analyze --fatal-infos` passes; the
-  complete suite passes 1,483 tests, including the shared picker/clipboard
-  attachment dispatcher.
+  complete suite passes 1,484 tests, including the shared picker/clipboard
+  attachment dispatcher and shared raster validation.
 - `client/module_app_ui`: `asdf exec dart analyze --fatal-infos` passes; the
   complete suite passes 249 tests, including unsupported-voice text-first
   fallback without a `VoiceInputCubit`.
@@ -84,9 +86,10 @@
   mobile suite passes 686 tests, including picker adaptation, voice lifecycle,
   keyboard behavior, new-session restoration, and existing-session composition.
 - `client/desktop`: `asdf exec dart analyze --fatal-infos` passes; the complete
-  desktop suite passes 88 tests, including picker filtering/cancellation,
-  complete image DI, explicit text-first capability composition, and text send.
-- Dart LSP reports zero diagnostics across 44 changed Dart files.
+  desktop suite passes 89 tests, including picker filtering/cancellation and
+  size preflight, complete image DI, explicit text-first capability composition,
+  and text send.
+- Dart LSP reports zero diagnostics across 48 changed Dart files.
 - `git diff --check` passes.
 - `asdf exec flutter build macos --release` succeeds (65.1 MB reported by
   Flutter).

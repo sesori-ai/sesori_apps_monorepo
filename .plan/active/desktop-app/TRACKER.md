@@ -95,3 +95,13 @@ The helper receives only a login-shell-derived PATH, merged with its inherited
 environment; shell variables, secrets, permissions, and entitlements are not
 copied. The user accepted Gate B and explicitly authorized Step 14 on
 2026-09-01; Step 14 is complete.
+
+## Verification Log
+
+- **Step 18:** changed lines (informational, not a pass/fail check):
+  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD | awk
+  '{ additions += $1; deletions += $2 } END { print additions, deletions,
+  additions + deletions }'` = `1243 additions / 596 deletions / 1839 total`.
+  This is 339 lines over the 1,500-line soft target; accepted deviation from
+  moving the existing composer and its tests into shared presentation while
+  adding both shell capability composition and regression coverage.

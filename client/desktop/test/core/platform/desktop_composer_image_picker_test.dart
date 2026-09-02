@@ -3,6 +3,7 @@ import "dart:typed_data";
 
 import "package:file_selector/file_selector.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";
 
 void main() {
@@ -33,6 +34,20 @@ void main() {
 
     expect(picked!.bytes, orderedEquals(bytes));
     expect(picked.filename, "photo.jpg");
+  });
+
+  test("adapter rejects an oversized file before materializing its bytes", () async {
+    final directory = Directory.systemTemp.createTempSync("desktop_picker_test");
+    addTearDown(() => directory.deleteSync(recursive: true));
+    final file = File("${directory.path}/huge.jpg");
+    final handle = file.openSync(mode: FileMode.write);
+    handle.truncateSync(maxComposerPromptAttachmentBytes + 1);
+    handle.closeSync();
+    final picker = DesktopComposerImagePicker.forTesting(
+      openFile: ({required acceptedTypeGroups}) async => XFile(file.path),
+    );
+
+    expect(picker.pickImage, throwsA(isA<AttachmentTooLargeError>()));
   });
 
   test("adapter returns null when selection is dismissed", () async {
