@@ -74,22 +74,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   Future<void>? _refreshPress;
-  late final ValueNotifier<PregoComposerSurfaceStyle> _composerSurfaceStyle;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    final cubit = context.read<NewSessionCubit>();
-    _composerSurfaceStyle = ValueNotifier(
-      resolveInitialComposerSurfaceStyle(
-        inputMode: context.read<ChatInputModeCubit>().state,
-        draft: cubit.composerDraft,
-        stagedCommand: cubit.state.agentModelData?.stagedCommand,
-      ),
-    );
-  }
 
   @override
   void didChangeDependencies() {
@@ -107,7 +93,6 @@ class _NewSessionViewState() extends State<NewSessionView> {
         popupAlertPresenter.show(title: message);
       });
     }
-    _composerSurfaceStyle.dispose();
     super.dispose();
   }
 
@@ -172,14 +157,17 @@ class _NewSessionViewState() extends State<NewSessionView> {
     };
   }
 
-  Widget? _buildComposerHeader(NewSessionState state) {
+  Widget? _buildComposerHeader({
+    required NewSessionState state,
+    required ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
+  }) {
     final data = state.agentModelData;
     final selectedAgent = data?.agent;
     if (data == null || (data.agents.isEmpty && data.providers.isEmpty)) return null;
 
     final cubit = context.read<NewSessionCubit>();
     return ValueListenableBuilder<PregoComposerSurfaceStyle>(
-      valueListenable: _composerSurfaceStyle,
+      valueListenable: surfaceStyleController,
       builder: (context, surfaceStyle, _) => AgentModelButtons(
         surfaceStyle: surfaceStyle,
         agents: data.agents,
@@ -358,9 +346,12 @@ class _NewSessionViewState() extends State<NewSessionView> {
     required AgentModelData? composerData,
     required NewSessionState state,
   }) {
+    final cubit = context.read<NewSessionCubit>();
     return widget.composerScopeBuilder(
-      child: Builder(
-        builder: (context) => Semantics(
+      child: _ComposerSurfaceStyleOwner(
+        initialDraft: cubit.composerDraft,
+        stagedCommand: composerData?.stagedCommand,
+        builder: ({required context, required surfaceStyleController}) => Semantics(
           enabled: isComposerEnabled,
           child: ExcludeFocus(
             excluding: !isComposerEnabled,
@@ -394,9 +385,12 @@ class _NewSessionViewState() extends State<NewSessionView> {
                 onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),
                 onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
                 onAbort: _dismissScreen,
-                surfaceStyleController: _composerSurfaceStyle,
+                surfaceStyleController: surfaceStyleController,
                 header: _buildErrorBanner(state),
-                composerHeader: _buildComposerHeader(state),
+                composerHeader: _buildComposerHeader(
+                  state: state,
+                  surfaceStyleController: surfaceStyleController,
+                ),
                 availableCommands: composerData?.commands ?? const [],
                 stagedCommand: composerData?.stagedCommand,
                 onCommandSelected: context.read<NewSessionCubit>().stageCommand,
@@ -549,6 +543,54 @@ class _NewSessionViewState() extends State<NewSessionView> {
               ],
       ),
     );
+  }
+}
+
+/// Owns composer-only presentation state below the shell's capability scope.
+///
+/// Keeping this owner inside the scope makes the initial style follow the
+/// effective platform input mode, while removing it with the composer still
+/// closes mobile voice resources during session launch.
+class const _ComposerSurfaceStyleOwner({
+  required final ComposerDraft initialDraft,
+  required final CommandInfo? stagedCommand,
+  required final Widget Function({
+    required BuildContext context,
+    required ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
+  })
+  builder,
+}) extends StatefulWidget {
+  @override
+  State<_ComposerSurfaceStyleOwner> createState() => _ComposerSurfaceStyleOwnerState();
+}
+
+class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner> {
+  late final ValueNotifier<PregoComposerSurfaceStyle> _controller;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _controller = ValueNotifier(
+      resolveInitialComposerSurfaceStyle(
+        inputMode: ComposerPresentationScope.of(context).inputMode,
+        draft: widget.initialDraft,
+        stagedCommand: widget.stagedCommand,
+      ),
+    );
+    _initialized = true;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context: context, surfaceStyleController: _controller);
   }
 }
 

@@ -5,6 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
+import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 
 void main() {
   test("desktop registers typed new-session and diff routes", () {
@@ -43,6 +44,26 @@ void main() {
     final screen = widget as DesktopSessionDiffsScreen;
     expect(screen.projectId, "project-1");
     expect(screen.sessionId, "session-1");
+    expect(
+      screen.key,
+      const ValueKey((projectId: "project-1", sessionId: "session-1")),
+    );
+  });
+
+  test("harness-settings route preserves modal presentation", () {
+    final route = _routeWithPath(AppRouteDef.settingsHarnesses.path);
+    final widget = route.builder!(
+      _FakeBuildContext(),
+      _FakeGoRouterState(
+        queryParameters: {
+          harnessSettingsPresentationQueryParam: HarnessSettingsPresentation.modal.name,
+        },
+      ),
+    );
+
+    expect(widget, isA<DesktopHarnessesSettingsScreen>());
+    final screen = widget as DesktopHarnessesSettingsScreen;
+    expect(screen.presentation, HarnessSettingsPresentation.modal);
   });
 }
 

@@ -25,7 +25,7 @@ const _state = NewSessionState.composing(
 );
 
 void main() {
-  testWidgets("desktop new session is text-first and exposes worktree options without voice", (tester) async {
+  testWidgets("desktop new session stays text-first with a persisted voice-first preference", (tester) async {
     final newSessionCubit = _MockNewSessionCubit();
     final inputModeCubit = _MockChatInputModeCubit();
     when(() => newSessionCubit.state).thenReturn(_state);
@@ -34,8 +34,8 @@ void main() {
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(() => newSessionCubit.canCreateSession).thenReturn(true);
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-    when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
-    whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
+    when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
+    whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
 
     await tester.pumpWidget(
       MultiBlocProvider(
@@ -63,6 +63,10 @@ void main() {
     expect(find.text("Dedicated workspace"), findsOneWidget);
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.bySemanticsLabel("Start recording"), findsNothing);
+    expect(
+      tester.widget<PromptInput>(find.byType(PromptInput)).surfaceStyleController.value,
+      PregoComposerSurfaceStyle.emphasized,
+    );
 
     await tester.tap(find.text("Ask anything..."));
     await tester.pump();

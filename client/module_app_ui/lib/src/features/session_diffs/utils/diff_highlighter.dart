@@ -8,7 +8,7 @@ import '../../../utils/syntax_highlight.dart';
 /// Must call [initialize] once before using [highlightLine].
 ///
 /// Shares its grammar set, theme and render mechanics with the whole-block
-/// whole-block code highlighting via the shared syntax-highlight utilities. It is kept as a
+/// code highlighting via the shared syntax-highlight utilities. It is kept as a
 /// separate class because diffs are highlighted line-by-line and the grammars
 /// must be registered eagerly up front (never lazily inside an `itemBuilder`),
 /// which gives it the strict init-order contract exercised by its tests.

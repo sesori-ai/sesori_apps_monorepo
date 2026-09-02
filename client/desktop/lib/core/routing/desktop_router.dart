@@ -175,6 +175,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
           };
           return DesktopSessionDiffsScreen(
+            key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
             projectId: route.projectId,
             sessionId: route.sessionId,
             onBack: () => _popRouteOrGo(
@@ -210,9 +211,20 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
       ),
       GoRoute(
         path: AppRouteDef.settingsHarnesses.path,
-        builder: (BuildContext context, GoRouterState state) => DesktopHarnessesSettingsScreen(
-          onClose: () => _popRoute(context: context),
-        ),
+        builder: (BuildContext context, GoRouterState state) {
+          final route = switch (AppRoute.fromDef(
+            def: AppRouteDef.settingsHarnesses,
+            pathParams: state.pathParameters,
+            queryParams: state.uri.queryParameters,
+          )) {
+            final AppRouteSettingsHarnesses route => route,
+            final route => throw StateError("Route ${route.def.name} is not a harness-settings route"),
+          };
+          return DesktopHarnessesSettingsScreen(
+            presentation: route.presentation,
+            onClose: () => _popRoute(context: context),
+          );
+        },
       ),
     ],
   ),
