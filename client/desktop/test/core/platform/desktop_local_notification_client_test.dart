@@ -51,7 +51,8 @@ void main() {
               ),
             ).captured.single
             as InitializationSettings;
-    expect(settings.macOS, isNotNull);
+    expect(settings.macOS?.requestAlertPermission, isTrue);
+    expect(settings.macOS?.requestSoundPermission, isTrue);
     expect(settings.linux, isNotNull);
     expect(settings.windows, isNotNull);
     verify(plugin.getNotificationAppLaunchDetails).called(1);

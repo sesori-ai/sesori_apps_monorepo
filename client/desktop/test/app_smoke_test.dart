@@ -2,6 +2,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
+import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 class _InMemorySecureStorage() implements SecureStorage {
@@ -25,7 +26,7 @@ void main() {
   });
 
   testWidgets("cold start with no session lands on the login view", (WidgetTester tester) async {
-    configureDesktopDependencies();
+    configureDesktopDependencies(router: desktopRouter);
     // The secure-storage plugin has no platform channel under flutter_test;
     // swap in an in-memory fake so the gate's local-session check completes.
     getIt.unregister<SecureStorage>();
@@ -87,7 +88,11 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostState> get states => const Stream<WindowHostState>.empty();
 
   @override
-  Future<void> initialize({required bool hidden, required WindowBounds? initialBounds}) async {}
+  Future<void> initialize({
+    required bool hidden,
+    required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
+  }) async {}
 
   @override
   Future<WindowBounds> getBounds() async => const WindowBounds(left: 0, top: 0, width: 720, height: 620);

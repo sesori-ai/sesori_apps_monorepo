@@ -7,6 +7,7 @@ import "package:test/test.dart";
 void main() {
   setUpAll(() {
     registerFallbackValue(const WindowBounds(left: 0, top: 0, width: 1, height: 1));
+    registerFallbackValue(const WindowSize(width: 1, height: 1));
   });
 
   late _MockWindowHost windowHost;
@@ -29,6 +30,7 @@ void main() {
       () => windowHost.initialize(
         hidden: any(named: "hidden"),
         initialBounds: any(named: "initialBounds"),
+        minimumSize: any(named: "minimumSize"),
       ),
     ).thenAnswer((_) async {});
   });
@@ -43,7 +45,13 @@ void main() {
 
     verify(() => repository.readWindowBounds()).called(1);
     verifyNever(() => windowHost.getDisplayBounds());
-    verify(() => windowHost.initialize(hidden: false, initialBounds: null)).called(1);
+    verify(
+      () => windowHost.initialize(
+        hidden: false,
+        initialBounds: null,
+        minimumSize: WindowBoundsService.minimumSize,
+      ),
+    ).called(1);
   });
 
   test("clamps restored bounds to the display they overlap before initializing", () async {
@@ -61,6 +69,7 @@ void main() {
       () => windowHost.initialize(
         hidden: true,
         initialBounds: const WindowBounds(left: 1440, top: 0, width: 900, height: 1080),
+        minimumSize: WindowBoundsService.minimumSize,
       ),
     ]);
   });
@@ -78,6 +87,7 @@ void main() {
       () => windowHost.initialize(
         hidden: false,
         initialBounds: const WindowBounds(left: -1920, top: 100, width: 800, height: 600),
+        minimumSize: WindowBoundsService.minimumSize,
       ),
     ).called(1);
   });
@@ -90,7 +100,13 @@ void main() {
     await service.initializeWindow(hidden: false);
 
     verifyNever(() => windowHost.getDisplayBounds());
-    verify(() => windowHost.initialize(hidden: false, initialBounds: null)).called(1);
+    verify(
+      () => windowHost.initialize(
+        hidden: false,
+        initialBounds: null,
+        minimumSize: WindowBoundsService.minimumSize,
+      ),
+    ).called(1);
   });
 
   test("debounces move and resize events into the latest bounds write", () async {
@@ -117,6 +133,18 @@ void main() {
     events.add(WindowHostEvent.resized);
     events.add(WindowHostEvent.closeRequested);
     await Future<void>.delayed(Duration.zero);
+
+    verify(() => repository.writeWindowBounds(bounds: latest)).called(1);
+  });
+
+  test("dispose flushes and awaits a pending bounds update", () async {
+    const latest = WindowBounds(left: 60, top: 70, width: 840, height: 640);
+    when(() => windowHost.getBounds()).thenAnswer((_) async => latest);
+    when(() => repository.writeWindowBounds(bounds: latest)).thenAnswer((_) async {});
+    await service.initializeWindow(hidden: false);
+
+    events.add(WindowHostEvent.resized);
+    await service.dispose();
 
     verify(() => repository.writeWindowBounds(bounds: latest)).called(1);
   });

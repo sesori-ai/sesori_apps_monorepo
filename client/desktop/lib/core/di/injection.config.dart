@@ -43,8 +43,6 @@ import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_pro
     as _i20;
 import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
     as _i210;
-import 'package:sesori_desktop/core/platform/desktop_route_dispatcher.dart'
-    as _i764;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
 import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
@@ -146,9 +144,6 @@ extension GetItInjectableX on _i174.GetIt {
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i948.RouteDispatcher>(
-      () => _i764.DesktopRouteDispatcher(),
     );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i87.DesktopImageClipboard(

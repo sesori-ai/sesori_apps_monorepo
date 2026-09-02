@@ -1,9 +1,11 @@
 import "package:get_it/get_it.dart";
+import "package:go_router/go_router.dart";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
+import "../platform/desktop_route_dispatcher.dart";
 import "injection.config.dart";
 
 final GetIt getIt = GetIt.instance;
@@ -20,7 +22,8 @@ final GetIt getIt = GetIt.instance;
 // The only eager registration is the shell's own DesktopLifecycleObserver,
 // which must attach its WidgetsBinding observer at startup.
 @InjectableInit()
-void configureDesktopDependencies() {
+void configureDesktopDependencies({required GoRouter router}) {
+  getIt.registerLazySingleton<RouteDispatcher>(() => DesktopRouteDispatcher(router: router));
   getIt.registerSingleton<AnalyticsRuntimeCapability>(
     const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.unsupportedPlatform),
   );

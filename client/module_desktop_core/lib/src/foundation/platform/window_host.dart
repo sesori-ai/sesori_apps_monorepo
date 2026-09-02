@@ -14,6 +14,13 @@ enum WindowHostState() {
   hidden,
 }
 
+/// Platform-neutral native window size in logical pixels.
+@immutable
+class const WindowSize({
+  required final double width,
+  required final double height,
+});
+
 /// Platform-neutral native window or display rectangle in logical pixels.
 @immutable
 class const WindowBounds({
@@ -57,12 +64,14 @@ abstract interface class WindowHost() {
 
   /// Prepares the native window before the Flutter application is rendered.
   ///
-  /// [initialBounds] has already been validated by the owning service and is
-  /// applied before the first explicit show. A hidden launch keeps the native
-  /// surface out of sight until the tray availability decision is known.
+  /// [initialBounds] and [minimumSize] have already been validated by the
+  /// owning service. Bounds are applied before the first explicit show. A
+  /// hidden launch keeps the native surface out of sight until the tray
+  /// availability decision is known.
   Future<void> initialize({
     required bool hidden,
     required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
   });
 
   Future<WindowBounds> getBounds();

@@ -1,24 +1,21 @@
 import "dart:async";
 
 import "package:flutter/widgets.dart";
-import "package:injectable/injectable.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "../routing/desktop_router.dart";
-
 /// Desktop implementation of typed route-stack replacement requests.
-@LazySingleton(as: RouteDispatcher)
 class DesktopRouteDispatcher implements RouteDispatcher {
   final void Function(String route) _goRoute;
   final Future<void> Function(String route) _pushRoute;
   final Future<void> _routerReady;
   Future<void> _pendingReplace = Future<void>.value();
 
-  new()
+  new({required GoRouter router})
     // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
-    : _goRoute = desktopRouter.go,
+    : _goRoute = router.go,
       // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
-      _pushRoute = ((route) => desktopRouter.push<void>(route)),
+      _pushRoute = ((route) => router.push<void>(route)),
       _routerReady = WidgetsBinding.instance.endOfFrame;
 
   @visibleForTesting

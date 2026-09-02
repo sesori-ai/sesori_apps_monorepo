@@ -76,6 +76,7 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               statusTracker: getIt(),
               systemTray: getIt(),
               windowHost: getIt(),
+              windowBoundsService: getIt(),
               applicationTerminator: getIt(),
               logRepository: getIt(),
               instanceService: getIt(),
