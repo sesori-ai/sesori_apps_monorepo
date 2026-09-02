@@ -1234,7 +1234,12 @@ class OrchestratorSession._({
         break;
       }
 
-      Log.w("Relay connection lost. Reconnecting...");
+      // 1001 with no reason is the local ping timeout (no pong within the ping
+      // interval); anything else came from the relay's close frame.
+      Log.w(
+        "Relay connection lost (closeCode=${_client.closeCode(connection: connection)} "
+        "closeReason=${_client.closeReason(connection: connection)}). Reconnecting...",
+      );
       _sseManager.orphanAll();
       activePhoneIncarnations.clear();
       // Every phone connection died with the relay link; drop their view
