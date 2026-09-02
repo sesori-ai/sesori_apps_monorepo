@@ -33,7 +33,9 @@ class SessionAbortService({
       operation: SessionOperation.abortSession,
       body: () async {
         final result = await _sessionRepository.abortSession(sessionId: sessionId, subAgents: subAgents);
-        if (result is SessionAborted && subAgents != SessionAbortSubAgentPolicy.keep) {
+        // Decided by what the plugin actually did, not by the requested policy:
+        // a `keep` with nothing to keep is a full stop.
+        if (result case SessionAborted(workKept: false)) {
           _abortedSessionsController.add(sessionId);
         } else {
           _abortFailedSessionsController.add(sessionId);

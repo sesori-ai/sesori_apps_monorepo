@@ -2206,24 +2206,22 @@ class SessionDetailCubit(
 
   /// Stops the session with the given sub-agent scope.
   ///
-  /// `confirm` is a side-effect-free probe: nothing local changes until the
-  /// bridge accepts. On acceptance the local prompt queue is cleared (stop
-  /// means "run nothing further"; the bridge clears its own queue), and under
-  /// `stop` every busy child session is aborted too — plugins whose children
-  /// are real sessions keep today's stop-everything behavior.
+  /// Stop means "run nothing further": for `keep` and `stop` the local prompt
+  /// queue is cleared before the request so a staged send cannot drain while
+  /// it is in flight (the bridge clears its own queue). A `confirm` probe may
+  /// be refused, so it clears the queue only once the bridge accepted it.
+  /// Under `stop` every busy child session is aborted too — plugins whose
+  /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
+      if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
       if (root case ErrorResponse(:final error)) throw error;
+      _clearLocalPromptQueue();
 
       // Read state after the await: an abort-driven status or transcript event
       // may have landed meanwhile and must not be overwritten by a stale copy.
       final current = state;
-      if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
-        _promptQueue.clear();
-        _staleOptionsRecoveryAttemptedPromptIds.clear();
-        _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
-      }
       if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
         final results = await Future.wait([
           for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
@@ -2240,8 +2238,16 @@ class SessionDetailCubit(
       return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);
-      return const SessionAbortOutcome.aborted();
+      return const SessionAbortOutcome.failed();
     }
+  }
+
+  void _clearLocalPromptQueue() {
+    if (_promptQueue.isEmpty && !_promptQueue.isSending && _promptQueue.awaitingBridge.isEmpty) return;
+    _promptQueue.clear();
+    _staleOptionsRecoveryAttemptedPromptIds.clear();
+    final current = state;
+    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {

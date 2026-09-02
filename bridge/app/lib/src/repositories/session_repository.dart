@@ -975,7 +975,7 @@ class SessionRepository({
       sessionId: binding.backendSessionId,
       subAgents: subAgents.toPlugin(),
     )) {
-      PluginAbortAccepted() => const SessionAborted(),
+      PluginAbortAccepted(:final workKept) => SessionAborted(workKept: workKept),
       final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
     },
   );

@@ -8,9 +8,10 @@ import "package:theme_prego/module_prego.dart";
 /// Stops the session, asking for scope when the bridge refuses a plain stop
 /// because sub-agents are still running.
 ///
-/// The first request is a side-effect-free `confirm` probe. On rejection the
-/// dialog offers "main agent only" (only while the main agent runs) and "stop
-/// everything"; dismissing it leaves everything running.
+/// The first request is a `confirm` probe: with no sub-agents running the
+/// bridge performs it as a plain stop, and only a rejection is side-effect
+/// free. On rejection the dialog offers "main agent only" (only while the main
+/// agent runs) and "stop everything"; dismissing it leaves everything running.
 Future<void> stopSessionWithScope({required BuildContext context, required SessionDetailCubit cubit}) async {
   final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
   if (outcome case SessionAbortRejected(:final rejection) when context.mounted) {
@@ -41,6 +42,6 @@ Future<void> stopSessionWithScope({required BuildContext context, required Sessi
         ],
       ),
     );
-    if (policy != null) await cubit.abort(subAgents: policy);
+    if (policy != null && context.mounted) await cubit.abort(subAgents: policy);
   }
 }

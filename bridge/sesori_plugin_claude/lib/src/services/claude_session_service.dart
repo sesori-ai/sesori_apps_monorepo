@@ -484,11 +484,11 @@ final class ClaudeSessionService({
   /// tears the process down, cancelling every task with it.
   Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
-    if (state == null) return const PluginAbortAccepted();
+    if (state == null) return const PluginAbortAccepted(workKept: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
       await activeAbort.future;
-      return const PluginAbortAccepted();
+      return const PluginAbortAccepted(workKept: false);
     }
     final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
     if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
@@ -499,7 +499,7 @@ final class ClaudeSessionService({
     }
     if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return const PluginAbortAccepted();
+      return const PluginAbortAccepted(workKept: false);
     }
     final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
     final aborting = Completer<void>();
@@ -516,8 +516,14 @@ final class ClaudeSessionService({
         // The process stays resident for its tasks; the interrupted turn's own
         // result settles the pending/self-started turn through the normal path
         // and the running set keeps the session busy until the tasks report.
-        await _processes.interrupt(sessionId: sessionId);
-        return const PluginAbortAccepted();
+        try {
+          await _processes.interrupt(sessionId: sessionId);
+          return const PluginAbortAccepted(workKept: true);
+        } on Object catch (error, stack) {
+          // A process that will not take the interrupt cannot be trusted to keep
+          // anything; fall through to the full teardown below.
+          Log.w("[claude] interrupt failed for $sessionId; stopping everything", error, stack);
+        }
       }
       // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
       // not rearm it, so a pending wakeup cannot survive an abort.
@@ -538,7 +544,7 @@ final class ClaudeSessionService({
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
       }
-      return const PluginAbortAccepted();
+      return const PluginAbortAccepted(workKept: false);
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();

@@ -618,7 +618,7 @@ class OpenCodePlugin._({
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     await _abortSession(sessionId: sessionId);
-    return const PluginAbortAccepted();
+    return const PluginAbortAccepted(workKept: false);
   }
 
   Future<void> _abortSession({required String sessionId}) {

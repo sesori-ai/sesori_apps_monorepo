@@ -400,7 +400,7 @@ final class PiPlugin._({
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     await _sessionService.abort(sessionId: sessionId);
-    return const PluginAbortAccepted();
+    return const PluginAbortAccepted(workKept: false);
   }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) =>
