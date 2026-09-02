@@ -7,7 +7,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../api/session_api.dart" show SessionAbortApiRejectedException;
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
@@ -21,6 +20,7 @@ import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -2234,7 +2234,7 @@ class SessionDetailCubit(
       }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
-    } on SessionAbortApiRejectedException catch (e) {
+    } on SessionAbortRejectedException catch (e) {
       return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
       loge("Failed to abort session(s)", e, st);

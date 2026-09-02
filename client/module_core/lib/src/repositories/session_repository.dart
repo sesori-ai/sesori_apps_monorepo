@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
 import "models/session_options_repository_result.dart";
 
@@ -60,9 +61,19 @@ class SessionRepository({
     }
   }
 
-  /// Propagates [SessionAbortApiRejectedException] for a refused `confirm`.
-  Future<ApiResponse<void>> abortSession({required String sessionId, required SessionAbortSubAgentPolicy subAgents}) {
-    return _api.abortSession(sessionId: sessionId, subAgents: subAgents);
+  /// Throws [SessionAbortRejectedException] for a refused `confirm`.
+  Future<ApiResponse<void>> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) async {
+    try {
+      return await _api.abortSession(sessionId: sessionId, subAgents: subAgents);
+    } on SessionAbortApiRejectedException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        SessionAbortRejectedException(rejection: error.rejection, innerError: error),
+        stackTrace,
+      );
+    }
   }
 
   Future<ApiResponse<void>> markSessionSeen({required String sessionId, required bool read}) {

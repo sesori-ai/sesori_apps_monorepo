@@ -368,6 +368,13 @@
   `childSessionId`; now a sealed type with `ClaudeTrackedToolCall` and
   `ClaudeTrackedTask` (the latter owns `childSessionId`). Layering, boundary
   parsing, and the recorded refinements passed; not re-reviewed.
+- **Step 6 `architecture-implementation-review` (sub-agent, 2026-09-02), scope
+  branch vs `origin/main`: rejected with one finding, applied:** the cubit
+  imported and caught the API-layer `SessionAbortApiRejectedException`; the
+  client `SessionRepository` now translates it into a repository-owned
+  `SessionAbortRejectedException` (with `innerError`, mirroring the cleanup
+  path) and the cubit depends only on that. Shared, bridge, plugin, and Claude
+  layering passed; not re-reviewed.
 - **Step 5 `architecture-implementation-review` (sub-agent, 2026-09-02), scope
   branch vs `origin/main`: approved, no findings; its out-of-scope note about
   two unused `sessionId` parameters on the dispatcher task mappers was applied.**
