@@ -890,7 +890,7 @@
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionListArchiveConfirmTitle": "Archive session?",
-  "sessionListArchiveConfirmMessage": "Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.",
+  "sessionListArchiveConfirmMessage": "Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.",
   "sessionListArchiveConfirmAction": "Archive",
   "sessionListForceDeleteTitle": "Force delete?",
   "sessionListForceArchiveTitle": "Force archive?",
