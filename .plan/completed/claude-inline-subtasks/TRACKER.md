@@ -4,13 +4,14 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 7/8 merged, including the L4-found fix
+- **Series state:** all eight steps merged, including the L4-found fix
   [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  Step 8/8 (retire) in PR
-- **Next action:** merge the Step 8/8 retirement PR; harness follow-ups
-  (Codex, Grok, DeepSeek, Cursor tile-only) are tracked in the capability matrix
+  the series is retired
+- **Next action:** deliver the harness follow-ups in `HARNESS_FOLLOWUPS.md`
+  (Codex, Grok Build, DeepSeek) as parallel PR chains under this slug without
+  step counters; E2E testing happens after each merge
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -145,8 +146,35 @@
 | [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
 | [x] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) merged |
 | [x] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | [PR #1254](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1254) merged |
-| [x] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) |
-| [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | In PR |
+| [x] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) merged |
+| [x] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | [PR #1259](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1259) merged |
+
+## Harness Follow-Ups
+
+Designs live in `HARNESS_FOLLOWUPS.md`. The three chains are independent and
+run in parallel; the Grok chain introduces the shared ACP seams that the
+DeepSeek chain reuses, so the DeepSeek tile PR lands after the Grok lifecycle
+PRs. Live probes are recorded here as bounded facts before each chain's first
+implementation PR. E2E testing is performed after each PR merges.
+
+| Done | Harness | Description | State |
+|---|---|---|---|
+| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, and DeepSeek sub-agent follow-ups` | In PR |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | Not started |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | Not started |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | Not started |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
+| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | Not started |
+| [ ] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | Not started |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
+| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Not started |
 
 ## Step 1 Checklist
 
