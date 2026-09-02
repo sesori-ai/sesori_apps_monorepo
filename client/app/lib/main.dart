@@ -325,6 +325,9 @@ class const SesoriApp({
             initialMode: initialChatInputMode,
           ),
         ),
+        BlocProvider<CreatorRecordingCubit>(
+          create: (_) => CreatorRecordingCubit(service: getIt<CreatorRecordingService>()),
+        ),
       ],
       child: const _SesoriAppShell(),
     );
