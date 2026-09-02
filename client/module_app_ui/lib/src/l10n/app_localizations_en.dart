@@ -1567,7 +1567,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListArchiveConfirmMessage =>
-      'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.';
+      'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';
