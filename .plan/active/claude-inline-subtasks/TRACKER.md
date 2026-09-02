@@ -4,7 +4,7 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 6/8 merged; Step 7/8 (regression docs) in PR
+- **Series state:** Steps 1/8 to 6/8 merged; Step 7/8 (regression docs) PR [#1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) open
   (branch `claude-inline-subtasks-regression-docs`)
 - **Next action:** merge Step 7/8, then Step 8/8 (run the L4 matrix, retire)
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
@@ -141,7 +141,7 @@
 | [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
 | [x] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) merged |
 | [x] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | [PR #1254](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1254) merged |
-| [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | In PR |
+| [ ] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) open |
 | [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | Pending |
 
 ## Step 1 Checklist
