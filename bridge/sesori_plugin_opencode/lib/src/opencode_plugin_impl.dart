@@ -616,49 +616,9 @@ class OpenCodePlugin._({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async {
-    final tracker = _service.tracker;
-    final children = tracker.activeChildSessionIds(rootId: sessionId);
-    final mainAgentRunning = tracker.isTurnRunning(sessionId: sessionId);
-    if (children.isNotEmpty) {
-      switch (subAgents) {
-        case PluginAbortSubAgentPolicy.confirm:
-          return PluginAbortRejectedSubAgentsRunning(
-            runningSubAgentCount: children.length,
-            mainAgentRunning: mainAgentRunning,
-            // Aborting the root cancels the task tool and with it a foreground
-            // child, so the main agent cannot be stopped on its own.
-            mainAgentOnlySupported: false,
-          );
-        case PluginAbortSubAgentPolicy.keep when mainAgentRunning:
-          return PluginAbortRejectedSubAgentsRunning(
-            runningSubAgentCount: children.length,
-            mainAgentRunning: true,
-            mainAgentOnlySupported: false,
-          );
-        case PluginAbortSubAgentPolicy.keep:
-          return const PluginAbortAccepted(workKept: true);
-        case PluginAbortSubAgentPolicy.stop:
-          break;
-      }
-    }
-    // Background children outlive a root abort, so each one is aborted too.
-    await Future.wait([
-      _abortSession(sessionId: sessionId),
-      for (final child in children) _abortSession(sessionId: child),
-    ]);
-    return const PluginAbortAccepted(workKept: false);
-  }
+  }) => _call(() => _service.abortSession(sessionId: sessionId, subAgents: subAgents));
 
-  Future<void> _abortSession({required String sessionId}) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    return _call(
-      () => _service.repository.api.abortSession(
-        sessionId: sessionId,
-        directory: directory,
-      ),
-    );
-  }
+  Future<void> _abortSession({required String sessionId}) => _call(() => _service.abortRoot(sessionId: sessionId));
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) {

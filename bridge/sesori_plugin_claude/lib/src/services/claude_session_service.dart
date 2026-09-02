@@ -511,7 +511,7 @@ final class ClaudeSessionService({
     // (observed on 2.1.257), so sub-agents can be kept only when no main turn
     // needs interrupting; a `keep` during a live main turn is refused so the
     // caller learns the scope cannot be honored instead of losing the work.
-    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
+    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && runningSubAgents > 0;
     if (keepTasks && (state.pending > 0 || state.selfStartedTurn != null)) {
       return PluginAbortRejectedSubAgentsRunning(
         runningSubAgentCount: runningSubAgents,

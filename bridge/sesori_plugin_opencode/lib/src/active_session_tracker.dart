@@ -338,9 +338,10 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
   bool isTurnRunning({required String sessionId}) =>
       _sessionStatuses.containsKey(sessionId) || _provisionalAcceptedTurnRevisionBySession.containsKey(sessionId);
 
-  /// Direct children of [rootId] that are busy or retrying.
+  /// Direct children of [rootId] with running or waiting work: busy, retrying,
+  /// turn accepted but not yet reported, or pending a question or permission.
   Set<String> activeChildSessionIds({required String rootId}) => {
-    for (final sessionId in _sessionStatuses.keys)
+    for (final sessionId in interruptibleSessionIds)
       if (_sessionParentIds[sessionId] == rootId) sessionId,
   };
 
