@@ -1,9 +1,11 @@
 import "dart:async";
 
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home.dart";
@@ -21,6 +23,23 @@ import "../widgets/desktop_cockpit_shell.dart";
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _desktopSessionNavigatorKey = GlobalKey<NavigatorState>();
+final Completer<void> _desktopRouterReady = Completer<void>();
+bool _desktopRouterReadyScheduled = false;
+
+/// Completes only after the product router has mounted through its first frame.
+Future<void> get desktopRouterReady => _desktopRouterReady.future;
+
+void scheduleDesktopRouterReady() {
+  if (_desktopRouterReady.isCompleted || _desktopRouterReadyScheduled) {
+    return;
+  }
+  _desktopRouterReadyScheduled = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!_desktopRouterReady.isCompleted) {
+      _desktopRouterReady.complete();
+    }
+  });
+}
 
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _newSessionRouteSegment = "new";
@@ -48,6 +67,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
         onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
         onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
+        onRecoverBridge: _recoverDesktopCockpitConnection,
         child: child,
       ),
     ),
@@ -187,9 +207,9 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                         sessionId: route.sessionId,
                         sessionTitle: route.sessionTitle,
                         readOnly: route.readOnly,
-                        onBack: () => _goRoute(
+                        onBack: () => _popRouteOrGo(
                           context: context,
-                          route: AppRoute.sessions(
+                          fallback: AppRoute.sessions(
                             projectId: route.projectId,
                             projectName: route.projectName,
                           ),
@@ -361,6 +381,19 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
       projectName: routeState.uri.queryParameters[projectNameQueryParam],
     ),
   );
+}
+
+Future<void> _recoverDesktopCockpitConnection({required BuildContext context}) => recoverDesktopConnection(
+  bridgeControlCubit: context.read<BridgeControlCubit>(),
+  reconnectRelay: () => _reconnectDesktopRelay(connectionService: getIt<ConnectionService>()),
+);
+
+Future<void> _reconnectDesktopRelay({required ConnectionService connectionService}) async {
+  if (connectionService.currentStatus is ConnectionDisconnected) {
+    await connectionService.connectWithFreshAuthToken();
+    return;
+  }
+  await connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
 }
 
 void _goDesktopHome() {

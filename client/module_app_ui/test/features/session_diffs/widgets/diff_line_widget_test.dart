@@ -164,7 +164,7 @@ void main() {
       expect(scrollFinder, findsNothing);
     });
 
-    testWidgets("renders diff content inside a native selection area", (tester) async {
+    testWidgets("does not isolate content in a per-line selection area", (tester) async {
       const vm = DiffLineViewModel(
         line: DiffLine(
           type: DiffLineType.context,
@@ -178,7 +178,7 @@ void main() {
 
       expect(
         find.ancestor(of: find.text("selectable source"), matching: find.byType(SelectionArea)),
-        findsOneWidget,
+        findsNothing,
       );
     });
 

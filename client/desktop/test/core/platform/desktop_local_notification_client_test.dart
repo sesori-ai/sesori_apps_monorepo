@@ -58,6 +58,31 @@ void main() {
     verify(plugin.getNotificationAppLaunchDetails).called(1);
   });
 
+  test("retries initialization after a native failure", () async {
+    var attempts = 0;
+    when(
+      () => plugin.initialize(
+        settings: any(named: "settings"),
+        onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+      ),
+    ).thenAnswer((_) async {
+      if (attempts++ == 0) {
+        throw StateError("native initialization failed");
+      }
+      return true;
+    });
+
+    await expectLater(client.initialize(), throwsStateError);
+    await client.initialize();
+
+    verify(
+      () => plugin.initialize(
+        settings: any(named: "settings"),
+        onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+      ),
+    ).called(2);
+  });
+
   test("consumes one typed open request from notification launch details", () async {
     when(plugin.getNotificationAppLaunchDetails).thenAnswer(
       (_) async => NotificationAppLaunchDetails(

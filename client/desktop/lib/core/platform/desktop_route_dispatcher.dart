@@ -1,22 +1,25 @@
 import "dart:async";
 
-import "package:flutter/widgets.dart";
+import "package:flutter/foundation.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-/// Desktop implementation of typed route-stack replacement requests.
+/// Desktop product-shell adapter for typed route-stack replacement requests.
+///
+/// The shell injects both its concrete router and its mounted-readiness fence;
+/// shared core code sees only [RouteDispatcher] and [RouteStack].
 class DesktopRouteDispatcher implements RouteDispatcher {
   final void Function(String route) _goRoute;
   final Future<void> Function(String route) _pushRoute;
   final Future<void> _routerReady;
   Future<void> _pendingReplace = Future<void>.value();
 
-  new({required GoRouter router})
+  new({required GoRouter router, required Future<void> routerReady})
     // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
     : _goRoute = router.go,
       // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
       _pushRoute = ((route) => router.push<void>(route)),
-      _routerReady = WidgetsBinding.instance.endOfFrame;
+      _routerReady = routerReady;
 
   @visibleForTesting
   new test({

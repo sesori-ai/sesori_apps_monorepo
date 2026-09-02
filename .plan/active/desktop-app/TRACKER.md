@@ -119,14 +119,16 @@ copied. The user accepted Gate B and explicitly authorized Step 14 on
   1,200-line soft target; accepted deviation for the two shared presentation
   moves, two desktop routes, shell composition, tests, review fixes, and
   required regression/evidence updates.
-- **Step 20:** rename-aware changed lines against merged Step 19:
-  `git diff --numstat --find-renames origin/main | awk '{ additions += $1;
-  deletions += $2 } END { print additions, deletions, additions + deletions }'`
-  = `3734 additions / 369 deletions / 4103 total`; copy-aware =
-  `3690 additions / 384 deletions / 4074 total`. This is 2,403 lines above
-  the plan's ~1,700-line expected overage. Of the rename-aware total, 1,748
-  lines are tests, 144 are generated, 196 are plan/regression documentation,
-  and 2,015 are production. The accepted deviation covers the five specified
+- **Step 20:** rename-aware changed lines against the stable merged Step 19 base:
+  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD |
+  awk '{ additions += $1; deletions += $2 } END { print additions, deletions,
+  additions + deletions }'`
+  = `4391 additions / 402 deletions / 4793 total`; copy-aware =
+  `4349 additions / 419 deletions / 4768 total`. This is 3,093 lines above
+  the plan's ~1,700-line expected overage. Of the rename-aware total, 2,117
+  lines are tests, 145 are generated, 210 are plan/regression documentation,
+  and 2,321 are production. The accepted deviation covers the five specified
   implementation areas—window seams/persistence, local attention, cockpit and
   split routing, keyboard/selection policy, and cross-shell notification
-  contracts—plus architecture-review fixes and direct coverage for all three.
+  contracts—plus architecture-review and PR-feedback fixes with direct race,
+  routing, and interaction coverage.

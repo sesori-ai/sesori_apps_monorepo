@@ -12,7 +12,10 @@ import "core/routing/desktop_router.dart";
 Future<void> main(List<String> arguments) async {
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
-  configureDesktopDependencies(router: desktopRouter);
+  configureDesktopDependencies(
+    router: desktopRouter,
+    routerReady: desktopRouterReady,
+  );
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;

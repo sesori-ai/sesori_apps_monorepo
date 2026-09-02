@@ -34,7 +34,10 @@ void main() {
   });
 
   test("4-phase DI bootstrap lets LoginCubit be constructed with no missing registrations", () async {
-    configureDesktopDependencies(router: desktopRouter);
+    configureDesktopDependencies(
+      router: desktopRouter,
+      routerReady: Future<void>.value(),
+    );
     getIt.unregister<SecureStorage>();
     getIt.registerLazySingleton<SecureStorage>(_InMemorySecureStorage.new);
 
@@ -83,7 +86,10 @@ void main() {
   });
 
   test("desktop bootstrap resolves the complete image dependency graph", () {
-    configureDesktopDependencies(router: desktopRouter);
+    configureDesktopDependencies(
+      router: desktopRouter,
+      routerReady: Future<void>.value(),
+    );
 
     expect(getIt<ComposerImagePicker>(), isA<DesktopComposerImagePicker>());
     expect(getIt<ComposerAttachmentDispatcher>(), isA<ComposerAttachmentDispatcher>());

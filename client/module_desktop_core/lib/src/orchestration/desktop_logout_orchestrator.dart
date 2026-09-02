@@ -9,6 +9,7 @@ import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/control_channel_server.dart";
 import "../services/bridge_process_service.dart";
 import "../services/control_command_service.dart";
+import "../services/desktop_attention_service.dart";
 import "../services/desktop_instance_service.dart";
 import "../trackers/bridge_status_tracker.dart";
 import "../trackers/desktop_logout_tracker.dart";
@@ -36,6 +37,7 @@ class DesktopLogoutOrchestrator({
   required final BridgeStatusTracker statusTracker,
   required final DesktopLogoutTracker logoutTracker,
   required final ProductAnalyticsService productAnalyticsService,
+  required final DesktopAttentionService attentionService,
   required final NotificationCanceller notificationCanceller,
   required final AuthSession authSession,
 }) {
@@ -48,6 +50,7 @@ class DesktopLogoutOrchestrator({
   final BridgeStatusTracker _statusTracker = statusTracker;
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
   final ProductAnalyticsService _productAnalyticsService = productAnalyticsService;
+  final DesktopAttentionService _attentionService = attentionService;
   final NotificationCanceller _notificationCanceller = notificationCanceller;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
@@ -58,9 +61,13 @@ class DesktopLogoutOrchestrator({
       return existing;
     }
     _logoutTracker.markInProgress();
-    final Future<DesktopLogoutOutcome> rawOperation = _performLogout();
+    final attentionSettlement = _attentionService.suspendForLogout();
+    final Future<DesktopLogoutOutcome> rawOperation = _performLogout(
+      attentionSettlement: attentionSettlement,
+    );
     late final Future<DesktopLogoutOutcome> operation;
     operation = rawOperation.whenComplete(() {
+      _attentionService.resumeAfterLogoutAttempt();
       _logoutTracker.markIdle();
       if (identical(_activeLogout, operation)) {
         _activeLogout = null;
@@ -70,7 +77,7 @@ class DesktopLogoutOrchestrator({
     return operation;
   }
 
-  Future<DesktopLogoutOutcome> _performLogout() async {
+  Future<DesktopLogoutOutcome> _performLogout({required Future<void> attentionSettlement}) async {
     _instanceService.cancelPendingBridgeRestore();
     try {
       await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
@@ -133,6 +140,7 @@ class DesktopLogoutOrchestrator({
       logw("Failed to prepare product analytics for desktop logout", error, stackTrace);
     }
 
+    await attentionSettlement;
     try {
       await _notificationCanceller.cancelAll();
     } on Object catch (error, stackTrace) {

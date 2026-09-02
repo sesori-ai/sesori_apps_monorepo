@@ -14,6 +14,13 @@ const _user = AuthUser(
   providerUsername: "alex",
 );
 
+const _otherUser = AuthUser(
+  id: "user-2",
+  provider: AuthProvider.github,
+  providerUserId: "provider-user-2",
+  providerUsername: "sam",
+);
+
 const _session = Session(
   id: "session-root",
   pluginId: "pi",
@@ -70,6 +77,7 @@ void main() {
     );
     when(localNotificationClient.initialize).thenAnswer((_) async {});
     when(localNotificationClient.getInitialNotificationOpen).thenAnswer((_) async => null);
+    when(localNotificationClient.cancelAll).thenAnswer((_) async {});
     when(() => localNotificationClient.notificationOpenedStream).thenAnswer((_) => notificationOpens.stream);
     when(() => authSession.currentState).thenAnswer((_) => authStates.value);
     when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
@@ -249,6 +257,95 @@ void main() {
     );
   });
 
+  test("a resolved request cannot reappear after its title lookup completes", () async {
+    final response = Completer<ApiResponse<Session>>();
+    when(() => sessionRepository.getSession(sessionId: "session-root")).thenAnswer((_) => response.future);
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    connectionEvents.add(_permissionReplied(requestId: "permission-1"));
+    response.complete(ApiResponse<Session>.success(_session));
+    await _flushAsync();
+
+    verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
+    verifyNever(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    );
+  });
+
+  test("resolution waits for a started native alert before cancelling it", () async {
+    final nativeWrite = Completer<void>();
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    ).thenAnswer((_) => nativeWrite.future);
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    await _flushAsync();
+    connectionEvents.add(_permissionReplied(requestId: "permission-1"));
+    await _flushAsync();
+    verifyNever(() => localNotificationClient.cancelForSession(sessionId: "session-root"));
+
+    nativeWrite.complete();
+    await _flushAsync();
+    verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
+  });
+
+  test("keeps a session alert until its last outstanding request resolves", () async {
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    ).thenAnswer((_) async {});
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    connectionEvents.add(_questionAsked());
+    await _flushAsync();
+    connectionEvents.add(_permissionReplied(requestId: "permission-1"));
+    await _flushAsync();
+
+    verifyNever(() => localNotificationClient.cancelForSession(sessionId: "session-root"));
+
+    connectionEvents.add(
+      SseEvent(
+        data: const SesoriSseEvent.questionRejected(
+          requestID: "question-1",
+          sessionID: "session-child",
+          displaySessionId: "session-root",
+        ),
+      ),
+    );
+    await _flushAsync();
+
+    verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
+  });
+
   test("resolved requests cancel the display session notification", () async {
     await service.start();
 
@@ -261,6 +358,7 @@ void main() {
         ),
       ),
     );
+    await _flushAsync();
 
     verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
   });
@@ -283,6 +381,116 @@ void main() {
       ),
     ).called(1);
     verify(localNotificationClient.cancelAll).called(1);
+  });
+
+  test("authentication loss clears alerts and rejects their later opens", () async {
+    await service.start();
+
+    authStates.add(const AuthState.unauthenticated());
+    await _flushAsync();
+    notificationOpens.add(
+      const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-root",
+        sessionTitle: "Fix the build",
+      ),
+    );
+    authStates.add(const AuthState.authenticated(user: _otherUser));
+    await _flushAsync();
+
+    verify(localNotificationClient.cancelAll).called(1);
+    verifyNever(() => windowHost.show());
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
+  });
+
+  test("authentication cleanup fences and then restores new-account attention", () async {
+    final oldAccountWrite = Completer<void>();
+    final operations = <String>[];
+    var showCalls = 0;
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    ).thenAnswer((_) {
+      showCalls++;
+      if (showCalls == 1) {
+        operations.add("show-account-a");
+        return oldAccountWrite.future;
+      }
+      operations.add("show-account-b");
+      return Future<void>.value();
+    });
+    when(localNotificationClient.cancelAll).thenAnswer((_) async => operations.add("cancel-account-a"));
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    await _flushAsync();
+    authStates.add(const AuthState.unauthenticated());
+    await _flushAsync();
+    authStates.add(const AuthState.authenticated(user: _otherUser));
+    await _flushAsync();
+    connectionEvents.add(_questionAsked());
+    await _flushAsync();
+
+    expect(operations, <String>["show-account-a"]);
+
+    oldAccountWrite.complete();
+    await pumpEventQueue(times: 20);
+
+    expect(
+      operations,
+      <String>["show-account-a", "cancel-account-a", "show-account-b"],
+    );
+  });
+
+  test("logout suspension waits for native writes and fences later alerts", () async {
+    final nativeWrite = Completer<void>();
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    ).thenAnswer((_) => nativeWrite.future);
+    await service.start();
+    connectionEvents.add(_permissionAsked());
+    await _flushAsync();
+
+    var settled = false;
+    final settlement = service.suspendForLogout();
+    unawaited(settlement.then((_) => settled = true));
+    await _flushAsync();
+    expect(settled, isFalse);
+
+    connectionEvents.add(_questionAsked());
+    nativeWrite.complete();
+    await settlement;
+    await _flushAsync();
+
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+      ),
+    ).called(1);
   });
 
   test("notification opens focus the window and replace the session stack", () async {
@@ -347,6 +555,17 @@ SseEvent _permissionAsked() {
       displaySessionId: "session-root",
       tool: "secret-tool-name",
       description: "sensitive permission payload",
+    ),
+  );
+}
+
+SseEvent _permissionReplied({required String requestId}) {
+  return SseEvent(
+    data: SesoriSseEvent.permissionReplied(
+      requestID: requestId,
+      sessionID: "session-child",
+      displaySessionId: "session-root",
+      reply: "once",
     ),
   );
 }

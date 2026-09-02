@@ -33,8 +33,6 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
     if (_initialized) {
       return;
     }
-    _initialized = true;
-
     // The Linux implementation does not expose application-launch details.
     // Notification clicks still arrive through the initialized response stream.
     final launchDetails = defaultTargetPlatform == TargetPlatform.linux
@@ -51,6 +49,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
       ),
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
+    _initialized = true;
   }
 
   @override

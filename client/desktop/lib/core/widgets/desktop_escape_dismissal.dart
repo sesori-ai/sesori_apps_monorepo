@@ -33,8 +33,10 @@ class const DesktopEscapeDismissal({super.key, required final Widget child}) ext
 
     final route = ModalRoute.of(focusContext);
     final navigator = route?.navigator;
-    if (route is PopupRoute<void> && route.isCurrent && navigator != null) {
+    if (route != null && _isPopupRoute(route: route) && route.isCurrent && navigator != null) {
       navigator.maybePop();
     }
   }
 }
+
+bool _isPopupRoute<T>({required Route<T> route}) => route is PopupRoute<T>;

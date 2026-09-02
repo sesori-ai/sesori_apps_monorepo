@@ -12,6 +12,7 @@ void main() {
   late _MockControlCommandService controlCommandService;
   late _MockBridgeRepository bridgeRepository;
   late _MockProductAnalyticsService productAnalyticsService;
+  late _MockDesktopAttentionService attentionService;
   late _MockNotificationCanceller notificationCanceller;
   late _MockAuthSession authSession;
   late _MockDesktopInstanceService instanceService;
@@ -27,6 +28,9 @@ void main() {
     productAnalyticsService = _MockProductAnalyticsService();
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
+    attentionService = _MockDesktopAttentionService();
+    when(attentionService.suspendForLogout).thenAnswer((_) async {});
+    when(attentionService.resumeAfterLogoutAttempt).thenReturn(null);
     notificationCanceller = _MockNotificationCanceller();
     when(notificationCanceller.cancelAll).thenAnswer((_) async {});
     authSession = _MockAuthSession();
@@ -46,6 +50,7 @@ void main() {
       statusTracker: statusTracker,
       logoutTracker: logoutTracker,
       productAnalyticsService: productAnalyticsService,
+      attentionService: attentionService,
       notificationCanceller: notificationCanceller,
       authSession: authSession,
     );
@@ -290,6 +295,28 @@ void main() {
     ]);
   });
 
+  test("waits for in-flight alerts before notification cleanup and credential clearing", () async {
+    final settlement = Completer<void>();
+    when(attentionService.suspendForLogout).thenAnswer((_) => settlement.future);
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final outcomeFuture = orchestrator.logoutCurrentDevice();
+    await pumpEventQueue();
+
+    verifyNever(notificationCanceller.cancelAll);
+    verifyNever(() => authSession.logoutCurrentDevice());
+
+    settlement.complete();
+    expect(await outcomeFuture, DesktopLogoutOutcome.completed);
+    verifyInOrder([
+      attentionService.suspendForLogout,
+      notificationCanceller.cancelAll,
+      () => authSession.logoutCurrentDevice(),
+      attentionService.resumeAfterLogoutAttempt,
+    ]);
+  });
+
   test("notification cleanup failure does not prevent local logout", () async {
     when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(notificationCanceller.cancelAll).thenThrow(StateError("native notifications unavailable"));
@@ -324,6 +351,8 @@ class _MockControlCommandService() extends Mock implements ControlCommandService
 class _MockBridgeRepository() extends Mock implements BridgeRepository;
 
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
+
+class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
 
 class _MockNotificationCanceller() extends Mock implements NotificationCanceller;
 

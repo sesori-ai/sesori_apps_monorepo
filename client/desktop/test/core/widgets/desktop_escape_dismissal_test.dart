@@ -4,7 +4,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 
 void main() {
-  testWidgets("Escape dismisses a popup route", (tester) async {
+  testWidgets("Escape dismisses a non-void popup route", (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         builder: (context, child) => DesktopEscapeDismissal(child: child ?? const SizedBox.shrink()),
@@ -12,7 +12,7 @@ void main() {
           builder: (context) => Scaffold(
             body: FilledButton(
               autofocus: true,
-              onPressed: () => showDialog<void>(
+              onPressed: () => showDialog<String>(
                 context: context,
                 builder: (context) => const AlertDialog(
                   title: Text("Confirm action"),

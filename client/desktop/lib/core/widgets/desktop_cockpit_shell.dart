@@ -12,6 +12,7 @@ class const DesktopCockpitShell({
   required final VoidCallback onOpenBridge,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
+  required final Future<void> Function({required BuildContext context}) onRecoverBridge,
   required final Widget child,
 }) extends StatelessWidget {
   static const double _extendedBreakpoint = 1120;
@@ -62,7 +63,9 @@ class const DesktopCockpitShell({
               Expanded(
                 child: Column(
                   children: [
-                    const DesktopSupervisionNotice(),
+                    DesktopSupervisionNotice(
+                      onRecoverBridge: () => onRecoverBridge(context: context),
+                    ),
                     Expanded(child: child),
                   ],
                 ),
@@ -83,7 +86,10 @@ enum DesktopCockpitDestination() {
 }
 
 /// Exceptional bridge states shown above every cockpit destination.
-class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
+class const DesktopSupervisionNotice({
+  super.key,
+  required final Future<void> Function() onRecoverBridge,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeControlCubit>().state;
@@ -95,7 +101,7 @@ class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
         icon: TablerRegular.user_exclamation,
         message: "Your Sesori account is required before the local bridge can start.",
         primaryLabel: "Start Bridge",
-        onPrimary: locked ? null : () => unawaited(controls.startBridge()),
+        onPrimary: locked ? null : () => unawaited(onRecoverBridge()),
         secondaryLabel: null,
         onSecondary: null,
         isError: false,
@@ -104,7 +110,7 @@ class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
         icon: TablerRegular.alert_triangle,
         message: "The local bridge stopped after repeated crashes.",
         primaryLabel: "Retry",
-        onPrimary: locked ? null : () => unawaited(controls.startBridge()),
+        onPrimary: locked ? null : () => unawaited(onRecoverBridge()),
         secondaryLabel: "Open Logs",
         onSecondary: () => unawaited(controls.openLogs()),
         isError: true,

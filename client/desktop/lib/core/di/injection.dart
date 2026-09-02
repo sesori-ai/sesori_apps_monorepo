@@ -22,8 +22,10 @@ final GetIt getIt = GetIt.instance;
 // The only eager registration is the shell's own DesktopLifecycleObserver,
 // which must attach its WidgetsBinding observer at startup.
 @InjectableInit()
-void configureDesktopDependencies({required GoRouter router}) {
-  getIt.registerLazySingleton<RouteDispatcher>(() => DesktopRouteDispatcher(router: router));
+void configureDesktopDependencies({required GoRouter router, required Future<void> routerReady}) {
+  getIt.registerLazySingleton<RouteDispatcher>(
+    () => DesktopRouteDispatcher(router: router, routerReady: routerReady),
+  );
   getIt.registerSingleton<AnalyticsRuntimeCapability>(
     const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.unsupportedPlatform),
   );

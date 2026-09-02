@@ -48,45 +48,49 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gutter: single line number
-          Container(
-            color: gutterBg,
-            width: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            alignment: Alignment.centerRight,
-            child: Text(
-              lineNumber != null ? "$lineNumber" : "",
-              style: _monoStyle.copyWith(color: theme.lineNumberText),
+          // Gutter: single line number. Keep source-copy selections free of
+          // presentation-only line numbers.
+          SelectionContainer.disabled(
+            child: Container(
+              color: gutterBg,
+              width: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              alignment: Alignment.centerRight,
+              child: Text(
+                lineNumber != null ? "$lineNumber" : "",
+                style: _monoStyle.copyWith(color: theme.lineNumberText),
+              ),
             ),
           ),
-          // Prefix: +/-/space
-          Container(
-            color: gutterBg,
-            width: 16,
-            padding: const EdgeInsetsDirectional.only(top: 1),
-            alignment: Alignment.center,
-            child: Text(
-              prefix,
-              style: _monoStyle.copyWith(color: theme.prefixText),
+          // Prefix: +/-/space. The marker is visual metadata rather than file
+          // content, so exclude it from a cross-line source selection.
+          SelectionContainer.disabled(
+            child: Container(
+              color: gutterBg,
+              width: 16,
+              padding: const EdgeInsetsDirectional.only(top: 1),
+              alignment: Alignment.center,
+              child: Text(
+                prefix,
+                style: _monoStyle.copyWith(color: theme.prefixText),
+              ),
             ),
           ),
           // Content: wraps naturally
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              child: SelectionArea(
-                child: switch (viewModel.highlightedSpan) {
-                  null => Text(
-                    line.content,
-                    style: _monoStyle.copyWith(color: theme.codeText),
-                    softWrap: true,
-                  ),
-                  final highlightedSpan => Text.rich(
-                    highlightedSpan,
-                    softWrap: true,
-                  ),
-                },
-              ),
+              child: switch (viewModel.highlightedSpan) {
+                null => Text(
+                  line.content,
+                  style: _monoStyle.copyWith(color: theme.codeText),
+                  softWrap: true,
+                ),
+                final highlightedSpan => Text.rich(
+                  highlightedSpan,
+                  softWrap: true,
+                ),
+              },
             ),
           ),
         ],

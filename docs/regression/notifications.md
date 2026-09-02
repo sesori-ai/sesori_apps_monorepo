@@ -31,13 +31,18 @@ and presents it through the desktop OS. Mobile provider delivery through Apple a
 - Foreground rendering needs the category enabled plus title and body; an unknown category and a preference read
   failure both default to enabled. Preferences are per account and cleared on account switch.
 - A notification opened while unauthenticated defers until authentication, then
-  routes to its session; viewing a session cancels its notifications.
+  routes to its session; viewing a session cancels its notifications. Desktop retains this deferral only during initial
+  auth restoration; once an account-ending transition occurs, opens from that account are discarded.
 - Desktop attention listens directly to relay SSE without registering a push token. A permission-asked or
   question-asked event uses `displaySessionId` when present, resolves that session's title/project, and shows only while
-  the desktop window is hidden or unfocused and the desktop-owned switch is enabled. A matching reply or rejection
-  cancels the session-scoped notification. Opening one restores/focuses the window and routes to that session; logout
-  cancels every delivered desktop notification before credentials are cleared. The preference defaults enabled,
-  persists under desktop application data, and disabling it clears already-delivered alerts.
+  the desktop window is hidden or unfocused and the desktop-owned switch is enabled. Requests are tracked independently
+  under the display session: a matching reply or rejection cancels the session-scoped notification only after its last
+  outstanding request settles, and a resolved request cannot reappear after an in-flight title lookup. Opening one
+  restores/focuses the window and routes to that session. Logout waits for already-started alert writes and cancels every
+  delivered desktop notification before credentials are cleared; any other account-ending auth transition clears them
+  as well and fences a newly authenticated account's alerts until that cleanup finishes. The preference defaults
+  enabled, persists under desktop application data, and disabling it clears
+  already-delivered alerts.
 - Desktop local content is limited to the session title plus category-level permission/question copy. It never includes
   prompt, transcript, question, permission-description, or tool payload. A failed title lookup or native notification
   operation is logged and cannot fail session work or desktop startup.
@@ -51,8 +56,8 @@ and presents it through the desktop OS. Mobile provider delivery through Apple a
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
-| L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. Desktop unit/widget coverage: focused/disabled suppression, asked/resolved classification, title lookup, category-only content, deterministic cancellation, persisted toggle, auth-deferred open routing, and logout cancel-all ordering. |
-| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. Desktop client end to end: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
+| L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. Desktop unit/widget coverage: focused/disabled suppression, asked/resolved classification, title lookup, category-only content, multi-request and in-flight cancellation, persisted toggle, auth-deferred open routing, account-ending cleanup, and logout settle-before-cancel ordering. |
+| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
@@ -73,8 +78,9 @@ provider because current payload content leaves the encrypted channel.
 - Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
 - A question is suppressed by an unrelated completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications. Desktop registers a
-  push token, alerts while focused/disabled, leaks request payload content, keeps a resolved alert, or fails to focus and
-  open the display session when clicked.
+  push token, alerts while focused/disabled, leaks request payload content, keeps or recreates a resolved alert, cancels
+  while another display-session request remains pending, carries alerts across an account-ending auth transition, or
+  fails to focus and open the display session when clicked.
 - A disabled category renders in the foreground, an unknown category is dropped, or a send failure surfaces as a
   failed session action.
 - Payload content or routing metadata differs from the current mapping.

@@ -46,9 +46,9 @@ void main() {
   }
 
   test("recovery starts the helper and establishes the relay connection", () async {
-    await recoverDesktopProjectConnection(
+    await recoverDesktopConnection(
       bridgeControlCubit: bridgeControlCubit,
-      projectListCubit: projectListCubit,
+      reconnectRelay: projectListCubit.reconnectBridge,
     );
 
     verify(bridgeControlCubit.startBridge).called(1);

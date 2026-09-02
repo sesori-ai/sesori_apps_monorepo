@@ -26,7 +26,10 @@ void main() {
   });
 
   testWidgets("cold start with no session lands on the login view", (WidgetTester tester) async {
-    configureDesktopDependencies(router: desktopRouter);
+    configureDesktopDependencies(
+      router: desktopRouter,
+      routerReady: desktopRouterReady,
+    );
     // The secure-storage plugin has no platform channel under flutter_test;
     // swap in an in-memory fake so the gate's local-session check completes.
     getIt.unregister<SecureStorage>();
@@ -50,6 +53,7 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
+    await expectLater(desktopRouterReady, completes);
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
