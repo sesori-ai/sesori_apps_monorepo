@@ -508,12 +508,12 @@ final class ClaudeSessionService({
     }
     // The CLI's only stop primitive, `interrupt`, also stops background agents
     // (observed on 2.1.257), so sub-agents can be kept only when no main turn
-    // needs interrupting; a `keep` during a live main turn is a full stop.
-    final keepTasks =
-        subAgents == PluginAbortSubAgentPolicy.keep &&
-        state.runningTaskIds.isNotEmpty &&
-        state.pending == 0 &&
-        state.selfStartedTurn == null;
+    // needs interrupting; a `keep` during a live main turn is refused so the
+    // caller learns the scope cannot be honored instead of losing the work.
+    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && state.runningTaskIds.isNotEmpty;
+    if (keepTasks && (state.pending > 0 || state.selfStartedTurn != null)) {
+      return PluginAbortRejectedSubAgentsRunning(runningSubAgentCount: runningSubAgents, mainAgentRunning: true);
+    }
     final aborting = Completer<void>();
     state.aborting = aborting;
     try {
@@ -724,6 +724,9 @@ final class ClaudeSessionService({
         state.runningTaskIds[taskId] = message.taskType;
       case ClaudeTaskNotificationMessage(taskId: final taskId?):
         state.runningTaskIds.remove(taskId);
+        // A stopped task opens no wake-up turn; if it was the last work, the
+        // session is idle now rather than at some later turn.
+        _settleIdle(sessionId: sessionId, state: state);
       case ClaudeUserMessage(parentToolUseId: null):
         switch (message.toolUseResult) {
           case ClaudeToolUseResultAsyncLaunched(:final agentId):

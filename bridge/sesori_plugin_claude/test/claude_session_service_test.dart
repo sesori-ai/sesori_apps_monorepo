@@ -724,20 +724,18 @@ void main() {
       expect(harness.service.currentWorkState, PluginWorkState.busy);
     });
 
-    test("a keep stop during a live main turn is a full stop: the CLI interrupt would kill the sub-agents", () async {
+    test("a keep stop during a live main turn is refused: the CLI interrupt would kill the sub-agents", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_taskStartedFrame());
+      await pump();
 
-      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
-      final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
-      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isFalse));
-      await harness.waitForIdle();
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
 
-      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
-      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(result, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
     });
 
     test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {
@@ -768,8 +766,11 @@ void main() {
       process.emit({..._taskNotificationFrame(), "status": "stopped"});
       await pump();
 
-      // The task is gone and nothing else runs; the abort must not hang either.
+      // The task is gone and nothing else runs: idle is settled now, and the
+      // abort must not hang either.
       expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
       final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       expect(await abort.timeout(const Duration(seconds: 2)), isA<PluginAbortAccepted>());
     });
