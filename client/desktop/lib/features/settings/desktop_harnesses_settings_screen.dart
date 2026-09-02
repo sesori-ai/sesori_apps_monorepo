@@ -8,6 +8,7 @@ import "../../core/di/injection.dart";
 /// Desktop-shell composition for shared harness management.
 class const DesktopHarnessesSettingsScreen({
   super.key,
+  required final HarnessSettingsPresentation presentation,
   required final VoidCallback onClose,
 }) extends StatelessWidget {
   @override
@@ -19,7 +20,7 @@ class const DesktopHarnessesSettingsScreen({
         catalogRescanService: getIt<CatalogRescanService>(),
       ),
       child: HarnessesSettingsView(
-        presentation: HarnessSettingsPresentation.pushed,
+        presentation: presentation,
         connectionBanner: null,
         onModalClose: onClose,
       ),

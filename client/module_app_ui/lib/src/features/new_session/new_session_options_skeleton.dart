@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../extensions/build_context_x.dart";
 
 /// The new-session options while the bridge is still being asked what it can
 /// run: one shimmering bar per option row, laid out on the rows' own rhythm so

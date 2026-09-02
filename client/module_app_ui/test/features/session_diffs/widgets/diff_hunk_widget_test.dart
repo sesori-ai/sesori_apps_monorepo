@@ -1,9 +1,8 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/src/features/session_diffs/models/diff_file_view_model.dart";
+import "package:sesori_app_ui/src/features/session_diffs/widgets/diff_hunk_widget.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-
-import "package:sesori_mobile/features/session_diffs/models/diff_file_view_model.dart";
-import "package:sesori_mobile/features/session_diffs/widgets/diff_hunk_widget.dart";
 
 void main() {
   Widget buildTestWidget(DiffHunkViewModel viewModel) {

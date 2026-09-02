@@ -879,7 +879,7 @@
   "newSessionNoHarnessTitle": "No coding harness installed",
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
-  "newSessionOptionsRefresh": "Refresh the model list",
+  "newSessionOptionsRefresh": "Refresh options",
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",

@@ -1,12 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:re_highlight/re_highlight.dart';
-import 'package:sesori_app_ui/sesori_app_ui.dart';
+
+import '../../../extensions/text_style_x.dart';
+import '../../../utils/syntax_highlight.dart';
 
 /// Static helper for syntax highlighting diff lines.
 /// Must call [initialize] once before using [highlightLine].
 ///
 /// Shares its grammar set, theme and render mechanics with the whole-block
-/// [CodeHighlighter] via `core/utils/syntax_highlight.dart`. It is kept as a
+/// code highlighting via the shared syntax-highlight utilities. It is kept as a
 /// separate class because diffs are highlighted line-by-line and the grammars
 /// must be registered eagerly up front (never lazily inside an `itemBuilder`),
 /// which gives it the strict init-order contract exercised by its tests.

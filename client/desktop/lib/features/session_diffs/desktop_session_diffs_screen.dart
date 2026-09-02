@@ -5,11 +5,12 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 
-/// Mobile composition boundary for the shared session-diff presentation.
-class const SessionDiffsScreen({
+/// Desktop composition boundary for the shared session-diff presentation.
+class const DesktopSessionDiffsScreen({
   super.key,
   required final String projectId,
   required final String sessionId,
+  required final VoidCallback onBack,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -24,8 +25,9 @@ class const SessionDiffsScreen({
         staleRetryDelay: const Duration(seconds: 5),
       ),
       child: SessionDiffsView(
-        onBack: null,
-        banner: ConnectionBanner.maybeFor(context),
+        onBack: onBack,
+        // The desktop root owns its single connection banner.
+        banner: null,
       ),
     );
   }

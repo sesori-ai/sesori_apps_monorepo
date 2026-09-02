@@ -1,6 +1,6 @@
 import "package:material_ui/material_ui.dart";
 
-import "package:sesori_app_ui/sesori_app_ui.dart";
+import "../../../extensions/build_context_x.dart";
 
 /// Centered error message with a retry button, shown when the diff fails
 /// to load or when diff view-model computation fails.

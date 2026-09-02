@@ -69,8 +69,11 @@ and keep native close/quit behavior safe.
   starts or retries rather than applying toggle semantics, and establishes the
   authenticated desktop relay connection. Session rows open a typed detail
   route that composes the shared transcript, pending interactions, child-session
-  navigation, links, and image actions; unsupported composer and diff controls
-  are omitted. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
+  navigation, links, and image actions. Root active sessions open the shared
+  diff view, and the session list opens shared session creation with plugin,
+  model, command, attachment, and dedicated-workspace options. Desktop supplies
+  text-first composition and omits voice rather than constructing a dead voice
+  capability. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
   progress until that bounded operation settles. The desktop's one app-wide
@@ -162,7 +165,8 @@ the status and bounded recent output.
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
-  typed route data, or unsupported composer/diff controls are rendered.
+  typed route data, New task or file changes cannot reach their typed routes, or
+  desktop renders unsupported voice/attachment controls.
 
 ## Known Limitations
 
@@ -201,6 +205,8 @@ the status and bounded recent output.
 - `client/desktop/lib/features/projects/desktop_project_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
+- `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
+- `client/desktop/lib/features/session_diffs/desktop_session_diffs_screen.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/module_app_ui/lib/src/features/project_list/`
 - `client/module_app_ui/lib/src/features/session_list/`

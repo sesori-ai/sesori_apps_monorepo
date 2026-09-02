@@ -278,7 +278,10 @@ void main() {
 
     await tester.pumpWidget(
       app(
-        child: const DesktopHarnessesSettingsScreen(onClose: _noOp),
+        child: const DesktopHarnessesSettingsScreen(
+          presentation: HarnessSettingsPresentation.pushed,
+          onClose: _noOp,
+        ),
       ),
     );
     pluginSnapshots.add(const PluginManagementLoadResult.supported(response: _pluginResponse, refreshError: null));
