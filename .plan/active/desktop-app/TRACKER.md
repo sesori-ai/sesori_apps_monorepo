@@ -28,7 +28,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 17 | 🚧 Session detail: transcript slice | done |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | done |
 | 19 | ⚙️ Diffs + new-session slice | done |
-| 20 | 🚧 Desktop cockpit composition + attention notifications | in-progress |
+| 20 | 🚧 Desktop cockpit composition + attention notifications | done |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
@@ -119,3 +119,14 @@ copied. The user accepted Gate B and explicitly authorized Step 14 on
   1,200-line soft target; accepted deviation for the two shared presentation
   moves, two desktop routes, shell composition, tests, review fixes, and
   required regression/evidence updates.
+- **Step 20:** rename-aware changed lines against merged Step 19:
+  `git diff --numstat --find-renames origin/main | awk '{ additions += $1;
+  deletions += $2 } END { print additions, deletions, additions + deletions }'`
+  = `3734 additions / 369 deletions / 4103 total`; copy-aware =
+  `3690 additions / 384 deletions / 4074 total`. This is 2,403 lines above
+  the plan's ~1,700-line expected overage. Of the rename-aware total, 1,748
+  lines are tests, 144 are generated, 196 are plan/regression documentation,
+  and 2,015 are production. The accepted deviation covers the five specified
+  implementation areas—window seams/persistence, local attention, cockpit and
+  split routing, keyboard/selection policy, and cross-shell notification
+  contracts—plus architecture-review fixes and direct coverage for all three.
