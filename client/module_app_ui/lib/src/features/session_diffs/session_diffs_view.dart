@@ -1,9 +1,10 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../../extensions/build_context_x.dart";
 
 import "models/diff_file_view_model.dart";
 import "models/diff_view_model_builder.dart";
@@ -11,15 +12,19 @@ import "widgets/diff_error_view.dart";
 import "widgets/diff_file_content_sliver.dart";
 import "widgets/diff_file_header_delegate.dart";
 
-/// Scrollable body of the diff viewer: one pinned sticky header per file
-/// with expandable diff content underneath. Owns the expand/collapse state
-/// and the post-collapse scroll compensation.
-class const SessionDiffsBody({super.key}) extends StatefulWidget {
+/// Shared diff viewer: one pinned sticky header per file with expandable diff
+/// content underneath. Owns the expand/collapse state and post-collapse scroll
+/// compensation while the product shell owns navigation and banner policy.
+class const SessionDiffsView({
+  super.key,
+  required final VoidCallback? onBack,
+  required final Widget? banner,
+}) extends StatefulWidget {
   @override
-  State<SessionDiffsBody> createState() => _SessionDiffsBodyState();
+  State<SessionDiffsView> createState() => _SessionDiffsViewState();
 }
 
-class _SessionDiffsBodyState() extends State<SessionDiffsBody> {
+class _SessionDiffsViewState() extends State<SessionDiffsView> {
   List<DiffFileViewModel>? _viewModels;
   Set<int> _expandedFileIndices = <int>{};
   bool _isComputing = false;
@@ -49,7 +54,8 @@ class _SessionDiffsBodyState() extends State<SessionDiffsBody> {
         return PregoGlassScaffold(
           title: context.loc.diffFileChangesTitle,
           subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
-          banner: ConnectionBanner.maybeFor(context),
+          onBack: widget.onBack,
+          banner: widget.banner,
           // The diff viewer's pinned per-file headers must pin directly below
           // the bar, so the body cannot scroll behind a transparent bar.
           extendBodyBehindBar: false,

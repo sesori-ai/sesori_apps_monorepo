@@ -17,7 +17,6 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
-import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";

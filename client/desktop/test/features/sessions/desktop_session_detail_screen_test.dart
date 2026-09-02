@@ -142,6 +142,7 @@ void main() {
     var imageSaverResolutions = 0;
     var imageClipboardResolutions = 0;
     var imageSharerResolutions = 0;
+    var diffCalls = 0;
 
     await tester.pumpWidget(
       BlocProvider<SessionDetailCubit>.value(
@@ -161,6 +162,7 @@ void main() {
               sessionTitle: "Desktop session",
               readOnly: false,
               onBack: () {},
+              onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               messageImageRepository: () {
                 messageImageRepositoryResolutions++;
@@ -195,6 +197,9 @@ void main() {
     expect(imageSaverResolutions, 0);
     expect(imageClipboardResolutions, 0);
     expect(imageSharerResolutions, 0);
+
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    expect(diffCalls, 1);
 
     await tester.tap(find.text("Follow up..."));
     await tester.pumpAndSettle();
@@ -249,6 +254,7 @@ void main() {
               sessionTitle: "Desktop session",
               readOnly: false,
               onBack: () => backCalls++,
+              onShowDiffs: () {},
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                   openedSession = (
                     projectId: projectId,

@@ -19,6 +19,7 @@ class const DesktopSessionDetailScreen({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
 }) extends StatelessWidget {
   @override
@@ -49,6 +50,7 @@ class const DesktopSessionDetailScreen({
             sessionTitle: sessionTitle,
             readOnly: readOnly,
             onBack: onBack,
+            onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
             messageImageRepository: getIt.get<MessageImageRepository>,
             imageSaver: getIt.get<ImageSaver>,
@@ -69,6 +71,7 @@ class const DesktopSessionDetailView({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
@@ -93,7 +96,7 @@ class const DesktopSessionDetailView({
         readOnly: readOnly,
         banner: null,
         onBack: onBack,
-        onShowDiffs: null,
+        onShowDiffs: onShowDiffs,
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
             SessionDetailComposerControls(
               projectId: projectId,

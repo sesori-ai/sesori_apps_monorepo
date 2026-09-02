@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:sesori_mobile/features/session_diffs/utils/diff_highlighter.dart';
+import 'package:sesori_app_ui/src/features/session_diffs/utils/diff_highlighter.dart';
 
 void main() {
   group('DiffHighlighter', () {

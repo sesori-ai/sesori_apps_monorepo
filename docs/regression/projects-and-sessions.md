@@ -99,8 +99,11 @@ state.
   relay connection. Desktop session rows open the typed session-detail route,
   preserve nullable titles, and let child-session links push another typed
   detail route. Desktop session detail exposes the shared effective text-first
-  composer with declared image attachments while omitting unavailable voice
-  and diff controls. Desktop still exposes no new-session affordance.
+  composer with declared image attachments while omitting unavailable voice.
+  Root, non-archived sessions expose the typed shared diff route, while the
+  session list opens a typed new-session route with shared plugin/model/command
+  and dedicated-workspace options. The desktop shell supplies its native image
+  picker and text-first composer policy without constructing voice capture.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -281,8 +284,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   toggles an already-On desired state to Off instead of retrying start, or
   starts the helper without establishing the desktop relay connection. A
   desktop session row cannot open its typed detail route, child-session
-  navigation loses project/session/read-only identity, or unsupported desktop
-  voice, attachment, or diff controls render as dead actions.
+  navigation loses project/session/read-only identity, the New task or root
+  file-changes action cannot reach its typed route, or desktop renders dead
+  voice/attachment controls instead of honoring declared capabilities.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
@@ -308,9 +312,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 
 ## Known Limitations
 
-- Client end-to-end catalog coverage remains phone-only because desktop does
-  not yet expose session creation or diffs. Desktop does expose project/session
-  inventory plus transcript and effective text-first composer detail.
+- Live client end-to-end catalog coverage remains phone-only. Desktop session
+  creation and diffs have automated shared-view and typed-route coverage but
+  still need a live desktop release exercise.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
@@ -341,7 +345,11 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Client presentation and scanning: `client/module_app_ui/lib/src/features/project_list/`,
   `client/module_app_ui/lib/src/features/session_list/`,
   `client/module_app_ui/lib/src/features/session_detail/`,
+  `client/module_app_ui/lib/src/features/new_session/`,
+  `client/module_app_ui/lib/src/features/session_diffs/`,
   `client/module_app_ui/lib/src/widgets/session_split/`,
+  `client/desktop/lib/features/new_session/`,
+  `client/desktop/lib/features/session_diffs/`,
   `client/desktop/lib/features/sessions/`,
   `client/module_core/lib/src/services/catalog_rescan_service.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
@@ -367,7 +375,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_app_ui/test/features/session_list/`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
   `client/app/test/features/project_list/bridge_offline_view_test.dart`,
-  `client/app/test/features/session_list/session_list_bar_test.dart`, and
+  `client/app/test/features/session_list/session_list_bar_test.dart`,
+  `client/module_app_ui/test/features/session_diffs/`,
+  `client/desktop/test/core/routing/desktop_router_test.dart`,
+  `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`, and
   `client/desktop/test/features/projects/desktop_project_list_screen_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`

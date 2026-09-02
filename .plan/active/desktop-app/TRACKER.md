@@ -27,7 +27,7 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | done |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | done |
-| 19 | ⚙️ Diffs + new-session slice | pending |
+| 19 | ⚙️ Diffs + new-session slice | done |
 | 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
@@ -105,3 +105,11 @@ copied. The user accepted Gate B and explicitly authorized Step 14 on
   This is 429 lines over the 1,500-line soft target; accepted deviation from
   moving the existing composer and its tests into shared presentation while
   adding both shell capability composition and regression coverage.
+- **Step 19:** rename-aware changed lines against the stable pre-step HEAD are
+  `1239 additions / 755 deletions / 1994 total`. The extraction splits the
+  existing 626-line mobile new-session screen into a thin shell wrapper plus a
+  shared view, so Git reports that source twice; adding `--find-copies-harder`
+  yields the review-representative `714 additions / 876 deletions / 1590 total`.
+  This is 390 lines over the 1,200-line soft target; accepted deviation for the
+  two shared presentation moves, two desktop routes, shell composition, tests,
+  and required regression/evidence updates.

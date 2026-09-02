@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
+
+import "../../../extensions/text_style_x.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
