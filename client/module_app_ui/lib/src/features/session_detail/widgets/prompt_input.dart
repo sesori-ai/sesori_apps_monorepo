@@ -1425,6 +1425,7 @@ class _PromptInputState() extends State<PromptInput> {
     final prego = context.prego;
     final loc = context.loc;
     final voiceFirst = _isVoiceFirst;
+    final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
 
     // Voice-first nests the fully-rounded hold pill along the bottom, so the
     // container's bottom corners wrap it: pill radius (22) + padding (6) = 28
@@ -1460,11 +1461,15 @@ class _PromptInputState() extends State<PromptInput> {
                   // API read can lose browser user activation.
                   actions: kIsWeb ? const {} : {PasteTextIntent: _pasteAction},
                   child: CallbackShortcuts(
-                    // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
-                    // plain Enter stays a newline via textInputAction below.
+                    // Mobile retains Cmd/Ctrl+Enter with plain Enter as a
+                    // newline. Desktop additionally binds unmodified Enter;
+                    // Shift+Enter does not match it and reaches the multiline
+                    // field as a newline.
                     bindings: <ShortcutActivator, VoidCallback>{
                       const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
                       const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                      if (sendKeyPolicy == ComposerSendKeyPolicy.enterSends)
+                        const SingleActivator(LogicalKeyboardKey.enter): _handleSend,
                     },
                     child: TextField(
                       controller: _controller,

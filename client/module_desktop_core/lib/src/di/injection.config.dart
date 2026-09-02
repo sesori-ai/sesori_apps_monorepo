@@ -53,6 +53,8 @@ import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
 import 'package:sesori_desktop_core/src/services/control_command_service.dart'
     as _i175;
+import 'package:sesori_desktop_core/src/services/desktop_attention_service.dart'
+    as _i404;
 import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
@@ -158,6 +160,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
+    gh.lazySingleton<_i404.DesktopAttentionService>(
+      () => _i404.DesktopAttentionService(
+        connectionService: gh<_i948.ConnectionService>(),
+        sessionRepository: gh<_i948.SessionRepository>(),
+        localNotificationClient: gh<_i948.LocalNotificationClient>(),
+        windowHost: gh<_i732.WindowHost>(),
+        desktopInstanceRepository: gh<_i210.DesktopInstanceRepository>(),
+        authSession: gh<_i948.AuthSession>(),
+        routeDispatcher: gh<_i948.RouteDispatcher>(),
+        routeSource: gh<_i948.RouteSource>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i1072.BridgeProcessLogRepository>(
       () => _i1072.BridgeProcessLogRepository(
         storage: gh<_i570.BridgeProcessLogStorage>(),
@@ -207,6 +222,7 @@ extension GetItInjectableX on _i174.GetIt {
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
         productAnalyticsService: gh<_i948.ProductAnalyticsService>(),
+        notificationCanceller: gh<_i948.NotificationCanceller>(),
         authSession: gh<_i948.AuthSession>(),
       ),
     );

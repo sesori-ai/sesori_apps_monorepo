@@ -12,6 +12,7 @@ void main() {
   late _MockControlCommandService controlCommandService;
   late _MockBridgeRepository bridgeRepository;
   late _MockProductAnalyticsService productAnalyticsService;
+  late _MockNotificationCanceller notificationCanceller;
   late _MockAuthSession authSession;
   late _MockDesktopInstanceService instanceService;
   late MemoryBridgeIdStorage bridgeIdStorage;
@@ -26,6 +27,8 @@ void main() {
     productAnalyticsService = _MockProductAnalyticsService();
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
+    notificationCanceller = _MockNotificationCanceller();
+    when(notificationCanceller.cancelAll).thenAnswer((_) async {});
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
     instanceService = _MockDesktopInstanceService();
@@ -43,6 +46,7 @@ void main() {
       statusTracker: statusTracker,
       logoutTracker: logoutTracker,
       productAnalyticsService: productAnalyticsService,
+      notificationCanceller: notificationCanceller,
       authSession: authSession,
     );
   });
@@ -273,6 +277,30 @@ void main() {
     ]);
   });
 
+  test("clears delivered notifications before clearing account credentials", () async {
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    verifyInOrder([
+      notificationCanceller.cancelAll,
+      () => authSession.logoutCurrentDevice(),
+    ]);
+  });
+
+  test("notification cleanup failure does not prevent local logout", () async {
+    when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
+    when(notificationCanceller.cancelAll).thenThrow(StateError("native notifications unavailable"));
+    when(() => authSession.logoutCurrentDevice()).thenAnswer((_) async {});
+
+    final DesktopLogoutOutcome outcome = await orchestrator.logoutCurrentDevice();
+
+    expect(outcome, DesktopLogoutOutcome.completed);
+    verify(() => authSession.logoutCurrentDevice()).called(1);
+  });
+
   test("reports a local-session failure and resumes analytics after a successful helper stop", () async {
     when(() => processService.requestStopForLogout()).thenReturn(_unregisterStopRequest());
     when(() => authSession.logoutCurrentDevice()).thenThrow(StateError("secure storage unavailable"));
@@ -282,6 +310,7 @@ void main() {
     expect(outcome, DesktopLogoutOutcome.localSessionClearFailed);
     verifyInOrder([
       productAnalyticsService.prepareForLogout,
+      notificationCanceller.cancelAll,
       () => authSession.logoutCurrentDevice(),
       productAnalyticsService.resumeAfterFailedLogout,
     ]);
@@ -295,6 +324,8 @@ class _MockControlCommandService() extends Mock implements ControlCommandService
 class _MockBridgeRepository() extends Mock implements BridgeRepository;
 
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
+
+class _MockNotificationCanceller() extends Mock implements NotificationCanceller;
 
 class _MockAuthSession() extends Mock implements AuthSession;
 

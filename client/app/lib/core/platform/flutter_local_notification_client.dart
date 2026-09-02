@@ -8,8 +8,6 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "notification_tap_event.dart";
-
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
     return switch (this) {
@@ -99,7 +97,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     try {
-      final tapEvent = NotificationTapEvent.fromJson(jsonDecodeMap(payload));
+      final tapEvent = LocalNotificationPayload.fromJson(jsonDecodeMap(payload));
       final sessionId = tapEvent.sessionId;
       final projectId = tapEvent.projectId;
       if (sessionId == null || projectId == null) {
@@ -147,7 +145,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     final payload = jsonEncode(
-      NotificationTapEvent(
+      LocalNotificationPayload(
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
@@ -174,6 +172,9 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   Future<void> cancel({required int id, required String? tag}) async {
     await _plugin.cancel(id: id, tag: tag);
   }
+
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
 
   @override
   void cancelForSession({required String sessionId}) {
@@ -216,5 +217,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
   }
 
+  @override
+  @disposeMethod
   Future<void> dispose() => _notificationOpenedController.close();
 }

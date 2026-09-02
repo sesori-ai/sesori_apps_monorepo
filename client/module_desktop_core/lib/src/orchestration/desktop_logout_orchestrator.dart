@@ -36,6 +36,7 @@ class DesktopLogoutOrchestrator({
   required final BridgeStatusTracker statusTracker,
   required final DesktopLogoutTracker logoutTracker,
   required final ProductAnalyticsService productAnalyticsService,
+  required final NotificationCanceller notificationCanceller,
   required final AuthSession authSession,
 }) {
   static const Duration _bridgeDeletionTimeout = Duration(seconds: 10);
@@ -47,6 +48,7 @@ class DesktopLogoutOrchestrator({
   final BridgeStatusTracker _statusTracker = statusTracker;
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
   final ProductAnalyticsService _productAnalyticsService = productAnalyticsService;
+  final NotificationCanceller _notificationCanceller = notificationCanceller;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
 
@@ -129,6 +131,14 @@ class DesktopLogoutOrchestrator({
       // Analytics preparation is best effort: it must not trap a user in the
       // signed-in state when preference persistence is unavailable.
       logw("Failed to prepare product analytics for desktop logout", error, stackTrace);
+    }
+
+    try {
+      await _notificationCanceller.cancelAll();
+    } on Object catch (error, stackTrace) {
+      // Notification cleanup is best effort, but must run before account clear
+      // so a delivered alert cannot silently carry into the next account.
+      logw("Failed to clear desktop notifications before logout", error, stackTrace);
     }
 
     try {

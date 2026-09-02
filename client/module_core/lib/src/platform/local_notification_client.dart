@@ -18,4 +18,7 @@ abstract interface class LocalNotificationClient() implements NotificationCancel
     required String? projectId,
     required String? sessionTitle,
   });
+
+  /// Releases platform-client resources and open-event subscriptions.
+  Future<void> dispose();
 }

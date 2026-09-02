@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/di/injection.dart";
 import "core/routing/desktop_router.dart";
+import "core/widgets/desktop_escape_dismissal.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
@@ -111,13 +112,15 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SseToastListener(
-      navigatorKey: navigatorKey,
-      child: Column(
-        children: <Widget>[
-          ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
-          Expanded(child: child),
-        ],
+    return DesktopEscapeDismissal(
+      child: SseToastListener(
+        navigatorKey: navigatorKey,
+        child: Column(
+          children: <Widget>[
+            ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+            Expanded(child: child),
+          ],
+        ),
       ),
     );
   }

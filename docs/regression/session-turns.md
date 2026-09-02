@@ -277,12 +277,18 @@ defaults and queued client sends coherent.
   Markdown blocks contributes exactly one line break regardless of their visual
   spacing, while same-line fragments such as a list bullet and its text retain a
   separating space. Partial selections spanning blocks preserve the same
-  boundary instead of joining paragraphs or adding empty lines.
+  boundary instead of joining paragraphs or adding empty lines. Desktop keeps
+  those native selection/context-menu surfaces. In its inline composer, Enter
+  sends and Shift+Enter inserts a newline; mobile retains plain Enter as newline
+  and Cmd/Ctrl+Enter as the hardware-keyboard send shortcut.
 - Live message envelopes render in transcript timestamp order even when events
   arrive out of order; late envelopes append after existing envelopes with the
   same timestamp rather than reordering an established turn. Finalized parts
   that arrive before their envelope are retained and reconciled without showing
   an empty user bubble or switching the composer to follow-up wording.
+- Desktop Escape first releases an active text editor; otherwise it dismisses
+  only the current popup route. It never turns Escape into ordinary page Back,
+  and a closer surface-specific handler such as the image viewer wins.
 - Transcript content scrolling behind the top navigation or floating composer
   dissolves into a strong surface-colour fade, keeping the title and controls
   visually separate and screenshot-readable without text collisions.
@@ -304,17 +310,17 @@ defaults and queued client sends coherent.
   commands, agent/model selection, abort, and declared image attachments. Each
   shell owns routing, external-link policy, image and keyboard adapters, banners,
   voice capability, and bottom-control composition. Mobile supplies real voice
-  capture and its diff action. Desktop declares voice unsupported and always
-  presents an effective text-first composer even when the saved cross-surface
-  preference is voice-first; it omits both the voice entry and diff action
-  rather than exposing dead controls.
+  capture. Desktop declares voice unsupported and always presents an effective
+  text-first composer even when the saved cross-surface preference is
+  voice-first; it omits the voice entry rather than exposing a dead control,
+  while eligible root sessions retain the shared diff action.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: representative transcript content renders through the shared session-detail view, the desktop session route is present, desktop renders the text-first composer and declared attachment action without resolving voice capture, and desktop omits the diff control. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
+| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
 | L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
@@ -379,7 +385,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   not display.
 - Copied chat text runs headings, paragraphs, list bullets, table cells, or
   separate message parts together, or inserts empty lines based on their visual
-  spacing instead of one structural line break.
+  spacing instead of one structural line break. Desktop Enter inserts a newline,
+  Shift+Enter sends, Escape pops an ordinary cockpit page or bypasses a closer
+  surface handler, or transcript context-menu selection disappears.
 - A cold Pi process exposes a stale default model or thinking level to startup
   extensions instead of the pending turn's selection, or a cold follow-up wakes
   the process but times out in pre-prompt automatic compaction before reaching

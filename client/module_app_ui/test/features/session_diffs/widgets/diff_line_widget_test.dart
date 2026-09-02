@@ -164,6 +164,24 @@ void main() {
       expect(scrollFinder, findsNothing);
     });
 
+    testWidgets("renders diff content inside a native selection area", (tester) async {
+      const vm = DiffLineViewModel(
+        line: DiffLine(
+          type: DiffLineType.context,
+          oldLineNumber: 1,
+          newLineNumber: 1,
+          content: "selectable source",
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget(vm));
+
+      expect(
+        find.ancestor(of: find.text("selectable source"), matching: find.byType(SelectionArea)),
+        findsOneWidget,
+      );
+    });
+
     testWidgets("renders line content text", (tester) async {
       const vm = DiffLineViewModel(
         line: DiffLine(

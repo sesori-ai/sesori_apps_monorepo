@@ -91,14 +91,17 @@ reaches the backend so the turn continues.
   presentation. Opening a session on either surface presents the request over
   that session, sends replies through the owning session cubit, and dismisses it
   when the pending request settles; shell routing must not duplicate or bypass
-  that ownership.
+  that ownership. While the desktop window is hidden or unfocused, the same
+  asked event may produce one local category-only attention alert for the
+  display/root session; reply or rejection cancels it. The alert contains no
+  question, permission description, tool, prompt, or transcript content.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated desktop attention coverage proves hidden/unfocused asked classification, display-session title lookup, privacy-safe copy, focused/disabled suppression, and reply/rejection cancellation. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
@@ -141,7 +144,9 @@ repeat after process restart without enabling approval-bypass launch flags.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
   scope, accepts custom plan-review input, or survives abort/process cleanup.
 - A resolved request stays visible, keeps suppressing notifications, or returns
-  after reconnect.
+  after reconnect. A resolved desktop request leaves its local alert delivered,
+  or an attention alert exposes request payload content or points at a child
+  instead of its display/root session.
 - One failed backend resolution prevents another pending prompt from clearing,
   or a Cursor notification-mapping failure breaks later approval routing.
 - Clearing prompts during a transport drop leaves the plugin reporting idle

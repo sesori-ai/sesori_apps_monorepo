@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/routing/notification_open_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -275,6 +276,9 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
 
   @override
   Future<void> cancelForSession({required String sessionId}) async {}
+
+  @override
+  Future<void> cancelAll() async {}
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() {

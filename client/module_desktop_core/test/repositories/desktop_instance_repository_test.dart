@@ -46,6 +46,22 @@ void main() {
 
     verify(() => storage.writeWindowBounds(bounds: bounds)).called(1);
   });
+
+  test("delegates attention preference persistence to Layer-1 storage", () async {
+    when(
+      () => storage.readAttentionPreference(),
+    ).thenAnswer((_) async => DesktopAttentionPreference.disabled);
+    when(
+      () => storage.writeAttentionPreference(preference: DesktopAttentionPreference.enabled),
+    ).thenAnswer((_) async {});
+
+    expect(await repository.readAttentionPreference(), DesktopAttentionPreference.disabled);
+    await repository.writeAttentionPreference(preference: DesktopAttentionPreference.enabled);
+
+    verify(
+      () => storage.writeAttentionPreference(preference: DesktopAttentionPreference.enabled),
+    ).called(1);
+  });
 }
 
 class _MockDesktopInstanceApi() extends Mock implements DesktopInstanceApi;

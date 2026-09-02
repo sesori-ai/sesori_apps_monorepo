@@ -41,6 +41,11 @@ and keep native close/quit behavior safe.
   hidden, and Open restores/focuses it and returns it to the Dock. Without a
   usable tray host, close defers safe Quit until active lifecycle work settles
   instead of dropping the request or leaving an invisible process.
+- Window position and size persist under desktop-owned application data. Startup reads and validates the last bounds,
+  chooses the current display with greatest overlap (or nearest center), clamps size and position to usable work area,
+  and applies the result before the first explicit show. Missing/invalid bounds or display discovery falls back to the
+  centered 720×620 default. Move/resize events debounce persistence, while close/dispose flush the last observation;
+  native/storage failures remain observable without preventing window use.
 - Primary and secondary (right/trackpad) clicks on the tray icon open the same
   typed context menu. The macOS Dock icon is a desktop-owned copy of the
   Sesori Icon Composer asset used by the main client, not the Flutter starter
@@ -58,12 +63,18 @@ and keep native close/quit behavior safe.
   states, and recent output after crash give-up. Take Over is an explicit tray
   and window action for local bridge contention or relay displacement; it
   persists On, performs one stop-and-respawn, and accepts only replacement
-  prompts from the fresh helper.
+  prompts from the fresh helper. A persistent desktop sidebar reaches Bridge,
+  Projects, and Settings, while exceptional login-required, crash-give-up, and
+  takeover recovery appears above every cockpit destination rather than only on
+  the bridge dashboard. Recovery starts/retries the supervised helper or opens
+  its logs and never offers mobile CLI-install instructions.
 - The window routes from supervision into shared project/session inventory,
   settings, profile, and harness-management surfaces without creating another
   auth/session owner. Desktop injects account state, navigation, external-link/
   package metadata, and its coordinated logout workflow; it deliberately omits
-  the mobile push-notification preference row. Project recovery never shows
+  the mobile push-notification preference surface. It instead exposes one
+  desktop-owned native attention switch; desktop derives permission/question
+  alerts from relay SSE and never registers push. Project recovery never shows
   mobile CLI installation guidance: both never-registered and disconnected
   states offer supervised **Start the bridge**, which persists desired On,
   starts or retries rather than applying toggle semantics, and establishes the
@@ -73,7 +84,13 @@ and keep native close/quit behavior safe.
   diff view, and the session list opens shared session creation with plugin,
   model, command, attachment, and dedicated-workspace options. Desktop supplies
   text-first composition and omits voice rather than constructing a dead voice
-  capability. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
+  capability. A project-scoped nested route owns one session-list cubit: narrow
+  windows show one destination, while wide windows keep the selectable session
+  inventory beside new-session, transcript, and diff content. Desktop Enter
+  sends from the inline composer, Shift+Enter inserts a newline, Escape first
+  releases active text editing and otherwise dismisses only popup routes, and
+  transcript/diff source text retains native selection/context-menu behavior.
+  Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
   progress until that bounded operation settles. The desktop's one app-wide
@@ -93,8 +110,10 @@ and keep native close/quit behavior safe.
   delete attempt has a bounded timeout and is best-effort offline; a confirmed
   deletion clears the local record, while an unconfirmed deletion keeps it for
   a later retry. A different account never submits or clears the record. Local
-  analytics preparation runs after that successful stop and before local tokens
-  are cleared; failed token clearing resumes analytics for the still-signed-in
+  analytics preparation runs after that successful stop and before delivered
+  desktop notifications and local tokens are cleared; notification cleanup is
+  best effort but always precedes credential clear, and failed token clearing
+  resumes analytics for the still-signed-in
   session. If stop fails, authentication and analytics remain intact. Other
   devices are never logged out.
 
@@ -102,8 +121,8 @@ and keep native close/quit behavior safe.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, shared desktop Settings with mobile-only notifications omitted, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -150,6 +169,8 @@ the status and bounded recent output.
   retrying the failed action, or project recovery toggles desired On to Off,
   omits Start for either disconnected variant, fails to establish the desktop
   relay connection, or exposes mobile CLI commands.
+- Restored bounds are applied after a visible flash, land wholly off-screen, ignore current display work areas, fail to
+  persist after move/resize, or one failed write prevents later bounds from saving.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
   a takeover starts a restart war or approves a non-replacement prompt, recent
@@ -166,7 +187,9 @@ the status and bounded recent output.
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
   typed route data, New task or file changes cannot reach their typed routes, or
-  desktop renders unsupported voice/attachment controls.
+  desktop renders unsupported voice/attachment controls, Enter inserts a newline instead of sending, Shift+Enter sends,
+  Escape pops an ordinary cockpit page or steals a closer modal/editor handler, source text cannot be selected, or wide
+  session navigation recreates/discards its project-scoped inventory.
 
 ## Known Limitations
 
@@ -197,6 +220,8 @@ the status and bounded recent output.
 - `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_bridge_takeover_orchestrator.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_logout_orchestrator.dart`
+- `client/module_desktop_core/lib/src/services/window_bounds_service.dart`
+- `client/module_desktop_core/lib/src/services/desktop_attention_service.dart`
 - `client/module_desktop_core/lib/src/api/bridge_id_storage.dart`
 - `client/module_core/lib/src/api/bridge_api.dart`
 - `client/module_core/lib/src/repositories/bridge_repository.dart`

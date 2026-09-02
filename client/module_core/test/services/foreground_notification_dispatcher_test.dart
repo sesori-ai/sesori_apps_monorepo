@@ -109,6 +109,9 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
   @override
   Future<void> cancelForSession({required String sessionId}) async {}
 
+  @override
+  Future<void> cancelAll() async {}
+
   Future<void> dispose() async {
     await _notificationOpenedController.close();
   }

@@ -74,17 +74,19 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-              child: switch (viewModel.highlightedSpan) {
-                null => Text(
-                  line.content,
-                  style: _monoStyle.copyWith(color: theme.codeText),
-                  softWrap: true,
-                ),
-                final highlightedSpan => Text.rich(
-                  highlightedSpan,
-                  softWrap: true,
-                ),
-              },
+              child: SelectionArea(
+                child: switch (viewModel.highlightedSpan) {
+                  null => Text(
+                    line.content,
+                    style: _monoStyle.copyWith(color: theme.codeText),
+                    softWrap: true,
+                  ),
+                  final highlightedSpan => Text.rich(
+                    highlightedSpan,
+                    softWrap: true,
+                  ),
+                },
+              ),
             ),
           ),
         ],

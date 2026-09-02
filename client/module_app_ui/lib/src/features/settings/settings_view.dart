@@ -39,6 +39,7 @@ class const SettingsView({
   required final VoidCallback onOpenProfile,
   required final VoidCallback? onOpenNotifications,
   required final VoidCallback onOpenHarnesses,
+  required final Widget? additionalSettings,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -49,6 +50,7 @@ class const SettingsView({
     final loc = context.loc;
     final account = this.account;
     final onOpenNotifications = this.onOpenNotifications;
+    final additionalSettings = this.additionalSettings;
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -111,6 +113,10 @@ class const SettingsView({
                     ),
                   ],
                 ),
+                if (additionalSettings != null) ...[
+                  const SizedBox(height: PregoSpacing.xl),
+                  additionalSettings,
+                ],
                 const SizedBox(height: PregoSpacing.xl),
                 const BridgeSettingsSection(),
                 const SizedBox(height: PregoSpacing.xl),

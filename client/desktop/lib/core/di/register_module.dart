@@ -1,7 +1,9 @@
 import "package:device_info_plus/device_info_plus.dart";
+import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 @module
@@ -11,6 +13,12 @@ abstract class RegisterModule() {
 
   @lazySingleton
   DeviceInfoPlugin get deviceInfoPlugin => DeviceInfoPlugin();
+
+  @lazySingleton
+  FlutterLocalNotificationsPlugin get flutterLocalNotificationsPlugin => FlutterLocalNotificationsPlugin();
+
+  @lazySingleton
+  NotificationCanceller notificationCanceller(LocalNotificationClient client) => client;
 
   @lazySingleton
   RelayCryptoService get relayCryptoService => RelayCryptoService();

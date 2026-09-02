@@ -113,6 +113,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     voiceSupport: ComposerVoiceSupport.unsupported,
     inputMode: ChatInputMode.textFirst,
     isKeyboardVisible: false,
+    sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
     child: child,
@@ -189,6 +190,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Desktop transcript"), findsOneWidget);
+    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
     expect(loadedView.bottomControls, isA<SessionDetailComposerControls>());
