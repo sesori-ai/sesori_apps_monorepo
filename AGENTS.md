@@ -51,6 +51,9 @@ eagerly "just in case."
   the scope is unclear, ask the user whether it applies to all harnesses or
   one. Where a harness cannot support a capability, surface that limitation
   honestly instead of dropping the feature for everyone.
+- Record harness-specific capability gaps in `docs/HARNESS_CAPABILITIES.md`
+  (implemented, not implemented, not supported) whenever a capability lands for
+  some harnesses but not others, or a harness limitation is verified or lifted.
 - Use named parameters with `required`, including nullable parameters. The only
   positional exception is the primary text/message argument of logging APIs.
 - The project uses Dart primary constructors shipped in Dart 3.13. This syntax
