@@ -44,8 +44,11 @@ and keep native close/quit behavior safe.
 - Window position and size persist under desktop-owned application data. Startup
   validates the saved bounds, selects the current display with greatest overlap
   (or nearest center), clamps them to its usable work area, and applies them
-  before the first explicit show. Missing or invalid bounds and display lookup
-  failures use the centered 720×620 default. Move/resize events debounce writes;
+  before the first explicit show; on macOS the native runner suppresses the
+  XIB's first ordering for normal and hidden launches so restoration cannot
+  flash the default frame. Missing or invalid bounds and display lookup failures
+  use the centered 720×620 default. The 560×480 minimum shrinks only when the
+  selected display work area is smaller. Move/resize events debounce writes;
   terminal Quit flushes the final observation before disposing the window host.
 - Primary and secondary (right/trackpad) clicks on the tray icon open the same
   typed context menu. The macOS Dock icon is a desktop-owned copy of the
@@ -145,8 +148,9 @@ the status and bounded recent output.
   or the macOS tray icon has an opaque background/wrong light-dark treatment,
   the Dock still shows a hidden window, or secondary tray clicks do nothing.
 - Restored bounds are applied after a visible flash, land wholly off-screen,
-  ignore current display work areas, fail to persist after move/resize, or one
-  failed write prevents later bounds from saving.
+  ignore current display work areas, retain a native minimum larger than the
+  selected work area, fail to persist after move/resize, or one failed write
+  prevents later bounds from saving.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
   a profile logout bypasses the desktop logout orchestrator, or an On command
   can race between logout's helper stop and token clearing.

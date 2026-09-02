@@ -53,17 +53,17 @@ class WindowBoundsService._create({
       throw StateError("WindowBoundsService is already initialized");
     }
 
-    WindowBounds? initialBounds;
+    ({WindowBounds bounds, WindowSize minimumSize})? restoredWindow;
     try {
-      initialBounds = await _loadClampedBounds();
+      restoredWindow = await _loadClampedBounds();
     } on Object catch (error, stackTrace) {
       logw("Failed to restore desktop window bounds; using the default window", error, stackTrace);
     }
 
     await _windowHost.initialize(
       hidden: hidden,
-      initialBounds: initialBounds,
-      minimumSize: minimumSize,
+      initialBounds: restoredWindow?.bounds,
+      minimumSize: restoredWindow?.minimumSize ?? minimumSize,
     );
     _eventSubscription = _windowHost.events.listen(
       (event) => _onWindowEvent(event: event),
@@ -74,7 +74,7 @@ class WindowBoundsService._create({
     _initialized = true;
   }
 
-  Future<WindowBounds?> _loadClampedBounds() async {
+  Future<({WindowBounds bounds, WindowSize minimumSize})?> _loadClampedBounds() async {
     final savedBounds = await _repository.readWindowBounds();
     if (savedBounds == null) {
       return null;
@@ -91,7 +91,13 @@ class WindowBoundsService._create({
     }
 
     final display = _selectDisplay(savedBounds: savedBounds, displays: displays);
-    return _clampToDisplay(bounds: savedBounds, display: display);
+    return (
+      bounds: _clampToDisplay(bounds: savedBounds, display: display),
+      minimumSize: WindowSize(
+        width: math.min(minimumSize.width, display.width),
+        height: math.min(minimumSize.height, display.height),
+      ),
+    );
   }
 
   void _onWindowEvent({required WindowHostEvent event}) {

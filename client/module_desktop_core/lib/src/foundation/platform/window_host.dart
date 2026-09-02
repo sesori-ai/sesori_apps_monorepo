@@ -12,7 +12,13 @@ enum WindowHostEvent() {
 class const WindowSize({
   required final double width,
   required final double height,
-});
+}) {
+  @override
+  bool operator ==(Object other) => other is WindowSize && other.width == width && other.height == height;
+
+  @override
+  int get hashCode => Object.hash(width, height);
+}
 
 /// Platform-neutral native window or display rectangle in logical pixels.
 @immutable

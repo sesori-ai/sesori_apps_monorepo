@@ -74,6 +74,23 @@ void main() {
     ]);
   });
 
+  test("reduces the native minimum to a smaller selected work area", () async {
+    const saved = WindowBounds(left: 10, top: 20, width: 800, height: 600);
+    const compactDisplay = WindowBounds(left: 0, top: 0, width: 480, height: 360);
+    when(() => repository.readWindowBounds()).thenAnswer((_) async => saved);
+    when(() => windowHost.getDisplayBounds()).thenAnswer((_) async => const <WindowBounds>[compactDisplay]);
+
+    await service.initializeWindow(hidden: false);
+
+    verify(
+      () => windowHost.initialize(
+        hidden: false,
+        initialBounds: compactDisplay,
+        minimumSize: const WindowSize(width: 480, height: 360),
+      ),
+    ).called(1);
+  });
+
   test("chooses the nearest display for fully off-screen saved bounds", () async {
     const saved = WindowBounds(left: -5000, top: 100, width: 800, height: 600);
     const leftDisplay = WindowBounds(left: -1920, top: 0, width: 1920, height: 1080);
