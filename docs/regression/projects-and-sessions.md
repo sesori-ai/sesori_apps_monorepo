@@ -151,6 +151,16 @@ state.
   and detail adopt the durable session facts without marking unseen or moving the
   worktree directory. The initial system prompt remains truthful about the
   directory and branch that existed when the backend session was created.
+- Claude import lists a sub-agent transcript under `<root>/subagents/` as a
+  child session of that root (id `agent-<agentId>`, title from its meta
+  description, the root's directory), roots only in per-project pages and
+  children through the child-session route and full enumeration. A child whose
+  root is absent from the scan and the older flat `agent-<slug>-<hex>.jsonl`
+  layout are not sessions. A live Claude sub-agent appears as a child with
+  busy/idle status and in the root's active children while it runs. Children
+  are read-only: prompts and commands to an `agent-` id are refused. Deleting
+  a root also removes its `subagents/` directory; deleting a child removes its
+  transcript and meta file.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -244,7 +254,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
   git in the old location; a moved bridge-derived project mutates the old catalog
   identity instead of being discovered as new.
 - Sessions lose attribution, land under the wrong project, or a child lists as a
-  root.
+  root. A Claude sub-agent transcript lists as a root, is missing under its
+  root, or survives its root's deletion on disk; a legacy flat sub-agent file
+  or an orphan child is imported; a running sub-agent is absent from the
+  root's active children.
 - Pi import exposes prompt/transcript text, treats it as a title, follows an
   unbounded symlink/parent tree, or loses sessions stored under a configured or
   bridge-known directory.
