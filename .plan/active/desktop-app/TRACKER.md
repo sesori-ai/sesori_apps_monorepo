@@ -119,16 +119,21 @@ copied. The user accepted Gate B and explicitly authorized Step 14 on
   1,200-line soft target; accepted deviation for the two shared presentation
   moves, two desktop routes, shell composition, tests, review fixes, and
   required regression/evidence updates.
-- **Step 20:** rename-aware changed lines against the stable merged Step 19 base:
-  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD |
+- **Step 20:** rename-aware changed lines from the pinned merged Step 19 base
+  `74d84c4ddcd4818ea2b435088f014cdfd5229c9a` through the reviewed implementation
+  head `bcb48fc018b7e7dadc56750a90d9a8169f9abd9e`:
+  `base=74d84c4ddcd4818ea2b435088f014cdfd5229c9a;
+  head=bcb48fc018b7e7dadc56750a90d9a8169f9abd9e;
+  git diff --numstat --find-renames "$base..$head" |
   awk '{ additions += $1; deletions += $2 } END { print additions, deletions,
   additions + deletions }'`
-  = `4391 additions / 402 deletions / 4793 total`; copy-aware =
-  `4349 additions / 419 deletions / 4768 total`. This is 3,093 lines above
-  the plan's ~1,700-line expected overage. Of the rename-aware total, 2,117
-  lines are tests, 145 are generated, 210 are plan/regression documentation,
-  and 2,321 are production. The accepted deviation covers the five specified
-  implementation areas—window seams/persistence, local attention, cockpit and
-  split routing, keyboard/selection policy, and cross-shell notification
-  contracts—plus architecture-review and PR-feedback fixes with direct race,
-  routing, and interaction coverage.
+  = `5078 additions / 533 deletions / 5611 total`; copy-aware =
+  `5036 additions / 550 deletions / 5586 total`. The range intentionally excludes
+  this later measurement-only tracker edit. This is 3,911 lines above the plan's
+  ~1,700-line expected overage. Of the rename-aware total, 2,473 lines are tests,
+  393 are generated, 228 are plan/regression documentation, and 2,517 are
+  production. The accepted deviation covers the five specified implementation
+  areas—window seams/persistence, local attention, cockpit and split routing,
+  keyboard/selection policy, and cross-shell notification contracts—plus
+  architecture-review and PR-feedback fixes with direct race, routing, and
+  interaction coverage.
