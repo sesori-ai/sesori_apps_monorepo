@@ -33,6 +33,8 @@ class PiBackendCatalogRepository({
   required final CommandExecutor _commandExecutor,
   required final Duration _healthTimeout,
 }) {
+  static const String _tuiOnlyLlamaCommandName = "llama";
+
   Future<bool> healthCheck() async {
     try {
       return (await _commandExecutor.run(_binaryPath, const ["--version"], timeout: _healthTimeout)).exitCode == 0;
@@ -95,7 +97,32 @@ class PiBackendCatalogRepository({
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
 
       var partial = false;
+      List<PluginCommand> commands;
+      try {
+        final commandDtos = PiCommandsDto.fromJson(
+          (await _send(
+            client: client,
+            command: PiRpcCommand.getCommands,
+            arguments: const {},
+            timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
+          )).data,
+        );
+        commands = [for (final command in commandDtos.commands) ?_command(command)];
+      } on TimeoutException catch (error, stack) {
+        partial = true;
+        commands = const [];
+        Log.w("[pi] command discovery timed out; continuing", error, stack);
+      } on PiRpcProcessExitException {
+        rethrow;
+      } on Object catch (error, stack) {
+        partial = true;
+        commands = const [];
+        Log.w("[pi] command discovery failed; continuing", error, stack);
+      }
+
       final thinkingByModel = <String, List<String>>{};
+      // Discover project commands before this unbounded sweep so slow thinking
+      // hydration cannot consume the command catalog's remaining deadline.
       // The total deadline bounds this sweep. A count cap would make every larger
       // healthy catalog partial, so it could never replace an older complete cache.
       for (final model in deduped.where((model) => model.reasoning)) {
@@ -122,29 +149,6 @@ class PiBackendCatalogRepository({
           Log.w("[pi] model thinking discovery failed; continuing", error, stack);
           if (error is TimeoutException) break;
         }
-      }
-
-      List<PluginCommand> commands;
-      try {
-        final commandDtos = PiCommandsDto.fromJson(
-          (await _send(
-            client: client,
-            command: PiRpcCommand.getCommands,
-            arguments: const {},
-            timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
-          )).data,
-        );
-        commands = [for (final command in commandDtos.commands) ?_command(command)];
-      } on TimeoutException catch (error, stack) {
-        partial = true;
-        commands = const [];
-        Log.w("[pi] command discovery timed out; continuing", error, stack);
-      } on PiRpcProcessExitException {
-        rethrow;
-      } on Object catch (error, stack) {
-        partial = true;
-        commands = const [];
-        Log.w("[pi] command discovery failed; continuing", error, stack);
       }
 
       return (
@@ -267,6 +271,9 @@ class PiBackendCatalogRepository({
   PluginCommand? _command(PiCatalogCommandDto dto) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty) return null;
+    // Pi registers /llama as an extension, so RPC catalogs expose it even
+    // though its handler explicitly accepts only interactive TUI mode.
+    if (name == _tuiOnlyLlamaCommandName) return null;
     final description = dto.description?.trim();
     return PluginCommand(
       name: name,

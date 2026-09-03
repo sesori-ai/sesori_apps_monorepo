@@ -61,6 +61,23 @@ void main() {
     expect(harness.processes.single.killed, isTrue);
   });
 
+  test("filters Pi's TUI-only llama command from the RPC catalog", () async {
+    final harness = _ProbeHarness(
+      stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+      models: [_model(provider: "openai", id: "gpt", reasoning: false)],
+      commands: const [
+        {"name": "llama", "description": "Manage llama.cpp router models", "source": "extension"},
+        {"name": "llama:2", "description": "User command with a disambiguated name", "source": "extension"},
+        {"name": "review", "description": "Review this project", "source": "prompt"},
+      ],
+    );
+
+    final options = await harness.probe();
+
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(options.commands.map((command) => command.name), ["llama:2", "review"]);
+  });
+
   test("cancels every probe dialog and ignores notifications", () async {
     final harness = _ProbeHarness(
       stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
@@ -115,10 +132,13 @@ void main() {
     expect(withoutCommands.commands, isEmpty);
   });
 
-  test("thinking timeout preserves discovered models when command budget is exhausted", () async {
+  test("thinking timeout preserves commands discovered earlier in the probe", () async {
     final harness = _ProbeHarness(
       stateModel: _model(provider: "groq", id: "reasoner", reasoning: true),
       models: [_model(provider: "groq", id: "reasoner", reasoning: true)],
+      commands: const [
+        {"name": "review", "description": "Review this project", "source": "prompt"},
+      ],
       ignoreThinking: true,
     );
 
@@ -126,7 +146,11 @@ void main() {
 
     expect(options.completeness, PluginSessionOptionsCompleteness.partial);
     expect(options.providers.providers.single.models.single.id, "reasoner");
-    expect(options.commands, isEmpty);
+    expect(options.commands.single.name, "review");
+    expect(
+      harness.processes.single.written.where((frame) => frame["id"] != null).map((frame) => frame["type"]),
+      ["get_state", "get_available_models", "get_commands", "set_model", "get_available_thinking_levels"],
+    );
   });
 
   test("no model, auth-shaped empty catalog, process exit, and timeout fail with diagnostics", () async {

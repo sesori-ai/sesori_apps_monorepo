@@ -142,15 +142,19 @@ defaults and queued client sends coherent.
   before admission and are never fetched, stringified, or silently omitted.
 - Pi discovers models, thinking levels, and extension, prompt-template, prompt,
   and skill commands through bounded approved no-session probes in normalized
-  project directories. Because Pi omits built-in TUI commands from `get_commands`,
-  the plugin appends one `compact` command and dispatches it through Pi's native
-  `compact` RPC with optional user instructions rather than sending `/compact` as
-  a prompt. If an upstream command already owns that name, it remains an ordinary
-  slash command and the native action is not synthesized. Private instructions
-  remain confined to the RPC while the synthetic user marker uses only the
-  user-visible command text. Reuse is project-local, refresh always probes, concurrent
-  requests for one project coalesce, and a failed refresh never replaces the
-  last coherent snapshot. Dialogs raised during probes are cancelled and never
+  project directories. Command discovery precedes per-model thinking hydration,
+  so a later timeout retains the commands already observed in the partial catalog.
+  Pi's bundled `llama` extension advertises itself over RPC but refuses non-TUI
+  execution, so the plugin omits it. Because Pi omits its other built-in TUI
+  commands from `get_commands`, the plugin appends one `compact` command and
+  dispatches it through Pi's native `compact` RPC with optional user instructions
+  rather than sending `/compact` as a prompt. If an upstream command already owns
+  that name, it remains an ordinary slash command and the native action is not
+  synthesized. Private instructions remain confined to the RPC while the synthetic
+  user marker uses only the user-visible command text. Reuse is project-local and
+  independent of per-session process residency, refresh always probes, concurrent
+  requests for one project coalesce, and a failed refresh never replaces the last
+  coherent snapshot. Dialogs raised during probes are cancelled and never
   enter session UI state. Empty Pi sessions remain lazy until their first prompt
   or command. Creation is published before any buffered turn output. Imported
   parent forks preserve exact lineage. Deleting a root fences descendant work
