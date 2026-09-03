@@ -209,24 +209,31 @@ confirmation, no child session or partial stop) and gets that subset.
   `sendInput`, `resumeAgent`, `unknown`) and `CodexSubAgentActivity` with
   closed enums and `unknown` fallbacks (only the 0.148.0 item names).
 - **Child sessions.** `CodexThreadRecord.parentId`. Children never emit
-  `thread/started` (probe), so a child is learned from the parent's
-  `subAgentActivity started` (`agentThreadId`): `CodexAppServerApi.readThread`
-  → `CodexThreadRepository` → `CodexSessionService.resolveSubAgentThread`
-  reads and maps it (`parentThreadId`, `agentNickname`), and `CodexPlugin`
-  emits `Session(parentID: parent, title: nickname ?? agentPath)` and feeds the
-  record into the tracker. The catalog maps `thread_source == subagent` rollouts with their parent and
-  excludes them from `getSessions` (roots only) while keeping them in
-  `listAllSessions`; `getChildSessions(root)` merges catalog children with the
-  live spawn map. Children inherit the parent's directory so their events carry
-  the parent's project id. Child history reads by thread id; the copied parent
-  prefix is trimmed only for rollouts created with `fork_turns: true`
-  (detected by the duplicate parent `session_meta`).
+  `thread/started` (probe), so the event mapper parses the parent's
+  `subAgentActivity started` into a typed fact carrying `agentThreadId` and
+  `agentPath`. Layer-3 `CodexSessionService` coordinates the rest:
+  `CodexThreadRepository` reads/maps the child through
+  `CodexAppServerApi.readThread`, a pure `CodexSessionMapper` maps the record
+  and root directory/project into the child `Session` and created/status
+  events, and the service updates `CodexSubAgentTracker` and returns the
+  ordered events. `CodexPlugin` only dispatches the typed fact to the service
+  and buffers its returned events; it constructs no session and owns no child
+  state. The catalog maps `thread_source == subagent` rollouts with their
+  parent and excludes them from `getSessions` (roots only) while keeping them
+  in `listAllSessions`; `CodexSessionService.getChildSessions` merges catalog
+  children with the live tracker and the plugin delegates to it. Children
+  inherit the parent's directory so their events carry the parent's project
+  id. Child history reads by thread id; the copied parent prefix is trimmed
+  only for rollouts created with `fork_turns: true` (detected by the duplicate
+  parent `session_meta`).
 - **Tiles.** A per-parent `CodexSubAgentTracker`
   (`repositories/codex_sub_agent_tracker.dart`, beside
-  `CodexToolLifecycleTracker`), fed by `CodexPlugin._handleNotification` with
-  the mapper rendering from tracker output, as the existing composition does.
-  The tracker never performs transport: `subAgentActivity started` records the
-  child and emits its session and busy status, and the `subtask` part
+  `CodexToolLifecycleTracker`) owns lifecycle state. `CodexSessionService`
+  feeds it typed activity/child-turn facts and has `CodexSessionMapper` render
+  tracker results as bridge events; the plugin only buffers those returned
+  events. The tracker and mapper never perform transport:
+  `subAgentActivity started` records the child and emits its session and busy
+  status, and the `subtask` part
   (`messageID` = the activity item id, `childSessionID` = `agentThreadId`,
   description from `agentPath` or the resolved nickname, `taskState` running)
   renders once the prompt is known, because the part requires one and the
@@ -242,11 +249,16 @@ confirmation, no child session or partial stop) and gets that subset.
   state; `spawnAgent` items and `receiverThreadIds` are not relied on because
   0.148.0 does not emit them. The tracker survives the root's idle transition
   because child completion arrives after the parent `turn/completed`. Replay:
-  the parent rollout persists only `sub_agent_activity started`, so
+  the parent rollout persists both `spawn_agent` and `sub_agent_activity
+  started`, whose activity id equals the function call id. A pure Codex history
+  mapper joins them by that id and replaces the generic spawn tool part with
+  the one subtask tile in both rollout-tail and full-history projection.
   `CodexSessionService.prepareSessionMessageRead` also reads the catalogued
-  child rollouts of that root (`CodexRolloutRepository`) and passes each
-  child's terminal state into `projectMessages`, so a reloaded root shows
-  completed tiles instead of running ones.
+  child rollouts of that root through `CodexRolloutRepository` and passes each
+  child's terminal state into `CodexMessageRepository.projectMessages`, so the
+  same projection settles the tile instead of leaving it running. Neither the
+  repository nor mapper reads live tracker state; the service supplies the
+  required context as data.
 - **Live streaming.** Nothing to route: child items already arrive under the
   child thread id and render once the child session exists.
 - **Busy accounting.** The root status stays busy while the tracker holds a
@@ -267,8 +279,8 @@ confirmation, no child session or partial stop) and gets that subset.
 | Emoji | Description | Scope |
 |---|---|---|
 | 🌿 | `codex: parse sub-agent thread and item metadata` | DTO fields, collab/activity parser and enums, fixtures from the probe |
-| ⚙️ | `codex: sub-agent threads become child sessions` | `parentID` live and from the catalog, roots-only listing, `getChildSessions`, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
-| 🚧 | `codex: inline subtask tiles for spawned agents` | tracker, mapper cases, cancel on close/disconnect, replay from rollout if persisted |
+| ⚙️ | `codex: sub-agent threads become child sessions` | repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
+| 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
 | ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
 | 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
 
@@ -368,10 +380,16 @@ confirmation, no child session or partial stop) and gets that subset.
   existing mapper once the child exists, and `session/load` accepts child ids
   (probe). A root load replays `subagent_spawned` and `subagent_finished` as
   `_x.ai/session/update`, but the spawn still has no prompt and the standard
-  `spawn_subagent` call shares no id. The replay classifier suppresses an
-  approved call from its own recorded permission outcome and retains a denied
-  or cancelled attempt as the terminal generic card. Before the collector
-  materialises the root, `GrokSessionService` asks the Layer-2
+  `spawn_subagent` call shares no id. The child-history PR first adds a bounded
+  denied/cancelled `session/load` capture. If Grok replays a typed permission
+  outcome, `GrokSessionHistoryRepository` includes it in the prepared replay
+  context and the replay-local deferred tracker retains the terminal generic
+  card. If no outcome is persisted, successful and denied calls cannot be
+  correlated safely: replay suppresses every standard spawn card to preserve
+  one tile per actual child, and a denied attempt remains visible live but is
+  absent after reload. That cosmetic omission is accepted rather than adding
+  Sesori-owned persistence for Grok history. Before the collector materialises
+  the root, `GrokSessionService` asks the Layer-2
   `GrokSessionHistoryRepository` (backed only by Layer-1
   `GrokSessionStoreApi`) for immutable replay context containing each
   discovered child's initial `user_message_chunk`, keyed by child id. The pure
@@ -416,7 +434,7 @@ confirmation, no child session or partial stop) and gets that subset.
 |---|---|---|
 | ⚙️ | `grok: parse sub-agent lifecycle notifications` | DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker` (seam 1), `AcpDeferredToolCallTracker` plus deferred classification and denied/cancelled generic-card retention (seam 2), mapper/tracker lifecycle fixtures including forget/disconnect/exit cleanup |
 | ⚙️ | `acp: child sessions keep the root busy` | typed tracker-change stream and owned subscription teardown; `AcpPlugin` composes tracker statuses, idle/wake-up deferral, summary `childSessionIds`, and exit cleanup; `GrokSessionStoreApi` → `GrokSessionCatalogRepository` returns persisted children and Layer-3 `GrokSessionService` merges them with the tracker for `getChildSessions` |
-| 🌿 | `grok: child session history` | `session/load` for child ids; seam 5 replay context and pure Grok projection; `GrokSessionStoreApi` → `GrokSessionHistoryRepository` → `GrokSessionService` prepares child prompts |
+| 🌿 | `grok: child session history` | `session/load` for child ids plus denied/cancelled replay probe; seam 5 replay context and pure Grok projection; `GrokSessionStoreApi` → `GrokSessionHistoryRepository` → `GrokSessionService` prepares child prompts and any persisted permission outcomes |
 | ⚙️ | `grok: scoped stop for sub-agents` | policy in `AcpPlugin.abortSession` (seam 3), including side-effect-free unsupported-`keep` rejection and child-only `keep`; `cancelChild` seam and its Grok request (seam 4); `interruptActiveWork` uses stop |
 | 🌱 | `docs: record Grok Build sub-agent coverage` | matrix footnote ¹⁰ resolved, regression docs |
 
@@ -502,8 +520,9 @@ confirmation, no child session or partial stop) and gets that subset.
   childSessionId, toolCallId, prompt, label, mode: foreground | background}`;
   `ended {sessionId, childSessionId, stopReason, summary?, postChildAction:
   none | parentSettlementTurn}` (summary is bounded text of the last assistant
-  message); and `settlementCompleted {sessionId, childSessionId}`. `toolCallId`
-  and `prompt` are required: the probe showed the `AsyncLocalStorage` scope
+  message); and `settlementEnded {sessionId, childSessionId, outcome}` with a
+  closed `completed | cancelled | errored` outcome enum. `toolCallId` and
+  `prompt` are required: the probe showed the `AsyncLocalStorage` scope
   around the root `tools/execute` waterfall gives every `subagent/start` its
   executing call id and typed call arguments, including parallel calls and
   forks, so the adapter takes the prompt and label from that exact call and
@@ -512,8 +531,10 @@ confirmation, no child session or partial stop) and gets that subset.
   for correlation. A continuable child's `ended` declares
   `parentSettlementTurn`; the adapter binds the later parent `user/message`
   whose `source.kind` is `subagent-settled` and whose `senderSessionId` is that
-  child to the active parent turn, then emits `settlementCompleted` only after
-  that turn ends. The adapter also applies the owning root's provider/model
+  child to the active parent turn, then emits `settlementEnded` on every
+  terminal path for that turn, normalizing completion, cancellation/interrupt,
+  and failure into its closed outcome enum. The adapter also applies the owning
+  root's provider/model
   selection to its descendants through a root-level `agent/request`
   listener, because children inherit `AgentOptions.provider/model`, which
   the adapter never sets, and otherwise fail at once (probe defect). Child
@@ -536,10 +557,13 @@ confirmation, no child session or partial stop) and gets that subset.
   `aborted` to cancelled and `error`, `max-tokens`, `refusal` to error. For
   `parentSettlementTurn`, `DeepSeekEventMapper` atomically replaces the
   finishing child with a backend-neutral root hold keyed by an opaque child id;
-  it releases that hold on `settlementCompleted`. Only the adapter and
-  DeepSeek mapper know the dsh settlement message or turn convention; the ACP
-  tracker stores opaque holds. Adapter exit clears the tracker. Tracker state
-  is independent of the per-turn `_liveTools` clear. Replay does not pass
+  it releases that hold for every `settlementEnded` outcome, including a
+  cancelled or interrupted settlement turn. Only the adapter and DeepSeek
+  mapper know the dsh settlement message or turn convention; the ACP tracker
+  stores opaque holds. Abort/cancel releases through that terminal event, while
+  session delete, disconnect, and process exit clear any outstanding root holds
+  with the tracker. Tracker state is independent of the per-turn `_liveTools`
+  clear. Replay does not pass
   through seam 5's notification hook, because
   `DeepSeekHistoryRepository` feeds `session/update` envelopes straight into
   `AcpReplayCollector.consume`: that repository parses the folded `_meta`
@@ -566,9 +590,9 @@ confirmation, no child session or partial stop) and gets that subset.
 
 | Repo | Emoji | Description | Scope |
 |---|---|---|---|
-| adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | `subagent/*` and descendant `session/event` listeners, root-level `agent/request` provider/model propagation to descendants, child records, required prompt/call correlation, settlement-turn correlation, `deepseek/subagent`, `_meta` history fold, schema and fixtures, protocol version 2 |
+| adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | `subagent/*` and descendant `session/event` listeners, root-level `agent/request` provider/model propagation to descendants, child records, required prompt/call correlation, terminal settlement-turn correlation including cancel/error, `deepseek/subagent`, `_meta` history fold, schema and fixtures, protocol version 2 |
 | adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | `deepseek/subagent/interrupt`, schema, version bump, release checksums |
-| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, required prompt mapping, mapper feeding seams 1 and 2, settlement hold/release, `_meta` fold parsed in `DeepSeekHistoryRepository`, runtime manifest target and PATH floor 0.1.3 with setup tests; lands after the Grok lifecycle PRs |
+| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, required prompt mapping, mapper feeding seams 1 and 2, settlement hold/release for every terminal outcome plus delete/disconnect/exit cleanup, `_meta` fold parsed in `DeepSeekHistoryRepository`, runtime manifest target and PATH floor 0.1.3 with setup tests; lands after the Grok lifecycle PRs |
 | monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `DeepSeekAcpApi.cancelChild` (seam 4), mixed foreground/background and unsupported-`keep` policy tests through seam 3 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | matrix footnote ⁹ resolved, regression docs |
 

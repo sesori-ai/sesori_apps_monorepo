@@ -529,3 +529,8 @@ rejected one finding, applied without re-review: deferred Grok tool-call state
 moved out of `AcpEventMapper` into a Layer-2
 `AcpDeferredToolCallTracker` with session, disconnect, and process-exit
 cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
+
+A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
+service-owned lifecycle flow and replay replacement, the proportional Grok
+denied-attempt replay limitation, and terminal DeepSeek settlement cleanup
+with no findings.
