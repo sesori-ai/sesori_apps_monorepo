@@ -8,6 +8,7 @@ void main() {
   testWidgets("desktop composer is explicitly text-first with voice unavailable", (tester) async {
     ChatInputMode? inputMode;
     ComposerVoiceSupport? voiceSupport;
+    ComposerSendKeyPolicy? sendKeyPolicy;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -17,6 +18,7 @@ void main() {
               final scope = ComposerPresentationScope.of(context);
               inputMode = scope.inputMode;
               voiceSupport = scope.voiceSupport;
+              sendKeyPolicy = scope.sendKeyPolicy;
               return const SizedBox();
             },
           ),
@@ -26,5 +28,6 @@ void main() {
 
     expect(inputMode, ChatInputMode.textFirst);
     expect(voiceSupport, ComposerVoiceSupport.unsupported);
+    expect(sendKeyPolicy, ComposerSendKeyPolicy.enterSends);
   });
 }

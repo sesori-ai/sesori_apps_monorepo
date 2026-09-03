@@ -103,7 +103,11 @@ state.
   Root, non-archived sessions expose the typed shared diff route, while the
   session list opens a typed new-session route with shared plugin/model/command
   and dedicated-workspace options. The desktop shell supplies its native image
-  picker and text-first composer policy without constructing voice capture.
+  picker and text-first composer policy without constructing voice capture. Its
+  persistent sidebar keeps Bridge, Projects, and Settings reachable; one
+  project-scoped nested route owns the session-list cubit, so wide windows keep
+  the selected inventory beside new-session/detail/diff content while narrow
+  windows retain the one-pane flow.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -272,6 +276,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
   generic US month/day order despite a different device locale.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- Desktop wide navigation recreates the session inventory on each selected
+  detail/diff route, loses selection, or narrow navigation renders both panes.
 - A healthy Copilot import stops before cursor exhaustion, scans private on-disk
   history, or a first-page failure mutates the committed catalog. A later-page
   fail-soft import drops prior rows instead of only adding gathered observations

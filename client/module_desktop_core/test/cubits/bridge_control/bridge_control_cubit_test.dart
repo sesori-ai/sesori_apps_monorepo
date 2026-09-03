@@ -18,6 +18,7 @@ void main() {
     late _FakeDesktopApplicationTerminator applicationTerminator;
     late _FakeBridgeProcessLogRepository logRepository;
     late _FakeDesktopInstanceService instanceService;
+    late _FakeDesktopRelayConnectionService relayConnectionService;
     late _FakeDesktopBridgeTakeoverOrchestrator takeoverOrchestrator;
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
@@ -33,6 +34,7 @@ void main() {
       applicationTerminator = _FakeDesktopApplicationTerminator();
       logRepository = _FakeBridgeProcessLogRepository();
       instanceService = _FakeDesktopInstanceService();
+      relayConnectionService = _FakeDesktopRelayConnectionService();
       takeoverOrchestrator = _FakeDesktopBridgeTakeoverOrchestrator();
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
@@ -46,6 +48,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -178,6 +181,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -339,6 +343,27 @@ void main() {
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
     });
 
+    test("connection recovery starts the helper and reconnects the relay", () async {
+      await cubit.initialize();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 1);
+      expect(relayConnectionService.recoverCalls, 1);
+    });
+
+    test("does not recover either owner while logout locks controls", () async {
+      await cubit.initialize();
+      relayConnectionService.recoverCalls = 0;
+      logoutTracker.markInProgress();
+      await pumpEventQueue();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 0);
+      expect(relayConnectionService.recoverCalls, 0);
+    });
+
     test("a failed start leaves the next toggle targeted at retrying start", () async {
       processService.startError = StateError("spawn failed");
       await cubit.initialize();
@@ -467,6 +492,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -717,6 +743,18 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
   }
 
   Future<void> disposeFake() => _focusRequests.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDesktopRelayConnectionService() implements DesktopRelayConnectionService {
+  int recoverCalls = 0;
+
+  @override
+  Future<void> recoverForAuthenticatedDestination() async {
+    recoverCalls++;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
