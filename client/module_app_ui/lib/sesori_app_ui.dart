@@ -68,6 +68,7 @@ export "src/features/settings/harnesses_settings_view.dart";
 export "src/features/settings/notification_settings_view.dart";
 export "src/features/settings/profile_view.dart";
 export "src/features/settings/settings_view.dart";
+export "src/features/settings/widgets/settings_section.dart";
 export "src/l10n/app_localizations.dart";
 export "src/l10n/app_localizations_en.dart";
 export "src/platform/external_link_opener.dart";

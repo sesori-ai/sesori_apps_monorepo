@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/routing/notification_open_dispatcher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -50,6 +51,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
 
       await dispatcher.start();
@@ -83,6 +85,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
 
       await dispatcher.start();
@@ -101,6 +104,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
 
       await dispatcher.start();
@@ -114,6 +118,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
 
       await dispatcher.start();
@@ -127,6 +132,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
 
       await dispatcher.start();
@@ -145,6 +151,7 @@ void main() {
           projectId: "project-1",
           sessionId: "session-1",
           sessionTitle: "First title",
+          accountId: null,
         ),
       );
       await startFuture;
@@ -154,6 +161,7 @@ void main() {
           projectId: "project-2",
           sessionId: "session-2",
           sessionTitle: "Latest title",
+          accountId: null,
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -183,6 +191,7 @@ void main() {
         projectId: "project-1",
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
+        accountId: null,
       );
       pushMessagingSource.emitOpen(request);
       pushMessagingSource.emitOpen(request);
@@ -214,6 +223,7 @@ void main() {
           projectId: "project-1",
           sessionId: "session-1",
           sessionTitle: "Late title",
+          accountId: null,
         ),
       );
       await startFuture;
@@ -274,7 +284,10 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
   Future<NotificationOpenRequest?>? initialOpenRequestFuture;
 
   @override
-  Future<void> cancelForSession({required String sessionId}) async {}
+  void cancelForSession({required String sessionId}) {}
+
+  @override
+  Future<void> cancelAll() async {}
 
   @override
   Future<NotificationOpenRequest?> getInitialNotificationOpen() {
@@ -297,8 +310,10 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? accountId,
   }) async {}
 
+  @override
   Future<void> dispose() async {
     await _notificationOpenedController.close();
   }

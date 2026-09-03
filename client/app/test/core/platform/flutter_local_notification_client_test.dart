@@ -3,8 +3,8 @@ import "dart:convert";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/flutter_local_notification_client.dart";
-import "package:sesori_mobile/core/platform/notification_tap_event.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockFlutterLocalNotificationsPlugin() extends Mock implements FlutterLocalNotificationsPlugin;
@@ -27,11 +27,22 @@ void main() {
       verify(() => mockPlugin.cancel(id: 42, tag: null)).called(1);
     });
 
+    test("cancelAll delegates to the plugin", () async {
+      when(mockPlugin.cancelAll).thenAnswer((_) async {});
+
+      await client.cancelAll();
+
+      verify(mockPlugin.cancelAll).called(1);
+    });
+
     test("cancelForSession dismisses the deterministic session notification ID", () async {
       const sessionId = "ses_abc";
       final expectedId = sessionNotificationId(sessionId: sessionId);
       when(
-        () => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag")),
+        () => mockPlugin.cancel(
+          id: any(named: "id"),
+          tag: any(named: "tag"),
+        ),
       ).thenAnswer((_) async {});
 
       client.cancelForSession(sessionId: sessionId);
@@ -44,13 +55,21 @@ void main() {
 
     test("cancelForSession swallows plugin cancel failures", () async {
       when(
-        () => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag")),
+        () => mockPlugin.cancel(
+          id: any(named: "id"),
+          tag: any(named: "tag"),
+        ),
       ).thenThrow(Exception("cancel boom"));
 
       client.cancelForSession(sessionId: "ses_abc");
       await Future<void>.delayed(Duration.zero);
 
-      verify(() => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag"))).called(1);
+      verify(
+        () => mockPlugin.cancel(
+          id: any(named: "id"),
+          tag: any(named: "tag"),
+        ),
+      ).called(1);
     });
   });
 
@@ -81,6 +100,7 @@ void main() {
         sessionId: sessionId,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
 
       verify(
@@ -104,6 +124,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
       await Future<void>.delayed(const Duration(milliseconds: 2));
       await client.show(
@@ -113,6 +134,7 @@ void main() {
         sessionId: null,
         projectId: null,
         sessionTitle: null,
+        accountId: null,
       );
 
       final capturedIds = verify(
@@ -139,6 +161,7 @@ void main() {
         sessionId: "s1",
         projectId: "p1",
         sessionTitle: "Session Title",
+        accountId: null,
       );
 
       final captured = verify(
@@ -160,12 +183,13 @@ void main() {
     });
   });
 
-  group("NotificationTapEvent serialization", () {
+  group("LocalNotificationPayload serialization", () {
     test("toJson includes sessionTitle", () {
-      const event = NotificationTapEvent(
+      const event = LocalNotificationPayload(
         sessionId: "ses_1",
         projectId: "proj_1",
         sessionTitle: "Title",
+        accountId: null,
       );
 
       expect(
@@ -179,7 +203,7 @@ void main() {
     });
 
     test("fromJson stays backward compatible when sessionTitle is missing", () {
-      final event = NotificationTapEvent.fromJson({
+      final event = LocalNotificationPayload.fromJson({
         "sessionId": "ses_1",
         "projectId": "proj_1",
       });

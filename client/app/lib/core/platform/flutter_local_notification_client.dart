@@ -8,8 +8,6 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "notification_tap_event.dart";
-
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
     return switch (this) {
@@ -43,7 +41,6 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       return;
     }
 
-    _initialized = true;
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     _initialNotificationOpen = _notificationOpenFromPayload(
       payload: launchDetails?.didNotificationLaunchApp ?? false ? launchDetails?.notificationResponse?.payload : null,
@@ -71,6 +68,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       ),
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
+    _initialized = true;
   }
 
   @override
@@ -99,7 +97,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     try {
-      final tapEvent = NotificationTapEvent.fromJson(jsonDecodeMap(payload));
+      final tapEvent = LocalNotificationPayload.fromJson(jsonDecodeMap(payload));
       final sessionId = tapEvent.sessionId;
       final projectId = tapEvent.projectId;
       if (sessionId == null || projectId == null) {
@@ -110,6 +108,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: tapEvent.sessionTitle,
+        accountId: tapEvent.accountId,
       );
     } catch (error, stackTrace) {
       logw("Failed to parse local notification payload", error, stackTrace);
@@ -132,6 +131,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? accountId,
   }) async {
     final id = sessionId == null
         ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
@@ -147,10 +147,11 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     final payload = jsonEncode(
-      NotificationTapEvent(
+      LocalNotificationPayload(
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        accountId: accountId,
       ).toJson(),
     );
 
@@ -174,6 +175,9 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   Future<void> cancel({required int id, required String? tag}) async {
     await _plugin.cancel(id: id, tag: tag);
   }
+
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
 
   @override
   void cancelForSession({required String sessionId}) {
@@ -216,5 +220,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
   }
 
+  @override
+  @disposeMethod
   Future<void> dispose() => _notificationOpenedController.close();
 }

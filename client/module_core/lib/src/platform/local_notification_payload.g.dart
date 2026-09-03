@@ -1,22 +1,24 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'notification_tap_event.dart';
+part of 'local_notification_payload.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_NotificationTapEvent _$NotificationTapEventFromJson(Map json) =>
-    _NotificationTapEvent(
+_LocalNotificationPayload _$LocalNotificationPayloadFromJson(Map json) =>
+    _LocalNotificationPayload(
       sessionId: json['sessionId'] as String?,
       projectId: json['projectId'] as String?,
       sessionTitle: json['sessionTitle'] as String?,
+      accountId: json['accountId'] as String?,
     );
 
-Map<String, dynamic> _$NotificationTapEventToJson(
-  _NotificationTapEvent instance,
+Map<String, dynamic> _$LocalNotificationPayloadToJson(
+  _LocalNotificationPayload instance,
 ) => <String, dynamic>{
   'sessionId': ?instance.sessionId,
   'projectId': ?instance.projectId,
   'sessionTitle': ?instance.sessionTitle,
+  'accountId': ?instance.accountId,
 };
