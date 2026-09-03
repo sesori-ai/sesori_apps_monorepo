@@ -118,6 +118,32 @@ void main() {
       expect(await connecting, isTrue);
     }
 
+    test("child sessions and parentage come from the live sub-agent tracker", () async {
+      plugin.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "child",
+          description: "Synthetic child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      final children = await plugin.getChildSessions("root");
+      expect(children.single.id, "child");
+      expect(children.single.parentID, "root");
+      expect(children.single.directory, "/repo");
+      expect(children.single.title, "Synthetic child");
+      expect(await plugin.getChildSessions("child"), isEmpty);
+
+      const child = AcpSessionInfo(sessionId: "child", cwd: "/repo", title: null, updatedAtMs: null);
+      const root = AcpSessionInfo(sessionId: "root", cwd: "/repo", title: null, updatedAtMs: null);
+      expect(plugin.sessionParentId(child), "root");
+      expect(plugin.sessionParentId(root), isNull);
+    });
+
     test("uses Grok identity, headless auth policy, and stop-and-send", () {
       expect(plugin.id, "grok");
       expect(plugin.authMethodId, isNull);

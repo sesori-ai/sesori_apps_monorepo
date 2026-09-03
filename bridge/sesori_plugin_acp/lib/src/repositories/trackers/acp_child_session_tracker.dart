@@ -43,6 +43,13 @@ final class AcpChildSessionTracker() {
   final Map<String, List<_Child>> _byRoot = {};
   final Map<String, _Child> _byChild = {};
 
+  /// The one change listener, registered by the plugin at composition: it
+  /// re-derives the work state and releases a deferred root idle after every
+  /// mutation that changes which children are running.
+  void Function()? onChanged;
+
+  void _notify() => onChanged?.call();
+
   /// Whether [sessionId] is a child this tracker announced.
   bool isChild({required String sessionId}) => _byChild.containsKey(sessionId);
 
@@ -76,6 +83,7 @@ final class AcpChildSessionTracker() {
     if (spawn.prompt case final prompt?) child.prompt.write(prompt);
     (_byRoot[root] ??= []).add(child);
     _byChild[spawn.childSessionId] = child;
+    _notify();
     final part = child.partOrNull();
     return AcpChildTileResult(
       rootSessionId: root,
@@ -126,6 +134,17 @@ final class AcpChildSessionTracker() {
   }) {
     final child = _byChild[childSessionId];
     if (child == null || child.status.isTerminal) return const [];
+    final events = _finish(child: child, status: status, output: output, error: error);
+    _notify();
+    return events;
+  }
+
+  List<BridgeSseEvent> _finish({
+    required _Child child,
+    required PluginToolStatus status,
+    required String? output,
+    required String? error,
+  }) {
     child
       ..status = status
       ..output = status == PluginToolStatus.completed ? _bounded(output) : null
@@ -133,9 +152,39 @@ final class AcpChildSessionTracker() {
     final part = child.partOrNull();
     return [
       if (part != null) BridgeSseMessagePartUpdated(part: part),
-      _childStatus(childId: childSessionId, busy: false),
+      _childStatus(childId: child.childSessionId, busy: false),
     ];
   }
+
+  /// Cancels every running child: the agent process that hosted them is gone,
+  /// so their tiles end cancelled and the children go idle. The records stay
+  /// until [clear] or [forgetSession].
+  List<BridgeSseEvent> cancelAll() {
+    final events = <BridgeSseEvent>[
+      for (final child in _byChild.values)
+        if (!child.status.isTerminal)
+          ..._finish(child: child, status: PluginToolStatus.cancelled, output: null, error: null),
+    ];
+    if (events.isNotEmpty) _notify();
+    return events;
+  }
+
+  /// Whether any announced child, under any root, is still running.
+  bool get hasBusyChildren => _byChild.values.any((child) => !child.status.isTerminal);
+
+  /// The children of [sessionId] as sessions, for a harness whose listing
+  /// carries no parent marker. [directory] is the root's project directory.
+  List<PluginSession> childSessions({required String sessionId, required String directory}) => [
+    for (final child in _byRoot[sessionId] ?? const <_Child>[])
+      PluginSession(
+        id: child.childSessionId,
+        projectID: directory,
+        directory: directory,
+        parentID: sessionId,
+        title: child.description,
+        time: null,
+      ),
+  ];
 
   /// Statuses of every child this tracker announced, across roots.
   Map<String, PluginSessionStatus> get childStatuses => {
@@ -167,17 +216,21 @@ final class AcpChildSessionTracker() {
       for (final child in children) {
         _byChild.remove(child.childSessionId);
       }
+      if (children.isNotEmpty) _notify();
       return;
     }
     final child = _byChild.remove(sessionId);
     if (child == null) return;
     _byRoot[child.rootSessionId]?.remove(child);
+    _notify();
   }
 
   /// Drops every record: the agent process that hosted the children is gone.
   void clear() {
+    if (_byChild.isEmpty) return;
     _byRoot.clear();
     _byChild.clear();
+    _notify();
   }
 
   BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(

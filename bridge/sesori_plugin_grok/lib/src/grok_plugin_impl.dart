@@ -156,4 +156,16 @@ class GrokPlugin._({
 
   @override
   void onConnectionReset() => _grokSessionOptionsService.resetConnection();
+
+  // Grok's `session/list` returns roots only and carries no parent marker, so
+  // parentage is known solely from the live sub-agent lifecycle.
+  @override
+  String? sessionParentId(AcpSessionInfo info) {
+    final root = childSessionTracker.rootOf(sessionId: info.sessionId);
+    return root == info.sessionId ? null : root;
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async =>
+      childSessionTracker.childSessions(sessionId: sessionId, directory: directoryForSession(sessionId: sessionId));
 }

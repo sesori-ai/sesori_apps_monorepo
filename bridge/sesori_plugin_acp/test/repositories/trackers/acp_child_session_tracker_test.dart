@@ -148,6 +148,59 @@ void main() {
       expect(tracker.childStatuses.keys, ["child"]);
     });
 
+    test("the change listener fires on spawn, finish, forget, and clear, never on no-ops", () {
+      var changes = 0;
+      tracker.onChanged = () => changes++;
+      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r");
+      expect(changes, 1);
+      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r");
+      expect(changes, 1, reason: "repeated spawn is a no-op");
+      tracker.appendPrompt(childSessionId: "k1", delta: "p");
+      expect(changes, 1, reason: "a prompt chunk changes no running set");
+      tracker.finish(childSessionId: "k1", status: PluginToolStatus.completed, output: null, error: null);
+      expect(changes, 2);
+      tracker.finish(childSessionId: "k1", status: PluginToolStatus.completed, output: null, error: null);
+      expect(changes, 2);
+      tracker.forgetSession(sessionId: "ghost");
+      expect(changes, 2);
+      tracker.forgetSession(sessionId: "root");
+      expect(changes, 3);
+      tracker.clear();
+      expect(changes, 3, reason: "nothing to clear");
+    });
+
+    test("cancelAll ends every running child cancelled and idle, once", () {
+      tracker
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", prompt: "p"), directory: "/r")
+        ..spawn(sessionId: "other", spawn: _spawn(childId: "k2"), directory: "/r")
+        ..finish(childSessionId: "k2", status: PluginToolStatus.completed, output: null, error: null);
+      var changes = 0;
+      tracker.onChanged = () => changes++;
+
+      final events = tracker.cancelAll();
+      expect(_subtaskPart(events[0]).taskState?.status, PluginToolStatus.cancelled);
+      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(events, hasLength(2), reason: "the finished sibling is untouched");
+      expect(tracker.hasBusyChildren, isFalse);
+      expect(changes, 1);
+      expect(tracker.cancelAll(), isEmpty);
+      expect(changes, 1);
+    });
+
+    test("childSessions lists a root's children as sessions under its directory", () {
+      tracker
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", description: "One"), directory: "/r")
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2", description: null), directory: "/r");
+      final sessions = tracker.childSessions(sessionId: "root", directory: "/r");
+      expect(sessions.map((session) => session.id), ["k1", "k2"]);
+      expect(sessions.first.parentID, "root");
+      expect(sessions.first.directory, "/r");
+      expect(sessions.first.title, "One");
+      expect(sessions.last.title, isNull);
+      expect(tracker.childSessions(sessionId: "k1", directory: "/r"), isEmpty);
+      expect(tracker.hasBusyChildren, isTrue);
+    });
+
     test("forgetting a root drops its children; forgetting a child drops only it; clear drops everything", () {
       tracker
         ..spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r")

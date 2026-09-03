@@ -66,7 +66,9 @@ abstract class AcpPlugin({
   required final AcpSessionOptionsService _sessionOptionsService,
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
-  this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
+  this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
+    childSessionTracker.onChanged = _onChildSessionsChanged;
+  }
 
   /// Bridge launch CWD (canonicalized) — the directory the bridge seeds as an
   /// always-present project, and the fallback attribution for sessions whose
@@ -545,6 +547,10 @@ abstract class AcpPlugin({
   /// is left intact — the plugin stays alive, only the connection is reset.
   /// Never throws.
   Future<void> resetConnectionAfterExit() async {
+    // Children lived only inside the dead process: their tiles end cancelled,
+    // they go idle, and any root idle they were holding back is released.
+    childSessionTracker.cancelAll().forEach(_eventBuffer.add);
+    childSessionTracker.clear();
     _workState.set(PluginWorkState.unknown);
     _connectFuture = null;
     _authenticationFailure = null;
@@ -1262,6 +1268,8 @@ abstract class AcpPlugin({
     }
     state.pending++;
     if (state.pending == 1) {
+      // A new turn supersedes a deferred idle: the root is busy on its own.
+      state.idleDeferred = false;
       _workState.set(PluginWorkState.busy);
       _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
       _eventBuffer.add(
@@ -1502,14 +1510,40 @@ abstract class AcpPlugin({
     }
     eventMapper.finalizeTurn(sessionId: sessionId).forEach(_eventBuffer.add);
     if (state.pending == 0) {
-      _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
-      _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
-      _eventBuffer.add(const BridgeSseProjectUpdated());
+      // A running sub-agent keeps the root busy after its own turn settles:
+      // the idle reaper and safe stops must not kill it, and the completion
+      // push must fire once, after the last child. The root idles from
+      // [_onChildSessionsChanged] once its busy set empties.
+      if (childSessionTracker.busyChildIds(sessionId: sessionId).isNotEmpty) {
+        state.idleDeferred = true;
+      } else {
+        _emitRootIdle(sessionId: sessionId);
+      }
     }
     _syncWorkState();
     if (failed || refused) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));
     }
+  }
+
+  void _emitRootIdle({required String sessionId}) {
+    _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
+    _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
+    _eventBuffer.add(const BridgeSseProjectUpdated());
+  }
+
+  /// Registered on [childSessionTracker] at composition: releases every root
+  /// whose idle was deferred and whose busy set is now empty, then re-derives
+  /// the work state so a running child alone keeps the plugin busy.
+  void _onChildSessionsChanged() {
+    for (final entry in _turnStates.entries) {
+      final state = entry.value;
+      if (!state.idleDeferred || state.pending > 0) continue;
+      if (childSessionTracker.busyChildIds(sessionId: entry.key).isNotEmpty) continue;
+      state.idleDeferred = false;
+      _emitRootIdle(sessionId: entry.key);
+    }
+    if (_client != null) _syncWorkState();
   }
 
   Map<String, dynamic>? _promptPartToContentBlock(PluginPromptPart part) {
@@ -1694,8 +1728,11 @@ abstract class AcpPlugin({
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
 
+  /// Roots from this plugin's turn accounting, children from the tracker: the
+  /// two key sets are disjoint, and neither side decides for the other.
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => Map.unmodifiable(_sessionStatuses);
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
+      Map.unmodifiable({..._sessionStatuses, ...childSessionTracker.childStatuses});
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
@@ -1947,9 +1984,9 @@ abstract class AcpPlugin({
     // also means a fully idle agent yields an empty summary (no project row) —
     // matching the OpenCode plugin's "only active worktrees" contract.
     //
-    // ACP sessions are flat: this plugin tracks no parent/child relationships,
-    // so `childSessionIds` is always empty, and it has no retry concept, so
-    // `isRetrying` is always false.
+    // Rows are roots; a root's running sub-agents ride along as
+    // `childSessionIds` (finished children drop out). ACP has no retry
+    // concept, so `isRetrying` is always false.
     // Group active sessions under the project (directory) each belongs to, so
     // the per-project activity badge lands on the right project — sessions can
     // live in different opened directories, not just the launch CWD.
@@ -1959,14 +1996,15 @@ abstract class AcpPlugin({
       // counts as running, so it stays active until its last turn settles.
       final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
       final awaiting = registry?.hasPendingInput(sessionId: sessionId) ?? false;
-      if (!running && !awaiting) continue;
+      final busyChildren = childSessionTracker.busyChildIds(sessionId: sessionId);
+      if (!running && !awaiting && busyChildren.isEmpty) continue;
       (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
         PluginActiveSession(
           id: sessionId,
           mainAgentRunning: running,
           awaitingInput: awaiting,
           isRetrying: false,
-          childSessionIds: const [],
+          childSessionIds: List.unmodifiable(busyChildren),
         ),
       );
     }
@@ -2005,7 +2043,11 @@ abstract class AcpPlugin({
 
   void _syncWorkState() {
     final busy =
-        _turnStates.values.any((state) => state.pending > 0) || (_approvalRegistry?.hasAnyPendingInput ?? false);
+        _turnStates.values.any((state) => state.pending > 0) ||
+        (_approvalRegistry?.hasAnyPendingInput ?? false) ||
+        // A sub-agent lives only inside the resident process: no safe stop or
+        // suspension while one runs.
+        childSessionTracker.hasBusyChildren;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }
@@ -2027,6 +2069,10 @@ class _SessionTurnState() {
 
   /// Turns enqueued but not yet finished (including the running one).
   int pending = 0;
+
+  /// The last turn settled while a sub-agent was still running; the root's
+  /// idle is owed once its busy children are gone.
+  bool idleDeferred = false;
 
   /// Existing-session prompts accepted but not yet dispatched to ACP.
   final List<_QueuedAcpPrompt> queue = [];

@@ -1,0 +1,215 @@
+import "package:acp_plugin/acp_plugin.dart";
+import "package:acp_plugin/acp_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
+import "package:test/test.dart";
+
+/// A running sub-agent keeps its root busy after the root's own turn settles:
+/// the idle reaper and safe stops must never kill it, the completion push
+/// fires once, and the activity summary carries the child.
+void main() {
+  group("AcpPlugin child sessions keep the root busy", () {
+    late FakeAcpProcess fake;
+    late TestAcpPlugin plugin;
+    late List<BridgeSseEvent> emitted;
+    const cwd = "/repo";
+
+    setUp(() {
+      fake = FakeAcpProcess();
+      emitted = [];
+      plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
+      plugin.events.listen(emitted.add);
+    });
+
+    tearDown(() async {
+      await plugin.dispose();
+      await fake.close();
+    });
+
+    Future<void> pump() => Future<void>.delayed(Duration.zero);
+
+    Future<Map<String, dynamic>> waitForFrame(String method) async {
+      for (var i = 0; i < 50; i++) {
+        final matches = fake.written.where((f) => f["method"] == method);
+        if (matches.isNotEmpty) return matches.last;
+        await pump();
+      }
+      throw StateError("agent never wrote a '$method' frame");
+    }
+
+    Future<void> respond(String method, Map<String, dynamic> result) async {
+      final frame = await waitForFrame(method);
+      fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+      await pump();
+    }
+
+    Future<String> connectAndCreateSession() async {
+      final connecting = plugin.ensureConnected();
+      await respond("initialize", {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+      final creating = plugin.createSession(
+        directory: cwd,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", {"sessionId": "s1"});
+      return (await creating).id;
+    }
+
+    Future<void> startTurn(String sessionId) async {
+      await plugin.sendPrompt(
+        promptId: "prompt-1",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "spawn")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await waitForFrame("session/prompt");
+    }
+
+    /// The harness mapper's push: a child spawned under [root] mid-turn.
+    void spawnChild({required String root, required String childId}) {
+      plugin.childSessionTracker.spawn(
+        sessionId: root,
+        spawn: AcpChildSpawn(
+          childSessionId: childId,
+          description: "child",
+          agent: "general-purpose",
+          prompt: "p",
+          isBackground: true,
+        ),
+        directory: cwd,
+      );
+    }
+
+    /// The harness mapper's push: a child finished. Tracker-driven events reach
+    /// the plugin stream asynchronously, so settle before asserting.
+    Future<void> finishChild(String childId, {required PluginToolStatus status}) async {
+      plugin.childSessionTracker.finish(childSessionId: childId, status: status, output: null, error: null);
+      await pump();
+    }
+
+    Iterable<BridgeSseSessionIdle> rootIdles(String sessionId) =>
+        emitted.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == sessionId);
+
+    test("the root idle is deferred while a child runs and released by the last finish", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      spawnChild(root: sessionId, childId: "c2");
+
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(rootIdles(sessionId), isEmpty, reason: "children still run");
+      expect(await plugin.getSessionStatuses(), {
+        sessionId: const PluginSessionStatus.busy(),
+        "c1": const PluginSessionStatus.busy(),
+        "c2": const PluginSessionStatus.busy(),
+      });
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      final active = plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(active.id, sessionId);
+      expect(active.mainAgentRunning, isFalse, reason: "the root's own turn settled");
+      expect(active.childSessionIds, ["c1", "c2"]);
+
+      await finishChild("c1", status: PluginToolStatus.completed);
+      expect(rootIdles(sessionId), isEmpty, reason: "one child still runs");
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.childSessionIds, ["c2"]);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      await finishChild("c2", status: PluginToolStatus.cancelled);
+      expect(rootIdles(sessionId), hasLength(1), reason: "released exactly once");
+      expect(await plugin.getSessionStatuses(), {
+        sessionId: const PluginSessionStatus.idle(),
+        "c1": const PluginSessionStatus.idle(),
+        "c2": const PluginSessionStatus.idle(),
+      });
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("a child finishing before the root's turn settles leaves the normal idle path intact", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await finishChild("c1", status: PluginToolStatus.completed);
+      expect(rootIdles(sessionId), isEmpty, reason: "the root's own turn is still in flight");
+
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(rootIdles(sessionId), hasLength(1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("a running child alone keeps the work state busy after an idle root", () async {
+      final sessionId = await connectAndCreateSession();
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      spawnChild(root: sessionId, childId: "c1");
+      await pump();
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      final active = plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(active.mainAgentRunning, isFalse);
+      expect(active.childSessionIds, ["c1"]);
+    });
+
+    test("a new root turn during a deferred idle takes over the idle accounting", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(rootIdles(sessionId), isEmpty);
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "again")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await pump();
+      await finishChild("c1", status: PluginToolStatus.completed);
+      expect(rootIdles(sessionId), isEmpty, reason: "the second turn is still in flight");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(rootIdles(sessionId), hasLength(1));
+    });
+
+    test("process exit cancels running children, idles them, and releases the root", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(rootIdles(sessionId), isEmpty);
+
+      fake.exit(1);
+      await plugin.resetConnectionAfterExit();
+
+      final tile = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).whereType<PluginMessagePartSubtask>().last;
+      expect(tile.childSessionID, "c1");
+      expect(tile.taskState?.status, PluginToolStatus.cancelled);
+      final childStatus = emitted.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "c1").last;
+      expect(shared.SessionStatus.fromJson(childStatus.status), const shared.SessionStatus.idle());
+      expect(rootIdles(sessionId), hasLength(1));
+      expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+    });
+
+    test("deleting the root drops its children from the statuses", () async {
+      final sessionId = await connectAndCreateSession();
+      spawnChild(root: sessionId, childId: "c1");
+      expect((await plugin.getSessionStatuses()).keys, containsAll([sessionId, "c1"]));
+
+      await plugin.deleteSession(sessionId);
+      await pump();
+      expect(await plugin.getSessionStatuses(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+  });
+}
