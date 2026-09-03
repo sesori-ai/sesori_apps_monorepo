@@ -961,7 +961,12 @@ class AcpEventMapper({
     if (prior == null) {
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     }
-    if (prior == null && isSubagentSpawnToolCall(update: update)) {
+    if (isSubagentSpawnToolCall(update: update)) {
+      // A partial update that arrived first (no `_meta` to classify) may have
+      // opened a provisional tool state; the full call retires it so later
+      // updates are suppressed. The card it already rendered is accepted
+      // residue of the reorder.
+      _liveTools[sessionId]?.remove(toolCallId);
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
       return boundaryEvents;
     }
@@ -1019,8 +1024,10 @@ class AcpEventMapper({
     // A reordered spawn update (see the reorder note below) must not open a
     // tool card its `tool_call` would have suppressed.
     if (_liveTools[sessionId]?[toolCallId] == null && isSubagentSpawnToolCall(update: update)) {
+      final boundaryEvents = _finalizeCurrentIdlessAssistantText(sessionId: sessionId);
+      _closeCurrentIdlessAssistantContent(sessionId: sessionId);
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
-      return const [];
+      return boundaryEvents;
     }
     final messageId = "$sessionId-tool-$toolCallId";
     // A `tool_call_update` is a PARTIAL update: an agent may send only the

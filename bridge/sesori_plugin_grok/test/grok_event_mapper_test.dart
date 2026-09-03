@@ -117,6 +117,19 @@ void main() {
       expect(mapper.map(_fixture("subagent_tool_call.json")), isEmpty);
     });
 
+    test("an unclassifiable partial update before the spawn call is retired by the call", () {
+      const partial = AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": _root,
+          "update": {"sessionUpdate": "tool_call_update", "toolCallId": _toolCallId, "status": "in_progress"},
+        },
+      );
+      expect(mapper.map(partial).whereType<BridgeSseMessagePartUpdated>(), hasLength(1), reason: "no _meta yet");
+      expect(mapper.map(_fixture("subagent_tool_call.json")), isEmpty);
+      expect(mapper.map(partial), isEmpty, reason: "suppressed once the call identified the spawn");
+    });
+
     test("a spawn with an empty child id is undeliverable and dropped", () {
       expect(
         mapper.map(
