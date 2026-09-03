@@ -1,0 +1,19 @@
+{
+  "jsonrpc": "2.0",
+  "method": "_x.ai/session_notification",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "subagent_finished",
+      "subagent_id": "01a00000-0000-7000-8000-000000000002",
+      "child_session_id": "01a00000-0000-7000-8000-000000000002",
+      "status": "cancelled",
+      "error": "Subagent was cancelled",
+      "tool_calls": 0,
+      "turns": 1,
+      "duration_ms": 8088,
+      "tokens_used": 0,
+      "will_wake": false
+    }
+  }
+}

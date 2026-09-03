@@ -35,6 +35,33 @@ void main() {
 
     verify(() => storage.writeBridgeDesiredState(state: BridgeProcessDesiredState.off)).called(1);
   });
+
+  test("delegates window-bounds persistence to Layer-1 storage", () async {
+    const bounds = WindowBounds(left: 10, top: 20, width: 900, height: 700);
+    when(() => storage.readWindowBounds()).thenAnswer((_) async => bounds);
+    when(() => storage.writeWindowBounds(bounds: bounds)).thenAnswer((_) async {});
+
+    expect(await repository.readWindowBounds(), bounds);
+    await repository.writeWindowBounds(bounds: bounds);
+
+    verify(() => storage.writeWindowBounds(bounds: bounds)).called(1);
+  });
+
+  test("delegates attention preference persistence to Layer-1 storage", () async {
+    when(
+      () => storage.readAttentionPreference(),
+    ).thenAnswer((_) async => DesktopAttentionPreference.disabled);
+    when(
+      () => storage.writeAttentionPreference(preference: DesktopAttentionPreference.enabled),
+    ).thenAnswer((_) async {});
+
+    expect(await repository.readAttentionPreference(), DesktopAttentionPreference.disabled);
+    await repository.writeAttentionPreference(preference: DesktopAttentionPreference.enabled);
+
+    verify(
+      () => storage.writeAttentionPreference(preference: DesktopAttentionPreference.enabled),
+    ).called(1);
+  });
 }
 
 class _MockDesktopInstanceApi() extends Mock implements DesktopInstanceApi;

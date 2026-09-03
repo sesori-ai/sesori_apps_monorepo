@@ -43,7 +43,10 @@ String? _textFromJson(Object? value) => value is String ? value : null;
 
 List<String> _threadIdListFromJson(Object? value) {
   if (value is! List) return const [];
-  return [for (final entry in value) if (entry is String) entry];
+  return [
+    for (final entry in value)
+      if (entry is String) entry,
+  ];
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -94,8 +97,6 @@ sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
     required CodexCollabItemStatus status,
     @JsonKey(fromJson: _textFromJson) required String? senderThreadId,
     @JsonKey(fromJson: _threadIdListFromJson) required List<String> receiverThreadIds,
-    @JsonKey(fromJson: _textFromJson) required String? receiverThreadId,
-    @JsonKey(fromJson: _textFromJson) required String? newThreadId,
     @JsonKey(fromJson: _textFromJson) required String? prompt,
     @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{})
     required Map<String, CodexCollabAgentStateDto> agentsStates,

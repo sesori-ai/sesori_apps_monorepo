@@ -14,9 +14,11 @@ void main() {
     late BridgeStatusTracker statusTracker;
     late _FakeSystemTray systemTray;
     late _FakeWindowHost windowHost;
+    late _FakeWindowBoundsService windowBoundsService;
     late _FakeDesktopApplicationTerminator applicationTerminator;
     late _FakeBridgeProcessLogRepository logRepository;
     late _FakeDesktopInstanceService instanceService;
+    late _FakeDesktopRelayConnectionService relayConnectionService;
     late _FakeDesktopBridgeTakeoverOrchestrator takeoverOrchestrator;
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
@@ -28,9 +30,11 @@ void main() {
       statusTracker = BridgeStatusTracker(bridgeIdStorage: MemoryBridgeIdStorage());
       systemTray = _FakeSystemTray();
       windowHost = _FakeWindowHost();
+      windowBoundsService = _FakeWindowBoundsService();
       applicationTerminator = _FakeDesktopApplicationTerminator();
       logRepository = _FakeBridgeProcessLogRepository();
       instanceService = _FakeDesktopInstanceService();
+      relayConnectionService = _FakeDesktopRelayConnectionService();
       takeoverOrchestrator = _FakeDesktopBridgeTakeoverOrchestrator();
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
@@ -40,9 +44,11 @@ void main() {
         statusTracker: statusTracker,
         systemTray: systemTray,
         windowHost: windowHost,
+        windowBoundsService: windowBoundsService,
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -171,9 +177,11 @@ void main() {
         statusTracker: statusTracker,
         systemTray: systemTray,
         windowHost: windowHost,
+        windowBoundsService: windowBoundsService,
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -335,6 +343,27 @@ void main() {
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
     });
 
+    test("connection recovery starts the helper and reconnects the relay", () async {
+      await cubit.initialize();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 1);
+      expect(relayConnectionService.recoverCalls, 1);
+    });
+
+    test("does not recover either owner while logout locks controls", () async {
+      await cubit.initialize();
+      relayConnectionService.recoverCalls = 0;
+      logoutTracker.markInProgress();
+      await pumpEventQueue();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 0);
+      expect(relayConnectionService.recoverCalls, 0);
+    });
+
     test("a failed start leaves the next toggle targeted at retrying start", () async {
       processService.startError = StateError("spawn failed");
       await cubit.initialize();
@@ -412,6 +441,7 @@ void main() {
       expect(processService.stopCalls, 1);
       expect(applicationTerminator.exitCodes, <int>[0]);
       expect(systemTray.disposeCalls, 1);
+      expect(windowBoundsService.disposeCalls, 1);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
     });
 
@@ -435,10 +465,51 @@ void main() {
       await pumpEventQueue(times: 2);
 
       expect(systemTray.disposeCalls, 1);
+      expect(windowBoundsService.disposeCalls, 1);
       expect(windowHost.disposeCalls, 1);
       expect(instanceService.writes, isEmpty);
       expect(applicationTerminator.exitCodes, <int>[0]);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
+    });
+
+    test("tray Quit flushes a pending resize before disposing the native window", () async {
+      await cubit.close();
+      final boundsRepository = _RecordingDesktopInstanceRepository();
+      final boundsService = WindowBoundsService.test(
+        windowHost: windowHost,
+        repository: boundsRepository,
+        persistenceDebounce: const Duration(hours: 1),
+      );
+      await boundsService.initializeWindow(hidden: false);
+      const latestBounds = WindowBounds(left: 30, top: 40, width: 900, height: 700);
+      windowHost.bounds = latestBounds;
+      final quittingCubit = BridgeControlCubit(
+        processService: processService,
+        statusTracker: statusTracker,
+        systemTray: systemTray,
+        windowHost: windowHost,
+        windowBoundsService: boundsService,
+        applicationTerminator: applicationTerminator,
+        logRepository: logRepository,
+        instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
+        takeoverOrchestrator: takeoverOrchestrator,
+        logoutTracker: logoutTracker,
+        urlLauncher: urlLauncher,
+        launchAtLogin: launchAtLogin,
+        hiddenLaunch: false,
+      );
+      addTearDown(quittingCubit.close);
+      addTearDown(boundsService.dispose);
+      await quittingCubit.initialize();
+
+      windowHost.emit(event: WindowHostEvent.resized);
+      systemTray.emit(command: SystemTrayCommand.quit);
+      await pumpEventQueue(times: 3);
+
+      expect(boundsRepository.windowBoundsWrites, <WindowBounds>[latestBounds]);
+      expect(windowHost.disposeCalls, 1);
+      expect(applicationTerminator.exitCodes, <int>[0]);
     });
 
     test("Quit leaves the app alive when expected bridge stop fails", () async {
@@ -566,6 +637,7 @@ class _FakeSystemTray() implements SystemTray {
 
 class _FakeWindowHost() implements WindowHost {
   final StreamController<WindowHostEvent> _events = StreamController<WindowHostEvent>.broadcast(sync: true);
+  WindowBounds bounds = const WindowBounds(left: 0, top: 0, width: 720, height: 620);
   int showCalls = 0;
   int hideCalls = 0;
   int disposeCalls = 0;
@@ -574,7 +646,26 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => _events.stream;
 
   @override
-  Future<void> initialize({required bool hidden}) async {}
+  WindowHostState get currentState => WindowHostState.focused;
+
+  @override
+  Stream<WindowHostState> get states => const Stream<WindowHostState>.empty();
+
+  @override
+  Future<void> initialize({
+    required bool hidden,
+    required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
+  }) async {}
+
+  @override
+  Future<WindowBounds> getBounds() async => bounds;
+
+  @override
+  Future<void> setBounds({required WindowBounds bounds}) async {}
+
+  @override
+  Future<List<WindowBounds>> getDisplayBounds() async => const <WindowBounds>[];
 
   @override
   Future<void> show() async {
@@ -596,6 +687,33 @@ class _FakeWindowHost() implements WindowHost {
   }
 
   Future<void> disposeFake() => _events.close();
+}
+
+class _FakeWindowBoundsService() implements WindowBoundsService {
+  int disposeCalls = 0;
+
+  @override
+  Future<void> initializeWindow({required bool hidden}) async {}
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+}
+
+class _RecordingDesktopInstanceRepository() implements DesktopInstanceRepository {
+  final List<WindowBounds> windowBoundsWrites = <WindowBounds>[];
+
+  @override
+  Future<WindowBounds?> readWindowBounds() async => null;
+
+  @override
+  Future<void> writeWindowBounds({required WindowBounds bounds}) async {
+    windowBoundsWrites.add(bounds);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
@@ -631,6 +749,18 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
   }
 
   Future<void> disposeFake() => _focusRequests.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDesktopRelayConnectionService() implements DesktopRelayConnectionService {
+  int recoverCalls = 0;
+
+  @override
+  Future<void> recoverForAuthenticatedDestination() async {
+    recoverCalls++;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

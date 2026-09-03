@@ -1527,7 +1527,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh the model list';
+  String get newSessionOptionsRefresh => 'Refresh options';
 
   @override
   String get newSessionProjectUnavailable =>

@@ -21,4 +21,6 @@ dev_dependencies:
   freezed: ^4.0.0
   json_serializable: ^6.14.1
   lints: ^6.1.0
+  sesori_shared:
+    path: ../../shared/sesori_shared
   test: ^1.31.2

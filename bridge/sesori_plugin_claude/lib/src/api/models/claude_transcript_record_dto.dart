@@ -31,6 +31,8 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
+    @JsonKey(fromJson: _boolOrNull) required bool? isApiErrorMessage,
+    @JsonKey(fromJson: _intOrNull) required int? apiErrorStatus,
     @JsonKey(fromJson: _stringOrNull) required String? effort,
     @JsonKey(fromJson: _messageOrNull) required ClaudeTranscriptMessageDto? message,
 
@@ -60,6 +62,8 @@ sealed class ClaudeTranscriptMessageDto with _$ClaudeTranscriptMessageDto {
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 bool? _boolOrNull(Object? value) => value is bool ? value : null;
+
+int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
 
 String? _originKindOrNull(Object? value) => value is Map ? _stringOrNull(value["kind"]) : null;
 

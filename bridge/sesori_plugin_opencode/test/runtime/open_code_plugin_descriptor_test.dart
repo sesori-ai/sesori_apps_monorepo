@@ -993,6 +993,8 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
 
   @override
   Duration? get pluginIdleTimeout => null;
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   String? provisionedRuntimePath;

@@ -25,6 +25,7 @@ typedef PiPluginFactory = PiPlugin Function({
   required Duration catalogTimeout,
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
+  required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
 });
 
@@ -41,6 +42,7 @@ PiPlugin _buildPiPlugin({
   required Duration catalogTimeout,
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
+  required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
 }) => PiPlugin(
   binaryPath: binaryPath,
@@ -55,6 +57,7 @@ PiPlugin _buildPiPlugin({
   catalogTimeout: catalogTimeout,
   healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
+  idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,
 );
 
@@ -274,6 +277,7 @@ final class const PiPluginDescriptor({
         catalogTimeout: const Duration(seconds: 30),
         healthTimeout: const Duration(seconds: 10),
         resolveIdleTimeout: () => host.pluginIdleTimeout,
+        idleTimeoutChanges: host.pluginIdleTimeoutChanges,
         editorTimeout: const Duration(minutes: 30),
       );
     } on Object {

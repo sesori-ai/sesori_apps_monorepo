@@ -2848,7 +2848,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionOptionsRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Refresh the model list'**
+  /// **'Refresh options'**
   String get newSessionOptionsRefresh;
 
   /// No description provided for @newSessionProjectUnavailable.

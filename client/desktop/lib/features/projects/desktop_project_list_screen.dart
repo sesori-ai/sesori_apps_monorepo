@@ -13,18 +13,6 @@ import "../../core/di/injection.dart";
 
 typedef DesktopProjectOpened = void Function({required String projectId, required String projectName});
 
-/// Starts the supervised helper and establishes the authenticated desktop relay
-/// client. Running both operations together lets the relay park in its
-/// bridge-offline state until the helper appears, while coalescing inside each
-/// owning cubit keeps repeated recovery actions safe.
-Future<void> recoverDesktopProjectConnection({
-  required BridgeControlCubit bridgeControlCubit,
-  required ProjectListCubit projectListCubit,
-}) => Future.wait<void>([
-  bridgeControlCubit.startBridge(),
-  projectListCubit.reconnectBridge(),
-]);
-
 /// Desktop composition for the shared project inventory.
 ///
 /// Unlike mobile, both disconnected states recover by starting the supervised
@@ -36,10 +24,7 @@ class const DesktopProjectListScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    Future<void> recover({required BuildContext context}) => recoverDesktopProjectConnection(
-      bridgeControlCubit: context.read<BridgeControlCubit>(),
-      projectListCubit: context.read<ProjectListCubit>(),
-    );
+    Future<void> recover({required BuildContext context}) => context.read<BridgeControlCubit>().recoverConnection();
 
     return MultiBlocProvider(
       providers: [

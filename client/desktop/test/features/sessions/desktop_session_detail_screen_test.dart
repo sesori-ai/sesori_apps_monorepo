@@ -113,6 +113,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
     voiceSupport: ComposerVoiceSupport.unsupported,
     inputMode: ChatInputMode.textFirst,
     isKeyboardVisible: false,
+    sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
     attachmentDispatcher: _MockComposerAttachmentDispatcher.new,
     imageClipboard: imageClipboard,
     child: child,
@@ -142,6 +143,7 @@ void main() {
     var imageSaverResolutions = 0;
     var imageClipboardResolutions = 0;
     var imageSharerResolutions = 0;
+    var diffCalls = 0;
 
     await tester.pumpWidget(
       BlocProvider<SessionDetailCubit>.value(
@@ -161,6 +163,7 @@ void main() {
               sessionTitle: "Desktop session",
               readOnly: false,
               onBack: () {},
+              onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               messageImageRepository: () {
                 messageImageRepositoryResolutions++;
@@ -187,6 +190,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Desktop transcript"), findsOneWidget);
+    expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
     expect(loadedView.bottomControls, isA<SessionDetailComposerControls>());
@@ -195,6 +199,9 @@ void main() {
     expect(imageSaverResolutions, 0);
     expect(imageClipboardResolutions, 0);
     expect(imageSharerResolutions, 0);
+
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    expect(diffCalls, 1);
 
     await tester.tap(find.text("Follow up..."));
     await tester.pumpAndSettle();
@@ -249,6 +256,7 @@ void main() {
               sessionTitle: "Desktop session",
               readOnly: false,
               onBack: () => backCalls++,
+              onShowDiffs: () {},
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                   openedSession = (
                     projectId: projectId,

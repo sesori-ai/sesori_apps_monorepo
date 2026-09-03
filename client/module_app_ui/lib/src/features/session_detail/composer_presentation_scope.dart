@@ -8,6 +8,15 @@ enum ComposerVoiceSupport({required final bool isSupported}) {
   unsupported(isSupported: false),
 }
 
+/// Product-owned hardware-keyboard policy for a multiline composer.
+enum ComposerSendKeyPolicy() {
+  /// Enter inserts a newline; Cmd/Ctrl+Enter sends.
+  modifierEnterSends,
+
+  /// Enter sends; Shift+Enter inserts a newline.
+  enterSends,
+}
+
 typedef ComposerCapabilityProvider<T> = T Function();
 
 /// Product-owned platform and presentation capabilities for shared composers.
@@ -20,6 +29,7 @@ class const ComposerPresentationScope({
   required final ComposerVoiceSupport voiceSupport,
   required final ChatInputMode inputMode,
   required final bool isKeyboardVisible,
+  required final ComposerSendKeyPolicy sendKeyPolicy,
   required final ComposerCapabilityProvider<ComposerAttachmentDispatcher> attachmentDispatcher,
   required final ComposerCapabilityProvider<ImageClipboard> imageClipboard,
   required super.child,
@@ -39,6 +49,7 @@ class const ComposerPresentationScope({
       voiceSupport != oldWidget.voiceSupport ||
       inputMode != oldWidget.inputMode ||
       isKeyboardVisible != oldWidget.isKeyboardVisible ||
+      sendKeyPolicy != oldWidget.sendKeyPolicy ||
       attachmentDispatcher != oldWidget.attachmentDispatcher ||
       imageClipboard != oldWidget.imageClipboard;
 }

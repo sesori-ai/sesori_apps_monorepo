@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -154,10 +155,12 @@ final class PiSessionService({
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
+  required final Stream<Duration?> idleTimeoutChanges,
 }) {
   this {
-    _frameSubscription = _processes.frames.listen(_handleFrame);
-    _exitSubscription = _processes.exits.listen(_handleExit);
+    _processes.frames.listen(_handleFrame).addTo(_subscriptions);
+    _processes.exits.listen(_handleExit).addTo(_subscriptions);
+    idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   final PiSessionProcessRepository _processes = processRepository;
@@ -171,8 +174,7 @@ final class PiSessionService({
   final PendingOperations _activeIdleReaps = PendingOperations();
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
-  late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -1159,6 +1161,15 @@ final class PiSessionService({
     return descendants;
   }
 
+  void _handleIdleTimeoutChange(Duration? _) {
+    if (_disposed) return;
+    for (final entry in _sessions.entries) {
+      final state = entry.value;
+      if (state.hasWork || state.residentGeneration == null || state.idleReap != null) continue;
+      _scheduleIdleReap(sessionId: entry.key, state: state);
+    }
+  }
+
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
     final generation = ++state.idleGeneration;
     final idleTimeout = _resolveIdleTimeout();
@@ -1261,8 +1272,7 @@ final class PiSessionService({
         }
       }
     }
-    await _frameSubscription.cancel();
-    await _exitSubscription.cancel();
+    await _subscriptions.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
     await _activeIdleReaps.drain();

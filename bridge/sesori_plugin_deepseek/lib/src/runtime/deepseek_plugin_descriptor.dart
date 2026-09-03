@@ -236,12 +236,14 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     final processFactory = hostProcessAcpFactory(processes: host.processes, environment: host.environment);
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     const messageTimeParser = DeepSeekMessageTimeParser();
     final mapper = DeepSeekEventMapper(
       launchDirectory: cwd,
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: messageTimeParser,
     );
@@ -261,6 +263,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         environment: const {},
       ),
       launchDirectory: cwd,
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(
