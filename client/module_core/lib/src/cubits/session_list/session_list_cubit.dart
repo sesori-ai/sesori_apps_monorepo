@@ -26,7 +26,11 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
-enum _SessionFetchOutcome() { applied, failed, superseded }
+enum _SessionFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
 
 class SessionListCubit({
   required final SessionRepository _sessionRepository,
@@ -411,19 +415,64 @@ class SessionListCubit({
     };
   }
 
-  /// Renames a session. Returns `true` on success so the screen can show
-  /// a confirmation message.
+  /// Renames a session optimistically. Returns `false` after restoring the
+  /// prior title when the bridge rejects the rename.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
-    if (isClosed) return false;
+    if (state is! SessionListLoaded) return false;
+
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index < 0) return false;
+
+    final previousTitle = _allSessions[index].title;
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: _allSessions[index].copyWith(title: title),
+    );
+    _emitFiltered();
+
+    final ApiResponse<Session> response;
+    try {
+      response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to rename session", error, stackTrace);
+      _restoreSessionTitle(
+        sessionId: sessionId,
+        optimisticTitle: title,
+        previousTitle: previousTitle,
+      );
+      return false;
+    }
 
     switch (response) {
       case SuccessResponse():
-        await refreshSessions();
+        if (!isClosed) unawaited(refreshSessions());
         return true;
-      case ErrorResponse():
+      case ErrorResponse(:final error):
+        loge("Failed to rename session", error);
+        _restoreSessionTitle(
+          sessionId: sessionId,
+          optimisticTitle: title,
+          previousTitle: previousTitle,
+        );
         return false;
     }
+  }
+
+  void _restoreSessionTitle({
+    required String sessionId,
+    required String optimisticTitle,
+    required String? previousTitle,
+  }) {
+    if (isClosed || state is! SessionListLoaded) return;
+
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index < 0 || _allSessions[index].title != optimisticTitle) return;
+
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: _allSessions[index].copyWith(title: previousTitle),
+    );
+    _emitFiltered();
   }
 
   /// Deletes a session permanently.

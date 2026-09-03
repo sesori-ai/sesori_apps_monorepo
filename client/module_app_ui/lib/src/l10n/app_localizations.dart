@@ -2767,18 +2767,6 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get renameSave;
 
-  /// No description provided for @renameSessionSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Session renamed'**
-  String get renameSessionSuccess;
-
-  /// No description provided for @renameProjectSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Project renamed'**
-  String get renameProjectSuccess;
-
   /// No description provided for @renameSessionFailed.
   ///
   /// In en, this message translates to:

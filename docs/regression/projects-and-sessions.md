@@ -225,8 +225,9 @@ state.
   payload without plugin attribution means the historical OpenCode identity,
   never "the first enabled plugin".
 - Project and session rename sheets start from the current display name, reject
-  a blank trimmed value, prevent duplicate submission while saving, and show
-  success or failure feedback without losing the failed edit.
+  a blank trimmed value, and prevent duplicate submission. Submission dismisses
+  the sheet immediately and updates the list optimistically. Successful renames
+  stay silent; a failed rename restores the prior name and shows failure feedback.
 
 ## Regression Levels
 
@@ -328,6 +329,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
   a summary it never saw, or a cancelled scan leaving its row behind.
 - A bridge with no import route reported as a failure rather than as one that
   cannot scan, or a pull that finds no harness reporting nothing at all.
+- A project or session rename waits for the bridge response before dismissing,
+  confirms success, or leaves the optimistic name in place after a failure.
 - A generated title/branch update fails to reach list/detail, changes unseen,
   moves the worktree, or rewrites the backend's creation-time system context.
 

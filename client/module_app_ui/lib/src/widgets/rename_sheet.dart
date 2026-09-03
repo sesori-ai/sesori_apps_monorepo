@@ -1,12 +1,14 @@
+import "dart:async";
+
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const RenameSheet({
   required final String initialValue,
   required final String hintText,
   required final String saveLabel,
-  required final String successMessage,
   required final String failureMessage,
   required final Future<bool> Function(String value) onRename,
   final bool submitOnEnter = false,
@@ -19,7 +21,7 @@ class const RenameSheet({
 
 class _RenameSheetState() extends State<RenameSheet> {
   late final TextEditingController _controller;
-  bool _loading = false;
+  bool _submitted = false;
 
   @override
   void initState() {
@@ -33,42 +35,46 @@ class _RenameSheetState() extends State<RenameSheet> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  void _save() {
     final value = _controller.text.trim();
-    if (value.isEmpty || _loading) return;
+    if (value.isEmpty || _submitted) return;
+
     final presenter = PregoPopupAlertPresenter.of(context);
-    setState(() => _loading = true);
-    final success = await widget.onRename(value);
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (success) {
-      context.pop();
-      presenter.show(title: widget.successMessage, variant: PregoPopupAlertsNotificationsVariant.success);
-    } else {
-      presenter.show(title: widget.failureMessage, variant: PregoPopupAlertsNotificationsVariant.error);
-    }
+    setState(() => _submitted = true);
+    final rename = widget.onRename(value);
+    context.pop();
+    unawaited(
+      _showFailureIfNeeded(
+        rename: rename,
+        presenter: presenter,
+        failureMessage: widget.failureMessage,
+      ),
+    );
   }
 
-  static Brightness _inverse(Brightness brightness) =>
-      brightness == Brightness.dark ? Brightness.light : Brightness.dark;
+  Future<void> _showFailureIfNeeded({
+    required Future<bool> rename,
+    required PregoPopupAlertPresenter presenter,
+    required String failureMessage,
+  }) async {
+    final bool succeeded;
+    try {
+      succeeded = await rename;
+    } on Object catch (error, stackTrace) {
+      loge("Rename request failed unexpectedly", error, stackTrace);
+      presenter.show(title: failureMessage, variant: PregoPopupAlertsNotificationsVariant.error);
+      return;
+    }
+    if (!succeeded) {
+      presenter.show(title: failureMessage, variant: PregoPopupAlertsNotificationsVariant.error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final action = FilledButton(
-      onPressed: _loading || _controller.text.trim().isEmpty ? null : _save,
-      child: _loading
-          ? SizedBox(
-              width: 16,
-              height: 16,
-              // The primary button's fill (bgPrimarySolid) paints the inverse
-              // of the page surface, so the untinted spinner follows the
-              // opposite brightness.
-              child: PregoActivityIndicator.onSurface(
-                brightness: _inverse(Theme.of(context).brightness),
-                color: null,
-              ),
-            )
-          : Text(widget.saveLabel),
+      onPressed: _submitted || _controller.text.trim().isEmpty ? null : _save,
+      child: Text(widget.saveLabel),
     );
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: 16),

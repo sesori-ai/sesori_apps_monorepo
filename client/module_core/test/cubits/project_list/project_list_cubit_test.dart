@@ -1290,33 +1290,58 @@ void main() {
     // Test 4e: renameProject success
     // -------------------------------------------------------------------------
 
+    final originalProject = testProjectSummary(id: "A", path: "/home/user/A", name: "Original");
+    late Completer<ApiResponse<Project>> renameProjectCompleter;
     blocTest<ProjectListCubit, ProjectListState>(
-      "renameProject: calls repository, refreshes project list, and returns true on success",
+      "renameProject: updates the name before the request completes and returns true on success",
       build: () {
+        renameProjectCompleter = Completer<ApiResponse<Project>>();
         when(
           () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [originalProject])));
         when(
           () => mockProjectRepository.renameProject(
             projectId: any(named: "projectId"),
             name: any(named: "name"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(testProject(id: "A", path: "/home/user/A")));
+        ).thenAnswer((_) => renameProjectCompleter.future);
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectRepository.listProjects()).thenAnswer(
-          (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
+          (_) async => ApiResponse.success(
+            Projects(
+              data: [
+                originalProject.copyWith(name: "New Name"),
+                projectB,
+              ],
+            ),
+          ),
         );
-        final result = await cubit.renameProject(projectId: "A", name: "New Name");
-        expect(result, isTrue);
+
+        final rename = cubit.renameProject(projectId: "A", name: "New Name");
+        expect(
+          (cubit.state as ProjectListLoaded).projects.single.name,
+          "New Name",
+        );
+
+        renameProjectCompleter.complete(
+          ApiResponse.success(testProject(id: "A", path: "/home/user/A", name: "New Name")),
+        );
+        expect(await rename, isTrue);
+        await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
       expect: () => [
         isA<ProjectListLoaded>().having(
+          (s) => s.projects.single.name,
+          "optimistic project name",
+          "New Name",
+        ),
+        isA<ProjectListLoaded>().having(
           (s) => s.projects.length,
-          "projects count after rename",
+          "projects count after refresh",
           2,
         ),
       ],
@@ -1332,26 +1357,44 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "renameProject: returns false and emits no state on API error",
+      "renameProject: restores the previous name when the request fails",
       build: () {
+        renameProjectCompleter = Completer<ApiResponse<Project>>();
         when(
           () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [originalProject])));
         when(
           () => mockProjectRepository.renameProject(
             projectId: any(named: "projectId"),
             name: any(named: "name"),
           ),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        ).thenAnswer((_) => renameProjectCompleter.future);
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.renameProject(projectId: "A", name: "New Name");
-        expect(result, isFalse);
+        final rename = cubit.renameProject(projectId: "A", name: "New Name");
+        expect(
+          (cubit.state as ProjectListLoaded).projects.single.name,
+          "New Name",
+        );
+
+        renameProjectCompleter.complete(ApiResponse<Project>.error(ApiError.generic()));
+        expect(await rename, isFalse);
       },
       skip: 1,
-      expect: () => <ProjectListState>[],
+      expect: () => [
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.single.name,
+          "optimistic project name",
+          "New Name",
+        ),
+        isA<ProjectListLoaded>().having(
+          (s) => s.projects.single.name,
+          "restored project name",
+          "Original",
+        ),
+      ],
     );
 
     // -------------------------------------------------------------------------

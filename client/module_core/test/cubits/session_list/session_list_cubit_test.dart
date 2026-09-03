@@ -1713,12 +1713,14 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // renameSession success — calls service, refreshes list, returns true
+    // renameSession success — updates optimistically and returns true
     // -------------------------------------------------------------------------
 
+    late Completer<ApiResponse<Session>> renameSessionCompleter;
     blocTest<SessionListCubit, SessionListState>(
-      "renameSession: calls service with correct args, refreshes sessions, and returns true on success",
+      "renameSession: updates the title before the request completes and returns true on success",
       build: () {
+        renameSessionCompleter = Completer<ApiResponse<Session>>();
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
@@ -1733,12 +1735,11 @@ void main() {
         );
         when(
           () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
-        ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1", title: "New Title")));
+        ).thenAnswer((_) => renameSessionCompleter.future);
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        // Switch mock to return renamed session on refresh.
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
@@ -1751,14 +1752,19 @@ void main() {
             ),
           ),
         );
-        final result = await cubit.renameSession(sessionId: "s1", title: "New Title");
-        expect(result, isTrue);
+
+        final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
+        expect((cubit.state as SessionListLoaded).sessions.first.title, "New Title");
+
+        renameSessionCompleter.complete(ApiResponse.success(testSession(id: "s1", title: "New Title")));
+        expect(await rename, isTrue);
+        await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
       expect: () => [
         isA<SessionListLoaded>().having(
           (s) => s.sessions.first.title,
-          "session title after rename",
+          "optimistic session title",
           "New Title",
         ),
       ],
@@ -1768,12 +1774,13 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // renameSession failure — service returns ErrorResponse, returns false
+    // renameSession failure — restores the previous title and returns false
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "renameSession: returns false and leaves state unchanged when service returns error",
+      "renameSession: restores the previous title when the request fails",
       build: () {
+        renameSessionCompleter = Completer<ApiResponse<Session>>();
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
@@ -1788,17 +1795,30 @@ void main() {
         );
         when(
           () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
-        ).thenAnswer((_) async => ApiResponse<Session>.error(ApiError.generic()));
+        ).thenAnswer((_) => renameSessionCompleter.future);
         return buildCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final result = await cubit.renameSession(sessionId: "s1", title: "New Title");
-        expect(result, isFalse);
+        final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
+        expect((cubit.state as SessionListLoaded).sessions.first.title, "New Title");
+
+        renameSessionCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+        expect(await rename, isFalse);
       },
       skip: 1,
-      // No state changes — current loaded state is preserved.
-      expect: () => <SessionListState>[],
+      expect: () => [
+        isA<SessionListLoaded>().having(
+          (s) => s.sessions.first.title,
+          "optimistic session title",
+          "New Title",
+        ),
+        isA<SessionListLoaded>().having(
+          (s) => s.sessions.first.title,
+          "restored session title",
+          "Original",
+        ),
+      ],
     );
 
     // -------------------------------------------------------------------------

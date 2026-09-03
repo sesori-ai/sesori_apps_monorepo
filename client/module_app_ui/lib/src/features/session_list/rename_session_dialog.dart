@@ -20,7 +20,6 @@ Future<void> showRenameSessionDialog({
         initialValue: session.title ?? "",
         hintText: loc.renameSessionHint,
         saveLabel: loc.renameSave,
-        successMessage: loc.renameSessionSuccess,
         failureMessage: loc.renameSessionFailed,
         submitOnEnter: true,
         onRename: (title) => cubit.renameSession(sessionId: session.id, title: title),

@@ -35,7 +35,11 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _ProjectFetchOutcome() { applied, failed, superseded }
+enum _ProjectFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
 
 class ProjectListCubit(
   final ProjectRepository _projectRepository,
@@ -636,18 +640,70 @@ class ProjectListCubit(
     return _projectRepository.parentHostPath(path: path);
   }
 
-  /// Renames the project with [projectId] to [name].
-  /// Returns `true` on success (and refreshes the project list), `false` on error.
+  /// Renames a project optimistically. Returns `false` after restoring the
+  /// prior name when the bridge rejects the rename.
   Future<bool> renameProject({required String projectId, required String name}) async {
-    final response = await _projectRepository.renameProject(projectId: projectId, name: name);
-    if (isClosed) return false;
+    final currentState = state;
+    if (currentState is! ProjectListLoaded) return false;
+
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    if (index < 0) return false;
+
+    final previousName = currentState.projects[index].name;
+    final projects = [...currentState.projects];
+    projects[index] = projects[index].copyWith(name: name);
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
+
+    final ApiResponse<Project> response;
+    try {
+      response = await _projectRepository.renameProject(projectId: projectId, name: name);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to rename project", error, stackTrace);
+      _restoreProjectName(
+        projectId: projectId,
+        optimisticName: name,
+        previousName: previousName,
+      );
+      return false;
+    }
+
     switch (response) {
       case SuccessResponse():
-        await refreshProjects();
+        if (!isClosed) unawaited(refreshProjects());
         return true;
-      case ErrorResponse():
+      case ErrorResponse(:final error):
+        loge("Failed to rename project", error);
+        _restoreProjectName(
+          projectId: projectId,
+          optimisticName: name,
+          previousName: previousName,
+        );
         return false;
     }
+  }
+
+  void _restoreProjectName({
+    required String projectId,
+    required String optimisticName,
+    required String? previousName,
+  }) {
+    final currentState = state;
+    if (isClosed || currentState is! ProjectListLoaded) return;
+
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    if (index < 0 || currentState.projects[index].name != optimisticName) return;
+
+    final projects = [...currentState.projects];
+    projects[index] = projects[index].copyWith(name: previousName);
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
   }
 
   /// Discovers an existing project at [path].
