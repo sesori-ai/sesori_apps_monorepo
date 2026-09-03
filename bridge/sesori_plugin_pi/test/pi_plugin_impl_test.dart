@@ -559,6 +559,7 @@ final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "
       catalogTimeout: const Duration(seconds: 2),
       healthTimeout: const Duration(seconds: 1),
       resolveIdleTimeout: () => const Duration(minutes: 5),
+      idleTimeoutChanges: const Stream<Duration?>.empty(),
       editorTimeout: const Duration(minutes: 1),
     );
   }

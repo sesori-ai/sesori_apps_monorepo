@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
@@ -26,6 +27,8 @@ void main() {
     late ProcessIdentity currentBridgeIdentity;
     late Directory runtimeDirectory;
     late List<BridgePlugin> startedPlugins;
+    late StreamController<Object?> settingsChanges;
+    late int idleTimeoutMins;
 
     setUp(() async {
       startupMutexRepository = _FakeStartupMutexRepository();
@@ -34,12 +37,15 @@ void main() {
       currentBridgeIdentity = _identity(pid: 100, startMarker: "bridge-start");
       runtimeDirectory = await Directory.systemTemp.createTemp("bridge-runtime-server-test");
       startedPlugins = [];
+      settingsChanges = StreamController<Object?>.broadcast(sync: true);
+      idleTimeoutMins = 10;
     });
 
     tearDown(() async {
       for (final plugin in startedPlugins) {
         await plugin.shutdown(budget: const Duration(seconds: 1));
       }
+      await settingsChanges.close();
       if (runtimeDirectory.existsSync()) {
         await runtimeDirectory.delete(recursive: true);
       }
@@ -66,7 +72,8 @@ void main() {
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
-        resolveIdleTimeoutMins: ({required pluginId}) => 10,
+        resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
+        settingsChanges: settingsChanges.stream,
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
@@ -129,6 +136,18 @@ void main() {
         reason: "stale cleanup must be authorized to reclaim records of the bridge this one replaced",
       );
     });
+    test("forwards live idle timeout changes through the plugin host", () async {
+      await startPlugin();
+      final host = descriptor.startedHosts.single;
+      final changes = <Duration?>[];
+      final subscription = host.pluginIdleTimeoutChanges.listen(changes.add);
+
+      idleTimeoutMins = 25;
+      settingsChanges.add(Object());
+
+      expect(changes, [const Duration(minutes: 25)]);
+      await subscription.cancel();
+    });
 
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
       final factory = PluginGenerationFactory(
@@ -147,6 +166,7 @@ void main() {
         environment: const <String, String>{},
         currentUser: null,
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
+        settingsChanges: settingsChanges.stream,
       );
       await factory.enforceBridgeOwnership();
 

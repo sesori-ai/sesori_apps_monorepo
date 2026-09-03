@@ -49,6 +49,7 @@ final class PiPlugin._({
     required Duration catalogTimeout,
     required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
+    required Stream<Duration?> idleTimeoutChanges,
     required Duration editorTimeout,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
@@ -90,6 +91,7 @@ final class PiPlugin._({
       extensionUiService: extensionUiService,
       clock: clock,
       resolveIdleTimeout: resolveIdleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges,
     );
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(

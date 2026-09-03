@@ -154,10 +154,12 @@ final class PiSessionService({
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
+  required final Stream<Duration?> idleTimeoutChanges,
 }) {
   this {
     _frameSubscription = _processes.frames.listen(_handleFrame);
     _exitSubscription = _processes.exits.listen(_handleExit);
+    _idleTimeoutSubscription = idleTimeoutChanges.listen(_handleIdleTimeoutChange);
   }
 
   final PiSessionProcessRepository _processes = processRepository;
@@ -173,6 +175,7 @@ final class PiSessionService({
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
   late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
+  late final StreamSubscription<Duration?> _idleTimeoutSubscription;
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -1159,6 +1162,15 @@ final class PiSessionService({
     return descendants;
   }
 
+  void _handleIdleTimeoutChange(Duration? _) {
+    if (_disposed) return;
+    for (final entry in _sessions.entries) {
+      final state = entry.value;
+      if (state.hasWork || state.residentGeneration == null || state.idleReap != null) continue;
+      _scheduleIdleReap(sessionId: entry.key, state: state);
+    }
+  }
+
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
     final generation = ++state.idleGeneration;
     final idleTimeout = _resolveIdleTimeout();
@@ -1263,6 +1275,7 @@ final class PiSessionService({
     }
     await _frameSubscription.cancel();
     await _exitSubscription.cancel();
+    await _idleTimeoutSubscription.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
     await _activeIdleReaps.drain();

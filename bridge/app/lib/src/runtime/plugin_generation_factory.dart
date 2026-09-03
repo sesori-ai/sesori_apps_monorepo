@@ -59,6 +59,7 @@ class PluginGenerationFactory({
   /// Read live at each [PluginHost.pluginIdleTimeout] access so runtime
   /// settings changes reach plugins without a restart.
   required final int Function({required String pluginId}) _resolveIdleTimeoutMins,
+  required final Stream<Object?> _settingsChanges,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   final Map<String, RuntimeFileApi> _fileApisByStateDirectory = <String, RuntimeFileApi>{
@@ -67,6 +68,11 @@ class PluginGenerationFactory({
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
   bool _drainScheduled = false;
   bool _draining = false;
+
+  Duration? _idleTimeoutForPlugin({required String pluginId}) {
+    final minutes = _resolveIdleTimeoutMins(pluginId: pluginId);
+    return minutes > 0 ? Duration(minutes: minutes) : null;
+  }
 
   Future<void> enforceBridgeOwnership() => _attemptBatch(attempt: 1, batch: const []);
 
@@ -269,10 +275,10 @@ class PluginGenerationFactory({
       ),
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: BridgeHostJsonStore(fileApi: fileApi),
-      resolveIdleTimeout: () {
-        final minutes = _resolveIdleTimeoutMins(pluginId: descriptor.id);
-        return minutes > 0 ? Duration(minutes: minutes) : null;
-      },
+      resolveIdleTimeout: () => _idleTimeoutForPlugin(pluginId: descriptor.id),
+      pluginIdleTimeoutChanges: _settingsChanges
+          .map<Duration?>((_) => _idleTimeoutForPlugin(pluginId: descriptor.id))
+          .distinct(),
     );
   }
 }
