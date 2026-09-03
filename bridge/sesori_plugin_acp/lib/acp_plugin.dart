@@ -43,6 +43,7 @@ export "src/acp_stdio_client.dart";
 export "src/api/acp_agent_api.dart";
 export "src/repositories/acp_session_config_repository.dart";
 export "src/repositories/mappers/acp_content_mapper.dart";
+export "src/repositories/trackers/acp_child_session_tracker.dart";
 // Plugin-lifecycle housing: the BridgePlugin wrapper + the host-backed process
 // factory a descriptor uses to run an ACP agent under the bridge's lifecycle.
 export "src/runtime/acp_bridge_plugin.dart";

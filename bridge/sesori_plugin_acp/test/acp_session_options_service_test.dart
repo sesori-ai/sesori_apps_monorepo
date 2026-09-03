@@ -16,6 +16,7 @@ void main() {
       launchDirectory: "/repo",
       pluginId: "plugin",
       configurationTracker: tracker,
+      childSessions: AcpChildSessionTracker(),
     );
 
     final defaultEvents = mapper.map(_messageUpdate(sessionId: "other"));
