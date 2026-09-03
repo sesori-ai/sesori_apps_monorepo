@@ -1352,7 +1352,7 @@ void main() {
       },
     );
 
-    test("renameProject supersedes a refresh that started before the rename", () async {
+    test("renameProject keeps a pending refresh successful and overlays its stale name", () async {
       final original = testProjectSummary(id: "A", path: "/home/user/A", name: "Original");
       final renamed = original.copyWith(name: "New Name");
       when(
@@ -1379,15 +1379,19 @@ void main() {
       final rename = cubit.renameProject(projectId: "A", name: "New Name");
       expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
 
+      staleRefreshCompleter.complete(ApiResponse.success(Projects(data: [original])));
+      expect(await staleRefresh, isTrue);
+      expect(refreshRequestCount, 1);
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
+
       renameCompleter.complete(
         ApiResponse.success(testProject(id: "A", path: "/home/user/A", name: "New Name")),
       );
       expect(await rename, isTrue);
       expect(refreshRequestCount, 2);
 
-      staleRefreshCompleter.complete(ApiResponse.success(Projects(data: [original])));
       postRenameRefreshCompleter.complete(ApiResponse.success(Projects(data: [renamed])));
-      expect(await staleRefresh, isTrue);
+      await Future<void>.delayed(Duration.zero);
       expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
     });
 

@@ -1773,7 +1773,7 @@ void main() {
       },
     );
 
-    test("renameSession supersedes a refresh that started before the rename", () async {
+    test("renameSession replaces an active PR-data refresh with an equivalent post-write read", () async {
       final original = testSession(id: "s1", title: "Original");
       final renamed = testSession(id: "s1", title: "New Title");
       when(
@@ -1793,29 +1793,69 @@ void main() {
 
       final staleRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
       final postRenameRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
+      final waitsForPrData = <bool>[];
       var refreshRequestCount = 0;
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
           waitForPrData: any(named: "waitForPrData"),
         ),
-      ).thenAnswer((_) {
+      ).thenAnswer((invocation) {
+        waitsForPrData.add(invocation.namedArguments[#waitForPrData] as bool);
         refreshRequestCount++;
         return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
       });
 
-      final staleRefresh = cubit.refreshSessions();
+      final staleRefresh = cubit.refreshSessions(waitForPrData: true);
       final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
       expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
 
       renameCompleter.complete(ApiResponse.success(renamed));
       expect(await rename, isTrue);
       expect(refreshRequestCount, 2);
+      expect(waitsForPrData, [isTrue, isTrue]);
 
       staleRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [original])));
       postRenameRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [renamed])));
       expect(await staleRefresh, isTrue);
       expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
+    });
+
+    test("renameSession keeps a pending refresh successful and overlays its stale title", () async {
+      final original = testSession(id: "s1", title: "Original");
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
+      final renameCompleter = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
+      ).thenAnswer((_) => renameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final refreshCompleter = Completer<ApiResponse<SessionListResponse>>();
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) => refreshCompleter.future);
+
+      final refresh = cubit.refreshSessions();
+      final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
+      refreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [original])));
+
+      expect(await refresh, isTrue);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
+
+      renameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await rename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
     });
 
     // -------------------------------------------------------------------------

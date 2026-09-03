@@ -424,9 +424,7 @@ class SessionListCubit({
     if (index < 0) return false;
 
     final previousTitle = _allSessions[index].title;
-    // A read that began before this mutation can still carry the old title.
-    // Supersede it now; success starts an authoritative post-write read below.
-    _fetchGeneration++;
+    _optimisticTitleBySessionId[sessionId] = title;
     _allSessions = _sessionListService.upsertSession(
       sessions: _allSessions,
       session: _allSessions[index].copyWith(title: title),
@@ -447,12 +445,25 @@ class SessionListCubit({
 
     switch (response) {
       case SuccessResponse():
+        if (_optimisticTitleBySessionId[sessionId] == title) {
+          _optimisticTitleBySessionId.remove(sessionId);
+          if (!isClosed) {
+            final index = _allSessions.indexWhere((session) => session.id == sessionId);
+            if (index >= 0) {
+              _allSessions = _sessionListService.upsertSession(
+                sessions: _allSessions,
+                session: _allSessions[index].copyWith(title: title),
+              );
+              _emitFiltered();
+            }
+          }
+        }
         if (!isClosed) {
           unawaited(
             _refreshSessions(
               force: true,
               catalogRefresh: false,
-              waitForPrData: false,
+              waitForPrData: _activeRefreshWaitsForPrData,
             ),
           );
         }
@@ -474,13 +485,16 @@ class SessionListCubit({
   }) {
     if (isClosed || state is! SessionListLoaded) return;
 
+    if (_optimisticTitleBySessionId[sessionId] == optimisticTitle) {
+      _optimisticTitleBySessionId.remove(sessionId);
+    }
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
-    if (index < 0 || _allSessions[index].title != optimisticTitle) return;
-
-    _allSessions = _sessionListService.upsertSession(
-      sessions: _allSessions,
-      session: _allSessions[index].copyWith(title: previousTitle),
-    );
+    if (index >= 0 && _allSessions[index].title == optimisticTitle) {
+      _allSessions = _sessionListService.upsertSession(
+        sessions: _allSessions,
+        session: _allSessions[index].copyWith(title: previousTitle),
+      );
+    }
     _emitFiltered();
   }
 
@@ -544,6 +558,10 @@ class SessionListCubit({
   /// Tracks the full unfiltered server response so toggling archived
   /// doesn't require a network round-trip.
   List<Session> _allSessions = [];
+
+  /// Keeps pre-rename list responses from repainting an old title while the
+  /// mutation is still pending.
+  final Map<String, String> _optimisticTitleBySessionId = {};
   bool _showArchived = false;
 
   void toggleArchived() {
@@ -553,7 +571,10 @@ class SessionListCubit({
 
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
-      sessions: _allSessions,
+      sessions: _allSessions.map((session) {
+        final optimisticTitle = _optimisticTitleBySessionId[session.id];
+        return optimisticTitle == null ? session : session.copyWith(title: optimisticTitle);
+      }),
       showArchived: _showArchived,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:

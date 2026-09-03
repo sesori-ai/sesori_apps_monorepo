@@ -56,6 +56,10 @@ class ProjectListCubit(
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
+  /// Keeps pre-rename list responses from repainting an old name while the
+  /// mutation is still pending.
+  final Map<String, String> _optimisticNameByProjectId = {};
+
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
@@ -574,7 +578,7 @@ class ProjectListCubit(
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
   }) {
     final ordered = _projectListService.orderProjects(
-      projects: projects,
+      projects: _withOptimisticProjectNames(projects: projects),
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
     );
@@ -584,6 +588,13 @@ class ProjectListCubit(
         unseenByProjectId: _unseenByProjectId(ordered),
       ),
     );
+  }
+
+  Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
+    return projects.map((project) {
+      final optimisticName = _optimisticNameByProjectId[project.id];
+      return optimisticName == null ? project : project.copyWith(name: optimisticName);
+    });
   }
 
   /// Creates a new project named [name] below [parentPath].
@@ -650,9 +661,7 @@ class ProjectListCubit(
     if (index < 0) return false;
 
     final previousName = currentState.projects[index].name;
-    // A read that began before this mutation can still carry the old name.
-    // Supersede it now; success starts an authoritative post-write read below.
-    _fetchGeneration++;
+    _optimisticNameByProjectId[projectId] = name;
     final projects = [...currentState.projects];
     projects[index] = projects[index].copyWith(name: name);
     _emitOrdered(
@@ -675,6 +684,9 @@ class ProjectListCubit(
 
     switch (response) {
       case SuccessResponse():
+        if (_optimisticNameByProjectId[projectId] == name) {
+          _optimisticNameByProjectId.remove(projectId);
+        }
         if (!isClosed) {
           unawaited(
             _refreshProjects(
@@ -702,11 +714,14 @@ class ProjectListCubit(
     final currentState = state;
     if (isClosed || currentState is! ProjectListLoaded) return;
 
+    if (_optimisticNameByProjectId[projectId] == optimisticName) {
+      _optimisticNameByProjectId.remove(projectId);
+    }
     final index = currentState.projects.indexWhere((project) => project.id == projectId);
-    if (index < 0 || currentState.projects[index].name != optimisticName) return;
-
     final projects = [...currentState.projects];
-    projects[index] = projects[index].copyWith(name: previousName);
+    if (index >= 0 && projects[index].name == optimisticName) {
+      projects[index] = projects[index].copyWith(name: previousName);
+    }
     _emitOrdered(
       loaded: currentState,
       projects: projects,
@@ -822,7 +837,7 @@ class ProjectListCubit(
               )
               .projects;
           final sortedProjects = _projectListService.orderProjects(
-            projects: mergedProjects,
+            projects: _withOptimisticProjectNames(projects: mergedProjects),
             activityByProjectId: _sseEventTracker.currentSessionActivity,
             listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
           );
