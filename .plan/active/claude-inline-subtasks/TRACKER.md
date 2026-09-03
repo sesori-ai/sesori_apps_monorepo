@@ -10,8 +10,8 @@
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
 - **Next action:** deliver the harness follow-ups in `HARNESS_FOLLOWUPS.md`
-  (Codex, Grok Build, DeepSeek) as parallel PR chains under this slug without
-  step counters; E2E testing happens after each merge
+  (Codex, Grok Build, DeepSeek, Cursor) as parallel PR chains under this slug
+  without step counters; E2E testing happens after each merge
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -151,10 +151,11 @@
 
 ## Harness Follow-Ups
 
-Designs live in `HARNESS_FOLLOWUPS.md`. The three chains are independent and
+Designs live in `HARNESS_FOLLOWUPS.md`. The four chains are independent and
 run in parallel; the Grok chain introduces the shared ACP seams that the
-DeepSeek chain reuses, so the DeepSeek tile PR lands after the Grok lifecycle
-PRs. Live probes are recorded here as bounded facts before each chain's first
+DeepSeek and Cursor chains reuse, so the DeepSeek tile PR lands after the
+Grok lifecycle PRs and the Cursor PR after the Grok scoped-stop PR. Live
+probes are recorded here as bounded facts before each chain's first
 implementation PR. E2E testing is performed after each PR merges.
 
 | Done | Harness | Description | State |

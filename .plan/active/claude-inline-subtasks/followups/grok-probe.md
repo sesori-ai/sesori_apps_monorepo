@@ -1,4 +1,4 @@
-# Grok Build sub-agent probe (2026-09-02)
+# Grok Build sub-agent probe (2026-09-03)
 
 Live capture against the official macOS arm64 artifact `grok 1.0.5
 (5115b46bc909)` launched as `grok --no-auto-update agent --no-leader stdio`
