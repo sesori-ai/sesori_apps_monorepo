@@ -361,6 +361,12 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
+- Persisted layout (verified while building PR #1272): a child's `summary.json`
+  carries `session_kind: "subagent"` and `agent_name` but no parent id;
+  parentage lives only in the root's `updates.jsonl` as `subagent_spawned`
+  records (`parent_session_id`, `child_session_id`, `subagent_type`,
+  `description`). The Grok session catalog derives children from those records
+  and reads the child summary for title and times.
 - The live method names carry a leading underscore: `_x.ai/session_notification`
   and, on `session/load` replay, `_x.ai/session/update`; the same facts are
   replayed under the latter, so seam 5 feeds that method to `mapExtension`.
