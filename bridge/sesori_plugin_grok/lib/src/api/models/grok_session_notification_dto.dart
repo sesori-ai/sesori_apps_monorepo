@@ -34,6 +34,9 @@ sealed class GrokSubagentUpdate with _$GrokSubagentUpdate {
     @JsonKey(name: "child_session_id") required String childSessionId,
     @JsonKey(name: "subagent_type") required String? subagentType,
     required String? description,
+
+    /// The model the child runs on, which may differ from the root's.
+    required String? model,
   }) = GrokSubagentSpawned;
 
   const factory subagentProgress({

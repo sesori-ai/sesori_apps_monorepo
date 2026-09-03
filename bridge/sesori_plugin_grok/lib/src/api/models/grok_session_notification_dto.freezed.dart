@@ -222,13 +222,15 @@ $GrokSubagentUpdateCopyWith(GrokSubagentUpdate _, $Res Function(GrokSubagentUpda
 @JsonSerializable(createToJson: false)
 
 class GrokSubagentSpawned implements GrokSubagentUpdate {
-  const GrokSubagentSpawned({@JsonKey(name: "subagent_id") required this.subagentId, @JsonKey(name: "child_session_id") required this.childSessionId, @JsonKey(name: "subagent_type") required this.subagentType, required this.description,  String? $type}): $type = $type ?? 'subagent_spawned';
+  const GrokSubagentSpawned({@JsonKey(name: "subagent_id") required this.subagentId, @JsonKey(name: "child_session_id") required this.childSessionId, @JsonKey(name: "subagent_type") required this.subagentType, required this.description, required this.model,  String? $type}): $type = $type ?? 'subagent_spawned';
   factory GrokSubagentSpawned.fromJson(Map<String, dynamic> json) => _$GrokSubagentSpawnedFromJson(json);
 
 @JsonKey(name: "subagent_id") final  String subagentId;
 @JsonKey(name: "child_session_id") final  String childSessionId;
 @JsonKey(name: "subagent_type") final  String? subagentType;
  final  String? description;
+/// The model the child runs on, which may differ from the root's.
+ final  String? model;
 
 @JsonKey(name: 'sessionUpdate')
 final String $type;
@@ -244,16 +246,16 @@ $GrokSubagentSpawnedCopyWith<GrokSubagentSpawned> get copyWith => _$GrokSubagent
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentSpawned&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.subagentType, subagentType) || other.subagentType == subagentType)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentSpawned&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.subagentType, subagentType) || other.subagentType == subagentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,subagentType,description);
+int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,subagentType,description,model);
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.subagentSpawned(subagentId: $subagentId, childSessionId: $childSessionId, subagentType: $subagentType, description: $description)';
+  return 'GrokSubagentUpdate.subagentSpawned(subagentId: $subagentId, childSessionId: $childSessionId, subagentType: $subagentType, description: $description, model: $model)';
 }
 
 
@@ -264,7 +266,7 @@ abstract mixin class $GrokSubagentSpawnedCopyWith<$Res> implements $GrokSubagent
   factory $GrokSubagentSpawnedCopyWith(GrokSubagentSpawned value, $Res Function(GrokSubagentSpawned) _then) = _$GrokSubagentSpawnedCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "subagent_id") String subagentId,@JsonKey(name: "child_session_id") String childSessionId,@JsonKey(name: "subagent_type") String? subagentType, String? description
+@JsonKey(name: "subagent_id") String subagentId,@JsonKey(name: "child_session_id") String childSessionId,@JsonKey(name: "subagent_type") String? subagentType, String? description, String? model
 });
 
 
@@ -281,12 +283,13 @@ class _$GrokSubagentSpawnedCopyWithImpl<$Res>
 
 /// Create a copy of GrokSubagentUpdate
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? subagentId = null,Object? childSessionId = null,Object? subagentType = freezed,Object? description = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? subagentId = null,Object? childSessionId = null,Object? subagentType = freezed,Object? description = freezed,Object? model = freezed,}) {
   return _then(GrokSubagentSpawned(
 subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
 as String,childSessionId: null == childSessionId ? _self.childSessionId : childSessionId // ignore: cast_nullable_to_non_nullable
 as String,subagentType: freezed == subagentType ? _self.subagentType : subagentType // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,model: freezed == model ? _self.model : model // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

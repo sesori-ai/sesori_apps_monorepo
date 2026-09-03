@@ -27,14 +27,18 @@ PluginMessagePartSubtask _subtask(BridgeSseEvent event) =>
 void main() {
   group("GrokEventMapper sub-agent lifecycle", () {
     late AcpChildSessionTracker tracker;
+    late AcpSessionConfigurationTracker configuration;
     late GrokEventMapper mapper;
 
     setUp(() {
       tracker = AcpChildSessionTracker();
+      configuration = AcpSessionConfigurationTracker()
+        ..setProcessDefaults(modelId: "synthetic:default", providerId: "xai")
+        ..setSessionOverride(sessionId: _root, modelId: "synthetic:root", providerId: "xai");
       mapper = GrokEventMapper(
         launchDirectory: "/launch",
         pluginId: "grok",
-        configurationTracker: AcpSessionConfigurationTracker(),
+        configurationTracker: configuration,
         childSessions: tracker,
       )..setSessionProject(_root, "/project");
       mapper.beginTurn(sessionId: _root, messageId: null);
@@ -83,6 +87,51 @@ void main() {
       expect(tile.agent, "general-purpose");
       expect(tile.childSessionID, _child);
       expect(tile.taskState?.status, PluginToolStatus.running);
+    });
+
+    test("the child's reported model stamps its own messages", () {
+      mapper.map(_fixture("subagent_spawned.json"));
+      expect(mapper.modelForSession(sessionId: _child), "synthetic:model-alpha");
+      expect(mapper.providerForSession(sessionId: _child), "xai");
+      expect(mapper.modelForSession(sessionId: _root), "synthetic:root");
+    });
+
+    test("a reordered spawn tool_call_update opens no tool card either", () {
+      final events = mapper.map(
+        const AcpNotification(
+          method: "session/update",
+          params: {
+            "sessionId": _root,
+            "update": {
+              "sessionUpdate": "tool_call_update",
+              "toolCallId": _toolCallId,
+              "status": "completed",
+              "_meta": {
+                "x.ai/tool": {"name": "spawn_subagent", "kind": "task"},
+              },
+            },
+          },
+        ),
+      );
+      expect(events, isEmpty);
+      expect(mapper.map(_fixture("subagent_tool_call.json")), isEmpty);
+    });
+
+    test("a spawn with an empty child id is undeliverable and dropped", () {
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: GrokEventMapper.sessionNotificationMethod,
+            params: {
+              "sessionId": _root,
+              "update": {"sessionUpdate": "subagent_spawned", "subagent_id": "", "child_session_id": ""},
+            },
+          ),
+        ),
+        isEmpty,
+      );
+      expect(tracker.childStatuses, isEmpty);
+      expect(mapper.modelForSession(sessionId: ""), "synthetic:default");
     });
 
     test("a root user chunk is still dropped", () {

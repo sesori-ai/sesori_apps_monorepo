@@ -154,6 +154,7 @@ void main() {
         ..spawn(sessionId: "root", spawn: _spawn(childId: "k2"), directory: "/r")
         ..spawn(sessionId: "other", spawn: _spawn(childId: "k3"), directory: "/r");
 
+      expect(tracker.childSessionIds(sessionId: "root"), ["k1", "k2"]);
       tracker.forgetSession(sessionId: "k2");
       expect(tracker.childStatuses.keys, ["k1", "k3"]);
       expect(tracker.busyChildIds(sessionId: "root"), {"k1"});

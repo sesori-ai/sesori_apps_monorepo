@@ -48,8 +48,10 @@ class GrokEventMapper({
       return const [];
     }
     return switch (dto.update) {
-      GrokSubagentSpawned(:final childSessionId, :final subagentType, :final description) => mapChildSpawned(
+      GrokSubagentSpawned(:final childSessionId, :final subagentType, :final description, :final model) => _spawned(
         sessionId: dto.sessionId,
+        childSessionId: childSessionId,
+        model: model,
         spawn: AcpChildSpawn(
           childSessionId: childSessionId,
           description: description,
@@ -71,5 +73,18 @@ class GrokEventMapper({
       // One child is one tile; progress never redraws it.
       GrokSubagentProgress() || GrokSubagentUpdateUnknown() => const [],
     };
+  }
+
+  List<BridgeSseEvent> _spawned({
+    required String sessionId,
+    required String childSessionId,
+    required String? model,
+    required AcpChildSpawn spawn,
+  }) {
+    final events = mapChildSpawned(sessionId: sessionId, spawn: spawn);
+    // Only a child that was actually announced gets the reported model, so a
+    // rejected spawn leaves no stray override behind.
+    if (events.isNotEmpty) setChildModel(childSessionId: childSessionId, modelId: model);
+    return events;
   }
 }

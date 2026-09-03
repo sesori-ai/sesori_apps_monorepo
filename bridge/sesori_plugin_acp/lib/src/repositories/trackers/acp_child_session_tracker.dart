@@ -143,6 +143,11 @@ final class AcpChildSessionTracker() {
       entry.key: entry.value.status.isTerminal ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy(),
   };
 
+  /// Every child of [sessionId], running or finished.
+  List<String> childSessionIds({required String sessionId}) => [
+    for (final child in _byRoot[sessionId] ?? const <_Child>[]) child.childSessionId,
+  ];
+
   /// The children of [sessionId] still running.
   Set<String> busyChildIds({required String sessionId}) => {
     for (final child in runningChildren(sessionId: sessionId)) child.childSessionId,

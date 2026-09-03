@@ -20,6 +20,7 @@ GrokSubagentSpawned _$GrokSubagentSpawnedFromJson(Map json) =>
       childSessionId: json['child_session_id'] as String,
       subagentType: json['subagent_type'] as String?,
       description: json['description'] as String?,
+      model: json['model'] as String?,
       $type: json['sessionUpdate'] as String?,
     );
 

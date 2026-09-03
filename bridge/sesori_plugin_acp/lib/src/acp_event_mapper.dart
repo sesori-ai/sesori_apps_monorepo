@@ -585,13 +585,27 @@ class AcpEventMapper({
   /// Feeds a harness-reported sub-agent start under [sessionId] (the parent as
   /// the harness names it) to [childSessions]. The child's directory is the
   /// root's project.
-  List<BridgeSseEvent> mapChildSpawned({required String sessionId, required AcpChildSpawn spawn}) => _childTileEvents(
-    childSessions.spawn(
-      sessionId: sessionId,
-      spawn: spawn,
-      directory: projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId)),
-    ),
-  );
+  List<BridgeSseEvent> mapChildSpawned({required String sessionId, required AcpChildSpawn spawn}) {
+    // Same boundary rule as [map]: an id-less session event is undeliverable.
+    if (sessionId.isEmpty || spawn.childSessionId.isEmpty) return const [];
+    return _childTileEvents(
+      childSessions.spawn(
+        sessionId: sessionId,
+        spawn: spawn,
+        directory: projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId)),
+      ),
+    );
+  }
+
+  /// Records the model a harness reports for a spawned child, so the child's
+  /// streamed messages are stamped with it instead of the process default.
+  /// The provider is the root's: a child never switches providers.
+  void setChildModel({required String childSessionId, required String? modelId}) =>
+      _configurationTracker.setSessionOverride(
+        sessionId: childSessionId,
+        modelId: modelId,
+        providerId: providerForSession(sessionId: childSessions.rootOf(sessionId: childSessionId)),
+      );
 
   List<BridgeSseEvent> _childPromptChunk({required String childSessionId, required Map<String, dynamic> update}) {
     final text = _contentMapper.text(content: update["content"]);
@@ -1002,6 +1016,12 @@ class AcpEventMapper({
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     if (_spawnToolCalls[sessionId]?.contains(toolCallId) ?? false) return const [];
+    // A reordered spawn update (see the reorder note below) must not open a
+    // tool card its `tool_call` would have suppressed.
+    if (_liveTools[sessionId]?[toolCallId] == null && isSubagentSpawnToolCall(update: update)) {
+      (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
+      return const [];
+    }
     final messageId = "$sessionId-tool-$toolCallId";
     // A `tool_call_update` is a PARTIAL update: an agent may send only the
     // changed fields (e.g. `{status: completed}`). Merge onto the tool's prior
