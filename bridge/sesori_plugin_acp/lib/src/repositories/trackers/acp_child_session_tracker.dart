@@ -29,14 +29,15 @@ final class const AcpChildTileResult({
   required final List<BridgeSseEvent> events,
 });
 
-/// A root whose running child set changed.
+/// A root whose child or autonomous-settlement activity changed.
 final class const AcpChildSessionTrackerChange({required final String rootSessionId});
 
 /// The single owner of ACP child-session lifecycle. It is constructed once at
 /// the harness composition point and shared by the event mapper, which pushes
-/// typed spawn/prompt/finish facts through [spawn], [appendPrompt], and
-/// [finish], and by the plugin, which reads [childStatuses], [busyChildIds],
-/// and [runningChildren] and clears state through [forgetSession] and [clear].
+/// typed lifecycle facts through [spawn], [appendPrompt], [finish], and
+/// [finishAndHoldRoot], and by the plugin, which reads child/root activity,
+/// releases holds through [releaseRootHold], and clears state through
+/// [forgetSession] and [clear].
 ///
 /// Every tile is keyed by the child session id the harness reports, never by
 /// a tool call, so one child is exactly one tile. Children are flattened under
@@ -49,10 +50,12 @@ final class AcpChildSessionTracker() {
   final Map<String, _Child> _byChild = {};
 
   /// Opaque backend-neutral work holds that keep a root active after a child
-  /// terminal event and until its autonomous settlement turn completes.
-  final Map<String, Set<String>> _rootHolds = {};
+  /// terminal event and until its autonomous settlement turn completes. Each
+  /// hold retains its originating child so deleting that child clears the
+  /// exact hold even when the backend's hold id differs from the session id.
+  final Map<String, Map<String, String>> _rootHolds = {};
 
-  /// Running-set changes consumed by the plugin. The asynchronous controller
+  /// Activity changes consumed by the plugin. The asynchronous controller
   /// guarantees mapper-returned child events enter the plugin stream before a
   /// last-child change can release the root idle transition.
   final StreamController<AcpChildSessionTrackerChange> _changes =
@@ -171,7 +174,7 @@ final class AcpChildSessionTracker() {
   }) {
     final child = _byChild[childSessionId];
     if (child == null || child.status.isTerminal) return const [];
-    (_rootHolds[child.rootSessionId] ??= {}).add(holdId);
+    (_rootHolds[child.rootSessionId] ??= {})[holdId] = childSessionId;
     final events = _finish(child: child, status: status, output: output, error: error);
     _notify(rootSessionId: child.rootSessionId);
     return events;
@@ -181,7 +184,7 @@ final class AcpChildSessionTracker() {
   /// no-ops, preserving one transition per observed backend lifecycle fact.
   bool releaseRootHold({required String rootSessionId, required String holdId}) {
     final holds = _rootHolds[rootSessionId];
-    if (holds == null || !holds.remove(holdId)) return false;
+    if (holds == null || holds.remove(holdId) == null) return false;
     if (holds.isEmpty) _rootHolds.remove(rootSessionId);
     _notify(rootSessionId: rootSessionId);
     return true;
@@ -234,6 +237,14 @@ final class AcpChildSessionTracker() {
   /// Whether children or autonomous settlement keep [sessionId] active.
   bool hasActiveWorkForRoot({required String sessionId}) =>
       busyChildIds(sessionId: sessionId).isNotEmpty || hasRootHold(sessionId: sessionId);
+
+  /// Every root that has child or autonomous settlement work.
+  Set<String> get activeRootSessionIds => {
+    for (final entry in _byRoot.entries)
+      if (entry.value.any((child) => !child.status.isTerminal)) entry.key,
+    for (final entry in _rootHolds.entries)
+      if (entry.value.isNotEmpty) entry.key,
+  };
 
   /// Whether any root has child or autonomous settlement work.
   bool get hasActiveWork => hasBusyChildren || _rootHolds.values.any((holds) => holds.isNotEmpty);
@@ -298,7 +309,9 @@ final class AcpChildSessionTracker() {
     siblings?.remove(child);
     if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);
     final siblingHolds = _rootHolds[child.rootSessionId];
-    final removedChildHold = siblingHolds?.remove(sessionId) ?? false;
+    final holdCount = siblingHolds?.length ?? 0;
+    siblingHolds?.removeWhere((_, heldChildSessionId) => heldChildSessionId == sessionId);
+    final removedChildHold = siblingHolds != null && siblingHolds.length != holdCount;
     if (siblingHolds?.isEmpty ?? false) _rootHolds.remove(child.rootSessionId);
     if (!child.status.isTerminal || removedChildHold) {
       _notify(rootSessionId: child.rootSessionId);

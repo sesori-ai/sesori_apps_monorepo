@@ -144,6 +144,27 @@ void main() {
     expect(() => repository.childSessions(cwd: _cwd, rootId: _root), throwsA(isA<FileSystemException>()));
   });
 
+  test("resolves several persisted directories with one tree scan", () {
+    const otherCwd = "/tmp/other-synthetic-project";
+    const otherRoot = "01a00000-0000-7000-8000-00000000000d";
+    File(p.join(sessions.path, Uri.encodeComponent(otherCwd), otherRoot, "summary.json"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync(
+        jsonEncode({
+          "info": {"id": otherRoot, "cwd": otherCwd},
+        }),
+      );
+    final api = _CountingGrokSessionStoreApi(sessionsRoot: sessions.path);
+    final indexedRepository = GrokSessionCatalogRepository(api: api);
+
+    expect(
+      indexedRepository.persistedDirectoriesForSessions(sessionIds: {_root, otherRoot, "missing"}),
+      {_root: _cwd, otherRoot: otherCwd},
+    );
+    expect(api.projectListCount, 1);
+    expect(api.sessionListCounts, {_cwd: 1, otherCwd: 1});
+  });
+
   test("resolves persisted directories and uses updated time when created time is absent", () {
     writeSummary(_childA, {
       "info": {"id": _childA, "cwd": _cwd},
@@ -169,4 +190,24 @@ void main() {
     expect(GrokSessionStoreApi.forHome(environment: const {}, pluginId: "grok-test").sessionsRoot, isNull);
     expect(GrokSessionStoreApi.encodeCwd(cwd: "/tmp/grok-probe/project-spawn"), "%2Ftmp%2Fgrok-probe%2Fproject-spawn");
   });
+}
+
+final class _CountingGrokSessionStoreApi({
+  required super.sessionsRoot,
+  super.pluginId = "grok-test",
+}) extends GrokSessionStoreApi {
+  int projectListCount = 0;
+  final Map<String, int> sessionListCounts = {};
+
+  @override
+  List<String> listProjectDirectories() {
+    projectListCount++;
+    return super.listProjectDirectories();
+  }
+
+  @override
+  List<String> listSessionIds({required String cwd}) {
+    sessionListCounts.update(cwd, (count) => count + 1, ifAbsent: () => 1);
+    return super.listSessionIds(cwd: cwd);
+  }
 }

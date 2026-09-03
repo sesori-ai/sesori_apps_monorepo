@@ -36,7 +36,10 @@ reconnect or restart.
   after load, the session's complete model/provider/effort selection is captured
   atomically and stamps replayed assistant/error messages. Cold continuation
   loads that same session before prompting after process, plugin, or bridge
-  restart, while replay updates remain suppressed from the live event stream.
+  restart. Both standard `session/update` history and historical Grok
+  `_x.ai/session/update` lifecycle frames remain suppressed from the live event
+  stream during that load window; extension frames received outside it remain
+  live.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their
@@ -201,6 +204,9 @@ rules where supported.
   discovery can also still start a stopped backend.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
+- Grok's sub-agent tile and child catalog are live/persisted lifecycle views;
+  reconstructing the inline tile and child transcript from `session/load` is the
+  separate planned child-history step, so the capability matrix remains open.
 
 ## Sources
 

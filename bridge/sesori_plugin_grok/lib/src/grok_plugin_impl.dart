@@ -171,6 +171,10 @@ class GrokPlugin._({
   @override
   void onConnectionReset() => _grokSessionOptionsService.resetConnection();
 
+  @override
+  bool isResumeReplayNotification(AcpNotification notification) =>
+      super.isResumeReplayNotification(notification) || notification.method == GrokEventMapper.sessionUpdateMethod;
+
   // Grok's `session/list` returns roots only and carries no parent marker, so
   // parentage comes from the live sub-agent lifecycle first and from the
   // persisted sessions tree once the tracker no longer knows the child.
@@ -181,10 +185,15 @@ class GrokPlugin._({
   );
 
   @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
-      _sessionService.includeChildrenInAllSessions(
-        sessions: await super.listAllSessions(knownDirectories: knownDirectories),
-      );
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final sessions = _sessionService.includeChildrenInAllSessions(
+      sessions: await super.listAllSessions(knownDirectories: knownDirectories),
+    );
+    for (final session in sessions) {
+      attributeSessionDirectory(sessionId: session.id, directory: session.directory);
+    }
+    return sessions;
+  }
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async => _sessionService.childSessions(

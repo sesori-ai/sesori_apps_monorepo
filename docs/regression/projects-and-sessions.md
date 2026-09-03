@@ -211,9 +211,11 @@ state.
   `~/.grok/sessions/<encoded cwd>/<session id>/` summary and update records.
   Persisted and not-yet-flushed live sub-agents appear under the root through the
   child-session route and full enumeration, while per-project pages stay
-  root-only. Persisted lookup resolves a root outside the launch directory after
-  restart, child titles and times prefer summary metadata, and a missing store is
-  simply empty. Malformed summaries and unreadable files remain visible failures;
+  root-only. Full enumeration indexes persisted root directories once, then
+  propagates each resolution into both the returned catalog family and ACP's
+  operation/event attribution caches. It therefore resolves a root outside the
+  launch directory after restart even when `session/list` omits `cwd`; child
+  titles and times prefer summary metadata, and a missing store is simply empty. Malformed summaries and unreadable files remain visible failures;
   an isolated malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
   listed session merely to catalog it.
@@ -314,8 +316,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   non-destructively.
 - A Grok import scans credentials or configuration, resumes a listed session,
   loses `grok` attribution, destructively removes an absent row, omits a persisted
-  or live child from full enumeration, attributes a child to the launch directory
-  instead of its stored root, silently treats unreadable metadata as absent, or
+  or live child from full enumeration, repeatedly rescans the persisted tree per
+  root, attributes a root or child to the launch directory instead of the stored
+  project, silently treats unreadable metadata as absent, or
   ordinary root-catalog reads start Grok after import.
 - Mobile project recovery loses its CLI installation/reconnect guidance, or a
   desktop project recovery surface shows CLI commands, omits supervised Start,

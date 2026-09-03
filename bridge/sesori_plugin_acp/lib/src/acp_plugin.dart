@@ -285,6 +285,17 @@ abstract class AcpPlugin({
   /// variant state; harnesses with a session-specific variant may override.
   String? replayVariantForSession({required String sessionId}) => null;
 
+  /// Whether [notification] is historical output from a resume `session/load`
+  /// and must stay out of the live event stream while its session is in the
+  /// suppression window. Standard session updates are replayable except the
+  /// process-wide command catalog; harnesses extend this for replay-specific
+  /// notification methods.
+  bool isResumeReplayNotification(AcpNotification notification) {
+    if (notification.method != AcpMethods.sessionUpdate) return false;
+    final update = notification.params["update"];
+    return update is! Map || update["sessionUpdate"] != "available_commands_update";
+  }
+
   Future<void> validateTurnSelection({
     required String operation,
     required ({String providerID, String modelID})? model,
@@ -345,26 +356,32 @@ abstract class AcpPlugin({
   /// Unknown sessions use the plugin's launch directory.
   String directoryForSession({required String sessionId}) => _sessionDirectories[sessionId] ?? launchDirectory;
 
+  /// Records an authoritative directory discovered by a harness-specific
+  /// catalog and updates both operation routing and event attribution.
+  void attributeSessionDirectory({required String sessionId, required String directory}) {
+    if (sessionId.isEmpty || directory.trim().isEmpty) return;
+    final canonical = normalizeProjectDirectory(directory: directory);
+    _hintedDirectories.add(canonical);
+    _sessionDirectories[sessionId] = canonical;
+    eventMapper.setSessionProject(sessionId, canonical);
+  }
+
   /// The single handler for agent-originated notifications: replay suppression,
   /// then mapping through [eventMapper] into the event buffer. Also the forward
   /// target for fire-and-forget extension *requests* acknowledged and
   /// re-injected by an approval registry's `handleExtensionRequest` override
   /// (see `CursorApprovalRegistry`), so both wire shapes share one mapping path.
   void handleAgentNotification(AcpNotification notification) {
-    if (notification.method == AcpMethods.sessionUpdate) {
-      final sid = notification.params["sessionId"];
-      final update = notification.params["update"];
-      final isCommandUpdate = update is Map && update["sessionUpdate"] == "available_commands_update";
-      if (sid is String && _suppressedSessions.contains(sid) && !isCommandUpdate) {
-        // Replay from an in-flight resume-load — drop so old history does
-        // not re-stream into the live conversation.
-        _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
-        return;
-      }
-      if (sid is String && _isPromptFrameWriting(sessionId: sid)) {
-        _promptWriteNotifications.putIfAbsent(sid, () => []).add(notification);
-        return;
-      }
+    final sid = notification.params["sessionId"];
+    if (sid is String && _suppressedSessions.contains(sid) && isResumeReplayNotification(notification)) {
+      // Replay from an in-flight resume-load — drop so old history does not
+      // re-stream into the live conversation or reconstruct stale live state.
+      _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
+      return;
+    }
+    if (notification.method == AcpMethods.sessionUpdate && sid is String && _isPromptFrameWriting(sessionId: sid)) {
+      _promptWriteNotifications.putIfAbsent(sid, () => []).add(notification);
+      return;
     }
     eventMapper.map(notification).forEach(_eventBuffer.add);
   }
@@ -1634,6 +1651,10 @@ abstract class AcpPlugin({
       final activeSessionIds = <String>{
         for (final summary in getActiveSessionsSummary())
           for (final session in summary.activeSessions) ...[session.id, ...session.childSessionIds],
+        for (final rootSessionId in childSessionTracker.activeRootSessionIds) ...[
+          rootSessionId,
+          ...childSessionTracker.busyChildIds(sessionId: rootSessionId),
+        ],
         ...?_approvalRegistry?.pendingSessionIds,
       };
       if (activeSessionIds.isEmpty) return const <String>{};

@@ -147,6 +147,27 @@ void main() {
       expect(tracker.releaseRootHold(rootSessionId: "root", holdId: "opaque-hold"), isFalse);
     });
 
+    test("forgetting a child clears its associated opaque root hold", () async {
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      tracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "not-the-child-id",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+      await pumpEventQueue();
+
+      tracker.forgetSession(sessionId: "child");
+
+      expect(tracker.hasRootHold(sessionId: "root"), isFalse);
+      expect(tracker.hasActiveWork, isFalse);
+    });
+
     test("cancelAll clears an autonomous root hold even after its child finished", () async {
       tracker.spawn(
         sessionId: "root",

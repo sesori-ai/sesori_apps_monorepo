@@ -35,10 +35,17 @@ class GrokSessionService({
   /// Adds persisted and not-yet-flushed live children to the roots returned by
   /// ACP `session/list`, so bridge-derived catalog import sees the full family.
   List<PluginSession> includeChildrenInAllSessions({required Iterable<PluginSession> sessions}) {
-    final byId = {for (final session in sessions) session.id: session};
-    for (final root in sessions) {
-      if (root.parentID != null) continue;
-      final directory = _directoryForSession(sessionId: root.id, fallbackDirectory: root.directory);
+    final listedSessions = sessions.toList(growable: false);
+    final roots = [
+      for (final session in listedSessions)
+        if (session.parentID == null) session,
+    ];
+    final persistedDirectories = _catalogRepository.persistedDirectoriesForSessions(
+      sessionIds: {for (final root in roots) root.id},
+    );
+    final byId = {for (final session in listedSessions) session.id: session};
+    for (final root in roots) {
+      final directory = persistedDirectories[root.id] ?? normalizeProjectDirectory(directory: root.directory);
       final children = _mergeChildren(rootSessionId: root.id, directory: directory);
       if (directory != root.directory) {
         byId[root.id] = root.copyWith(projectID: directory, directory: directory);

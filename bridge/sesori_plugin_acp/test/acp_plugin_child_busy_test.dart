@@ -232,6 +232,30 @@ void main() {
       expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
+    test("global interruption clears a held root even without a session-status entry", () async {
+      await connectAndCreateSession();
+      plugin.childSessionTracker.spawn(
+        sessionId: "unlisted-root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "c1",
+          description: "Thing",
+          agent: "worker",
+          prompt: "Do it",
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+      await finishChildAndHoldRoot("c1", holdId: "wake-c1");
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final interrupted = await plugin.interruptActiveWork(budget: const Duration(seconds: 1));
+
+      expect(interrupted, {"unlisted-root"});
+      expect(plugin.childSessionTracker.hasActiveWork, isFalse);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("global interruption cancels tracker-only children before waiting for idle", () async {
       final sessionId = await connectAndCreateSession();
       await startTurn(sessionId);

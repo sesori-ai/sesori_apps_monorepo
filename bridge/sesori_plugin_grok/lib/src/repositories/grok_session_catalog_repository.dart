@@ -12,13 +12,24 @@ import "../api/models/grok_session_store_dto.dart";
 /// link and the child's own summary; the live tracker covers what is running.
 class GrokSessionCatalogRepository({required final GrokSessionStoreApi _api}) {
   /// Resolves the persisted project directory that contains [sessionId].
-  String? persistedDirectoryForSession({required String sessionId}) {
+  String? persistedDirectoryForSession({required String sessionId}) =>
+      persistedDirectoriesForSessions(sessionIds: {sessionId})[sessionId];
+
+  /// Resolves [sessionIds] in one bounded tree scan, so full catalog
+  /// enumeration does not rescan every project directory once per root.
+  Map<String, String> persistedDirectoriesForSessions({required Set<String> sessionIds}) {
+    final unresolved = {...sessionIds}..removeWhere((sessionId) => sessionId.isEmpty);
+    if (unresolved.isEmpty) return const {};
+    final directories = <String, String>{};
     for (final cwd in _api.listProjectDirectories()) {
-      if (!_api.listSessionIds(cwd: cwd).contains(sessionId)) continue;
-      final summaryCwd = _usefulText(_api.readSummary(cwd: cwd, sessionId: sessionId)?.info?.cwd);
-      return normalizeProjectDirectory(directory: summaryCwd ?? cwd);
+      for (final sessionId in _api.listSessionIds(cwd: cwd)) {
+        if (!unresolved.remove(sessionId)) continue;
+        final summaryCwd = _usefulText(_api.readSummary(cwd: cwd, sessionId: sessionId)?.info?.cwd);
+        directories[sessionId] = normalizeProjectDirectory(directory: summaryCwd ?? cwd);
+      }
+      if (unresolved.isEmpty) break;
     }
-    return null;
+    return directories;
   }
 
   /// The persisted children of [rootId] under [cwd], in spawn order.
