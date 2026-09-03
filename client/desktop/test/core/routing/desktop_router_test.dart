@@ -8,6 +8,14 @@ import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_scre
 import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 
 void main() {
+  test("settings destination matching includes its child routes", () {
+    expect(isDesktopSettingsPath(path: AppRouteDef.settings.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsProfile.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsHarnesses.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.projects.path), isFalse);
+    expect(isDesktopSettingsPath(path: "${AppRouteDef.settings.path}ful"), isFalse);
+  });
+
   test("desktop registers typed new-session and diff routes", () {
     final paths = _routeRegistrations().map((registration) => registration.path);
 

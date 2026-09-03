@@ -37,6 +37,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
       DiffLineType.removed => "-",
       DiffLineType.context => " ",
     };
+    final encodedContent = PregoReadableSelectionArea.encodeText(text: line.content);
 
     final lineNumber = switch (line.type) {
       DiffLineType.context => line.newLineNumber,
@@ -83,7 +84,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               child: switch (viewModel.highlightedSpan) {
                 null => Text(
-                  line.content.isEmpty ? PregoReadableSelectionArea.emptyLineMarker : line.content,
+                  encodedContent,
                   style: _monoStyle.copyWith(color: theme.codeText),
                   softWrap: true,
                 ),

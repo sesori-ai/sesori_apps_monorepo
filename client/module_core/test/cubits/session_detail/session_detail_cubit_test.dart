@@ -179,6 +179,33 @@ void main() {
       },
     );
 
+    test("does not declare a covered route when its initial load completes", () async {
+      final sessionViewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: sessionViewingService,
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      cubit.setRouteVisible(isVisible: false);
+
+      await _awaitLoaded(cubit);
+      verifyNever(() => sessionViewingService.setViewingSession(any()));
+
+      cubit.setRouteVisible(isVisible: true);
+      verify(() => sessionViewingService.setViewingSession(sessionId)).called(1);
+      await cubit.close();
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load failure emits SessionDetailFailed",
       build: () {

@@ -113,20 +113,35 @@ class const _SessionActivityAnalyticsOwner({required final Widget child}) extend
 
 class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
+  StreamSubscription<AppRouteDef?>? _routeSubscription;
+  AppRouteDef? _topRoute;
   bool? _wasRouteVisible;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
-    if (isRouteVisible && _wasRouteVisible == false) {
-      context.read<SessionDetailCubit>().reassertViewingSession();
+    if (_routeSubscription == null) {
+      final routeSource = getIt<RouteSource>();
+      _topRoute = routeSource.currentRoute;
+      _routeSubscription = routeSource.currentRouteStream.listen((route) {
+        _topRoute = route;
+        _updateRouteVisibility();
+      });
+    }
+    _updateRouteVisibility();
+  }
+
+  void _updateRouteVisibility() {
+    final isRouteVisible = (ModalRoute.of(context)?.isCurrent ?? false) && !_isCoveredBySettings;
+    final cubit = context.read<SessionDetailCubit>();
+    if (_wasRouteVisible != isRouteVisible) {
+      cubit.setRouteVisible(isVisible: isRouteVisible);
     }
     _wasRouteVisible = isRouteVisible;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(
-        sessionDetailCubit: context.read<SessionDetailCubit>(),
+        sessionDetailCubit: cubit,
         lifecycleSource: getIt<LifecycleSource>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         initialRouteVisible: isRouteVisible,
@@ -136,10 +151,28 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
     }
   }
 
+  bool get _isCoveredBySettings {
+    return switch (_topRoute) {
+      AppRouteDef.settings ||
+      AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsProfile ||
+      AppRouteDef.settingsHarnesses => true,
+      null ||
+      AppRouteDef.splash ||
+      AppRouteDef.login ||
+      AppRouteDef.projects ||
+      AppRouteDef.sessions ||
+      AppRouteDef.newSession ||
+      AppRouteDef.sessionDetail ||
+      AppRouteDef.sessionDiffs => false,
+    };
+  }
+
   @override
   void dispose() {
     final listener = _listener;
     if (listener != null) unawaited(listener.dispose());
+    unawaited(_routeSubscription?.cancel());
     super.dispose();
   }
 

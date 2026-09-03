@@ -47,7 +47,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         destination: _destinationFor(path: state.uri.path),
         onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
         onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-        onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
+        onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
         child: child,
       ),
     ),
@@ -56,13 +56,13 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         path: AppRouteDef.splash.path,
         builder: (BuildContext context, GoRouterState state) => DesktopHome(
           onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-          onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
+          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
         ),
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
         builder: (BuildContext context, GoRouterState state) => DesktopProjectListScreen(
-          onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
+          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
           onOpenProject: ({required projectId, required projectName}) => _goRoute(
             context: context,
             route: AppRoute.sessions(projectId: projectId, projectName: projectName),
@@ -336,13 +336,25 @@ AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
 }
 
 DesktopCockpitDestination _destinationFor({required String path}) {
-  if (path.startsWith(AppRouteDef.settings.path)) {
+  if (isDesktopSettingsPath(path: path)) {
     return DesktopCockpitDestination.settings;
   }
   if (path.startsWith(AppRouteDef.projects.path)) {
     return DesktopCockpitDestination.projects;
   }
   return DesktopCockpitDestination.bridge;
+}
+
+@visibleForTesting
+bool isDesktopSettingsPath({required String path}) {
+  return path == AppRouteDef.settings.path || path.startsWith("${AppRouteDef.settings.path}/");
+}
+
+void _openSettings({required BuildContext context, required String currentPath}) {
+  if (isDesktopSettingsPath(path: currentPath)) {
+    return;
+  }
+  _pushRoute(context: context, route: const AppRoute.settings());
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {

@@ -11,6 +11,19 @@ class const PregoReadableSelectionArea({
   /// Invisible selectable content used by callers that need a blank source
   /// line to survive the selection-container boundary.
   static const String emptyLineMarker = "\u200B";
+  static const String _escapedEmptyLineMarker = "$emptyLineMarker$emptyLineMarker";
+
+  /// Encodes source text for a selection area that preserves empty lines.
+  ///
+  /// Empty text becomes [emptyLineMarker]. Literal marker characters are
+  /// doubled so the delegate can distinguish them from that synthetic empty
+  /// line. Every selectable source line rendered inside a preserving area
+  /// should use this method.
+  static String encodeText({required String text}) {
+    if (text.isEmpty) return emptyLineMarker;
+    return text.replaceAll(emptyLineMarker, _escapedEmptyLineMarker);
+  }
+
   @override
   State<PregoReadableSelectionArea> createState() => _PregoReadableSelectionAreaState();
 }
@@ -19,6 +32,14 @@ class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionAre
   late final _selectionDelegate = _ReadableSelectionContainerDelegate(
     preserveEmptyLines: widget.preserveEmptyLines,
   );
+
+  @override
+  void didUpdateWidget(covariant PregoReadableSelectionArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.preserveEmptyLines != widget.preserveEmptyLines) {
+      _selectionDelegate.update(preserveEmptyLines: widget.preserveEmptyLines);
+    }
+  }
 
   @override
   void dispose() {
@@ -37,10 +58,15 @@ class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionAre
   }
 }
 
-class _ReadableSelectionContainerDelegate({required final bool preserveEmptyLines})
-    extends StaticSelectionContainerDelegate {
+class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) extends StaticSelectionContainerDelegate {
   static const _sameLineTolerance = 3.0;
-  final bool _preserveEmptyLines = preserveEmptyLines;
+  bool _preserveEmptyLines = preserveEmptyLines;
+
+  void update({required bool preserveEmptyLines}) {
+    if (_preserveEmptyLines == preserveEmptyLines) return;
+    _preserveEmptyLines = preserveEmptyLines;
+    notifyListeners();
+  }
 
   @override
   SelectedContent? getSelectedContent() {
@@ -49,7 +75,9 @@ class _ReadableSelectionContainerDelegate({required final bool preserveEmptyLine
         if (selectable.getSelectedContent() case final SelectedContent content)
           if (_selectedText(selectable: selectable, content: content) case final text?
               when text.isNotEmpty ||
-                  _preserveEmptyLines && content.plainText == PregoReadableSelectionArea.emptyLineMarker)
+                  _preserveEmptyLines &&
+                      (content.plainText == PregoReadableSelectionArea.emptyLineMarker ||
+                          selectable.value.hasSelection))
             (selectable: selectable, text: text),
     ];
     if (parts.isEmpty) return null;
@@ -80,7 +108,10 @@ class _ReadableSelectionContainerDelegate({required final bool preserveEmptyLine
       return "";
     }
     if (content.plainText.isNotEmpty) {
-      return content.plainText;
+      return content.plainText.replaceAll(
+        PregoReadableSelectionArea._escapedEmptyLineMarker,
+        PregoReadableSelectionArea.emptyLineMarker,
+      );
     }
     if (_preserveEmptyLines && selectable.value.hasSelection) {
       return "";
