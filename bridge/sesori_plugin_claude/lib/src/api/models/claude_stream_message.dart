@@ -374,6 +374,7 @@ final class const ClaudeHookOutputMessage({
 }
 
 enum ClaudeAssistantError() {
+  none,
   authenticationFailed,
   oauthOrgNotAllowed,
   billingError,
@@ -386,6 +387,7 @@ enum ClaudeAssistantError() {
   unknown;
 
   static ClaudeAssistantError parse(Object? raw) => switch (raw) {
+    null => none,
     "authentication_failed" => authenticationFailed,
     "oauth_org_not_allowed" => oauthOrgNotAllowed,
     "billing_error" => billingError,
@@ -447,6 +449,7 @@ final class const ClaudeAssistantMessage({
   /// Non-null marks subagent traffic.
   required final String? parentToolUseId,
   required final ClaudeAssistantError error,
+  required final int? apiErrorStatus,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,
@@ -464,6 +467,7 @@ final class const ClaudeAssistantMessage({
       model: _stringOrNull(message["model"]),
       parentToolUseId: _stringOrNull(json["parent_tool_use_id"]),
       error: ClaudeAssistantError.parse(json["error"]),
+      apiErrorStatus: _intOrNull(json["api_error_status"] ?? json["apiErrorStatus"]),
       timestamp: _dateTimeOrNull(json["timestamp"]),
       sessionId: sessionId,
       uuid: uuid,
