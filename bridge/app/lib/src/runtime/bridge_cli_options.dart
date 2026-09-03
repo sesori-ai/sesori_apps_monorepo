@@ -13,7 +13,6 @@ class const BridgeCliOptions({
   required final String dataDirectory,
   required final int? debugPort,
   required final String logLevelName,
-  required final List<String> importPluginIds,
 
   /// Loopback control-channel URL supplied by a GUI supervisor via
   /// `--control-url`. `null` in standalone mode. See [isSupervised].
@@ -58,7 +57,6 @@ class const BridgeCliOptions({
       dataDirectory: dataDirectory,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
-      importPluginIds: List.unmodifiable(results["import-plugin"] as List<String>),
       controlUrl: controlUrl,
     );
   }

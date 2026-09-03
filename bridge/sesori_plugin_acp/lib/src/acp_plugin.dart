@@ -840,9 +840,7 @@ abstract class AcpPlugin({
       directory: directory,
       parentID: sessionParentId(info),
       title: info.title,
-      time: ts == null
-          ? null
-          : PluginSessionTime(created: sessionCreatedAtMs(info) ?? ts, updated: ts, archived: null),
+      time: ts == null ? null : PluginSessionTime(created: sessionCreatedAtMs(info) ?? ts, updated: ts, archived: null),
     );
   }
 
@@ -908,8 +906,7 @@ abstract class AcpPlugin({
     );
     emitEvent(eventMapper.mapCreatedSession(session: created));
     final visibleParts = [
-      if (userVisibleText != null && userVisibleText.trim().isNotEmpty)
-        PluginPromptPart.text(text: userVisibleText),
+      if (userVisibleText != null && userVisibleText.trim().isNotEmpty) PluginPromptPart.text(text: userVisibleText),
       ...parts.whereType<PluginPromptPartFileData>(),
     ];
     final initialPromptEvents = eventMapper.mapInitialPrompt(
@@ -1547,7 +1544,15 @@ abstract class AcpPlugin({
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    await _abortSession(sessionId: sessionId);
+    return const PluginAbortAccepted(workKept: false);
+  }
+
+  Future<void> _abortSession({required String sessionId}) async {
     // Aborting means "stop this conversation now": drop the queued-but-
     // undispatched turns first so they don't dispatch after the cancel. The
     // in-flight turn (if any) ends via the agent's cancellation, which
@@ -1590,7 +1595,7 @@ abstract class AcpPlugin({
       if (activeSessionIds.isEmpty) return const <String>{};
 
       await Future.wait([
-        for (final sessionId in activeSessionIds) abortSession(sessionId: sessionId),
+        for (final sessionId in activeSessionIds) _abortSession(sessionId: sessionId),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1621,7 +1626,7 @@ abstract class AcpPlugin({
   Future<void> deleteSession(String sessionId) async {
     final state = _turnStates[sessionId];
     if ((state?.pending ?? 0) > 0) {
-      await abortSession(sessionId: sessionId);
+      await _abortSession(sessionId: sessionId);
     }
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final canClose = _initResult?.agentCapabilities.closeSession ?? false;
@@ -2063,7 +2068,11 @@ class _QueuedAcpPrompt({
   _QueuedAcpPromptPhase phase = _QueuedAcpPromptPhase.queued;
 }
 
-enum _QueuedAcpPromptPhase() { queued, writing, cancelled }
+enum _QueuedAcpPromptPhase() {
+  queued,
+  writing,
+  cancelled,
+}
 
 class const _TurnSelection({
   required final ({String providerID, String modelID})? model,

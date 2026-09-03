@@ -8,14 +8,18 @@ content the transcript renders live and after reload.
 
 ## Required Behavior
 
-- The composer offers image staging only for a backend declaring prompt
-  attachment support. Staged images are memory-only. They are cleared when the
-  target stops supporting attachments, the session changes, or submission
-  succeeds or settles after route exit; current-route failure instead transfers
-  the one-shot snapshot into restoration. They never persist in a draft and travel
-  inline within the staged-attachment size bound so the request fits the relay's
-  message limit. The owning plugin normalizes backend-produced images into a
-  client-safe attachment; host paths never cross that boundary.
+- The shared composer offers image staging only for a backend declaring prompt
+  attachment support and only when its product shell supplies a real picker.
+  Mobile opens its gallery adapter; desktop opens a filtered native file dialog.
+  Shared core validates picked or clipboard bytes by raster signature and the
+  outbound size bound rather than trusting an extension or platform MIME.
+  Staged images are memory-only. They are cleared when the target stops
+  supporting attachments, the session changes, or submission succeeds or
+  settles after route exit; current-route failure instead transfers the one-shot
+  snapshot into restoration. They never persist in a draft and travel inline
+  within the staged-attachment size bound so the request fits the relay's message
+  limit. The owning plugin normalizes backend-produced images into a client-safe
+  attachment; host paths never cross that boundary.
 - GitHub Copilot's production descriptor advertises prompt attachments
   unconditionally, and the shared ACP mapper sends bounded inline image parts
   without renegotiating that declaration against initialization metadata. A
@@ -55,14 +59,23 @@ content the transcript renders live and after reload.
   deleting the retired account scope.
 - Live streaming and history replay converge: same image, same message and part
   identity, same position relative to text and tool output. The viewer offers
-  copy, share, and save on the original, and an unknown shape degrades safely.
+  copy and save on the original, plus share where the product shell has a
+  registered platform implementation; unsupported actions are omitted, and an
+  unknown shape degrades safely. The shared transcript receives these
+  capabilities from its product shell: mobile keeps its existing platform
+  adapters, while desktop uses the native file selector and pasteboard and uses
+  the system share sheet on macOS and Windows. Linux omits Share because the
+  current share plugin has no Linux implementation. The root image-viewer route
+  retains the same injected capability scope even when it is above the session
+  route's navigator.
 - Capable clients request stored references for normal history pages and live
   subscriptions. Opening a stored image keeps its thumbnail visible while the
   original loads and decodes. Stored thumbnails preserve the source aspect ratio;
   only the square collection presentation center-crops them, and the Hero flight
   reveals the full thumbnail while resizing toward its contained bounds. The
-  decoded original then fades in without resetting viewer state. Copy, share,
-  and save enable only after that decode succeeds. Failure retains the thumbnail
+  decoded original then fades in without resetting viewer state. Available
+  copy, share, and save actions enable only after that decode succeeds. Failure
+  retains the thumbnail
   with an explicit accessible original retry; closing the viewer releases Cubit
   bytes and evicts the full-resolution image provider from Flutter's image cache,
   and scrolling never starts an original request. Reduced motion skips the
@@ -101,9 +114,9 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. |
+| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; composer picks and clipboard bytes share signature/size validation, and the desktop picker filters to supported raster extensions and preflights oversized files; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. Desktop adapter coverage verifies file-pick and file-save success/cancellation, pasteboard writes, and system-share file lifecycle. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: staged composer images sent and echoed per attachment-capable plugin; a failed current-route creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
+| L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
@@ -175,4 +188,7 @@ account-level rejection without changing the descriptor's capability claim.
 Shared attachment variants, budgets, safe-URI rules, and prompt part shapes;
 per-plugin image mappers, including Cursor generated-image reading, the shared
 ACP image mapping used by Copilot, and descriptor capability declarations;
-client attachment cache, loader, and surface tests.
+shared client composer validation, attachment cache, loader, viewer, and
+surface tests under `client/module_core` and `client/module_app_ui`; mobile
+picker, voice, and keyboard composition under `client/app`; and desktop picker,
+file, pasteboard, share, and session-detail adapters under `client/desktop`.

@@ -24,8 +24,6 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
-import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
-    as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
@@ -38,8 +36,12 @@ import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
     as _i875;
+import 'package:sesori_mobile/core/platform/application_support_directory_client.dart'
+    as _i441;
 import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
+import 'package:sesori_mobile/core/platform/file_attribution_claim_storage.dart'
+    as _i968;
 import 'package:sesori_mobile/core/platform/file_save_client.dart' as _i223;
 import 'package:sesori_mobile/core/platform/firebase/firebase_messaging_static_adapter.dart'
     as _i178;
@@ -61,6 +63,8 @@ import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
     as _i963;
+import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
+    as _i111;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
     as _i274;
 import 'package:sesori_mobile/core/platform/flutter_image_sharer.dart' as _i617;
@@ -126,6 +130,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i441.ApplicationSupportDirectoryClient>(
+      () => _i441.ApplicationSupportDirectoryClient(),
+    );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i1024.PackageInfoClient>(
@@ -162,6 +169,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
+    gh.lazySingleton<_i948.ComposerImagePicker>(
+      () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
+    );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
@@ -170,8 +180,10 @@ extension GetItInjectableX on _i174.GetIt {
         packageInfoClient: gh<_i1024.PackageInfoClient>(),
       ),
     );
-    gh.lazySingleton<_i140.ComposerImagePicker>(
-      () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
+    gh.lazySingleton<_i948.AttributionClaimStorage>(
+      () => _i968.FileAttributionClaimStorage(
+        directoryClient: gh<_i441.ApplicationSupportDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
     gh.lazySingleton<_i982.FirebaseApp>(

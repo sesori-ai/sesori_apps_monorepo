@@ -1,4 +1,5 @@
 import "bridge_sse_event.dart";
+import "models/plugin_abort.dart";
 import "models/plugin_agent.dart";
 import "models/plugin_command.dart";
 import "models/plugin_message.dart";
@@ -183,7 +184,10 @@ sealed class BridgePluginApi() {
   /// dispatched, which callers treat as benign (the prompt became a turn).
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
 
-  Future<void> abortSession({required String sessionId});
+  /// Stops the session's in-progress work. [subAgents] scopes the stop for
+  /// plugins whose sessions run sub-agents; every other plugin ignores it and
+  /// answers [PluginAbortAccepted].
+  Future<PluginAbortResult> abortSession({required String sessionId, required PluginAbortSubAgentPolicy subAgents});
 
   /// Returns the agents available for the given project.
   ///

@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/models/catalog_import_control.dart";
 
-enum CatalogImportTrigger() { automatic, explicit, headless }
+enum CatalogImportTrigger() { automatic, explicit }
 
 enum CatalogEmptyHydrationPolicy() { complete, retry }
 
@@ -144,7 +144,6 @@ class CatalogImportService({
       case CatalogImportTrigger.automatic:
         control.hydrationMarkerRequested = true;
       case CatalogImportTrigger.explicit:
-      case CatalogImportTrigger.headless:
         control.explicitImportRequested = true;
     }
   }

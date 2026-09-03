@@ -1,12 +1,42 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
-import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
-import "package:sesori_mobile/features/session_detail/widgets/subtask_part_widget.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
+
+class _MockImageSaver() extends Mock implements ImageSaver;
+
+class _MockImageClipboard() extends Mock implements ImageClipboard;
+
+class _MockImageSharer() extends Mock implements ImageSharer;
+
+Widget _presentationScope({required BuildContext context, required Widget child}) {
+  return SessionDetailPresentationScope(
+    messageImageRepository: _MockMessageImageRepository.new,
+    imageSaver: _MockImageSaver.new,
+    imageClipboard: _MockImageClipboard.new,
+    imageSharer: _MockImageSharer.new,
+    canShareImages: true,
+    openExternalLink: ({required url, required mode}) async => false,
+    openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+        context.pushRoute(
+          AppRoute.sessionDetail(
+            projectId: projectId,
+            projectName: "Project One",
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+          ),
+        ),
+    child: child,
+  );
+}
 
 Widget _buildApp({
   required Widget child,
@@ -17,13 +47,13 @@ Widget _buildApp({
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) => child,
+        builder: (context, state) => _presentationScope(context: context, child: child),
       ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
           if (state.pathParameters["sessionId"] == "session-parent") {
-            return child;
+            return _presentationScope(context: context, child: child);
           }
           final readOnly = state.uri.queryParameters["readOnly"];
           final projectName = state.uri.queryParameters["name"];
@@ -75,9 +105,7 @@ MessagePartSubtask _subtaskPart({String? description, String? childSessionID, To
     prompt: description ?? "",
     description: description ?? "",
     agent: "",
-    taskState: status == null
-        ? null
-        : ToolState(status: status, title: null, output: null, error: null),
+    taskState: status == null ? null : ToolState(status: status, title: null, output: null, error: null),
     childSessionID: childSessionID,
   );
   if (part case final MessagePartSubtask subtask) return subtask;

@@ -17,18 +17,36 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storage.dart'
+    as _i93;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
+import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
+    as _i925;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
+import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
+    as _i524;
+import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
+    as _i880;
+import 'package:sesori_desktop/core/platform/desktop_image_clipboard.dart'
+    as _i87;
+import 'package:sesori_desktop/core/platform/desktop_image_sharer.dart'
+    as _i500;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
     as _i20;
+import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
+    as _i210;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
 import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
     as _i757;
+import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
+    as _i692;
+import 'package:sesori_desktop/core/platform/desktop_temporary_directory_client.dart'
+    as _i61;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
     as _i137;
 import 'package:sesori_desktop/core/platform/flutter_desktop_application_support_directory.dart'
@@ -44,6 +62,8 @@ import 'package:sesori_desktop/core/platform/macos_legacy_keychain_client.dart'
     as _i435;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
+import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
+    as _i804;
 import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -67,8 +87,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
     );
+    gh.lazySingleton<_i880.DesktopFileSaveClient>(
+      () => _i880.DesktopFileSaveClient(),
+    );
+    gh.lazySingleton<_i210.DesktopPasteboardClient>(
+      () => _i210.DesktopPasteboardClient(),
+    );
+    gh.lazySingleton<_i692.DesktopShareClient>(
+      () => _i692.DesktopShareClient(),
+    );
+    gh.lazySingleton<_i61.DesktopTemporaryDirectoryClient>(
+      () => _i61.DesktopTemporaryDirectoryClient(),
+    );
     gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
       () => _i435.MacOsLegacyKeychainClient(),
+    );
+    gh.lazySingleton<_i948.ComposerImagePicker>(
+      () => _i925.DesktopComposerImagePicker(),
     );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),
@@ -97,6 +132,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i227.DesktopFailureReporter(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i948.ImageClipboard>(
+      () => _i87.DesktopImageClipboard(
+        pasteboardClient: gh<_i210.DesktopPasteboardClient>(),
+      ),
+    );
     gh.lazySingleton<_i316.BridgeProcessEnvironment>(
       () => _i906.IoBridgeProcessEnvironment(),
     );
@@ -105,12 +145,29 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
+    gh.lazySingleton<_i948.AttributionClaimStorage>(
+      () => _i804.NoOpAttributionClaimStorage(),
+    );
+    gh.lazySingleton<_i948.ImageSaver>(
+      () => _i524.DesktopFileImageSaver(
+        fileSaveClient: gh<_i880.DesktopFileSaveClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
+    gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
+      () => _i93.DesktopAttachmentThumbnailStorage(
+        temporaryDirectoryClient: gh<_i61.DesktopTemporaryDirectoryClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i757.DesktopSecureStorageAdapter(
         storage: gh<_i558.FlutterSecureStorage>(),
         macOsKeychainClient: gh<_i435.MacOsLegacyKeychainClient>(),
       ),
+    );
+    gh.lazySingleton<_i948.ImageSharer>(
+      () =>
+          _i500.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
     );
     return this;
   }

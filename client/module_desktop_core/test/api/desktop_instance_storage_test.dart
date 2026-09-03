@@ -42,6 +42,30 @@ void main() {
 
     expect(await storage.readBridgeDesiredState(), BridgeProcessDesiredState.off);
   });
+
+  test("missing window bounds have no restored value", () async {
+    expect(await storage.readWindowBounds(), isNull);
+  });
+
+  test("persists typed window bounds under desktop-owned application data", () async {
+    const bounds = WindowBounds(left: -120, top: 42, width: 1080, height: 760);
+
+    await storage.writeWindowBounds(bounds: bounds);
+
+    expect(await storage.readWindowBounds(), bounds);
+    expect(
+      File(path.join(root.path, "desktop-instance", "window-bounds")).readAsStringSync(),
+      "-120.0\n42.0\n1080.0\n760.0",
+    );
+  });
+
+  test("malformed window bounds are ignored", () async {
+    final File file = File(path.join(root.path, "desktop-instance", "window-bounds"));
+    file.createSync(recursive: true);
+    file.writeAsStringSync("12\ninvalid\n720");
+
+    expect(await storage.readWindowBounds(), isNull);
+  });
 }
 
 class _FixedApplicationSupportDirectory({required final Directory directory})

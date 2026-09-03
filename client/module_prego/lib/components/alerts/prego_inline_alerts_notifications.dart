@@ -39,13 +39,15 @@ enum PregoInlineAlertsNotificationsType() {
 /// for the corresponding [PregoInlineAlertsNotifications] field to omit a
 /// button.
 class const PregoInlineAlertsNotificationsAction({
-    /// Button label.
+  /// Button label.
   required final String label,
-    /// Called when the button is tapped.
+
+  /// Called when the button is tapped.
   required final VoidCallback onPressed,
-    /// Optional icon placed before the [label].
+
+  /// Optional icon placed before the [label].
   final IconData? icon,
-  });
+});
 
 /// An inline alert / notification card — a faithful port of the Figma
 /// `pregoInlineAletsNotifications` component (sic).
@@ -77,32 +79,40 @@ class const PregoInlineAlertsNotificationsAction({
 /// )
 /// ```
 class const PregoInlineAlertsNotifications({
-    super.key,
-    /// Bold headline text shown on the first row. Long titles ellipsize on a
+  super.key,
+
+  /// Bold headline text shown on the first row. Long titles ellipsize on a
   /// single line so the actions stay aligned to the trailing edge.
   required final String title,
-    /// Selects the leading icon, accent gradient, and primary-action fill.
+
+  /// Selects the leading icon, accent gradient, and primary-action fill.
   final PregoInlineAlertsNotificationsType type = PregoInlineAlertsNotificationsType.info,
-    /// Optional supporting text shown below the title. When `null`, no supporting
+
+  /// Optional supporting text shown below the title. When `null`, no supporting
   /// text row is rendered.
   final String? supportingText,
-    /// Overrides the leading icon. When `null`, the [type]'s default icon is
+
+  /// Overrides the leading icon. When `null`, the [type]'s default icon is
   /// used. Ignored for [PregoInlineAlertsNotificationsType.loading], which
   /// always shows a spinner.
   final IconData? icon,
-    /// Optional primary (solid, accent-coloured) action button. When `null`, no
+
+  /// Optional primary (solid, accent-coloured) action button. When `null`, no
   /// primary button is rendered.
   final PregoInlineAlertsNotificationsAction? primaryAction,
-    /// Optional secondary (tertiary, label-only) action button, placed before
+
+  /// Optional secondary (tertiary, label-only) action button, placed before
   /// the [primaryAction]. When `null`, no secondary button is rendered.
   final PregoInlineAlertsNotificationsAction? secondaryAction,
-    /// Called when the close button is tapped. When `null`, the close button is
+
+  /// Called when the close button is tapped. When `null`, the close button is
   /// not rendered.
   final VoidCallback? onClose,
-    /// Optional custom widget rendered in the content column, below the
+
+  /// Optional custom widget rendered in the content column, below the
   /// [supportingText]. Use for richer content (links, inline controls, etc.).
   final Widget? additionalContent,
-  }) extends StatelessWidget {
+}) extends StatelessWidget {
   // Gap between the leading icon and the content column. Figma uses 10px —
   // between spacing-md (8) and spacing-lg (12) — so it has no named token.
   static const double _leadingGap = 10.0;
@@ -147,14 +157,14 @@ class const PregoInlineAlertsNotifications({
               PregoSpacing.lg, // 12
               PregoSpacing.lg, // 12
             ),
-            child: _buildBody(prego),
+            child: _buildBody(prego, brightness: Theme.of(context).brightness),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBody(PregoDesignSystem prego) {
+  Widget _buildBody(PregoDesignSystem prego, {required Brightness brightness}) {
     final colors = prego.colors;
     final hasBelow = supportingText != null || additionalContent != null;
 
@@ -163,7 +173,7 @@ class const PregoInlineAlertsNotifications({
     final titleRow = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _buildLeading(colors),
+        _buildLeading(colors, brightness: brightness),
         const SizedBox(width: _leadingGap),
         Expanded(
           child: Text(
@@ -226,11 +236,14 @@ class const PregoInlineAlertsNotifications({
     );
   }
 
-  Widget _buildLeading(PregoColors colors) {
+  Widget _buildLeading(PregoColors colors, {required Brightness brightness}) {
     if (_isLoading) {
+      // The card surface is the inverse of the page, so the untinted spinner
+      // follows the opposite brightness to stay visible.
+      final inverse = brightness == Brightness.dark ? Brightness.light : Brightness.dark;
       return SizedBox.square(
         dimension: _spinnerSize,
-        child: PregoActivityIndicator(color: colors.buttonPrimaryIcon),
+        child: PregoActivityIndicator.onSurface(brightness: inverse, color: null),
       );
     }
     return Icon(icon ?? _defaultIcon, size: _iconSize, color: _iconColor(colors));
@@ -379,9 +392,7 @@ class const _InvertedSurfaceTheme({required final Widget child}) extends Statele
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final inverted = theme.brightness == Brightness.light
-        ? PregoDesignSystem.dark
-        : PregoDesignSystem.light;
+    final inverted = theme.brightness == Brightness.light ? PregoDesignSystem.dark : PregoDesignSystem.light;
     // Append after the existing extensions so the inverted PregoDesignSystem
     // wins by type; all other theme extensions are preserved.
     return Theme(
@@ -400,7 +411,8 @@ class const _InvertedSurfaceTheme({required final Widget child}) extends Statele
 /// sat far above the card — matching the Figma radial.
 class const _WideEllipseGradientTransform(
   /// How many times wider than tall each iso-colour ring is drawn.
-  final double scaleX) extends GradientTransform {
+  final double scaleX,
+) extends GradientTransform {
   @override
   Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
     // Scale x by [scaleX] about the gradient centre (the card's mid-x). The

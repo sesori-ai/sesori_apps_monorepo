@@ -9,11 +9,18 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_task_status.dart";
+import "../models/claude_task_type.dart";
+import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
 
 /// A queued prompt that the service wrote to Claude's stdin.
 final class const ClaudeTurnDispatched({
   required final String sessionId,
+
+  /// The normalized directory the turn was dispatched in, so consumers need
+  /// not resolve it again.
+  required final String directory,
   required final String promptId,
   required final String? displayText,
   required final String? command,
@@ -61,6 +68,15 @@ final class _SessionTurnState() {
   /// 2.1.233) — so the idle reap must not tear the process down before the
   /// wakeup fires.
   DateTime? wakeupAt;
+
+  /// Background tasks (sub-agents, shells, workflows) the resident process is
+  /// running, by task id. They live only inside that process, so while any is
+  /// present the session is busy and the idle reap must not tear it down. The
+  /// type is kept for the scoped-stop rejection count.
+  final Map<String, ClaudeTaskType> runningTaskIds = {};
+
+  /// Whether the CLI is doing anything the bridge must keep the process for.
+  bool get hasWork => pending > 0 || selfStartedTurn != null || runningTaskIds.isNotEmpty;
 
   final List<_QueuedPrompt> queue = [];
 
@@ -112,10 +128,15 @@ final class ClaudeSessionService({
     for (final entry in _turns.entries)
       entry.key:
           _retryStatuses[entry.key] ??
-          (entry.value.pending > 0 || entry.value.selfStartedTurn != null
-              ? const PluginSessionStatus.busy()
-              : const PluginSessionStatus.idle()),
+          (entry.value.hasWork ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
+
+  /// Whether the main agent itself is mid-turn — a queued or self-started turn —
+  /// as opposed to the session being busy only because background tasks run.
+  bool isTurnRunning({required String sessionId}) => switch (_turns[sessionId]) {
+    final state? => state.pending > 0 || state.selfStartedTurn != null,
+    null => false,
+  };
 
   /// The session's accepted-but-not-yet-visible prompts, in dispatch order.
   List<PluginQueuedPrompt> queuedPrompts({required String sessionId}) {
@@ -343,6 +364,7 @@ final class ClaudeSessionService({
             _dispatches.add(
               ClaudeTurnDispatched(
                 sessionId: sessionId,
+                directory: directory,
                 promptId: entry.id,
                 displayText: entry.displayText,
                 command: entry.command,
@@ -454,31 +476,69 @@ final class ClaudeSessionService({
     _emitQueueUpdate(sessionId: sessionId, state: state);
   }
 
-  Future<void> abort({required String sessionId}) async {
+  /// Stops the session's work with the given sub-agent scope.
+  ///
+  /// `confirm` is refused while typed sub-agents run, with no side effect, so
+  /// the caller can ask the user. `keep` leaves the process resident so its
+  /// tasks continue and their notifications wake the main agent as usual — but
+  /// only while no main turn runs, because the CLI's interrupt would stop the
+  /// sub-agents too; `stop`, and `keep` during a live main turn or with
+  /// nothing resident, interrupts and tears the process down, cancelling every
+  /// task with it.
+  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
-    if (state == null) return;
+    if (state == null) return const PluginAbortAccepted(workKept: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
+      // The in-flight abort may have kept work this caller wants stopped; run
+      // the requested scope once its fence releases.
       await activeAbort.future;
-      return;
+      return await abort(sessionId: sessionId, subAgents: subAgents);
     }
-    if (state.pending == 0 && state.selfStartedTurn == null) {
+    final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
+    if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: state.pending > 0 || state.selfStartedTurn != null,
+        mainAgentOnlySupported: false,
+      );
+    }
+    if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return;
+      return const PluginAbortAccepted(workKept: false);
+    }
+    // The CLI's only stop primitive, `interrupt`, also stops background agents
+    // (observed on 2.1.257), so sub-agents can be kept only when no main turn
+    // needs interrupting; a `keep` during a live main turn is refused so the
+    // caller learns the scope cannot be honored instead of losing the work.
+    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && runningSubAgents > 0;
+    if (keepTasks && (state.pending > 0 || state.selfStartedTurn != null)) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: true,
+        mainAgentOnlySupported: false,
+      );
     }
     final aborting = Completer<void>();
     state.aborting = aborting;
     try {
       state.generation++;
       state.idleGeneration++;
-      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
-      // not rearm it, so a pending wakeup cannot survive an abort.
-      state.wakeupAt = null;
       if (state.queue.isNotEmpty) {
         state.queue.clear();
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
+      if (keepTasks) {
+        // Nothing to interrupt: the main agent is idle and only background tasks
+        // run. The process stays resident for them, pending approvals are left
+        // alone (a kept sub-agent may be waiting on one), and the running set
+        // keeps the session busy until the tasks report and wake the main agent.
+        return const PluginAbortAccepted(workKept: true);
+      }
       _approvals.cancelForSession(sessionId: sessionId);
+      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
+      // not rearm it, so a pending wakeup cannot survive an abort.
+      state.wakeupAt = null;
       try {
         await _processes.interrupt(sessionId: sessionId);
       } on Object catch (error, stack) {
@@ -489,9 +549,13 @@ final class ClaudeSessionService({
         // allowing that transport backlog to enter the next user turn.
         await _processes.teardown(sessionId: sessionId);
       }
-      if (state.selfStartedTurn != null && identical(_turns[sessionId], state)) {
-        _endSelfStartedTurn(sessionId: sessionId, state: state);
+      // Every resident task died with the process.
+      state.runningTaskIds.clear();
+      if (identical(_turns[sessionId], state)) {
+        _completeSelfStartedTurn(state: state);
+        _settleIdle(sessionId: sessionId, state: state);
       }
+      return const PluginAbortAccepted(workKept: false);
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();
@@ -502,11 +566,12 @@ final class ClaudeSessionService({
     return () async {
       final activeSessionIds = <String>{
         for (final entry in _turns.entries)
-          if (entry.value.pending > 0 || entry.value.selfStartedTurn != null) entry.key,
+          if (entry.value.hasWork) entry.key,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+        for (final sessionId in activeSessionIds)
+          abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -557,12 +622,17 @@ final class ClaudeSessionService({
     if (state.pending > 0) state.pending--;
     if (!identical(_turns[sessionId], state)) return;
     if (outcome is ClaudeTurnFailed) _emit(BridgeSseSessionError(sessionID: sessionId));
-    if (state.pending == 0 && state.selfStartedTurn == null) {
-      _emit(BridgeSseSessionIdle(sessionID: sessionId));
-      _emit(const BridgeSseProjectUpdated());
-      _syncWorkState();
-      _scheduleIdleReap(sessionId: sessionId, state: state);
-    }
+    _settleIdle(sessionId: sessionId, state: state);
+  }
+
+  /// Publishes idle and arms the reap once nothing keeps the process busy —
+  /// no queued turn, no self-started turn, no running task.
+  void _settleIdle({required String sessionId, required _SessionTurnState state}) {
+    if (state.hasWork) return;
+    _emit(BridgeSseSessionIdle(sessionID: sessionId));
+    _emit(const BridgeSseProjectUpdated());
+    _syncWorkState();
+    _scheduleIdleReap(sessionId: sessionId, state: state);
   }
 
   void _scheduleIdleReap({required String sessionId, required _SessionTurnState state}) {
@@ -572,11 +642,7 @@ final class ClaudeSessionService({
     unawaited(() async {
       while (true) {
         await _clock.delay(duration: idleTimeout);
-        if (_disposed ||
-            !identical(_turns[sessionId], state) ||
-            state.pending != 0 ||
-            state.selfStartedTurn != null ||
-            state.idleGeneration != generation) {
+        if (_disposed || !identical(_turns[sessionId], state) || state.hasWork || state.idleGeneration != generation) {
           return;
         }
         final wakeupAt = state.wakeupAt;
@@ -604,11 +670,8 @@ final class ClaudeSessionService({
     }());
   }
 
-  void _syncWorkState() => _workState.set(
-    _turns.values.any((state) => state.pending > 0 || state.selfStartedTurn != null)
-        ? PluginWorkState.busy
-        : PluginWorkState.idle,
-  );
+  void _syncWorkState() =>
+      _workState.set(_turns.values.any((state) => state.hasWork) ? PluginWorkState.busy : PluginWorkState.idle);
 
   void _emit(BridgeSseEvent event) {
     if (!_events.isClosed) _events.add(event);
@@ -633,6 +696,7 @@ final class ClaudeSessionService({
         // Transition before arming: a frame that both begins a self-started
         // turn and carries a new `ScheduleWakeup` must keep the new schedule.
         _trackSelfStartedTurn(sessionId: event.sessionId, message: event.message);
+        _trackRunningTasks(sessionId: event.sessionId, message: event.message);
         _trackWakeupSchedule(sessionId: event.sessionId, message: event.message);
         _settleRetry(sessionId: event.sessionId, message: event.message);
         final request = event.controlRequest;
@@ -640,12 +704,49 @@ final class ClaudeSessionService({
       case ClaudeSessionProcessExited():
         final state = _turns[event.sessionId];
         if (state != null) {
-          // The wakeup timer died with the process and `--resume` does not
-          // rearm it.
+          // The wakeup timer and every resident task died with the process,
+          // and `--resume` does not rearm or restart them.
           state.wakeupAt = null;
-          if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: event.sessionId, state: state);
+          final hadWork = state.selfStartedTurn != null || state.runningTaskIds.isNotEmpty;
+          state.runningTaskIds.clear();
+          _completeSelfStartedTurn(state: state);
+          // Only work this exit ended may settle idle: the reap's own teardown
+          // exits an already-idle session and must not rearm the reap.
+          if (hadWork) _settleIdle(sessionId: event.sessionId, state: state);
         }
         _approvals.cancelForSession(sessionId: event.sessionId);
+    }
+  }
+
+  /// Mirrors the resident process's running background tasks from its typed
+  /// task frames. On a CLI without task frames the same ids arrive through the
+  /// launching call's typed tool result and the `<task-notification>` text.
+  void _trackRunningTasks({required String sessionId, required ClaudeStreamMessage message}) {
+    final state = _turns[sessionId];
+    if (state == null) return;
+    switch (message) {
+      case ClaudeTaskStartedMessage(taskId: final taskId?):
+        state.runningTaskIds[taskId] = message.taskType;
+      case ClaudeTaskNotificationMessage(taskId: final taskId?):
+        state.runningTaskIds.remove(taskId);
+        // A stopped task opens no wake-up turn; if it was the last work, the
+        // session is idle now rather than at some later turn.
+        _settleIdle(sessionId: sessionId, state: state);
+      case ClaudeUserMessage(parentToolUseId: null):
+        switch (message.toolUseResult) {
+          case ClaudeToolUseResultAsyncLaunched(:final agentId):
+            state.runningTaskIds.putIfAbsent(agentId, () => ClaudeTaskType.subAgent);
+          case ClaudeToolUseResultCompleted(agentId: final agentId?):
+            state.runningTaskIds.remove(agentId);
+          case ClaudeToolUseResultCompleted() || ClaudeToolUseResultAbsent() || ClaudeToolUseResultUnknown():
+            break;
+        }
+        for (final notification in message.taskNotifications) {
+          state.runningTaskIds.remove(notification.taskId);
+        }
+        if (message.taskNotifications.isNotEmpty) _settleIdle(sessionId: sessionId, state: state);
+      case ClaudeStreamMessage():
+        break;
     }
   }
 
@@ -677,13 +778,32 @@ final class ClaudeSessionService({
   /// as busy/idle exactly like an enqueued turn.
   ///
   /// Only frames that prove turn activity begin one: token stream, assistant
-  /// content, or a permission ask. Bookkeeping frames (`init`, `status`,
-  /// unknown types) do not, so post-turn stragglers cannot re-busy a session.
+  /// content, a permission ask, or a background task's completion (the CLI
+  /// follows it with a wake-up turn, so busy spans launch → task → wake-up
+  /// without a transient idle). Bookkeeping frames (`init`, `status`, unknown
+  /// types) do not, so post-turn stragglers cannot re-busy a session, and
+  /// forwarded sub-agent frames do not either: they are task activity, already
+  /// held by [_SessionTurnState.runningTaskIds].
   void _trackSelfStartedTurn({required String sessionId, required ClaudeStreamMessage message}) {
     final state = _turns[sessionId];
     if (state == null) return;
     switch (message) {
-      case ClaudeStreamEventMessage() || ClaudeAssistantMessage() || ClaudeControlRequestMessage():
+      case ClaudeStreamEventMessage(parentToolUseId: final String _) ||
+          ClaudeAssistantMessage(parentToolUseId: final String _):
+        break;
+      // A stopped task was killed (an interrupt, a stop_task); the CLI runs no
+      // wake-up turn for it, so opening one here would pin the session busy. A
+      // user frame carrying only stopped notifications (or none) is the same.
+      case ClaudeTaskNotificationMessage(status: ClaudeTaskStatus.stopped):
+        break;
+      case ClaudeUserMessage()
+          when message.taskNotifications.every((notification) => notification.status == ClaudeTaskStatus.stopped):
+        break;
+      case ClaudeStreamEventMessage() ||
+          ClaudeAssistantMessage() ||
+          ClaudeControlRequestMessage() ||
+          ClaudeTaskNotificationMessage() ||
+          ClaudeUserMessage():
         if (state.selfStartedTurn != null || state.pending > 0) return;
         state.selfStartedTurn = Completer<void>();
         // A live turn supersedes the pending-wakeup estimate that started it.
@@ -710,11 +830,7 @@ final class ClaudeSessionService({
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {
     _completeSelfStartedTurn(state: state);
-    if (state.pending != 0) return;
-    _emit(BridgeSseSessionIdle(sessionID: sessionId));
-    _emit(const BridgeSseProjectUpdated());
-    _syncWorkState();
-    _scheduleIdleReap(sessionId: sessionId, state: state);
+    _settleIdle(sessionId: sessionId, state: state);
   }
 
   void _completeSelfStartedTurn({required _SessionTurnState state}) {

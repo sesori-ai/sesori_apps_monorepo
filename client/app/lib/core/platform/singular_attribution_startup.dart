@@ -12,6 +12,8 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   SingularConfig? _pendingCrawlGateConfig;
   SingularConfig? _deferredStartConfig;
 
+  bool get isStarted => _isStarted;
+
   /// Prepares SDK configuration without starting Singular. The asynchronous
   /// crawl-gate decision can then complete after the first frame.
   void prepare({
@@ -26,9 +28,9 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
       // Preserve Sesori's existing no-advertising-identifier boundary. Singular
       // can still perform privacy-preserving install attribution without IDFA/GAID.
       ..limitAdvertisingIdentifiers = true
-      // Partner data sharing remains limited until Sesori has a dedicated
-      // attribution-consent design approved for release.
-      ..limitDataSharing = true
+      // Partner data sharing is allowed for campaign attribution. Sesori still
+      // withholds advertising identifiers and sends no custom event properties.
+      ..limitDataSharing = false
       ..skAdNetworkEnabled = true
       ..enableLogging = false;
   }
@@ -65,11 +67,11 @@ class SingularAttributionStartup({required final SingularStaticAdapter _singular
   bool _start({required SingularConfig config}) {
     try {
       _singular.start(config: config);
-      _isStarted = true;
-      return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to start Singular attribution", error, stackTrace);
       return false;
     }
+    _isStarted = true;
+    return true;
   }
 }

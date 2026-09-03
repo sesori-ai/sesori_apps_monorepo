@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../models/claude_tool_use_result.dart";
+
 part "claude_transcript_record_dto.freezed.dart";
 part "claude_transcript_record_dto.g.dart";
 
@@ -20,14 +22,26 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? cwd,
     @JsonKey(fromJson: _timestampOrNull) required DateTime? timestamp,
     @JsonKey(fromJson: _boolOrNull) required bool? isSidechain,
+
+    /// The sub-agent that wrote the record; null on a root session's records.
+    @JsonKey(fromJson: _stringOrNull) required String? agentId,
     @JsonKey(fromJson: _stringOrNull) required String? gitBranch,
     @JsonKey(fromJson: _stringOrNull) required String? version,
     @JsonKey(fromJson: _stringOrNull) required String? aiTitle,
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,
+    @JsonKey(fromJson: _boolOrNull) required bool? isApiErrorMessage,
+    @JsonKey(fromJson: _intOrNull) required int? apiErrorStatus,
     @JsonKey(fromJson: _stringOrNull) required String? effort,
     @JsonKey(fromJson: _messageOrNull) required ClaudeTranscriptMessageDto? message,
+
+    /// The typed result persisted beside a `user` record's tool result.
+    @JsonKey(fromJson: ClaudeToolUseResult.parse) required ClaudeToolUseResult toolUseResult,
+
+    /// `origin.kind`: how the CLI injected a `user` record that the user did
+    /// not author, e.g. `task-notification`.
+    @JsonKey(name: "origin", fromJson: _originKindOrNull) required String? originKind,
   }) = _ClaudeTranscriptRecordDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
@@ -48,6 +62,10 @@ sealed class ClaudeTranscriptMessageDto with _$ClaudeTranscriptMessageDto {
 String? _stringOrNull(Object? value) => value is String ? value : null;
 
 bool? _boolOrNull(Object? value) => value is bool ? value : null;
+
+int? _intOrNull(Object? value) => value is num ? value.toInt() : null;
+
+String? _originKindOrNull(Object? value) => value is Map ? _stringOrNull(value["kind"]) : null;
 
 ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
     value is Map ? ClaudeTranscriptMessageDto.fromJson(value.cast<String, dynamic>()) : null;

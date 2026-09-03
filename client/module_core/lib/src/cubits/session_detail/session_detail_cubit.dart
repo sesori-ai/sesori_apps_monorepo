@@ -20,6 +20,7 @@ import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -31,6 +32,7 @@ import "../../utils/model_filter/default_model_selector.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
+import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -42,31 +44,45 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
-  queuedEvent("queued_event");
+  queuedEvent("queued_event"),
 }
 
-enum _SessionRefreshAction() { observed, ignored, queued, coalesced, started, completed }
+enum _SessionRefreshAction() {
+  observed,
+  ignored,
+  queued,
+  coalesced,
+  started,
+  completed,
+}
 
-enum _SessionRefreshResult() { applied, failed, waitingForConnection, staleConnection, closed }
+enum _SessionRefreshResult() {
+  applied,
+  failed,
+  waitingForConnection,
+  staleConnection,
+  closed,
+}
 
 class SessionDetailCubit(
-    final ConnectionService _connectionService, {
-    required final SessionDetailLoadService _loadService,
-    required SessionRepository promptDispatcher,
-    required final PermissionRepository _permissionRepository,
-    required final SessionViewingService _sessionViewingService,
-    required final ProjectViewingService _projectViewingService,
-    required final LifecycleSource _lifecycleSource,
-    required final ComposerDraftRepository _composerDraftRepository,
-    required final ProductAnalyticsService _productAnalyticsService,
-    required final String _sessionId,
-    required final String _projectId,
-    required final NotificationCanceller _notificationCanceller,
-    required final FailureReporter _failureReporter,
-    /// Cooldown between silent refreshes triggered by staleness events.
+  final ConnectionService _connectionService, {
+  required final SessionDetailLoadService _loadService,
+  required SessionRepository promptDispatcher,
+  required final PermissionRepository _permissionRepository,
+  required final SessionViewingService _sessionViewingService,
+  required final ProjectViewingService _projectViewingService,
+  required final LifecycleSource _lifecycleSource,
+  required final ComposerDraftRepository _composerDraftRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
+  required final String _sessionId,
+  required final String _projectId,
+  required final NotificationCanceller? _notificationCanceller,
+  required final FailureReporter _failureReporter,
+
+  /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
-  }) extends Cubit<SessionDetailState> {
+}) extends Cubit<SessionDetailState> {
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
@@ -1096,9 +1112,9 @@ class SessionDetailCubit(
 
     if (isClosed) return;
 
-    if (message case
-        MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
-        MessageError(:final providerID, :final modelID, :final agent)) {
+    if (message
+        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
+            MessageError(:final providerID, :final modelID, :final agent)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
@@ -1950,7 +1966,14 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller.cancelForSession(sessionId: _sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+  }
+
+  /// Restores this loaded session as the active view after a pushed child route
+  /// is removed. The initial load and refresh paths own their own declarations;
+  /// an unloaded or failed route must not mark the session seen.
+  void reassertViewingSession() {
+    if (state is SessionDetailLoaded) _sessionViewingService.setViewingSession(_sessionId);
   }
 
   // ---------------------------------------------------------------------------
@@ -2080,7 +2103,7 @@ class SessionDetailCubit(
   }) async {
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller.cancelForSession(sessionId: sessionId);
+    _notificationCanceller?.cancelForSession(sessionId: sessionId);
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;
@@ -2181,38 +2204,53 @@ class SessionDetailCubit(
     emit(current.copyWith(stagedCommand: null));
   }
 
-  Future<void> abort() async {
+  /// Stops the session with the given sub-agent scope.
+  ///
+  /// Stop means "run nothing further": for `keep` and `stop` the local prompt
+  /// queue is cleared before the request so a staged send cannot drain while
+  /// it is in flight (the bridge clears its own queue). A `confirm` probe may
+  /// be refused, so it clears the queue only once the bridge accepted it.
+  /// Under `stop` every busy child session is aborted too — plugins whose
+  /// children are real sessions keep today's stop-everything behavior.
+  Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
+      if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
+      final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
+      if (root case ErrorResponse(:final error)) throw error;
+      _clearLocalPromptQueue();
+
+      // Read state after the await: an abort-driven status or transcript event
+      // may have landed meanwhile and must not be overwritten by a stale copy.
       final current = state;
-      // Stop means "run nothing further": staged local sends must not fire on
-      // the next drain. The bridge clears its own queue as part of the abort.
-      if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
-        _promptQueue.clear();
-        _staleOptionsRecoveryAttemptedPromptIds.clear();
-        _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
-      }
-      final futures = <Future<ApiResponse<void>>>[_sessionRepository.abortSession(sessionId: _sessionId)];
-
-      // Also abort any active child sessions (busy or retrying).
-      if (current is SessionDetailLoaded) {
-        for (final entry in current.childStatuses.entries) {
-          final status = entry.value;
-          if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_sessionRepository.abortSession(sessionId: entry.key));
-          }
-        }
-      }
-
-      final results = await Future.wait(futures);
-      for (final result in results) {
-        if (result case ErrorResponse(:final error)) {
-          throw error;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+        final results = await Future.wait([
+          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+            if (status is SessionStatusBusy || status is SessionStatusRetry)
+              _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
+        ]);
+        for (final result in results) {
+          if (result case ErrorResponse(:final error)) throw error;
         }
       }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
+      return const SessionAbortOutcome.aborted();
+    } on SessionAbortRejectedException catch (e) {
+      return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
+      // The bridge may have accepted a probe whose response was lost; only the
+      // typed rejection proves nothing happened, so the queue is cleared here too.
+      _clearLocalPromptQueue();
       loge("Failed to abort session(s)", e, st);
+      return const SessionAbortOutcome.failed();
     }
+  }
+
+  void _clearLocalPromptQueue() {
+    if (_promptQueue.isEmpty && !_promptQueue.isSending && _promptQueue.awaitingBridge.isEmpty) return;
+    _promptQueue.clear();
+    _staleOptionsRecoveryAttemptedPromptIds.clear();
+    final current = state;
+    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
@@ -2223,8 +2261,10 @@ class SessionDetailCubit(
     final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
-      MessageError(:final modelID, :final providerID) =>
-        _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
+      MessageError(
+        :final modelID,
+        :final providerID,
+      ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
     return (

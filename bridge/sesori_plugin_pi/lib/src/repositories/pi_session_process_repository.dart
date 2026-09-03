@@ -402,6 +402,17 @@ final class PiSessionProcessRepository({
     );
   }
 
+  Future<void> dispatchCompaction({
+    required PiSessionConnection connection,
+    required String? customInstructions,
+  }) async {
+    await _requiredResident(connection).client.send(
+      command: PiRpcCommand.compact,
+      arguments: {"customInstructions": ?customInstructions},
+      timeout: _promptRpcTimeout,
+    );
+  }
+
   Future<PiAgentState> getState({required PiSessionConnection connection}) async {
     final data = (await _requiredResident(connection).client.send(
       command: PiRpcCommand.getState,

@@ -349,6 +349,18 @@ abstract class AppLocalizations {
   /// **'Leave it running while you use Sesori from your phone.'**
   String get projectsBridgeOfflineStartBridgeInfo;
 
+  /// Desktop project recovery action that starts or retries the supervised local bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge'**
+  String get projectsDesktopStartBridge;
+
+  /// Desktop-only explanation shown while the local supervised bridge is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the local bridge to load your projects and sessions in Sesori.'**
+  String get projectsDesktopStartBridgeInfo;
+
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
@@ -1699,6 +1711,42 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get sessionDetailAbort;
 
+  /// No description provided for @sessionDetailStopScopeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-agents are running'**
+  String get sessionDetailStopScopeTitle;
+
+  /// No description provided for @sessionDetailStopScopeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The main agent and 1 sub-agent are still working.} other{The main agent and {count} sub-agents are still working.}}'**
+  String sessionDetailStopScopeMessage(int count);
+
+  /// No description provided for @sessionDetailStopScopeMessageMainIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The main agent is done, but 1 sub-agent is still working. Stop it?} other{The main agent is done, but {count} sub-agents are still working. Stop them?}}'**
+  String sessionDetailStopScopeMessageMainIdle(int count);
+
+  /// No description provided for @sessionDetailStopSubAgentsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Stop 1 sub-agent} other{Stop {count} sub-agents}}'**
+  String sessionDetailStopSubAgentsOnly(int count);
+
+  /// No description provided for @sessionDetailStopMainAgentOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop main agent only'**
+  String get sessionDetailStopMainAgentOnly;
+
+  /// No description provided for @sessionDetailStopAll.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}'**
+  String sessionDetailStopAll(int count);
+
   /// No description provided for @sessionDetailThinking.
   ///
   /// In en, this message translates to:
@@ -2800,7 +2848,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionOptionsRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Refresh the model list'**
+  /// **'Refresh options'**
   String get newSessionOptionsRefresh;
 
   /// No description provided for @newSessionProjectUnavailable.
@@ -2866,7 +2914,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListArchiveConfirmMessage.
   ///
   /// In en, this message translates to:
-  /// **'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.'**
+  /// **'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.'**
   String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.

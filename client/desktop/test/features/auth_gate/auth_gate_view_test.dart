@@ -64,7 +64,9 @@ void main() {
             BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
             BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
           ],
-          child: const AuthGateView(),
+          child: AuthGateView(
+            child: DesktopHome(onOpenProjects: () {}, onOpenSettings: () {}),
+          ),
         ),
       ),
     );
@@ -102,7 +104,7 @@ void main() {
 
   testWidgets("sign out button delegates to the cubit", (WidgetTester tester) async {
     whenListen(cubit, const Stream<AuthGateState>.empty(), initialState: const AuthGateState.signedIn(user: _user));
-    when(() => cubit.signOut()).thenAnswer((_) async {});
+    when(() => cubit.signOut()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
 
     await pumpGate(tester);
     await tester.tap(find.text("Sign out"));

@@ -2,9 +2,10 @@
 
 ## Capability
 
-Browsing the durable project catalog and its sessions: opening, renaming, and
-hiding projects, importing a plugin's existing sessions, and listing root and
-child sessions with titles, activity, statuses, and unseen state.
+Browsing the durable project catalog and its sessions on mobile and desktop:
+opening, renaming, and hiding projects, importing a plugin's existing sessions,
+and listing root and child sessions with titles, activity, statuses, and unseen
+state.
 
 ## Required Behavior
 
@@ -88,6 +89,21 @@ child sessions with titles, activity, statuses, and unseen state.
   wait. A stale superseded read cannot rearm a failed change. Cancelling hides
   the progress row immediately, but a transaction already in progress that
   completes after that cancellation still drives the same list refresh.
+- Project and session inventory presentation is shared by the mobile and
+  desktop shells, while each shell owns its routes and recovery policy. Mobile
+  keeps CLI bridge installation, command sharing, and relay reconnect guidance.
+  Desktop never offers CLI installation from these surfaces: both an account
+  with no registered bridge and a registered-but-disconnected bridge offer the
+  same supervised **Start the bridge** action, which persists desired On,
+  starts or retries the local helper, and establishes an authenticated desktop
+  relay connection. Desktop session rows open the typed session-detail route,
+  preserve nullable titles, and let child-session links push another typed
+  detail route. Desktop session detail exposes the shared effective text-first
+  composer with declared image attachments while omitting unavailable voice.
+  Root, non-archived sessions expose the typed shared diff route, while the
+  session list opens a typed new-session route with shared plugin/model/command
+  and dedicated-workspace options. The desktop shell supplies its native image
+  picker and text-first composer policy without constructing voice capture.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -138,6 +154,16 @@ child sessions with titles, activity, statuses, and unseen state.
   and detail adopt the durable session facts without marking unseen or moving the
   worktree directory. The initial system prompt remains truthful about the
   directory and branch that existed when the backend session was created.
+- Claude import lists a sub-agent transcript under `<root>/subagents/` as a
+  child session of that root (id `agent-<agentId>`, title from its meta
+  description, the root's directory), roots only in per-project pages and
+  children through the child-session route and full enumeration. A child whose
+  root is absent from the scan and the older flat `agent-<slug>-<hex>.jsonl`
+  layout are not sessions. A live Claude sub-agent appears as a child with
+  busy/idle status and in the root's active children while it runs. Children
+  are read-only: prompts and commands to an `agent-` id are refused. Deleting
+  a root also removes its `subagents/` directory; deleting a child removes its
+  transcript and meta file.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -190,7 +216,7 @@ child sessions with titles, activity, statuses, and unseen state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
 | L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok explicitly imports a persisted session with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
@@ -231,7 +257,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
   git in the old location; a moved bridge-derived project mutates the old catalog
   identity instead of being discovered as new.
 - Sessions lose attribution, land under the wrong project, or a child lists as a
-  root.
+  root. A Claude sub-agent transcript lists as a root, is missing under its
+  root, or survives its root's deletion on disk; a legacy flat sub-agent file
+  or an orphan child is imported; a running sub-agent is absent from the
+  root's active children.
 - Pi import exposes prompt/transcript text, treats it as a title, follows an
   unbounded symlink/parent tree, or loses sessions stored under a configured or
   bridge-known directory.
@@ -250,6 +279,14 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - A Grok import scans local files, resumes a listed session, loses `grok`
   attribution, destructively removes an absent row, or ordinary catalog reads
   start Grok after import.
+- Mobile project recovery loses its CLI installation/reconnect guidance, or a
+  desktop project recovery surface shows CLI commands, omits supervised Start,
+  toggles an already-On desired state to Off instead of retrying start, or
+  starts the helper without establishing the desktop relay connection. A
+  desktop session row cannot open its typed detail route, child-session
+  navigation loses project/session/read-only identity, the New task or root
+  file-changes action cannot reach its typed route, or desktop renders dead
+  voice/attachment controls instead of honoring declared capabilities.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
@@ -275,8 +312,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 
 ## Known Limitations
 
-- Client end-to-end coverage is phone-only; the desktop shell has no catalog
-  surface.
+- Live client end-to-end catalog coverage remains phone-only. Desktop session
+  creation and diffs have automated shared-view and typed-route coverage but
+  still need a live desktop release exercise.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
@@ -304,8 +342,16 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `bridge/app/lib/src/services/catalog_import_service.dart`, and catalog and
   session handlers in `bridge/app/lib/src/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
-- Client-triggered scanning: `client/module_core/lib/src/services/catalog_rescan_service.dart`,
-  `client/app/lib/core/widgets/catalog_scan_row.dart`,
+- Client presentation and scanning: `client/module_app_ui/lib/src/features/project_list/`,
+  `client/module_app_ui/lib/src/features/session_list/`,
+  `client/module_app_ui/lib/src/features/session_detail/`,
+  `client/module_app_ui/lib/src/features/new_session/`,
+  `client/module_app_ui/lib/src/features/session_diffs/`,
+  `client/module_app_ui/lib/src/widgets/session_split/`,
+  `client/desktop/lib/features/new_session/`,
+  `client/desktop/lib/features/session_diffs/`,
+  `client/desktop/lib/features/sessions/`,
+  `client/module_core/lib/src/services/catalog_rescan_service.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
@@ -325,10 +371,15 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
   `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/app/test/core/widgets/catalog_scan_row_test.dart`,
-  `client/app/test/features/project_list/add_project_dialog_test.dart`,
+  `client/module_app_ui/test/features/project_list/add_project_dialog_test.dart`,
+  `client/module_app_ui/test/features/session_list/`,
   `client/app/test/features/project_list/project_list_catalog_scan_test.dart`,
-  `client/app/test/features/session_list/session_list_bar_test.dart`, and
-  `client/app/test/features/session_list/session_list_panel_test.dart`
+  `client/app/test/features/project_list/bridge_offline_view_test.dart`,
+  `client/app/test/features/session_list/session_list_bar_test.dart`,
+  `client/module_app_ui/test/features/session_diffs/`,
+  `client/desktop/test/core/routing/desktop_router_test.dart`,
+  `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`, and
+  `client/desktop/test/features/projects/desktop_project_list_screen_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,

@@ -149,6 +149,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineStartBridgeInfo => 'Leave it running while you use Sesori from your phone.';
 
   @override
+  String get projectsDesktopStartBridge => 'Start the bridge';
+
+  @override
+  String get projectsDesktopStartBridgeInfo => 'Start the local bridge to load your projects and sessions in Sesori.';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override
@@ -876,6 +882,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAbort => 'Stop';
 
   @override
+  String get sessionDetailStopScopeTitle => 'Sub-agents are running';
+
+  @override
+  String sessionDetailStopScopeMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The main agent and $count sub-agents are still working.',
+      one: 'The main agent and 1 sub-agent are still working.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailStopScopeMessageMainIdle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'The main agent is done, but $count sub-agents are still working. Stop them?',
+      one: 'The main agent is done, but 1 sub-agent is still working. Stop it?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sessionDetailStopSubAgentsOnly(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Stop $count sub-agents',
+      one: 'Stop 1 sub-agent',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sessionDetailStopMainAgentOnly => 'Stop main agent only';
+
+  @override
+  String sessionDetailStopAll(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Stop main agent and $count sub-agents',
+      one: 'Stop main agent and 1 sub-agent',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sessionDetailThinking => 'Thinking...';
 
   @override
@@ -1471,7 +1527,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh the model list';
+  String get newSessionOptionsRefresh => 'Refresh options';
 
   @override
   String get newSessionProjectUnavailable =>
@@ -1511,7 +1567,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListArchiveConfirmMessage =>
-      'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.';
+      'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';

@@ -6,12 +6,11 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../home/desktop_home.dart";
 import "../login/login_screen.dart";
 
 /// Root gate: constructs the [AuthGateCubit] and renders the surface that
 /// matches the signed-in/out truth.
-class const AuthGate({super.key}) extends StatelessWidget {
+class const AuthGate({required final Widget child, super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthGateCubit>(
@@ -20,14 +19,14 @@ class const AuthGate({super.key}) extends StatelessWidget {
         logoutOrchestrator: getIt(),
         relayConnectionService: getIt(),
       ),
-      child: const AuthGateView(),
+      child: AuthGateView(child: child),
     );
   }
 }
 
 /// Renders the current [AuthGateState]; split from [AuthGate] so tests can
 /// drive it with a stubbed cubit.
-class const AuthGateView({super.key}) extends StatelessWidget {
+class const AuthGateView({required final Widget child, super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AuthGateState state = context.watch<AuthGateCubit>().state;
@@ -40,11 +39,11 @@ class const AuthGateView({super.key}) extends StatelessWidget {
         unawaited(context.read<AuthGateCubit>().onSignedInDestinationReady());
       },
       child: switch (state) {
-        AuthGateChecking() => Scaffold(
-          body: Center(child: PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary)),
+        AuthGateChecking() => const Scaffold(
+          body: Center(child: PregoActivityIndicator(color: null)),
         ),
         AuthGateSignedOut() => const LoginScreen(),
-        AuthGateSignedIn(:final user) => DesktopHome(user: user),
+        AuthGateSignedIn() => child,
       },
     );
   }

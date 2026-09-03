@@ -90,8 +90,8 @@ and there is one session-control surface.
 6. **Import.** `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and
    report per-plugin operations. Progress is plugin-attributed SSE, duplicate
    starts join that plugin's operation, and failures do not cancel imports for
-   other plugins. Repeated headless `--import-plugin <id>` starts selected
-   imports after startup.
+   other plugins. Connected Sesori apps start imports through the deeper
+   pull-to-refresh stage or Settings > Harnesses.
 
 ## 4. Contract Boundaries That Remain
 

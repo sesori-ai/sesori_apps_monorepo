@@ -75,7 +75,7 @@ void main() {
       expect(service.latestStatuses.single, isA<CatalogImportCompleted>());
     });
 
-    test("overlapping automatic and headless starts join and combine control", () async {
+    test("overlapping automatic and explicit starts join and combine control", () async {
       final hydrationGate = Completer<CatalogHydrationDto?>();
       final releaseImport = Completer<void>();
       final repository = _FakeCatalogImportRepository(
@@ -94,7 +94,7 @@ void main() {
       final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
 
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.automatic);
-      service.start(pluginId: "selected", trigger: CatalogImportTrigger.headless);
+      service.start(pluginId: "selected", trigger: CatalogImportTrigger.explicit);
       hydrationGate.complete(
         const CatalogHydrationDto(
           pluginId: "selected",

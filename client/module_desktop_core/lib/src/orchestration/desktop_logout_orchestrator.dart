@@ -35,6 +35,7 @@ class DesktopLogoutOrchestrator({
   required final BridgeRepository bridgeRepository,
   required final BridgeStatusTracker statusTracker,
   required final DesktopLogoutTracker logoutTracker,
+  required final ProductAnalyticsService productAnalyticsService,
   required final AuthSession authSession,
 }) {
   static const Duration _bridgeDeletionTimeout = Duration(seconds: 10);
@@ -45,6 +46,7 @@ class DesktopLogoutOrchestrator({
   final BridgeRepository _bridgeRepository = bridgeRepository;
   final BridgeStatusTracker _statusTracker = statusTracker;
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
+  final ProductAnalyticsService _productAnalyticsService = productAnalyticsService;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
 
@@ -122,11 +124,28 @@ class DesktopLogoutOrchestrator({
     }
 
     try {
+      await _productAnalyticsService.prepareForLogout();
+    } on Object catch (error, stackTrace) {
+      // Analytics preparation is best effort: it must not trap a user in the
+      // signed-in state when preference persistence is unavailable.
+      logw("Failed to prepare product analytics for desktop logout", error, stackTrace);
+    }
+
+    try {
       await _authSession.logoutCurrentDevice();
       return DesktopLogoutOutcome.completed;
     } on Object catch (error, stackTrace) {
+      await _resumeProductAnalyticsAfterFailedLogout();
       logw("Device-local sign-out failed", error, stackTrace);
       return DesktopLogoutOutcome.localSessionClearFailed;
+    }
+  }
+
+  Future<void> _resumeProductAnalyticsAfterFailedLogout() async {
+    try {
+      await _productAnalyticsService.resumeAfterFailedLogout();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to resume product analytics after desktop logout failed", error, stackTrace);
     }
   }
 

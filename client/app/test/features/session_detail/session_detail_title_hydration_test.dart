@@ -128,6 +128,7 @@ void _registerDependencies({
   required MockConnectionService connectionService,
   required MockSessionRepository promptDispatcher,
   required MockPermissionRepository permissionRepository,
+  required MockSessionViewingService sessionViewingService,
   required MockNotificationCanceller notificationCanceller,
   required MockFailureReporter failureReporter,
   required MockVoiceTranscriptionService voiceTranscriptionService,
@@ -141,7 +142,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
-  getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
+  getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
@@ -159,6 +160,7 @@ void main() {
   late MockSessionDetailLoadService loadService;
   late MockSessionRepository promptDispatcher;
   late MockPermissionRepository permissionRepository;
+  late MockSessionViewingService sessionViewingService;
   late MockNotificationCanceller notificationCanceller;
   late MockFailureReporter failureReporter;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -175,6 +177,7 @@ void main() {
     loadService = MockSessionDetailLoadService();
     promptDispatcher = MockSessionRepository();
     permissionRepository = MockPermissionRepository();
+    sessionViewingService = stubbedSessionViewingService();
     notificationCanceller = MockNotificationCanceller();
     failureReporter = MockFailureReporter();
     voiceTranscriptionService = MockVoiceTranscriptionService();
@@ -224,6 +227,7 @@ void main() {
       connectionService: connectionService,
       promptDispatcher: promptDispatcher,
       permissionRepository: permissionRepository,
+      sessionViewingService: sessionViewingService,
       notificationCanceller: notificationCanceller,
       failureReporter: failureReporter,
       voiceTranscriptionService: voiceTranscriptionService,
@@ -362,9 +366,11 @@ void main() {
       ),
     );
 
+    clearInteractions(sessionViewingService);
     navigatorKey.currentState!.pop();
     await tester.pumpAndSettle();
 
+    verify(() => sessionViewingService.setViewingSession("session-1")).called(1);
     verify(
       () => productAnalyticsService.logEvent(
         event: const ProductAnalyticsEvent.sessionActivityViewed(

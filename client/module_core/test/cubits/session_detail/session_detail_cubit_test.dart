@@ -821,13 +821,18 @@ void main() {
       ),
       act: (cubit) async {
         await _awaitLoaded(cubit);
-        await cubit.abort();
+        await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
       },
       expect: () => [
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        verify(() => mockSessionService.abortSession(sessionId: sessionId)).called(1);
+        verify(
+          () => mockSessionService.abortSession(
+            sessionId: sessionId,
+            subAgents: any(named: "subAgents"),
+          ),
+        ).called(1);
       },
     );
 
@@ -953,6 +958,54 @@ void main() {
         ).called(1);
       },
     );
+
+    test("clearNotifications is a no-op when the shell has no notification integration", () async {
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: null,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(cubit.clearNotifications, returnsNormally);
+    });
+
+    test("reassertViewingSession restores a loaded parent after child navigation", () async {
+      final sessionViewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: sessionViewingService,
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      clearInteractions(sessionViewingService);
+
+      cubit.reassertViewingSession();
+
+      verify(() => sessionViewingService.setViewingSession(sessionId)).called(1);
+    });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "SSE message.updated adds message to state",
@@ -2785,7 +2838,10 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.abortSession(sessionId: any(named: "sessionId")),
+    () => service.abortSession(
+      sessionId: any(named: "sessionId"),
+      subAgents: any(named: "subAgents"),
+    ),
   ).thenAnswer((_) async => ApiResponse.success(null));
   when(
     () => service.replyToQuestion(

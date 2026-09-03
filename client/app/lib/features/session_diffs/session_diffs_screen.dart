@@ -1,10 +1,11 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
-import "session_diffs_body.dart";
 
+/// Mobile composition boundary for the shared session-diff presentation.
 class const SessionDiffsScreen({
   super.key,
   required final String projectId,
@@ -22,9 +23,10 @@ class const SessionDiffsScreen({
         sessionId: sessionId,
         staleRetryDelay: const Duration(seconds: 5),
       ),
-      // SessionDiffsBody owns the PregoGlassScaffold so its bar subtitle can
-      // react to the loaded file/addition/deletion stats.
-      child: const SessionDiffsBody(),
+      child: SessionDiffsView(
+        onBack: null,
+        banner: ConnectionBanner.maybeFor(context),
+      ),
     );
   }
 }

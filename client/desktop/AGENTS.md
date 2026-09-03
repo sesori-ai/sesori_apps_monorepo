@@ -40,7 +40,9 @@ depend on registrations from an earlier one at resolution time.
   `sesori_desktop_core` and live in `lib/core/platform/`. Adapters stay dumb —
   no process lifecycle or status state.
 - May import `theme_prego` directly for shell-owned presentation and
-  `module_app_ui` for shared localization, route presentation, and adaptive UI.
+  `module_app_ui` for shared localization, route presentation, settings/harness
+  management, and adaptive UI. Desktop keeps DI, route callbacks, package/link
+  strategies, and supervised logout composition.
 - Never import bridge-workspace code (e.g. the bridge's OAuth browser opener);
   desktop equivalents go through platform adapters (ADR A11).
 - Follow the repo-root `AGENTS.md` error-handling and naming rules.

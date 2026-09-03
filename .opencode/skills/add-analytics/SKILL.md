@@ -38,6 +38,13 @@ state under `services/models/`:
   `InstallationAnalyticsService`: the started/completed/failed attempt funnel
   plus Firebase's recommended `sign_up` and `login` outcomes. They are
   preference-exempt by explicit product decision.
+- Singular attribution is a separate, preference-exempt scope by owner
+  decision: standard authentication conversions through
+  `InstallationAnalyticsService`, one-shot `bridge_paired` through
+  `AttributionService`, and one-shot `first_session_run` from the canonical
+  message outcomes inside `ProductAnalyticsService`. All reach the SDK through
+  `AttributionRepository`; add no other attribution event without a privacy
+  decision.
 - Delivery flows `Client (Foundation) -> API -> Repository -> Service ->
   Consumer`. Cubits/widgets/listeners never hold `AnalyticsClient` or
   `AnalyticsApi` directly.

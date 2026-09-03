@@ -40,7 +40,13 @@ void main() {
     getIt.unregister<LaunchAtLogin>();
     getIt.registerLazySingleton<LaunchAtLogin>(_FakeLaunchAtLogin.new);
 
-    await tester.pumpWidget(const SesoriDesktopApp(hiddenLaunch: false));
+    await tester.pumpWidget(
+      const SesoriDesktopApp(
+        hiddenLaunch: false,
+        initialAppearance: AppearanceMode.system,
+        initialChatInputMode: ChatInputMode.voiceFirst,
+      ),
+    );
     await tester.pump();
     await tester.pump();
 
@@ -75,7 +81,20 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => const Stream<WindowHostEvent>.empty();
 
   @override
-  Future<void> initialize({required bool hidden}) async {}
+  Future<void> initialize({
+    required bool hidden,
+    required WindowBounds? initialBounds,
+    required WindowSize minimumSize,
+  }) async {}
+
+  @override
+  Future<WindowBounds> getBounds() async => const WindowBounds(left: 0, top: 0, width: 720, height: 620);
+
+  @override
+  Future<void> setBounds({required WindowBounds bounds}) async {}
+
+  @override
+  Future<List<WindowBounds>> getDisplayBounds() async => const <WindowBounds>[];
 
   @override
   Future<void> show() async {}
