@@ -1,0 +1,171 @@
+import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
+import "package:test/test.dart";
+
+AcpChildSpawn _spawn({
+  required String childId,
+  String? description = "Thing",
+  String? prompt,
+  bool isBackground = false,
+}) => AcpChildSpawn(
+  childSessionId: childId,
+  description: description,
+  agent: "general-purpose",
+  prompt: prompt,
+  isBackground: isBackground,
+);
+
+PluginMessagePartSubtask _subtaskPart(BridgeSseEvent event) =>
+    (event as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+
+shared.SessionStatus _status(BridgeSseEvent event) =>
+    shared.SessionStatus.fromJson((event as BridgeSseSessionStatus).status);
+
+void main() {
+  group("AcpChildSessionTracker", () {
+    late AcpChildSessionTracker tracker;
+
+    setUp(() => tracker = AcpChildSessionTracker());
+
+    test("spawn creates the child under the root and renders the tile once the prompt streams", () {
+      final result = tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/repo");
+      expect(result.rootSessionId, "root");
+      expect(result.messageId, "root-subagent-child");
+      expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
+      expect(result.events, hasLength(2));
+      final created = shared.Session.fromJson((result.events[0] as BridgeSseSessionCreated).info);
+      expect(created.id, "child");
+      expect(created.parentID, "root");
+      expect(created.directory, "/repo");
+      expect(created.title, "Thing");
+      expect(_status(result.events[1]), const shared.SessionStatus.busy());
+      expect(tracker.isChild(sessionId: "child"), isTrue);
+      expect(tracker.childStatuses, {"child": const PluginSessionStatus.busy()});
+      expect(tracker.busyChildIds(sessionId: "root"), {"child"});
+      expect(tracker.runningChildren(sessionId: "root").single.isBackground, isFalse);
+
+      final first = tracker.appendPrompt(childSessionId: "child", delta: "do the ");
+      expect(first?.opensMessage, isTrue);
+      final tile = _subtaskPart(first!.events.single);
+      expect(tile.id, "root-subagent-child-subtask");
+      expect(tile.messageID, "root-subagent-child");
+      expect(tile.sessionID, "root");
+      expect(tile.prompt, "do the ");
+      expect(tile.childSessionID, "child");
+      expect(tile.taskState?.status, PluginToolStatus.running);
+
+      final second = tracker.appendPrompt(childSessionId: "child", delta: "thing");
+      expect(second?.opensMessage, isFalse);
+      expect(_subtaskPart(second!.events.single).prompt, "do the thing");
+      expect(tracker.appendPrompt(childSessionId: "ghost", delta: "x"), isNull);
+      expect(tracker.appendPrompt(childSessionId: "child", delta: ""), isNull);
+    });
+
+    test("a spawn that already carries a prompt renders the tile immediately", () {
+      final result = tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child", prompt: "p", isBackground: true),
+        directory: "/r",
+      );
+      expect(result.opensMessage, isTrue);
+      expect(result.events, hasLength(3));
+      expect(_subtaskPart(result.events[2]).prompt, "p");
+      expect(tracker.runningChildren(sessionId: "root").single.isBackground, isTrue);
+    });
+
+    test("finish completes the tile with bounded output and sets the child idle", () {
+      tracker
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r")
+        ..appendPrompt(childSessionId: "child", delta: "p");
+
+      final events = tracker.finish(
+        childSessionId: "child",
+        status: PluginToolStatus.completed,
+        output: "x" * (maxToolOutputLength + 10),
+        error: null,
+      );
+      final part = _subtaskPart(events[0]);
+      expect(part.taskState?.status, PluginToolStatus.completed);
+      expect(part.taskState?.output, hasLength(maxToolOutputLength));
+      expect(part.taskState?.error, isNull);
+      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(tracker.childStatuses, {"child": const PluginSessionStatus.idle()});
+      expect(tracker.busyChildIds(sessionId: "root"), isEmpty);
+
+      expect(
+        tracker.finish(childSessionId: "child", status: PluginToolStatus.cancelled, output: null, error: null),
+        isEmpty,
+        reason: "a second terminal report changes nothing",
+      );
+      expect(
+        tracker.finish(childSessionId: "ghost", status: PluginToolStatus.cancelled, output: null, error: null),
+        isEmpty,
+      );
+    });
+
+    test("a finish before any prompt still idles the child without a tile", () {
+      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
+      final events = tracker.finish(childSessionId: "child", status: PluginToolStatus.completed, output: "o", error: null);
+      expect(events, hasLength(1));
+      expect(_status(events.single), const shared.SessionStatus.idle());
+    });
+
+    test("cancelled and failed finishes keep only the failure text", () {
+      tracker
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", prompt: "p"), directory: "/r")
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2", prompt: "p"), directory: "/r");
+
+      final cancelled = _subtaskPart(
+        tracker.finish(childSessionId: "k1", status: PluginToolStatus.cancelled, output: null, error: "stopped")[0],
+      );
+      expect(cancelled.taskState?.status, PluginToolStatus.cancelled);
+      expect(cancelled.taskState?.error, isNull);
+
+      final failed = _subtaskPart(
+        tracker.finish(childSessionId: "k2", status: PluginToolStatus.error, output: "partial", error: "boom")[0],
+      );
+      expect(failed.taskState?.status, PluginToolStatus.error);
+      expect(failed.taskState?.error, "boom");
+      expect(failed.taskState?.output, isNull);
+    });
+
+    test("a nested spawn under a child is flattened to the root", () {
+      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
+      final nested = tracker.spawn(sessionId: "child", spawn: _spawn(childId: "grandchild"), directory: "/r");
+      expect(nested.rootSessionId, "root");
+      expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "root");
+      expect(tracker.busyChildIds(sessionId: "root"), {"child", "grandchild"});
+      expect(tracker.rootOf(sessionId: "grandchild"), "root");
+      expect(tracker.rootOf(sessionId: "root"), "root");
+    });
+
+    test("a repeated spawn for a known child is a no-op", () {
+      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
+      final again = tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
+      expect(again.events, isEmpty);
+      expect(again.opensMessage, isFalse);
+      expect(tracker.childStatuses.keys, ["child"]);
+    });
+
+    test("forgetting a root drops its children; forgetting a child drops only it; clear drops everything", () {
+      tracker
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r")
+        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2"), directory: "/r")
+        ..spawn(sessionId: "other", spawn: _spawn(childId: "k3"), directory: "/r");
+
+      expect(tracker.childSessionIds(sessionId: "root"), ["k1", "k2"]);
+      tracker.forgetSession(sessionId: "k2");
+      expect(tracker.childStatuses.keys, ["k1", "k3"]);
+      expect(tracker.busyChildIds(sessionId: "root"), {"k1"});
+
+      tracker.forgetSession(sessionId: "root");
+      expect(tracker.childStatuses.keys, ["k3"]);
+      expect(tracker.runningChildren(sessionId: "root"), isEmpty);
+
+      tracker.clear();
+      expect(tracker.childStatuses, isEmpty);
+      expect(tracker.isChild(sessionId: "k3"), isFalse);
+    });
+  });
+}

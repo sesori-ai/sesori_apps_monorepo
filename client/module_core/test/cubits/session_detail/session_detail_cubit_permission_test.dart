@@ -74,7 +74,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),

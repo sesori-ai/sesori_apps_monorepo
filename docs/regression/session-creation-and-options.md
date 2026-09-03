@@ -87,7 +87,10 @@ variant, and worktree mode, and creating the session with its first input.
   describing the options still on screen. It spins only while the answers on
   screen are unsettled: the harness chooser stays live during a refresh, so a
   press abandoned for another harness must not leave a spinner over that
-  harness's settled options.
+  harness's settled options. When the viewport has room, the action rests above
+  the composer; when the keyboard or a multiline draft cramps that viewport,
+  it follows the option rows in their scroll content and never covers the
+  dedicated-workspace control.
 - It is one action under one name in every state. Whether a press repeats
   harness discovery, the project check, or the options themselves is decided
   behind it; the surface never names that split, because the user cannot act on
@@ -200,7 +203,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
-  pressed, or renames itself after which load it happens to be repeating.
+  pressed, renames itself after which load it happens to be repeating, or
+  covers an option row in a cramped viewport.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.

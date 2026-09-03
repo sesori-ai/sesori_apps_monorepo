@@ -11,6 +11,7 @@ void main() {
     launchDirectory: "/repo",
     pluginId: "deepseek",
     configurationTracker: AcpSessionConfigurationTracker(),
+    childSessions: AcpChildSessionTracker(),
     api: const DeepSeekAcpApi(pluginId: "deepseek"),
     messageTimeParser: parser,
   );

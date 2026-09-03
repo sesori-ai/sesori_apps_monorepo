@@ -392,26 +392,31 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
-    test("reads the idle timeout live at each reap arm", () async {
-      harness.idleTimeout = null;
+    test("rearms the idle timeout immediately when settings change", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
       await harness.waitForIdle();
 
-      // Reaping disabled: no delay armed, process stays resident.
-      harness.clock.elapse();
+      expect(harness.clock.delays, [const Duration(minutes: 5)]);
+
+      harness.idleTimeout = null;
+      harness.idleTimeoutChanges.add(null);
+      await pump();
+      harness.clock.elapseAt(index: 0);
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
 
-      // Settings change takes effect at the next idle transition.
       harness.idleTimeout = const Duration(minutes: 1);
-      unawaited(harness.enqueue("second"));
-      await _waitForUserFrames(process, 2);
-      process.emit(_result());
-      await harness.waitForIdle();
-      harness.clock.elapse();
+      harness.idleTimeoutChanges.add(harness.idleTimeout);
+      await pump();
+      expect(harness.clock.delays, [
+        const Duration(minutes: 5),
+        const Duration(minutes: 1),
+      ]);
+
+      harness.clock.elapseAt(index: 1);
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
@@ -820,6 +825,7 @@ void main() {
 final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool failInterrupt = false}) {
   /// Mutable so tests can exercise runtime settings changes.
   Duration? idleTimeout = const Duration(minutes: 5);
+  final StreamController<Duration?> idleTimeoutChanges = StreamController<Duration?>.broadcast(sync: true);
 
   this {
     repository = ClaudeSessionProcessRepository(
@@ -837,6 +843,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
       approvals: approvals,
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges.stream,
     );
     subscription = service.events.listen(events.add);
   }
@@ -910,6 +917,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
   Future<void> dispose() async {
     await service.dispose();
     await subscription.cancel();
+    await idleTimeoutChanges.close();
     for (final process in processes) {
       await process.close();
     }
@@ -919,9 +927,11 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
 final class _ControlledClock() extends ServerClock {
   final List<Completer<void>> _delays = [];
 
+  final List<Duration> delays = [];
   @override
   Future<void> delay({required Duration duration}) {
     final completer = Completer<void>();
+    delays.add(duration);
     _delays.add(completer);
     return completer.future;
   }
@@ -931,6 +941,10 @@ final class _ControlledClock() extends ServerClock {
       if (!delay.isCompleted) delay.complete();
     }
     _delays.clear();
+  }
+  void elapseAt({required int index}) {
+    final delay = _delays[index];
+    if (!delay.isCompleted) delay.complete();
   }
 }
 

@@ -124,6 +124,12 @@ sealed class CodexRolloutErrorDto with _$CodexRolloutErrorDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutErrorDtoFromJson(json);
 }
 
+/// Persisted `session_meta.thread_source`; absent for root rollouts.
+enum CodexRolloutThreadSource() {
+  subagent,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMetadataPayloadDto {
   const factory({
@@ -132,6 +138,11 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     required String? timestamp,
     @JsonKey(name: "model_provider") required String? modelProvider,
     @JsonKey(name: "cli_version") required String? cliVersion,
+    @JsonKey(name: "parent_thread_id") required String? parentThreadId,
+    @JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown)
+    required CodexRolloutThreadSource? threadSource,
+    @JsonKey(name: "agent_nickname") required String? agentNickname,
+    @JsonKey(name: "agent_path") required String? agentPath,
   }) = _CodexRolloutSessionMetadataPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) =>

@@ -39,10 +39,14 @@ sub-agent parts, plus the signal that a tool changed files.
   a `childSessionID` naming the sub-agent's child session once known. The task
   notification is the authoritative terminal source; the launching call's own
   tool result is a fallback that a later notification replaces, and a
-  background launch never finalizes the part. A part appears only once its
-  input names the description and prompt, never with placeholder text. On
-  replay the same parts render from the transcript, and a still-running task
-  the session's resident process no longer owns renders as `cancelled`.
+  background launch never finalizes the part. When Claude resumes the same
+  agent after it stopped, the repeated start reopens the existing part as
+  `running`, clears its prior outcome, and restores the already-announced child
+  to busy. A part appears only once its input names the description and prompt,
+  never with placeholder text. On replay the same parts render from the
+  transcript, current resident state overrides an earlier terminal notification,
+  and a still-running task the session's resident process no longer owns renders
+  as `cancelled`.
   Process exit — natural or an explicit stop — cancels every running task.
   OpenCode subtask parts keep a null lifecycle and the child-status fallback.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
@@ -68,7 +72,7 @@ sub-agent parts, plus the signal that a tool changed files.
 | L1 Smoke | Not included because proving tool behavior requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
-| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, and a failed sub-agent renders `error` with the notification summary. |
+| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte shell output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
 ## Exploration Guidance

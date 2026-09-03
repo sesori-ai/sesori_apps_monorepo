@@ -9,6 +9,7 @@ class DeepSeekEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
   required final DeepSeekAcpApi api,
   required final DeepSeekMessageTimeParser messageTimeParser,
 }) extends AcpEventMapper {

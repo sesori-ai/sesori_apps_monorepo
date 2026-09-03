@@ -1,5 +1,3 @@
-import "dart:math" as math;
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -50,24 +48,9 @@ const double _optionsHorizontalPadding = 10;
 /// the composer.
 const double _optionsBottomPadding = PregoSpacing.md;
 
-/// The gap the floating refresh action keeps above the composer (Figma node
-/// 4691:7507).
+/// The gap the refresh action keeps above the composer when the options
+/// viewport has enough room (Figma node 4691:7507).
 const double _refreshBottomGap = PregoSpacing.xl;
-
-/// The band the floating refresh action occupies above the composer, reserved
-/// as extra scroll padding so a long options block can still be scrolled out
-/// from under it.
-///
-/// [PregoButtonsSolidSize.sm] is padding around its content rather than a fixed
-/// box, so the pill grows with the reader's text scale. A constant would leave
-/// the last option row stranded underneath it at accessibility sizes.
-double _refreshBandHeight(BuildContext context) {
-  // The sm button's vertical padding around its tallest content: a 20px icon,
-  // or the text-sm line height — also 20 — once the text scale is applied.
-  const contentHeight = 20.0;
-  final scaledContent = MediaQuery.textScalerOf(context).scale(contentHeight);
-  return PregoSpacing.md * 2 + math.max(contentHeight, scaledContent) + _refreshBottomGap;
-}
 
 class _NewSessionViewState() extends State<NewSessionView> {
   bool _dedicatedWorktree = true;
@@ -245,11 +228,10 @@ class _NewSessionViewState() extends State<NewSessionView> {
     );
   }
 
-  /// The refresh action, floating centred just above the composer (Figma node
-  /// 4691:7507). It reloads the whole options block rather than any one row,
-  /// so it stays with the composer instead of scrolling away inside the block
-  /// it acts on. Floating rather than in flow: a cramped viewport — landscape
-  /// with a multiline draft — must still spend its height on the composer.
+  /// The refresh action. Its surrounding sliver centres it just above the
+  /// composer when the options viewport has room, matching Figma node
+  /// 4691:7507. In a cramped viewport it follows the option rows in the same
+  /// scroll content instead of floating over one of them.
   ///
   /// It is one action with one name in every state. Which load it actually
   /// repeats — harness discovery, the project check, or the options themselves
@@ -264,21 +246,14 @@ class _NewSessionViewState() extends State<NewSessionView> {
   /// tied to the press alone would sit over another harness's settled options,
   /// on an action the user then cannot press.
   Widget _buildOptionsRefresh({required NewSessionCubit cubit, required bool isLoading}) {
-    return Positioned(
-      bottom: _refreshBottomGap,
-      left: 0,
-      right: 0,
-      child: Center(
-        child: PregoButtonsSolid(
-          key: const Key("new_session_options_refresh"),
-          label: context.loc.newSessionOptionsRefresh,
-          hierarchy: PregoButtonsSolidHierarchy.tertiary,
-          size: PregoButtonsSolidSize.sm,
-          leadingIcon: TablerRegular.refresh,
-          isLoading: isLoading,
-          onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
-        ),
-      ),
+    return PregoButtonsSolid(
+      key: const Key("new_session_options_refresh"),
+      label: context.loc.newSessionOptionsRefresh,
+      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+      size: PregoButtonsSolidSize.sm,
+      leadingIcon: TablerRegular.refresh,
+      isLoading: isLoading,
+      onPressed: cubit.canRefreshOptions ? _refreshOptions : null,
     );
   }
 
@@ -430,9 +405,6 @@ class _NewSessionViewState() extends State<NewSessionView> {
     // before the bridge could confirm what it runs. A press of its own keeps it
     // on screen: the load it started is exactly what the user wants to watch.
     final showsRefresh = (needsHarnessDiscovery && !hasNoHarnesses) || optionsStatus != null || _refreshPress != null;
-    final optionsBottomPadding = showsRefresh
-        ? _optionsBottomPadding + _refreshBandHeight(context)
-        : _optionsBottomPadding;
     final isComposerEnabled = cubit.canCreateSession && !isSending;
     _isSending = isSending;
     // The listener can run while this route is being torn down. The route
@@ -492,37 +464,50 @@ class _NewSessionViewState() extends State<NewSessionView> {
                     child: Column(
                       children: [
                         Expanded(
-                          child: Stack(
-                            // The scroll view owns the whole area, as it did before
-                            // the refresh action floated over it — a loose fit would
-                            // let it shrink to its content and strand the last rows
-                            // above a viewport that no longer reaches them.
-                            fit: StackFit.expand,
-                            children: [
-                              PregoTopBarInsetBuilder(
-                                builder: (context, topInset, child) => SingleChildScrollView(
-                                  key: const Key("new_session_options_scroll"),
+                          child: PregoTopBarInsetBuilder(
+                            builder: (context, topInset, child) => CustomScrollView(
+                              key: const Key("new_session_options_scroll"),
+                              // The composer owns keyboard focus. This supporting
+                              // pane must not become the route's primary scroll and
+                              // jump to its trailing refresh when the keyboard opens.
+                              primary: false,
+                              slivers: [
+                                SliverPadding(
                                   padding: EdgeInsetsDirectional.fromSTEB(
                                     _optionsHorizontalPadding,
                                     topInset + _optionRowSpacing,
                                     _optionsHorizontalPadding,
-                                    optionsBottomPadding,
+                                    showsRefresh ? 0 : _optionsBottomPadding,
                                   ),
-                                  child: child,
+                                  sliver: SliverToBoxAdapter(child: child),
                                 ),
-                                child: _buildOptions(
-                                  data: composerData,
-                                  status: optionsStatus,
-                                  needsHarnessDiscovery: needsHarnessDiscovery,
-                                  hasNoHarnesses: hasNoHarnesses,
-                                ),
-                              ),
-                              if (showsRefresh)
-                                _buildOptionsRefresh(
-                                  cubit: cubit,
-                                  isLoading: _refreshPress != null && (composerData?.isLoading ?? false),
-                                ),
-                            ],
+                                if (showsRefresh)
+                                  SliverFillRemaining(
+                                    hasScrollBody: false,
+                                    child: Padding(
+                                      padding: const EdgeInsetsDirectional.fromSTEB(
+                                        _optionsHorizontalPadding,
+                                        _optionsBottomPadding,
+                                        _optionsHorizontalPadding,
+                                        _refreshBottomGap,
+                                      ),
+                                      child: Align(
+                                        alignment: AlignmentDirectional.bottomCenter,
+                                        child: _buildOptionsRefresh(
+                                          cubit: cubit,
+                                          isLoading: _refreshPress != null && (composerData?.isLoading ?? false),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            child: _buildOptions(
+                              data: composerData,
+                              status: optionsStatus,
+                              needsHarnessDiscovery: needsHarnessDiscovery,
+                              hasNoHarnesses: hasNoHarnesses,
+                            ),
                           ),
                         ),
                         if (!hasNoHarnesses)

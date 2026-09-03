@@ -367,6 +367,10 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
         timestamp: "2026-08-01T00:00:00Z",
         modelProvider: "openai",
         cliVersion: "0.147.0",
+        parentThreadId: null,
+        threadSource: null,
+        agentNickname: null,
+        agentPath: null,
       ),
     ),
   ];

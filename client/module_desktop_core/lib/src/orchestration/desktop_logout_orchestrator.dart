@@ -9,6 +9,7 @@ import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/control_channel_server.dart";
 import "../services/bridge_process_service.dart";
 import "../services/control_command_service.dart";
+import "../services/desktop_attention_service.dart";
 import "../services/desktop_instance_service.dart";
 import "../trackers/bridge_status_tracker.dart";
 import "../trackers/desktop_logout_tracker.dart";
@@ -36,6 +37,7 @@ class DesktopLogoutOrchestrator({
   required final BridgeStatusTracker statusTracker,
   required final DesktopLogoutTracker logoutTracker,
   required final ProductAnalyticsService productAnalyticsService,
+  required final DesktopAttentionService attentionService,
   required final AuthSession authSession,
 }) {
   static const Duration _bridgeDeletionTimeout = Duration(seconds: 10);
@@ -47,6 +49,7 @@ class DesktopLogoutOrchestrator({
   final BridgeStatusTracker _statusTracker = statusTracker;
   final DesktopLogoutTracker _logoutTracker = logoutTracker;
   final ProductAnalyticsService _productAnalyticsService = productAnalyticsService;
+  final DesktopAttentionService _attentionService = attentionService;
   final AuthSession _authSession = authSession;
   Future<DesktopLogoutOutcome>? _activeLogout;
 
@@ -56,9 +59,17 @@ class DesktopLogoutOrchestrator({
       return existing;
     }
     _logoutTracker.markInProgress();
-    final Future<DesktopLogoutOutcome> rawOperation = _performLogout();
+    final attentionCleanup = _suspendAndClearAttentionForLogout();
+    final Future<DesktopLogoutOutcome> rawOperation = _performLogout(
+      attentionCleanup: attentionCleanup,
+    );
+    final joinedOperation = _joinAttentionCleanup(
+      logoutOperation: rawOperation,
+      attentionCleanup: attentionCleanup,
+    );
+    final finalizedOperation = _finalizeAttentionAfterLogout(operation: joinedOperation);
     late final Future<DesktopLogoutOutcome> operation;
-    operation = rawOperation.whenComplete(() {
+    operation = finalizedOperation.whenComplete(() {
       _logoutTracker.markIdle();
       if (identical(_activeLogout, operation)) {
         _activeLogout = null;
@@ -68,7 +79,37 @@ class DesktopLogoutOrchestrator({
     return operation;
   }
 
-  Future<DesktopLogoutOutcome> _performLogout() async {
+  Future<DesktopLogoutOutcome> _joinAttentionCleanup({
+    required Future<DesktopLogoutOutcome> logoutOperation,
+    required Future<void> attentionCleanup,
+  }) async {
+    try {
+      return await logoutOperation;
+    } finally {
+      // Early persistence/stop failures must not resume attention while the
+      // service's asynchronous cancel-all operation is still completing.
+      await attentionCleanup;
+    }
+  }
+
+  Future<DesktopLogoutOutcome> _finalizeAttentionAfterLogout({
+    required Future<DesktopLogoutOutcome> operation,
+  }) async {
+    try {
+      final outcome = await operation;
+      if (outcome == DesktopLogoutOutcome.completed) {
+        _attentionService.completeSuccessfulLogout();
+      } else {
+        _attentionService.resumeAfterLogoutAttempt();
+      }
+      return outcome;
+    } on Object {
+      _attentionService.resumeAfterLogoutAttempt();
+      rethrow;
+    }
+  }
+
+  Future<DesktopLogoutOutcome> _performLogout({required Future<void> attentionCleanup}) async {
     _instanceService.cancelPendingBridgeRestore();
     try {
       await _instanceService.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
@@ -131,6 +172,8 @@ class DesktopLogoutOrchestrator({
       logw("Failed to prepare product analytics for desktop logout", error, stackTrace);
     }
 
+    await attentionCleanup;
+
     try {
       await _authSession.logoutCurrentDevice();
       return DesktopLogoutOutcome.completed;
@@ -138,6 +181,16 @@ class DesktopLogoutOrchestrator({
       await _resumeProductAnalyticsAfterFailedLogout();
       logw("Device-local sign-out failed", error, stackTrace);
       return DesktopLogoutOutcome.localSessionClearFailed;
+    }
+  }
+
+  Future<void> _suspendAndClearAttentionForLogout() async {
+    try {
+      await _attentionService.suspendAndClearForLogout();
+    } on Object catch (error, stackTrace) {
+      // The attention owner normally absorbs native cleanup failures. Preserve
+      // best-effort logout if an unexpected service-level failure escapes.
+      logw("Failed to settle desktop attention before logout", error, stackTrace);
     }
   }
 

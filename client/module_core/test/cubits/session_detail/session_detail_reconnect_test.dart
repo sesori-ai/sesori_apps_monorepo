@@ -59,7 +59,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),
@@ -133,7 +133,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),
@@ -227,7 +227,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),

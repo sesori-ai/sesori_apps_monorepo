@@ -4,13 +4,14 @@
 
 - **Plan slug:** `claude-inline-subtasks`
 - **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** Steps 1/8 to 7/8 merged, including the L4-found fix
+- **Series state:** all eight steps merged, including the L4-found fix
   [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  Step 8/8 (retire) in PR
-- **Next action:** merge the Step 8/8 retirement PR; harness follow-ups
-  (Codex, Grok, DeepSeek, Cursor tile-only) are tracked in the capability matrix
+  the series is retired
+- **Next action:** deliver the harness follow-ups in `HARNESS_FOLLOWUPS.md`
+  (Codex, Grok Build, DeepSeek, Cursor) as parallel PR chains under this slug
+  without step counters; E2E testing happens after each merge
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -145,8 +146,38 @@
 | [x] | 4/8 | `🚧 [claude-inline-subtasks] claude: sub-agent transcripts as child sessions [step 4/8]` | 900-1,400 | [PR #1249](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1249) merged |
 | [x] | 5/8 | `⚙️ [claude-inline-subtasks] claude: stream sub-agent frames into child sessions [step 5/8]` | 300-500 | [PR #1253](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1253) merged |
 | [x] | 6/8 | `🚧 [claude-inline-subtasks] stop: confirm main-agent-only or full stop while sub-agents run [step 6/8]` | 600-1,000 | [PR #1254](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1254) merged |
-| [x] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) |
-| [ ] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | In PR |
+| [x] | 7/8 | `🌱 [claude-inline-subtasks] docs: reconcile regression docs [step 7/8]` | 80-200 | [PR #1256](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1256) merged |
+| [x] | 8/8 | `🌱 [claude-inline-subtasks] docs: run coverage and retire the plan [step 8/8]` | 40-120 | [PR #1259](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1259) merged |
+
+## Harness Follow-Ups
+
+Designs live in `HARNESS_FOLLOWUPS.md`. The four chains are independent and
+run in parallel; the Grok chain introduces the shared ACP seams that the
+DeepSeek and Cursor chains reuse, so the DeepSeek tile PR lands after the
+Grok lifecycle PRs and the Cursor PR after the Grok scoped-stop PR. Live
+probes are recorded here as bounded facts before each chain's first
+implementation PR. E2E testing is performed after each PR merges.
+
+| Done | Harness | Description | State |
+|---|---|---|---|
+| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
+| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) |
+| [ ] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
+| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Not started |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
+| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
 
 ## Step 1 Checklist
 
@@ -470,3 +501,36 @@
   Accepted limitation: a root whose only resident work is a non-sub-agent
   background task is busy but absent from the activity summary (no contract
   slot); recorded in the risk table.
+
+### Harness follow-ups (2026-09-02)
+
+`architecture-plan-review` of `HARNESS_FOLLOWUPS.md` via sub-agent: rejected
+once with six findings, all applied without re-review: one Layer-2
+`AcpChildSessionTracker` owns child lifecycle (no plugin/mapper split); the
+scoped-stop policy lives once in `AcpPlugin.abortSession` over an abstract
+`cancelChild` API seam; a shared tool-call classification seam replaces
+per-harness suppression; Codex root status stays busy while children run and
+its tracker is placed beside `CodexToolLifecycleTracker`; the older-adapter
+fallback for DeepSeek was dropped with the protocol version fixed at 2 and the
+manifest pinned to 0.1.3; "helper" naming removed.
+
+A follow-up `architecture-plan-review` on 2026-09-03 rejected the review-fix
+diff with three findings, all applied without re-review: Layer-3
+`GrokSessionService` now prepares immutable replay context through
+`GrokSessionHistoryRepository` instead of the projection reading data; the
+same service merges persisted children from `GrokSessionCatalogRepository`
+with the peer Layer-2 tracker; and `GrokEventMapper` contains the `will_wake`
+and prompt-id conventions before invoking backend-neutral hold/release
+operations.
+
+A second follow-up `architecture-plan-review` on 2026-09-03 covered the later
+stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. It
+rejected one finding, applied without re-review: deferred Grok tool-call state
+moved out of `AcpEventMapper` into a Layer-2
+`AcpDeferredToolCallTracker` with session, disconnect, and process-exit
+cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
+
+A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
+service-owned lifecycle flow and replay replacement, the proportional Grok
+denied-attempt replay limitation, and terminal DeepSeek settlement cleanup
+with no findings.
