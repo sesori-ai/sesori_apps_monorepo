@@ -160,7 +160,7 @@ implementation PR. E2E testing is performed after each PR merges.
 
 | Done | Harness | Description | State |
 |---|---|---|---|
-| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, and DeepSeek sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
+| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
 | [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
 | [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
@@ -513,3 +513,12 @@ per-harness suppression; Codex root status stays busy while children run and
 its tracker is placed beside `CodexToolLifecycleTracker`; the older-adapter
 fallback for DeepSeek was dropped with the protocol version fixed at 2 and the
 manifest pinned to 0.1.3; "helper" naming removed.
+
+A follow-up `architecture-plan-review` on 2026-09-03 rejected the review-fix
+diff with three findings, all applied without re-review: Layer-3
+`GrokSessionService` now prepares immutable replay context through
+`GrokSessionHistoryRepository` instead of the projection reading data; the
+same service merges persisted children from `GrokSessionCatalogRepository`
+with the peer Layer-2 tracker; and `GrokEventMapper` contains the `will_wake`
+and prompt-id conventions before invoking backend-neutral hold/release
+operations.
