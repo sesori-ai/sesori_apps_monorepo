@@ -862,11 +862,12 @@ abstract class AcpPlugin({
         updatedMs: info.updatedAtMs,
       );
     }
+    final effectiveDirectory = id.isEmpty ? directory : _sessionDirectories[id] ?? directory;
     final ts = info.updatedAtMs;
     return PluginSession(
       id: id,
-      projectID: directory,
-      directory: directory,
+      projectID: effectiveDirectory,
+      directory: effectiveDirectory,
       parentID: sessionParentId(info),
       title: info.title,
       time: ts == null ? null : PluginSessionTime(created: sessionCreatedAtMs(info) ?? ts, updated: ts, archived: null),

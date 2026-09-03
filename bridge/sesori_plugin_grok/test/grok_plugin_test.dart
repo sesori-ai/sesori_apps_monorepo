@@ -273,6 +273,43 @@ void main() {
       expect(sessions.last.directory, outside);
     });
 
+    test("bare enumeration fallback preserves an existing session directory", () async {
+      await connect();
+      const storedDirectory = "/stored-project";
+      plugin.primeSessionDirectory(sessionId: "root", directory: storedDirectory);
+
+      final listing = plugin.listAllSessions(knownDirectories: const {});
+      final bare = await waitForFrame(method: AcpMethods.sessionList);
+      expect((bare["params"] as Map<String, dynamic>)["cwd"], isNull);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": bare["id"],
+        "result": {
+          "sessions": [
+            {"sessionId": "root", "title": "Root"},
+          ],
+        },
+      });
+      final launchScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((launchScoped["params"] as Map<String, dynamic>)["cwd"], "/repo");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": launchScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+      final storedScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((storedScoped["params"] as Map<String, dynamic>)["cwd"], storedDirectory);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": storedScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+
+      final sessions = await listing;
+      expect(sessions.single.directory, storedDirectory);
+      expect(plugin.directoryForSession(sessionId: "root"), storedDirectory);
+    });
+
     test("uses Grok identity, headless auth policy, and stop-and-send", () {
       expect(plugin.id, "grok");
       expect(plugin.authMethodId, isNull);

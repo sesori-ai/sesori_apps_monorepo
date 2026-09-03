@@ -186,11 +186,14 @@ class GrokPlugin._({
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    final sessions = _sessionService.includeChildrenInAllSessions(
-      sessions: await super.listAllSessions(knownDirectories: knownDirectories),
-    );
+    final listedSessions = await super.listAllSessions(knownDirectories: knownDirectories);
+    final listedById = {for (final session in listedSessions) session.id: session};
+    final sessions = _sessionService.includeChildrenInAllSessions(sessions: listedSessions);
     for (final session in sessions) {
-      attributeSessionDirectory(sessionId: session.id, directory: session.directory);
+      final listed = listedById[session.id];
+      if (listed == null || listed.directory != session.directory) {
+        attributeSessionDirectory(sessionId: session.id, directory: session.directory);
+      }
     }
     return sessions;
   }

@@ -214,9 +214,11 @@ state.
   root-only. Full enumeration indexes persisted root directories once, then
   propagates each resolution into both the returned catalog family and ACP's
   operation/event attribution caches. It therefore resolves a root outside the
-  launch directory after restart even when `session/list` omits `cwd`; child
-  titles and times prefer summary metadata, and a missing store is simply empty. Malformed summaries and unreadable files remain visible failures;
-  an isolated malformed update line is logged and skipped. Import remains
+  launch directory after restart even when `session/list` omits `cwd`; a bare
+  fallback never overwrites existing bridge or agent attribution. Child titles
+  and times prefer summary metadata, and a missing store is simply empty.
+  Malformed summaries and unreadable files remain visible failures; an isolated
+  malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
   listed session merely to catalog it.
 - Running root sessions remain ahead of inactive roots and order by the latest
@@ -318,8 +320,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   loses `grok` attribution, destructively removes an absent row, omits a persisted
   or live child from full enumeration, repeatedly rescans the persisted tree per
   root, attributes a root or child to the launch directory instead of the stored
-  project, silently treats unreadable metadata as absent, or
-  ordinary root-catalog reads start Grok after import.
+  project, lets a bare-list fallback overwrite an already attributed directory,
+  silently treats unreadable metadata as absent, or ordinary root-catalog reads
+  start Grok after import.
 - Mobile project recovery loses its CLI installation/reconnect guidance, or a
   desktop project recovery surface shows CLI commands, omits supervised Start,
   toggles an already-On desired state to Off instead of retrying start, or
