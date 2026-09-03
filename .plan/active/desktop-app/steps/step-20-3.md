@@ -6,7 +6,8 @@
   while Sesori is hidden or unfocused, and opening an alert focuses the correct
   account-bound session.
 - **Dependencies:** Step 20 slices 1/3 and 2/3, especially the merged cockpit routes from PR #1269
-- **Pinned implementation head:** `6a88e5819786790cd20fa7e7df72611479d8962b`
+- **Open PR:** [#1274](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1274)
+- **Pinned implementation head:** `4642e18c01639df65ad89af09dafe395faff5e27`
 
 ## Scope
 
@@ -23,8 +24,9 @@
 ## Implementation Summary
 
 - Moved the typed `LocalNotificationPayload` into `module_core`, added nullable
-  account binding to local open requests, added client disposal, and added
-  awaited `cancelAll()` while retaining best-effort session cancellation.
+  account binding to local open requests, added client disposal, and made both
+  session-specific and application-wide cancellation awaitable while retaining
+  best-effort native adapters.
 - Kept mobile notification opens account-unbound (`accountId: null`) and
   regenerated Freezed/JSON plus DI outputs rather than editing generated files.
 - Added `DesktopLocalNotificationClient`, including deterministic session
@@ -45,6 +47,14 @@
   synchronously with logout, settles native writes, attempts cancel-all, and
   completes before local authentication is cleared.
 - Updated notification and desktop-supervision regression contracts.
+- Follow-up review hardening subscribes to window and relay streams before
+  native initialization awaits, coalesces retryable mobile/desktop client
+  initialization, serializes preference updates and same-session cancellation
+  with replacement alerts, revalidates account-bound opens after window focus,
+  ignores late focus callbacks while hidden, and attempts cleanup even when
+  initialization is unavailable.
+- Successful logout now discards the old account's pending attention without
+  replaying it, and desktop session viewing consumes the registered canceller.
 
 ## Architecture Review
 
@@ -55,6 +65,10 @@
 - Result: **APPROVED** with no findings. The review confirmed shared/product-shell notification ownership, Layer 0–4
   dependency direction, startup/DI/disposal ownership, direct SSE ownership, account/logout fencing, route readiness,
   and the desktop no-push boundary.
+- The feedback fixes received a second bounded architecture review over
+  `4c39dc267fd6a8b91c29d7a283a6cf692d7a0563..4642e18c01639df65ad89af09dafe395faff5e27`
+  against `/tmp/pr1274-review-fixes-architecture-review.patch` (1,099 lines,
+  47,091 bytes). Result: **APPROVED** with no findings.
 
 ## Verification
 
@@ -63,35 +77,56 @@
   outputs are current.
 - Fatal-info analysis passes in `client/module_core`, `client/module_desktop_core`, `client/module_app_ui`,
   `client/desktop`, and `client/app`.
-- Full suites pass:
+- Full relevant suites after feedback pass:
   - `client/module_core`: 1,485 tests.
-  - `client/module_desktop_core`: 255 tests.
-  - `client/module_app_ui`: 282 tests.
-  - `client/module_prego`: 270 tests.
-  - `client/desktop`: 117 tests.
-  - `client/app`: 663 tests.
+  - `client/module_desktop_core`: 261 tests.
+  - `client/desktop`: 118 tests.
+  - `client/app`: 665 tests.
+- The unchanged initial verification remains passing for `client/module_app_ui`
+  (282 tests) and `client/module_prego` (270 tests).
 - Focused notification, logout, preference, route-dispatch, window-state, DI, Settings, and mobile-adapter suites pass.
   The attention initialization-retry test intentionally logs
   `Failed to initialize desktop attention notifications: Bad state: native initialization unavailable` before proving
   that the next eligible request retries successfully.
-- Dart LSP reports zero diagnostics across all 30 changed production Dart files.
+- Dart LSP reports zero diagnostics across all 30 initial production Dart files
+  and all 9 production Dart files changed by feedback.
 - A clean `asdf exec flutter build macos` succeeds (66.3 MB reported by Flutter), and
   `codesign --verify --deep --strict` accepts the resulting `Sesori.app`.
 - `git diff --check` passes.
-- The pinned implementation range contains 2,847 additions plus 246 deletions, or 3,093 changed lines across 62 files:
+- The final pinned implementation range is explicitly non-self-inclusive:
+  `.plan/**` is excluded from the metric even though the earlier evidence commit
+  is inside the Git range. Production, tests, generated outputs, and regression
+  documents contain 3,305 additions plus 266 deletions, or 3,571 changed lines
+  across 69 files:
 
 ```bash
 git diff --numstat \
   51140cac2536ac747d7bc3141c33d585e5e8804b \
-  6a88e5819786790cd20fa7e7df72611479d8962b \
+  4642e18c01639df65ad89af09dafe395faff5e27 \
+  -- . ':(exclude).plan/**' \
   | awk '{ additions += $1; deletions += $2; files += 1 } \
       END { print files, additions, deletions, additions + deletions }'
-# 62 2847 246 3093
+# 69 3305 266 3571
 ```
 
-The slice exceeds the 1,500-line soft cap because the account-safe service, shared contract migration, native adapter,
-logout integration, and their directly proving tests form one lifecycle flow. The approved split explicitly kept these
-together rather than shipping an unused contract or separating credential cleanup from the native-write owner.
+- For reconciliation, the three excluded `.plan` files present at that pinned
+  head contain 150 additions plus 16 deletions, or 166 changed lines:
+
+```bash
+git diff --numstat \
+  51140cac2536ac747d7bc3141c33d585e5e8804b \
+  4642e18c01639df65ad89af09dafe395faff5e27 \
+  -- .plan \
+  | awk '{ additions += $1; deletions += $2; files += 1 } \
+      END { print files, additions, deletions, additions + deletions }'
+# 3 150 16 166
+```
+
+The slice exceeds the 1,500-line soft cap because the account-safe service,
+shared contract migration, native adapter, logout integration, and their
+proving tests form one lifecycle flow. The approved split explicitly kept these
+together rather than shipping an unused contract or separating credential
+cleanup from the native-write owner.
 
 ## Residual Verification
 
@@ -107,8 +142,8 @@ together rather than shipping an unused contract or separating credential cleanu
 - [x] Alert content is limited to the session title plus category-level copy; routing metadata is not rendered.
 - [x] Alerts show only while hidden/unfocused and enabled; pending attention
   resumes when focus, preference, or auth gates reopen.
-- [x] Per-session writes are serialized, resolved requests cannot reappear, and
-  the last resolved request cancels the session alert.
+- [x] Per-session shows and cancellations are serialized, resolved requests
+  cannot reappear, and the last resolved request cancels the session alert.
 - [x] Opens require the active account binding, focus the window, and replace
   the typed route stack after router readiness.
 - [x] Logout and other account-ending transitions fence stale writes/opens and
