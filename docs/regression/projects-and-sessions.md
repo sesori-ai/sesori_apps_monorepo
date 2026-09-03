@@ -174,6 +174,13 @@ state.
   are read-only: prompts and commands to an `agent-` id are refused. Deleting
   a root also removes its `subagents/` directory; deleting a child removes its
   transcript and meta file.
+- A live Codex `subAgentActivity started` resolves the named thread through
+  `thread/read`, announces it under its direct parent with the parent's project
+  directory and Codex nickname (or agent path), and never depends on a missing
+  child `thread/started`. Catalog reads expose `thread_source == subagent`
+  rollouts as children, keep per-project pages root-only, and preserve children
+  in full enumeration. Deleting a Codex session removes its persisted and live
+  descendant subtree before the bridge deletes the matching database family.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and

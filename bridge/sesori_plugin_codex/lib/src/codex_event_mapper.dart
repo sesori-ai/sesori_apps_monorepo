@@ -866,7 +866,7 @@ class CodexEventMapper({
       pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
-      parentID: null,
+      parentID: thread.parentId,
       title: thread.name,
       time: _threadTime(thread),
       pullRequest: null,
