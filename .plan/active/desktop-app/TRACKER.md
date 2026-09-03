@@ -26,12 +26,27 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 15 | 🚧 Settings + harness management slice (desktop onboarding) | done |
 | 16 | 🚧 Project/session lists slice + desktop offline strategy | done |
 | 17 | 🚧 Session detail: transcript slice | done |
-| 18 | 🚧 Composer slice + voice/media seams (R2) | pending |
-| 19 | ⚙️ Diffs + new-session slice | pending |
-| 20 | 🚧 Desktop cockpit composition + attention notifications | pending |
+| 18 | 🚧 Composer slice + voice/media seams (R2) | done |
+| 19 | ⚙️ Diffs + new-session slice | done |
+| 20 | 🚧 Desktop cockpit composition + attention notifications | in-progress |
 | — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
+
+## Step 20 replacement series
+
+PR #1265 was closed unmerged on 2026-09-02 because its 5,611-line scope was too
+broad for efficient review. Its implementation remains the source for this
+fixed, sequential replacement series; only one PR is opened at a time.
+
+| Slice | Fixed PR title | Status |
+|---|---|---|
+| 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | done |
+| 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | pending |
+| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | pending |
+
+MT Gate C remains after all three slices. The top-level Step 20 row stays
+`in-progress` until the replacement series is complete.
 
 ## MT Gate A — accepted 2026-08-30
 
@@ -95,3 +110,27 @@ The helper receives only a login-shell-derived PATH, merged with its inherited
 environment; shell variables, secrets, permissions, and entitlements are not
 copied. The user accepted Gate B and explicitly authorized Step 14 on
 2026-09-01; Step 14 is complete.
+
+## Verification Log
+
+- **Step 18:** changed lines (informational, not a pass/fail check):
+  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD | awk
+  '{ additions += $1; deletions += $2 } END { print additions, deletions,
+  additions + deletions }'` = `1331 additions / 598 deletions / 1929 total`.
+  This is 429 lines over the 1,500-line soft target; accepted deviation from
+  moving the existing composer and its tests into shared presentation while
+  adding both shell capability composition and regression coverage.
+- **Step 19:** rename-aware changed lines against the stable pre-step HEAD:
+  `git diff --numstat --find-renames "$(git merge-base origin/main HEAD)"..HEAD | awk
+  '{ additions += $1; deletions += $2 } END { print additions, deletions,
+  additions + deletions }'` = `1333 additions / 760 deletions / 2093 total`.
+  The extraction splits the existing 626-line mobile new-session screen into a
+  thin shell wrapper plus a shared view, so Git reports that source twice. The
+  review-representative copy-aware command is
+  `git diff --numstat --find-renames --find-copies-harder "$(git merge-base
+  origin/main HEAD)"..HEAD | awk '{ additions += $1; deletions += $2 } END {
+  print additions, deletions, additions + deletions }'` =
+  `825 additions / 898 deletions / 1723 total`. This is 523 lines over the
+  1,200-line soft target; accepted deviation for the two shared presentation
+  moves, two desktop routes, shell composition, tests, review fixes, and
+  required regression/evidence updates.

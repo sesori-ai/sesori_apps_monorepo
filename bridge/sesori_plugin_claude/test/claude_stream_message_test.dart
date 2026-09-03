@@ -40,6 +40,26 @@ void main() {
       expect(message.model, "test-model-large");
       expect(message.messageId, "msg_1");
       expect(message.parentToolUseId, isNull);
+      expect(message.error, ClaudeAssistantError.none);
+    });
+
+    test("reads assistant API error metadata", () {
+      final message = ClaudeStreamMessage.parse({
+        "type": "assistant",
+        "session_id": "session-1",
+        "error": "rate_limit",
+        "api_error_status": 429,
+        "message": {
+          "id": "synthetic-error",
+          "model": "<synthetic>",
+          "content": [
+            {"type": "text", "text": "rate limited"},
+          ],
+        },
+      }) as ClaudeAssistantMessage;
+
+      expect(message.error, ClaudeAssistantError.rateLimit);
+      expect(message.apiErrorStatus, 429);
     });
 
     test("marks subagent traffic by parent tool use id", () {

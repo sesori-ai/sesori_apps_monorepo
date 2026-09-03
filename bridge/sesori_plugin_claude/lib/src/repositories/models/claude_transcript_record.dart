@@ -109,6 +109,26 @@ final class const ClaudeTranscriptAssistantRecord({
   static const String wireType = "assistant";
 }
 
+/// A CLI-generated API failure persisted using the `assistant` wire type.
+///
+/// Claude marks these records with `isApiErrorMessage` and uses a synthetic
+/// model. They are errors rather than assistant replies; keeping a separate
+/// variant prevents cold replay from rendering the explanatory text beside the
+/// equivalent terminal error captured from the live stream.
+final class const ClaudeTranscriptApiErrorRecord({
+  required final String id,
+  required final Object? content,
+  required final int? apiErrorStatus,
+  required super.cwd,
+  required super.timestamp,
+  required super.isSidechain,
+  required super.agentId,
+  required super.gitBranch,
+  required super.version,
+  required super.sessionId,
+  required super.raw,
+}) extends ClaudeTranscriptAttributedRecord;
+
 /// A user or assistant record with no usable persisted message identity.
 ///
 /// It can still attribute the transcript to a project, but cannot be replayed

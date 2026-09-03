@@ -94,7 +94,7 @@ void main() {
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
     when(
-      () => api.abortSession(sessionId: "session-1"),
+      () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
     ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
     when(
       () => api.replyToQuestion(
@@ -126,7 +126,7 @@ void main() {
       variant: const SessionVariant(id: "xhigh"),
       command: "review",
     );
-    await repository.abortSession(sessionId: "session-1");
+    await repository.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop);
     await repository.replyToQuestion(
       requestId: "question-1",
       sessionId: "session-1",
@@ -155,7 +155,7 @@ void main() {
         command: "review",
       ),
     ).called(1);
-    verify(() => api.abortSession(sessionId: "session-1")).called(1);
+    verify(() => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop)).called(1);
     verify(
       () => api.replyToQuestion(
         requestId: "question-1",

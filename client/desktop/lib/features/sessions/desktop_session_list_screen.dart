@@ -7,15 +7,13 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/di/injection.dart";
 
 /// Desktop composition for the shared session inventory.
-///
-/// New-session creation remains explicitly unavailable until its planned
-/// slice lands, so this screen does not render a dead control.
 class const DesktopSessionListScreen({
   super.key,
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
   required final SessionOpenedCallback onSessionTap,
+  required final VoidCallback onNewSession,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -38,7 +36,7 @@ class const DesktopSessionListScreen({
         onSessionTap: onSessionTap,
         actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
         archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-        onNewSession: null,
+        onNewSession: onNewSession,
         onBack: onBack,
         connectionBanner: null,
       ),

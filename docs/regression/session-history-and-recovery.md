@@ -91,7 +91,18 @@ reconnect or restart.
   kept fresh across an abrupt bridge death — including when the status is
   unobservable, since a stopped backend hosts no live tool. Finalization never
   advances the session's freshness marks, and a genuinely running tool swept by
-  the turn-start race is corrected by its next live capture.
+  the turn-start race is corrected by its next live capture. An open subtask
+  part is swept the same way but to `cancelled` with no error text; because a
+  root stays busy while any of its sub-agents runs, a live background
+  sub-agent is never swept, only one whose bridge died.
+- Claude's CLI-authored API-failure assistant frame and its terminal result
+  render as one error with the persisted assistant message identity. Transcript
+  records marked `isApiErrorMessage` replay as that same error rather than as a
+  synthetic assistant reply, so live capture, cold open, and stale re-read do
+  not show the backend text twice. Claude sub-agent transcripts
+  (`<root>/subagents/agent-<agentId>.jsonl`) replay as child sessions with stable
+  message and part identities, so an open child screen converges after a reload
+  without duplicates; nested sub-agents replay under the root.
 - Pi history follows the active `leafId` branch while retaining visible
   pre-compaction messages, applies thinking-level changes to later assistant and
   error messages on that branch, and omits compaction and branch-summary
@@ -112,7 +123,7 @@ reconnect or restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -161,6 +172,11 @@ rules where supported.
   the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
+- A Claude API failure appears once as ordinary assistant text and again as an
+  error, or changes identity between live delivery and transcript replay. After
+  a bridge restart an idle Claude root still shows a running subtask tile, or a
+  busy root's live background sub-agent tile is swept to cancelled; a child
+  transcript duplicates its parts after reload.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
 - Grok replay mutates live defaults during initialize, stamps messages from an

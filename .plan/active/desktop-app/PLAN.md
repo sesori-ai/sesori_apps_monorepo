@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 15 complete (MT gate B accepted 2026-09-01)
+- **Status:** Active — step 18 complete (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -543,18 +543,18 @@ missing-registration crashes. Coordinate with the in-flight
 mechanical move churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
-heavy part).** Relocate voice lifecycle behind `module_core` service seams and
-media picking behind a platform seam (recording stays a mobile shell
-adapter). The move fixes the existing layer skip rather than enshrining it: a
-Layer-2 `VoiceRepository` wraps `VoiceApi`, the relocated transcription
-service consumes the repository, and recorder/file/wake-lock stay foundation
-capabilities implemented per shell. The desktop shell declares **explicit capability values, never
-silent no-ops**: voice unsupported → text-first composer with voice entry
-hidden (the `voiceFirst` default must not apply), and attachments use a real
-desktop file picker (or the affordance is hidden until one exists) — no
-visible control may be dead. Keyboard-visibility becomes a mobile-injected
-concern; then move the composer (attachments, pickers, queued prompts). Voice
-on mobile must be regression-clean. *Overage: move churn.*
+heavy part).** Reuse the voice lifecycle already layered in `module_core` as
+`VoiceApi` → Layer-2 `VoiceRepository` → `VoiceTranscriptionService`, with
+recorder/file/wake-lock remaining foundation capabilities implemented by the
+mobile shell. Put media picking behind a new foundation platform seam and move
+the reusable composer presentation (attachments, pickers, and background-task
+controls) into `module_app_ui`. The desktop shell declares **explicit capability
+values, never silent no-ops**: voice unsupported → effective text-first
+composer with voice entry hidden (the `voiceFirst` preference must not apply),
+and attachments use a real desktop file picker (or the affordance is hidden
+until one exists) — no visible control may be dead. Keyboard visibility becomes
+a mobile-injected concern. Voice on mobile must be regression-clean. *Overage:
+move churn.*
 
 **Step 19 — ⚙️ Diffs + new-session slice.** Decouple and move
 `session_diffs` + `new_session` (worktree options included). The
@@ -595,9 +595,36 @@ Any cubit here only exposes the preference toggle. Content is category-level
 copy plus the session title — never prompt, transcript, or tool payload (same
 privacy line as the bridge's push content builder). Without this a
 tray-resident cockpit cannot tell the user a session is blocked — the phone
-gets push, the desktop got nothing. *Overage: ~1.7k changed lines for the
-notification client, window seams, bounds service, attention service, and
-composition; the additions have no legal home in an earlier slice.*
+gets push, the desktop got nothing.
+
+**Step 20 delivery reset (2026-09-02).** PR #1265 was closed unmerged after its
+5,611-line, six-package scope caused repeated whole-feature review churn. The
+approved behavior is retained but delivered as this fixed replacement series,
+with one PR open at a time:
+
+1. `⚙️ [desktop-app] Restore desktop window bounds [step 1/3]` — typed bounds
+   and window events, desktop-instance persistence, display-aware clamping,
+   restore before first show, debounced writes, and terminal-Quit flushing.
+2. `🚧 [desktop-app] Compose the desktop cockpit [step 2/3]` — persistent
+   cockpit navigation, project/session route ownership, supervision recovery,
+   Enter/Shift+Enter with IME protection, safe Escape behavior, and selectable
+   transcript/diff source without navigation or gutter metadata.
+3. `🚧 [desktop-app] Add desktop attention notifications [step 3/3]` — shared
+   notification contract changes, native desktop client, persisted preference,
+   account-bound SSE attention, open routing, and logout/auth-loss cleanup.
+
+The split changes delivery order, not the approved architecture or MT Gate C.
+Slice 1 is independently valid and remains below the 1,500-line soft cap.
+Slices 2 and 3 may exceed that cap because each keeps its production flow with
+its directly proving tests; another split would either expose an unused cockpit
+or notification contract or separate account-ending cleanup from the service
+that owns native writes. Mutable-state budget: slice 1 adds one bounds service
+with a debounce timer, event subscription, and serialized pending write; slice
+2 adds no persisted state; slice 3 adds one persisted preference plus the
+bounded pending-request/generation/write-lane state needed for account-safe
+notification replacement and cleanup. It deliberately adds no desktop push
+registration, migration/backfill, compatibility shim, global coordination
+registry, or background retry worker.
 
 > **MT gate C — cockpit parity + mobile regression (user-run, after step
 > 20).** Desktop: manage harnesses end-to-end (install + login a real one) ·

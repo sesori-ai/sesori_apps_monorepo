@@ -19,6 +19,24 @@ void main() {
       expect(tracker.buildSummary(), isEmpty);
     });
 
+    group("scoped stop lookups", () {
+      test("activeChildSessionIds and isTurnRunning follow busy children and the root", () {
+        final tracker = ActiveSessionTracker(_fakeRepository());
+        tracker.registerSession(sessionId: "root", directory: "/repo", parentId: null);
+        tracker.registerSession(sessionId: "child", directory: "/repo", parentId: "root");
+
+        tracker.handleEvent(_sessionBusy("child"), null);
+        expect(tracker.activeChildSessionIds(rootId: "root"), equals({"child"}));
+        expect(tracker.isTurnRunning(sessionId: "root"), isFalse);
+
+        tracker.handleEvent(_sessionBusy("root"), null);
+        expect(tracker.isTurnRunning(sessionId: "root"), isTrue);
+
+        tracker.handleEvent(_sessionIdle("child"), null);
+        expect(tracker.activeChildSessionIds(rootId: "root"), isEmpty);
+      });
+    });
+
     group("session directory registration", () {
       test("registerSession stores directory for lookup", () {
         final tracker = ActiveSessionTracker(_fakeRepository());

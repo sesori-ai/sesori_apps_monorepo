@@ -363,9 +363,15 @@ void delegateSessionRepository({
   required MockSessionRepository repository,
   required MockSessionRepository source,
 }) {
-  when(() => repository.abortSession(sessionId: any(named: "sessionId"))).thenAnswer(
+  when(
+    () => repository.abortSession(
+      sessionId: any(named: "sessionId"),
+      subAgents: any(named: "subAgents"),
+    ),
+  ).thenAnswer(
     (invocation) => source.abortSession(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
+      subAgents: _namedArgument<SessionAbortSubAgentPolicy>(invocation: invocation, name: #subAgents),
     ),
   );
   when(
@@ -548,6 +554,7 @@ void registerCoreFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(SessionAbortSubAgentPolicy.stop);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
   registerFallbackValue(AccountStatus.existing);
   registerFallbackValue(SessionOptionsRequestMode.dynamic);

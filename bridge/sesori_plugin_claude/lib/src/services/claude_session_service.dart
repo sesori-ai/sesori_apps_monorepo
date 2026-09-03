@@ -9,6 +9,7 @@ import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_permission_mode.dart";
+import "../models/claude_task_status.dart";
 import "../models/claude_task_type.dart";
 import "../models/claude_tool_use_result.dart";
 import "../repositories/claude_session_process_repository.dart";
@@ -475,31 +476,69 @@ final class ClaudeSessionService({
     _emitQueueUpdate(sessionId: sessionId, state: state);
   }
 
-  Future<void> abort({required String sessionId}) async {
+  /// Stops the session's work with the given sub-agent scope.
+  ///
+  /// `confirm` is refused while typed sub-agents run, with no side effect, so
+  /// the caller can ask the user. `keep` leaves the process resident so its
+  /// tasks continue and their notifications wake the main agent as usual — but
+  /// only while no main turn runs, because the CLI's interrupt would stop the
+  /// sub-agents too; `stop`, and `keep` during a live main turn or with
+  /// nothing resident, interrupts and tears the process down, cancelling every
+  /// task with it.
+  Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
-    if (state == null) return;
+    if (state == null) return const PluginAbortAccepted(workKept: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
+      // The in-flight abort may have kept work this caller wants stopped; run
+      // the requested scope once its fence releases.
       await activeAbort.future;
-      return;
+      return await abort(sessionId: sessionId, subAgents: subAgents);
+    }
+    final runningSubAgents = state.runningTaskIds.values.where((type) => type == ClaudeTaskType.subAgent).length;
+    if (subAgents == PluginAbortSubAgentPolicy.confirm && runningSubAgents > 0) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: state.pending > 0 || state.selfStartedTurn != null,
+        mainAgentOnlySupported: false,
+      );
     }
     if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return;
+      return const PluginAbortAccepted(workKept: false);
+    }
+    // The CLI's only stop primitive, `interrupt`, also stops background agents
+    // (observed on 2.1.257), so sub-agents can be kept only when no main turn
+    // needs interrupting; a `keep` during a live main turn is refused so the
+    // caller learns the scope cannot be honored instead of losing the work.
+    final keepTasks = subAgents == PluginAbortSubAgentPolicy.keep && runningSubAgents > 0;
+    if (keepTasks && (state.pending > 0 || state.selfStartedTurn != null)) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: runningSubAgents,
+        mainAgentRunning: true,
+        mainAgentOnlySupported: false,
+      );
     }
     final aborting = Completer<void>();
     state.aborting = aborting;
     try {
       state.generation++;
       state.idleGeneration++;
-      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
-      // not rearm it, so a pending wakeup cannot survive an abort.
-      state.wakeupAt = null;
       if (state.queue.isNotEmpty) {
         state.queue.clear();
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
+      if (keepTasks) {
+        // Nothing to interrupt: the main agent is idle and only background tasks
+        // run. The process stays resident for them, pending approvals are left
+        // alone (a kept sub-agent may be waiting on one), and the running set
+        // keeps the session busy until the tasks report and wake the main agent.
+        return const PluginAbortAccepted(workKept: true);
+      }
       _approvals.cancelForSession(sessionId: sessionId);
+      // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
+      // not rearm it, so a pending wakeup cannot survive an abort.
+      state.wakeupAt = null;
       try {
         await _processes.interrupt(sessionId: sessionId);
       } on Object catch (error, stack) {
@@ -516,6 +555,7 @@ final class ClaudeSessionService({
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
       }
+      return const PluginAbortAccepted(workKept: false);
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();
@@ -530,7 +570,8 @@ final class ClaudeSessionService({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds) abort(sessionId: sessionId),
+        for (final sessionId in activeSessionIds)
+          abort(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -688,6 +729,9 @@ final class ClaudeSessionService({
         state.runningTaskIds[taskId] = message.taskType;
       case ClaudeTaskNotificationMessage(taskId: final taskId?):
         state.runningTaskIds.remove(taskId);
+        // A stopped task opens no wake-up turn; if it was the last work, the
+        // session is idle now rather than at some later turn.
+        _settleIdle(sessionId: sessionId, state: state);
       case ClaudeUserMessage(parentToolUseId: null):
         switch (message.toolUseResult) {
           case ClaudeToolUseResultAsyncLaunched(:final agentId):
@@ -700,6 +744,7 @@ final class ClaudeSessionService({
         for (final notification in message.taskNotifications) {
           state.runningTaskIds.remove(notification.taskId);
         }
+        if (message.taskNotifications.isNotEmpty) _settleIdle(sessionId: sessionId, state: state);
       case ClaudeStreamMessage():
         break;
     }
@@ -746,7 +791,13 @@ final class ClaudeSessionService({
       case ClaudeStreamEventMessage(parentToolUseId: final String _) ||
           ClaudeAssistantMessage(parentToolUseId: final String _):
         break;
-      case ClaudeUserMessage() when message.taskNotifications.isEmpty:
+      // A stopped task was killed (an interrupt, a stop_task); the CLI runs no
+      // wake-up turn for it, so opening one here would pin the session busy. A
+      // user frame carrying only stopped notifications (or none) is the same.
+      case ClaudeTaskNotificationMessage(status: ClaudeTaskStatus.stopped):
+        break;
+      case ClaudeUserMessage()
+          when message.taskNotifications.every((notification) => notification.status == ClaudeTaskStatus.stopped):
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||

@@ -41,6 +41,15 @@ and keep native close/quit behavior safe.
   hidden, and Open restores/focuses it and returns it to the Dock. Without a
   usable tray host, close defers safe Quit until active lifecycle work settles
   instead of dropping the request or leaving an invisible process.
+- Window position and size persist under desktop-owned application data. Startup
+  validates the saved bounds, selects the current display with greatest overlap
+  (or nearest center), clamps them to its usable work area, and applies them
+  before the first explicit show; on macOS the native runner suppresses the
+  XIB's first ordering for normal and hidden launches so restoration cannot
+  flash the default frame. Missing or invalid bounds and display lookup failures
+  use the centered 720×620 default. The 560×480 minimum shrinks only when the
+  selected display work area is smaller. Move/resize events debounce writes;
+  terminal Quit flushes the final observation before disposing the window host.
 - Primary and secondary (right/trackpad) clicks on the tray icon open the same
   typed context menu. The macOS Dock icon is a desktop-owned copy of the
   Sesori Icon Composer asset used by the main client, not the Flutter starter
@@ -69,8 +78,11 @@ and keep native close/quit behavior safe.
   starts or retries rather than applying toggle semantics, and establishes the
   authenticated desktop relay connection. Session rows open a typed detail
   route that composes the shared transcript, pending interactions, child-session
-  navigation, links, and image actions; unsupported composer and diff controls
-  are omitted. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
+  navigation, links, and image actions. Root active sessions open the shared
+  diff view, and the session list opens shared session creation with plugin,
+  model, command, attachment, and dedicated-workspace options. Desktop supplies
+  text-first composition and omits voice rather than constructing a dead voice
+  capability. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
   progress until that bounded operation settles. The desktop's one app-wide
@@ -100,7 +112,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in supervision rendering, shared desktop Settings with mobile-only notifications omitted, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, both project recovery variants omitting CLI copy, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -135,6 +147,10 @@ the status and bounded recent output.
   lifecycle work, Open shows without focusing, native close bypasses teardown,
   or the macOS tray icon has an opaque background/wrong light-dark treatment,
   the Dock still shows a hidden window, or secondary tray clicks do nothing.
+- Restored bounds are applied after a visible flash, land wholly off-screen,
+  ignore current display work areas, retain a native minimum larger than the
+  selected work area, fail to persist after move/resize, or one failed write
+  prevents later bounds from saving.
 - Quit or sign-out clears auth or exits while a supervised helper remains alive,
   a profile logout bypasses the desktop logout orchestrator, or an On command
   can race between logout's helper stop and token clearing.
@@ -162,7 +178,8 @@ the status and bounded recent output.
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
-  typed route data, or unsupported composer/diff controls are rendered.
+  typed route data, New task or file changes cannot reach their typed routes, or
+  desktop renders unsupported voice/attachment controls.
 
 ## Known Limitations
 
@@ -193,6 +210,7 @@ the status and bounded recent output.
 - `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_bridge_takeover_orchestrator.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_logout_orchestrator.dart`
+- `client/module_desktop_core/lib/src/services/window_bounds_service.dart`
 - `client/module_desktop_core/lib/src/api/bridge_id_storage.dart`
 - `client/module_core/lib/src/api/bridge_api.dart`
 - `client/module_core/lib/src/repositories/bridge_repository.dart`
@@ -201,6 +219,8 @@ the status and bounded recent output.
 - `client/desktop/lib/features/projects/desktop_project_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
+- `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
+- `client/desktop/lib/features/session_diffs/desktop_session_diffs_screen.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/module_app_ui/lib/src/features/project_list/`
 - `client/module_app_ui/lib/src/features/session_list/`

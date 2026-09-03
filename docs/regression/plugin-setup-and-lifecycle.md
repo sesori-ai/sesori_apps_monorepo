@@ -97,6 +97,11 @@ idle suspension, the management snapshot, and lifecycle commands.
   it); a wakeup that never fires stops deferring one idle window past its fire time.
   The wakeup-fired turn the CLI starts on its own is surfaced busy, then idle on its
   result, and abort interrupts it like any enqueued turn.
+- A Claude session with a running background task (sub-agent, shell, or workflow the
+  CLI reported) is busy for lifecycle purposes: the idle reap does not arm, the plugin
+  work state stays busy so a safe stop or suspension refuses, and only a forced stop, a
+  full-scope session stop, delete, or process exit ends it. A main-agent-only stop
+  keeps the process resident for its tasks.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
@@ -189,6 +194,8 @@ owned-process exit; and restart.
   different from the executable selected by setup inspection and runtime resolution.
 - A control offered for an undeclared capability, a supported control missing, a busy
   harness accepting a safe command, or idle suspension on a resident or busy harness.
+- The Claude idle reap or a safe stop kills a resident process while a background
+  sub-agent it reported is still running.
 - A catalog scan offered on a harness the bridge will not import from, a scan already
   covering a harness still accepting another start from its card, a targeted rejection
   landing on the wrong harness or on none, or a request error reaching the card as text.

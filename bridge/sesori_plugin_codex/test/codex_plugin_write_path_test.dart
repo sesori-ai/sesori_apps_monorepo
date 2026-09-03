@@ -332,8 +332,7 @@ void main() {
       );
       final idle = plugin.events.firstWhere(
         (event) =>
-            event is BridgeSseSessionStatus &&
-            shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
+            event is BridgeSseSessionStatus && shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
       );
       fake.pushNotification("thread/status/changed", {
         "threadId": "t-compact",
@@ -1171,7 +1170,7 @@ void main() {
       // Give the event subscription a microtask to process.
       await Future<void>.delayed(Duration.zero);
 
-      await plugin.abortSession(sessionId: "t-1");
+      await plugin.abortSession(sessionId: "t-1", subAgents: PluginAbortSubAgentPolicy.stop);
 
       expect(fake.sentMethods, contains("turn/interrupt"));
       final params = fake.sentParamsFor("turn/interrupt");
@@ -1351,7 +1350,7 @@ void main() {
 
       expect((await plugin.getSessionStatuses())["t-steered"], isA<PluginSessionStatusIdle>());
       expect(plugin.getActiveSessionsSummary(), isEmpty);
-      await plugin.abortSession(sessionId: "t-steered");
+      await plugin.abortSession(sessionId: "t-steered", subAgents: PluginAbortSubAgentPolicy.stop);
       expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
     });
 
@@ -1543,7 +1542,7 @@ void main() {
         mode: FileMode.append,
       );
 
-      await plugin.abortSession(sessionId: sessionId);
+      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
 
       expect((await terminalTool.timeout(const Duration(seconds: 1))).part.state.status, PluginToolStatus.error);
       expect((await idleEvent).sessionID, sessionId);
@@ -1619,7 +1618,7 @@ void main() {
         mode: FileMode.append,
       );
 
-      await plugin.abortSession(sessionId: sessionId);
+      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       await idle;
 
       final errorIndex = emittedEvents.indexWhere(
@@ -1680,7 +1679,7 @@ void main() {
       final emittedEvents = <BridgeSseEvent>[];
       final eventSubscription = plugin.events.listen(emittedEvents.add);
 
-      final abort = plugin.abortSession(sessionId: "t-abort-race");
+      final abort = plugin.abortSession(sessionId: "t-abort-race", subAgents: PluginAbortSubAgentPolicy.stop);
       await interruptRequested.future;
       await Future<void>.delayed(const Duration(milliseconds: 20));
       fake.pushNotification("turn/started", {
@@ -1820,7 +1819,8 @@ void main() {
             .whereType<BridgeSseMessagePartUpdated>()
             .lastWhere((event) => event.part.messageID == "call-error")
             .part
-            .state.status,
+            .state
+            .status,
         PluginToolStatus.error,
       );
     });
@@ -2677,8 +2677,7 @@ class _FakeAppServer() {
     return frame.params ?? const {};
   }
 
-  bool sentRequestHasParams(String method) =>
-      _sent.firstWhere((frame) => frame.method == method).params != null;
+  bool sentRequestHasParams(String method) => _sent.firstWhere((frame) => frame.method == method).params != null;
 
   Map<String, dynamic> serverResponseFor(Object id) =>
       _serverResponses[id] ?? (throw StateError("no response for $id"));

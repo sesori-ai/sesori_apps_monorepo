@@ -15,12 +15,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
-import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
@@ -31,7 +26,7 @@ import "../../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
+class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
@@ -93,7 +88,7 @@ Widget _buildApp({
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
-                  SessionDetailComposerControls(
+                  MobileSessionDetailComposerControls(
                     projectId: projectId,
                     sessionId: sessionId,
                     state: state,
@@ -219,13 +214,14 @@ void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockVoiceTranscriptionSession voiceSession;
-  late MockComposerImagePicker imagePicker;
+  late MockComposerAttachmentDispatcher attachmentDispatcher;
   late MockImageClipboard imageClipboard;
   late StreamController<void> maxDurationReached;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
+    registerFallbackValue(SessionAbortSubAgentPolicy.stop);
   });
 
   Finder semanticsWithLabel(String label) =>
@@ -261,8 +257,8 @@ void main() {
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
-    imagePicker = MockComposerImagePicker();
-    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+    attachmentDispatcher = MockComposerAttachmentDispatcher();
+    GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
 
     imageClipboard = MockImageClipboard();
     when(imageClipboard.readImage).thenAnswer((_) async => null);
@@ -303,29 +299,36 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: PromptInput(
-              isBusy: false,
-              hasMessages: false,
-              onSend: ({required draft, required command, required attachments}) {
-                submittedDraft = draft;
-                submitted = attachments;
-              },
-              onVoiceTranscriptionCompleted: () {},
-              onDraftChanged: (_) {},
-              onDraftCleared: () {},
-              onAbort: () {},
-              surfaceStyleController: surfaceStyle,
-              composerHeader: null,
-              availableCommands: const [],
-              stagedCommand: null,
-              onCommandSelected: (_) {},
-              onCommandCleared: () {},
-              attachmentsSupported: true,
-              draftIdentity: draftIdentity,
-              restorationKey: restorationKey,
-              initialDraft: draft,
-              initialAttachments: attachments,
-              onInitialAttachmentsConsumed: () => consumed++,
+            body: ComposerPresentationScope(
+              voiceSupport: ComposerVoiceSupport.supported,
+              inputMode: ChatInputMode.voiceFirst,
+              isKeyboardVisible: false,
+              attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
+              imageClipboard: GetIt.instance.get<ImageClipboard>,
+              child: PromptInput(
+                isBusy: false,
+                hasMessages: false,
+                onSend: ({required draft, required command, required attachments}) {
+                  submittedDraft = draft;
+                  submitted = attachments;
+                },
+                onVoiceTranscriptionCompleted: () {},
+                onDraftChanged: (_) {},
+                onDraftCleared: () {},
+                onAbort: () {},
+                surfaceStyleController: surfaceStyle,
+                composerHeader: null,
+                availableCommands: const [],
+                stagedCommand: null,
+                onCommandSelected: (_) {},
+                onCommandCleared: () {},
+                attachmentsSupported: true,
+                draftIdentity: draftIdentity,
+                restorationKey: restorationKey,
+                initialDraft: draft,
+                initialAttachments: attachments,
+                onInitialAttachmentsConsumed: () => consumed++,
+              ),
             ),
           ),
         ),
@@ -1421,7 +1424,8 @@ void main() {
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
-    when(() => cubit.abort()).thenAnswer((_) async {});
+    when(() => cubit.abort(subAgents: any(named: "subAgents")))
+        .thenAnswer((_) async => const SessionAbortOutcome.aborted());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     // Bounded pumps throughout: the busy status keeps an activity indicator
@@ -1433,7 +1437,7 @@ void main() {
     // reachable next to the keyboard button even in the resting voice pill.
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.tap(find.byIcon(TablerSolid.player_stop));
-    verify(() => cubit.abort()).called(1);
+    verify(() => cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm)).called(1);
 
     // Typed text flips the same button back to send: sending queues while the
     // agent works, so it must stay reachable.
@@ -2228,7 +2232,7 @@ void main() {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2245,7 +2249,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(imageClipboard.readImage).called(1);
-    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
     Navigator.of(tester.element(find.byType(PromptEditorSheet))).pop();
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -2604,7 +2608,7 @@ void main() {
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -2644,7 +2648,7 @@ void main() {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2664,14 +2668,14 @@ void main() {
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
     verify(imageClipboard.readImage).called(1);
-    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
   });
 
   testWidgets("keyboard image paste stages an attachment without inserting text", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2712,14 +2716,14 @@ void main() {
 
     expect(editableText.controller.text, "pasted after");
     verify(imageClipboard.readImage).called(1);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("an unsupported pasted image falls back to text paste", (tester) async {
     final bytes = Uint8List.fromList(const [0, 1, 2, 3, 4, 5, 6, 7]);
     when(imageClipboard.readImage).thenAnswer((_) async => bytes);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: bytes, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null),
     ).thenThrow(const UnsupportedAttachmentImageError());
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -2810,7 +2814,7 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
     when(
       () => cubit.sendMessage(
@@ -2837,7 +2841,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("a clipboard image is discarded after attachment support toggles", (tester) async {
@@ -2849,7 +2853,7 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2868,7 +2872,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("accordion offers no attach action when the plugin declares no support", (tester) async {
@@ -2894,7 +2898,7 @@ void main() {
 
   testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -2941,7 +2945,7 @@ void main() {
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -2978,7 +2982,7 @@ void main() {
 
   testWidgets("an attachment alone is sendable", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -3020,7 +3024,7 @@ void main() {
       ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
       ComposerAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
     ];
-    when(imagePicker.pickImage).thenAnswer((_) async => answers.removeAt(0));
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => answers.removeAt(0));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -3043,7 +3047,7 @@ void main() {
   });
 
   testWidgets("an oversized image is rejected with a notice", (tester) async {
-    when(imagePicker.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -3060,7 +3064,7 @@ void main() {
 
   testWidgets("send is refused while both a command and attachments are staged", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       stagedCommand: const CommandInfo(
         name: "review",
