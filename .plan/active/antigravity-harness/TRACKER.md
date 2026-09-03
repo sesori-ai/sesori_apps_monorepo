@@ -3,11 +3,12 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Step 1/12 open for review; successor Step 2 may proceed locally
+- **Status:** Step 1/12 open for review; Step 2/12 in progress locally
 - **Base:** `origin/main` at `a87f30ab98b07dd7262afba462a36d4fbcc2dd9a`
-- **Current branch:** `antigravity-acp-plan`
-- **Open PR:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285)
-- **Next action:** monitor Step 1 while implementing Step 2 locally
+- **Current PR branch:** `antigravity-acp-plan`
+- **Local successor:** `antigravity-harness-step-2-runtime-contract`
+- **Open PR:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1)
+- **Next action:** monitor Step 1 while implementing and verifying Step 2 locally
 
 ## Fixed PR Series
 
@@ -20,7 +21,7 @@
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 7/12]`
 - [ ] Step 8/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 8/12]`
 - [ ] Step 9/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 9/12]`
-- [ ] Step 10/12 — `🌿 [antigravity-harness] feat(client): brand and document Antigravity [step 10/12]`
+- [ ] Step 10/12 — `🌱 [antigravity-harness] docs: complete Antigravity product guidance [step 10/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: reconcile Antigravity regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
 
@@ -36,13 +37,16 @@
 - [x] Complete one architecture plan review and apply valid findings.
 - [x] Validate plan paths, fixed titles, Markdown whitespace, and worktree diff.
 - [x] Commit, push, open the Step 1 PR, and start the PR monitor.
-- [ ] Create the Step 2 successor branch and begin the package/runtime-contract work locally.
+- [x] Create the Step 2 successor branch and begin the package/runtime-contract work locally.
 
 ## Architecture Reviews
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
   separation of concerns, composition, suffix naming, bridge layers, client DTO mapping, and presentation ownership.
   All valid findings were applied directly; repository policy does not call for re-reviewing those fixes.
+- **PR review:** eight concrete Step 1 review findings applied on 2026-09-03: required environment inheritance,
+  service-owned auth/options workflows, generic artwork, pre-activation disclosure, extraction budgets, L5 Full scope,
+  and shutdown-only install abort semantics.
 - **Implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
 
 ## Locked Decisions
@@ -60,7 +64,7 @@
 
 ## Retirement Coverage
 
-Highest required level: **L5 Packaged**.
+Highest required level: **L5 Full**, including the complete applicable documented L1-L5 catalog.
 
 Required target rows:
 
@@ -82,10 +86,11 @@ Required representative end-to-end rows:
 | Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
 | Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
 | History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install rollback/cancel | Google archive -> shared installer -> validated active pair | Not run |
+| Managed install rollback/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
 | Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
 
-Affected regression documents are listed in Step 11 of `PLAN.md`; none is complete until that step.
+Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every
+applicable catalog entry from L1 through L5 across its required plugin/platform boundaries.
 
 ## Evidence Log
 
@@ -97,3 +102,9 @@ Affected regression documents are listed in Step 11 of `PLAN.md`; none is comple
 - 2026-09-03 — Architecture plan review rejected the first draft with six concrete A3/A7/A8, B-Bridge, B-Client,
   and naming findings. The revised plan moves validation out of UI, maps wire DTOs in `PluginRepository`, adds explicit
   Layer-1/repository boundaries, fixes the launch-spec Builder suffix, and records constructor/composition ownership.
+- 2026-09-03 — The official macOS arm64 archive matched 314,500,221 bytes and SHA-256
+  `f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd`; its only members match the expected pair.
+  Isolated initialize confirmed ACP v1, exact identity/version, load/list/resume/logout, absent close, and four
+  authentication IDs.
+- 2026-09-03 — PR #1285 review produced eight actionable plan findings. All were applied without expanding into a
+  user-facing install-cancel flow: shutdown/interruption recovery is the supported install-abort boundary.
