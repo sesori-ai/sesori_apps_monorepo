@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/grok_acp_api.dart";
 import "grok_binary.dart";
+import "grok_event_mapper.dart";
 import "grok_identity.dart";
 import "repositories/grok_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
@@ -14,6 +15,7 @@ class GrokPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -27,6 +29,7 @@ class GrokPlugin._({
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final api = GrokAcpApi(
       binaryPath: binaryPath,
       processFactory: processFactory,
@@ -50,10 +53,12 @@ class GrokPlugin._({
         environment: environment,
       ),
       launchDirectory: launchDirectory,
-      eventMapper: AcpEventMapper(
+      childSessionTracker: childSessionTracker,
+      eventMapper: GrokEventMapper(
         launchDirectory: launchDirectory,
         pluginId: GrokPluginIdentity.id,
         configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(

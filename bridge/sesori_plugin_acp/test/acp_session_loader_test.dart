@@ -80,6 +80,7 @@ void main() {
           launchDirectory: "/repo",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: AcpChildSessionTracker(),
         )..beginTurn(sessionId: "s1", messageId: null);
         final collector = AcpReplayCollector(
           sessionId: "s1",
