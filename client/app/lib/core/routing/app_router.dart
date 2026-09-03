@@ -94,7 +94,10 @@ extension AppRouteToGoRoute on AppRouteDef {
       return SettingsScreen(
         onOpenCreatorRecording: creatorRecordingCubit.state.capture is CreatorRecordingUnsupported
             ? null
-            : () => showCreatorRecordingSheet(context: context, cubit: creatorRecordingCubit),
+            : ({required context}) => showCreatorRecordingSheet(
+                context: context,
+                cubit: creatorRecordingCubit,
+              ),
       );
     }
     return route.screen;
