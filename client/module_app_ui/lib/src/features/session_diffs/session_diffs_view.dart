@@ -51,15 +51,18 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
       builder: (context, state) {
         final (fileCount, additions, deletions) = _statsOf(state);
-        return PregoGlassScaffold(
-          title: context.loc.diffFileChangesTitle,
-          subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
-          onBack: widget.onBack,
-          banner: widget.banner,
-          // The diff viewer's pinned per-file headers must pin directly below
-          // the bar, so the body cannot scroll behind a transparent bar.
-          extendBodyBehindBar: false,
-          slivers: _buildContentSlivers(context: context, state: state),
+        return PregoReadableSelectionArea(
+          preserveEmptyLines: true,
+          child: PregoGlassScaffold(
+            title: context.loc.diffFileChangesTitle,
+            subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
+            onBack: widget.onBack,
+            banner: widget.banner,
+            // The diff viewer's pinned per-file headers must pin directly below
+            // the bar, so the body cannot scroll behind a transparent bar.
+            extendBodyBehindBar: false,
+            slivers: _buildContentSlivers(context: context, state: state),
+          ),
         );
       },
     );

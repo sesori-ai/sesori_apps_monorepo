@@ -157,6 +157,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(

@@ -279,6 +279,8 @@ final class _PluginHost({
 
   @override
   ServerClock get clock => const ServerClock();
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

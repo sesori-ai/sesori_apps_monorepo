@@ -106,6 +106,7 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     environment: const <String, String>{},
     currentUser: null,
     resolveIdleTimeoutMins: ({required pluginId}) => 10,
+    settingsChanges: const Stream<Object?>.empty(),
   );
   final runtime =
       PluginRuntime(

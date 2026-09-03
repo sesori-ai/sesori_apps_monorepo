@@ -29,8 +29,10 @@ state.
   up arrow moves to the parent, while Home and Root shortcuts jump to the host
   user's home directory and filesystem root. Those controls remain available
   while a navigated directory loads or reports an access failure. Hiding delists
-  without destroying sessions or history. Import is explicit, per plugin,
-  atomic, non-destructive, cancellable, and attributes progress.
+  without destroying sessions or history. A catalog import lists newly inserted
+  projects immediately and preserves the stored visibility of every existing
+  project; it does not infer why an existing row is hidden. Import is explicit,
+  per plugin, atomic, non-destructive, cancellable, and attributes progress.
 - A completed import reports both the totals it published and, separately, how
   much of that was new. The two are not interchangeable: a re-import of an
   unchanged catalog still publishes every row, so the totals stay at the full
@@ -39,7 +41,9 @@ state.
   nothing changed; a consumer that cannot tell them apart would announce
   "nothing new" after an import that added everything. A headless completion
   line therefore states the delta, or `Nothing new.`, or the totals alone when
-  the producer omits the delta.
+  the producer omits the delta. An automatic hydration request whose completion
+  marker is already current runs no import and emits no progress or completion
+  line.
 - A user can start an import from the app. The three list surfaces — the
   project list, the full-screen session list, and the wide split-view pane —
   offer it as a second, deeper stage of their pull, which invites itself with a
@@ -78,9 +82,11 @@ state.
   back would announce a stale success on every connect.
 - Every observed `CatalogImportCompleted` that publishes at least one project
   or session invalidates mounted project and session lists only after the
-  bridge's atomic catalog transaction completed. An automatic hydration marker
-  publishes zero rows and never interrupts an ordinary list read. A pre-commit
-  list response cannot overwrite a later snapshot; another completion while it
+  bridge's atomic catalog transaction completed. An automatic hydration request
+  already satisfied by its marker publishes no progress and never interrupts an
+  ordinary list read. Current clients still ignore the synthetic zero-count
+  completion published by older bridges. A pre-commit list response cannot
+  overwrite a later snapshot; another completion while it
   is loading produces one trailing read. If the snapshot fails, the committed
   change remains pending for the next ordinary, reconnect, or staleness refresh
   rather than being discarded. A failed forced snapshot replaces a full-screen
@@ -103,7 +109,11 @@ state.
   Root, non-archived sessions expose the typed shared diff route, while the
   session list opens a typed new-session route with shared plugin/model/command
   and dedicated-workspace options. The desktop shell supplies its native image
-  picker and text-first composer policy without constructing voice capture.
+  picker and text-first composer policy without constructing voice capture. Its
+  persistent sidebar keeps Bridge, Projects, and Settings reachable; one
+  project-scoped nested route owns the session-list cubit, so wide windows keep
+  the selected inventory beside new-session/detail/diff content while narrow
+  windows retain the one-pane flow.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -164,6 +174,20 @@ state.
   are read-only: prompts and commands to an `agent-` id are refused. Deleting
   a root also removes its `subagents/` directory; deleting a child removes its
   transcript and meta file.
+- A live Codex `subAgentActivity started` resolves the named thread through
+  `thread/read`, announces it under its direct parent with the parent's project
+  directory and Codex nickname (or agent path), and never depends on a missing
+  child `thread/started`. Later child activity and title updates retain that
+  parent. Connection startup restores persisted lifecycle ancestry before
+  pending-input routing, and resuming a child restores the same mapper context.
+  Catalog reads expose `thread_source == subagent` rollouts as children,
+  keep per-project pages root-only, preserve children in full enumeration, and
+  retain the metadata nickname when the session index has no usable title.
+  Deleting a Codex session removes its persisted and live descendant subtree
+  before the bridge deletes the matching database family. A child deleted
+  before `turn/started` is interrupted when its turn id arrives, while in-flight
+  or delayed spawn activity cannot re-announce the deleted subtree during that
+  app-server connection.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -216,7 +240,7 @@ state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new, a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted projects, while preserving an existing project's stored visibility; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, and that a scan started from harness settings is announced there while one started elsewhere is not. |
 | L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok explicitly imports a persisted session with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
@@ -240,16 +264,18 @@ navigation, and a non-mobile platform; begin drags inside and just outside each
 For catalog scanning, vary the number of enabled harnesses, whether any is
 blocked or failed, and which surface starts the run — each of the three lists
 and the harness settings card. Vary a first import against a re-import of an
-unchanged catalog, and a bridge that reports its delta against one that omits
-it. Interrupt runs: cancel mid-scan, disconnect mid-scan and reconnect, and
+unchanged catalog, newly discovered versus already-hidden projects, and a bridge
+that reports its delta against one that omits it. Interrupt runs: cancel
+mid-scan, disconnect mid-scan and reconnect, and
 leave the surface that started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
 
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
   older response overwrites a post-commit snapshot.
-- A zero-count hydration completion interrupts an ordinary list read, a
-  committed catalog change is lost after a failed list snapshot, a forced
+- An already-satisfied automatic hydration emits a misleading zero-count
+  completion, a legacy zero-count completion interrupts an ordinary list read,
+  a committed catalog change is lost after a failed list snapshot, a forced
   catalog failure leaves a full-screen list loading or reports a superseded pull
   as successful or without its requested PR data, or a commit that finishes
   after cancellation leaves the mounted list stale.
@@ -272,6 +298,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
   generic US month/day order despite a different device locale.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
+- Desktop wide navigation recreates the session inventory on each selected
+  detail/diff route, loses selection, or narrow navigation renders both panes.
 - A healthy Copilot import stops before cursor exhaustion, scans private on-disk
   history, or a first-page failure mutates the committed catalog. A later-page
   fail-soft import drops prior rows instead of only adding gathered observations

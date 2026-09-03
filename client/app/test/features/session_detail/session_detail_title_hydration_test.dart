@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -192,6 +191,11 @@ void main() {
       ),
     );
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEvents.stream);
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);

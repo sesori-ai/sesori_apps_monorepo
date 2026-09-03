@@ -20,10 +20,11 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles with child sessions | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
 
 Plugins that report a scoped-stop rejection declare whether "main agent only"
 is honored through `mainAgentOnlySupported`; the app offers the action only
@@ -36,11 +37,14 @@ background sub-agents together with the running main turn.
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
 
-³ Codex (codex-cli 0.148.0, `multi_agent` stable): the app-server emits child
-`thread/started` with `parentThreadId`, `collabAgentToolCall` items with
-`receiverThreadIds`, and `turn/interrupt` works per child thread. Whether
-interrupting the parent also closes children is unverified, so main-agent-only
-needs a live check before implementation.
+³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
+announces itself through the parent's `subAgentActivity started`
+(`agentThreadId`) and `thread/status/changed`, never `thread/started`;
+`receiverThreadIds` stays empty. Sesori exposes the verified child thread and
+persisted rollout under its direct parent and rolls running descendants into
+the root's busy state. `turn/interrupt` works per child thread with its
+`turnId`, and interrupting the parent leaves children running, so
+main-agent-only is supportable.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
@@ -65,14 +69,17 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2): the
-harness emits `subagent/start`/`subagent/end` with child session ids and offers
-`interrupt_agent`; the adapter does not forward them yet but is ours to extend.
-Foreground children die with the parent while background ones survive, so
-main-agent-only has the same ambiguity as OpenCode until verified.
+⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2,
+probed 2026-09-03): the harness emits `subagent/start`/`subagent/end` with
+child session ids and `ctx.subagents.interrupt` stops a continuable child; the
+adapter forwards none of it yet but is ours to extend, and the executing tool
+call is known for every start. Foreground children die with the parent while
+background ones survive, and the adapter can tell them apart, so
+main-agent-only is supportable when every running child is background.
 
-¹⁰ Grok Build (1.0.5) sends `SubagentSpawned`/`SubagentProgress`/
-`SubagentFinished` with parent and child session ids as `x.ai/session_notification`
-extension notifications and exposes `x.ai/subagent/cancel`; Sesori's ACP event
-mapper currently drops non-`session/update` methods. Main-agent-only depends on
-`cancel_subagents_on_turn_cancel`, unverified on the wire.
+¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
+`subagent_finished` with parent and child session ids as
+`_x.ai/session_notification` extension notifications, streams child updates
+under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
+`session/cancel` cancels background children too, so main-agent-only is not
+supported.

@@ -1386,14 +1386,15 @@ abstract class AcpPlugin({
         queuedPrompt.phase = _QueuedAcpPromptPhase.writing;
       }
       final meta = outboundPromptMeta(sessionId: sessionId, messageId: turn.messageId);
-      final dispatched = await client.dispatchRequest(
+      final dispatched = await client.dispatchSessionRequest(
         method: AcpMethods.sessionPrompt,
         params: {
           "sessionId": sessionId,
           "prompt": turn.blocks,
           "_meta": ?meta,
         },
-        timeout: const Duration(minutes: 30),
+        sessionId: sessionId,
+        inactivityTimeout: const Duration(minutes: 30),
       );
       _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
       final raw = await dispatched.response;

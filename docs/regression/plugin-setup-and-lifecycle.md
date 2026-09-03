@@ -89,9 +89,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   the configured timeout instead of zero and consumes it internally through the host.
   Each plugin reaps its idle per-session CLI/RPC child process after that window and
   transparently resumes it on the next prompt, so the settings knob stays effective
-  without a competing whole-plugin suspension timer. A runtime timeout change applies
-  at each session's next idle transition without a plugin restart; no timeout keeps the
-  child resident.
+  without a competing whole-plugin suspension timer. A runtime timeout change
+  immediately re-arms each currently idle session from the change, while busy
+  sessions pick it up at their next idle transition; no timeout invalidates the
+  existing idle timer and keeps the child resident.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.
@@ -111,6 +112,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
+  A root remains busy for lifecycle and safe-stop purposes while any tracked
+  child turn runs, even after the root's own turn completes; disconnect clears
+  that connection-scoped child state and emits visible idle cleanup for both a
+  provisional child and its effective root before resetting work state.
 - Codex session metadata uses the top-level `model` and `model_provider` values from
   `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
   remains authoritative when present.
@@ -165,7 +170,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
+| L2 Routine | Demand-driven start of a ready harness, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
 | L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
@@ -196,6 +201,9 @@ owned-process exit; and restart.
   harness accepting a safe command, or idle suspension on a resident or busy harness.
 - The Claude idle reap or a safe stop kills a resident process while a background
   sub-agent it reported is still running.
+- Codex reports idle, permits lifecycle suspension, or disappears from active
+  work while a tracked child turn still runs, or retains child busy state after
+  disconnect or deletion.
 - A catalog scan offered on a harness the bridge will not import from, a scan already
   covering a harness still accepting another start from its card, a targeted rejection
   landing on the wrong harness or on none, or a request error reaching the card as text.

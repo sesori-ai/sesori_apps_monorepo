@@ -41,6 +41,7 @@ void main() {
           // voice entry when the product has no capture implementation.
           inputMode: ChatInputMode.voiceFirst,
           isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
           child: Scaffold(
@@ -107,6 +108,7 @@ void main() {
               voiceSupport: ComposerVoiceSupport.supported,
               inputMode: mode,
               isKeyboardVisible: false,
+              sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
               child: Scaffold(
