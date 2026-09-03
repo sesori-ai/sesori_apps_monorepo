@@ -138,9 +138,9 @@ void main() {
               "receiverThreadIds": ["child-1"],
               "prompt": "reply with the word done",
               "agentsStates": {
-                "child-1": "running",
-                "child-2": {"type": "notFound"},
-                "child-3": "hibernating",
+                "child-1": {"status": "running", "message": null},
+                "child-2": {"status": "notFound", "message": "agent not found"},
+                "child-3": {"status": "hibernating", "message": null},
               },
             },
           },
@@ -174,7 +174,9 @@ void main() {
               "senderThreadId": "parent-1",
               "receiverThreadId": "child-1",
               "newThreadId": "child-1",
-              "agentsStates": {"child-1": "pendingInit"},
+              "agentsStates": {
+                "child-1": {"status": "pendingInit", "message": null},
+              },
             },
           },
         ),

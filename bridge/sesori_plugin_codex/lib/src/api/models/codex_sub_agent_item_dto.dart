@@ -3,18 +3,11 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_sub_agent_item_dto.freezed.dart";
 part "codex_sub_agent_item_dto.g.dart";
 
-/// Item types the app-server emits for multi-agent activity on the parent
-/// thread. codex-cli 0.148.0 names the tool-call item `collabAgentToolCall`;
-/// upstream `main` renamed it to `collabToolCall`, so both decode identically.
-enum CodexSubAgentItemType() {
-  @JsonValue("collabAgentToolCall")
-  collabAgentToolCall,
-  @JsonValue("collabToolCall")
-  collabToolCall,
-  @JsonValue("subAgentActivity")
-  subAgentActivity,
-  unknown,
-}
+/// codex-cli 0.148.0 names the multi-agent tool-call item
+/// `collabAgentToolCall`; upstream `main` renamed it to `collabToolCall`. Both
+/// carry the same fields, so the legacy name is normalised before dispatch.
+const _legacyCollabToolCallType = "collabAgentToolCall";
+const _collabToolCallType = "collabToolCall";
 
 enum CodexCollabTool() {
   spawnAgent,
@@ -52,36 +45,6 @@ enum CodexSubAgentActivityKind() {
   unknown,
 }
 
-CodexCollabTool _collabToolFromJson(Object? value) {
-  return switch (value) {
-    "spawnAgent" => CodexCollabTool.spawnAgent,
-    "sendInput" => CodexCollabTool.sendInput,
-    "resumeAgent" => CodexCollabTool.resumeAgent,
-    "wait" => CodexCollabTool.wait,
-    "closeAgent" => CodexCollabTool.closeAgent,
-    _ => CodexCollabTool.unknown,
-  };
-}
-
-CodexCollabItemStatus _collabItemStatusFromJson(Object? value) {
-  return switch (value) {
-    "inProgress" => CodexCollabItemStatus.inProgress,
-    "completed" => CodexCollabItemStatus.completed,
-    "failed" => CodexCollabItemStatus.failed,
-    _ => CodexCollabItemStatus.unknown,
-  };
-}
-
-CodexSubAgentActivityKind _activityKindFromJson(Object? value) {
-  return switch (value) {
-    "started" => CodexSubAgentActivityKind.started,
-    "interacted" => CodexSubAgentActivityKind.interacted,
-    "interrupted" => CodexSubAgentActivityKind.interrupted,
-    "completed" => CodexSubAgentActivityKind.completed,
-    _ => CodexSubAgentActivityKind.unknown,
-  };
-}
-
 String? _textFromJson(Object? value) => value is String ? value : null;
 
 List<String> _threadIdListFromJson(Object? value) {
@@ -89,41 +52,7 @@ List<String> _threadIdListFromJson(Object? value) {
   return [for (final entry in value) if (entry is String) entry];
 }
 
-/// Decodes `agentsStates`, a map from receiver thread id to that agent's
-/// status. The status is accepted as a bare string or as a tagged object whose
-/// `type` names the variant; anything else becomes `unknown`.
-class const CodexCollabAgentStatesConverter() implements JsonConverter<Map<String, CodexCollabAgentStatus>, Object?> {
-  @override
-  Map<String, CodexCollabAgentStatus> fromJson(Object? json) {
-    if (json is! Map) return const {};
-    return {
-      for (final MapEntry(:key, :value) in json.entries)
-        if (key is String) key: _statusFromJson(value),
-    };
-  }
-
-  static CodexCollabAgentStatus _statusFromJson(Object? value) {
-    final tag = value is Map ? value["type"] : value;
-    return switch (tag) {
-      "pendingInit" => CodexCollabAgentStatus.pendingInit,
-      "running" => CodexCollabAgentStatus.running,
-      "completed" => CodexCollabAgentStatus.completed,
-      "failed" => CodexCollabAgentStatus.failed,
-      "interrupted" => CodexCollabAgentStatus.interrupted,
-      "errored" => CodexCollabAgentStatus.errored,
-      "shutdown" => CodexCollabAgentStatus.shutdown,
-      "notFound" => CodexCollabAgentStatus.notFound,
-      _ => CodexCollabAgentStatus.unknown,
-    };
-  }
-
-  @override
-  Object toJson(Map<String, CodexCollabAgentStatus> object) {
-    return {for (final MapEntry(:key, :value) in object.entries) key: value.name};
-  }
-}
-
-@freezed
+@Freezed(fromJson: true, toJson: false)
 sealed class CodexSubAgentItemParamsDto with _$CodexSubAgentItemParamsDto {
   const factory({
     required String? threadId,
@@ -134,32 +63,65 @@ sealed class CodexSubAgentItemParamsDto with _$CodexSubAgentItemParamsDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemParamsDtoFromJson(json);
 }
 
-/// Flat wire shape shared by the collab tool-call and sub-agent activity items.
-/// Fields that belong to only one item type decode as `null`/empty on the
-/// other; the parser turns this into the sealed event.
-@freezed
-sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
+/// One value of `agentsStates`: the receiver thread's status plus an optional
+/// human-readable message.
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexCollabAgentStateDto with _$CodexCollabAgentStateDto {
   const factory({
     @JsonKey(
-      unknownEnumValue: CodexSubAgentItemType.unknown,
-      defaultValue: CodexSubAgentItemType.unknown,
+      unknownEnumValue: CodexCollabAgentStatus.unknown,
+      defaultValue: CodexCollabAgentStatus.unknown,
     )
-    required CodexSubAgentItemType type,
+    required CodexCollabAgentStatus status,
+    @JsonKey(fromJson: _textFromJson) required String? message,
+  }) = _CodexCollabAgentStateDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexCollabAgentStateDtoFromJson(json);
+}
+
+/// Item shapes the app-server emits for multi-agent activity on the parent
+/// thread, discriminated by `type`.
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
+  @FreezedUnionValue(_collabToolCallType)
+  const factory collabToolCall({
     required String? id,
-    // collabAgentToolCall / collabToolCall
-    @JsonKey(fromJson: _collabToolFromJson) required CodexCollabTool tool,
-    @JsonKey(fromJson: _collabItemStatusFromJson) required CodexCollabItemStatus status,
+    @JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown)
+    required CodexCollabTool tool,
+    @JsonKey(
+      unknownEnumValue: CodexCollabItemStatus.unknown,
+      defaultValue: CodexCollabItemStatus.unknown,
+    )
+    required CodexCollabItemStatus status,
     @JsonKey(fromJson: _textFromJson) required String? senderThreadId,
     @JsonKey(fromJson: _threadIdListFromJson) required List<String> receiverThreadIds,
     @JsonKey(fromJson: _textFromJson) required String? receiverThreadId,
     @JsonKey(fromJson: _textFromJson) required String? newThreadId,
     @JsonKey(fromJson: _textFromJson) required String? prompt,
-    @CodexCollabAgentStatesConverter() required Map<String, CodexCollabAgentStatus> agentsStates,
-    // subAgentActivity
-    @JsonKey(fromJson: _activityKindFromJson) required CodexSubAgentActivityKind kind,
+    @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{})
+    required Map<String, CodexCollabAgentStateDto> agentsStates,
+  }) = CodexCollabToolCallItemDto;
+
+  @FreezedUnionValue("subAgentActivity")
+  const factory subAgentActivity({
+    required String? id,
+    @JsonKey(
+      unknownEnumValue: CodexSubAgentActivityKind.unknown,
+      defaultValue: CodexSubAgentActivityKind.unknown,
+    )
+    required CodexSubAgentActivityKind kind,
     @JsonKey(fromJson: _textFromJson) required String? agentThreadId,
     @JsonKey(fromJson: _textFromJson) required String? agentPath,
-  }) = _CodexSubAgentItemDto;
+  }) = CodexSubAgentActivityItemDto;
 
-  factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemDtoFromJson(json);
+  const factory unknown() = CodexUnknownSubAgentItemDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemDtoFromJson(
+    json["type"] == _legacyCollabToolCallType ? {...json, "type": _collabToolCallType} : json,
+  );
 }

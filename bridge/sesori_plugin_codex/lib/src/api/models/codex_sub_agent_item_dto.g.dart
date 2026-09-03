@@ -15,65 +15,64 @@ _CodexSubAgentItemParamsDto _$CodexSubAgentItemParamsDtoFromJson(Map json) =>
       ),
     );
 
-Map<String, dynamic> _$CodexSubAgentItemParamsDtoToJson(
-  _CodexSubAgentItemParamsDto instance,
-) => <String, dynamic>{
-  'threadId': ?instance.threadId,
-  'turnId': ?instance.turnId,
-  'item': instance.item.toJson(),
+_CodexCollabAgentStateDto _$CodexCollabAgentStateDtoFromJson(Map json) =>
+    _CodexCollabAgentStateDto(
+      status:
+          $enumDecodeNullable(
+            _$CodexCollabAgentStatusEnumMap,
+            json['status'],
+            unknownValue: CodexCollabAgentStatus.unknown,
+          ) ??
+          CodexCollabAgentStatus.unknown,
+      message: _textFromJson(json['message']),
+    );
+
+const _$CodexCollabAgentStatusEnumMap = {
+  CodexCollabAgentStatus.pendingInit: 'pendingInit',
+  CodexCollabAgentStatus.running: 'running',
+  CodexCollabAgentStatus.completed: 'completed',
+  CodexCollabAgentStatus.failed: 'failed',
+  CodexCollabAgentStatus.interrupted: 'interrupted',
+  CodexCollabAgentStatus.errored: 'errored',
+  CodexCollabAgentStatus.shutdown: 'shutdown',
+  CodexCollabAgentStatus.notFound: 'notFound',
+  CodexCollabAgentStatus.unknown: 'unknown',
 };
 
-_CodexSubAgentItemDto _$CodexSubAgentItemDtoFromJson(Map json) =>
-    _CodexSubAgentItemDto(
-      type:
-          $enumDecodeNullable(
-            _$CodexSubAgentItemTypeEnumMap,
-            json['type'],
-            unknownValue: CodexSubAgentItemType.unknown,
-          ) ??
-          CodexSubAgentItemType.unknown,
+CodexCollabToolCallItemDto _$CodexCollabToolCallItemDtoFromJson(Map json) =>
+    CodexCollabToolCallItemDto(
       id: json['id'] as String?,
-      tool: _collabToolFromJson(json['tool']),
-      status: _collabItemStatusFromJson(json['status']),
+      tool:
+          $enumDecodeNullable(
+            _$CodexCollabToolEnumMap,
+            json['tool'],
+            unknownValue: CodexCollabTool.unknown,
+          ) ??
+          CodexCollabTool.unknown,
+      status:
+          $enumDecodeNullable(
+            _$CodexCollabItemStatusEnumMap,
+            json['status'],
+            unknownValue: CodexCollabItemStatus.unknown,
+          ) ??
+          CodexCollabItemStatus.unknown,
       senderThreadId: _textFromJson(json['senderThreadId']),
       receiverThreadIds: _threadIdListFromJson(json['receiverThreadIds']),
       receiverThreadId: _textFromJson(json['receiverThreadId']),
       newThreadId: _textFromJson(json['newThreadId']),
       prompt: _textFromJson(json['prompt']),
-      agentsStates: const CodexCollabAgentStatesConverter().fromJson(
-        json['agentsStates'],
-      ),
-      kind: _activityKindFromJson(json['kind']),
-      agentThreadId: _textFromJson(json['agentThreadId']),
-      agentPath: _textFromJson(json['agentPath']),
+      agentsStates:
+          (json['agentsStates'] as Map?)?.map(
+            (k, e) => MapEntry(
+              k as String,
+              CodexCollabAgentStateDto.fromJson(
+                Map<String, dynamic>.from(e as Map),
+              ),
+            ),
+          ) ??
+          {},
+      $type: json['type'] as String?,
     );
-
-Map<String, dynamic> _$CodexSubAgentItemDtoToJson(
-  _CodexSubAgentItemDto instance,
-) => <String, dynamic>{
-  'type': _$CodexSubAgentItemTypeEnumMap[instance.type]!,
-  'id': ?instance.id,
-  'tool': _$CodexCollabToolEnumMap[instance.tool]!,
-  'status': _$CodexCollabItemStatusEnumMap[instance.status]!,
-  'senderThreadId': ?instance.senderThreadId,
-  'receiverThreadIds': instance.receiverThreadIds,
-  'receiverThreadId': ?instance.receiverThreadId,
-  'newThreadId': ?instance.newThreadId,
-  'prompt': ?instance.prompt,
-  'agentsStates': ?const CodexCollabAgentStatesConverter().toJson(
-    instance.agentsStates,
-  ),
-  'kind': _$CodexSubAgentActivityKindEnumMap[instance.kind]!,
-  'agentThreadId': ?instance.agentThreadId,
-  'agentPath': ?instance.agentPath,
-};
-
-const _$CodexSubAgentItemTypeEnumMap = {
-  CodexSubAgentItemType.collabAgentToolCall: 'collabAgentToolCall',
-  CodexSubAgentItemType.collabToolCall: 'collabToolCall',
-  CodexSubAgentItemType.subAgentActivity: 'subAgentActivity',
-  CodexSubAgentItemType.unknown: 'unknown',
-};
 
 const _$CodexCollabToolEnumMap = {
   CodexCollabTool.spawnAgent: 'spawnAgent',
@@ -91,6 +90,21 @@ const _$CodexCollabItemStatusEnumMap = {
   CodexCollabItemStatus.unknown: 'unknown',
 };
 
+CodexSubAgentActivityItemDto _$CodexSubAgentActivityItemDtoFromJson(Map json) =>
+    CodexSubAgentActivityItemDto(
+      id: json['id'] as String?,
+      kind:
+          $enumDecodeNullable(
+            _$CodexSubAgentActivityKindEnumMap,
+            json['kind'],
+            unknownValue: CodexSubAgentActivityKind.unknown,
+          ) ??
+          CodexSubAgentActivityKind.unknown,
+      agentThreadId: _textFromJson(json['agentThreadId']),
+      agentPath: _textFromJson(json['agentPath']),
+      $type: json['type'] as String?,
+    );
+
 const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.started: 'started',
   CodexSubAgentActivityKind.interacted: 'interacted',
@@ -98,3 +112,6 @@ const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.completed: 'completed',
   CodexSubAgentActivityKind.unknown: 'unknown',
 };
+
+CodexUnknownSubAgentItemDto _$CodexUnknownSubAgentItemDtoFromJson(Map json) =>
+    CodexUnknownSubAgentItemDto($type: json['type'] as String?);

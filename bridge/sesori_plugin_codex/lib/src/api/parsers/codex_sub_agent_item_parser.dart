@@ -23,12 +23,12 @@ class const CodexSubAgentItemParser() {
       final params = CodexSubAgentItemParamsDto.fromJson(notification.params);
       final item = params.item;
       final threadId = _usefulText(value: params.threadId);
-      final itemId = _usefulText(value: item.id);
-      if (threadId == null || itemId == null) return null;
+      if (threadId == null) return null;
       final turnId = _usefulText(value: params.turnId);
-      switch (item.type) {
-        case CodexSubAgentItemType.collabAgentToolCall:
-        case CodexSubAgentItemType.collabToolCall:
+      switch (item) {
+        case CodexCollabToolCallItemDto():
+          final itemId = _usefulText(value: item.id);
+          if (itemId == null) return null;
           return CodexCollabItem(
             lifecycle: lifecycle,
             threadId: threadId,
@@ -39,11 +39,14 @@ class const CodexSubAgentItemParser() {
             senderThreadId: _usefulText(value: item.senderThreadId),
             receiverThreadIds: _receiverThreadIds(item: item),
             prompt: item.prompt,
-            agentsStates: item.agentsStates,
+            agentsStates: {
+              for (final MapEntry(:key, :value) in item.agentsStates.entries) key: value.status,
+            },
           );
-        case CodexSubAgentItemType.subAgentActivity:
+        case CodexSubAgentActivityItemDto():
+          final itemId = _usefulText(value: item.id);
           final agentThreadId = _usefulText(value: item.agentThreadId);
-          if (agentThreadId == null) return null;
+          if (itemId == null || agentThreadId == null) return null;
           return CodexSubAgentActivity(
             lifecycle: lifecycle,
             threadId: threadId,
@@ -53,7 +56,7 @@ class const CodexSubAgentItemParser() {
             agentThreadId: agentThreadId,
             agentPath: _usefulText(value: item.agentPath),
           );
-        case CodexSubAgentItemType.unknown:
+        case CodexUnknownSubAgentItemDto():
           return null;
       }
     } on Object catch (error, stackTrace) {
@@ -66,7 +69,7 @@ class const CodexSubAgentItemParser() {
     }
   }
 
-  List<String> _receiverThreadIds({required CodexSubAgentItemDto item}) {
+  List<String> _receiverThreadIds({required CodexCollabToolCallItemDto item}) {
     final ids = <String>{};
     for (final candidate in [item.newThreadId, item.receiverThreadId, ...item.receiverThreadIds]) {
       final id = _usefulText(value: candidate);
