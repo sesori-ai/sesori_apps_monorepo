@@ -522,3 +522,10 @@ same service merges persisted children from `GrokSessionCatalogRepository`
 with the peer Layer-2 tracker; and `GrokEventMapper` contains the `will_wake`
 and prompt-id conventions before invoking backend-neutral hold/release
 operations.
+
+A second follow-up `architecture-plan-review` on 2026-09-03 covered the later
+stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. It
+rejected one finding, applied without re-review: deferred Grok tool-call state
+moved out of `AcpEventMapper` into a Layer-2
+`AcpDeferredToolCallTracker` with session, disconnect, and process-exit
+cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
