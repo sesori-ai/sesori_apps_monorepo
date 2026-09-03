@@ -14,7 +14,7 @@ import "../../core/widgets/sesori_logo.dart";
 /// Mobile-shell composition for the shared settings view.
 class const SettingsScreen({
   super.key,
-  required final VoidCallback? onOpenCreatorRecording,
+  required final void Function({required BuildContext context})? onOpenCreatorRecording,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -39,9 +39,13 @@ class const SettingsScreen({
   }
 }
 
-class const _MobileSettingsView({required final VoidCallback? onOpenCreatorRecording}) extends StatelessWidget {
+class const _MobileSettingsView({
+  required final void Function({required BuildContext context})? onOpenCreatorRecording,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final onOpenCreatorRecording = this.onOpenCreatorRecording;
+
     return SettingsView(
       account: context.watch<SettingsCubit>().state.account,
       connectionBanner: ConnectionBanner.maybeFor(context),
@@ -53,7 +57,7 @@ class const _MobileSettingsView({required final VoidCallback? onOpenCreatorRecor
       ),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
       additionalSettings: null,
-      onOpenCreatorRecording: onOpenCreatorRecording,
+      onOpenCreatorRecording: onOpenCreatorRecording == null ? null : () => onOpenCreatorRecording(context: context),
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },
