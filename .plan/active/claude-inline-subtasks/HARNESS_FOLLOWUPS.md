@@ -421,7 +421,29 @@ confirmation, no child session or partial stop) and gets that subset.
 | monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `DeepSeekAcpApi.cancelChild` (seam 4), mixed foreground/background policy tests through seam 3 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | matrix footnote ⁹ resolved, regression docs |
 
-### Open questions (probe)
+### Probe results (dsh 0.1.1-rc.2, 2026-09-03, details in `followups/deepseek-probe.md`)
+
+- Root-context listeners receive `subagent/start`, `subagent/end`, and every
+  child `session/event`; no per-agent registration is needed.
+- Correlation is deterministic: an `AsyncLocalStorage` scope around the root
+  `tools/execute` waterfall gives every `subagent/start` the executing call
+  id, including two parallel calls in one step and a fork. `started` always
+  carries `toolCallId`; `startedUncorrelated` was never produced. The label
+  is the call's `description` (the descriptor lands after the start event).
+- Foreground and fork children run inside the tool call (`tool/result` after
+  `subagent/end`); a continuable child returns its `tool/result` within
+  milliseconds, the parent reports idle while the child runs, and settlement
+  opens a new parent turn through `followup` with no in-flight prompt.
+- Adapter defect found: children inherit `AgentOptions.provider/model`, which
+  the adapter never sets, so every child failed at once with "has no
+  provider/model". The adapter PR applies the owning root's selection to
+  descendants through a root-level `agent/request` listener.
+- Replay: the parent log never names a foreground child; it is attributed to
+  the persisted child header created inside the call window. Continuable
+  children are named by the result text and settled from the
+  `subagent-settled` notice.
+
+### Open questions (resolved by the probe)
 
 1. Do scoped `subagent/*` emits and child `session/event`s reach a root-context
    listener, or must the adapter register per agent at `newSession` and

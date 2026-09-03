@@ -66,11 +66,13 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2): the
-harness emits `subagent/start`/`subagent/end` with child session ids and offers
-`interrupt_agent`; the adapter does not forward them yet but is ours to extend.
-Foreground children die with the parent while background ones survive, so
-main-agent-only has the same ambiguity as OpenCode until verified.
+⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2,
+probed 2026-09-03): the harness emits `subagent/start`/`subagent/end` with
+child session ids and `ctx.subagents.interrupt` stops a continuable child; the
+adapter forwards none of it yet but is ours to extend, and the executing tool
+call is known for every start. Foreground children die with the parent while
+background ones survive, and the adapter can tell them apart, so
+main-agent-only is supportable when every running child is background.
 
 ¹⁰ Grok Build (1.0.5) sends `SubagentSpawned`/`SubagentProgress`/
 `SubagentFinished` with parent and child session ids as `x.ai/session_notification`

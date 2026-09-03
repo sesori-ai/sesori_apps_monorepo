@@ -170,7 +170,7 @@ implementation PR. E2E testing is performed after each PR merges.
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
-| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | Not started |
+| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) |
 | [ ] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | Not started |
 | [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
 | [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
