@@ -12,6 +12,7 @@ import "package:codex_plugin/src/repositories/codex_sub_agent_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -51,6 +52,8 @@ CodexPlugin createInjectedCodexPlugin({
       ),
       metadataRepository: metadataRepository,
       toolOutcomeRepository: resolvedToolOutcomeRepository,
+      subAgentTracker: CodexSubAgentTracker(),
+      sessionMapper: const CodexSessionMapper(),
       launchDirectory: projectCwd,
     ),
     eventMapper: CodexEventMapper(
@@ -75,7 +78,6 @@ CodexPlugin createInjectedCodexPlugin({
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     subAgentItemParser: const CodexSubAgentItemParser(),
-    subAgentTracker: CodexSubAgentTracker(),
     projectCwd: projectCwd,
     onConnected: null,
     onDisconnected: null,

@@ -28,6 +28,7 @@ import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/mappers/codex_user_content_mapper.dart";
 import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
@@ -87,6 +88,8 @@ CodexManagedApi _defaultBuildApi({
         configReader: configReader,
       ),
       toolOutcomeRepository: toolOutcomeRepository,
+      subAgentTracker: CodexSubAgentTracker(),
+      sessionMapper: const CodexSessionMapper(),
       launchDirectory: launchDirectory,
     ),
     eventMapper: CodexEventMapper(
@@ -111,7 +114,6 @@ CodexManagedApi _defaultBuildApi({
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     subAgentItemParser: const CodexSubAgentItemParser(),
-    subAgentTracker: CodexSubAgentTracker(),
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,

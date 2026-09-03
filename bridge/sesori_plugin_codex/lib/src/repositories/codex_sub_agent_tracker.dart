@@ -4,11 +4,10 @@ import "models/codex_thread_record.dart";
 /// of the root busy accounting they drive.
 ///
 /// codex-cli 0.148.0 never emits `thread/started` for a spawned child; the
-/// parent's `subAgentActivity started` item names it, and the plugin resolves
-/// the child through `thread/read` before recording it here. Each child maps
-/// to its direct parent and to the root it rolls up to, so busy children and
-/// a root's deferred idle transition span nested spawns. The plugin feeds
-/// child activity from its single status write path and reads snapshots.
+/// parent's `subAgentActivity started` item names it, and the session service
+/// resolves the child through `thread/read` before recording it here. Each
+/// child maps to its direct parent and to the root it rolls up to, so busy
+/// children and a root's deferred idle transition span nested spawns.
 class CodexSubAgentTracker() {
   final Map<String, CodexThreadRecord> _children = {};
   final Map<String, String> _rootByChild = {};
@@ -43,6 +42,24 @@ class CodexSubAgentTracker() {
     for (final child in _children.values)
       if (child.parentId == parentId) child,
   ];
+
+  /// Every known descendant below [parentId], in parent-before-child order.
+  List<CodexThreadRecord> descendantsOf({required String parentId}) {
+    final descendants = <CodexThreadRecord>[];
+    final seenIds = <String>{parentId};
+    var parents = <String>{parentId};
+    while (parents.isNotEmpty) {
+      final nextParents = <String>{};
+      for (final child in _children.values) {
+        if (parents.contains(child.parentId) && seenIds.add(child.id)) {
+          descendants.add(child);
+          nextParents.add(child.id);
+        }
+      }
+      parents = nextParents;
+    }
+    return descendants;
+  }
 
   /// Records whether a known child is running its own turn; ignored for a
   /// session that is not a recorded child.
@@ -81,17 +98,20 @@ class CodexSubAgentTracker() {
   }
 
   void forget({required String sessionId}) {
-    for (final childId in _childrenByRoot.remove(sessionId) ?? const <String>{}) {
-      _children.remove(childId);
-      _rootByChild.remove(childId);
-      _activeChildren.remove(childId);
+    final forgottenIds = {
+      sessionId,
+      for (final child in descendantsOf(parentId: sessionId)) child.id,
+    };
+    for (final forgottenId in forgottenIds) {
+      _children.remove(forgottenId);
+      _rootByChild.remove(forgottenId);
+      _activeChildren.remove(forgottenId);
+      _rootsAwaitingIdle.remove(forgottenId);
     }
-    _rootsAwaitingIdle.remove(sessionId);
-    _children.remove(sessionId);
-    _activeChildren.remove(sessionId);
-    if (_rootByChild.remove(sessionId) case final root?) {
-      _childrenByRoot[root]?.remove(sessionId);
+    for (final children in _childrenByRoot.values) {
+      children.removeAll(forgottenIds);
     }
+    _childrenByRoot.removeWhere((rootId, children) => forgottenIds.contains(rootId) || children.isEmpty);
   }
 
   void clear() {

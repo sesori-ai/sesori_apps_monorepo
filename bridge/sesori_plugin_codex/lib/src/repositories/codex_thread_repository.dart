@@ -131,30 +131,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return dto == null ? null : mapStartedNotification(dto: dto);
   }
 
-  PluginSession toPluginSession({
-    required CodexThreadRecord record,
-    required String fallbackDirectory,
-    required String? parentSessionId,
-  }) {
-    final directory = record.directory ?? normalizeProjectDirectory(directory: fallbackDirectory);
-    final created = record.createdAt;
-    final updated = record.updatedAt;
-    return PluginSession(
-      id: record.id,
-      projectID: directory,
-      directory: directory,
-      parentID: parentSessionId,
-      title: record.name,
-      time: created == null || updated == null
-          ? null
-          : PluginSessionTime(
-              created: created,
-              updated: updated,
-              archived: null,
-            ),
-    );
-  }
-
   CodexThreadRecord _mapRequired({
     required CodexThreadEnvelopeDto dto,
     required String operation,
@@ -179,10 +155,19 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       updatedAt: _milliseconds(thread.updatedAt),
       model: _usefulText(dto.model),
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
-      parentId: _usefulText(thread.parentThreadId),
+      parentId: _subAgentParentId(thread: thread),
       agentNickname: _usefulText(thread.agentNickname),
     );
   }
+
+  String? _subAgentParentId({required CodexThreadDto thread}) => switch (thread.threadSource) {
+    CodexThreadSource.subAgent ||
+    CodexThreadSource.subAgentReview ||
+    CodexThreadSource.subAgentCompact ||
+    CodexThreadSource.subAgentThreadSpawn ||
+    CodexThreadSource.subAgentOther => _usefulText(thread.parentThreadId),
+    CodexThreadSource.unknown || null => null,
+  };
 
   ({CodexTurnInputDto input, int inlineBytes}) _mapTurnInput({
     required PluginPromptPart part,

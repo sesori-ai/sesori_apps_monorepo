@@ -61,19 +61,24 @@ class CodexMessageRepository({
   /// Drops the parent history a `fork_turns` sub-agent rollout copies ahead of
   /// its own turns, so a child transcript starts with the child's work.
   ///
-  /// codex-cli 0.148.0 writes the copy as a second `session_meta` line (the
-  /// parent's) followed by the parent's lines up to the spawn point. The
-  /// parent's in-flight turn therefore appears as a `task_started` with no
-  /// terminal event before the child's own first `task_started`; that nested
-  /// `task_started` is where the child's history begins. Rollouts without a
-  /// second `session_meta` are returned unchanged, as is a copy whose boundary
-  /// cannot be located.
+  /// codex-cli 0.148.0 writes the copy after the child's leading sub-agent
+  /// `session_meta`, beginning with a second `session_meta` for the parent and
+  /// continuing through the spawn point. The parent's in-flight turn therefore
+  /// appears as a `task_started` with no terminal event before the child's own
+  /// first `task_started`; that nested start is where child history begins.
+  /// Root forks and malformed rollouts without that leading child metadata are
+  /// returned unchanged, as is a copy whose boundary cannot be located.
   static List<CodexRolloutLineDto> trimForkedParentHistory({
     required List<CodexRolloutLineDto> lines,
   }) {
+    if (lines.isEmpty ||
+        lines.first is! CodexRolloutSessionMetadataLineDto ||
+        (lines.first as CodexRolloutSessionMetadataLineDto).payload.threadSource != CodexRolloutThreadSource.subagent) {
+      return lines;
+    }
     var copyStart = -1;
-    for (var index = 0; index < lines.length; index++) {
-      if (lines[index] is CodexRolloutSessionMetadataLineDto && index > 0) {
+    for (var index = 1; index < lines.length; index++) {
+      if (lines[index] is CodexRolloutSessionMetadataLineDto) {
         copyStart = index;
         break;
       }

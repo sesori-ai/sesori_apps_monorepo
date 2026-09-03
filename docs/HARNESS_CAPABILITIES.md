@@ -21,7 +21,7 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
@@ -40,8 +40,10 @@ the two apart, so the option is not offered.
 ³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
 announces itself through the parent's `subAgentActivity started`
 (`agentThreadId`) and `thread/status/changed`, never `thread/started`;
-`receiverThreadIds` stays empty. `turn/interrupt` works per child thread with
-its `turnId`, and interrupting the parent leaves children running, so
+`receiverThreadIds` stays empty. Sesori exposes the verified child thread and
+persisted rollout under its direct parent and rolls running descendants into
+the root's busy state. `turn/interrupt` works per child thread with its
+`turnId`, and interrupting the parent leaves children running, so
 main-agent-only is supportable.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
