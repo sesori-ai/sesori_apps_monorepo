@@ -73,6 +73,16 @@ class PluginGenerationFactory({
     final minutes = _resolveIdleTimeoutMins(pluginId: pluginId);
     return minutes > 0 ? Duration(minutes: minutes) : null;
   }
+  Stream<Duration?> _idleTimeoutChangesForPlugin({required String pluginId}) {
+    var previous = _idleTimeoutForPlugin(pluginId: pluginId);
+    return _settingsChanges
+        .map<Duration?>((_) => _idleTimeoutForPlugin(pluginId: pluginId))
+        .where((current) {
+          if (current == previous) return false;
+          previous = current;
+          return true;
+        });
+  }
 
   Future<void> enforceBridgeOwnership() => _attemptBatch(attempt: 1, batch: const []);
 
@@ -276,9 +286,7 @@ class PluginGenerationFactory({
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
       store: BridgeHostJsonStore(fileApi: fileApi),
       resolveIdleTimeout: () => _idleTimeoutForPlugin(pluginId: descriptor.id),
-      pluginIdleTimeoutChanges: _settingsChanges
-          .map<Duration?>((_) => _idleTimeoutForPlugin(pluginId: descriptor.id))
-          .distinct(),
+      pluginIdleTimeoutChanges: _idleTimeoutChangesForPlugin(pluginId: descriptor.id),
     );
   }
 }

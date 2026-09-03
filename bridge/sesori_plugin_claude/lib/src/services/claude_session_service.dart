@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -100,8 +101,8 @@ final class ClaudeSessionService({
   required final Stream<Duration?> _idleTimeoutChanges,
 }) {
   this {
-    _processEvents = _processes.events.listen(_handleProcessEvent);
-    _idleTimeoutSubscription = _idleTimeoutChanges.listen(_handleIdleTimeoutChange);
+    _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
+    _idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   /// See [_SessionTurnState.recentlyDispatched]. 64 comfortably exceeds any
@@ -116,8 +117,7 @@ final class ClaudeSessionService({
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   final PendingOperations _inFlightTeardowns = PendingOperations();
   final Map<String, Future<void>> _teardownsBySession = {};
-  late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
-  late final StreamSubscription<Duration?> _idleTimeoutSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -607,8 +607,7 @@ final class ClaudeSessionService({
       state.idleGeneration++;
       _completeSelfStartedTurn(state: state);
     }
-    await _processEvents.cancel();
-    await _idleTimeoutSubscription.cancel();
+    await _subscriptions.cancel();
     _approvals.dispose();
     await _processes.dispose();
     await _inFlightTeardowns.drain();

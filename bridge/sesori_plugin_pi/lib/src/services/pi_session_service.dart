@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -157,9 +158,9 @@ final class PiSessionService({
   required final Stream<Duration?> idleTimeoutChanges,
 }) {
   this {
-    _frameSubscription = _processes.frames.listen(_handleFrame);
-    _exitSubscription = _processes.exits.listen(_handleExit);
-    _idleTimeoutSubscription = idleTimeoutChanges.listen(_handleIdleTimeoutChange);
+    _processes.frames.listen(_handleFrame).addTo(_subscriptions);
+    _processes.exits.listen(_handleExit).addTo(_subscriptions);
+    idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   final PiSessionProcessRepository _processes = processRepository;
@@ -173,9 +174,7 @@ final class PiSessionService({
   final PendingOperations _activeIdleReaps = PendingOperations();
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
-  late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
-  late final StreamSubscription<Duration?> _idleTimeoutSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -1273,9 +1272,7 @@ final class PiSessionService({
         }
       }
     }
-    await _frameSubscription.cancel();
-    await _exitSubscription.cancel();
-    await _idleTimeoutSubscription.cancel();
+    await _subscriptions.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
     await _activeIdleReaps.drain();

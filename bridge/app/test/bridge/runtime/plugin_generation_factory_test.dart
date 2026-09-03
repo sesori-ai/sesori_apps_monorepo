@@ -136,11 +136,14 @@ void main() {
         reason: "stale cleanup must be authorized to reclaim records of the bridge this one replaced",
       );
     });
-    test("forwards live idle timeout changes through the plugin host", () async {
+    test("forwards only changed idle timeout values through the plugin host", () async {
       await startPlugin();
       final host = descriptor.startedHosts.single;
       final changes = <Duration?>[];
       final subscription = host.pluginIdleTimeoutChanges.listen(changes.add);
+
+      settingsChanges.add(Object());
+      expect(changes, isEmpty);
 
       idleTimeoutMins = 25;
       settingsChanges.add(Object());
