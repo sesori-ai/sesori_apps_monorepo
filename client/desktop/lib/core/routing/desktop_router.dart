@@ -1,11 +1,9 @@
 import "dart:async";
 
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home.dart";
@@ -49,8 +47,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         destination: _destinationFor(path: state.uri.path),
         onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
         onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-        onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
-        onRecoverBridge: ({required context}) => context.read<BridgeControlCubit>().recoverConnection(),
+        onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
         child: child,
       ),
     ),
@@ -59,13 +56,13 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         path: AppRouteDef.splash.path,
         builder: (BuildContext context, GoRouterState state) => DesktopHome(
           onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-          onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
+          onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
         ),
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
         builder: (BuildContext context, GoRouterState state) => DesktopProjectListScreen(
-          onOpenSettings: () => _goRoute(context: context, route: const AppRoute.settings()),
+          onOpenSettings: () => _pushRoute(context: context, route: const AppRoute.settings()),
           onOpenProject: ({required projectId, required projectName}) => _goRoute(
             context: context,
             route: AppRoute.sessions(projectId: projectId, projectName: projectName),

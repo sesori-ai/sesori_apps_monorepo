@@ -246,10 +246,15 @@ class BridgeControlCubit._create({
   Future<void> startBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.on);
 
   /// Recovers both desktop connection owners through their Layer-3 services.
-  Future<void> recoverConnection() => Future.wait<void>([
-    startBridge(),
-    _relayConnectionService.recoverForAuthenticatedDestination(),
-  ]);
+  Future<void> recoverConnection() {
+    if (_controlsLocked) {
+      return Future<void>.value();
+    }
+    return Future.wait<void>([
+      startBridge(),
+      _relayConnectionService.recoverForAuthenticatedDestination(),
+    ]);
+  }
 
   Future<void> _setBridgeDesiredState({required BridgeProcessDesiredState target}) async {
     if (_controlsLocked) {

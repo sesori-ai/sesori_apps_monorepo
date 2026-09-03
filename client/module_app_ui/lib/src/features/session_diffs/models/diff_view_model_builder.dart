@@ -41,10 +41,12 @@ class DiffViewModelBuilder() {
                       .map(
                         (line) => DiffLineViewModel(
                           line: line,
-                          highlightedSpan: DiffHighlighter.highlightLine(
-                            content: line.content,
-                            language: language,
-                          ),
+                          highlightedSpan: line.content.isEmpty
+                              ? null
+                              : DiffHighlighter.highlightLine(
+                                  content: line.content,
+                                  language: language,
+                                ),
                         ),
                       )
                       .toList(),

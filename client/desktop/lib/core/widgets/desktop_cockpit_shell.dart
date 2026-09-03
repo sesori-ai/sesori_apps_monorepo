@@ -12,7 +12,6 @@ class const DesktopCockpitShell({
   required final VoidCallback onOpenBridge,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
-  required final Future<void> Function({required BuildContext context}) onRecoverBridge,
   required final Widget child,
 }) extends StatelessWidget {
   static const double _extendedBreakpoint = 1120;
@@ -63,9 +62,7 @@ class const DesktopCockpitShell({
               Expanded(
                 child: Column(
                   children: [
-                    DesktopSupervisionNotice(
-                      onRecoverBridge: () => onRecoverBridge(context: context),
-                    ),
+                    const DesktopSupervisionNotice(),
                     Expanded(child: child),
                   ],
                 ),
@@ -86,36 +83,16 @@ enum DesktopCockpitDestination() {
 }
 
 /// Exceptional bridge states shown above every cockpit destination.
-class const DesktopSupervisionNotice({
-  super.key,
-  required final Future<void> Function() onRecoverBridge,
-}) extends StatelessWidget {
+class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeControlCubit>().state;
     final controls = context.read<BridgeControlCubit>();
     final locked = state.activity.locksCommands;
 
-    final notice = switch (state.processState) {
-      BridgeProcessLoginRequired() => _DesktopSupervisionNoticeData(
-        icon: TablerRegular.user_exclamation,
-        message: "Your Sesori account is required before the local bridge can start.",
-        primaryLabel: "Start Bridge",
-        onPrimary: locked ? null : () => unawaited(onRecoverBridge()),
-        secondaryLabel: null,
-        onSecondary: null,
-        isError: false,
-      ),
-      BridgeProcessCrashGiveUp() => _DesktopSupervisionNoticeData(
-        icon: TablerRegular.alert_triangle,
-        message: "The local bridge stopped after repeated crashes.",
-        primaryLabel: "Retry",
-        onPrimary: locked ? null : () => unawaited(onRecoverBridge()),
-        secondaryLabel: "Open Logs",
-        onSecondary: () => unawaited(controls.openLogs()),
-        isError: true,
-      ),
-      BridgeProcessContention() => _DesktopSupervisionNoticeData(
+    final _DesktopSupervisionNoticeData? notice;
+    if (state.canTakeOver) {
+      notice = _DesktopSupervisionNoticeData(
         icon: TablerRegular.arrows_exchange,
         message: "Another bridge currently owns this account connection.",
         primaryLabel: "Take Over",
@@ -123,24 +100,35 @@ class const DesktopSupervisionNotice({
         secondaryLabel: null,
         onSecondary: null,
         isError: false,
-      ),
-      BridgeProcessStopped() ||
-      BridgeProcessStarting() ||
-      BridgeProcessRunning() ||
-      BridgeProcessStopping() ||
-      BridgeProcessCrashRetryScheduled() =>
-        state.canTakeOver
-            ? _DesktopSupervisionNoticeData(
-                icon: TablerRegular.arrows_exchange,
-                message: "Another bridge currently owns this account connection.",
-                primaryLabel: "Take Over",
-                onPrimary: locked ? null : () => unawaited(controls.takeOver()),
-                secondaryLabel: null,
-                onSecondary: null,
-                isError: false,
-              )
-            : null,
-    };
+      );
+    } else {
+      notice = switch (state.processState) {
+        BridgeProcessLoginRequired() => _DesktopSupervisionNoticeData(
+          icon: TablerRegular.user_exclamation,
+          message: "Your Sesori account is required before the local bridge can start.",
+          primaryLabel: "Start Bridge",
+          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
+          secondaryLabel: null,
+          onSecondary: null,
+          isError: false,
+        ),
+        BridgeProcessCrashGiveUp() => _DesktopSupervisionNoticeData(
+          icon: TablerRegular.alert_triangle,
+          message: "The local bridge stopped after repeated crashes.",
+          primaryLabel: "Retry",
+          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
+          secondaryLabel: "Open Logs",
+          onSecondary: () => unawaited(controls.openLogs()),
+          isError: true,
+        ),
+        BridgeProcessContention() => null,
+        BridgeProcessStopped() ||
+        BridgeProcessStarting() ||
+        BridgeProcessRunning() ||
+        BridgeProcessStopping() ||
+        BridgeProcessCrashRetryScheduled() => null,
+      };
+    }
     if (notice == null) {
       return const SizedBox.shrink();
     }

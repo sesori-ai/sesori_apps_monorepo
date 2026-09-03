@@ -42,7 +42,6 @@ void main() {
           onOpenBridge: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
           onOpenSettings: () => settingsOpens++,
-          onRecoverBridge: _noOpRecovery,
           child: const ColoredBox(
             key: Key("cockpit-content"),
             color: Colors.transparent,
@@ -70,7 +69,6 @@ void main() {
           onOpenBridge: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
-          onRecoverBridge: _noOpRecovery,
           child: SizedBox.shrink(),
         ),
       ),
@@ -80,8 +78,8 @@ void main() {
   });
 
   testWidgets("integrates crash recovery and logs above every destination", (tester) async {
-    var recoveryCalls = 0;
     when(bridgeControlCubit.openLogs).thenAnswer((_) async {});
+    when(bridgeControlCubit.recoverConnection).thenAnswer((_) async {});
     await tester.pumpWidget(
       app(
         state: _state(
@@ -91,13 +89,12 @@ void main() {
             recentLogs: const <BridgeProcessLogEntry>[],
           ),
         ),
-        child: DesktopCockpitShell(
+        child: const DesktopCockpitShell(
           destination: DesktopCockpitDestination.projects,
           onOpenBridge: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
-          onRecoverBridge: ({required context}) async => recoveryCalls++,
-          child: const SizedBox.shrink(),
+          child: SizedBox.shrink(),
         ),
       ),
     );
@@ -105,7 +102,7 @@ void main() {
     expect(find.text("The local bridge stopped after repeated crashes."), findsOneWidget);
     await tester.tap(find.text("Retry"));
     await tester.tap(find.text("Open Logs"));
-    expect(recoveryCalls, 1);
+    verify(bridgeControlCubit.recoverConnection).called(1);
     verify(bridgeControlCubit.openLogs).called(1);
   });
 
@@ -119,7 +116,6 @@ void main() {
           onOpenBridge: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
-          onRecoverBridge: _noOpRecovery,
           child: SizedBox.shrink(),
         ),
       ),
@@ -129,18 +125,41 @@ void main() {
     verify(bridgeControlCubit.takeOver).called(1);
   });
 
-  testWidgets("offers authenticated bridge retry without CLI-install copy", (tester) async {
-    var recoveryCalls = 0;
+  testWidgets("prioritizes takeover when a displaced relay meets a login-required process state", (tester) async {
+    when(bridgeControlCubit.takeOver).thenAnswer((_) async {});
     await tester.pumpWidget(
       app(
-        state: _state(processState: const BridgeProcessLoginRequired()),
-        child: DesktopCockpitShell(
+        state: _state(
+          processState: const BridgeProcessLoginRequired(),
+          relay: ControlRelayConnectionState.takenOver,
+        ),
+        child: const DesktopCockpitShell(
           destination: DesktopCockpitDestination.projects,
           onOpenBridge: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
-          onRecoverBridge: ({required context}) async => recoveryCalls++,
-          child: const SizedBox.shrink(),
+          child: SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    expect(find.text("Take Over"), findsOneWidget);
+    expect(find.text("Start Bridge"), findsNothing);
+    await tester.tap(find.text("Take Over"));
+    verify(bridgeControlCubit.takeOver).called(1);
+  });
+
+  testWidgets("offers authenticated bridge retry without CLI-install copy", (tester) async {
+    when(bridgeControlCubit.recoverConnection).thenAnswer((_) async {});
+    await tester.pumpWidget(
+      app(
+        state: _state(processState: const BridgeProcessLoginRequired()),
+        child: const DesktopCockpitShell(
+          destination: DesktopCockpitDestination.projects,
+          onOpenBridge: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: SizedBox.shrink(),
         ),
       ),
     );
@@ -148,11 +167,14 @@ void main() {
     expect(find.textContaining("account is required"), findsOneWidget);
     expect(find.textContaining("install"), findsNothing);
     await tester.tap(find.text("Start Bridge"));
-    expect(recoveryCalls, 1);
+    verify(bridgeControlCubit.recoverConnection).called(1);
   });
 }
 
-BridgeControlState _state({required BridgeProcessState processState}) => BridgeControlState(
+BridgeControlState _state({
+  required BridgeProcessState processState,
+  ControlRelayConnectionState relay = ControlRelayConnectionState.disconnected,
+}) => BridgeControlState(
   trayAvailability: SystemTrayAvailability.available,
   activity: BridgeControlActivity.idle,
   statusLabel: "Bridge status",
@@ -160,19 +182,15 @@ BridgeControlState _state({required BridgeProcessState processState}) => BridgeC
   desiredState: BridgeProcessDesiredState.on,
   toggleTarget: BridgeProcessDesiredState.off,
   launchAtLoginEnabled: false,
-  controlStatus: processState is BridgeProcessContention
-      ? const BridgeControlStatus(
-          helperOnline: false,
-          bridgeId: null,
-          relay: ControlRelayConnectionState.takenOver,
-          plugin: ControlPluginHealthState.unknown,
-          activeSessionCount: 0,
-        )
-      : BridgeControlStatus.offline,
+  controlStatus: BridgeControlStatus(
+    helperOnline: false,
+    bridgeId: null,
+    relay: relay,
+    plugin: ControlPluginHealthState.unknown,
+    activeSessionCount: 0,
+  ),
 );
 
 void _noOp() {}
-
-Future<void> _noOpRecovery({required BuildContext context}) async {}
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;

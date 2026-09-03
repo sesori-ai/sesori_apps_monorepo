@@ -49,6 +49,29 @@ void main() {
     );
   });
 
+  testWidgets("preserves empty text blocks when requested", (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: PregoReadableSelectionArea(
+            preserveEmptyLines: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("first"),
+                Text(PregoReadableSelectionArea.emptyLineMarker),
+                Text("third"),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(await _copyAll(tester: tester), "first\n\nthird");
+  });
+
   testWidgets("copy separates adjacent text on the same visual line", (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

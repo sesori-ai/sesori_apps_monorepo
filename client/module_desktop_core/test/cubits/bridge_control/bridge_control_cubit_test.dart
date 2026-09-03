@@ -352,6 +352,18 @@ void main() {
       expect(relayConnectionService.recoverCalls, 1);
     });
 
+    test("does not recover either owner while logout locks controls", () async {
+      await cubit.initialize();
+      relayConnectionService.recoverCalls = 0;
+      logoutTracker.markInProgress();
+      await pumpEventQueue();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 0);
+      expect(relayConnectionService.recoverCalls, 0);
+    });
+
     test("a failed start leaves the next toggle targeted at retrying start", () async {
       processService.startError = StateError("spawn failed");
       await cubit.initialize();

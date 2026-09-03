@@ -329,7 +329,9 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         SafeArea(
           top: false,
           bottom: false,
-          child: _AnimatedBannerSlot(banner: widget.banner, onHeightChanged: _onBannerHeightChanged),
+          child: SelectionContainer.disabled(
+            child: _AnimatedBannerSlot(banner: widget.banner, onHeightChanged: _onBannerHeightChanged),
+          ),
         ),
         // The Builder confines removePadding's full-MediaQuery dependency (it
         // reads MediaQuery.of) to this leaf element — without it the whole

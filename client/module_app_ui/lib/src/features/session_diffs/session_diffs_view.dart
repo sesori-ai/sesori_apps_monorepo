@@ -52,6 +52,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       builder: (context, state) {
         final (fileCount, additions, deletions) = _statsOf(state);
         return PregoReadableSelectionArea(
+          preserveEmptyLines: true,
           child: PregoGlassScaffold(
             title: context.loc.diffFileChangesTitle,
             subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,

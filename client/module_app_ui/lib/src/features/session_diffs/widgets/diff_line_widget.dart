@@ -1,5 +1,6 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/text_style_x.dart";
 
@@ -82,7 +83,7 @@ class const DiffLineWidget({super.key, required final DiffLineViewModel viewMode
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               child: switch (viewModel.highlightedSpan) {
                 null => Text(
-                  line.content,
+                  line.content.isEmpty ? PregoReadableSelectionArea.emptyLineMarker : line.content,
                   style: _monoStyle.copyWith(color: theme.codeText),
                   softWrap: true,
                 ),
