@@ -1821,8 +1821,9 @@ void main() {
       expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
     });
 
-    test("renameSession keeps a pending refresh successful and overlays its stale title", () async {
+    test("renameSession keeps a pending refresh successful and restores the pre-rename title", () async {
       final original = testSession(id: "s1", title: "Original");
+      final stale = testSession(id: "s1", title: "Stale snapshot");
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -1848,7 +1849,7 @@ void main() {
 
       final refresh = cubit.refreshSessions();
       final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
-      refreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [original])));
+      refreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [stale])));
 
       expect(await refresh, isTrue);
       expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
@@ -1856,6 +1857,73 @@ void main() {
       renameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await rename, isFalse);
       expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
+    });
+
+    test("renameSession restores the committed title after two overlapping failures", () async {
+      final original = testSession(id: "s1", title: "Original");
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
+      final firstRenameCompleter = Completer<ApiResponse<Session>>();
+      final secondRenameCompleter = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "First title"),
+      ).thenAnswer((_) => firstRenameCompleter.future);
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "Second title"),
+      ).thenAnswer((_) => secondRenameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
+      final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+
+      firstRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await firstRename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+
+      secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await secondRename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
+    });
+
+    test("renameSession restores the latest confirmed title when a newer rename fails", () async {
+      final original = testSession(id: "s1", title: "Original");
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
+      final firstRenameCompleter = Completer<ApiResponse<Session>>();
+      final secondRenameCompleter = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "First title"),
+      ).thenAnswer((_) => firstRenameCompleter.future);
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "Second title"),
+      ).thenAnswer((_) => secondRenameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
+      final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
+
+      firstRenameCompleter.complete(ApiResponse.success(original.copyWith(title: "First title")));
+      expect(await firstRename, isTrue);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+
+      secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await secondRename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
     });
 
     // -------------------------------------------------------------------------

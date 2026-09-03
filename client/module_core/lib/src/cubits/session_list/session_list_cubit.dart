@@ -32,6 +32,13 @@ enum _SessionFetchOutcome() {
   superseded,
 }
 
+typedef _PendingSessionRename = ({
+  int token,
+  String title,
+  int confirmedToken,
+  String? rollbackTitle,
+});
+
 class SessionListCubit({
   required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
@@ -424,7 +431,14 @@ class SessionListCubit({
     if (index < 0) return false;
 
     final previousTitle = _allSessions[index].title;
-    _optimisticTitleBySessionId[sessionId] = title;
+    final token = ++_nextRenameToken;
+    final pendingRename = _pendingRenameBySessionId[sessionId];
+    _pendingRenameBySessionId[sessionId] = (
+      token: token,
+      title: title,
+      confirmedToken: pendingRename?.confirmedToken ?? token - 1,
+      rollbackTitle: pendingRename?.rollbackTitle ?? previousTitle,
+    );
     _allSessions = _sessionListService.upsertSession(
       sessions: _allSessions,
       session: _allSessions[index].copyWith(title: title),
@@ -435,18 +449,15 @@ class SessionListCubit({
     try {
       response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
     } on Object {
-      _restoreSessionTitle(
-        sessionId: sessionId,
-        optimisticTitle: title,
-        previousTitle: previousTitle,
-      );
+      _restoreSessionTitle(sessionId: sessionId, token: token);
       return false;
     }
 
     switch (response) {
       case SuccessResponse():
-        if (_optimisticTitleBySessionId[sessionId] == title) {
-          _optimisticTitleBySessionId.remove(sessionId);
+        final pendingRename = _pendingRenameBySessionId[sessionId];
+        if (pendingRename != null && pendingRename.token == token) {
+          _pendingRenameBySessionId.remove(sessionId);
           if (!isClosed) {
             final index = _allSessions.indexWhere((session) => session.id == sessionId);
             if (index >= 0) {
@@ -457,6 +468,13 @@ class SessionListCubit({
               _emitFiltered();
             }
           }
+        } else if (pendingRename != null && token > pendingRename.confirmedToken) {
+          _pendingRenameBySessionId[sessionId] = (
+            token: pendingRename.token,
+            title: pendingRename.title,
+            confirmedToken: token,
+            rollbackTitle: title,
+          );
         }
         if (!isClosed) {
           unawaited(
@@ -469,30 +487,22 @@ class SessionListCubit({
         }
         return true;
       case ErrorResponse():
-        _restoreSessionTitle(
-          sessionId: sessionId,
-          optimisticTitle: title,
-          previousTitle: previousTitle,
-        );
+        _restoreSessionTitle(sessionId: sessionId, token: token);
         return false;
     }
   }
 
-  void _restoreSessionTitle({
-    required String sessionId,
-    required String optimisticTitle,
-    required String? previousTitle,
-  }) {
+  void _restoreSessionTitle({required String sessionId, required int token}) {
+    final pendingRename = _pendingRenameBySessionId[sessionId];
+    if (pendingRename == null || pendingRename.token != token) return;
+    _pendingRenameBySessionId.remove(sessionId);
     if (isClosed || state is! SessionListLoaded) return;
 
-    if (_optimisticTitleBySessionId[sessionId] == optimisticTitle) {
-      _optimisticTitleBySessionId.remove(sessionId);
-    }
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
-    if (index >= 0 && _allSessions[index].title == optimisticTitle) {
+    if (index >= 0) {
       _allSessions = _sessionListService.upsertSession(
         sessions: _allSessions,
-        session: _allSessions[index].copyWith(title: previousTitle),
+        session: _allSessions[index].copyWith(title: pendingRename.rollbackTitle),
       );
     }
     _emitFiltered();
@@ -561,7 +571,8 @@ class SessionListCubit({
 
   /// Keeps pre-rename list responses from repainting an old title while the
   /// mutation is still pending.
-  final Map<String, String> _optimisticTitleBySessionId = {};
+  final Map<String, _PendingSessionRename> _pendingRenameBySessionId = {};
+  int _nextRenameToken = 0;
   bool _showArchived = false;
 
   void toggleArchived() {
@@ -572,8 +583,8 @@ class SessionListCubit({
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
       sessions: _allSessions.map((session) {
-        final optimisticTitle = _optimisticTitleBySessionId[session.id];
-        return optimisticTitle == null ? session : session.copyWith(title: optimisticTitle);
+        final pendingRename = _pendingRenameBySessionId[session.id];
+        return pendingRename == null ? session : session.copyWith(title: pendingRename.title);
       }),
       showArchived: _showArchived,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},

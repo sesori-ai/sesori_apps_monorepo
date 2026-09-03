@@ -41,6 +41,13 @@ enum _ProjectFetchOutcome() {
   superseded,
 }
 
+typedef _PendingProjectRename = ({
+  int token,
+  String name,
+  int confirmedToken,
+  String? rollbackName,
+});
+
 class ProjectListCubit(
   final ProjectRepository _projectRepository,
   final ConnectionService _connectionService,
@@ -58,7 +65,8 @@ class ProjectListCubit(
 
   /// Keeps pre-rename list responses from repainting an old name while the
   /// mutation is still pending.
-  final Map<String, String> _optimisticNameByProjectId = {};
+  final Map<String, _PendingProjectRename> _pendingRenameByProjectId = {};
+  int _nextRenameToken = 0;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
@@ -592,8 +600,8 @@ class ProjectListCubit(
 
   Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
     return projects.map((project) {
-      final optimisticName = _optimisticNameByProjectId[project.id];
-      return optimisticName == null ? project : project.copyWith(name: optimisticName);
+      final pendingRename = _pendingRenameByProjectId[project.id];
+      return pendingRename == null ? project : project.copyWith(name: pendingRename.name);
     });
   }
 
@@ -661,7 +669,14 @@ class ProjectListCubit(
     if (index < 0) return false;
 
     final previousName = currentState.projects[index].name;
-    _optimisticNameByProjectId[projectId] = name;
+    final token = ++_nextRenameToken;
+    final pendingRename = _pendingRenameByProjectId[projectId];
+    _pendingRenameByProjectId[projectId] = (
+      token: token,
+      name: name,
+      confirmedToken: pendingRename?.confirmedToken ?? token - 1,
+      rollbackName: pendingRename?.rollbackName ?? previousName,
+    );
     final projects = [...currentState.projects];
     projects[index] = projects[index].copyWith(name: name);
     _emitOrdered(
@@ -674,18 +689,22 @@ class ProjectListCubit(
     try {
       response = await _projectRepository.renameProject(projectId: projectId, name: name);
     } on Object {
-      _restoreProjectName(
-        projectId: projectId,
-        optimisticName: name,
-        previousName: previousName,
-      );
+      _restoreProjectName(projectId: projectId, token: token);
       return false;
     }
 
     switch (response) {
       case SuccessResponse():
-        if (_optimisticNameByProjectId[projectId] == name) {
-          _optimisticNameByProjectId.remove(projectId);
+        final pendingRename = _pendingRenameByProjectId[projectId];
+        if (pendingRename != null && pendingRename.token == token) {
+          _pendingRenameByProjectId.remove(projectId);
+        } else if (pendingRename != null && token > pendingRename.confirmedToken) {
+          _pendingRenameByProjectId[projectId] = (
+            token: pendingRename.token,
+            name: pendingRename.name,
+            confirmedToken: token,
+            rollbackName: name,
+          );
         }
         if (!isClosed) {
           unawaited(
@@ -697,30 +716,23 @@ class ProjectListCubit(
         }
         return true;
       case ErrorResponse():
-        _restoreProjectName(
-          projectId: projectId,
-          optimisticName: name,
-          previousName: previousName,
-        );
+        _restoreProjectName(projectId: projectId, token: token);
         return false;
     }
   }
 
-  void _restoreProjectName({
-    required String projectId,
-    required String optimisticName,
-    required String? previousName,
-  }) {
+  void _restoreProjectName({required String projectId, required int token}) {
+    final pendingRename = _pendingRenameByProjectId[projectId];
+    if (pendingRename == null || pendingRename.token != token) return;
+    _pendingRenameByProjectId.remove(projectId);
+
     final currentState = state;
     if (isClosed || currentState is! ProjectListLoaded) return;
 
-    if (_optimisticNameByProjectId[projectId] == optimisticName) {
-      _optimisticNameByProjectId.remove(projectId);
-    }
     final index = currentState.projects.indexWhere((project) => project.id == projectId);
     final projects = [...currentState.projects];
-    if (index >= 0 && projects[index].name == optimisticName) {
-      projects[index] = projects[index].copyWith(name: previousName);
+    if (index >= 0) {
+      projects[index] = projects[index].copyWith(name: pendingRename.rollbackName);
     }
     _emitOrdered(
       loaded: currentState,

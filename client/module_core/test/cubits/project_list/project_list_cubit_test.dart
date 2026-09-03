@@ -1395,6 +1395,66 @@ void main() {
       expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
     });
 
+    test("renameProject keeps same-value overlapping requests distinct", () async {
+      final original = testProjectSummary(id: "A", path: "/home/user/A", name: "Original");
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: [original])));
+      final firstRenameCompleter = Completer<ApiResponse<Project>>();
+      final secondRenameCompleter = Completer<ApiResponse<Project>>();
+      var renameRequestCount = 0;
+      when(
+        () => mockProjectRepository.renameProject(projectId: "A", name: "Same name"),
+      ).thenAnswer((_) {
+        renameRequestCount++;
+        return renameRequestCount == 1 ? firstRenameCompleter.future : secondRenameCompleter.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final firstRename = cubit.renameProject(projectId: "A", name: "Same name");
+      final secondRename = cubit.renameProject(projectId: "A", name: "Same name");
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "Same name");
+
+      firstRenameCompleter.complete(ApiResponse<Project>.error(ApiError.generic()));
+      expect(await firstRename, isFalse);
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "Same name");
+
+      secondRenameCompleter.complete(ApiResponse<Project>.error(ApiError.generic()));
+      expect(await secondRename, isFalse);
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "Original");
+    });
+
+    test("renameProject clears a failed optimistic name while the list reloads", () async {
+      final original = testProjectSummary(id: "A", path: "/home/user/A", name: "Original");
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: [original])));
+      final renameCompleter = Completer<ApiResponse<Project>>();
+      when(
+        () => mockProjectRepository.renameProject(projectId: "A", name: "New Name"),
+      ).thenAnswer((_) => renameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final reloadCompleter = Completer<ApiResponse<Projects>>();
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) => reloadCompleter.future);
+      final rename = cubit.renameProject(projectId: "A", name: "New Name");
+      final reload = cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListLoading>());
+
+      renameCompleter.complete(ApiResponse<Project>.error(ApiError.generic()));
+      expect(await rename, isFalse);
+      reloadCompleter.complete(ApiResponse.success(Projects(data: [original])));
+      await reload;
+
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "Original");
+    });
+
     // -------------------------------------------------------------------------
     // Test 4f: renameProject failure
     // -------------------------------------------------------------------------
