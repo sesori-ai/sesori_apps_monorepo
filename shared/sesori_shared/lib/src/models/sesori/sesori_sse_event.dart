@@ -77,11 +77,17 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required PluginAuthenticationProgress progress,
   }) = SesoriPluginAuthenticationProgress;
 
-  /// Invalidates the process-wide slash-command catalog for one plugin.
-  @FreezedUnionValue("command.catalog.updated")
-  const factory commandCatalogUpdated({
+  /// The bridge committed a new session-options snapshot (agents, models,
+  /// variants, slash commands) for one plugin, so any screen showing those
+  /// options can re-read the cache without discovering again.
+  ///
+  /// [projectId] is null for a plugin-scoped catalog, which applies to every
+  /// project; a project-scoped catalog names the project it was captured for.
+  @FreezedUnionValue("session.options_updated")
+  const factory sessionOptionsUpdated({
     required String pluginId,
-  }) = SesoriCommandCatalogUpdated;
+    required String? projectId,
+  }) = SesoriSessionOptionsUpdated;
 
   // ---------------------------------------------------------------------------
   // Session — all implement SesoriSessionEvent

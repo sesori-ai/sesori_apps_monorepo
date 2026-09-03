@@ -47,6 +47,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
 SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -71,6 +72,7 @@ SessionDetailLoadResult _loadedResult() {
 SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: const [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -95,6 +97,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
 SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",

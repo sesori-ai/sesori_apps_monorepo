@@ -116,13 +116,15 @@ void main() {
       );
     });
 
-    test("attributes command catalog updates to their source plugin", () {
+    test("sends no wire event for a command catalog change", () {
+      // It refreshes the bridge's own options cache instead; clients hear about
+      // it as session.options_updated once that refresh commits.
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),
         pluginId: "cursor",
       );
 
-      expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
+      expect(result, isNull);
     });
 
     test("maps toast session attribution to the wire event", () {

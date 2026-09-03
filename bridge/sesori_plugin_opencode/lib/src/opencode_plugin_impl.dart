@@ -393,6 +393,24 @@ class OpenCodePlugin._({
     return await _call(() => _service.getCommands(projectId: projectId));
   }
 
+  /// Forces OpenCode to build its command catalog before anyone asks for it.
+  ///
+  /// `GET /command` is the one endpoint that waits on MCP server initialization:
+  /// measured between one and thirty seconds on the first call per server
+  /// process, then milliseconds. Paying that here means a later options
+  /// discovery reads an already-indexed catalog. The result is discarded — only
+  /// the indexing it forces matters — and a failure is left to the real request
+  /// to report.
+  @override
+  Future<void> warmUpCommandCatalog() async {
+    if (_disposed) return;
+    try {
+      await _service.getCommands(projectId: null);
+    } on Object catch (error, stackTrace) {
+      Log.d("[opencode] command catalog warm-up failed: $error\n$stackTrace");
+    }
+  }
+
   @override
   Future<PluginSession> createSession({
     required String directory,

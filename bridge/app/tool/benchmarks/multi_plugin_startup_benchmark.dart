@@ -311,6 +311,9 @@ class _FakePlugin({required String id}) implements BridgePlugin {
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});
 
   @override
+  Future<void> onStarted() async {}
+
+  @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
 
   @override

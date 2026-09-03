@@ -999,13 +999,15 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("plan maps to a todo update, commands invalidate the plugin catalog", () {
+    test("plan maps to a todo update, commands invalidate the session's options", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,
         isA<BridgeSseTodoUpdated>(),
       );
+      // The originating session is what resolves the catalog to refresh, so the
+      // options-change event alone carries this; no session-less twin is sent.
       final events = mapper.map(update({"sessionUpdate": "available_commands_update"}));
-      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
+      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), isEmpty);
       expect(
         events.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",

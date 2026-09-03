@@ -129,6 +129,7 @@ void main() {
       List<AgentInfo> agents = const [],
       ProviderListResponse? providerData,
       SessionPromptDefaults? promptDefaults,
+      bool areOptionsStale = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -139,6 +140,7 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: areOptionsStale,
             projectId: "project-1",
             pluginId: "claude",
             supportsPromptAttachments: false,
@@ -167,6 +169,7 @@ void main() {
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             projectId: "project-1",
             pluginId: "claude",
             supportsPromptAttachments: false,
@@ -216,6 +219,85 @@ void main() {
       final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
 
       expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, const [_queuedPrompt]);
+    });
+
+    test("a stale-reported snapshot refreshes the options in the background without a notice", () async {
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer((_) async => _freshClaudeOptions());
+
+      final cubit = await createLoadedCubit(areOptionsStale: true);
+      final notices = <SessionDetailNotice>[];
+      final noticeSubscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(noticeSubscription.cancel);
+      await _awaitCondition(() => (cubit.state as SessionDetailLoaded).availableAgents.isNotEmpty);
+
+      expect(
+        (cubit.state as SessionDetailLoaded).availableAgents.map((agent) => agent.name),
+        ["Agent", "Plan"],
+      );
+      expect(notices, isEmpty);
+    });
+
+    test("a fresh snapshot refreshes nothing", () async {
+      final cubit = await createLoadedCubit();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cubit.state, isA<SessionDetailLoaded>());
+      verifyNever(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: any(named: "mode"),
+        ),
+      );
+    });
+
+    test("an options update re-reads the cache and drops a withdrawn agent", () async {
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => _freshClaudeOptions());
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Default", description: "Default", model: null, mode: AgentMode.primary),
+        ],
+        promptDefaults: const SessionPromptDefaults(agent: "Default", model: null),
+      );
+      expect((cubit.state as SessionDetailLoaded).selectedAgent, "Default");
+
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+      );
+      await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent != "Default");
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.availableAgents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(state.selectedAgent, "Agent");
+    });
+
+    test("an options update for another project is ignored", () async {
+      final cubit = await createLoadedCubit();
+
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-2")),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      verifyNever(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: any(named: "mode"),
+        ),
+      );
     });
 
     test("refreshes stale options and retries the queued submission with a supported agent", () async {
@@ -1321,4 +1403,12 @@ void main() {
       sendCompleter.complete(ApiResponse.success(null));
     });
   });
+}
+
+Future<void> _awaitCondition(bool Function() condition) async {
+  for (var i = 0; i < 100; i++) {
+    if (condition()) return;
+    await Future<void>.delayed(Duration.zero);
+  }
+  fail("Timed out waiting for condition");
 }

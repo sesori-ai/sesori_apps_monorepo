@@ -11,6 +11,8 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -130,6 +132,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -189,6 +192,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -275,6 +279,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -303,7 +308,7 @@ void main() {
       expect(state.children.first.id, "child-1");
     });
 
-    test("refreshes only commands when a catalog update arrives during loading", () async {
+    test("re-reads the options cache when an options update arrives during loading", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final loadCompleter = Completer<SessionDetailLoadResult>();
 
@@ -314,30 +319,37 @@ void main() {
         ),
       ).thenAnswer((_) => loadCompleter.future);
       when(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "compact", template: "/compact")],
+        (_) async => SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const <AgentInfo>[],
+            providers: const <ProviderInfo>[],
+            providersConnectedOnly: true,
+            commands: [testCommandInfo(name: "compact", template: "/compact")],
+            lastUsedPromptDefaults: null,
           ),
+          isStale: false,
         ),
       );
 
       final cubit = createCubit(loadService: mockLoadService);
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "cursor")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "cursor", projectId: null)),
       );
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await Future<void>.delayed(Duration.zero);
 
       loadCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -361,15 +373,17 @@ void main() {
 
       await _awaitLoadedWithCommand(cubit, command: "compact");
       verify(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).called(1);
       verifyNever(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "cursor",
+          mode: any(named: "mode"),
         ),
       );
       verifyNever(
@@ -380,7 +394,7 @@ void main() {
       );
     });
 
-    test("keeps the newest command catalog when refreshes finish out of order", () async {
+    test("keeps the newest options catalog when re-reads finish out of order", () async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
@@ -390,6 +404,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -410,45 +425,47 @@ void main() {
           ),
         ),
       );
-      final responses = <Completer<ApiResponse<CommandListResponse>>>[];
+      final responses = <Completer<SessionOptionsRepositoryResult>>[];
       when(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).thenAnswer((_) {
-        final response = Completer<ApiResponse<CommandListResponse>>();
+        final response = Completer<SessionOptionsRepositoryResult>();
         responses.add(response);
         return response.future;
       });
+
+      SessionOptionsRepositoryResult catalogWith({required String command}) {
+        return SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const <AgentInfo>[],
+            providers: const <ProviderInfo>[],
+            providersConnectedOnly: true,
+            commands: [testCommandInfo(name: command, template: "/$command")],
+            lastUsedPromptDefaults: null,
+          ),
+          isStale: false,
+        );
+      }
 
       final cubit = createCubit(loadService: mockLoadService);
       await _awaitLoaded(cubit);
 
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await _awaitCondition(() => responses.length == 1);
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await _awaitCondition(() => responses.length == 2);
 
-      responses[1].complete(
-        ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "newest", template: "/newest")],
-          ),
-        ),
-      );
+      responses[1].complete(catalogWith(command: "newest"));
       await _awaitLoadedWithCommand(cubit, command: "newest");
-      responses[0].complete(
-        ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "stale", template: "/stale")],
-          ),
-        ),
-      );
+      responses[0].complete(catalogWith(command: "stale"));
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
@@ -459,6 +476,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       SessionDetailSnapshot snapshot({required bool? supportsPromptAttachments}) {
         return SessionDetailSnapshot(
+          areOptionsStale: false,
           bridgeQueuedPrompts: const [],
           projectId: "project-1",
           pluginId: "codex",
@@ -526,6 +544,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final refreshes = <Completer<SessionDetailLoadResult>>[];
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -641,6 +660,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -704,6 +724,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final firstAttempt = Completer<ApiResponse<void>>();
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
@@ -790,6 +811,7 @@ void main() {
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const supportedSnapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -809,6 +831,7 @@ void main() {
         isArchived: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -932,6 +955,7 @@ void main() {
     test("stale pre-disconnect failure cannot overwrite the reconnect load", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -1058,6 +1082,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1136,6 +1161,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1174,6 +1200,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1245,6 +1272,7 @@ void main() {
       );
 
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: const [],
         projectId: "project-1",
         pluginId: "opencode",
@@ -1347,6 +1375,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1409,6 +1438,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1495,6 +1525,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1570,6 +1601,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1645,6 +1677,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1713,6 +1746,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",

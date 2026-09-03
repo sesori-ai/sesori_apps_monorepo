@@ -110,7 +110,7 @@ class SessionListCubit({
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriCommandCatalogUpdated() ||
+            SesoriSessionOptionsUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||

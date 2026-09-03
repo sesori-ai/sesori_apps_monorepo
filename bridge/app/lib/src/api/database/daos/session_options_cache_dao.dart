@@ -21,6 +21,20 @@ class SessionOptionsCacheDao({required AppDatabase database}) extends DatabaseAc
         .getSingleOrNull();
   }
 
+  /// Project identifiers this plugin currently holds a project-scoped snapshot
+  /// for. A plugin-scoped plugin has no such rows and yields nothing.
+  Future<List<String>> getCachedProjectIds({required String pluginId}) async {
+    final rows =
+        await (select(sessionOptionsCacheTable)..where(
+              (table) =>
+                  table.pluginId.equals(pluginId) &
+                  table.scope.equalsValue(PluginSessionOptionsScope.project) &
+                  table.projectId.isNotNull(),
+            ))
+            .get();
+    return [for (final row in rows) ?row.projectId];
+  }
+
   Future<void> deleteRow({
     required String pluginId,
     required PluginSessionOptionsScope scope,

@@ -74,7 +74,15 @@ variant, and worktree mode, and creating the session with its first input.
   freshness window, and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
   the backend's answer did. The failure fallback never reports staleness, so a
-  failed refresh is not retried at once.
+  failed refresh is not retried at once. Both the New Session screen and a live
+  session honor that report; a live session has no refresh control of its own.
+- Every committed snapshot announces itself to clients as `session.options_updated`,
+  naming the plugin and, for a project-scoped catalog, the project. A plugin-scoped
+  catalog names no project because every project shares it. A live session showing
+  that plugin re-reads the cache without discovering, and re-validates its selected
+  agent, model, and variant against the result, so a withdrawn value is corrected
+  before the next send rather than by its rejection. Overlapping re-reads keep the
+  newest answer regardless of completion order.
 - One background refresh runs per selection, and an explicit refresh joins it
   rather than discovering twice. It joins only a refresh that can still deliver:
   one belonging to a superseded selection, or to options the user has since
@@ -96,9 +104,17 @@ variant, and worktree mode, and creating the session with its first input.
   complete cached one, and a moved project invalidates its entries. Rejected-selection
   invalidation keeps its epoch checks before serving or committing, so a retained
   snapshot invalidated during discovery is not served once.
-- Backend notifications use scoped event domains: Codex skill changes emit a
-  command-catalog invalidation rather than project activity, while MCP startup
-  changes remain MCP-tool events.
+- Backend notifications use scoped event domains: Codex skill changes invalidate
+  the options catalog rather than reporting project activity, while MCP startup
+  changes remain MCP-tool events. A backend change that names a session refreshes
+  that session's catalog; one that names none refreshes every project the plugin
+  already holds a snapshot for, and never discovers for a project it does not.
+- A plugin may declare start warm-up work that makes later requests faster.
+  The bridge runs it once a generation becomes routable and never waits on it,
+  so a slow or failing warm-up neither delays the request that triggered the
+  start nor retires a healthy generation. OpenCode uses it to force its command
+  catalog to index, because `GET /command` alone blocks on MCP server startup
+  and is given a longer read timeout for the same reason.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
   backend and no-ops for a superseded generation.
@@ -161,8 +177,8 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
+| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -198,6 +214,14 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.
+- A live session keeps serving options the bridge has already replaced, or only
+  corrects them when a send is rejected. An options update for another plugin or
+  another project changes a session's options, an announcement makes a client
+  discover rather than read its cache, an older overlapping re-read undoes a
+  newer one, or a background re-read raises a user-facing notice.
+- A start warm-up delays or fails a plugin start, runs more than once per
+  generation, or a slow first OpenCode command listing fails discovery and
+  silently leaves the previous catalog in place.
 - Recorded worktree, branch, base branch, or base commit disagrees with git.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.
@@ -252,7 +276,10 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
   `lib/src/repositories/`, `lib/src/trackers/`, and package tests
 - Contract:
-  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
-- Client: `client/module_core/lib/src/services/new_session_options_service.dart`
+  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
+  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`
+- Client: `client/module_core/lib/src/services/new_session_options_service.dart`,
+  `client/module_core/lib/src/services/session_detail_load_service.dart`,
+  `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-lifecycle`

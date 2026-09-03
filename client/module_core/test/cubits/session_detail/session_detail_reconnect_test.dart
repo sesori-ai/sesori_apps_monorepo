@@ -157,6 +157,7 @@ void main() {
     ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
+          areOptionsStale: false,
           bridgeQueuedPrompts: [],
           projectId: "project-1",
           pluginId: "opencode",
@@ -238,6 +239,7 @@ void main() {
 
     const loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
