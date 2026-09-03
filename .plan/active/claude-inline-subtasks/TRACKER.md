@@ -160,9 +160,9 @@ implementation PR. E2E testing is performed after each PR merges.
 
 | Done | Harness | Description | State |
 |---|---|---|---|
-| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
+| [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) |
 | [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
