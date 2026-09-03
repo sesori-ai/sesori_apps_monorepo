@@ -16,6 +16,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
       StreamController<NotificationOpenRequest>.broadcast();
 
   NotificationOpenRequest? _initialNotificationOpen;
+  Future<void>? _initialization;
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
 
@@ -29,10 +30,24 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize() {
     if (_initialized) {
-      return;
+      return Future<void>.value();
     }
+    final existing = _initialization;
+    if (existing != null) {
+      return existing;
+    }
+    final operation = _initialize();
+    _initialization = operation;
+    return operation.whenComplete(() {
+      if (identical(_initialization, operation)) {
+        _initialization = null;
+      }
+    });
+  }
+
+  Future<void> _initialize() async {
     // The Linux implementation does not expose application-launch details.
     // Notification clicks still arrive through the initialized response stream.
     final launchDetails = defaultTargetPlatform == TargetPlatform.linux
@@ -137,9 +152,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
   }
 
   @override
-  void cancelForSession({required String sessionId}) {
-    unawaited(_cancelForSession(sessionId: sessionId));
-  }
+  Future<void> cancelForSession({required String sessionId}) => _cancelForSession(sessionId: sessionId);
 
   Future<void> _cancelForSession({required String sessionId}) async {
     try {

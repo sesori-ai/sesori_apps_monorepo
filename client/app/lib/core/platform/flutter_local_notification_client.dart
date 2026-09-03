@@ -29,6 +29,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       StreamController<NotificationOpenRequest>.broadcast();
 
   NotificationOpenRequest? _initialNotificationOpen;
+  Future<void>? _initialization;
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
 
@@ -36,11 +37,24 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize() {
     if (_initialized) {
-      return;
+      return Future<void>.value();
     }
+    final existing = _initialization;
+    if (existing != null) {
+      return existing;
+    }
+    final operation = _initialize();
+    _initialization = operation;
+    return operation.whenComplete(() {
+      if (identical(_initialization, operation)) {
+        _initialization = null;
+      }
+    });
+  }
 
+  Future<void> _initialize() async {
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     _initialNotificationOpen = _notificationOpenFromPayload(
       payload: launchDetails?.didNotificationLaunchApp ?? false ? launchDetails?.notificationResponse?.payload : null,
@@ -180,9 +194,8 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   Future<void> cancelAll() => _plugin.cancelAll();
 
   @override
-  void cancelForSession({required String sessionId}) {
-    unawaited(_cancelForSession(sessionNotificationId(sessionId: sessionId)));
-  }
+  Future<void> cancelForSession({required String sessionId}) =>
+      _cancelForSession(sessionNotificationId(sessionId: sessionId));
 
   /// Dismisses every notification for a session, across the surfaces that may
   /// have rendered it:
@@ -192,7 +205,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   ///    posted as `(tag, 0)`: `cancel(0, tag: id)`.
   ///
   /// Each surface is cancelled independently and best-effort, so a failure on
-  /// one is logged and never blocks the other or escapes this fire-and-forget call.
+  /// one is logged and never blocks the other or escapes this operation.
   Future<void> _cancelForSession(int id) async {
     try {
       await cancel(id: id, tag: null);

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:flutter/foundation.dart" show TargetPlatform, debugDefaultTargetPlatformOverride;
@@ -56,6 +57,29 @@ void main() {
     expect(settings.linux, isNotNull);
     expect(settings.windows, isNotNull);
     verify(plugin.getNotificationAppLaunchDetails).called(1);
+  });
+
+  test("coalesces concurrent native initialization", () async {
+    final nativeInitialization = Completer<bool?>();
+    when(
+      () => plugin.initialize(
+        settings: any(named: "settings"),
+        onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+      ),
+    ).thenAnswer((_) => nativeInitialization.future);
+
+    final first = client.initialize();
+    final second = client.initialize();
+    nativeInitialization.complete(true);
+    await Future.wait<void>(<Future<void>>[first, second]);
+
+    verify(plugin.getNotificationAppLaunchDetails).called(1);
+    verify(
+      () => plugin.initialize(
+        settings: any(named: "settings"),
+        onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+      ),
+    ).called(1);
   });
 
   test("retries initialization after a native failure", () async {
@@ -201,8 +225,7 @@ void main() {
     when(() => plugin.cancel(id: any(named: "id"))).thenAnswer((_) async {});
     when(plugin.cancelAll).thenAnswer((_) async {});
 
-    client.cancelForSession(sessionId: "session-1");
-    await Future<void>.delayed(Duration.zero);
+    await client.cancelForSession(sessionId: "session-1");
     await client.cancelAll();
 
     verify(() => plugin.cancel(id: sessionNotificationId(sessionId: "session-1"))).called(1);
@@ -212,8 +235,7 @@ void main() {
   test("session cancellation failures stay best effort", () async {
     when(() => plugin.cancel(id: any(named: "id"))).thenThrow(StateError("native cancellation failed"));
 
-    client.cancelForSession(sessionId: "session-1");
-    await Future<void>.delayed(Duration.zero);
+    await client.cancelForSession(sessionId: "session-1");
 
     verify(() => plugin.cancel(id: sessionNotificationId(sessionId: "session-1"))).called(1);
   });

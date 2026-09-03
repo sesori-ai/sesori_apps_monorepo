@@ -143,6 +143,7 @@ void main() {
     host.onWindowResize();
     host.onWindowBlur();
     host.onWindowMinimize();
+    host.onWindowFocus();
     host.onWindowRestore();
     host.onWindowFocus();
 

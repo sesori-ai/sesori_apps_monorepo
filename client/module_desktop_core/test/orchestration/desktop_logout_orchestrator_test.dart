@@ -327,8 +327,9 @@ void main() {
     verifyInOrder([
       attentionService.suspendAndClearForLogout,
       () => authSession.logoutCurrentDevice(),
-      attentionService.resumeAfterLogoutAttempt,
+      attentionService.completeSuccessfulLogout,
     ]);
+    verifyNever(attentionService.resumeAfterLogoutAttempt);
   });
 
   test("attention cleanup failure does not prevent local logout", () async {

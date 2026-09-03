@@ -87,7 +87,7 @@ void main() {
     when(() => windowHost.show()).thenAnswer((_) async {});
     when(
       () => localNotificationClient.cancelForSession(sessionId: any(named: "sessionId")),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
 
     service = DesktopAttentionService(
       connectionService: connectionService,
@@ -138,6 +138,84 @@ void main() {
 
     verify(() => windowHost.show()).called(1);
     verify(() => routeDispatcher.replaceStack(stack: any(named: "stack"))).called(1);
+  });
+
+  test("tracks window state while native initialization is pending", () async {
+    final initialization = Completer<void>();
+    when(() => windowHost.currentState).thenReturn(WindowHostState.focused);
+    when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).thenAnswer((_) async {});
+
+    final start = service.start();
+    await _flushAsync();
+    windowStates.add(WindowHostState.unfocused);
+    initialization.complete();
+    await start;
+    connectionEvents.add(_permissionAsked());
+    await pumpEventQueue(times: 20);
+
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: "session-root",
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: "user-1",
+      ),
+    ).called(1);
+  });
+
+  test("captures relay attention while native initialization is pending", () async {
+    final initialization = Completer<void>();
+    when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).thenAnswer((_) async {});
+
+    final start = service.start();
+    await _flushAsync();
+    connectionEvents.add(_permissionAsked());
+    initialization.complete();
+    await start;
+    await pumpEventQueue(times: 20);
+
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: "Permission approval needed",
+        category: any(named: "category"),
+        sessionId: "session-root",
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: "user-1",
+      ),
+    ).called(1);
   });
 
   test("retries transient native initialization on a later attention event", () async {
@@ -496,6 +574,62 @@ void main() {
     verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
   });
 
+  test("serializes a replacement alert after the resolved alert cancellation", () async {
+    final cancellation = Completer<void>();
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).thenAnswer((_) async {});
+    when(
+      () => localNotificationClient.cancelForSession(sessionId: "session-root"),
+    ).thenAnswer((_) => cancellation.future);
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    await pumpEventQueue(times: 20);
+    connectionEvents.add(_permissionReplied(requestId: "permission-1"));
+    await pumpEventQueue(times: 20);
+    verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
+
+    connectionEvents.add(_questionAsked());
+    await pumpEventQueue(times: 20);
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: "Permission approval needed",
+        category: any(named: "category"),
+        sessionId: "session-root",
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).called(1);
+
+    cancellation.complete();
+    await pumpEventQueue(times: 20);
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: "Question waiting for your response",
+        category: any(named: "category"),
+        sessionId: "session-root",
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).called(1);
+  });
+
   test("serializes native writes so the latest request owns the session alert", () async {
     final firstWrite = Completer<void>();
     var showCalls = 0;
@@ -605,12 +739,13 @@ void main() {
     verify(() => localNotificationClient.cancelForSession(sessionId: "session-root")).called(1);
   });
 
-  test("disabling attention persists the preference and clears delivered alerts", () async {
+  test("disabling attention clears delivered alerts when initialization is unavailable", () async {
     when(
       () => desktopInstanceRepository.writeAttentionPreference(
         preference: DesktopAttentionPreference.disabled,
       ),
     ).thenAnswer((_) async {});
+    when(localNotificationClient.initialize).thenThrow(StateError("native initialization unavailable"));
     when(localNotificationClient.cancelAll).thenAnswer((_) async {});
     await service.start();
 
@@ -625,7 +760,8 @@ void main() {
     verify(localNotificationClient.cancelAll).called(1);
   });
 
-  test("authentication loss clears alerts and rejects their later opens", () async {
+  test("authentication loss attempts cleanup when initialization is unavailable", () async {
+    when(localNotificationClient.initialize).thenThrow(StateError("native initialization unavailable"));
     await service.start();
 
     authStates.add(const AuthState.unauthenticated());
@@ -741,6 +877,56 @@ void main() {
     verify(localNotificationClient.cancelAll).called(1);
   });
 
+  test("completed logout discards old alerts without keeping attention suspended", () async {
+    when(() => windowHost.currentState).thenReturn(WindowHostState.focused);
+    when(
+      () => sessionRepository.getSession(sessionId: "session-root"),
+    ).thenAnswer((_) async => ApiResponse<Session>.success(_session));
+    when(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    ).thenAnswer((_) async {});
+    await service.start();
+
+    connectionEvents.add(_permissionAsked());
+    await service.suspendAndClearForLogout();
+    service.completeSuccessfulLogout();
+    windowStates.add(WindowHostState.unfocused);
+    await _flushAsync();
+    verifyNever(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: any(named: "body"),
+        category: any(named: "category"),
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: any(named: "accountId"),
+      ),
+    );
+
+    connectionEvents.add(_questionAsked());
+    await pumpEventQueue(times: 20);
+    verify(
+      () => localNotificationClient.show(
+        title: any(named: "title"),
+        body: "Question waiting for your response",
+        category: any(named: "category"),
+        sessionId: "session-root",
+        projectId: any(named: "projectId"),
+        sessionTitle: any(named: "sessionTitle"),
+        accountId: "user-1",
+      ),
+    ).called(1);
+  });
+
   test("notification opens focus the window and replace the session stack", () async {
     await service.start();
 
@@ -774,6 +960,28 @@ void main() {
         ).buildPath(),
       ],
     );
+  });
+
+  test("does not route an old-account notification after window focus awaits", () async {
+    final windowFocus = Completer<void>();
+    when(() => windowHost.show()).thenAnswer((_) => windowFocus.future);
+    await service.start();
+
+    notificationOpens.add(
+      const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-root",
+        sessionTitle: "Fix the build",
+        accountId: "user-1",
+      ),
+    );
+    await _flushAsync();
+    authStates.add(const AuthState.authenticated(user: _otherUser));
+    windowFocus.complete();
+    await _flushAsync();
+
+    verify(() => windowHost.show()).called(1);
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
   });
 
   test("drops an initial open when no local session can be restored", () async {

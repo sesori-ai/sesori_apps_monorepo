@@ -67,9 +67,9 @@ class DesktopLogoutOrchestrator({
       logoutOperation: rawOperation,
       attentionCleanup: attentionCleanup,
     );
+    final finalizedOperation = _finalizeAttentionAfterLogout(operation: joinedOperation);
     late final Future<DesktopLogoutOutcome> operation;
-    operation = joinedOperation.whenComplete(() {
-      _attentionService.resumeAfterLogoutAttempt();
+    operation = finalizedOperation.whenComplete(() {
       _logoutTracker.markIdle();
       if (identical(_activeLogout, operation)) {
         _activeLogout = null;
@@ -89,6 +89,23 @@ class DesktopLogoutOrchestrator({
       // Early persistence/stop failures must not resume attention while the
       // service's asynchronous cancel-all operation is still completing.
       await attentionCleanup;
+    }
+  }
+
+  Future<DesktopLogoutOutcome> _finalizeAttentionAfterLogout({
+    required Future<DesktopLogoutOutcome> operation,
+  }) async {
+    try {
+      final outcome = await operation;
+      if (outcome == DesktopLogoutOutcome.completed) {
+        _attentionService.completeSuccessfulLogout();
+      } else {
+        _attentionService.resumeAfterLogoutAttempt();
+      }
+      return outcome;
+    } on Object {
+      _attentionService.resumeAfterLogoutAttempt();
+      rethrow;
     }
   }
 

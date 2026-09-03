@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
@@ -10,12 +11,81 @@ import "package:sesori_shared/sesori_shared.dart";
 class MockFlutterLocalNotificationsPlugin() extends Mock implements FlutterLocalNotificationsPlugin;
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(
+      const InitializationSettings(
+        android: AndroidInitializationSettings("@drawable/ic_notification"),
+        iOS: DarwinInitializationSettings(),
+        macOS: DarwinInitializationSettings(),
+      ),
+    );
+  });
+
   late MockFlutterLocalNotificationsPlugin mockPlugin;
   late FlutterLocalNotificationClient client;
 
   setUp(() {
     mockPlugin = MockFlutterLocalNotificationsPlugin();
     client = FlutterLocalNotificationClient(plugin: mockPlugin);
+    when(mockPlugin.getNotificationAppLaunchDetails).thenAnswer((_) async => null);
+    when(
+      () => mockPlugin.initialize(
+        settings: any(named: "settings"),
+        onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+      ),
+    ).thenAnswer((_) async => true);
+  });
+
+  tearDown(() => client.dispose());
+
+  group("initialize", () {
+    test("coalesces concurrent native initialization", () async {
+      final nativeInitialization = Completer<bool?>();
+      when(
+        () => mockPlugin.initialize(
+          settings: any(named: "settings"),
+          onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+        ),
+      ).thenAnswer((_) => nativeInitialization.future);
+
+      final first = client.initialize();
+      final second = client.initialize();
+      nativeInitialization.complete(true);
+      await Future.wait<void>(<Future<void>>[first, second]);
+
+      verify(mockPlugin.getNotificationAppLaunchDetails).called(1);
+      verify(
+        () => mockPlugin.initialize(
+          settings: any(named: "settings"),
+          onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+        ),
+      ).called(1);
+    });
+
+    test("retries after native initialization fails", () async {
+      var attempts = 0;
+      when(
+        () => mockPlugin.initialize(
+          settings: any(named: "settings"),
+          onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+        ),
+      ).thenAnswer((_) async {
+        if (attempts++ == 0) {
+          throw StateError("native initialization failed");
+        }
+        return true;
+      });
+
+      await expectLater(client.initialize(), throwsStateError);
+      await client.initialize();
+
+      verify(
+        () => mockPlugin.initialize(
+          settings: any(named: "settings"),
+          onDidReceiveNotificationResponse: any(named: "onDidReceiveNotificationResponse"),
+        ),
+      ).called(2);
+    });
   });
 
   group("cancel", () {
@@ -45,8 +115,7 @@ void main() {
         ),
       ).thenAnswer((_) async {});
 
-      client.cancelForSession(sessionId: sessionId);
-      await Future<void>.delayed(Duration.zero);
+      await client.cancelForSession(sessionId: sessionId);
 
       // On a non-Android host the integer id covers foreground + iOS/macOS
       // delivered notifications; the Android (tag, 0) sweep is a no-op here.
@@ -61,8 +130,7 @@ void main() {
         ),
       ).thenThrow(Exception("cancel boom"));
 
-      client.cancelForSession(sessionId: "ses_abc");
-      await Future<void>.delayed(Duration.zero);
+      await client.cancelForSession(sessionId: "ses_abc");
 
       verify(
         () => mockPlugin.cancel(

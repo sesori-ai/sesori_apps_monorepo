@@ -11,6 +11,7 @@ class DesktopAttentionPreferenceCubit({required final DesktopAttentionService se
     extends Cubit<DesktopAttentionPreference> {
   final DesktopAttentionService _service = service;
   late final StreamSubscription<DesktopAttentionPreference> _subscription;
+  Future<void> _preferenceWrites = Future<void>.value();
 
   this : super(service.currentPreference) {
     _subscription = _service.preference.listen(
@@ -25,7 +26,13 @@ class DesktopAttentionPreferenceCubit({required final DesktopAttentionService se
     );
   }
 
-  Future<void> setEnabled({required bool enabled}) async {
+  Future<void> setEnabled({required bool enabled}) {
+    final operation = _preferenceWrites.then((_) => _setEnabled(enabled: enabled));
+    _preferenceWrites = operation;
+    return operation;
+  }
+
+  Future<void> _setEnabled({required bool enabled}) async {
     final preference = enabled ? DesktopAttentionPreference.enabled : DesktopAttentionPreference.disabled;
     try {
       await _service.setPreference(preference: preference);

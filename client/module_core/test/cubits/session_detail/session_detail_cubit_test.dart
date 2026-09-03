@@ -2850,7 +2850,7 @@ void _stubAllDefaults(
     () => notificationCanceller.cancelForSession(
       sessionId: any(named: "sessionId"),
     ),
-  ).thenReturn(null);
+  ).thenAnswer((_) async {});
 
   when(
     () => sessionService.sendMessage(

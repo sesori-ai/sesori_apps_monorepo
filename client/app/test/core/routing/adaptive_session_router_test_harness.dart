@@ -82,6 +82,11 @@ class AdaptiveSessionRouterTestHarness() {
     maxDurationReachedController = StreamController<void>.broadcast();
     rootNavigatorKey = GlobalKey<NavigatorState>();
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);

@@ -116,7 +116,9 @@ class FlutterWindowHost.forTesting({
 
   @override
   void onWindowFocus() {
-    _emitState(state: WindowHostState.focused);
+    if (_currentState != WindowHostState.hidden) {
+      _emitState(state: WindowHostState.focused);
+    }
   }
 
   @override

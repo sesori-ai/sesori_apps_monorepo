@@ -191,6 +191,11 @@ void main() {
       ),
     );
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEvents.stream);
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);

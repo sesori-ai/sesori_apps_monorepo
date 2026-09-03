@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -37,6 +39,33 @@ void main() {
 
     verify(
       () => service.setPreference(preference: DesktopAttentionPreference.disabled),
+    ).called(1);
+  });
+
+  test("serializes overlapping preference intents", () async {
+    final firstWrite = Completer<void>();
+    when(
+      () => service.setPreference(preference: DesktopAttentionPreference.disabled),
+    ).thenAnswer((_) => firstWrite.future);
+    when(
+      () => service.setPreference(preference: DesktopAttentionPreference.enabled),
+    ).thenAnswer((_) async {});
+
+    final disable = cubit.setEnabled(enabled: false);
+    final enable = cubit.setEnabled(enabled: true);
+    await Future<void>.delayed(Duration.zero);
+
+    verify(
+      () => service.setPreference(preference: DesktopAttentionPreference.disabled),
+    ).called(1);
+    verifyNever(
+      () => service.setPreference(preference: DesktopAttentionPreference.enabled),
+    );
+
+    firstWrite.complete();
+    await Future.wait<void>(<Future<void>>[disable, enable]);
+    verify(
+      () => service.setPreference(preference: DesktopAttentionPreference.enabled),
     ).called(1);
   });
 

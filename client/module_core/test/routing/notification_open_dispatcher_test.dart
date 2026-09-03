@@ -284,7 +284,7 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
   Future<NotificationOpenRequest?>? initialOpenRequestFuture;
 
   @override
-  void cancelForSession({required String sessionId}) {}
+  Future<void> cancelForSession({required String sessionId}) async {}
 
   @override
   Future<void> cancelAll() async {}
