@@ -49,6 +49,7 @@ class CodexSessionService({
   final Set<String> _loadedThreads = {};
   final Map<String, String> _threadModels = {};
   final Set<String> _announcedSubAgentThreadIds = {};
+  final Set<String> _deletedSubAgentThreadIds = {};
 
   void attachAppServerRepositories({
     required CodexThreadRepository threadRepository,
@@ -67,6 +68,7 @@ class CodexSessionService({
     _loadedThreads.clear();
     _threadModels.clear();
     _announcedSubAgentThreadIds.clear();
+    _deletedSubAgentThreadIds.clear();
     _subAgentTracker.clear();
   }
 
@@ -142,7 +144,12 @@ class CodexSessionService({
     required String? agentPath,
     required PluginSessionStatus status,
   }) async {
-    if (!_announcedSubAgentThreadIds.add(childThreadId)) return null;
+    if (_deletedSubAgentThreadIds.contains(parentThreadId) ||
+        _deletedSubAgentThreadIds.contains(childThreadId) ||
+        !_announcedSubAgentThreadIds.add(childThreadId)) {
+      return null;
+    }
+    final threadRepository = _connectedThreadRepository;
     // Record the activity's authoritative ancestry before best-effort
     // `thread/read`: approval requests arrive on an independent stream and
     // must resolve to the root even while that enrichment is in flight. A
@@ -171,8 +178,22 @@ class CodexSessionService({
     // child as pending now so a root completion cannot slip through that gap.
     final startedStatus = _isActiveStatus(status) ? status : const PluginSessionStatus.busy();
     _subAgentTracker.setChildActive(childId: childThreadId, active: true);
+    CodexThreadRecord? read;
     try {
-      final read = await _connectedThreadRepository.readThread(threadId: childThreadId);
+      read = await threadRepository.readThread(threadId: childThreadId);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[codex] failed to read sub-agent thread $childThreadId of $parentThreadId; using the activity item",
+        error,
+        stackTrace,
+      );
+    }
+    if (!identical(_threadRepository, threadRepository) ||
+        _deletedSubAgentThreadIds.contains(parentThreadId) ||
+        _deletedSubAgentThreadIds.contains(childThreadId)) {
+      return null;
+    }
+    if (read != null) {
       child = CodexThreadRecord(
         id: childThreadId,
         name: read.agentNickname ?? read.name ?? agentPath,
@@ -185,12 +206,6 @@ class CodexSessionService({
         agentNickname: read.agentNickname,
       );
       _subAgentTracker.replaceChild(child: child);
-    } on Object catch (error, stackTrace) {
-      Log.w(
-        "[codex] failed to read sub-agent thread $childThreadId of $parentThreadId; using the activity item",
-        error,
-        stackTrace,
-      );
     }
     return CodexSubAgentThreadAnnouncement(
       child: child,
@@ -205,7 +220,11 @@ class CodexSessionService({
 
   Set<String> get deferredRootIds => _subAgentTracker.deferredRootIds;
 
-  bool isTrackedChild({required String sessionId}) => _subAgentTracker.isChild(sessionId: sessionId);
+  bool isActiveTrackedChild({required String sessionId}) => _subAgentTracker.isChildActive(sessionId: sessionId);
+
+  void markSessionsDeleted({required Iterable<String> sessionIds}) {
+    _deletedSubAgentThreadIds.addAll(sessionIds);
+  }
 
   /// The source sessions whose pending input belongs on [sessionId]'s screen,
   /// plus the top-most root id each snapshot should use for display routing.
@@ -228,7 +247,12 @@ class CodexSessionService({
     required CodexThreadRecord thread,
     required PluginSessionStatus status,
   }) {
-    if (thread.parentId == null) return;
+    final parentId = thread.parentId;
+    if (parentId == null ||
+        _deletedSubAgentThreadIds.contains(parentId) ||
+        _deletedSubAgentThreadIds.contains(thread.id)) {
+      return;
+    }
     _subAgentTracker.record(child: thread);
     _subAgentTracker.setChildActive(childId: thread.id, active: _isActiveStatus(status));
   }
@@ -276,32 +300,40 @@ class CodexSessionService({
 
   Map<String, PluginSessionStatus> effectiveSessionStatuses({
     required Map<String, PluginSessionStatus> ownStatuses,
-  }) => Map.unmodifiable({
-    for (final entry in ownStatuses.entries)
-      entry.key: _isActiveStatus(entry.value) || _subAgentTracker.busyChildIds(rootId: entry.key).isEmpty
-          ? entry.value
-          : const PluginSessionStatus.busy(),
-  });
+  }) {
+    final effective = Map<String, PluginSessionStatus>.of(ownStatuses);
+    for (final rootId in _subAgentTracker.activeRootIds) {
+      if (!_isActiveStatus(effective[rootId])) {
+        effective[rootId] = const PluginSessionStatus.busy();
+      }
+    }
+    return Map.unmodifiable(effective);
+  }
 
   List<PluginProjectActivitySummary> getActiveSessionsSummary({
     required Map<String, PluginSessionStatus> ownStatuses,
     required Set<String> pendingInputSessionIds,
     required Map<String, String> projectIdBySession,
   }) {
+    final rootSessionIds = {
+      for (final sessionId in ownStatuses.keys)
+        if (!_subAgentTracker.isChild(sessionId: sessionId)) sessionId,
+      ..._subAgentTracker.activeRootIds,
+      for (final sessionId in pendingInputSessionIds) _subAgentTracker.rootOf(sessionId: sessionId) ?? sessionId,
+    };
     final byProject = <String, List<PluginActiveSession>>{};
-    for (final entry in ownStatuses.entries) {
-      if (_subAgentTracker.isChild(sessionId: entry.key)) continue;
-      final running = _isActiveStatus(entry.value);
-      final descendants = _subAgentTracker.descendantsOf(parentId: entry.key);
+    for (final sessionId in rootSessionIds) {
+      final running = _isActiveStatus(ownStatuses[sessionId]);
+      final descendants = _subAgentTracker.descendantsOf(parentId: sessionId);
       final awaitingInput =
-          pendingInputSessionIds.contains(entry.key) ||
+          pendingInputSessionIds.contains(sessionId) ||
           descendants.any((child) => pendingInputSessionIds.contains(child.id));
-      final busyChildIds = _subAgentTracker.busyChildIds(rootId: entry.key);
+      final busyChildIds = _subAgentTracker.busyChildIds(rootId: sessionId);
       if (!running && !awaitingInput && busyChildIds.isEmpty) continue;
-      final projectId = projectIdBySession[entry.key] ?? normalizeProjectDirectory(directory: _launchDirectory);
+      final projectId = projectIdBySession[sessionId] ?? directoryForSession(sessionId: sessionId);
       (byProject[projectId] ??= []).add(
         PluginActiveSession(
-          id: entry.key,
+          id: sessionId,
           mainAgentRunning: running,
           awaitingInput: awaitingInput,
           isRetrying: false,
@@ -355,6 +387,7 @@ class CodexSessionService({
   /// when the named session itself was a child of a retained root.
   Future<List<BridgeSseEvent>> deleteSessionSubtree({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) return const [];
+    markSessionsDeleted(sessionIds: sessionIds);
     for (final sessionId in sessionIds) {
       _subAgentTracker.setChildActive(childId: sessionId, active: false);
     }
@@ -362,7 +395,6 @@ class CodexSessionService({
     for (final sessionId in sessionIds.reversed) {
       await _deleteSession(sessionId: sessionId);
     }
-    _announcedSubAgentThreadIds.removeAll(sessionIds);
     _subAgentTracker.forget(sessionId: sessionIds.first);
     return releasedRoot == null
         ? const []

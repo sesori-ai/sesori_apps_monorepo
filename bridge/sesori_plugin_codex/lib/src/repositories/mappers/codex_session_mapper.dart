@@ -9,15 +9,23 @@ import "../models/codex_thread_record.dart";
 class const CodexSessionMapper() {
   CodexThreadRecord mapPersistedThread({required CodexSessionRecord record}) => CodexThreadRecord(
     id: record.id,
-    name: record.threadName ?? record.agentNickname,
-    directory: record.cwd,
+    name: _usefulText(record.threadName) ?? _usefulText(record.agentNickname),
+    directory: switch (_usefulText(record.cwd)) {
+      final directory? => normalizeProjectDirectory(directory: directory),
+      null => null,
+    },
     createdAt: record.createdAt?.millisecondsSinceEpoch,
     updatedAt: record.updatedAt?.millisecondsSinceEpoch,
     model: record.model,
     modelProvider: record.modelProvider,
     parentId: record.parentId,
-    agentNickname: record.agentNickname,
+    agentNickname: _usefulText(record.agentNickname),
   );
+
+  String? _usefulText(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
 
   PluginSession mapThread({
     required CodexThreadRecord record,

@@ -582,6 +582,12 @@ void main() {
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing-child"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing-child"));
       expect(plugin.currentWorkState, PluginWorkState.busy);
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses["t-existing-child"], isA<PluginSessionStatusBusy>());
+      expect(statuses["t-existing-root"], isA<PluginSessionStatusBusy>());
+      final summary = plugin.getActiveSessionsSummary();
+      expect(summary.single.activeSessions.single.id, "t-existing-root");
+      expect(summary.single.activeSessions.single.childSessionIds, ["t-existing-child"]);
 
       final renamed = plugin.events
           .where(
@@ -675,6 +681,11 @@ void main() {
       final pending = await plugin.getPendingPermissions(sessionId: rootId);
       expect(pending.single.sessionID, childId);
       expect(pending.single.displaySessionId, rootId);
+      final summary = plugin.getActiveSessionsSummary();
+      final active = summary.single.activeSessions.single;
+      expect(active.id, rootId);
+      expect(active.mainAgentRunning, isFalse);
+      expect(active.awaitingInput, isTrue);
     });
 
     test("sendPrompt treats an omitted agent as Default so it replaces Plan mode", () async {
@@ -2836,19 +2847,9 @@ void main() {
       await subscription.cancel();
     });
 
-    test("a child stop before turn/started interrupts as soon as the turn id arrives", () async {
+    test("a child stop while thread/read is pending interrupts when the turn id arrives", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
-        const _Response(
-          result: {
-            "thread": {
-              "id": "child-pending-start",
-              "parentThreadId": "root-pending-start",
-              "agentNickname": "Raman",
-              "cwd": "/work/sample",
-            },
-          },
-        ),
       ]);
       Future<T> next<T extends BridgeSseEvent>(bool Function(T event) where) => plugin.events
           .where((event) => event is T && where(event))
@@ -2867,6 +2868,11 @@ void main() {
         "threadId": "child-pending-start",
         "status": {"type": "idle"},
       });
+      fake.holdNextResponse("thread/read");
+      final readRequested = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "thread/read" && !readRequested.isCompleted) readRequested.complete();
+      };
       final childCreated = next<BridgeSseSessionCreated>(
         (event) => event.info["id"] == "child-pending-start",
       );
@@ -2880,6 +2886,29 @@ void main() {
           "agentPath": "/root/sleeper",
         },
       });
+      await readRequested.future.timeout(const Duration(seconds: 1));
+      expect(
+        await plugin.abortSession(
+          sessionId: "child-pending-start",
+          subAgents: PluginAbortSubAgentPolicy.stop,
+        ),
+        isA<PluginAbortAccepted>(),
+      );
+      expect(fake.sentMethods, isNot(contains("turn/interrupt")));
+      fake.respondToHeld(
+        "thread/read",
+        const _Response(
+          result: {
+            "thread": {
+              "id": "child-pending-start",
+              "parentThreadId": "root-pending-start",
+              "agentNickname": "Raman",
+              "cwd": "/work/sample",
+            },
+          },
+        ),
+      );
+      fake.onRequest = null;
       await childCreated;
 
       final rootUpdated = next<BridgeSseSessionUpdated>(
@@ -2894,15 +2923,6 @@ void main() {
         "status": {"type": "idle"},
       });
       await rootUpdated;
-
-      expect(
-        await plugin.abortSession(
-          sessionId: "child-pending-start",
-          subAgents: PluginAbortSubAgentPolicy.stop,
-        ),
-        isA<PluginAbortAccepted>(),
-      );
-      expect(fake.sentMethods, isNot(contains("turn/interrupt")));
 
       final interrupted = Completer<void>();
       fake.onRequest = (method) {
@@ -2965,6 +2985,12 @@ void main() {
       final childCreated = plugin.events
           .where((event) => event is BridgeSseSessionCreated && event.info["id"] == "child-1")
           .first;
+      final childBusy = plugin.events
+          .where(
+            (event) =>
+                event is BridgeSseSessionStatus && event.sessionID == "child-1" && event.status["type"] == "busy",
+          )
+          .first;
       fake.pushNotification("item/started", {
         "threadId": "root-1",
         "item": {
@@ -2976,16 +3002,6 @@ void main() {
         },
       });
       await childCreated.timeout(const Duration(seconds: 1));
-      final childBusy = plugin.events
-          .where(
-            (event) =>
-                event is BridgeSseSessionStatus && event.sessionID == "child-1" && event.status["type"] == "busy",
-          )
-          .first;
-      fake.pushNotification("turn/started", {
-        "threadId": "child-1",
-        "turn": {"id": "child-turn"},
-      });
       await childBusy.timeout(const Duration(seconds: 1));
 
       fake.respondInOrder([
@@ -2994,6 +3010,22 @@ void main() {
       ]);
       await plugin.deleteSession("root-1");
 
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]),
+        ["root-1"],
+      );
+      final pendingChildInterrupted = Completer<void>();
+      fake.onRequest = (method) {
+        if (method == "turn/interrupt" && !pendingChildInterrupted.isCompleted) {
+          pendingChildInterrupted.complete();
+        }
+      };
+      fake.pushNotification("turn/started", {
+        "threadId": "child-1",
+        "turn": {"id": "child-turn"},
+      });
+      await pendingChildInterrupted.future.timeout(const Duration(seconds: 1));
+      fake.onRequest = null;
       expect(
         fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
         {"root-1", "child-1"},

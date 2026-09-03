@@ -26,6 +26,53 @@ import "package:test/test.dart";
 import "support/codex_plugin_test_factory.dart";
 
 void main() {
+  group("CodexSessionMapper", () {
+    test("normalizes persisted child display metadata", () {
+      CodexSessionRecord record({
+        required String id,
+        required String? cwd,
+        required String? threadName,
+        required String? agentNickname,
+      }) => CodexSessionRecord(
+        id: id,
+        rolloutPath: "/rollouts/$id.jsonl",
+        cwd: cwd,
+        threadName: threadName,
+        createdAt: null,
+        updatedAt: null,
+        cliVersion: null,
+        modelProvider: null,
+        model: null,
+        agentNickname: agentNickname,
+        parentId: "root-1",
+      );
+      const mapper = CodexSessionMapper();
+
+      final normalized = mapper.mapPersistedThread(
+        record: record(
+          id: "child-1",
+          cwd: " /repo/./app/ ",
+          threadName: "  ",
+          agentNickname: " Raman ",
+        ),
+      );
+      final blank = mapper.mapPersistedThread(
+        record: record(
+          id: "child-2",
+          cwd: "  ",
+          threadName: " ",
+          agentNickname: " ",
+        ),
+      );
+
+      expect(normalized.name, "Raman");
+      expect(normalized.agentNickname, "Raman");
+      expect(normalized.directory, "/repo/app");
+      expect(blank.name, isNull);
+      expect(blank.directory, isNull);
+    });
+  });
+
   group("CodexCatalogRepository sub-agent rollouts", () {
     test("reads sub-agent parentage and nickname from session metadata", () async {
       final repository = CodexCatalogRepository(rolloutApi: _HeaderRolloutApi());
@@ -264,6 +311,64 @@ void main() {
       expect(announcement.status, isA<PluginSessionStatusBusy>());
     });
 
+    test("suppresses in-flight and delayed announcements for a deleted child", () async {
+      final threadRepository = _GatedThreadRepository();
+      final service = _newService(
+        threadRepository: threadRepository,
+        catalogRepository: _StubCatalogRepository(records: const []),
+        subAgentTracker: null,
+      );
+      final announcement = service.handleSubAgentStarted(
+        childThreadId: "child-1",
+        parentThreadId: "root-1",
+        parentDirectory: "/repo/app",
+        agentPath: "worker",
+        status: const PluginSessionStatus.idle(),
+      );
+      await threadRepository.readStarted.future;
+
+      await service.deleteSessionSubtree(sessionIds: const ["child-1"]);
+      threadRepository.complete(
+        record: _liveChild(id: "child-1", parentId: "root-1"),
+      );
+
+      expect(await announcement, isNull);
+      expect(
+        await service.handleSubAgentStarted(
+          childThreadId: "child-1",
+          parentThreadId: "root-1",
+          parentDirectory: "/repo/app",
+          agentPath: "worker",
+          status: const PluginSessionStatus.busy(),
+        ),
+        isNull,
+      );
+    });
+
+    test("suppresses an in-flight announcement from a detached connection", () async {
+      final threadRepository = _GatedThreadRepository();
+      final service = _newService(
+        threadRepository: threadRepository,
+        catalogRepository: null,
+        subAgentTracker: null,
+      );
+      final announcement = service.handleSubAgentStarted(
+        childThreadId: "child-1",
+        parentThreadId: "root-1",
+        parentDirectory: "/repo/app",
+        agentPath: "worker",
+        status: const PluginSessionStatus.idle(),
+      );
+      await threadRepository.readStarted.future;
+
+      service.detachAppServerRepositories();
+      threadRepository.complete(
+        record: _liveChild(id: "child-1", parentId: "root-1"),
+      );
+
+      expect(await announcement, isNull);
+    });
+
     test("merges persisted children with service-owned live children", () async {
       final tracker = CodexSubAgentTracker();
       tracker.record(
@@ -352,7 +457,6 @@ void main() {
         status: const PluginSessionStatus.busy(),
       );
       const ownStatuses = <String, PluginSessionStatus>{
-        "root-1": PluginSessionStatus.idle(),
         "child-1": PluginSessionStatus.busy(),
       };
 
@@ -410,6 +514,30 @@ void main() {
         BridgeSseProjectUpdated,
       ]);
       expect(service.deferredRootIds, isEmpty);
+    });
+
+    test("includes a hydrated pending child when no live statuses exist", () {
+      final tracker = CodexSubAgentTracker();
+      tracker.record(
+        child: _liveChild(id: "child-1", parentId: "root-1"),
+      );
+      final service = _newService(
+        threadRepository: _ReadingThreadRepository(read: null, error: null),
+        catalogRepository: null,
+        subAgentTracker: tracker,
+      );
+
+      final summary = service.getActiveSessionsSummary(
+        ownStatuses: const {},
+        pendingInputSessionIds: const {"child-1"},
+        projectIdBySession: const {"root-1": "/repo/app"},
+      );
+
+      final active = summary.single.activeSessions.single;
+      expect(active.id, "root-1");
+      expect(active.mainAgentRunning, isFalse);
+      expect(active.awaitingInput, isTrue);
+      expect(active.childSessionIds, isEmpty);
     });
 
     test("idles an active child before releasing its root when the thread closes", () {
@@ -631,6 +759,24 @@ class _ReadingThreadRepository({required final CodexThreadRecord? read, required
     if (record == null) throw StateError("no read fixture");
     return record;
   }
+}
+
+class _GatedThreadRepository() extends CodexThreadRepository {
+  this
+    : super(
+        appServerApi: CodexAppServerApi(client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0")),
+      );
+
+  final Completer<void> readStarted = Completer<void>();
+  final Completer<CodexThreadRecord> _response = Completer<CodexThreadRecord>();
+
+  @override
+  Future<CodexThreadRecord> readThread({required String threadId}) {
+    if (!readStarted.isCompleted) readStarted.complete();
+    return _response.future;
+  }
+
+  void complete({required CodexThreadRecord record}) => _response.complete(record);
 }
 
 class _StubCatalogRepository({required final List<CodexSessionRecord> records}) extends CodexCatalogRepository {

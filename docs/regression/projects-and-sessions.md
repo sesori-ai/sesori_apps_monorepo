@@ -184,7 +184,10 @@ state.
   keep per-project pages root-only, preserve children in full enumeration, and
   retain the metadata nickname when the session index has no usable title.
   Deleting a Codex session removes its persisted and live descendant subtree
-  before the bridge deletes the matching database family.
+  before the bridge deletes the matching database family. A child deleted
+  before `turn/started` is interrupted when its turn id arrives, while in-flight
+  or delayed spawn activity cannot re-announce the deleted subtree during that
+  app-server connection.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and

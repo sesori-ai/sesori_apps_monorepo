@@ -315,7 +315,13 @@ class CodexPlugin._({
       return;
     }
     final threadId = notification.params["threadId"] as String?;
-    if (threadId != null && _deletedThreadIds.contains(threadId)) return;
+    if (threadId != null && _deletedThreadIds.contains(threadId)) {
+      await _interruptDeletedThreadIfStarted(
+        notification: notification,
+        threadId: threadId,
+      );
+      return;
+    }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
     if (_subAgentItemParser.parse(notification: notification) case CodexSubAgentActivity(
       lifecycle: CodexCorrelatableItemLifecycle.started,
@@ -590,6 +596,35 @@ class CodexPlugin._({
     if (value is! String) return null;
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
+  }
+
+  Future<void> _interruptDeletedThreadIfStarted({
+    required CodexServerNotification notification,
+    required String threadId,
+  }) async {
+    if (notification.method != "turn/started" || !_interruptOnTurnStartThreadIds.contains(threadId)) return;
+    final turnId = _notificationTurnId(notification.params);
+    if (turnId == null) {
+      Log.w("[codex] deleted session $threadId started without an interruptible turn id");
+      return;
+    }
+    final client = _client;
+    if (client == null) return;
+    _interruptOnTurnStartThreadIds.remove(threadId);
+    try {
+      await client.request(
+        method: "turn/interrupt",
+        params: {"threadId": threadId, "turnId": turnId},
+      );
+    } on CodexRpcException catch (error, stackTrace) {
+      final backendAlreadyIdle =
+          error.code == -32602 || error.code == -32600 && error.message == "no active turn to interrupt";
+      if (!backendAlreadyIdle) {
+        Log.w("[codex] failed to interrupt deleted session $threadId after its turn started", error, stackTrace);
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to interrupt deleted session $threadId after its turn started", error, stackTrace);
+    }
   }
 
   bool _maintainBookkeeping(CodexServerNotification notification) {
@@ -888,7 +923,7 @@ class CodexPlugin._({
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId];
     if (turnId == null) {
-      if (_sessionService.isTrackedChild(sessionId: sessionId) && _isActiveStatus(_sessionStatuses[sessionId])) {
+      if (_sessionService.isActiveTrackedChild(sessionId: sessionId)) {
         _interruptOnTurnStartThreadIds.add(sessionId);
       }
       _syncWorkState();
@@ -1124,6 +1159,10 @@ class CodexPlugin._({
       _activeTurnByThread[threadId] = turnId;
       _provisionalAcceptedTurnThreadIds.add(threadId);
     }
+    _sessionService.observeSessionStatus(
+      sessionId: threadId,
+      status: const PluginSessionStatus.busy(),
+    );
   }
 
   bool _recordAuthoritativeTurnEvidence(String threadId) {
@@ -1279,10 +1318,15 @@ class CodexPlugin._({
   @override
   Future<void> deleteSession(String sessionId) async {
     final sessionIds = await _sessionService.getSessionSubtreeIds(sessionId: sessionId);
+    _sessionService.markSessionsDeleted(sessionIds: sessionIds);
     for (final deletedId in sessionIds) {
       _deletedThreadIds.add(deletedId);
       _provisionalAcceptedTurnThreadIds.remove(deletedId);
-      _interruptOnTurnStartThreadIds.remove(deletedId);
+      if (!_activeTurnByThread.containsKey(deletedId) && _sessionService.isActiveTrackedChild(sessionId: deletedId)) {
+        _interruptOnTurnStartThreadIds.add(deletedId);
+      } else {
+        _interruptOnTurnStartThreadIds.remove(deletedId);
+      }
       _pendingTurnRequestRevisionByThread.remove(deletedId);
       _advanceTurnEvidenceRevision(deletedId);
     }
@@ -1339,9 +1383,14 @@ class CodexPlugin._({
   Future<List<PluginSession>> getChildSessions(String sessionId) =>
       _sessionService.getChildSessions(sessionId: sessionId);
 
+  Map<String, PluginSessionStatus> _sessionStatusSnapshot() => {
+    ..._sessionStatuses,
+    for (final sessionId in _provisionalAcceptedTurnThreadIds) sessionId: const PluginSessionStatus.busy(),
+  };
+
   @override
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async =>
-      _sessionService.effectiveSessionStatuses(ownStatuses: _sessionStatuses);
+      _sessionService.effectiveSessionStatuses(ownStatuses: _sessionStatusSnapshot());
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(
@@ -1431,13 +1480,16 @@ class CodexPlugin._({
       _sessionService.getProviders(projectId: projectId);
 
   @override
-  List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary(
-    ownStatuses: _sessionStatuses,
-    pendingInputSessionIds: _approvalRegistry?.pendingSessionIds ?? const <String>{},
-    projectIdBySession: {
-      for (final sessionId in _sessionStatuses.keys) sessionId: _directoryForSession(sessionId),
-    },
-  );
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() {
+    final statuses = _sessionStatusSnapshot();
+    return _sessionService.getActiveSessionsSummary(
+      ownStatuses: statuses,
+      pendingInputSessionIds: _approvalRegistry?.pendingSessionIds ?? const <String>{},
+      projectIdBySession: {
+        for (final sessionId in statuses.keys) sessionId: _directoryForSession(sessionId),
+      },
+    );
+  }
 
   @override
   Future<void> dispose() async {

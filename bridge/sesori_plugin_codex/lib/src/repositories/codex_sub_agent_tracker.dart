@@ -27,6 +27,12 @@ class CodexSubAgentTracker() {
 
   CodexThreadRecord? child({required String sessionId}) => _children[sessionId];
 
+  bool isChildActive({required String sessionId}) => _activeChildren.contains(sessionId);
+
+  Set<String> get activeRootIds => {
+    for (final childId in _activeChildren) ?_rootByChild[childId],
+  };
+
   /// Records [child] under its direct parent. Returns `false` when the child
   /// was already known, so a repeated activity item is not re-announced.
   bool record({required CodexThreadRecord child}) {
