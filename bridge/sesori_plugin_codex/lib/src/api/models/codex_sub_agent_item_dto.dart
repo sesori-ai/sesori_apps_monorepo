@@ -3,12 +3,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_sub_agent_item_dto.freezed.dart";
 part "codex_sub_agent_item_dto.g.dart";
 
-/// codex-cli 0.148.0 names the multi-agent tool-call item
-/// `collabAgentToolCall`; upstream `main` renamed it to `collabToolCall`. Both
-/// carry the same fields, so the legacy name is normalised before dispatch.
-const _legacyCollabToolCallType = "collabAgentToolCall";
-const _collabToolCallType = "collabToolCall";
-
 enum CodexCollabTool() {
   spawnAgent,
   sendInput,
@@ -79,8 +73,8 @@ sealed class CodexCollabAgentStateDto with _$CodexCollabAgentStateDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexCollabAgentStateDtoFromJson(json);
 }
 
-/// Item shapes the app-server emits for multi-agent activity on the parent
-/// thread, discriminated by `type`.
+/// Item shapes the pinned codex-cli 0.148.0 app-server emits for multi-agent
+/// activity on the parent thread, discriminated by `type`.
 @Freezed(
   unionKey: "type",
   fallbackUnion: "unknown",
@@ -88,8 +82,8 @@ sealed class CodexCollabAgentStateDto with _$CodexCollabAgentStateDto {
   toJson: false,
 )
 sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
-  @FreezedUnionValue(_collabToolCallType)
-  const factory collabToolCall({
+  @FreezedUnionValue("collabAgentToolCall")
+  const factory collabAgentToolCall({
     required String? id,
     @JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown)
     required CodexCollabTool tool,
@@ -105,7 +99,7 @@ sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
     @JsonKey(fromJson: _textFromJson) required String? prompt,
     @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{})
     required Map<String, CodexCollabAgentStateDto> agentsStates,
-  }) = CodexCollabToolCallItemDto;
+  }) = CodexCollabAgentToolCallItemDto;
 
   @FreezedUnionValue("subAgentActivity")
   const factory subAgentActivity({
@@ -121,7 +115,5 @@ sealed class CodexSubAgentItemDto with _$CodexSubAgentItemDto {
 
   const factory unknown() = CodexUnknownSubAgentItemDto;
 
-  factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemDtoFromJson(
-    json["type"] == _legacyCollabToolCallType ? {...json, "type": _collabToolCallType} : json,
-  );
+  factory fromJson(Map<String, dynamic> json) => _$CodexSubAgentItemDtoFromJson(json);
 }

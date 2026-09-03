@@ -26,7 +26,7 @@ class const CodexSubAgentItemParser() {
       if (threadId == null) return null;
       final turnId = _usefulText(value: params.turnId);
       switch (item) {
-        case CodexCollabToolCallItemDto():
+        case CodexCollabAgentToolCallItemDto():
           final itemId = _usefulText(value: item.id);
           if (itemId == null) return null;
           return CodexCollabItem(
@@ -69,7 +69,7 @@ class const CodexSubAgentItemParser() {
     }
   }
 
-  List<String> _receiverThreadIds({required CodexCollabToolCallItemDto item}) {
+  List<String> _receiverThreadIds({required CodexCollabAgentToolCallItemDto item}) {
     final ids = <String>{};
     for (final candidate in [item.newThreadId, item.receiverThreadId, ...item.receiverThreadIds]) {
       final id = _usefulText(value: candidate);

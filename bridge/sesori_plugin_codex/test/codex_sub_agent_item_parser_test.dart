@@ -159,7 +159,7 @@ void main() {
       });
     });
 
-    test("accepts the upstream collabToolCall name and singular receiver fields", () {
+    test("merges the singular receiver fields into receiverThreadIds", () {
       final event = parser.parse(
         notification: const CodexServerNotification(
           method: "item/started",
@@ -167,7 +167,7 @@ void main() {
             "threadId": "parent-1",
             "turnId": "turn-1",
             "item": {
-              "type": "collabToolCall",
+              "type": "collabAgentToolCall",
               "id": "call_spawn",
               "tool": "spawnAgent",
               "status": "inProgress",

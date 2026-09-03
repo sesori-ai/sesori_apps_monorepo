@@ -39,40 +39,41 @@ const _$CodexCollabAgentStatusEnumMap = {
   CodexCollabAgentStatus.unknown: 'unknown',
 };
 
-CodexCollabToolCallItemDto _$CodexCollabToolCallItemDtoFromJson(Map json) =>
-    CodexCollabToolCallItemDto(
-      id: json['id'] as String?,
-      tool:
-          $enumDecodeNullable(
-            _$CodexCollabToolEnumMap,
-            json['tool'],
-            unknownValue: CodexCollabTool.unknown,
-          ) ??
-          CodexCollabTool.unknown,
-      status:
-          $enumDecodeNullable(
-            _$CodexCollabItemStatusEnumMap,
-            json['status'],
-            unknownValue: CodexCollabItemStatus.unknown,
-          ) ??
-          CodexCollabItemStatus.unknown,
-      senderThreadId: _textFromJson(json['senderThreadId']),
-      receiverThreadIds: _threadIdListFromJson(json['receiverThreadIds']),
-      receiverThreadId: _textFromJson(json['receiverThreadId']),
-      newThreadId: _textFromJson(json['newThreadId']),
-      prompt: _textFromJson(json['prompt']),
-      agentsStates:
-          (json['agentsStates'] as Map?)?.map(
-            (k, e) => MapEntry(
-              k as String,
-              CodexCollabAgentStateDto.fromJson(
-                Map<String, dynamic>.from(e as Map),
-              ),
-            ),
-          ) ??
-          {},
-      $type: json['type'] as String?,
-    );
+CodexCollabAgentToolCallItemDto _$CodexCollabAgentToolCallItemDtoFromJson(
+  Map json,
+) => CodexCollabAgentToolCallItemDto(
+  id: json['id'] as String?,
+  tool:
+      $enumDecodeNullable(
+        _$CodexCollabToolEnumMap,
+        json['tool'],
+        unknownValue: CodexCollabTool.unknown,
+      ) ??
+      CodexCollabTool.unknown,
+  status:
+      $enumDecodeNullable(
+        _$CodexCollabItemStatusEnumMap,
+        json['status'],
+        unknownValue: CodexCollabItemStatus.unknown,
+      ) ??
+      CodexCollabItemStatus.unknown,
+  senderThreadId: _textFromJson(json['senderThreadId']),
+  receiverThreadIds: _threadIdListFromJson(json['receiverThreadIds']),
+  receiverThreadId: _textFromJson(json['receiverThreadId']),
+  newThreadId: _textFromJson(json['newThreadId']),
+  prompt: _textFromJson(json['prompt']),
+  agentsStates:
+      (json['agentsStates'] as Map?)?.map(
+        (k, e) => MapEntry(
+          k as String,
+          CodexCollabAgentStateDto.fromJson(
+            Map<String, dynamic>.from(e as Map),
+          ),
+        ),
+      ) ??
+      {},
+  $type: json['type'] as String?,
+);
 
 const _$CodexCollabToolEnumMap = {
   CodexCollabTool.spawnAgent: 'spawnAgent',

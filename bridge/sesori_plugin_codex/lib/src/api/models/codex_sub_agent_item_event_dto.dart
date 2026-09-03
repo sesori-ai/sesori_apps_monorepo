@@ -9,8 +9,8 @@ sealed class const CodexSubAgentItemEventDto({
     required final String itemId,
   });
 
-/// A `collabAgentToolCall` (or upstream `collabToolCall`) item: the parent
-/// invoking a multi-agent tool such as `spawnAgent` or `wait`.
+/// A `collabAgentToolCall` item: the parent invoking a multi-agent tool such
+/// as `spawnAgent` or `wait`.
 ///
 /// [receiverThreadIds] merges the 0.148.0 list with the upstream singular
 /// `receiverThreadId`/`newThreadId` fields, so a spawn's child id is always the
