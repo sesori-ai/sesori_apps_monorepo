@@ -43,10 +43,14 @@ fixed, sequential replacement series; only one PR is opened at a time.
 |---|---|---|
 | 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | done |
 | 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | done |
-| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | pending |
+| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | done |
 
-MT Gate C remains after all three slices. The top-level Step 20 row stays
-`in-progress` until the replacement series is complete.
+Slice 1 merged in PR #1267 and slice 2 merged in PR #1269. Slice 3 is open as
+PR #1274 and has passed implementation, automated verification, clean macOS
+build/codesign, initial architecture review, and the bounded architecture review
+of its feedback fixes. Its merge remains the final delivery action. MT Gate C
+remains after all three slices merge. The top-level Step 20 row stays
+`in-progress` until the replacement series is merged.
 
 ## MT Gate A — accepted 2026-08-30
 

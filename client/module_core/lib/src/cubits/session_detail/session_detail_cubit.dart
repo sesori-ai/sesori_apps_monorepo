@@ -1972,7 +1972,10 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: _sessionId));
+    }
   }
 
   /// Updates whether this detail route is currently visible to the user.
@@ -2133,7 +2136,10 @@ class SessionDetailCubit(
   }) async {
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller?.cancelForSession(sessionId: sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: sessionId));
+    }
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;

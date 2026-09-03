@@ -68,6 +68,7 @@ void main() {
     expect(options.minimumSize, const Size(560, 480));
     expect(options.center, isTrue);
     expect(options.title, "Sesori");
+    expect(host.currentState, WindowHostState.focused);
     expect(await event, WindowHostEvent.closeRequested);
   });
 
@@ -101,6 +102,7 @@ void main() {
     ]);
     verifyNever(manager.show);
     verifyNever(manager.focus);
+    expect(host.currentState, WindowHostState.hidden);
   });
 
   test("translates bounds and attached display work areas", () async {
@@ -126,28 +128,47 @@ void main() {
     verify(() => manager.setBounds(const Rect.fromLTWH(10, 20, 900, 700))).called(1);
   });
 
-  test("emits move and resize events", () async {
+  test("emits move and resize events plus focus and visibility states", () async {
     final host = createHost();
     addTearDown(host.dispose);
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     final events = <WindowHostEvent>[];
+    final states = <WindowHostState>[];
     final eventSubscription = host.events.listen(events.add);
+    final stateSubscription = host.states.listen(states.add);
     addTearDown(eventSubscription.cancel);
+    addTearDown(stateSubscription.cancel);
 
     host.onWindowMove();
     host.onWindowResize();
+    host.onWindowBlur();
+    host.onWindowMinimize();
+    host.onWindowFocus();
+    host.onWindowRestore();
+    host.onWindowFocus();
 
     expect(events, <WindowHostEvent>[WindowHostEvent.moved, WindowHostEvent.resized]);
+    expect(
+      states,
+      <WindowHostState>[
+        WindowHostState.unfocused,
+        WindowHostState.hidden,
+        WindowHostState.unfocused,
+        WindowHostState.focused,
+      ],
+    );
   });
 
-  test("show focuses the restored window and hide updates taskbar visibility", () async {
+  test("show focuses the restored window and hide updates visibility", () async {
     final host = createHost();
     addTearDown(host.dispose);
     await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     clearInteractions(manager);
 
     await host.hide();
+    expect(host.currentState, WindowHostState.hidden);
     await host.show();
+    expect(host.currentState, WindowHostState.focused);
 
     verifyInOrder(<void Function()>[
       () => manager.hide(),

@@ -37,7 +37,7 @@ class const DesktopSessionDetailScreen({
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
         projectId: projectId,
-        notificationCanceller: null,
+        notificationCanceller: getIt<NotificationCanceller>(),
         failureReporter: getIt<FailureReporter>(),
       ),
       child: DesktopComposerPresentationScope(
