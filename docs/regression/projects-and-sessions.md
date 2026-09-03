@@ -226,8 +226,10 @@ state.
   never "the first enabled plugin".
 - Project and session rename sheets start from the current display name, reject
   a blank trimmed value, and prevent duplicate submission. Submission dismisses
-  the sheet immediately and updates the list optimistically. Successful renames
-  stay silent; a failed rename restores the prior name and shows failure feedback.
+  the sheet immediately and updates the list optimistically. Reads that started
+  before submission cannot overwrite that value, and success starts a fresh
+  authoritative read. Successful renames stay silent; a failed rename restores
+  the prior name and shows failure feedback.
 
 ## Regression Levels
 

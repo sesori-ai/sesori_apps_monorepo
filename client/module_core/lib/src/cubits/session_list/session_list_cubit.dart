@@ -424,6 +424,9 @@ class SessionListCubit({
     if (index < 0) return false;
 
     final previousTitle = _allSessions[index].title;
+    // A read that began before this mutation can still carry the old title.
+    // Supersede it now; success starts an authoritative post-write read below.
+    _fetchGeneration++;
     _allSessions = _sessionListService.upsertSession(
       sessions: _allSessions,
       session: _allSessions[index].copyWith(title: title),
@@ -433,8 +436,7 @@ class SessionListCubit({
     final ApiResponse<Session> response;
     try {
       response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
-    } on Object catch (error, stackTrace) {
-      loge("Failed to rename session", error, stackTrace);
+    } on Object {
       _restoreSessionTitle(
         sessionId: sessionId,
         optimisticTitle: title,
@@ -445,10 +447,17 @@ class SessionListCubit({
 
     switch (response) {
       case SuccessResponse():
-        if (!isClosed) unawaited(refreshSessions());
+        if (!isClosed) {
+          unawaited(
+            _refreshSessions(
+              force: true,
+              catalogRefresh: false,
+              waitForPrData: false,
+            ),
+          );
+        }
         return true;
-      case ErrorResponse(:final error):
-        loge("Failed to rename session", error);
+      case ErrorResponse():
         _restoreSessionTitle(
           sessionId: sessionId,
           optimisticTitle: title,

@@ -650,6 +650,9 @@ class ProjectListCubit(
     if (index < 0) return false;
 
     final previousName = currentState.projects[index].name;
+    // A read that began before this mutation can still carry the old name.
+    // Supersede it now; success starts an authoritative post-write read below.
+    _fetchGeneration++;
     final projects = [...currentState.projects];
     projects[index] = projects[index].copyWith(name: name);
     _emitOrdered(
@@ -661,8 +664,7 @@ class ProjectListCubit(
     final ApiResponse<Project> response;
     try {
       response = await _projectRepository.renameProject(projectId: projectId, name: name);
-    } on Object catch (error, stackTrace) {
-      loge("Failed to rename project", error, stackTrace);
+    } on Object {
       _restoreProjectName(
         projectId: projectId,
         optimisticName: name,
@@ -673,10 +675,16 @@ class ProjectListCubit(
 
     switch (response) {
       case SuccessResponse():
-        if (!isClosed) unawaited(refreshProjects());
+        if (!isClosed) {
+          unawaited(
+            _refreshProjects(
+              force: true,
+              catalogRefresh: false,
+            ),
+          );
+        }
         return true;
-      case ErrorResponse(:final error):
-        loge("Failed to rename project", error);
+      case ErrorResponse():
         _restoreProjectName(
           projectId: projectId,
           optimisticName: name,

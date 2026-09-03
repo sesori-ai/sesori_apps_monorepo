@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 class const RenameSheet({
@@ -60,8 +59,7 @@ class _RenameSheetState() extends State<RenameSheet> {
     final bool succeeded;
     try {
       succeeded = await rename;
-    } on Object catch (error, stackTrace) {
-      loge("Rename request failed unexpectedly", error, stackTrace);
+    } on Object {
       presenter.show(title: failureMessage, variant: PregoPopupAlertsNotificationsVariant.error);
       return;
     }

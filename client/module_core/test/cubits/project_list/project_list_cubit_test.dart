@@ -1352,6 +1352,45 @@ void main() {
       },
     );
 
+    test("renameProject supersedes a refresh that started before the rename", () async {
+      final original = testProjectSummary(id: "A", path: "/home/user/A", name: "Original");
+      final renamed = original.copyWith(name: "New Name");
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: [original])));
+      final renameCompleter = Completer<ApiResponse<Project>>();
+      when(
+        () => mockProjectRepository.renameProject(projectId: "A", name: "New Name"),
+      ).thenAnswer((_) => renameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final staleRefreshCompleter = Completer<ApiResponse<Projects>>();
+      final postRenameRefreshCompleter = Completer<ApiResponse<Projects>>();
+      var refreshRequestCount = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) {
+        refreshRequestCount++;
+        return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
+      });
+
+      final staleRefresh = cubit.refreshProjects();
+      final rename = cubit.renameProject(projectId: "A", name: "New Name");
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
+
+      renameCompleter.complete(
+        ApiResponse.success(testProject(id: "A", path: "/home/user/A", name: "New Name")),
+      );
+      expect(await rename, isTrue);
+      expect(refreshRequestCount, 2);
+
+      staleRefreshCompleter.complete(ApiResponse.success(Projects(data: [original])));
+      postRenameRefreshCompleter.complete(ApiResponse.success(Projects(data: [renamed])));
+      expect(await staleRefresh, isTrue);
+      expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
+    });
+
     // -------------------------------------------------------------------------
     // Test 4f: renameProject failure
     // -------------------------------------------------------------------------
