@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
@@ -142,6 +144,54 @@ void main() {
       const root = AcpSessionInfo(sessionId: "root", cwd: "/repo", title: null, updatedAtMs: null);
       expect(plugin.sessionParentId(child), "root");
       expect(plugin.sessionParentId(root), isNull);
+    });
+
+    test("persisted children survive a restart and merge with live ones", () async {
+      final home = Directory.systemTemp.createTempSync("grok-home-");
+      addTearDown(() => home.deleteSync(recursive: true));
+      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/root")..createSync(recursive: true);
+      File("${rootDir.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "_x.ai/session/update",
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "persisted",
+              "child_session_id": "persisted",
+              "subagent_type": "general-purpose",
+              "description": "Persisted child",
+            },
+          },
+        }),
+      );
+      File("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/persisted/summary.json")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(jsonEncode({"info": {"id": "persisted", "cwd": "/repo"}, "session_kind": "subagent"}));
+      final restarted = GrokPlugin(
+        binaryPath: "grok",
+        launchDirectory: "/repo",
+        environment: {"HOME": home.path},
+        processFactory: (_) async => fake,
+      );
+      addTearDown(restarted.dispose);
+      restarted.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live",
+          description: "Live child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      final children = await restarted.getChildSessions("root");
+      expect(children.map((session) => session.id), ["persisted", "live"]);
+      expect(children.map((session) => session.parentID), everyElement("root"));
+      const persisted = AcpSessionInfo(sessionId: "persisted", cwd: "/repo", title: null, updatedAtMs: null);
+      expect(restarted.sessionParentId(persisted), "root", reason: "resolved from the tree, not the tracker");
     });
 
     test("uses Grok identity, headless auth policy, and stop-and-send", () {

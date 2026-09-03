@@ -1268,8 +1268,6 @@ abstract class AcpPlugin({
     }
     state.pending++;
     if (state.pending == 1) {
-      // A new turn supersedes a deferred idle: the root is busy on its own.
-      state.idleDeferred = false;
       _workState.set(PluginWorkState.busy);
       _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
       _eventBuffer.add(
@@ -1512,11 +1510,10 @@ abstract class AcpPlugin({
     if (state.pending == 0) {
       // A running sub-agent keeps the root busy after its own turn settles:
       // the idle reaper and safe stops must not kill it, and the completion
-      // push must fire once, after the last child. The root idles from
-      // [_onChildSessionsChanged] once its busy set empties.
-      if (childSessionTracker.busyChildIds(sessionId: sessionId).isNotEmpty) {
-        state.idleDeferred = true;
-      } else {
+      // push must fire once, after the last child. The root stays busy in
+      // [_sessionStatuses] and idles from [_onChildSessionsChanged] once its
+      // busy set empties.
+      if (childSessionTracker.busyChildIds(sessionId: sessionId).isEmpty) {
         _emitRootIdle(sessionId: sessionId);
       }
     }
@@ -1533,14 +1530,14 @@ abstract class AcpPlugin({
   }
 
   /// Registered on [childSessionTracker] at composition: releases every root
-  /// whose idle was deferred and whose busy set is now empty, then re-derives
-  /// the work state so a running child alone keeps the plugin busy.
+  /// that is still busy with no turn of its own (its idle was deferred) once
+  /// its busy set is empty, then re-derives the work state so a running child
+  /// alone keeps the plugin busy.
   void _onChildSessionsChanged() {
     for (final entry in _turnStates.entries) {
-      final state = entry.value;
-      if (!state.idleDeferred || state.pending > 0) continue;
+      if (entry.value.pending > 0) continue;
+      if (_sessionStatuses[entry.key] != const PluginSessionStatus.busy()) continue;
       if (childSessionTracker.busyChildIds(sessionId: entry.key).isNotEmpty) continue;
-      state.idleDeferred = false;
       _emitRootIdle(sessionId: entry.key);
     }
     if (_client != null) _syncWorkState();
@@ -2069,10 +2066,6 @@ class _SessionTurnState() {
 
   /// Turns enqueued but not yet finished (including the running one).
   int pending = 0;
-
-  /// The last turn settled while a sub-agent was still running; the root's
-  /// idle is owed once its busy children are gone.
-  bool idleDeferred = false;
 
   /// Existing-session prompts accepted but not yet dispatched to ACP.
   final List<_QueuedAcpPrompt> queue = [];
