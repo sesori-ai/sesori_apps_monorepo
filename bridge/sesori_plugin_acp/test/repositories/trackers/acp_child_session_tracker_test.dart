@@ -187,6 +187,27 @@ void main() {
       expect(tracker.hasActiveWork, isFalse);
     });
 
+    test("disposal releases an autonomous root hold waiter", () async {
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      tracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "opaque-hold",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+      final waiting = tracker.waitForRootHoldChange(sessionId: "root");
+
+      await tracker.dispose();
+
+      await waiting.timeout(const Duration(seconds: 1));
+      expect(tracker.hasRootHold(sessionId: "root"), isFalse);
+    });
+
     test("a finish before any prompt still idles the child without a tile", () {
       tracker.spawn(
         sessionId: "root",

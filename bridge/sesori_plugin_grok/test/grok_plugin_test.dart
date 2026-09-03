@@ -168,8 +168,35 @@ void main() {
         );
       }
 
-      expect(plugin.childSessionTracker.isRunningChild(sessionId: "child"), isTrue);
+      expect(plugin.childSessionTracker.isChild(sessionId: "child"), isTrue);
       expect((await plugin.getSessionStatuses())["child"], const PluginSessionStatus.busy());
+
+      plugin.childSessionTracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "wake-child",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+      await expectLater(plugin.deleteSession("child"), throwsA(isA<PluginOperationException>()));
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "root"), isTrue);
+
+      plugin.childSessionTracker
+        ..releaseRootHold(rootSessionId: "root", holdId: "wake-child")
+        ..spawn(
+          sessionId: "root",
+          spawn: const AcpChildSpawn(
+            childSessionId: "sibling",
+            description: "Still running",
+            agent: "general-purpose",
+            prompt: null,
+            isBackground: false,
+          ),
+          directory: "/repo",
+        );
+      await plugin.deleteSession("child");
+      expect(plugin.childSessionTracker.isChild(sessionId: "child"), isFalse);
+      expect(plugin.childSessionTracker.isChild(sessionId: "sibling"), isTrue);
     });
 
     test("persisted children survive a restart and merge with live ones", () async {

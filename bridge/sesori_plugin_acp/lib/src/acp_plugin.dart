@@ -1316,6 +1316,19 @@ abstract class AcpPlugin({
     state.tail = serializesPromptsProcessWide ? _runOnProcessLane(operation) : state.tail.then((_) => operation());
   }
 
+  Future<bool> _waitForAutonomousTurn({
+    required String sessionId,
+    required _SessionTurnState state,
+    required int expectedGeneration,
+    required _AcpTurn turn,
+  }) async {
+    while (!_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn) &&
+        childSessionTracker.hasRootHold(sessionId: sessionId)) {
+      await childSessionTracker.waitForRootHoldChange(sessionId: sessionId);
+    }
+    return _turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn);
+  }
+
   /// Runs one serialized turn: resolves the live client, makes the session
   /// resident, applies the turn's model/mode selection, dispatches
   /// `session/prompt`, and settles the queue accounting. All of it runs here —
@@ -1342,8 +1355,12 @@ abstract class AcpPlugin({
       return;
     }
     state.activeSettlement = Completer<void>();
-    await childSessionTracker.waitForRootHolds(sessionId: sessionId);
-    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+    if (await _waitForAutonomousTurn(
+      sessionId: sessionId,
+      state: state,
+      expectedGeneration: expectedGeneration,
+      turn: turn,
+    )) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
@@ -1408,8 +1425,12 @@ abstract class AcpPlugin({
     }
     // Re-check immediately before dispatch because a child may have started
     // an autonomous root turn while connection, resume, or selection awaited.
-    await childSessionTracker.waitForRootHolds(sessionId: sessionId);
-    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+    if (await _waitForAutonomousTurn(
+      sessionId: sessionId,
+      state: state,
+      expectedGeneration: expectedGeneration,
+      turn: turn,
+    )) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
@@ -1638,6 +1659,7 @@ abstract class AcpPlugin({
     final state = _turnStates[sessionId];
     if (state != null) {
       state.generation++;
+      childSessionTracker.interruptRootHoldWait(sessionId: sessionId);
       var removedQueuedPrompt = false;
       for (final entry in state.queue) {
         if (entry.phase == _QueuedAcpPromptPhase.queued) {

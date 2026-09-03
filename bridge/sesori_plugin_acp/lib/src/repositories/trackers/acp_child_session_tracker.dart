@@ -234,23 +234,31 @@ final class AcpChildSessionTracker() {
   /// Whether any announced child, under any root, is still running.
   bool get hasBusyChildren => _byChild.values.any((child) => !child.status.isTerminal);
 
-  /// Whether [sessionId] is an announced child that has not finished.
-  bool isRunningChild({required String sessionId}) {
-    final child = _byChild[sessionId];
-    return child != null && !child.status.isTerminal;
+  /// Completes on the next change to [sessionId]'s autonomous root holds. A
+  /// caller must re-check [hasRootHold] after waking because other holds may
+  /// remain. If there is no current hold, it completes immediately.
+  Future<void> waitForRootHoldChange({required String sessionId}) {
+    if (!hasRootHold(sessionId: sessionId)) return Future<void>.value();
+    return _rootHoldChanges.putIfAbsent(sessionId, Completer<void>.new).future;
   }
 
-  /// Completes once every autonomous settlement hold has cleared. A hold added
-  /// while waiting is included before the caller can resume.
-  Future<void> waitForRootHolds({required String sessionId}) async {
-    while (hasRootHold(sessionId: sessionId)) {
-      final changed = _rootHoldChanges.putIfAbsent(sessionId, Completer<void>.new);
-      await changed.future;
-    }
+  /// Wakes a hold waiter whose owning queued turn was cancelled without
+  /// changing the hold itself. The backend lifecycle still owns hold release.
+  void interruptRootHoldWait({required String sessionId}) {
+    _signalRootHoldChange(rootSessionId: sessionId);
   }
 
   /// Whether [sessionId] has an autonomous settlement turn in progress.
   bool hasRootHold({required String sessionId}) => _rootHolds[sessionId]?.isNotEmpty ?? false;
+
+  /// Whether the exact named session owns active child work. For a root this
+  /// includes all descendants and holds; for a child it includes only that
+  /// child's running state or its own autonomous-settlement hold.
+  bool hasActiveWorkForSession({required String sessionId}) {
+    final child = _byChild[sessionId];
+    if (child == null) return hasActiveWorkForRoot(sessionId: sessionId);
+    return !child.status.isTerminal || (_rootHolds[child.rootSessionId]?.containsValue(child.childSessionId) ?? false);
+  }
 
   /// Whether children or autonomous settlement keep [sessionId] active.
   bool hasActiveWorkForRoot({required String sessionId}) =>
@@ -364,7 +372,11 @@ final class AcpChildSessionTracker() {
     if (changed != null && !changed.isCompleted) changed.complete();
   }
 
-  Future<void> dispose() => _changes.isClosed ? Future<void>.value() : _changes.close();
+  Future<void> dispose() async {
+    if (_changes.isClosed) return;
+    clear();
+    await _changes.close();
+  }
 
   BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
     sessionID: childId,

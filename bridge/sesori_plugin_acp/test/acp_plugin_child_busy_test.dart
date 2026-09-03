@@ -45,11 +45,13 @@ void main() {
       await pump();
     }
 
-    Future<String> connectAndCreateSession() async {
+    Future<String> connectAndCreateSession({bool closeSession = false}) async {
       final connecting = plugin.ensureConnected();
       await respond("initialize", {
         "protocolVersion": 1,
-        "agentCapabilities": <String, dynamic>{},
+        "agentCapabilities": <String, dynamic>{
+          if (closeSession) "sessionCapabilities": {"close": <String, dynamic>{}},
+        },
         "authMethods": <Object?>[],
       });
       expect(await connecting, isTrue);
@@ -267,6 +269,31 @@ void main() {
       await pump();
 
       expect(rootIdles(sessionId), hasLength(1));
+    });
+
+    test("deleting a root cancels a prompt waiting behind its autonomous hold", () async {
+      final sessionId = await connectAndCreateSession(closeSession: true);
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      await finishChildAndHoldRoot("c1", holdId: "wake-c1");
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await waitForFrame("session/cancel");
+
+      final deleting = plugin.deleteSession(sessionId);
+      final close = await waitForFrame("session/close");
+      fake.emit({"jsonrpc": "2.0", "id": close["id"], "result": <String, dynamic>{}});
+      await deleting.timeout(const Duration(seconds: 1));
+
+      expect(fake.written.where((frame) => frame["method"] == "session/prompt"), hasLength(1));
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: sessionId), isFalse);
     });
 
     test("global interruption clears a held root even without a session-status entry", () async {
