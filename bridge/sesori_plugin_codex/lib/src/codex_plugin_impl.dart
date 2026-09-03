@@ -246,16 +246,15 @@ class CodexPlugin._({
   /// forwards the signal to the runtime descriptor's status reporter.
   void _handleClientDisconnected() {
     final registry = _approvalRegistry;
-    final activeSessionIds = [
-      for (final entry in _sessionStatuses.entries)
+    final effectiveStatuses = _sessionService.effectiveSessionStatuses(
+      ownStatuses: _sessionStatusSnapshot(),
+    );
+    final activeSessionIds = {
+      for (final entry in effectiveStatuses.entries)
         if (_isActiveStatus(entry.value)) entry.key,
       ..._sessionService.deferredRootIds,
-    ];
-    final hadVisibleActivity =
-        activeSessionIds.isNotEmpty ||
-        _sessionStatuses.keys.any(
-          (sessionId) => registry?.hasPendingInput(sessionId: sessionId) ?? false,
-        );
+    };
+    final hadVisibleActivity = activeSessionIds.isNotEmpty || (registry?.hasAnyPendingInput ?? false);
     _connectFuture = null;
     _client = null;
     _sessionService.detachAppServerRepositories();

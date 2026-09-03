@@ -114,7 +114,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A root remains busy for lifecycle and safe-stop purposes while any tracked
   child turn runs, even after the root's own turn completes; disconnect clears
-  that connection-scoped child state and emits the visible idle cleanup once.
+  that connection-scoped child state and emits visible idle cleanup for both a
+  provisional child and its effective root before resetting work state.
 - Codex session metadata uses the top-level `model` and `model_provider` values from
   `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
   remains authoritative when present.

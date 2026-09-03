@@ -406,6 +406,85 @@ void main() {
       expect(disconnectWorkStates, isNot(contains(PluginWorkState.idle)));
     });
 
+    test("disconnect idles a provisional resumed child and its hydrated root", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-disconnect-");
+      addTearDown(() => tempHome.delete(recursive: true));
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(server.close);
+      final socketReady = Completer<WebSocket>();
+      server.listen((request) async {
+        final socket = await WebSocketTransformer.upgrade(request);
+        socketReady.complete(socket);
+        socket.listen((frame) {
+          final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
+          final result = switch (decoded["method"]) {
+            "initialize" => _initOk,
+            "thread/resume" => const {
+              "model": "gpt-5.4-mini",
+              "modelProvider": "openai",
+              "thread": {
+                "id": "child-1",
+                "parentThreadId": "root-1",
+                "threadSource": "subAgent",
+              },
+            },
+            "turn/start" => const {
+              "turn": {"id": "child-turn"},
+            },
+            _ => null,
+          };
+          if (result == null) return;
+          socket.add(
+            jsonEncode({
+              "jsonrpc": "2.0",
+              "id": decoded["id"],
+              "result": result,
+            }),
+          );
+        });
+      });
+      final plugin = createInjectedCodexPlugin(
+        serverUrl: "ws://127.0.0.1:${server.port}",
+        environment: {"CODEX_HOME": tempHome.path},
+        projectCwd: "/repo/example",
+        clientFactory: null,
+        keepaliveInterval: const Duration(seconds: 30),
+      );
+      addTearDown(plugin.dispose);
+      final idleSessionIds = <String>{};
+      final bothIdle = Completer<void>();
+      final subscription = plugin.events.listen((event) {
+        if (event case BridgeSseSessionIdle(:final sessionID)) {
+          idleSessionIds.add(sessionID);
+          if (idleSessionIds.containsAll(const {"child-1", "root-1"}) && !bothIdle.isCompleted) {
+            bothIdle.complete();
+          }
+        }
+      });
+      addTearDown(subscription.cancel);
+
+      expect(await plugin.healthCheck(), isTrue);
+      final socket = await socketReady.future;
+      await plugin.sendPrompt(
+        sessionId: "child-1",
+        promptId: "prompt-1",
+        parts: const [PluginPromptPart.text(text: "continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses["child-1"], isA<PluginSessionStatusBusy>());
+      expect(statuses["root-1"], isA<PluginSessionStatusBusy>());
+
+      await socket.close(WebSocketStatus.goingAway);
+      await bothIdle.future.timeout(const Duration(seconds: 2));
+
+      expect(idleSessionIds, {"child-1", "root-1"});
+      expect(await plugin.getSessionStatuses(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.unknown);
+    });
+
     test("dispose closes event buffer without error", () async {
       final plugin = createInjectedCodexPlugin(
         serverUrl: "ws://127.0.0.1:0",
