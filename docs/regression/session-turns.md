@@ -195,11 +195,13 @@ defaults and queued client sends coherent.
   plugin busy after the root turn settles. The child terminal event is published
   before any derived root idle. A finish with `will_wake: true` atomically swaps
   the child for an autonomous-root hold and releases that hold only on the
-  matching `turn_completed` prompt `subagent-completed-<child id>`. Spawn and
-  non-final finish changes invalidate the project summary. Global interruption,
-  deletion, process exit, and disposal cancel or clear child activity and holds
-  without leaving the root busy or delivering tracker changes to a closed event
-  stream.
+  matching `turn_completed` prompt `subagent-completed-<child id>`. A new user
+  prompt cancels that autonomous turn and waits for the hold to clear before its
+  ACP prompt frame is dispatched. Spawn and non-final finish changes invalidate
+  the project summary. Deletion refuses a running child or root with active
+  child work until that work is stopped or finishes; global interruption,
+  process exit, and disposal cancel or clear child activity and holds without
+  leaving the root busy or delivering tracker changes to a closed event stream.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
@@ -451,9 +453,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   loses text, reasoning, tool, status, or terminal failure output. A child lets
   its root report idle while still running, finishes after the derived root idle,
   fails to invalidate the project summary, drops root busy state between a waking
-  child's finish and its autonomous completion, releases a hold for an unrelated
-  prompt, survives global interruption/process exit, or leaves tracker events
-  subscribed after plugin disposal.
+  child's finish and its autonomous completion, dispatches a user prompt before
+  that completion, releases a hold for an unrelated prompt, disappears locally
+  when deletion cannot stop it, survives global interruption/process exit, or
+  leaves tracker events subscribed after plugin disposal.
 - A normalized user message fails to advance the existing activity marker, or
   assistant/tool/title-only updates replace an established marker and move the
   running session as if they were user activity.

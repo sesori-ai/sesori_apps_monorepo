@@ -54,6 +54,7 @@ final class AcpChildSessionTracker() {
   /// hold retains its originating child so deleting that child clears the
   /// exact hold even when the backend's hold id differs from the session id.
   final Map<String, Map<String, String>> _rootHolds = {};
+  final Map<String, Completer<void>> _rootHoldChanges = {};
 
   /// Activity changes consumed by the plugin. The asynchronous controller
   /// guarantees mapper-returned child events enter the plugin stream before a
@@ -186,6 +187,7 @@ final class AcpChildSessionTracker() {
     final holds = _rootHolds[rootSessionId];
     if (holds == null || holds.remove(holdId) == null) return false;
     if (holds.isEmpty) _rootHolds.remove(rootSessionId);
+    _signalRootHoldChange(rootSessionId: rootSessionId);
     _notify(rootSessionId: rootSessionId);
     return true;
   }
@@ -223,6 +225,7 @@ final class AcpChildSessionTracker() {
     }
     _rootHolds.clear();
     for (final rootSessionId in affectedRoots) {
+      _signalRootHoldChange(rootSessionId: rootSessionId);
       _notify(rootSessionId: rootSessionId);
     }
     return events;
@@ -230,6 +233,21 @@ final class AcpChildSessionTracker() {
 
   /// Whether any announced child, under any root, is still running.
   bool get hasBusyChildren => _byChild.values.any((child) => !child.status.isTerminal);
+
+  /// Whether [sessionId] is an announced child that has not finished.
+  bool isRunningChild({required String sessionId}) {
+    final child = _byChild[sessionId];
+    return child != null && !child.status.isTerminal;
+  }
+
+  /// Completes once every autonomous settlement hold has cleared. A hold added
+  /// while waiting is included before the caller can resume.
+  Future<void> waitForRootHolds({required String sessionId}) async {
+    while (hasRootHold(sessionId: sessionId)) {
+      final changed = _rootHoldChanges.putIfAbsent(sessionId, Completer<void>.new);
+      await changed.future;
+    }
+  }
 
   /// Whether [sessionId] has an autonomous settlement turn in progress.
   bool hasRootHold({required String sessionId}) => _rootHolds[sessionId]?.isNotEmpty ?? false;
@@ -294,6 +312,7 @@ final class AcpChildSessionTracker() {
     if (children != null) {
       final hadActiveWork =
           children.any((child) => !child.status.isTerminal) || (removedRootHolds?.isNotEmpty ?? false);
+      if (removedRootHolds?.isNotEmpty ?? false) _signalRootHoldChange(rootSessionId: sessionId);
       for (final child in children) {
         _byChild.remove(child.childSessionId);
       }
@@ -302,7 +321,10 @@ final class AcpChildSessionTracker() {
     }
     final child = _byChild.remove(sessionId);
     if (child == null) {
-      if (removedRootHolds?.isNotEmpty ?? false) _notify(rootSessionId: sessionId);
+      if (removedRootHolds?.isNotEmpty ?? false) {
+        _signalRootHoldChange(rootSessionId: sessionId);
+        _notify(rootSessionId: sessionId);
+      }
       return;
     }
     final siblings = _byRoot[child.rootSessionId];
@@ -313,6 +335,7 @@ final class AcpChildSessionTracker() {
     siblingHolds?.removeWhere((_, heldChildSessionId) => heldChildSessionId == sessionId);
     final removedChildHold = siblingHolds != null && siblingHolds.length != holdCount;
     if (siblingHolds?.isEmpty ?? false) _rootHolds.remove(child.rootSessionId);
+    if (removedChildHold) _signalRootHoldChange(rootSessionId: child.rootSessionId);
     if (!child.status.isTerminal || removedChildHold) {
       _notify(rootSessionId: child.rootSessionId);
     }
@@ -331,8 +354,14 @@ final class AcpChildSessionTracker() {
     _byChild.clear();
     _rootHolds.clear();
     for (final rootSessionId in affectedRoots) {
+      _signalRootHoldChange(rootSessionId: rootSessionId);
       _notify(rootSessionId: rootSessionId);
     }
+  }
+
+  void _signalRootHoldChange({required String rootSessionId}) {
+    final changed = _rootHoldChanges.remove(rootSessionId);
+    if (changed != null && !changed.isCompleted) changed.complete();
   }
 
   Future<void> dispose() => _changes.isClosed ? Future<void>.value() : _changes.close();

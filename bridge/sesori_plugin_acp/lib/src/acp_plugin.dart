@@ -1132,8 +1132,12 @@ abstract class AcpPlugin({
   }
 
   void _cancelActiveTurnForQueuedInput({required String sessionId}) {
-    if (!cancelsActiveTurnForQueuedInput || !_inFlightTurnSessions.contains(sessionId)) return;
-    if (_isPromptFrameWriting(sessionId: sessionId)) _cancelledPromptWriteSessions.add(sessionId);
+    final hasPromptTurn = _inFlightTurnSessions.contains(sessionId);
+    final hasAutonomousTurn = childSessionTracker.hasRootHold(sessionId: sessionId);
+    if (!cancelsActiveTurnForQueuedInput || (!hasPromptTurn && !hasAutonomousTurn)) return;
+    if (hasPromptTurn && _isPromptFrameWriting(sessionId: sessionId)) {
+      _cancelledPromptWriteSessions.add(sessionId);
+    }
     _client?.notify(
       method: AcpMethods.sessionCancel,
       params: {"sessionId": sessionId},
@@ -1338,6 +1342,11 @@ abstract class AcpPlugin({
       return;
     }
     state.activeSettlement = Completer<void>();
+    await childSessionTracker.waitForRootHolds(sessionId: sessionId);
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+      return;
+    }
     final AcpStdioClient client;
     try {
       client = await _connectedClient();
@@ -1393,6 +1402,13 @@ abstract class AcpPlugin({
         stack,
       );
     }
+    if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+      return;
+    }
+    // Re-check immediately before dispatch because a child may have started
+    // an autonomous root turn while connection, resume, or selection awaited.
+    await childSessionTracker.waitForRootHolds(sessionId: sessionId);
     if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;

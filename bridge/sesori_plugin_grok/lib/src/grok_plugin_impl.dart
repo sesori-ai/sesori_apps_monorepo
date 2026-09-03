@@ -197,4 +197,16 @@ class GrokPlugin._({
     rootSessionId: sessionId,
     fallbackDirectory: directoryForSession(sessionId: sessionId),
   );
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    if (childSessionTracker.isRunningChild(sessionId: sessionId) ||
+        childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId)) {
+      throw const PluginOperationException(
+        "deleteSession",
+        message: "A Grok session with active sub-agent work must finish or be stopped before deletion",
+      );
+    }
+    await super.deleteSession(sessionId);
+  }
 }

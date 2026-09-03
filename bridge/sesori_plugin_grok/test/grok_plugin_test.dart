@@ -142,6 +142,36 @@ void main() {
       expect(await plugin.getChildSessions("child"), isEmpty);
     });
 
+    test("deleting running child work fails without forgetting its live state", () async {
+      plugin.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "child",
+          description: "Synthetic child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      for (final sessionId in ["child", "root"]) {
+        await expectLater(
+          plugin.deleteSession(sessionId),
+          throwsA(
+            isA<PluginOperationException>().having(
+              (error) => error.message,
+              "message",
+              contains("must finish or be stopped"),
+            ),
+          ),
+        );
+      }
+
+      expect(plugin.childSessionTracker.isRunningChild(sessionId: "child"), isTrue);
+      expect((await plugin.getSessionStatuses())["child"], const PluginSessionStatus.busy());
+    });
+
     test("persisted children survive a restart and merge with live ones", () async {
       final home = Directory.systemTemp.createTempSync("grok-home-");
       addTearDown(() => home.deleteSync(recursive: true));

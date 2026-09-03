@@ -28,14 +28,16 @@ void main() {
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
 
-    Future<Map<String, dynamic>> waitForFrame(String method) async {
+    Future<Map<String, dynamic>> waitForFrameCount(String method, int count) async {
       for (var i = 0; i < 50; i++) {
-        final matches = fake.written.where((f) => f["method"] == method);
-        if (matches.isNotEmpty) return matches.last;
+        final matches = fake.written.where((frame) => frame["method"] == method).toList();
+        if (matches.length >= count) return matches.last;
         await pump();
       }
-      throw StateError("agent never wrote a '$method' frame");
+      throw StateError("agent never wrote $count '$method' frames");
     }
+
+    Future<Map<String, dynamic>> waitForFrame(String method) => waitForFrameCount(method, 1);
 
     Future<void> respond(String method, Map<String, dynamic> result) async {
       final frame = await waitForFrame(method);
@@ -230,6 +232,41 @@ void main() {
       expect(rootIdles(sessionId), hasLength(1));
       expect(plugin.currentWorkState, PluginWorkState.idle);
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+    });
+
+    test("a prompt cancels and waits behind an autonomous root hold", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      await finishChildAndHoldRoot("c1", holdId: "wake-c1");
+
+      await plugin.sendPrompt(
+        promptId: "prompt-2",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await waitForFrame("session/cancel");
+      expect(
+        fake.written.where((frame) => frame["method"] == "session/prompt"),
+        hasLength(1),
+        reason: "the autonomous root turn still owns the session lane",
+      );
+
+      plugin.childSessionTracker.releaseRootHold(rootSessionId: sessionId, holdId: "wake-c1");
+      final secondPrompt = await waitForFrameCount("session/prompt", 2);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": secondPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      await pump();
+
+      expect(rootIdles(sessionId), hasLength(1));
     });
 
     test("global interruption clears a held root even without a session-status entry", () async {
