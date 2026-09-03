@@ -6,14 +6,11 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 
-/// Desktop composition for the shared session inventory.
-class const DesktopSessionListScreen({
+/// Owns one project-scoped session inventory across narrow and split routes.
+class const DesktopSessionListCubitProvider({
   super.key,
   required final String projectId,
-  required final String? projectName,
-  required final VoidCallback onBack,
-  required final SessionOpenedCallback onSessionTap,
-  required final VoidCallback onNewSession,
+  required final Widget child,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -31,15 +28,54 @@ class const DesktopSessionListScreen({
         failureReporter: getIt<FailureReporter>(),
         catalogRescanService: getIt<CatalogRescanService>(),
       ),
-      child: SessionListScaffold(
-        projectName: projectName,
-        onSessionTap: onSessionTap,
-        actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
-        archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-        onNewSession: onNewSession,
-        onBack: onBack,
-        connectionBanner: null,
-      ),
+      child: child,
+    );
+  }
+}
+
+/// Narrow desktop composition for the shared session inventory.
+class const DesktopSessionListScreen({
+  super.key,
+  required final String? projectName,
+  required final VoidCallback onBack,
+  required final SessionOpenedCallback onSessionTap,
+  required final VoidCallback onNewSession,
+  required final SessionListActionDispatcher actionDispatcher,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SessionListScaffold(
+      projectName: projectName,
+      onSessionTap: onSessionTap,
+      actionDispatcher: actionDispatcher,
+      archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+      onNewSession: onNewSession,
+      onBack: onBack,
+      connectionBanner: null,
+    );
+  }
+}
+
+/// Persistent left pane used by the wide desktop session split.
+class const DesktopSessionListPane({
+  super.key,
+  required final String? projectName,
+  required final String? selectedSessionId,
+  required final VoidCallback onBack,
+  required final SessionOpenedCallback onSessionTap,
+  required final VoidCallback onNewSession,
+  required final SessionListActionDispatcher actionDispatcher,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SessionListPanel(
+      projectName: projectName,
+      selectedSessionId: selectedSessionId,
+      onSessionTap: onSessionTap,
+      actionDispatcher: actionDispatcher,
+      archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+      onNewSession: onNewSession,
+      onBack: onBack,
     );
   }
 }

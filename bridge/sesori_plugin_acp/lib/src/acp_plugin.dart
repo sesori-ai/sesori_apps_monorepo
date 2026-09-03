@@ -17,6 +17,7 @@ import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
 import "repositories/acp_session_config_repository.dart";
+import "repositories/trackers/acp_child_session_tracker.dart";
 
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
@@ -49,6 +50,10 @@ abstract class AcpPlugin({
   /// The live event mapper (subclasses may pass a specialized one). Its
   /// `pluginId` is also the `agent` stamped on live and replayed messages.
   required final AcpEventMapper eventMapper,
+
+  /// The composition-owned sub-agent tracker [eventMapper] pushes lifecycle
+  /// facts into; the plugin only reads its snapshots and clears it.
+  required final AcpChildSessionTracker childSessionTracker,
 
   /// Snapshot of the agent's advertised slash commands, fed by the
   /// notification listener and served by [getCommands].
@@ -1664,6 +1669,13 @@ abstract class AcpPlugin({
     // for a deleted session. Provider/model state is cleared from its tracker
     // independently above.
     eventMapper.forgetSession(sessionId);
+    // A root's children streamed under their own ids, so their mapper and
+    // model caches go with the root.
+    for (final childId in childSessionTracker.childSessionIds(sessionId: sessionId)) {
+      _sessionOptionsService.forgetSession(sessionId: childId);
+      eventMapper.forgetSession(childId);
+    }
+    childSessionTracker.forgetSession(sessionId: sessionId);
   }
 
   @override

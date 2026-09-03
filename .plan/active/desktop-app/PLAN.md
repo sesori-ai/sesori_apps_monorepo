@@ -608,7 +608,10 @@ with one PR open at a time:
 2. `🚧 [desktop-app] Compose the desktop cockpit [step 2/3]` — persistent
    cockpit navigation, project/session route ownership, supervision recovery,
    Enter/Shift+Enter with IME protection, safe Escape behavior, and selectable
-   transcript/diff source without navigation or gutter metadata.
+   transcript/diff source without navigation or gutter metadata. The
+   notification-only `DesktopRouteDispatcher` and router-readiness fence are
+   intentionally deferred because their first production consumer is the
+   attention open-routing flow in slice 3.
 3. `🚧 [desktop-app] Add desktop attention notifications [step 3/3]` — shared
    notification contract changes, native desktop client, persisted preference,
    account-bound SSE attention, open routing, and logout/auth-loss cleanup.

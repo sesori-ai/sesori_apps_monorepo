@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000002",
+    "update": {
+      "sessionUpdate": "user_message_chunk",
+      "content": {
+        "type": "text",
+        "text": "Synthetic child prompt"
+      }
+    }
+  }
+}
