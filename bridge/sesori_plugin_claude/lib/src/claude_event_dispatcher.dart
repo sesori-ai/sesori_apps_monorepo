@@ -616,6 +616,10 @@ final class ClaudeEventDispatcher({
       );
       if (!terminal) busy.add(childId);
       events.add(_childStatus(childId: childId, busy: !terminal));
+    } else if (childId != null && !terminal && busy.add(childId)) {
+      // Claude can resume an already-announced agent after it stopped. Restore
+      // the child to busy before publishing the reopened subtask part.
+      events.add(_childStatus(childId: childId, busy: true));
     }
     if (part != null) events.add(BridgeSseMessagePartUpdated(part: part));
     if (childId != null && terminal && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));

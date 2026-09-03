@@ -136,6 +136,35 @@ void main() {
       expect(tracker.runningTaskToolUseIds(sessionId: _session), isEmpty);
     });
 
+    test("a repeated task start reopens a terminal task", () {
+      _upsertAgent(tracker);
+      tracker.taskNotified(
+        toolUseId: _toolUseId,
+        taskId: _agentId,
+        status: ClaudeTaskStatus.failed,
+        summary: "first attempt failed",
+        result: null,
+      );
+
+      final resumed = tracker.taskStarted(toolUseId: _toolUseId, taskId: _agentId);
+
+      expect(resumed?.state.status, PluginToolStatus.running);
+      expect(resumed?.state.output, isNull);
+      expect(resumed?.state.error, isNull);
+      expect(tracker.runningTaskToolUseIds(sessionId: _session), {_toolUseId});
+
+      final completed = tracker.complete(
+        sessionId: _session,
+        toolId: _toolUseId,
+        output: "second attempt finished",
+        isError: false,
+        attachments: const [],
+        result: const ClaudeToolUseResultCompleted(agentId: _agentId),
+      );
+      expect(completed?.state.status, PluginToolStatus.completed);
+      expect(completed?.state.output, "second attempt finished");
+    });
+
     test("a tool result is a fallback that a later notification replaces", () {
       _upsertAgent(tracker);
       final fallback = tracker.complete(
@@ -312,6 +341,23 @@ void main() {
 
       expect((dead.single.parts.single as PluginMessagePartSubtask).taskState?.status, PluginToolStatus.cancelled);
       expect((live.single.parts.single as PluginMessagePartSubtask).taskState?.status, PluginToolStatus.running);
+    });
+
+    test("a resident restart overrides an earlier terminal transcript state", () {
+      final messages = mapper.map(
+        sessionId: _session,
+        agentId: null,
+        records: [
+          _agentRecord(),
+          _launchResultRecord(),
+          _notificationRecord(text: _notificationText),
+        ],
+        residentTaskToolUseIds: const {_toolUseId},
+      );
+
+      final part = messages.single.parts.single as PluginMessagePartSubtask;
+      expect(part.taskState?.status, PluginToolStatus.running);
+      expect(part.taskState?.output, isNull);
     });
 
     test("a foreground result finalizes without a notification and injected records never render", () {
