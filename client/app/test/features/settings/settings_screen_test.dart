@@ -57,14 +57,19 @@ Widget _app({
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final creatorRecordingCubit = context.read<CreatorRecordingCubit>();
-          return BlocProvider<ConnectionOverlayCubit>.value(
-            value: StubConnectionOverlayCubit(),
-            child: SettingsScreen(
-              onOpenCreatorRecording: creatorRecordingCubit.state.capture is CreatorRecordingUnsupported
-                  ? null
-                  : () => showCreatorRecordingSheet(context: context, cubit: creatorRecordingCubit),
+          return MaterialPage<void>(
+            child: BlocProvider<ConnectionOverlayCubit>.value(
+              value: StubConnectionOverlayCubit(),
+              child: SettingsScreen(
+                onOpenCreatorRecording: creatorRecordingCubit.state.capture is CreatorRecordingUnsupported
+                    ? null
+                    : ({required context}) => showCreatorRecordingSheet(
+                        context: context,
+                        cubit: creatorRecordingCubit,
+                      ),
+              ),
             ),
           );
         },
