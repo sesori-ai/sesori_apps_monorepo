@@ -89,9 +89,10 @@ idle suspension, the management snapshot, and lifecycle commands.
   the configured timeout instead of zero and consumes it internally through the host.
   Each plugin reaps its idle per-session CLI/RPC child process after that window and
   transparently resumes it on the next prompt, so the settings knob stays effective
-  without a competing whole-plugin suspension timer. A runtime timeout change applies
-  at each session's next idle transition without a plugin restart; no timeout keeps the
-  child resident.
+  without a competing whole-plugin suspension timer. A runtime timeout change
+  immediately re-arms each currently idle session from the change, while busy
+  sessions pick it up at their next idle transition; no timeout invalidates the
+  existing idle timer and keeps the child resident.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.
