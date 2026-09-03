@@ -89,6 +89,7 @@ class _FakeBridgeSettingsRepository({
       intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
     ),
     yolo: YoloSettingsResponse(enabled: settings.yolo),
+    warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
   );
 
   @override
@@ -114,4 +115,9 @@ class _FakeBridgeSettingsRepository({
 
   @override
   Future<void> updateYolo({required bool enabled}) async {}
+
+  @override
+  Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {
+    return settings = settings.copyWith(warmUpPluginsOnSessionOpen: enabled);
+  }
 }
