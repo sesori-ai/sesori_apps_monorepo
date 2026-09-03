@@ -94,16 +94,17 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
 - `bridge/sesori_plugin_runtime/` already downloads, SHA-256 verifies, extracts, places, activates, and cleans
   single-binary or package-directory runtimes. Antigravity can use the package-directory layout, but version probing
   must initialize ACP because this runtime has no supported standalone CLI version command.
-- `bridge/app/lib/src/runtime/plugin_registry.dart` has no Antigravity descriptor, and
-  `shared/sesori_shared/lib/src/models/sesori/plugin_identity.dart` has no `Harness.antigravity`.
-- Client transport remains string-based for unknown plugin IDs, while `client/module_prego/.../prego_brand_logo.dart`
-  maps only known built-ins to names/artwork. An older client can therefore continue to show a generic harness row.
+- `bridge/app/lib/src/runtime/plugin_registry.dart` has no Antigravity descriptor. The shared `Harness` enum does not
+  need an Antigravity case because transport and registry composition already carry opaque plugin ID strings.
+- `client/module_prego/.../prego_brand_logo.dart` maps only legacy known IDs to names/artwork. Current and older clients
+  can therefore continue to show Antigravity through the existing generic harness row.
 - There is no Antigravity package, runtime state, credential copy, database schema, route, or compatibility obligation
   from a public Sesori release.
 
 ## Locked Product Decisions
 
-- Plugin ID is `antigravity`; display name is `Antigravity`. Upstream ACP identity remains `antigravity-acp`.
+- Plugin-owned ID is `AntigravityIdentity.pluginId == "antigravity"`; display name is `Antigravity`. Bridge composition
+  registers that opaque string. Upstream ACP identity remains `antigravity-acp`; no shared `Harness` case is added.
 - Use only the official Google pair from the ACP registry. Explicit `--antigravity-bin <path>` points at
   `agy_acp_server.par`/`.exe`; the matching `localharness_external` sibling is mandatory. Without an explicit path,
   resolve that official pair on PATH first, then an already-installed managed pair.
@@ -163,7 +164,7 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   and bounded tool-update normalization with live/replay parity.
 - Session creation, prompt/command delivery, two-session behavior, cancellation, history replay, cold resume,
   bridge-derived projects, isolated-profile import, crash recovery, and shutdown through shared ACP ownership.
-- App registration, `Harness.antigravity`, descriptor-provided display name, generic client presentation,
+- App registration through the plugin-owned opaque ID, descriptor-provided display name, generic client presentation,
   README/architecture/capability documentation, and exact registry tests.
 - Pinned managed installation for the five official registry targets and explicit unsupported handling for macOS x64.
 - Regression-document reconciliation and L1-L5 retirement evidence defined below.
@@ -181,8 +182,8 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   upstream rename/delete, or import from another profile/harness.
 - Model-family inference, preferred-model filtering, quota/billing display, custom model aliases, or a remote model
   manifest.
-- New database tables/columns/migrations, persisted OAuth challenges, compatibility shims for unpublished code, or
-  provider-specific analytics.
+- New database tables/columns/migrations, persisted OAuth challenges, compatibility shims for unpublished code,
+  provider-specific analytics, a shared `Harness.antigravity` case, or an Antigravity presentation branch.
 
 ## Architecture
 
@@ -203,7 +204,7 @@ PluginLifecycleService (one active operation per plugin)
 
 bridge app -> AntigravityPluginDescriptor (composition root)
   -> AntigravityPlugin -> sesori_plugin_acp -> agy_acp_server + localharness_external
-  -> AntigravityRuntimeRepository -> Layer-1 storage/ACP APIs
+  -> AntigravityRuntimeService -> AntigravityRuntimeRepository -> Layer-1 storage/ACP APIs
   -> isolated GEMINI_HOME
 ```
 
@@ -232,8 +233,8 @@ bridge app -> AntigravityPluginDescriptor (composition root)
   browser DTO carries an authorization URL and expected loopback callback URL, not Google-specific state semantics.
 - Bridge runtime/lifecycle owns single-flight authentication, generation fencing, cancellation, and routing a
   continuation only to the current active operation. It does not inspect Google URL semantics or issue HTTP itself.
-- `sesori_plugin_antigravity` owns Google/runtime identity, profile policy, pair selection, interactions, update
-  normalization, and metadata mapping. Layer-3 services own exact callback/state/code and model/mode workflows.
+- `sesori_plugin_antigravity` owns Google/runtime identity, profile policy, interactions, update normalization, and
+  metadata mapping. Layer-3 services own runtime selection/probe/setup, callback/state/code, and model/mode workflows.
 - The pure-Dart client flow owns generic browser challenge mapping and pasted-input validation. `PluginRepository` maps
   every wire variant to an internal sealed challenge. `PluginManagementService` parses the raw typed paste intent and
   verifies generic absolute-loopback shape plus the expected endpoint before asking the repository to submit it.
@@ -242,7 +243,7 @@ bridge app -> AntigravityPluginDescriptor (composition root)
 - `sesori_plugin_acp` remains the only owner of standard ACP requests, transport lifecycle, session lanes, event
   mapping, replay, cancellation, and pending inputs. New hooks are identity defaults for existing plugins.
 - `sesori_plugin_runtime` continues to own generic download/checksum/extract/place/activate/cleanup. Antigravity
-  contributes a package-directory manifest and repository-backed validator; it does not duplicate an installer.
+  contributes a package-directory manifest and service-backed validator; it does not duplicate an installer.
 - Bridge app imports Antigravity only at `plugin_registry.dart`. Client logic uses opaque plugin IDs, existing metadata
   display names where available, and generic ID/artwork fallback elsewhere; no shared widget branches on Antigravity.
 
@@ -269,6 +270,7 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityAuthenticationRepository` | `repositories/antigravity_authentication_repository.dart` | L2 |
 | `AntigravitySessionMetadataRepository` | `repositories/antigravity_session_metadata_repository.dart` | L2 |
 | `AntigravityProfileService` | `services/antigravity_profile_service.dart` | L3 |
+| `AntigravityRuntimeService` | `services/antigravity_runtime_service.dart` | L3 |
 | `AntigravityAuthenticationService` | `services/antigravity_authentication_service.dart` | L3 |
 | `AntigravitySessionOptionsService` | `services/antigravity_session_options_service.dart` | L3 |
 | `AntigravityRuntimeVersionValidator` | `runtime/antigravity_runtime_version_validator.dart` | L3 adapter |
@@ -285,7 +287,7 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityLaunchSpecBuilder` | none | descriptor | none |
 | `AntigravityAuthorizationParser` | none | descriptor | none |
 | `AntigravityProtocolMapper` | ACP content limits | descriptor | none |
-| `AntigravityProfileStorage` | none | descriptor | filesystem boundary only |
+| `AntigravityProfileStorage` | command executor, platform target | descriptor | filesystem/permission boundary |
 | `AntigravityRuntimeStorage` | PATH resolver | descriptor | filesystem boundary only |
 | `AntigravitySessionMetadataStorage` | none | descriptor | filesystem boundary only |
 | `AntigravityLoopbackClient` | HTTP client | descriptor | one HTTP client lease |
@@ -295,23 +297,28 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityAuthenticationRepository` | ACP API, loopback client | descriptor | none |
 | `AntigravitySessionMetadataRepository` | metadata storage | descriptor | none |
 | `AntigravityProfileService` | profile repository | descriptor | none |
+| `AntigravityRuntimeService` | runtime repository | descriptor | none |
 | `AntigravityAuthenticationService` | auth repository, auth parser | descriptor | none |
 | `AntigravitySessionOptionsService` | catalog tracker, ACP config repository | descriptor callback at ACP hook | none |
-| `AntigravityRuntimeVersionValidator` | runtime repository | descriptor | none |
+| `AntigravityRuntimeVersionValidator` | runtime service | descriptor | none |
 | `AntigravityCatalogTracker` | none | descriptor | last-good immutable catalog |
 | `AntigravityAuthenticationOperation` | profile service, auth service | descriptor | one auth attempt |
 | `AntigravityApprovalRegistry` | live ACP client, pending registries | plugin hook | connection requests |
 | `AntigravityPlugin` | launch/ACP/metadata peers, options composer | descriptor | live ACP processes |
 | `AntigravityPluginDescriptor` | none | bridge registry | lifecycle composition root |
 
-`AntigravityProfileStorage` creates private directories, writes typed settings, and reports opaque token-file presence;
-`AntigravityProfileRepository` maps typed storage DTOs and `AntigravityProfileService` applies environment policy.
-`AntigravitySessionMetadataStorage` alone lists and decodes bounded `.meta` files into typed DTOs; its repository maps
-UUID/cwd records into plugin-domain sessions and decides which malformed records to skip. Neither reads SQLite.
+`AntigravityProfileStorage` creates the profile and, before any agent launch, uses its injected `CommandExecutor` to
+apply owner-only `700` mode on POSIX; Windows relies on the user-profile ACL and runs no chmod command. Permission
+failure blocks setup. `AntigravityProfileRepository` maps typed storage DTOs and `AntigravityProfileService` applies
+environment policy. `AntigravitySessionMetadataStorage` alone lists and decodes bounded `.meta` files into typed DTOs;
+its repository maps UUID/cwd records into plugin-domain sessions and decides which malformed records to skip. Neither
+reads SQLite.
 
 `AntigravityAcpApi` owns scratch `AcpStdioClient`/`AcpAgentApi` process access, initialize-only, and authenticate calls.
-`AntigravityRuntimeRepository` makes exact identity/version/capability decisions above that API and applies
-explicit/PATH/managed precedence. `AntigravityAuthenticationRepository` maps ACP auth and callback HTTP outcomes only.
+`AntigravityRuntimeRepository` maps runtime-storage candidates and ACP initialize results into domain outcomes.
+`AntigravityRuntimeService` validates exact identity/version/capabilities, owns explicit/PATH/managed precedence and
+setup classification, and sequences repository calls. `AntigravityAuthenticationRepository` maps ACP auth and callback
+HTTP outcomes only.
 `AntigravityAuthenticationService` parses and validates Google authorization/callback semantics, sequences repository
 calls, and permits one no-redirect GET only after exact endpoint/state/code validation. The operation coordinates the
 profile/authentication services and owns state transitions.
@@ -395,11 +402,11 @@ start/auth/replay scratch process
   -> Linux only: --uid=
 ```
 
-An explicit path is authoritative and never falls through. `AntigravityRuntimeStorage` exposes pair candidates;
-`AntigravityRuntimeRepository` applies explicit/PATH/managed precedence and accepts a candidate only after
-`AntigravityAcpApi` returns its initialize result. Exact identity/capability policy remains in the repository. Setup may
-use token-file presence from `AntigravityProfileRepository` as a non-secret hint, but live ACP authentication remains
-authoritative; stale/invalid tokens become a typed authentication-required state.
+An explicit path is authoritative and never falls through. `AntigravityRuntimeStorage` exposes pair candidates, and
+`AntigravityRuntimeRepository` maps candidate/probe boundary results without choosing among them.
+`AntigravityRuntimeService` owns explicit/PATH/managed precedence, exact probe validation, and setup classification.
+Setup may use token-file presence from `AntigravityProfileRepository` as a non-secret hint, but live ACP authentication
+remains authoritative; stale/invalid tokens become a typed authentication-required state.
 
 ### Sessions, Options, And Updates
 
@@ -522,8 +529,8 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
 1. `🌱 [antigravity-harness] docs: plan Antigravity ACP support [step 1/12]`
    - Add and architecture-review this plan/tracker; no production behavior.
 2. `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
-   - Add the package/workspace skeleton, official pair/release identity, initialize-only probe seam, local pair
-     resolver, privacy-safe released-agent fixture, and focused contract tests. Do not register the plugin.
+   - Add the package/workspace skeleton, official pair/release identity, initialize-only probe seam, layered local-pair
+     resolution, privacy-safe released-agent fixture, and focused contract tests. Do not create/register the plugin.
 3. `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 3/12]`
    - Extend the plugin authentication operation and bridge runtime/lifecycle ownership with a one-shot browser redirect
      continuation while preserving Codex device-code behavior. Keep it internal and unreachable from HTTP for now.
@@ -538,10 +545,11 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - Add exact model catalog/selection, fixed default mode, question conversion, persistent-approval filtering, bounded
      tool normalization, and live/replay mapper hooks with direct collaborator tests.
 7. `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 7/12]`
-   - Compose `AntigravityPlugin`, typed metadata Storage/Repository mapping, directory recovery, load/resume/history,
-     turn lanes, commands, crash/reconnect, tombstone-compatible deletion, and conformance tests without registration.
+   - Create the unregistered `AntigravityPlugin` and descriptor, compose typed metadata Storage/Repository mapping,
+     directory recovery, load/resume/history, turn lanes, options wiring, commands, crash/reconnect,
+     tombstone-compatible deletion, and conformance tests.
 8. `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 8/12]`
-   - Add the local-only descriptor setup/provision/start path, app dependency/registry, `Harness.antigravity`, exact-set
+   - Register the local-only descriptor through app composition with its plugin-owned opaque ID; update exact-set
      fixtures, architecture inventories, and backend-neutral listing/routing. Local manual support is complete here.
 9. `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 9/12]`
    - Independently pin all five official archives, add package-directory managed install/selection/validation, explicit
@@ -573,10 +581,11 @@ first. No other step has an expected overage.
 
 - Create `bridge/sesori_plugin_antigravity/` with package metadata, exports, analysis/build-runner configuration,
   identity/release facts, `AntigravityLaunchSpecBuilder`, Layer-1 runtime Storage/ACP API, Layer-2 runtime repository,
-  and tests. Add it to bridge workspace, Makefile, and CI inventories; do not register the production descriptor yet.
+  Layer-3 runtime service, and tests. Add it to bridge workspace, Makefile, and CI inventories; create no plugin or
+  production descriptor yet.
 - Refactor `AcpAgentApi` so initialize-only and authenticate are separately callable while its existing combined method
-  and every current harness retain behavior. `AntigravityAcpApi` owns the scratch process/client and calls this Layer-1
-  API; `AntigravityRuntimeRepository` alone decides exact identity/version/capability validity and candidate precedence.
+  and every current harness retain behavior. `AntigravityAcpApi` owns scratch process/client access; the repository maps
+  storage/probe results, while `AntigravityRuntimeService` owns exact validation, candidate precedence, and sequencing.
 - Download the official macOS arm64 archive from the pinned registry URL in an isolated temporary directory; compute
   hash/size, inspect exactly the pair, launch with the registry arguments/environment, and capture only privacy-safe
   initialize identity/capability structure. Do not commit the archive, credentials, URLs, account/model IDs, or logs.
@@ -625,10 +634,11 @@ first. No other step has an expected overage.
 
 ### Step 5/12: Isolated personal authentication
 
-- Add typed `{auth: {type: oauth-personal}}` settings. `AntigravityProfileStorage` alone creates/chmods profile
-  directories, writes/reads the typed settings DTO, and reports opaque token-file presence below the plugin state root.
-  `AntigravityProfileRepository` maps storage results; `AntigravityProfileService` consumes only that repository and
-  produces the sanitized process environment. None has a default-constructed dependency.
+- Add typed `{auth: {type: oauth-personal}}` settings. `AntigravityProfileStorage` creates the profile, uses an injected
+  `CommandExecutor` backed by `PluginHost.processes` to apply POSIX `700` before launch, writes/reads the typed settings
+  DTO, and reports opaque token-file presence below the plugin state root. Windows performs no chmod and relies on its
+  user-profile ACL. Permission failure blocks setup. The repository maps storage results; `AntigravityProfileService`
+  produces the sanitized environment. All dependencies are required and tests cover mode, ordering, and failure.
 - Add a narrow backend-neutral `includeParentEnvironment` launch/host-process flag as a required named parameter.
   Update every in-repository caller in lockstep to choose `true`; Antigravity chooses `false` and supplies a filtered
   copy of injected `PluginHost.environment`, removing ambient Google/Gemini credentials/profile overrides before adding
@@ -656,10 +666,10 @@ first. No other step has an expected overage.
 
 - Parse `configOptions` model selects including grouped options; keep exact IDs/names, current value, and a last-good
   immutable catalog. Expose one primary Antigravity agent and provider through existing session-option contracts.
-- Extend Layer-1 `AcpAgentApi` and Layer-2 `AcpSessionConfigRepository` with standard `session/set_mode`. The descriptor
-  passes a required options-service composer into the plugin; the hook invokes it with the shared connection-scoped
-  repository after the ACP client exists. The service validates the model, performs exact selection, then sends
-  `default` before every prompt/resumed use as one operation. Consumers only await it; any failure prevents dispatch.
+- Extend Layer-1 `AcpAgentApi` and Layer-2 `AcpSessionConfigRepository` with standard `session/set_mode`. Add
+  `AntigravitySessionOptionsService(required catalogTracker, required configRepository)`; it validates the model,
+  performs exact selection, then sends `default` as one operation. Test it directly with fakes in this step; defer all
+  plugin/descriptor composer wiring to Step 7. Any write failure prevents later dispatch.
 - Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
   existing plugin gets identity behavior.
 - Normalize Antigravity command/output/image keys into bounded standard fields, strip duplicate inline image bytes after
@@ -673,6 +683,7 @@ first. No other step has an expected overage.
 
 ### Step 7/12: Persistent ACP plugin composition
 
+- Create the unregistered `AntigravityPlugin` and `AntigravityPluginDescriptor`; registration waits for Step 8.
 - Add the smallest shared protected directory-registration seam. `AntigravitySessionMetadataStorage` alone lists
   bounded `.meta` files in the isolated conversations directory and decodes each through a typed generated DTO. It
   never reads SQLite or brain content.
@@ -681,8 +692,8 @@ first. No other step has an expected overage.
   repository results; ordinary bridge reads remain DB-only and scans run only for import or cold ACP resolution.
 - In the descriptor composition root, build process-lifetime trackers, mapper, metadata repository, process factory,
   and other peers. Define the required composer that combines a live `AcpSessionConfigRepository` with the catalog
-  tracker into `AntigravitySessionOptionsService`; pass it and every peer to `AntigravityPlugin`. The connection hook
-  invokes that composer and separately creates the approval registry after the client exists; peers construct no peers.
+  tracker into the Step 6 service; pass it and every peer to `AntigravityPlugin`. The connection hook invokes that
+  composer and separately creates the approval registry after the client exists; peers construct no peers.
 - Prefer standard `session/resume` for live residency when advertised; reserve `session/load` for history replay.
   Preserve replay suppression, exact model stamping, turn acceptance semantics, stop-and-send, and cleanup.
 - Cover new/load/resume, bridge restart directory recovery, long replay, two sessions, active cancel/delete, question
@@ -690,13 +701,14 @@ first. No other step has an expected overage.
 
 ### Step 8/12: Local descriptor and activation
 
-- Add `AntigravityPluginDescriptor` with `--antigravity-bin`. It composes runtime/profile lower layers, then asks
-  `AntigravityRuntimeRepository` for explicit/PATH precedence, initialize-only setup validation, ensureRuntime
-  revalidation, isolated-profile auth classification, abort checks, and local install/login guidance.
+- Register the Step 7 `AntigravityPluginDescriptor` with `--antigravity-bin`. Its composition asks
+  `AntigravityRuntimeService` for explicit/PATH selection, initialize-only setup validation, ensureRuntime revalidation,
+  isolated-profile auth classification, abort checks, and local install/login guidance.
 - Launch every process through `PluginHost.processes`; never call `io.Process.start` directly.
 - Advertise browser authentication only while personal auth is required. Keep install capability absent until Step 9.
-- Add package dependency and descriptor to the bridge app registry; add `Harness.antigravity`; update exact built-in,
-  CLI-option, app composition, and architecture inventories. Preserve OpenCode as preferred default and on-demand start.
+- Add the package dependency and descriptor to the bridge app registry through `AntigravityIdentity.pluginId`; do not
+  add a shared `Harness` case. Update exact built-in, CLI-option, app composition, and architecture inventories.
+  Preserve OpenCode as preferred default and on-demand start.
 - In this activation PR, update `docs/HARNESS_CAPABILITIES.md` for personal OAuth and persistent-approval gaps and put
   proprietary-runtime, Google terms, manual-pair, and retained-history disclosure in setup/auth guidance before either
   action is usable. Descriptor display name is `Antigravity`; shared presentation keeps generic harness artwork.
@@ -710,8 +722,8 @@ first. No other step has an expected overage.
 - Add `AntigravityRuntimeManifest` using package-directory layout so the server and harness remain siblings. Map the
   registry's macOS arm64, Linux x64/arm64, and Windows x64/arm64 assets; return unsupported for macOS x64.
 - Reuse shared download/checksum/extract/place/activation/cleanup. Compose
-  `AntigravityRuntimeVersionValidator(required runtimeRepository)` as the shared installer adapter; it delegates process
-  access to the repository/API flow, maps exact identity/version/capabilities, and reports sanitized failures.
+  `AntigravityRuntimeVersionValidator(required runtimeService)` as the shared installer adapter; it delegates exact
+  validation to the service and reports sanitized outcomes without duplicating process access.
 - Extend descriptor precedence to explicit -> valid PATH -> already-installed managed. Advertise install only without
   an explicit override and on one of the five supported targets; install is always explicit.
 - Add required `extractionTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor` input,

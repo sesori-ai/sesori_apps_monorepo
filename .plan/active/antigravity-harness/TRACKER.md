@@ -44,18 +44,20 @@
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
   separation of concerns, composition, suffix naming, bridge layers, client DTO mapping, and presentation ownership.
   All valid findings were applied directly; repository policy does not call for re-reviewing those fixes.
-- **PR review:** eight concrete Step 1 review findings applied on 2026-09-03: required environment inheritance,
-  service-owned auth/options workflows, generic artwork, pre-activation disclosure, extraction budgets, L5 Full scope,
-  and shutdown-only install abort semantics.
+- **PR review:** first wave of eight findings applied on 2026-09-03: explicit environment inheritance, service-owned
+  auth/options workflows, generic artwork, pre-activation disclosure, extraction budgets, L5 Full scope, and shutdown
+  install-abort semantics. The second wave adds service-owned runtime policy, plugin-owned identity, coherent Step 6/7
+  composition, and host-backed profile chmod.
 - **Implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
 
 ## Locked Decisions
 
 - Official Google `antigravity-acp` registry pair only; no `agy` wrapper or community adapter.
-- Plugin ID/name: `antigravity` / `Antigravity`.
+- Plugin ID/name: `antigravity` / `Antigravity`, owned by `sesori_plugin_antigravity`; no shared `Harness` case.
 - Exact initial pin: registry `1.0.0`, agent `agy_acp_server_20260818_01_RC01`.
 - Personal OAuth only in initial support; other advertised auth methods remain documented gaps.
-- Private profile under plugin state; no default-profile credential copy.
+- Private profile under plugin state; no default-profile credential copy; POSIX setup applies owner-only mode through
+  an injected host-backed command boundary before agent launch.
 - Remote auth uses pure-Dart generic loopback-input validation, then independent exact plugin validation before relay.
 - Agent mode is always `default`; `allow_always`, `auto_edit`, `yolo`, and dangerous skip are unavailable.
 - Local pair support lands before managed install.
@@ -106,5 +108,8 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   `f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd`; its only members match the expected pair.
   Isolated initialize confirmed ACP v1, exact identity/version, load/list/resume/logout, absent close, and four
   authentication IDs.
-- 2026-09-03 — PR #1285 review produced eight actionable plan findings. All were applied without expanding into a
-  user-facing install-cancel flow: shutdown/interruption recovery is the supported install-abort boundary.
+- 2026-09-03 — PR #1285 first review produced eight actionable plan findings. All were applied without expanding into
+  a user-facing install-cancel flow: shutdown/interruption recovery is the supported install-abort boundary.
+- 2026-09-03 — PR #1285 second review produced four actionable findings. Runtime decisions now belong to
+  `AntigravityRuntimeService`; the ID remains plugin-owned; plugin/descriptor creation is coherent in Step 7; and
+  profile chmod uses an injected host-backed lower boundary.
