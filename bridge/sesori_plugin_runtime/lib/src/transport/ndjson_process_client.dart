@@ -10,14 +10,29 @@ typedef JsonObject = Map<String, Object?>; // ignore: no_slop_linter/prefer_spec
 typedef NdjsonCorrelationId = Object? Function(JsonObject frame); // ignore: no_slop_linter/prefer_specific_type
 // Exit failures stay plugin-typed across transport boundary.
 typedef NdjsonExitError = Object Function(int exitCode); // ignore: no_slop_linter/prefer_specific_type
+// Long-running requests may define which uncorrelated inbound frames prove
+// progress and therefore restart their inactivity deadline.
+typedef NdjsonActivityMatcher = bool Function(JsonObject frame);
 
-enum MalformedFramePolicy() { discard, failPending }
+enum MalformedFramePolicy() {
+  discard,
+  failPending,
+}
 
-enum NonObjectFramePolicy() { discard, failPending }
+enum NonObjectFramePolicy() {
+  discard,
+  failPending,
+}
 
-enum MalformedFrameLogPolicy() { metadataOnly, sanitizedContent }
+enum MalformedFrameLogPolicy() {
+  metadataOnly,
+  sanitizedContent,
+}
 
-enum StderrPolicy() { discard, forwardSanitized }
+enum StderrPolicy() {
+  discard,
+  forwardSanitized,
+}
 
 abstract interface class NdjsonProcessHandle() {
   IOSink get stdin;
@@ -31,6 +46,14 @@ final class AttachToken._(final int generation);
 
 final class NdjsonDispatch({required final Future<JsonObject> response});
 
+final class _PendingResponse({
+  required final Completer<JsonObject> completer,
+  required final Duration timeout,
+  required final NdjsonActivityMatcher? activityMatcher,
+}) {
+  Timer? timer;
+}
+
 final class NdjsonProcessClient({
   required final NdjsonCorrelationId _responseCorrelationId,
   required final NdjsonExitError _exitError,
@@ -43,7 +66,7 @@ final class NdjsonProcessClient({
   required final Duration _reapTimeout,
 }) {
   // JSON correlation IDs are intentionally opaque protocol boundary values.
-  final Map<Object, Completer<JsonObject>> _pending = {}; // ignore: no_slop_linter/prefer_specific_type
+  final Map<Object, _PendingResponse> _pending = {}; // ignore: no_slop_linter/prefer_specific_type
   final StreamController<JsonObject> _notifications = StreamController.broadcast();
 
   NdjsonProcessHandle? _process;
@@ -137,24 +160,62 @@ final class NdjsonProcessClient({
     required Object id, // ignore: no_slop_linter/prefer_specific_type
     required JsonObject frame,
     required Duration timeout,
+  }) => _dispatch(
+    id: id,
+    frame: frame,
+    timeout: timeout,
+    activityMatcher: null,
+  );
+
+  /// Dispatches a request whose [timeout] measures inbound inactivity rather
+  /// than total wall time. Only frames accepted by [activityMatcher] restart
+  /// the deadline, so unrelated concurrent work cannot keep it alive.
+  Future<NdjsonDispatch> dispatchWithInactivityTimeout({
+    // JSON correlation IDs are intentionally opaque protocol boundary values.
+    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required JsonObject frame,
+    required Duration timeout,
+    required NdjsonActivityMatcher activityMatcher,
+  }) => _dispatch(
+    id: id,
+    frame: frame,
+    timeout: timeout,
+    activityMatcher: activityMatcher,
+  );
+
+  Future<NdjsonDispatch> _dispatch({
+    // JSON correlation IDs are intentionally opaque protocol boundary values.
+    required Object id, // ignore: no_slop_linter/prefer_specific_type
+    required JsonObject frame,
+    required Duration timeout,
+    required NdjsonActivityMatcher? activityMatcher,
   }) async {
     final process = _requireProcess();
-    final completer = Completer<JsonObject>();
-    _pending[id] = completer;
+    final pending = _PendingResponse(
+      completer: Completer<JsonObject>(),
+      timeout: timeout,
+      activityMatcher: activityMatcher,
+    );
+    _pending[id] = pending;
+    _armTimeout(id: id, pending: pending);
     try {
       sendFrame(frame: frame);
     } on Object catch (error, stackTrace) {
-      _pending.remove(id);
-      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+      final failed = _removePending(id);
+      if (failed != null && !failed.completer.isCompleted) {
+        failed.completer.completeError(error, stackTrace);
+      }
       rethrow;
     }
-    final response = _awaitResponse(id: id, response: completer.future, timeout: timeout);
+    final response = pending.completer.future;
     response.ignore();
     try {
       await process.stdin.flush();
     } on Object catch (error, stackTrace) {
-      _pending.remove(id);
-      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+      final failed = _removePending(id);
+      if (failed != null && !failed.completer.isCompleted) {
+        failed.completer.completeError(error, stackTrace);
+      }
       rethrow;
     }
     return NdjsonDispatch(response: response);
@@ -171,18 +232,30 @@ final class NdjsonProcessClient({
     return process;
   }
 
-  Future<JsonObject> _awaitResponse({
+  void _armTimeout({
     // JSON correlation IDs are intentionally opaque protocol boundary values.
     required Object id, // ignore: no_slop_linter/prefer_specific_type
-    required Future<JsonObject> response,
-    required Duration timeout,
-  }) async {
-    try {
-      return await response.timeout(timeout);
-    } on TimeoutException {
+    required _PendingResponse pending,
+  }) {
+    pending.timer?.cancel();
+    pending.timer = Timer(pending.timeout, () {
+      if (!identical(_pending[id], pending)) return;
       _pending.remove(id);
-      rethrow;
-    }
+      if (!pending.completer.isCompleted) {
+        pending.completer.completeError(
+          TimeoutException("No matching process activity", pending.timeout),
+          StackTrace.current,
+        );
+      }
+    });
+  }
+
+  // JSON correlation IDs are intentionally opaque protocol boundary values.
+  // ignore: no_slop_linter/prefer_specific_type
+  _PendingResponse? _removePending(Object id) {
+    final pending = _pending.remove(id);
+    pending?.timer?.cancel();
+    return pending;
   }
 
   void _handleLine({required String line}) {
@@ -220,10 +293,16 @@ final class NdjsonProcessClient({
     }
     final id = _responseCorrelationId(frame);
     if (id != null) {
-      final completer = _pending.remove(id);
-      if (completer != null) {
-        completer.complete(frame);
+      final pending = _removePending(id);
+      if (pending != null) {
+        pending.completer.complete(frame);
         return;
+      }
+    }
+    for (final entry in _pending.entries) {
+      final activityMatcher = entry.value.activityMatcher;
+      if (activityMatcher != null && activityMatcher(frame)) {
+        _armTimeout(id: entry.key, pending: entry.value);
       }
     }
     if (!_notifications.isClosed) _notifications.add(frame);
@@ -236,8 +315,9 @@ final class NdjsonProcessClient({
   }) {
     final pending = _pending.values.toList(growable: false);
     _pending.clear();
-    for (final completer in pending) {
-      if (!completer.isCompleted) completer.completeError(error, stackTrace);
+    for (final response in pending) {
+      response.timer?.cancel();
+      if (!response.completer.isCompleted) response.completer.completeError(error, stackTrace);
     }
   }
 
