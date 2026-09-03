@@ -3,7 +3,9 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** Completed 2026-09-02 (Step 8/8; L4 matrix recorded in `TRACKER.md`)
+- **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
+  `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
+  `HARNESS_FOLLOWUPS.md`, retired again when their coverage PRs merge
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
