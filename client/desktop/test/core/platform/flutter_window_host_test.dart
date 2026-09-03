@@ -1,37 +1,59 @@
-import "dart:ui" show Size;
+import "dart:ui" show Offset, Rect, Size;
 
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:screen_retriever/screen_retriever.dart";
 import "package:sesori_desktop/core/platform/flutter_window_host.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:window_manager/window_manager.dart";
 
+const _minimumSize = WindowSize(width: 560, height: 480);
+
 void main() {
   setUpAll(() {
     registerFallbackValue(const WindowOptions());
+    registerFallbackValue(Rect.zero);
   });
 
   late _MockWindowManager manager;
+  late _MockScreenRetriever screenRetriever;
+
+  FlutterWindowHost createHost() => FlutterWindowHost.forTesting(
+    manager: manager,
+    screenRetriever: screenRetriever,
+  );
 
   setUp(() {
     manager = _MockWindowManager();
+    screenRetriever = _MockScreenRetriever();
     when(manager.ensureInitialized).thenAnswer((_) async {});
     when(() => manager.setPreventClose(any())).thenAnswer((_) async {});
     when(() => manager.waitUntilReadyToShow(any())).thenAnswer((_) async {});
+    when(() => manager.setBounds(any())).thenAnswer((_) async {});
+    when(manager.getBounds).thenAnswer((_) async => const Rect.fromLTWH(40, 60, 900, 700));
     when(manager.show).thenAnswer((_) async {});
     when(manager.focus).thenAnswer((_) async {});
     when(() => manager.setSkipTaskbar(any())).thenAnswer((_) async {});
     when(manager.hide).thenAnswer((_) async {});
+    when(screenRetriever.getAllDisplays).thenAnswer(
+      (_) async => const <Display>[
+        Display(
+          id: "main",
+          size: Size(1512, 982),
+          visiblePosition: Offset(0, 24),
+          visibleSize: Size(1512, 958),
+        ),
+      ],
+    );
   });
 
-  test("initializes the native window and emits typed close requests", () async {
-    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
+  test("initializes the default native window and emits typed close requests", () async {
+    final host = createHost();
     addTearDown(host.dispose);
 
-    await host.initialize(hidden: false);
-    final WindowOptions options =
-        verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
-    final Future<WindowHostEvent> event = host.events.first;
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+    final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
+    final event = host.events.first;
     host.onWindowClose();
 
     verifyInOrder(<void Function()>[
@@ -44,15 +66,34 @@ void main() {
     ]);
     expect(options.size, const Size(720, 620));
     expect(options.minimumSize, const Size(560, 480));
+    expect(options.center, isTrue);
     expect(options.title, "Sesori");
     expect(await event, WindowHostEvent.closeRequested);
   });
 
+  test("applies restored bounds before the first visible show", () async {
+    final host = createHost();
+    addTearDown(host.dispose);
+    const bounds = WindowBounds(left: 80, top: 90, width: 1000, height: 760);
+
+    await host.initialize(hidden: false, initialBounds: bounds, minimumSize: _minimumSize);
+
+    final options = verify(() => manager.waitUntilReadyToShow(captureAny())).captured.single as WindowOptions;
+    expect(options.size, const Size(1000, 760));
+    expect(options.center, isFalse);
+    verifyInOrder(<void Function()>[
+      () => manager.setBounds(const Rect.fromLTWH(80, 90, 1000, 760)),
+      () => manager.setSkipTaskbar(false),
+      () => manager.show(),
+      () => manager.focus(),
+    ]);
+  });
+
   test("hidden initialization never shows or focuses the window", () async {
-    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
+    final host = createHost();
     addTearDown(host.dispose);
 
-    await host.initialize(hidden: true);
+    await host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize);
 
     verifyInOrder(<void Function()>[
       () => manager.setSkipTaskbar(true),
@@ -62,32 +103,66 @@ void main() {
     verifyNever(manager.focus);
   });
 
-  test("show focuses the restored window and hide delegates to the plugin", () async {
-    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
+  test("translates bounds and attached display work areas", () async {
+    final host = createHost();
     addTearDown(host.dispose);
-    await host.initialize(hidden: false);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
     clearInteractions(manager);
-    when(manager.show).thenAnswer((_) async {});
-    when(manager.focus).thenAnswer((_) async {});
-    when(manager.hide).thenAnswer((_) async {});
+    when(manager.getBounds).thenAnswer((_) async => const Rect.fromLTWH(-20, 30, 860, 640));
+    when(() => manager.setBounds(any())).thenAnswer((_) async {});
 
-    await host.show();
+    expect(
+      await host.getBounds(),
+      const WindowBounds(left: -20, top: 30, width: 860, height: 640),
+    );
+    await host.setBounds(bounds: const WindowBounds(left: 10, top: 20, width: 900, height: 700));
+    expect(
+      await host.getDisplayBounds(),
+      const <WindowBounds>[
+        WindowBounds(left: 0, top: 24, width: 1512, height: 958),
+      ],
+    );
+
+    verify(() => manager.setBounds(const Rect.fromLTWH(10, 20, 900, 700))).called(1);
+  });
+
+  test("emits move and resize events", () async {
+    final host = createHost();
+    addTearDown(host.dispose);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+    final events = <WindowHostEvent>[];
+    final eventSubscription = host.events.listen(events.add);
+    addTearDown(eventSubscription.cancel);
+
+    host.onWindowMove();
+    host.onWindowResize();
+
+    expect(events, <WindowHostEvent>[WindowHostEvent.moved, WindowHostEvent.resized]);
+  });
+
+  test("show focuses the restored window and hide updates taskbar visibility", () async {
+    final host = createHost();
+    addTearDown(host.dispose);
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
+    clearInteractions(manager);
+
     await host.hide();
+    await host.show();
 
     verifyInOrder(<void Function()>[
+      () => manager.hide(),
+      () => manager.setSkipTaskbar(true),
       () => manager.setSkipTaskbar(false),
       () => manager.show(),
       () => manager.focus(),
-      () => manager.hide(),
-      () => manager.setSkipTaskbar(true),
     ]);
   });
 
   test("failed initialization restores native close handling and removes its listener", () async {
-    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
+    final host = createHost();
     when(() => manager.waitUntilReadyToShow(any())).thenThrow(StateError("native window unavailable"));
 
-    await expectLater(host.initialize(hidden: false), throwsStateError);
+    await expectLater(host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize), throwsStateError);
 
     verify(() => manager.removeListener(host)).called(1);
     verify(() => manager.setPreventClose(false)).called(1);
@@ -95,8 +170,8 @@ void main() {
   });
 
   test("dispose removes its listener and restores native close behavior", () async {
-    final FlutterWindowHost host = FlutterWindowHost.forTesting(manager: manager);
-    await host.initialize(hidden: false);
+    final host = createHost();
+    await host.initialize(hidden: false, initialBounds: null, minimumSize: _minimumSize);
 
     await host.dispose();
 
@@ -106,3 +181,5 @@ void main() {
 }
 
 class _MockWindowManager() extends Mock implements WindowManager;
+
+class _MockScreenRetriever() extends Mock implements ScreenRetriever;

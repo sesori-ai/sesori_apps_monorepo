@@ -29,6 +29,7 @@ dependencies:
   path_provider: ^2.1.6
   pasteboard: ^0.5.0
   rxdart: ^0.28.0
+  screen_retriever: ^0.2.2
   # DI-call only (configureAuthDependencies) — sesori_auth types MUST NOT be
   # imported outside lib/core/di/ (see client/AGENTS.md).
   sesori_auth:
