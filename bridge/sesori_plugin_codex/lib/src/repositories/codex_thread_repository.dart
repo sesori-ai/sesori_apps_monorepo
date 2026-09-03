@@ -62,6 +62,17 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return _mapRequired(dto: dto, operation: "thread/start");
   }
 
+  /// Reads a stored or loaded thread without resuming it. Sub-agent threads
+  /// never announce themselves through `thread/started`, so this is how their
+  /// parentage and nickname are learned once the parent names them.
+  Future<CodexThreadRecord> readThread({required String threadId}) async {
+    final dto = await _request(
+      operation: "thread/read",
+      request: () => _appServerApi.readThread(threadId: threadId),
+    );
+    return _mapRequired(dto: dto, operation: "thread/read");
+  }
+
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
     final dto = await _request(
       operation: "thread/resume",
@@ -168,6 +179,8 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       updatedAt: _milliseconds(thread.updatedAt),
       model: _usefulText(dto.model),
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
+      parentId: _usefulText(thread.parentThreadId),
+      agentNickname: _usefulText(thread.agentNickname),
     );
   }
 

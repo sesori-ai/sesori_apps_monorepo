@@ -69,6 +69,60 @@ class CodexSessionService({
     limit: limit,
   );
 
+  /// Persisted children of [sessionId] plus the live children this connection
+  /// learned that Codex has not flushed to a rollout yet.
+  Future<List<PluginSession>> getChildSessions({
+    required String sessionId,
+    required List<CodexThreadRecord> liveChildren,
+  }) async {
+    final persisted = await _catalogRepository.getChildSessions(sessionId: sessionId);
+    final persistedIds = {for (final session in persisted) session.id};
+    return [
+      ...persisted,
+      for (final child in liveChildren)
+        if (!persistedIds.contains(child.id) && child.parentId == sessionId)
+          _connectedThreadRepository.toPluginSession(
+            record: child,
+            fallbackDirectory: _launchDirectory,
+            parentSessionId: sessionId,
+          ),
+    ];
+  }
+
+  /// Resolves a sub-agent thread the parent named through
+  /// `subAgentActivity started`. The child inherits [parentDirectory] so its
+  /// events carry the parent's project id, and is titled by Codex's nickname
+  /// (from `thread/read`) or else its agent path. A failed read still yields a
+  /// record, so the child session exists for the items already streaming.
+  Future<CodexThreadRecord> resolveSubAgentThread({
+    required String childThreadId,
+    required String parentThreadId,
+    required String parentDirectory,
+    required String? agentPath,
+  }) async {
+    CodexThreadRecord? read;
+    try {
+      read = await _connectedThreadRepository.readThread(threadId: childThreadId);
+    } on CodexThreadOperationException catch (error, stackTrace) {
+      Log.w(
+        "[codex] failed to read sub-agent thread $childThreadId of $parentThreadId; using the activity item",
+        error,
+        stackTrace,
+      );
+    }
+    return CodexThreadRecord(
+      id: childThreadId,
+      name: read?.name ?? read?.agentNickname ?? agentPath,
+      directory: parentDirectory,
+      createdAt: read?.createdAt,
+      updatedAt: read?.updatedAt,
+      model: read?.model,
+      modelProvider: read?.modelProvider,
+      parentId: parentThreadId,
+      agentNickname: read?.agentNickname,
+    );
+  }
+
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     return (await _resolveCommands(projectId: projectId)).commands;
   }

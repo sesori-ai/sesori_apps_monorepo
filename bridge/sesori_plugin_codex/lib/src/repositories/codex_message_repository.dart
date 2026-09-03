@@ -55,7 +55,49 @@ class CodexMessageRepository({
         stackTrace,
       );
     }
-    return CodexPreparedMessageRead(lines: lines);
+    return CodexPreparedMessageRead(lines: trimForkedParentHistory(lines: lines));
+  }
+
+  /// Drops the parent history a `fork_turns` sub-agent rollout copies ahead of
+  /// its own turns, so a child transcript starts with the child's work.
+  ///
+  /// codex-cli 0.148.0 writes the copy as a second `session_meta` line (the
+  /// parent's) followed by the parent's lines up to the spawn point. The
+  /// parent's in-flight turn therefore appears as a `task_started` with no
+  /// terminal event before the child's own first `task_started`; that nested
+  /// `task_started` is where the child's history begins. Rollouts without a
+  /// second `session_meta` are returned unchanged, as is a copy whose boundary
+  /// cannot be located.
+  static List<CodexRolloutLineDto> trimForkedParentHistory({
+    required List<CodexRolloutLineDto> lines,
+  }) {
+    var copyStart = -1;
+    for (var index = 0; index < lines.length; index++) {
+      if (lines[index] is CodexRolloutSessionMetadataLineDto && index > 0) {
+        copyStart = index;
+        break;
+      }
+    }
+    if (copyStart < 0) return lines;
+    var openTurn = false;
+    for (var index = copyStart + 1; index < lines.length; index++) {
+      if (lines[index] case CodexRolloutEventMessageLineDto(:final payload)) {
+        switch (payload) {
+          case CodexRolloutTaskStartedEventDto():
+            if (openTurn) {
+              return [...lines.sublist(0, copyStart), ...lines.sublist(index)];
+            }
+            openTurn = true;
+          case CodexRolloutTaskCompleteEventDto() || CodexRolloutTurnAbortedEventDto():
+            openTurn = false;
+          case CodexRolloutUserMessageEventDto() ||
+              CodexRolloutImageGenerationEndEventDto() ||
+              CodexRolloutUnknownEventDto():
+            break;
+        }
+      }
+    }
+    return lines;
   }
 
   List<PluginMessageWithParts> projectMessages({

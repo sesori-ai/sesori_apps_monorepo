@@ -5,8 +5,10 @@ import "package:codex_plugin/src/api/codex_tool_outcome_storage.dart";
 import "package:codex_plugin/src/api/parsers/codex_command_execution_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_file_change_parser.dart";
 import "package:codex_plugin/src/api/parsers/codex_image_bearing_item_parser.dart";
+import "package:codex_plugin/src/api/parsers/codex_sub_agent_item_parser.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/codex_sub_agent_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_lifecycle_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
@@ -72,6 +74,8 @@ CodexPlugin createInjectedCodexPlugin({
     commandExecutionParser: const CodexCommandExecutionParser(),
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
+    subAgentItemParser: const CodexSubAgentItemParser(),
+    subAgentTracker: CodexSubAgentTracker(),
     projectCwd: projectCwd,
     onConnected: null,
     onDisconnected: null,

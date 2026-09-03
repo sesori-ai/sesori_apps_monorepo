@@ -564,6 +564,8 @@ class _StubThreadRepository() extends CodexThreadRepository {
       updatedAt: null,
       model: null,
       modelProvider: null,
+      parentId: null,
+      agentNickname: null,
     );
   }
 
