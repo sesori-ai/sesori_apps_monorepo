@@ -61,7 +61,12 @@ final class AcpChildSessionTracker() {
     final root = rootOf(sessionId: sessionId);
     final existing = _byChild[spawn.childSessionId];
     if (existing != null) {
-      return AcpChildTileResult(rootSessionId: root, messageId: existing.messageId, opensMessage: false, events: const []);
+      return AcpChildTileResult(
+        rootSessionId: root,
+        messageId: existing.messageId,
+        opensMessage: false,
+        events: const [],
+      );
     }
     final messageId = "$root-subagent-${spawn.childSessionId}";
     final child = _Child(
@@ -156,7 +161,8 @@ final class AcpChildSessionTracker() {
   /// The children of [sessionId] still running, with their launch mode.
   List<AcpRunningChild> runningChildren({required String sessionId}) => [
     for (final child in _byRoot[sessionId] ?? const <_Child>[])
-      if (!child.status.isTerminal) AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
+      if (!child.status.isTerminal)
+        AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
   ];
 
   /// Drops every record of a deleted root, or the single record of a deleted
@@ -213,7 +219,14 @@ final class _Child({
       prompt: prompt.toString(),
       description: description,
       agent: agent,
-      taskState: PluginToolState(status: status, title: null, output: output, error: error, attachments: const []),
+      taskState: PluginToolState(
+        status: status,
+        title: null,
+        shellCommand: null,
+        output: output,
+        error: error,
+        attachments: const [],
+      ),
       childSessionID: childSessionId,
     );
   }
