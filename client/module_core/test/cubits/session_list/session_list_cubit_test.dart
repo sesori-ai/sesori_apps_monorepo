@@ -1859,8 +1859,8 @@ void main() {
       expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
     });
 
-    test("renameSession restores the committed title after two overlapping failures", () async {
-      final original = testSession(id: "s1", title: "Original");
+    test("renameSession restores a null committed title after two overlapping failures", () async {
+      final original = testSession(id: "s1", title: null);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -1890,7 +1890,48 @@ void main() {
 
       secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await secondRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
+      expect((cubit.state as SessionListLoaded).sessions.single.title, isNull);
+    });
+
+    test("renameSession restores an older in-flight success after newer renames fail", () async {
+      final original = testSession(id: "s1", title: "Original");
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: projectId,
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
+      final firstRenameCompleter = Completer<ApiResponse<Session>>();
+      final secondRenameCompleter = Completer<ApiResponse<Session>>();
+      final thirdRenameCompleter = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "First title"),
+      ).thenAnswer((_) => firstRenameCompleter.future);
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "Second title"),
+      ).thenAnswer((_) => secondRenameCompleter.future);
+      when(
+        () => mockSessionService.renameSession(sessionId: "s1", title: "Third title"),
+      ).thenAnswer((_) => thirdRenameCompleter.future);
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
+      final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
+      secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await secondRename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
+
+      final thirdRename = cubit.renameSession(sessionId: "s1", title: "Third title");
+      firstRenameCompleter.complete(ApiResponse.success(original.copyWith(title: "First title")));
+      expect(await firstRename, isTrue);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "Third title");
+
+      thirdRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
+      expect(await thirdRename, isFalse);
+      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
     });
 
     test("renameSession restores the latest confirmed title when a newer rename fails", () async {
