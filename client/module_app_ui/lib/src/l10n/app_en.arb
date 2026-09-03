@@ -875,8 +875,6 @@
   "renameSessionHint": "Session title",
   "renameProjectHint": "Project name",
   "renameSave": "Save",
-  "renameSessionSuccess": "Session renamed",
-  "renameProjectSuccess": "Project renamed",
   "renameSessionFailed": "Failed to rename session",
   "renameProjectFailed": "Failed to rename project",
   "newSessionDedicatedWorkspace": "Dedicated workspace",

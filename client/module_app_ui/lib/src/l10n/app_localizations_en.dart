@@ -1517,12 +1517,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get renameSave => 'Save';
 
   @override
-  String get renameSessionSuccess => 'Session renamed';
-
-  @override
-  String get renameProjectSuccess => 'Project renamed';
-
-  @override
   String get renameSessionFailed => 'Failed to rename session';
 
   @override
