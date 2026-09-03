@@ -47,6 +47,7 @@ class BridgeSettingsRepository({
         intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
       ),
       yolo: YoloSettingsResponse(enabled: settings.yolo),
+      warmUpPluginsOnSessionOpen: settings.warmUpPluginsOnSessionOpen,
     );
   }
 
@@ -74,7 +75,9 @@ class BridgeSettingsRepository({
     final json = jsonDecodeMap(storedConfig);
     final parsed = _parseSettings(json);
     final settings = parsed.settings;
-    if (parsed.repairErrors.isNotEmpty || parsed.missingPullRequestRefreshInterval) {
+    if (parsed.repairErrors.isNotEmpty ||
+        parsed.missingPullRequestRefreshInterval ||
+        parsed.missingWarmUpPluginsOnSessionOpen) {
       for (final repairError in parsed.repairErrors) {
         Log.w(
           '[bridge-settings] invalid config at $configFilePath',
@@ -122,6 +125,14 @@ class BridgeSettingsRepository({
     await mutateSettings(mutation: ({required current}) => current.copyWith(yolo: enabled));
   }
 
+  Future<BridgeSettings> updateWarmUpPluginsOnSessionOpen({required bool enabled}) async {
+    return await mutateSettings(
+      mutation: ({required current}) => current.warmUpPluginsOnSessionOpen == enabled
+          ? current
+          : current.copyWith(warmUpPluginsOnSessionOpen: enabled),
+    );
+  }
+
   Future<BridgeSettings> updatePluginDisabled({required String pluginId, required bool disabled}) async {
     return await mutateSettings(
       mutation: ({required current}) => current.copyWith(
@@ -142,6 +153,7 @@ class BridgeSettingsRepository({
     BridgeSettings settings,
     List<({FormatException error, StackTrace stackTrace})> repairErrors,
     bool missingPullRequestRefreshInterval,
+    bool missingWarmUpPluginsOnSessionOpen,
   })
   _parseSettings(
     Map<String, dynamic> json,
@@ -150,6 +162,10 @@ class BridgeSettingsRepository({
     final missingPullRequestRefreshInterval = !repaired.containsKey('pullRequestRefreshIntervalSeconds');
     if (missingPullRequestRefreshInterval) {
       repaired['pullRequestRefreshIntervalSeconds'] = defaultPullRequestRefreshIntervalSeconds;
+    }
+    final missingWarmUpPluginsOnSessionOpen = !repaired.containsKey('warmUpPluginsOnSessionOpen');
+    if (missingWarmUpPluginsOnSessionOpen) {
+      repaired['warmUpPluginsOnSessionOpen'] = defaultWarmUpPluginsOnSessionOpen;
     }
     final rawPlugins = repaired['plugins'];
     if (rawPlugins is Map) {
@@ -168,6 +184,7 @@ class BridgeSettingsRepository({
           settings: BridgeSettings.fromJson(repaired),
           repairErrors: List.unmodifiable(errors),
           missingPullRequestRefreshInterval: missingPullRequestRefreshInterval,
+          missingWarmUpPluginsOnSessionOpen: missingWarmUpPluginsOnSessionOpen,
         );
       } on PluginIdleTimeoutFormatException catch (error, stackTrace) {
         final plugins = repaired['plugins'];
@@ -179,6 +196,9 @@ class BridgeSettingsRepository({
         errors.add((error: error, stackTrace: stackTrace));
       } on PullRequestRefreshIntervalFormatException catch (error, stackTrace) {
         repaired['pullRequestRefreshIntervalSeconds'] = defaultPullRequestRefreshIntervalSeconds;
+        errors.add((error: error, stackTrace: stackTrace));
+      } on WarmUpPluginsOnSessionOpenFormatException catch (error, stackTrace) {
+        repaired['warmUpPluginsOnSessionOpen'] = defaultWarmUpPluginsOnSessionOpen;
         errors.add((error: error, stackTrace: stackTrace));
       }
     }

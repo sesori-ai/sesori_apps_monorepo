@@ -181,6 +181,7 @@ void main() {
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
         ),
       ),
     );
@@ -198,6 +199,12 @@ void main() {
       final enabled = invocation.namedArguments[#enabled] as bool;
       return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
     });
+    when(() => bridgeSettingsRepository.updatePluginWarmup(enabled: any(named: "enabled"))).thenAnswer(
+      (invocation) async {
+        final enabled = invocation.namedArguments[#enabled] as bool;
+        return PluginWarmupSettingsMutationCommitted(enabled: enabled);
+      },
+    );
     GetIt.instance.registerSingleton<BridgeSettingsRepository>(bridgeSettingsRepository);
   });
 
@@ -269,6 +276,25 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
   });
 
+  testWidgets("toggles session-open harness warm-up from the authoritative value", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Warm harness on session open"), findsOneWidget);
+    expect(
+      find.text("Starts the session's harness when you open it to reduce delays on your first action."),
+      findsOneWidget,
+    );
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isTrue);
+
+    await tester.tap(find.byKey(const Key("plugin_warmup_switch")));
+    await tester.pumpAndSettle();
+
+    verify(() => bridgeSettingsRepository.updatePluginWarmup(enabled: false)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isFalse);
+  });
+
   testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
     _useTallSurface(tester);
     final mutation = Completer<YoloSettingsMutationResult>();
@@ -329,10 +355,31 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
+    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
     expect(find.byKey(const Key("yolo_switch")), findsNothing);
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsNothing);
     expect(find.text("Pull request refresh"), findsOneWidget);
     expect(find.text("30 seconds"), findsOneWidget);
+  });
+
+  testWidgets("a v1.8.2 bridge leaves only session-open warm-up unsupported", (tester) async {
+    _useTallSurface(tester);
+    when(bridgeSettingsRepository.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: null,
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsNothing);
+    expect(find.byKey(const Key("yolo_switch")), findsOneWidget);
+    expect(find.text("30 seconds"), findsOneWidget);
+    expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
   });
 
   testWidgets("uncertain YOLO mutation reloads and displays the authoritative value", (tester) async {
@@ -344,6 +391,7 @@ void main() {
         response: BridgeSettingsResponse(
           pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: loads > 1),
+          warmUpPluginsOnSessionOpen: true,
         ),
       );
     });
@@ -367,8 +415,8 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(2));
-    expect(find.text("Offline"), findsNWidgets(2));
+    expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(3));
+    expect(find.text("Offline"), findsNWidgets(3));
     verifyNever(bridgeSettingsRepository.load);
   });
 
@@ -492,8 +540,8 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
-    expect(find.text("Unavailable"), findsNWidgets(2));
+    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(3));
+    expect(find.text("Unavailable"), findsNWidgets(3));
   });
 
   testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
@@ -507,6 +555,7 @@ void main() {
               response: BridgeSettingsResponse(
                 pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
                 yolo: YoloSettingsResponse(enabled: false),
+                warmUpPluginsOnSessionOpen: true,
               ),
             );
     });

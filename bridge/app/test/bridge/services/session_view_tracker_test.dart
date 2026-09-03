@@ -42,12 +42,20 @@ void main() {
       expect(tracker.isViewed(sessionId: "s1"), isFalse);
     });
 
-    test("clearAll releases every viewer", () {
+    test("activeSessionIds contains each viewed session once and clears with viewers", () {
       tracker.setViewing(connID: 1, sessionId: "s1");
-      tracker.setViewing(connID: 2, sessionId: "s2");
+      tracker.setViewing(connID: 2, sessionId: "s1");
+      tracker.setViewing(connID: 3, sessionId: "s2");
+
+      expect(tracker.activeSessionIds, {"s1", "s2"});
+
+      tracker.releaseConnection(connID: 1);
+      expect(tracker.activeSessionIds, {"s1", "s2"});
+      tracker.releaseConnection(connID: 2);
+      expect(tracker.activeSessionIds, {"s2"});
+
       tracker.clearAll();
-      expect(tracker.isViewed(sessionId: "s1"), isFalse);
-      expect(tracker.isViewed(sessionId: "s2"), isFalse);
+      expect(tracker.activeSessionIds, isEmpty);
     });
   });
 }

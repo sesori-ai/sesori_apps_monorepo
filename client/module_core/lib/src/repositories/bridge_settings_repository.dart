@@ -70,4 +70,21 @@ class BridgeSettingsRepository({required final BridgeSettingsApi _bridgeSettings
       BridgeSettingUpdateApiFailure(:final error) => YoloSettingsMutationFailure(error: error),
     };
   }
+
+  Future<PluginWarmupSettingsMutationResult> updatePluginWarmup({required bool enabled}) async {
+    return switch (await _bridgeSettingsApi.update(
+      update: BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: enabled),
+    )) {
+      BridgeSettingUpdateApiCommitted(
+        update: WarmUpPluginsOnSessionOpenSettingUpdate(:final enabled),
+      ) =>
+        PluginWarmupSettingsMutationCommitted(enabled: enabled),
+      BridgeSettingUpdateApiCommitted() => const PluginWarmupSettingsMutationUncertain(),
+      BridgeSettingUpdateApiRejected(:final error) => PluginWarmupSettingsMutationFailure(error: error),
+      BridgeSettingUpdateApiFailure(error: NonSuccessCodeError(errorCode: 404)) =>
+        const PluginWarmupSettingsMutationUnsupported(),
+      BridgeSettingUpdateApiFailure(isCommitUncertain: true) => const PluginWarmupSettingsMutationUncertain(),
+      BridgeSettingUpdateApiFailure(:final error) => PluginWarmupSettingsMutationFailure(error: error),
+    };
+  }
 }

@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/routing/get_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
+import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -32,6 +33,9 @@ void main() {
           bridgeSettingsRepository: repository,
         ),
         yoloSettingsService: service,
+        pluginWarmupSettingsService: PluginWarmupSettingsService(
+          bridgeSettingsRepository: repository,
+        ),
       );
     });
 
@@ -48,6 +52,7 @@ void main() {
         const BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
         ),
       );
     });
@@ -63,6 +68,33 @@ void main() {
         const BridgeSettingUpdate.yolo(enabled: true),
       );
       expect(jsonDecodeMap(api.config!)["yolo"], isTrue);
+    });
+
+    test("PATCH applies session-open plugin warm-up without a bridge restart", () async {
+      final changes = <bool>[];
+      final subscription = repository.settingsChanges.listen(
+        (change) => changes.add(change.current.warmUpPluginsOnSessionOpen),
+      );
+
+      final response = await patchHandler.routeForTest(
+        makeRequest(
+          "PATCH",
+          "/settings",
+          body: jsonEncode(
+            const BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 200);
+      expect(
+        BridgeSettingUpdate.fromJson(jsonDecodeMap(response.body!)),
+        const BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false),
+      );
+      expect(repository.currentSettings.warmUpPluginsOnSessionOpen, isFalse);
+      expect(jsonDecodeMap(api.config!)["warmUpPluginsOnSessionOpen"], isFalse);
+      expect(changes, [false]);
+      await subscription.cancel();
     });
   });
 }

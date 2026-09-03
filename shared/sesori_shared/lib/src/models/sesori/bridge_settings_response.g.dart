@@ -14,6 +14,7 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
       yolo: YoloSettingsResponse.fromJson(
         Map<String, dynamic>.from(json['yolo'] as Map),
       ),
+      warmUpPluginsOnSessionOpen: json['warmUpPluginsOnSessionOpen'] as bool?,
     );
 
 Map<String, dynamic> _$BridgeSettingsResponseToJson(
@@ -21,4 +22,5 @@ Map<String, dynamic> _$BridgeSettingsResponseToJson(
 ) => <String, dynamic>{
   'pullRequestRefresh': instance.pullRequestRefresh.toJson(),
   'yolo': instance.yolo.toJson(),
+  'warmUpPluginsOnSessionOpen': ?instance.warmUpPluginsOnSessionOpen,
 };
