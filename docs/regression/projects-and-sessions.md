@@ -177,10 +177,17 @@ state.
 - A live Codex `subAgentActivity started` resolves the named thread through
   `thread/read`, announces it under its direct parent with the parent's project
   directory and Codex nickname (or agent path), and never depends on a missing
-  child `thread/started`. Catalog reads expose `thread_source == subagent`
-  rollouts as children, keep per-project pages root-only, and preserve children
-  in full enumeration. Deleting a Codex session removes its persisted and live
-  descendant subtree before the bridge deletes the matching database family.
+  child `thread/started`. Later child activity and title updates retain that
+  parent. Connection startup restores persisted lifecycle ancestry before
+  pending-input routing, and resuming a child restores the same mapper context.
+  Catalog reads expose `thread_source == subagent` rollouts as children,
+  keep per-project pages root-only, preserve children in full enumeration, and
+  retain the metadata nickname when the session index has no usable title.
+  Deleting a Codex session removes its persisted and live descendant subtree
+  before the bridge deletes the matching database family. A child deleted
+  before `turn/started` is interrupted when its turn id arrives, while in-flight
+  or delayed spawn activity cannot re-announce the deleted subtree during that
+  app-server connection.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and

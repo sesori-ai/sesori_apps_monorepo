@@ -1,11 +1,11 @@
 import "models/codex_thread_record.dart";
 
-/// Layer-2 tracker of the sub-agent threads learned on this connection and
-/// of the root busy accounting they drive.
+/// Layer-2 tracker of persisted and live sub-agent ancestry and of the root
+/// busy accounting that live child activity drives.
 ///
 /// codex-cli 0.148.0 never emits `thread/started` for a spawned child; the
-/// parent's `subAgentActivity started` item names it, and the session service
-/// resolves the child through `thread/read` before recording it here. Each
+/// parent's `subAgentActivity started` item names it. The session service
+/// records that relationship before enriching it through `thread/read`. Each
 /// child maps to its direct parent and to the root it rolls up to, so busy
 /// children and a root's deferred idle transition span nested spawns.
 class CodexSubAgentTracker() {
@@ -25,6 +25,14 @@ class CodexSubAgentTracker() {
   /// The root session a child rolls up to, or `null` for a root.
   String? rootOf({required String sessionId}) => _rootByChild[sessionId];
 
+  CodexThreadRecord? child({required String sessionId}) => _children[sessionId];
+
+  bool isChildActive({required String sessionId}) => _activeChildren.contains(sessionId);
+
+  Set<String> get activeRootIds => {
+    for (final childId in _activeChildren) ?_rootByChild[childId],
+  };
+
   /// Records [child] under its direct parent. Returns `false` when the child
   /// was already known, so a repeated activity item is not re-announced.
   bool record({required CodexThreadRecord child}) {
@@ -35,6 +43,13 @@ class CodexSubAgentTracker() {
     _rootByChild[child.id] = root;
     (_childrenByRoot[root] ??= {}).add(child.id);
     return true;
+  }
+
+  /// Replaces display metadata for an already-recorded child without changing
+  /// its canonical ancestry or activity state.
+  void replaceChild({required CodexThreadRecord child}) {
+    if (!_children.containsKey(child.id) || _children[child.id]?.parentId != child.parentId) return;
+    _children[child.id] = child;
   }
 
   /// The children whose direct parent is [parentId].
