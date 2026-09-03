@@ -8,16 +8,19 @@ void main() {
   late _MockDesktopInstanceService instanceService;
   late _MockBridgeProcessService processService;
   late _MockDesktopApplicationTerminator applicationTerminator;
+  late _MockWindowBoundsService windowBoundsService;
   late DesktopStartupOrchestrator orchestrator;
 
   setUp(() {
     instanceService = _MockDesktopInstanceService();
     processService = _MockBridgeProcessService();
     applicationTerminator = _MockDesktopApplicationTerminator();
+    windowBoundsService = _MockWindowBoundsService();
     orchestrator = DesktopStartupOrchestrator(
       instanceService: instanceService,
       processService: processService,
       applicationTerminator: applicationTerminator,
+      windowBoundsService: windowBoundsService,
     );
   });
 
@@ -34,6 +37,14 @@ void main() {
     );
     expect(await orchestrator.preparePrimaryLaunch(), isFalse);
     verify(() => applicationTerminator.terminate(exitCode: 0)).called(1);
+  });
+
+  test("initializes the persisted native window through the bounds service", () async {
+    when(() => windowBoundsService.initializeWindow(hidden: true)).thenAnswer((_) async {});
+
+    await orchestrator.initializeWindow(hidden: true);
+
+    verify(() => windowBoundsService.initializeWindow(hidden: true)).called(1);
   });
 
   test("restores a persisted desired On through the process service", () async {
@@ -81,3 +92,5 @@ class _MockDesktopInstanceService() extends Mock implements DesktopInstanceServi
 class _MockBridgeProcessService() extends Mock implements BridgeProcessService;
 
 class _MockDesktopApplicationTerminator() extends Mock implements DesktopApplicationTerminator;
+
+class _MockWindowBoundsService() extends Mock implements WindowBoundsService;

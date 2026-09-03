@@ -14,6 +14,8 @@ import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
 import "../../services/desktop_instance_service.dart";
+import "../../services/desktop_relay_connection_service.dart";
+import "../../services/window_bounds_service.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
 import "../../trackers/desktop_logout_tracker.dart";
@@ -31,9 +33,11 @@ class BridgeControlCubit._create({
   required final BridgeStatusTracker _statusTracker,
   required final SystemTray _systemTray,
   required final WindowHost _windowHost,
+  required final WindowBoundsService _windowBoundsService,
   required final DesktopApplicationTerminator _applicationTerminator,
   required final BridgeProcessLogRepository _logRepository,
   required final DesktopInstanceService _instanceService,
+  required final DesktopRelayConnectionService _relayConnectionService,
   required final DesktopBridgeTakeoverOrchestrator _takeoverOrchestrator,
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
@@ -45,9 +49,11 @@ class BridgeControlCubit._create({
     required BridgeStatusTracker statusTracker,
     required SystemTray systemTray,
     required WindowHost windowHost,
+    required WindowBoundsService windowBoundsService,
     required DesktopApplicationTerminator applicationTerminator,
     required BridgeProcessLogRepository logRepository,
     required DesktopInstanceService instanceService,
+    required DesktopRelayConnectionService relayConnectionService,
     required DesktopBridgeTakeoverOrchestrator takeoverOrchestrator,
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
@@ -58,9 +64,11 @@ class BridgeControlCubit._create({
          statusTracker: statusTracker,
          systemTray: systemTray,
          windowHost: windowHost,
+         windowBoundsService: windowBoundsService,
          applicationTerminator: applicationTerminator,
          logRepository: logRepository,
          instanceService: instanceService,
+         relayConnectionService: relayConnectionService,
          takeoverOrchestrator: takeoverOrchestrator,
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
@@ -168,6 +176,8 @@ class BridgeControlCubit._create({
 
   void _onWindowEvent({required WindowHostEvent event}) {
     switch (event) {
+      case WindowHostEvent.moved || WindowHostEvent.resized:
+        return;
       case WindowHostEvent.closeRequested:
         if (_trayAvailability.isAvailable) {
           unawaited(hideWindow());
@@ -232,9 +242,19 @@ class BridgeControlCubit._create({
   }
 
   /// Requests the supervised bridge to be On without applying toggle
-  /// semantics. Used by desktop recovery surfaces where the only valid intent
-  /// is to start or retry the local bridge.
+  /// semantics. Used when only the local helper needs recovery.
   Future<void> startBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.on);
+
+  /// Recovers both desktop connection owners through their Layer-3 services.
+  Future<void> recoverConnection() {
+    if (_controlsLocked) {
+      return Future<void>.value();
+    }
+    return Future.wait<void>([
+      startBridge(),
+      _relayConnectionService.recoverForAuthenticatedDestination(),
+    ]);
+  }
 
   Future<void> _setBridgeDesiredState({required BridgeProcessDesiredState target}) async {
     if (_controlsLocked) {
@@ -362,6 +382,11 @@ class BridgeControlCubit._create({
       await _systemTray.dispose();
     } on Object catch (error, stackTrace) {
       logw("Failed to dispose the system tray during desktop quit", error, stackTrace);
+    }
+    try {
+      await _windowBoundsService.dispose();
+    } on Object catch (error, stackTrace) {
+      logw("Failed to flush desktop window bounds during quit", error, stackTrace);
     }
     try {
       await _windowHost.dispose();

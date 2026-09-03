@@ -14,8 +14,21 @@ const AuthUser _user = AuthUser(
   providerUserId: "gh-1",
   providerUsername: "alex",
 );
+const ServerConnectionConfig _config = ServerConnectionConfig(
+  relayHost: "relay.example.com",
+  authToken: "test-token",
+);
+const HealthResponse _health = HealthResponse(
+  healthy: true,
+  version: "0.1.200",
+  filesystemAccessDegraded: false,
+);
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(Duration.zero);
+  });
+
   late _MockAuthSession authSession;
   late _MockConnectionService connectionService;
   late DesktopRelayConnectionService service;
@@ -37,6 +50,33 @@ void main() {
 
     verify(() => connectionService.connectWithFreshAuthToken()).called(1);
     verifyNever(() => authSession.hasLocallyValidSession());
+  });
+
+  test("recovery starts a fresh connection when fully disconnected", () async {
+    when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _user));
+    when(() => connectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+
+    await service.recoverForAuthenticatedDestination();
+
+    verify(() => connectionService.connectWithFreshAuthToken()).called(1);
+    verifyNever(() => connectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")));
+  });
+
+  test("recovery reconnects an existing relay configuration", () async {
+    when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _user));
+    when(
+      () => connectionService.currentStatus,
+    ).thenReturn(const ConnectionStatus.bridgeOffline(config: _config, health: _health));
+    when(
+      () => connectionService.reconnectAndAwaitOutcome(timeout: any(named: "timeout")),
+    ).thenAnswer((_) async => true);
+
+    await service.recoverForAuthenticatedDestination();
+
+    verify(
+      () => connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15)),
+    ).called(1);
+    verifyNever(() => connectionService.connectWithFreshAuthToken());
   });
 
   test("connects for a token-only destination with locally valid tokens", () async {

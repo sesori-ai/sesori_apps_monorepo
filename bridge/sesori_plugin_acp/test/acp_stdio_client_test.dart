@@ -69,6 +69,41 @@ void main() {
       expect(seen.single.params["sessionId"], "s1");
     });
 
+    test("session request inactivity resets only for matching session activity", () async {
+      const inactivityTimeout = Duration(milliseconds: 300);
+      final first = await client.dispatchSessionRequest(
+        method: "session/prompt",
+        params: const {"sessionId": "s1"},
+        sessionId: "s1",
+        inactivityTimeout: inactivityTimeout,
+      );
+      final second = await client.dispatchSessionRequest(
+        method: "session/prompt",
+        params: const {"sessionId": "s2"},
+        sessionId: "s2",
+        inactivityTimeout: inactivityTimeout,
+      );
+      final firstId = fake.written[0]["id"];
+
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {"sessionUpdate": "agent_message_chunk"},
+        },
+      });
+
+      await expectLater(second.response, throwsA(isA<TimeoutException>()));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstId,
+        "result": {"stopReason": "end_turn"},
+      });
+      expect((await first.response as Map)["stopReason"], "end_turn");
+    });
+
     test("server requests route to serverRequests and can be answered", () async {
       final reqs = <AcpServerRequest>[];
       client.serverRequests.listen(reqs.add);

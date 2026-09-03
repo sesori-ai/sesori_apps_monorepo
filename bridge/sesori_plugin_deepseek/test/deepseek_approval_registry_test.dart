@@ -45,10 +45,12 @@ void main() {
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: const DeepSeekMessageTimeParser(),
     );
@@ -56,6 +58,7 @@ void main() {
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: []),
       launchDirectory: "/project",
       processFactory: (_) async => fake,
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(

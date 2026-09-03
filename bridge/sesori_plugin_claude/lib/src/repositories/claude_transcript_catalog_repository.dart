@@ -333,6 +333,21 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
   if (type == ClaudeTranscriptAssistantRecord.wireType) {
     final id = _nonEmpty(dto.message?.id);
     if (id != null) {
+      if (dto.isApiErrorMessage ?? false) {
+        return ClaudeTranscriptApiErrorRecord(
+          id: id,
+          content: dto.message?.content,
+          apiErrorStatus: dto.apiErrorStatus,
+          cwd: dto.cwd,
+          timestamp: dto.timestamp,
+          isSidechain: dto.isSidechain,
+          agentId: dto.agentId,
+          gitBranch: dto.gitBranch,
+          version: dto.version,
+          sessionId: dto.sessionId,
+          raw: line.raw,
+        );
+      }
       return ClaudeTranscriptAssistantRecord(
         id: id,
         model: _nonEmpty(dto.message?.model),

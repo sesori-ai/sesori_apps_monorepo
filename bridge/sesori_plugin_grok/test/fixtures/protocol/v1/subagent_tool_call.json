@@ -1,0 +1,29 @@
+{
+  "jsonrpc": "2.0",
+  "method": "session/update",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "tool_call",
+      "toolCallId": "call-00000000-0000-4000-8000-000000000000-0",
+      "title": "spawn_subagent",
+      "rawInput": {
+        "description": "Synthetic child task",
+        "prompt": "Synthetic child prompt",
+        "subagent_type": "general-purpose",
+        "background": true
+      },
+      "_meta": {
+        "x.ai/tool": {
+          "version": 1,
+          "name": "spawn_subagent",
+          "kind": "task",
+          "namespace": "grok_build",
+          "label": "Subagent",
+          "read_only": false
+        },
+        "subagentBackground": true
+      }
+    }
+  }
+}

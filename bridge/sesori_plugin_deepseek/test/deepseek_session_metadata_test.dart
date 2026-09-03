@@ -12,17 +12,20 @@ void main() {
     final fake = FakeAcpProcess();
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/repo",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: const DeepSeekMessageTimeParser(),
     );
     final plugin = DeepSeekPlugin(
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
       launchDirectory: "/repo",
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(

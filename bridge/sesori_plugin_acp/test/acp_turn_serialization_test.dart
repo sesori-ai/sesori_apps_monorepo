@@ -13,6 +13,7 @@ class _PromptHookPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -34,6 +35,7 @@ class _GatedSelectionPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -57,6 +59,7 @@ class _TimestampingEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
@@ -197,15 +200,18 @@ void main() {
     test("prompt hooks expose live client and preserve prompt identity", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final hookPlugin = _PromptHookPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -487,15 +493,18 @@ void main() {
     test("a queued prompt message uses its dispatch time", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final timestampingPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: _TimestampingEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -1008,15 +1017,18 @@ void main() {
     test("an abort landing during turn selection still drops the turn", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final gated = _GatedSelectionPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
