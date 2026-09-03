@@ -77,8 +77,6 @@ abstract class AcpPlugin({
   final String launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  // Cancelled before the event buffer closes in [dispose].
-  // ignore: cancel_subscriptions
   StreamSubscription<AcpChildSessionTrackerChange>? _childSessionChanges;
 
   AcpCommandListener? _commandListener;
@@ -1517,7 +1515,7 @@ abstract class AcpPlugin({
       // push must fire once, after the last child. The root stays busy in
       // [_sessionStatuses] and idles from [_onChildSessionsChanged] once its
       // busy set empties.
-      if (childSessionTracker.busyChildIds(sessionId: sessionId).isEmpty) {
+      if (!childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId)) {
         _emitRootIdle(sessionId: sessionId);
       }
     }
@@ -1544,7 +1542,7 @@ abstract class AcpPlugin({
         rootState != null &&
         rootState.pending == 0 &&
         _sessionStatuses[rootSessionId] == const PluginSessionStatus.busy() &&
-        childSessionTracker.busyChildIds(sessionId: rootSessionId).isEmpty;
+        !childSessionTracker.hasActiveWorkForRoot(sessionId: rootSessionId);
     if (releasesDeferredIdle) {
       _emitRootIdle(sessionId: rootSessionId);
     } else {
@@ -2005,11 +2003,12 @@ abstract class AcpPlugin({
       final running = (_turnStates[sessionId]?.pending ?? 0) > 0;
       final awaiting = registry?.hasPendingInput(sessionId: sessionId) ?? false;
       final busyChildren = childSessionTracker.busyChildIds(sessionId: sessionId);
-      if (!running && !awaiting && busyChildren.isEmpty) continue;
+      final autonomousRootTurn = childSessionTracker.hasRootHold(sessionId: sessionId);
+      if (!running && !awaiting && busyChildren.isEmpty && !autonomousRootTurn) continue;
       (byProject[directoryForSession(sessionId: sessionId)] ??= []).add(
         PluginActiveSession(
           id: sessionId,
-          mainAgentRunning: running,
+          mainAgentRunning: running || autonomousRootTurn,
           awaitingInput: awaiting,
           isRetrying: false,
           childSessionIds: List.unmodifiable(busyChildren),
@@ -2027,13 +2026,12 @@ abstract class AcpPlugin({
     // dispose() must not throw — every step below is isolated (see
     // [_teardownConnection]); the stream closes are best-effort too.
     await _teardownConnection();
-    final childSessionChanges = _childSessionChanges;
-    _childSessionChanges = null;
     try {
-      await childSessionChanges?.cancel();
+      await _childSessionChanges?.cancel();
     } on Object catch (e, st) {
       Log.w("[$id] failed to cancel child-session subscription", e, st);
     }
+    _childSessionChanges = null;
     try {
       await childSessionTracker.dispose();
     } on Object catch (e, st) {
@@ -2065,9 +2063,9 @@ abstract class AcpPlugin({
     final busy =
         _turnStates.values.any((state) => state.pending > 0) ||
         (_approvalRegistry?.hasAnyPendingInput ?? false) ||
-        // A sub-agent lives only inside the resident process: no safe stop or
-        // suspension while one runs.
-        childSessionTracker.hasBusyChildren;
+        // A sub-agent and its autonomous root settlement live only inside the
+        // resident process: no safe stop or suspension while either runs.
+        childSessionTracker.hasActiveWork;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

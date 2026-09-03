@@ -21,6 +21,15 @@ void main() {
     String sessionDirectory(String sessionId) =>
         p.join(sessions.path, Uri.encodeComponent(persistedDirectory), sessionId);
 
+    PluginSession rootSession() => const PluginSession(
+      id: rootId,
+      projectID: "/launch-directory",
+      directory: "/launch-directory",
+      parentID: null,
+      title: "Root",
+      time: null,
+    );
+
     setUp(() {
       sessions = Directory.systemTemp.createTempSync("grok-child-service-");
       tracker = AcpChildSessionTracker();
@@ -113,21 +122,22 @@ void main() {
     });
 
     test("derived all-session enumeration includes the persisted child family", () {
-      final sessions = service.includeChildrenInAllSessions(
-        sessions: const [
-          PluginSession(
-            id: rootId,
-            projectID: persistedDirectory,
-            directory: persistedDirectory,
-            parentID: null,
-            title: "Root",
-            time: null,
-          ),
-        ],
-      );
+      final sessions = service.includeChildrenInAllSessions(sessions: [rootSession()]);
 
       expect(sessions.map((session) => session.id), [rootId, persistedChildId]);
+      expect(sessions.first.directory, persistedDirectory);
       expect(sessions.last.parentID, rootId);
+      expect(sessions.last.directory, persistedDirectory);
+    });
+
+    test("derived all-session enumeration repairs a root directory even when it has no children", () {
+      File(p.join(sessionDirectory(rootId), "updates.jsonl")).writeAsStringSync("");
+
+      final sessions = service.includeChildrenInAllSessions(sessions: [rootSession()]);
+
+      expect(sessions, hasLength(1));
+      expect(sessions.single.projectID, persistedDirectory);
+      expect(sessions.single.directory, persistedDirectory);
     });
   });
 }

@@ -113,6 +113,59 @@ void main() {
       );
     });
 
+    test("a child finish can atomically retain and later release root work", () async {
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      await pumpEventQueue();
+      final changedRoots = <String>[];
+      final subscription = tracker.changes.listen((change) => changedRoots.add(change.rootSessionId));
+      addTearDown(subscription.cancel);
+
+      final events = tracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "opaque-hold",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+
+      expect(events, hasLength(1));
+      expect(tracker.busyChildIds(sessionId: "root"), isEmpty);
+      expect(tracker.hasRootHold(sessionId: "root"), isTrue);
+      expect(tracker.hasActiveWorkForRoot(sessionId: "root"), isTrue);
+      expect(tracker.hasActiveWork, isTrue);
+      await pumpEventQueue();
+      expect(changedRoots, ["root"]);
+      expect(tracker.releaseRootHold(rootSessionId: "root", holdId: "wrong"), isFalse);
+      expect(tracker.releaseRootHold(rootSessionId: "root", holdId: "opaque-hold"), isTrue);
+      expect(tracker.hasActiveWorkForRoot(sessionId: "root"), isFalse);
+      await pumpEventQueue();
+      expect(changedRoots, ["root", "root"]);
+      expect(tracker.releaseRootHold(rootSessionId: "root", holdId: "opaque-hold"), isFalse);
+    });
+
+    test("cancelAll clears an autonomous root hold even after its child finished", () async {
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      tracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "opaque-hold",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+      await pumpEventQueue();
+
+      expect(tracker.cancelAll(), isEmpty, reason: "the child already has its terminal events");
+      expect(tracker.hasActiveWork, isFalse);
+    });
+
     test("a finish before any prompt still idles the child without a tile", () {
       tracker.spawn(
         sessionId: "root",

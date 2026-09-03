@@ -101,6 +101,19 @@ void main() {
       await pump();
     }
 
+    Future<void> finishChildAndHoldRoot(String childId, {required String holdId}) async {
+      plugin.childSessionTracker
+          .finishAndHoldRoot(
+            childSessionId: childId,
+            holdId: holdId,
+            status: PluginToolStatus.completed,
+            output: null,
+            error: null,
+          )
+          .forEach(plugin.emitEvent);
+      await pump();
+    }
+
     Iterable<BridgeSseSessionIdle> rootIdles(String sessionId) =>
         emitted.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == sessionId);
 
@@ -194,6 +207,29 @@ void main() {
       expect(rootIdles(sessionId), isEmpty, reason: "the second turn is still in flight");
       await respond("session/prompt", {"stopReason": "end_turn"});
       expect(rootIdles(sessionId), hasLength(1));
+    });
+
+    test("an autonomous root hold bridges the child finish to its uncounted settlement turn", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+
+      await finishChildAndHoldRoot("c1", holdId: "wake-c1");
+      expect(rootIdles(sessionId), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+      final active = plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(active.mainAgentRunning, isTrue, reason: "the autonomous root turn is active work");
+      expect(active.childSessionIds, isEmpty, reason: "the child itself is already terminal");
+
+      expect(
+        plugin.childSessionTracker.releaseRootHold(rootSessionId: sessionId, holdId: "wake-c1"),
+        isTrue,
+      );
+      await pump();
+      expect(rootIdles(sessionId), hasLength(1));
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
     });
 
     test("global interruption cancels tracker-only children before waiting for idle", () async {

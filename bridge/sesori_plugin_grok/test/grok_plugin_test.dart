@@ -251,7 +251,7 @@ void main() {
         "id": bare["id"],
         "result": {
           "sessions": [
-            {"sessionId": "root", "cwd": outside, "title": "Root"},
+            {"sessionId": "root", "title": "Root"},
           ],
         },
       });
@@ -265,6 +265,7 @@ void main() {
 
       final sessions = await listing;
       expect(sessions.map((session) => session.id), ["root", "child"]);
+      expect(sessions.first.directory, outside, reason: "the persisted tree repairs the bare-list fallback");
       expect(sessions.last.parentID, "root");
       expect(sessions.last.directory, outside);
     });

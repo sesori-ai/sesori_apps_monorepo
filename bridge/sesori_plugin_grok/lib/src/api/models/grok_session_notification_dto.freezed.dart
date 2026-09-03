@@ -178,6 +178,10 @@ GrokSubagentUpdate _$GrokSubagentUpdateFromJson(
           return GrokSubagentFinished.fromJson(
             json
           );
+                case 'turn_completed':
+          return GrokTurnCompleted.fromJson(
+            json
+          );
         
           default:
             return GrokSubagentUpdateUnknown.fromJson(
@@ -371,7 +375,7 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class GrokSubagentFinished implements GrokSubagentUpdate {
-  const GrokSubagentFinished({@JsonKey(name: "subagent_id") required this.subagentId, @JsonKey(name: "child_session_id") required this.childSessionId, @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required this.status, required this.output, required this.error,  String? $type}): $type = $type ?? 'subagent_finished';
+  const GrokSubagentFinished({@JsonKey(name: "subagent_id") required this.subagentId, @JsonKey(name: "child_session_id") required this.childSessionId, @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required this.status, required this.output, required this.error, @JsonKey(name: "will_wake") required this.willWake,  String? $type}): $type = $type ?? 'subagent_finished';
   factory GrokSubagentFinished.fromJson(Map<String, dynamic> json) => _$GrokSubagentFinishedFromJson(json);
 
 @JsonKey(name: "subagent_id") final  String subagentId;
@@ -379,6 +383,7 @@ class GrokSubagentFinished implements GrokSubagentUpdate {
 @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) final  GrokSubagentStatus status;
  final  String? output;
  final  String? error;
+@JsonKey(name: "will_wake") final  bool? willWake;
 
 @JsonKey(name: 'sessionUpdate')
 final String $type;
@@ -394,16 +399,16 @@ $GrokSubagentFinishedCopyWith<GrokSubagentFinished> get copyWith => _$GrokSubage
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentFinished&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentFinished&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&(identical(other.willWake, willWake) || other.willWake == willWake));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,status,output,error);
+int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,status,output,error,willWake);
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.subagentFinished(subagentId: $subagentId, childSessionId: $childSessionId, status: $status, output: $output, error: $error)';
+  return 'GrokSubagentUpdate.subagentFinished(subagentId: $subagentId, childSessionId: $childSessionId, status: $status, output: $output, error: $error, willWake: $willWake)';
 }
 
 
@@ -414,7 +419,7 @@ abstract mixin class $GrokSubagentFinishedCopyWith<$Res> implements $GrokSubagen
   factory $GrokSubagentFinishedCopyWith(GrokSubagentFinished value, $Res Function(GrokSubagentFinished) _then) = _$GrokSubagentFinishedCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "subagent_id") String subagentId,@JsonKey(name: "child_session_id") String childSessionId,@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) GrokSubagentStatus status, String? output, String? error
+@JsonKey(name: "subagent_id") String subagentId,@JsonKey(name: "child_session_id") String childSessionId,@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) GrokSubagentStatus status, String? output, String? error,@JsonKey(name: "will_wake") bool? willWake
 });
 
 
@@ -431,13 +436,84 @@ class _$GrokSubagentFinishedCopyWithImpl<$Res>
 
 /// Create a copy of GrokSubagentUpdate
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? subagentId = null,Object? childSessionId = null,Object? status = null,Object? output = freezed,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? subagentId = null,Object? childSessionId = null,Object? status = null,Object? output = freezed,Object? error = freezed,Object? willWake = freezed,}) {
   return _then(GrokSubagentFinished(
 subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
 as String,childSessionId: null == childSessionId ? _self.childSessionId : childSessionId // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as GrokSubagentStatus,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as String?,willWake: freezed == willWake ? _self.willWake : willWake // ignore: cast_nullable_to_non_nullable
+as bool?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GrokTurnCompleted implements GrokSubagentUpdate {
+  const GrokTurnCompleted({@JsonKey(name: "prompt_id") required this.promptId,  String? $type}): $type = $type ?? 'turn_completed';
+  factory GrokTurnCompleted.fromJson(Map<String, dynamic> json) => _$GrokTurnCompletedFromJson(json);
+
+@JsonKey(name: "prompt_id") final  String? promptId;
+
+@JsonKey(name: 'sessionUpdate')
+final String $type;
+
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokTurnCompletedCopyWith<GrokTurnCompleted> get copyWith => _$GrokTurnCompletedCopyWithImpl<GrokTurnCompleted>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTurnCompleted&&(identical(other.promptId, promptId) || other.promptId == promptId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,promptId);
+
+@override
+String toString() {
+  return 'GrokSubagentUpdate.turnCompleted(promptId: $promptId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokTurnCompletedCopyWith<$Res> implements $GrokSubagentUpdateCopyWith<$Res> {
+  factory $GrokTurnCompletedCopyWith(GrokTurnCompleted value, $Res Function(GrokTurnCompleted) _then) = _$GrokTurnCompletedCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "prompt_id") String? promptId
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokTurnCompletedCopyWithImpl<$Res>
+    implements $GrokTurnCompletedCopyWith<$Res> {
+  _$GrokTurnCompletedCopyWithImpl(this._self, this._then);
+
+  final GrokTurnCompleted _self;
+  final $Res Function(GrokTurnCompleted) _then;
+
+/// Create a copy of GrokSubagentUpdate
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? promptId = freezed,}) {
+  return _then(GrokTurnCompleted(
+promptId: freezed == promptId ? _self.promptId : promptId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

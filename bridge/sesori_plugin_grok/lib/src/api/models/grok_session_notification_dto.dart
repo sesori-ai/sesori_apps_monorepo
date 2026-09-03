@@ -49,7 +49,12 @@ sealed class GrokSubagentUpdate with _$GrokSubagentUpdate {
     @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required GrokSubagentStatus status,
     required String? output,
     required String? error,
+    @JsonKey(name: "will_wake") required bool? willWake,
   }) = GrokSubagentFinished;
+
+  const factory turnCompleted({
+    @JsonKey(name: "prompt_id") required String? promptId,
+  }) = GrokTurnCompleted;
 
   const factory unknown() = GrokSubagentUpdateUnknown;
 

@@ -48,6 +48,10 @@ final class AcpChildSessionTracker() {
   final Map<String, List<_Child>> _byRoot = {};
   final Map<String, _Child> _byChild = {};
 
+  /// Opaque backend-neutral work holds that keep a root active after a child
+  /// terminal event and until its autonomous settlement turn completes.
+  final Map<String, Set<String>> _rootHolds = {};
+
   /// Running-set changes consumed by the plugin. The asynchronous controller
   /// guarantees mapper-returned child events enter the plugin stream before a
   /// last-child change can release the root idle transition.
@@ -155,6 +159,34 @@ final class AcpChildSessionTracker() {
     return events;
   }
 
+  /// Atomically finalizes a child and replaces its running state with an
+  /// opaque root hold. This prevents an idle gap before a backend-driven root
+  /// settlement turn whose lifecycle does not increment ACP prompt accounting.
+  List<BridgeSseEvent> finishAndHoldRoot({
+    required String childSessionId,
+    required String holdId,
+    required PluginToolStatus status,
+    required String? output,
+    required String? error,
+  }) {
+    final child = _byChild[childSessionId];
+    if (child == null || child.status.isTerminal) return const [];
+    (_rootHolds[child.rootSessionId] ??= {}).add(holdId);
+    final events = _finish(child: child, status: status, output: output, error: error);
+    _notify(rootSessionId: child.rootSessionId);
+    return events;
+  }
+
+  /// Releases one opaque settlement hold. Unknown and duplicate releases are
+  /// no-ops, preserving one transition per observed backend lifecycle fact.
+  bool releaseRootHold({required String rootSessionId, required String holdId}) {
+    final holds = _rootHolds[rootSessionId];
+    if (holds == null || !holds.remove(holdId)) return false;
+    if (holds.isEmpty) _rootHolds.remove(rootSessionId);
+    _notify(rootSessionId: rootSessionId);
+    return true;
+  }
+
   List<BridgeSseEvent> _finish({
     required _Child child,
     required PluginToolStatus status,
@@ -172,17 +204,21 @@ final class AcpChildSessionTracker() {
     ];
   }
 
-  /// Cancels every running child: the agent process that hosted them is gone,
-  /// so their tiles end cancelled and the children go idle. The records stay
-  /// until [clear] or [forgetSession].
+  /// Cancels every running child and clears every autonomous root hold: the
+  /// agent process or global work episode is ending. Child records stay until
+  /// [clear] or [forgetSession].
   List<BridgeSseEvent> cancelAll() {
-    final affectedRoots = <String>{};
+    final affectedRoots = <String>{
+      for (final entry in _rootHolds.entries)
+        if (entry.value.isNotEmpty) entry.key,
+    };
     final events = <BridgeSseEvent>[];
     for (final child in _byChild.values) {
       if (child.status.isTerminal) continue;
       affectedRoots.add(child.rootSessionId);
       events.addAll(_finish(child: child, status: PluginToolStatus.cancelled, output: null, error: null));
     }
+    _rootHolds.clear();
     for (final rootSessionId in affectedRoots) {
       _notify(rootSessionId: rootSessionId);
     }
@@ -191,6 +227,16 @@ final class AcpChildSessionTracker() {
 
   /// Whether any announced child, under any root, is still running.
   bool get hasBusyChildren => _byChild.values.any((child) => !child.status.isTerminal);
+
+  /// Whether [sessionId] has an autonomous settlement turn in progress.
+  bool hasRootHold({required String sessionId}) => _rootHolds[sessionId]?.isNotEmpty ?? false;
+
+  /// Whether children or autonomous settlement keep [sessionId] active.
+  bool hasActiveWorkForRoot({required String sessionId}) =>
+      busyChildIds(sessionId: sessionId).isNotEmpty || hasRootHold(sessionId: sessionId);
+
+  /// Whether any root has child or autonomous settlement work.
+  bool get hasActiveWork => hasBusyChildren || _rootHolds.values.any((holds) => holds.isNotEmpty);
 
   /// The children of [sessionId] as sessions, for a harness whose listing
   /// carries no parent marker. [directory] is the root's project directory.
@@ -232,32 +278,45 @@ final class AcpChildSessionTracker() {
   /// Drops every record of a deleted root, or the single record of a deleted
   /// child. Emits nothing: the session is gone.
   void forgetSession({required String sessionId}) {
+    final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
     if (children != null) {
-      final hadRunningChild = children.any((child) => !child.status.isTerminal);
+      final hadActiveWork =
+          children.any((child) => !child.status.isTerminal) || (removedRootHolds?.isNotEmpty ?? false);
       for (final child in children) {
         _byChild.remove(child.childSessionId);
       }
-      if (hadRunningChild) _notify(rootSessionId: sessionId);
+      if (hadActiveWork) _notify(rootSessionId: sessionId);
       return;
     }
     final child = _byChild.remove(sessionId);
-    if (child == null) return;
+    if (child == null) {
+      if (removedRootHolds?.isNotEmpty ?? false) _notify(rootSessionId: sessionId);
+      return;
+    }
     final siblings = _byRoot[child.rootSessionId];
     siblings?.remove(child);
     if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);
-    if (!child.status.isTerminal) _notify(rootSessionId: child.rootSessionId);
+    final siblingHolds = _rootHolds[child.rootSessionId];
+    final removedChildHold = siblingHolds?.remove(sessionId) ?? false;
+    if (siblingHolds?.isEmpty ?? false) _rootHolds.remove(child.rootSessionId);
+    if (!child.status.isTerminal || removedChildHold) {
+      _notify(rootSessionId: child.rootSessionId);
+    }
   }
 
   /// Drops every record: the agent process that hosted the children is gone.
   void clear() {
-    if (_byChild.isEmpty && _byRoot.isEmpty) return;
-    final affectedRoots = {
+    if (_byChild.isEmpty && _byRoot.isEmpty && _rootHolds.isEmpty) return;
+    final affectedRoots = <String>{
       for (final entry in _byRoot.entries)
         if (entry.value.any((child) => !child.status.isTerminal)) entry.key,
+      for (final entry in _rootHolds.entries)
+        if (entry.value.isNotEmpty) entry.key,
     };
     _byRoot.clear();
     _byChild.clear();
+    _rootHolds.clear();
     for (final rootSessionId in affectedRoots) {
       _notify(rootSessionId: rootSessionId);
     }

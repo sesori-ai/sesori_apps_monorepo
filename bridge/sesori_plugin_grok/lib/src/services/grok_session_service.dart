@@ -27,12 +27,10 @@ class GrokSessionService({
   List<PluginSession> childSessions({
     required String rootSessionId,
     required String fallbackDirectory,
-  }) {
-    final directory =
-        _catalogRepository.persistedDirectoryForSession(sessionId: rootSessionId) ??
-        normalizeProjectDirectory(directory: fallbackDirectory);
-    return _mergeChildren(rootSessionId: rootSessionId, directory: directory);
-  }
+  }) => _mergeChildren(
+    rootSessionId: rootSessionId,
+    directory: _directoryForSession(sessionId: rootSessionId, fallbackDirectory: fallbackDirectory),
+  );
 
   /// Adds persisted and not-yet-flushed live children to the roots returned by
   /// ACP `session/list`, so bridge-derived catalog import sees the full family.
@@ -40,12 +38,24 @@ class GrokSessionService({
     final byId = {for (final session in sessions) session.id: session};
     for (final root in sessions) {
       if (root.parentID != null) continue;
-      for (final child in _mergeChildren(rootSessionId: root.id, directory: root.directory)) {
+      final directory = _directoryForSession(sessionId: root.id, fallbackDirectory: root.directory);
+      final children = _mergeChildren(rootSessionId: root.id, directory: directory);
+      if (directory != root.directory) {
+        byId[root.id] = root.copyWith(projectID: directory, directory: directory);
+      }
+      for (final child in children) {
         byId.putIfAbsent(child.id, () => child);
       }
     }
     return byId.values.toList(growable: false);
   }
+
+  String _directoryForSession({
+    required String sessionId,
+    required String fallbackDirectory,
+  }) =>
+      _catalogRepository.persistedDirectoryForSession(sessionId: sessionId) ??
+      normalizeProjectDirectory(directory: fallbackDirectory);
 
   List<PluginSession> _mergeChildren({
     required String rootSessionId,
