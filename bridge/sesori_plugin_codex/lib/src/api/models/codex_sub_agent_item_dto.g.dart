@@ -59,8 +59,6 @@ CodexCollabAgentToolCallItemDto _$CodexCollabAgentToolCallItemDtoFromJson(
       CodexCollabItemStatus.unknown,
   senderThreadId: _textFromJson(json['senderThreadId']),
   receiverThreadIds: _threadIdListFromJson(json['receiverThreadIds']),
-  receiverThreadId: _textFromJson(json['receiverThreadId']),
-  newThreadId: _textFromJson(json['newThreadId']),
   prompt: _textFromJson(json['prompt']),
   agentsStates:
       (json['agentsStates'] as Map?)?.map(

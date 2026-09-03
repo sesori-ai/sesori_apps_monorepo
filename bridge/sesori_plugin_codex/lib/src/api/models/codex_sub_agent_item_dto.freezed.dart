@@ -353,7 +353,7 @@ $CodexSubAgentItemDtoCopyWith(CodexSubAgentItemDto _, $Res Function(CodexSubAgen
 @JsonSerializable(createToJson: false)
 
 class CodexCollabAgentToolCallItemDto implements CodexSubAgentItemDto {
-  const CodexCollabAgentToolCallItemDto({required this.id, @JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown) required this.tool, @JsonKey(unknownEnumValue: CodexCollabItemStatus.unknown, defaultValue: CodexCollabItemStatus.unknown) required this.status, @JsonKey(fromJson: _textFromJson) required this.senderThreadId, @JsonKey(fromJson: _threadIdListFromJson) required  List<String> receiverThreadIds, @JsonKey(fromJson: _textFromJson) required this.receiverThreadId, @JsonKey(fromJson: _textFromJson) required this.newThreadId, @JsonKey(fromJson: _textFromJson) required this.prompt, @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{}) required  Map<String, CodexCollabAgentStateDto> agentsStates,  String? $type}): _receiverThreadIds = receiverThreadIds,_agentsStates = agentsStates,$type = $type ?? 'collabAgentToolCall';
+  const CodexCollabAgentToolCallItemDto({required this.id, @JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown) required this.tool, @JsonKey(unknownEnumValue: CodexCollabItemStatus.unknown, defaultValue: CodexCollabItemStatus.unknown) required this.status, @JsonKey(fromJson: _textFromJson) required this.senderThreadId, @JsonKey(fromJson: _threadIdListFromJson) required  List<String> receiverThreadIds, @JsonKey(fromJson: _textFromJson) required this.prompt, @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{}) required  Map<String, CodexCollabAgentStateDto> agentsStates,  String? $type}): _receiverThreadIds = receiverThreadIds,_agentsStates = agentsStates,$type = $type ?? 'collabAgentToolCall';
   factory CodexCollabAgentToolCallItemDto.fromJson(Map<String, dynamic> json) => _$CodexCollabAgentToolCallItemDtoFromJson(json);
 
  final  String? id;
@@ -367,8 +367,6 @@ class CodexCollabAgentToolCallItemDto implements CodexSubAgentItemDto {
   return EqualUnmodifiableListView(_receiverThreadIds);
 }
 
-@JsonKey(fromJson: _textFromJson) final  String? receiverThreadId;
-@JsonKey(fromJson: _textFromJson) final  String? newThreadId;
 @JsonKey(fromJson: _textFromJson) final  String? prompt;
  final  Map<String, CodexCollabAgentStateDto> _agentsStates;
 @JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{}) Map<String, CodexCollabAgentStateDto> get agentsStates {
@@ -392,16 +390,16 @@ $CodexCollabAgentToolCallItemDtoCopyWith<CodexCollabAgentToolCallItemDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollabAgentToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.status, status) || other.status == status)&&(identical(other.senderThreadId, senderThreadId) || other.senderThreadId == senderThreadId)&&const DeepCollectionEquality().equals(other._receiverThreadIds, _receiverThreadIds)&&(identical(other.receiverThreadId, receiverThreadId) || other.receiverThreadId == receiverThreadId)&&(identical(other.newThreadId, newThreadId) || other.newThreadId == newThreadId)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&const DeepCollectionEquality().equals(other._agentsStates, _agentsStates));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollabAgentToolCallItemDto&&(identical(other.id, id) || other.id == id)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.status, status) || other.status == status)&&(identical(other.senderThreadId, senderThreadId) || other.senderThreadId == senderThreadId)&&const DeepCollectionEquality().equals(other._receiverThreadIds, _receiverThreadIds)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&const DeepCollectionEquality().equals(other._agentsStates, _agentsStates));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tool,status,senderThreadId,const DeepCollectionEquality().hash(_receiverThreadIds),receiverThreadId,newThreadId,prompt,const DeepCollectionEquality().hash(_agentsStates));
+int get hashCode => Object.hash(runtimeType,id,tool,status,senderThreadId,const DeepCollectionEquality().hash(_receiverThreadIds),prompt,const DeepCollectionEquality().hash(_agentsStates));
 
 @override
 String toString() {
-  return 'CodexSubAgentItemDto.collabAgentToolCall(id: $id, tool: $tool, status: $status, senderThreadId: $senderThreadId, receiverThreadIds: $receiverThreadIds, receiverThreadId: $receiverThreadId, newThreadId: $newThreadId, prompt: $prompt, agentsStates: $agentsStates)';
+  return 'CodexSubAgentItemDto.collabAgentToolCall(id: $id, tool: $tool, status: $status, senderThreadId: $senderThreadId, receiverThreadIds: $receiverThreadIds, prompt: $prompt, agentsStates: $agentsStates)';
 }
 
 
@@ -412,7 +410,7 @@ abstract mixin class $CodexCollabAgentToolCallItemDtoCopyWith<$Res> implements $
   factory $CodexCollabAgentToolCallItemDtoCopyWith(CodexCollabAgentToolCallItemDto value, $Res Function(CodexCollabAgentToolCallItemDto) _then) = _$CodexCollabAgentToolCallItemDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id,@JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown) CodexCollabTool tool,@JsonKey(unknownEnumValue: CodexCollabItemStatus.unknown, defaultValue: CodexCollabItemStatus.unknown) CodexCollabItemStatus status,@JsonKey(fromJson: _textFromJson) String? senderThreadId,@JsonKey(fromJson: _threadIdListFromJson) List<String> receiverThreadIds,@JsonKey(fromJson: _textFromJson) String? receiverThreadId,@JsonKey(fromJson: _textFromJson) String? newThreadId,@JsonKey(fromJson: _textFromJson) String? prompt,@JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{}) Map<String, CodexCollabAgentStateDto> agentsStates
+ String? id,@JsonKey(unknownEnumValue: CodexCollabTool.unknown, defaultValue: CodexCollabTool.unknown) CodexCollabTool tool,@JsonKey(unknownEnumValue: CodexCollabItemStatus.unknown, defaultValue: CodexCollabItemStatus.unknown) CodexCollabItemStatus status,@JsonKey(fromJson: _textFromJson) String? senderThreadId,@JsonKey(fromJson: _threadIdListFromJson) List<String> receiverThreadIds,@JsonKey(fromJson: _textFromJson) String? prompt,@JsonKey(defaultValue: <String, CodexCollabAgentStateDto>{}) Map<String, CodexCollabAgentStateDto> agentsStates
 });
 
 
@@ -429,16 +427,14 @@ class _$CodexCollabAgentToolCallItemDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexSubAgentItemDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? tool = null,Object? status = null,Object? senderThreadId = freezed,Object? receiverThreadIds = null,Object? receiverThreadId = freezed,Object? newThreadId = freezed,Object? prompt = freezed,Object? agentsStates = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? tool = null,Object? status = null,Object? senderThreadId = freezed,Object? receiverThreadIds = null,Object? prompt = freezed,Object? agentsStates = null,}) {
   return _then(CodexCollabAgentToolCallItemDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as CodexCollabTool,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as CodexCollabItemStatus,senderThreadId: freezed == senderThreadId ? _self.senderThreadId : senderThreadId // ignore: cast_nullable_to_non_nullable
 as String?,receiverThreadIds: null == receiverThreadIds ? _self._receiverThreadIds : receiverThreadIds // ignore: cast_nullable_to_non_nullable
-as List<String>,receiverThreadId: freezed == receiverThreadId ? _self.receiverThreadId : receiverThreadId // ignore: cast_nullable_to_non_nullable
-as String?,newThreadId: freezed == newThreadId ? _self.newThreadId : newThreadId // ignore: cast_nullable_to_non_nullable
-as String?,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as List<String>,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,agentsStates: null == agentsStates ? _self._agentsStates : agentsStates // ignore: cast_nullable_to_non_nullable
 as Map<String, CodexCollabAgentStateDto>,
   ));

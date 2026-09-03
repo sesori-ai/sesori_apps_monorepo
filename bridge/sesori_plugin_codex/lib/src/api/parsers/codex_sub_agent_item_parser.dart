@@ -37,7 +37,7 @@ class const CodexSubAgentItemParser() {
             tool: item.tool,
             status: item.status,
             senderThreadId: _usefulText(value: item.senderThreadId),
-            receiverThreadIds: _receiverThreadIds(item: item),
+            receiverThreadIds: _receiverThreadIds(values: item.receiverThreadIds),
             prompt: item.prompt,
             agentsStates: {
               for (final MapEntry(:key, :value) in item.agentsStates.entries) key: value.status,
@@ -69,9 +69,9 @@ class const CodexSubAgentItemParser() {
     }
   }
 
-  List<String> _receiverThreadIds({required CodexCollabAgentToolCallItemDto item}) {
+  List<String> _receiverThreadIds({required List<String> values}) {
     final ids = <String>{};
-    for (final candidate in [item.newThreadId, item.receiverThreadId, ...item.receiverThreadIds]) {
+    for (final candidate in values) {
       final id = _usefulText(value: candidate);
       if (id != null) ids.add(id);
     }

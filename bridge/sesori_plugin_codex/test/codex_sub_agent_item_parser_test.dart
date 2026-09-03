@@ -6,7 +6,7 @@ import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:test/test.dart";
 
 // Fixtures mirror the codex-cli 0.148.0 app-server frames captured in
-// .plan/completed/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
+// .plan/active/claude-inline-subtasks/followups/codex-probe.md (ids redacted).
 CodexCollabItem collabOf(CodexSubAgentItemEventDto? event) => switch (event) {
   CodexCollabItem() => event,
   _ => fail("expected CodexCollabItem, got $event"),
@@ -157,35 +157,6 @@ void main() {
         "child-2": CodexCollabAgentStatus.notFound,
         "child-3": CodexCollabAgentStatus.unknown,
       });
-    });
-
-    test("merges the singular receiver fields into receiverThreadIds", () {
-      final event = parser.parse(
-        notification: const CodexServerNotification(
-          method: "item/started",
-          params: {
-            "threadId": "parent-1",
-            "turnId": "turn-1",
-            "item": {
-              "type": "collabAgentToolCall",
-              "id": "call_spawn",
-              "tool": "spawnAgent",
-              "status": "inProgress",
-              "senderThreadId": "parent-1",
-              "receiverThreadId": "child-1",
-              "newThreadId": "child-1",
-              "agentsStates": {
-                "child-1": {"status": "pendingInit", "message": null},
-              },
-            },
-          },
-        ),
-      );
-
-      final collab = collabOf(event);
-      expect(collab.tool, CodexCollabTool.spawnAgent);
-      expect(collab.receiverThreadIds, ["child-1"]);
-      expect(collab.agentsStates, {"child-1": CodexCollabAgentStatus.pendingInit});
     });
 
     test("falls back to unknown tool and status without dropping the item", () {
