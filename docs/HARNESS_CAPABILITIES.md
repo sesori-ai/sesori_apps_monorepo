@@ -23,7 +23,7 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | Sub-agents rendered as inline subtask tiles with child sessions | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
 
 Plugins that report a scoped-stop rejection declare whether "main agent only"
 is honored through `mainAgentOnlySupported`; the app offers the action only
@@ -74,8 +74,9 @@ call is known for every start. Foreground children die with the parent while
 background ones survive, and the adapter can tell them apart, so
 main-agent-only is supportable when every running child is background.
 
-¹⁰ Grok Build (1.0.5) sends `SubagentSpawned`/`SubagentProgress`/
-`SubagentFinished` with parent and child session ids as `x.ai/session_notification`
-extension notifications and exposes `x.ai/subagent/cancel`; Sesori's ACP event
-mapper currently drops non-`session/update` methods. Main-agent-only depends on
-`cancel_subagents_on_turn_cancel`, unverified on the wire.
+¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
+`subagent_finished` with parent and child session ids as
+`_x.ai/session_notification` extension notifications, streams child updates
+under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
+`session/cancel` cancels background children too, so main-agent-only is not
+supported.

@@ -320,6 +320,27 @@ confirmation, no child session or partial stop) and gets that subset.
 | ⚙️ | `grok: scoped stop for sub-agents` | policy in `AcpPlugin.abortSession` (seam 3), `cancelChild` seam and its Grok request (seam 4), `interruptActiveWork` uses stop |
 | 🌱 | `docs: record Grok Build sub-agent coverage` | matrix footnote ¹⁰ resolved, regression docs |
 
+### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
+
+- The live method names carry a leading underscore: `_x.ai/session_notification`
+  and, on `session/load` replay, `_x.ai/session/update`; the same facts are
+  replayed under the latter, so seam 5 feeds that method to `mapExtension`.
+- The envelope `sessionId` is the parent; `subagent_id` equals
+  `child_session_id`; no background flag and no tool call id are present.
+- Child `session/update`s (the child's own prompt, thoughts, tool calls)
+  arrive on the same connection under the child id right after
+  `subagent_spawned`; `session/load` accepts a child id even while it runs;
+  `session/list` returns roots only with no parent marker.
+- A standard `spawn_subagent` `tool_call` arrives first with
+  `_meta["x.ai/tool"].name`; it shares no id with the lifecycle event and is
+  suppressed through seam 2. A background finish with `will_wake: true`
+  triggers a wake-up turn without a client prompt.
+- A root `session/cancel` cancels foreground and background children alike
+  (`subagent_finished {status: cancelled}`), so every Grok child is recorded
+  as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel
+  {subagentId}` cancels one child without touching siblings or the root turn
+  and returns `{subagentId, cancelled, outcome: cancelled | already_finished}`.
+
 ### Open questions (probe with `grok --no-auto-update agent --no-leader stdio`)
 
 1. Exact JSON of the three notifications; is the envelope `sessionId` the
