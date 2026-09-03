@@ -1,4 +1,4 @@
-import "package:acp_plugin/acp_plugin.dart" show AcpChildSessionTracker, AcpSessionInfo;
+import "package:acp_plugin/acp_plugin.dart" show AcpChildSessionTracker;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 
@@ -10,20 +10,6 @@ class GrokSessionService({
   required final GrokSessionCatalogRepository _catalogRepository,
   required final AcpChildSessionTracker _liveTracker,
 }) {
-  String? parentId({
-    required AcpSessionInfo info,
-    required String fallbackDirectory,
-  }) {
-    final liveRoot = _liveTracker.rootOf(sessionId: info.sessionId);
-    if (liveRoot != info.sessionId) return liveRoot;
-    final reportedDirectory = _usefulText(info.cwd);
-    final directory = reportedDirectory == null
-        ? _catalogRepository.persistedDirectoryForSession(sessionId: info.sessionId) ??
-              normalizeProjectDirectory(directory: fallbackDirectory)
-        : normalizeProjectDirectory(directory: reportedDirectory);
-    return _catalogRepository.parentOf(cwd: directory, sessionId: info.sessionId);
-  }
-
   List<PluginSession> childSessions({
     required String rootSessionId,
     required String fallbackDirectory,
@@ -76,10 +62,5 @@ class GrokSessionService({
       byId.putIfAbsent(session.id, () => session);
     }
     return byId.values.toList(growable: false);
-  }
-
-  static String? _usefulText(String? value) {
-    final normalized = value?.trim();
-    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 }

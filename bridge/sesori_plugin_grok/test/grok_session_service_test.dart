@@ -94,31 +94,8 @@ void main() {
       );
 
       expect(children.map((session) => session.id), [persistedChildId, "live-child"]);
+      expect(children.map((session) => session.parentID), everyElement(rootId));
       expect(children.map((session) => session.directory), everyElement(persistedDirectory));
-      expect(
-        service.parentId(
-          info: const AcpSessionInfo(
-            sessionId: persistedChildId,
-            cwd: null,
-            title: null,
-            updatedAtMs: null,
-          ),
-          fallbackDirectory: "/launch-directory",
-        ),
-        rootId,
-      );
-      expect(
-        service.parentId(
-          info: const AcpSessionInfo(
-            sessionId: "live-child",
-            cwd: null,
-            title: null,
-            updatedAtMs: null,
-          ),
-          fallbackDirectory: "/launch-directory",
-        ),
-        rootId,
-      );
     });
 
     test("derived all-session enumeration includes the persisted child family", () {

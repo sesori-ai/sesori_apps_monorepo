@@ -107,24 +107,8 @@ void main() {
     expect(repository.childSessions(cwd: _cwd, rootId: _root).map((session) => session.id), [_childA, _childB]);
   });
 
-  test("parentOf resolves a persisted sub-agent to its root and nothing else", () {
-    expect(repository.parentOf(cwd: _cwd, sessionId: _childA), _root);
-    expect(
-      repository.parentOf(cwd: _cwd, sessionId: _root),
-      isNull,
-      reason: "not a subagent",
-    );
-    expect(repository.parentOf(cwd: _cwd, sessionId: "missing"), isNull);
-    writeSummary(_childB, {
-      "info": {"id": _childB, "cwd": _cwd},
-      "session_kind": "subagent",
-    });
-    expect(repository.parentOf(cwd: _cwd, sessionId: _childB), _root);
-  });
-
   test("an unknown project or a missing store reads as empty", () {
     expect(repository.childSessions(cwd: "/elsewhere", rootId: _root), isEmpty);
-    expect(repository.parentOf(cwd: "/elsewhere", sessionId: _childA), isNull);
     final homeless = GrokSessionCatalogRepository(
       api: GrokSessionStoreApi(sessionsRoot: null, pluginId: "grok-test"),
     );
@@ -134,7 +118,6 @@ void main() {
   test("malformed summaries and unreadable update files propagate", () {
     File(p.join(sessionDir(_childA), "summary.json")).writeAsStringSync("{broken");
     expect(() => repository.childSessions(cwd: _cwd, rootId: _root), throwsFormatException);
-    expect(() => repository.parentOf(cwd: _cwd, sessionId: _childA), throwsFormatException);
 
     writeSummary(_childA, {
       "info": {"id": _childA, "cwd": _cwd},

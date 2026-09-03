@@ -3,7 +3,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/grok_session_store_api.dart";
 import "../api/models/grok_session_notification_dto.dart";
-import "../api/models/grok_session_store_dto.dart";
 
 /// The durable view of Grok sub-agent parentage. Grok's `session/list` returns
 /// roots only and a child's `summary.json` names no parent, so after a bridge
@@ -41,20 +40,6 @@ class GrokSessionCatalogRepository({required final GrokSessionStoreApi _api}) {
         if (spawn.childSessionId.isNotEmpty && seen.add(spawn.childSessionId))
           _childSession(cwd: cwd, directory: directory, rootId: rootId, spawn: spawn),
     ];
-  }
-
-  /// The persisted parent of [sessionId] under [cwd]; null for a root or an
-  /// unknown session.
-  String? parentOf({required String cwd, required String sessionId}) {
-    final summary = _api.readSummary(cwd: cwd, sessionId: sessionId);
-    if (summary?.sessionKind != GrokSessionKind.subagent) return null;
-    for (final candidate in _api.listSessionIds(cwd: cwd)) {
-      if (candidate == sessionId) continue;
-      for (final spawn in _api.readSpawnRecords(cwd: cwd, sessionId: candidate)) {
-        if (spawn.childSessionId == sessionId) return candidate;
-      }
-    }
-    return null;
   }
 
   PluginSession _childSession({

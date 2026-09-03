@@ -140,11 +140,6 @@ void main() {
       expect(children.single.directory, "/repo");
       expect(children.single.title, "Synthetic child");
       expect(await plugin.getChildSessions("child"), isEmpty);
-
-      const child = AcpSessionInfo(sessionId: "child", cwd: "/repo", title: null, updatedAtMs: null);
-      const root = AcpSessionInfo(sessionId: "root", cwd: "/repo", title: null, updatedAtMs: null);
-      expect(plugin.sessionParentId(child), "root");
-      expect(plugin.sessionParentId(root), isNull);
     });
 
     test("persisted children survive a restart and merge with live ones", () async {
@@ -196,9 +191,11 @@ void main() {
 
       final children = await restarted.getChildSessions("root");
       expect(children.map((session) => session.id), ["persisted", "live"]);
-      expect(children.map((session) => session.parentID), everyElement("root"));
-      const persisted = AcpSessionInfo(sessionId: "persisted", cwd: "/repo", title: null, updatedAtMs: null);
-      expect(restarted.sessionParentId(persisted), "root", reason: "resolved from the tree, not the tracker");
+      expect(
+        children.map((session) => session.parentID),
+        everyElement("root"),
+        reason: "persisted parentage resolves without the live tracker",
+      );
     });
 
     test("full ACP enumeration augments an outside-launch root with its persisted child", () async {
