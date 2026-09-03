@@ -275,8 +275,10 @@ CodexSessionRecord _record({
   required String? title,
   DateTime? createdAt,
   DateTime? updatedAt,
+  String? parentId,
 }) => CodexSessionRecord(
   id: id,
+  parentId: parentId,
   rolloutPath: "/rollouts/$id.jsonl",
   cwd: cwd,
   threadName: title,
