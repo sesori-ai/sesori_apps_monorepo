@@ -171,15 +171,21 @@ void main() {
       );
     });
 
-    test("native import hides new projects while preserving existing visibility", () async {
+    test("native import shows new projects while preserving existing visibility", () async {
       final visiblePath = "${directory.path}/visible";
+      final hiddenPath = "${directory.path}/hidden";
       final importedPath = "${directory.path}/imported";
       await database.projectsDao.upsertProjectRows(
-        rows: [_projectRow(id: "visible-project", path: visiblePath)],
+        rows: [
+          _projectRow(id: "visible-project", path: visiblePath),
+          _projectRow(id: "hidden-project", path: hiddenPath),
+        ],
       );
+      await database.projectsDao.hideProject(projectId: "hidden-project");
       final plugin = _NativeImportPlugin(
         projects: [
           PluginProject(id: "visible-project", directory: visiblePath),
+          PluginProject(id: "hidden-project", directory: hiddenPath),
           PluginProject(id: "imported-project", directory: importedPath),
         ],
         rootsByProject: {
@@ -199,10 +205,11 @@ void main() {
           .drain<void>();
 
       expect((await database.projectsDao.getProject(projectId: "visible-project"))?.hidden, isFalse);
-      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "hidden-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isFalse);
       expect(
         (await database.projectsDao.getCatalogProjects()).map((project) => project.projectId),
-        ["visible-project"],
+        unorderedEquals(["visible-project", "imported-project"]),
       );
       expect(
         (await database.sessionDao.getSessionByBinding(
@@ -211,6 +218,27 @@ void main() {
         ))?.projectId,
         "imported-project",
       );
+    });
+
+    test("automatic native hydration shows newly discovered projects", () async {
+      final importedPath = "${directory.path}/automatic-import";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "automatic-project", directory: importedPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: false,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "automatic-project"))?.hidden, isFalse);
     });
 
     test("native import gives an exact project id precedence during a move", () async {
@@ -703,6 +731,8 @@ void main() {
 
       expect(second.sessionsImported, 2);
       expect(second.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+      final addedProject = (await database.projectsDao.getProjectsByPath(path: addedDirectory)).single;
+      expect(addedProject.hidden, isFalse);
     });
 
     test("root-only import filters tombstones", () async {
