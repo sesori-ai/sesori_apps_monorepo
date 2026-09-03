@@ -6,7 +6,7 @@
   while Sesori is hidden or unfocused, and opening an alert focuses the correct
   account-bound session.
 - **Dependencies:** Step 20 slices 1/3 and 2/3, especially the merged cockpit routes from PR #1269
-- **Open PR:** [#1274](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1274)
+- **Merged PR:** [#1274](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1274) (2026-09-03)
 - **Pinned implementation head:** `4642e18c01639df65ad89af09dafe395faff5e27`
 
 ## Scope
@@ -131,7 +131,8 @@ cleanup from the native-write owner.
 ## Residual Verification
 
 - Real macOS notification delivery, replacement/cancellation, click-to-focus routing, account transitions, and the
-  persisted toggle remain part of user-run MT Gate C.
+  persisted toggle remain part of agent-run MT Gate C under the user's delegated request; see
+  [`../MT_GATE_C.md`](../MT_GATE_C.md).
 - Real Windows/Linux native notifications and platform compilation remain unavailable locally; CI build coverage and
   later distribution-platform validation remain authoritative for those targets.
 - MT Gate C also retains the plan's complete cockpit and release-target mobile regression journeys.
