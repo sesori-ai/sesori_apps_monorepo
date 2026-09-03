@@ -149,7 +149,8 @@ void main() {
     test("persisted children survive a restart and merge with live ones", () async {
       final home = Directory.systemTemp.createTempSync("grok-home-");
       addTearDown(() => home.deleteSync(recursive: true));
-      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/root")..createSync(recursive: true);
+      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/root")
+        ..createSync(recursive: true);
       File("${rootDir.path}/updates.jsonl").writeAsStringSync(
         jsonEncode({
           "method": "_x.ai/session/update",
@@ -167,7 +168,12 @@ void main() {
       );
       File("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/persisted/summary.json")
         ..createSync(recursive: true)
-        ..writeAsStringSync(jsonEncode({"info": {"id": "persisted", "cwd": "/repo"}, "session_kind": "subagent"}));
+        ..writeAsStringSync(
+          jsonEncode({
+            "info": {"id": "persisted", "cwd": "/repo"},
+            "session_kind": "subagent",
+          }),
+        );
       final restarted = GrokPlugin(
         binaryPath: "grok",
         launchDirectory: "/repo",
@@ -192,6 +198,75 @@ void main() {
       expect(children.map((session) => session.parentID), everyElement("root"));
       const persisted = AcpSessionInfo(sessionId: "persisted", cwd: "/repo", title: null, updatedAtMs: null);
       expect(restarted.sessionParentId(persisted), "root", reason: "resolved from the tree, not the tracker");
+    });
+
+    test("full ACP enumeration augments an outside-launch root with its persisted child", () async {
+      final home = Directory.systemTemp.createTempSync("grok-enumeration-home-");
+      addTearDown(() => home.deleteSync(recursive: true));
+      await plugin.dispose();
+      plugin = GrokPlugin(
+        binaryPath: "grok",
+        launchDirectory: "/repo",
+        environment: {"HOME": home.path},
+        processFactory: (_) async => fake,
+      );
+      const outside = "/outside-launch-directory";
+      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent(outside)}/root")
+        ..createSync(recursive: true);
+      File("${rootDir.path}/summary.json").writeAsStringSync(
+        jsonEncode({
+          "info": {"id": "root", "cwd": outside},
+        }),
+      );
+      File("${rootDir.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "_x.ai/session/update",
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "child",
+              "child_session_id": "child",
+              "parent_session_id": "root",
+              "description": "Persisted child",
+            },
+          },
+        }),
+      );
+      File("${home.path}/.grok/sessions/${Uri.encodeComponent(outside)}/child/summary.json")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          jsonEncode({
+            "info": {"id": "child", "cwd": outside},
+            "session_kind": "subagent",
+          }),
+        );
+      await connect();
+
+      final listing = plugin.listAllSessions(knownDirectories: const {});
+      final bare = await waitForFrame(method: AcpMethods.sessionList);
+      expect((bare["params"] as Map<String, dynamic>)["cwd"], isNull);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": bare["id"],
+        "result": {
+          "sessions": [
+            {"sessionId": "root", "cwd": outside, "title": "Root"},
+          ],
+        },
+      });
+      final launchScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((launchScoped["params"] as Map<String, dynamic>)["cwd"], "/repo");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": launchScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+
+      final sessions = await listing;
+      expect(sessions.map((session) => session.id), ["root", "child"]);
+      expect(sessions.last.parentID, "root");
+      expect(sessions.last.directory, outside);
     });
 
     test("uses Grok identity, headless auth policy, and stop-and-send", () {

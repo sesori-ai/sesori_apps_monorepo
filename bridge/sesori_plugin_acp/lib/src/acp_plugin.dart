@@ -67,7 +67,7 @@ abstract class AcpPlugin({
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
-    childSessionTracker.onChanged = _onChildSessionsChanged;
+    _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
   }
 
   /// Bridge launch CWD (canonicalized) — the directory the bridge seeds as an
@@ -77,6 +77,9 @@ abstract class AcpPlugin({
   final String launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
+  // Cancelled before the event buffer closes in [dispose].
+  // ignore: cancel_subscriptions
+  StreamSubscription<AcpChildSessionTrackerChange>? _childSessionChanges;
 
   AcpCommandListener? _commandListener;
 
@@ -1530,16 +1533,22 @@ abstract class AcpPlugin({
     _eventBuffer.add(const BridgeSseProjectUpdated());
   }
 
-  /// Registered on [childSessionTracker] at composition: releases every root
-  /// that is still busy with no turn of its own (its idle was deferred) once
-  /// its busy set is empty, then re-derives the work state so a running child
-  /// alone keeps the plugin busy.
-  void _onChildSessionsChanged() {
-    for (final entry in _turnStates.entries) {
-      if (entry.value.pending > 0) continue;
-      if (_sessionStatuses[entry.key] != const PluginSessionStatus.busy()) continue;
-      if (childSessionTracker.busyChildIds(sessionId: entry.key).isNotEmpty) continue;
-      _emitRootIdle(sessionId: entry.key);
+  /// Consumes an asynchronous [childSessionTracker] running-set change after
+  /// the mapper has published that child's lifecycle events. Releases every
+  /// deferred root whose own turn and children have settled, invalidates the
+  /// activity summary for other child-set changes, then re-derives work state.
+  void _onChildSessionsChanged(AcpChildSessionTrackerChange change) {
+    final rootSessionId = change.rootSessionId;
+    final rootState = _turnStates[rootSessionId];
+    final releasesDeferredIdle =
+        rootState != null &&
+        rootState.pending == 0 &&
+        _sessionStatuses[rootSessionId] == const PluginSessionStatus.busy() &&
+        childSessionTracker.busyChildIds(sessionId: rootSessionId).isEmpty;
+    if (releasesDeferredIdle) {
+      _emitRootIdle(sessionId: rootSessionId);
+    } else {
+      _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     if (_client != null) _syncWorkState();
   }
@@ -1634,6 +1643,7 @@ abstract class AcpPlugin({
       await Future.wait([
         for (final sessionId in activeSessionIds) _abortSession(sessionId: sessionId),
       ]);
+      childSessionTracker.cancelAll().forEach(_eventBuffer.add);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
       }
@@ -2017,6 +2027,18 @@ abstract class AcpPlugin({
     // dispose() must not throw — every step below is isolated (see
     // [_teardownConnection]); the stream closes are best-effort too.
     await _teardownConnection();
+    final childSessionChanges = _childSessionChanges;
+    _childSessionChanges = null;
+    try {
+      await childSessionChanges?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel child-session subscription", e, st);
+    }
+    try {
+      await childSessionTracker.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close child-session tracker", e, st);
+    }
     try {
       await _eventBuffer.close();
     } on Object catch (e, st) {

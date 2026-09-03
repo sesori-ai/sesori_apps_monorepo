@@ -56,7 +56,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   accepts only advertised headless authentication. Interactive-only
   authentication becomes local-login-required without invoking it. An
   unexpected exit degrades only Grok, demand reconnects it, and owned shutdown
-  remains idempotent and is not reported as a crash.
+  remains idempotent and is not reported as a crash. Exit cleanup publishes
+  cancellation and idle for every running Grok child before clearing tracker
+  state and releasing a deferred root idle.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,

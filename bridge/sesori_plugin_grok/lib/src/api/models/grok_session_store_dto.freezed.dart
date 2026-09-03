@@ -312,66 +312,50 @@ as String?,
 
 }
 
+GrokPersistedUpdateDto _$GrokPersistedUpdateDtoFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['method']) {
+                  case '_x.ai/session/update':
+          return GrokPersistedSessionUpdateDto.fromJson(
+            json
+          );
+        
+          default:
+            return GrokPersistedUpdateUnknownDto.fromJson(
+  json
+);
+        }
+      
+}
 
 /// @nodoc
 mixin _$GrokPersistedUpdateDto {
 
- String? get method; Map<String, dynamic>? get params;
-/// Create a copy of GrokPersistedUpdateDto
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$GrokPersistedUpdateDtoCopyWith<GrokPersistedUpdateDto> get copyWith => _$GrokPersistedUpdateDtoCopyWithImpl<GrokPersistedUpdateDto>(this as GrokPersistedUpdateDto, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPersistedUpdateDto&&(identical(other.method, method) || other.method == method)&&const DeepCollectionEquality().equals(other.params, params));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPersistedUpdateDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,method,const DeepCollectionEquality().hash(params));
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GrokPersistedUpdateDto(method: $method, params: $params)';
+  return 'GrokPersistedUpdateDto()';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $GrokPersistedUpdateDtoCopyWith<$Res>  {
-  factory $GrokPersistedUpdateDtoCopyWith(GrokPersistedUpdateDto value, $Res Function(GrokPersistedUpdateDto) _then) = _$GrokPersistedUpdateDtoCopyWithImpl;
-@useResult
-$Res call({
- String? method, Map<String, dynamic>? params
-});
-
-
-
-
-}
-/// @nodoc
-class _$GrokPersistedUpdateDtoCopyWithImpl<$Res>
-    implements $GrokPersistedUpdateDtoCopyWith<$Res> {
-  _$GrokPersistedUpdateDtoCopyWithImpl(this._self, this._then);
-
-  final GrokPersistedUpdateDto _self;
-  final $Res Function(GrokPersistedUpdateDto) _then;
-
-/// Create a copy of GrokPersistedUpdateDto
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? method = freezed,Object? params = freezed,}) {
-  return _then(GrokPersistedUpdateDto(
-method: freezed == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
-as String?,params: freezed == params ? _self.params : params // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
-  ));
-}
-
+class $GrokPersistedUpdateDtoCopyWith<$Res>  {
+$GrokPersistedUpdateDtoCopyWith(GrokPersistedUpdateDto _, $Res Function(GrokPersistedUpdateDto) __);
 }
 
 
@@ -379,77 +363,116 @@ as Map<String, dynamic>?,
 /// @nodoc
 @JsonSerializable(createToJson: false)
 
-class _GrokPersistedUpdateDto implements GrokPersistedUpdateDto {
-  const _GrokPersistedUpdateDto({required this.method, required  Map<String, dynamic>? params}): _params = params;
-  factory _GrokPersistedUpdateDto.fromJson(Map<String, dynamic> json) => _$GrokPersistedUpdateDtoFromJson(json);
+class GrokPersistedSessionUpdateDto implements GrokPersistedUpdateDto {
+  const GrokPersistedSessionUpdateDto({required this.params,  String? $type}): $type = $type ?? '_x.ai/session/update';
+  factory GrokPersistedSessionUpdateDto.fromJson(Map<String, dynamic> json) => _$GrokPersistedSessionUpdateDtoFromJson(json);
 
-@override final  String? method;
- final  Map<String, dynamic>? _params;
-@override Map<String, dynamic>? get params {
-  final value = _params;
-  if (value == null) return null;
-  if (_params is EqualUnmodifiableMapView) return _params;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableMapView(value);
-}
+ final  GrokSessionNotificationDto params;
+
+@JsonKey(name: 'method')
+final String $type;
 
 
 /// Create a copy of GrokPersistedUpdateDto
 /// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
+@JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-_$GrokPersistedUpdateDtoCopyWith<_GrokPersistedUpdateDto> get copyWith => __$GrokPersistedUpdateDtoCopyWithImpl<_GrokPersistedUpdateDto>(this, _$identity);
+$GrokPersistedSessionUpdateDtoCopyWith<GrokPersistedSessionUpdateDto> get copyWith => _$GrokPersistedSessionUpdateDtoCopyWithImpl<GrokPersistedSessionUpdateDto>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokPersistedUpdateDto&&(identical(other.method, method) || other.method == method)&&const DeepCollectionEquality().equals(other._params, _params));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPersistedSessionUpdateDto&&(identical(other.params, params) || other.params == params));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,method,const DeepCollectionEquality().hash(_params));
+int get hashCode => Object.hash(runtimeType,params);
 
 @override
 String toString() {
-  return 'GrokPersistedUpdateDto(method: $method, params: $params)';
+  return 'GrokPersistedUpdateDto.sessionUpdate(params: $params)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class _$GrokPersistedUpdateDtoCopyWith<$Res> implements $GrokPersistedUpdateDtoCopyWith<$Res> {
-  factory _$GrokPersistedUpdateDtoCopyWith(_GrokPersistedUpdateDto value, $Res Function(_GrokPersistedUpdateDto) _then) = __$GrokPersistedUpdateDtoCopyWithImpl;
-@override @useResult
+abstract mixin class $GrokPersistedSessionUpdateDtoCopyWith<$Res> implements $GrokPersistedUpdateDtoCopyWith<$Res> {
+  factory $GrokPersistedSessionUpdateDtoCopyWith(GrokPersistedSessionUpdateDto value, $Res Function(GrokPersistedSessionUpdateDto) _then) = _$GrokPersistedSessionUpdateDtoCopyWithImpl;
+@useResult
 $Res call({
- String? method, Map<String, dynamic>? params
+ GrokSessionNotificationDto params
 });
 
 
-
+$GrokSessionNotificationDtoCopyWith<$Res> get params;
 
 }
 /// @nodoc
-class __$GrokPersistedUpdateDtoCopyWithImpl<$Res>
-    implements _$GrokPersistedUpdateDtoCopyWith<$Res> {
-  __$GrokPersistedUpdateDtoCopyWithImpl(this._self, this._then);
+class _$GrokPersistedSessionUpdateDtoCopyWithImpl<$Res>
+    implements $GrokPersistedSessionUpdateDtoCopyWith<$Res> {
+  _$GrokPersistedSessionUpdateDtoCopyWithImpl(this._self, this._then);
 
-  final _GrokPersistedUpdateDto _self;
-  final $Res Function(_GrokPersistedUpdateDto) _then;
+  final GrokPersistedSessionUpdateDto _self;
+  final $Res Function(GrokPersistedSessionUpdateDto) _then;
 
 /// Create a copy of GrokPersistedUpdateDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? method = freezed,Object? params = freezed,}) {
-  return _then(_GrokPersistedUpdateDto(
-method: freezed == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
-as String?,params: freezed == params ? _self._params : params // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>?,
+@pragma('vm:prefer-inline') $Res call({Object? params = null,}) {
+  return _then(GrokPersistedSessionUpdateDto(
+params: null == params ? _self.params : params // ignore: cast_nullable_to_non_nullable
+as GrokSessionNotificationDto,
   ));
 }
 
+/// Create a copy of GrokPersistedUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokSessionNotificationDtoCopyWith<$Res> get params {
+  
+  return $GrokSessionNotificationDtoCopyWith<$Res>(_self.params, (value) {
+    return _then(_self.copyWith(params: value));
+  });
+}
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class GrokPersistedUpdateUnknownDto implements GrokPersistedUpdateDto {
+  const GrokPersistedUpdateUnknownDto({ String? $type}): $type = $type ?? 'unknown';
+  factory GrokPersistedUpdateUnknownDto.fromJson(Map<String, dynamic> json) => _$GrokPersistedUpdateUnknownDtoFromJson(json);
+
+
+
+@JsonKey(name: 'method')
+final String $type;
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokPersistedUpdateUnknownDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'GrokPersistedUpdateDto.unknown()';
+}
+
 
 }
+
+
+
 
 // dart format on

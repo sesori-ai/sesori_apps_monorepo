@@ -11,6 +11,16 @@ import "../api/models/grok_session_store_dto.dart";
 /// `subagent_spawned` update the root persisted. This repository reads that
 /// link and the child's own summary; the live tracker covers what is running.
 class GrokSessionCatalogRepository({required final GrokSessionStoreApi _api}) {
+  /// Resolves the persisted project directory that contains [sessionId].
+  String? persistedDirectoryForSession({required String sessionId}) {
+    for (final cwd in _api.listProjectDirectories()) {
+      if (!_api.listSessionIds(cwd: cwd).contains(sessionId)) continue;
+      final summaryCwd = _usefulText(_api.readSummary(cwd: cwd, sessionId: sessionId)?.info?.cwd);
+      return normalizeProjectDirectory(directory: summaryCwd ?? cwd);
+    }
+    return null;
+  }
+
   /// The persisted children of [rootId] under [cwd], in spawn order.
   List<PluginSession> childSessions({required String cwd, required String rootId}) {
     final directory = normalizeProjectDirectory(directory: cwd);
@@ -45,17 +55,23 @@ class GrokSessionCatalogRepository({required final GrokSessionStoreApi _api}) {
     final summary = _api.readSummary(cwd: cwd, sessionId: spawn.childSessionId);
     final created = _timestampMs(summary?.createdAt);
     final updated = _timestampMs(summary?.updatedAt) ?? created;
+    final effectiveCreated = created ?? updated;
     return PluginSession(
       id: spawn.childSessionId,
       projectID: directory,
       directory: directory,
       parentID: rootId,
-      title: summary?.generatedTitle ?? spawn.description,
-      time: created == null || updated == null
+      title: _usefulText(summary?.generatedTitle) ?? _usefulText(spawn.description),
+      time: effectiveCreated == null || updated == null
           ? null
-          : PluginSessionTime(created: created, updated: updated, archived: null),
+          : PluginSessionTime(created: effectiveCreated, updated: updated, archived: null),
     );
   }
 
   static int? _timestampMs(String? raw) => raw == null ? null : DateTime.tryParse(raw)?.millisecondsSinceEpoch;
+
+  static String? _usefulText(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
 }

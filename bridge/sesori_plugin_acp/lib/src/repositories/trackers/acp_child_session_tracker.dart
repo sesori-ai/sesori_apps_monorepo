@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -27,6 +29,9 @@ final class const AcpChildTileResult({
   required final List<BridgeSseEvent> events,
 });
 
+/// A root whose running child set changed.
+final class const AcpChildSessionTrackerChange({required final String rootSessionId});
+
 /// The single owner of ACP child-session lifecycle. It is constructed once at
 /// the harness composition point and shared by the event mapper, which pushes
 /// typed spawn/prompt/finish facts through [spawn], [appendPrompt], and
@@ -43,12 +48,18 @@ final class AcpChildSessionTracker() {
   final Map<String, List<_Child>> _byRoot = {};
   final Map<String, _Child> _byChild = {};
 
-  /// The one change listener, registered by the plugin at composition: it
-  /// re-derives the work state and releases a deferred root idle after every
-  /// mutation that changes which children are running.
-  void Function()? onChanged;
+  /// Running-set changes consumed by the plugin. The asynchronous controller
+  /// guarantees mapper-returned child events enter the plugin stream before a
+  /// last-child change can release the root idle transition.
+  final StreamController<AcpChildSessionTrackerChange> _changes =
+      StreamController<AcpChildSessionTrackerChange>.broadcast();
+  Stream<AcpChildSessionTrackerChange> get changes => _changes.stream;
 
-  void _notify() => onChanged?.call();
+  void _notify({required String rootSessionId}) {
+    if (!_changes.isClosed) {
+      _changes.add(AcpChildSessionTrackerChange(rootSessionId: rootSessionId));
+    }
+  }
 
   /// Whether [sessionId] is a child this tracker announced.
   bool isChild({required String sessionId}) => _byChild.containsKey(sessionId);
@@ -68,7 +79,12 @@ final class AcpChildSessionTracker() {
     final root = rootOf(sessionId: sessionId);
     final existing = _byChild[spawn.childSessionId];
     if (existing != null) {
-      return AcpChildTileResult(rootSessionId: root, messageId: existing.messageId, opensMessage: false, events: const []);
+      return AcpChildTileResult(
+        rootSessionId: root,
+        messageId: existing.messageId,
+        opensMessage: false,
+        events: const [],
+      );
     }
     final messageId = "$root-subagent-${spawn.childSessionId}";
     final child = _Child(
@@ -83,7 +99,7 @@ final class AcpChildSessionTracker() {
     if (spawn.prompt case final prompt?) child.prompt.write(prompt);
     (_byRoot[root] ??= []).add(child);
     _byChild[spawn.childSessionId] = child;
-    _notify();
+    _notify(rootSessionId: root);
     final part = child.partOrNull();
     return AcpChildTileResult(
       rootSessionId: root,
@@ -135,7 +151,7 @@ final class AcpChildSessionTracker() {
     final child = _byChild[childSessionId];
     if (child == null || child.status.isTerminal) return const [];
     final events = _finish(child: child, status: status, output: output, error: error);
-    _notify();
+    _notify(rootSessionId: child.rootSessionId);
     return events;
   }
 
@@ -160,12 +176,16 @@ final class AcpChildSessionTracker() {
   /// so their tiles end cancelled and the children go idle. The records stay
   /// until [clear] or [forgetSession].
   List<BridgeSseEvent> cancelAll() {
-    final events = <BridgeSseEvent>[
-      for (final child in _byChild.values)
-        if (!child.status.isTerminal)
-          ..._finish(child: child, status: PluginToolStatus.cancelled, output: null, error: null),
-    ];
-    if (events.isNotEmpty) _notify();
+    final affectedRoots = <String>{};
+    final events = <BridgeSseEvent>[];
+    for (final child in _byChild.values) {
+      if (child.status.isTerminal) continue;
+      affectedRoots.add(child.rootSessionId);
+      events.addAll(_finish(child: child, status: PluginToolStatus.cancelled, output: null, error: null));
+    }
+    for (final rootSessionId in affectedRoots) {
+      _notify(rootSessionId: rootSessionId);
+    }
     return events;
   }
 
@@ -205,7 +225,8 @@ final class AcpChildSessionTracker() {
   /// The children of [sessionId] still running, with their launch mode.
   List<AcpRunningChild> runningChildren({required String sessionId}) => [
     for (final child in _byRoot[sessionId] ?? const <_Child>[])
-      if (!child.status.isTerminal) AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
+      if (!child.status.isTerminal)
+        AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
   ];
 
   /// Drops every record of a deleted root, or the single record of a deleted
@@ -213,25 +234,36 @@ final class AcpChildSessionTracker() {
   void forgetSession({required String sessionId}) {
     final children = _byRoot.remove(sessionId);
     if (children != null) {
+      final hadRunningChild = children.any((child) => !child.status.isTerminal);
       for (final child in children) {
         _byChild.remove(child.childSessionId);
       }
-      if (children.isNotEmpty) _notify();
+      if (hadRunningChild) _notify(rootSessionId: sessionId);
       return;
     }
     final child = _byChild.remove(sessionId);
     if (child == null) return;
-    _byRoot[child.rootSessionId]?.remove(child);
-    _notify();
+    final siblings = _byRoot[child.rootSessionId];
+    siblings?.remove(child);
+    if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);
+    if (!child.status.isTerminal) _notify(rootSessionId: child.rootSessionId);
   }
 
   /// Drops every record: the agent process that hosted the children is gone.
   void clear() {
-    if (_byChild.isEmpty) return;
+    if (_byChild.isEmpty && _byRoot.isEmpty) return;
+    final affectedRoots = {
+      for (final entry in _byRoot.entries)
+        if (entry.value.any((child) => !child.status.isTerminal)) entry.key,
+    };
     _byRoot.clear();
     _byChild.clear();
-    _notify();
+    for (final rootSessionId in affectedRoots) {
+      _notify(rootSessionId: rootSessionId);
+    }
   }
+
+  Future<void> dispose() => _changes.isClosed ? Future<void>.value() : _changes.close();
 
   BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
     sessionID: childId,

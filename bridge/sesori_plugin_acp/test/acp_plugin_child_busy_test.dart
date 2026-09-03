@@ -78,7 +78,7 @@ void main() {
 
     /// The harness mapper's push: a child spawned under [root] mid-turn.
     void spawnChild({required String root, required String childId}) {
-      plugin.childSessionTracker.spawn(
+      final result = plugin.childSessionTracker.spawn(
         sessionId: root,
         spawn: AcpChildSpawn(
           childSessionId: childId,
@@ -89,12 +89,15 @@ void main() {
         ),
         directory: cwd,
       );
+      result.events.forEach(plugin.emitEvent);
     }
 
     /// The harness mapper's push: a child finished. Tracker-driven events reach
     /// the plugin stream asynchronously, so settle before asserting.
     Future<void> finishChild(String childId, {required PluginToolStatus status}) async {
-      plugin.childSessionTracker.finish(childSessionId: childId, status: status, output: null, error: null);
+      plugin.childSessionTracker
+          .finish(childSessionId: childId, status: status, output: null, error: null)
+          .forEach(plugin.emitEvent);
       await pump();
     }
 
@@ -120,13 +123,25 @@ void main() {
       expect(active.mainAgentRunning, isFalse, reason: "the root's own turn settled");
       expect(active.childSessionIds, ["c1", "c2"]);
 
+      final invalidationsBeforeFirstFinish = emitted.whereType<BridgeSseProjectUpdated>().length;
       await finishChild("c1", status: PluginToolStatus.completed);
       expect(rootIdles(sessionId), isEmpty, reason: "one child still runs");
+      expect(emitted.whereType<BridgeSseProjectUpdated>().length, greaterThan(invalidationsBeforeFirstFinish));
       expect(plugin.getActiveSessionsSummary().single.activeSessions.single.childSessionIds, ["c2"]);
       expect(plugin.currentWorkState, PluginWorkState.busy);
 
       await finishChild("c2", status: PluginToolStatus.cancelled);
       expect(rootIdles(sessionId), hasLength(1), reason: "released exactly once");
+      final childIdleIndex = emitted.lastIndexWhere(
+        (event) =>
+            event is BridgeSseSessionStatus &&
+            event.sessionID == "c2" &&
+            shared.SessionStatus.fromJson(event.status) == const shared.SessionStatus.idle(),
+      );
+      final rootIdleIndex = emitted.lastIndexWhere(
+        (event) => event is BridgeSseSessionIdle && event.sessionID == sessionId,
+      );
+      expect(childIdleIndex, lessThan(rootIdleIndex), reason: "the real child terminal state must win first");
       expect(await plugin.getSessionStatuses(), {
         sessionId: const PluginSessionStatus.idle(),
         "c1": const PluginSessionStatus.idle(),
@@ -181,6 +196,26 @@ void main() {
       expect(rootIdles(sessionId), hasLength(1));
     });
 
+    test("global interruption cancels tracker-only children before waiting for idle", () async {
+      final sessionId = await connectAndCreateSession();
+      await startTurn(sessionId);
+      spawnChild(root: sessionId, childId: "c1");
+      await respond("session/prompt", {"stopReason": "end_turn"});
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      final interrupted = await plugin.interruptActiveWork(budget: const Duration(seconds: 1));
+
+      expect(interrupted, {sessionId, "c1"});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      expect(rootIdles(sessionId), hasLength(1));
+      final tile = emitted
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .last;
+      expect(tile.taskState?.status, PluginToolStatus.cancelled);
+    });
+
     test("process exit cancels running children, idles them, and releases the root", () async {
       final sessionId = await connectAndCreateSession();
       await startTurn(sessionId);
@@ -191,7 +226,11 @@ void main() {
       fake.exit(1);
       await plugin.resetConnectionAfterExit();
 
-      final tile = emitted.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).whereType<PluginMessagePartSubtask>().last;
+      final tile = emitted
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .last;
       expect(tile.childSessionID, "c1");
       expect(tile.taskState?.status, PluginToolStatus.cancelled);
       final childStatus = emitted.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "c1").last;

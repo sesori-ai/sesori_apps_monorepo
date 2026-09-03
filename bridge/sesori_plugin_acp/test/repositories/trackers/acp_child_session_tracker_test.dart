@@ -27,9 +27,14 @@ void main() {
     late AcpChildSessionTracker tracker;
 
     setUp(() => tracker = AcpChildSessionTracker());
+    tearDown(() => tracker.dispose());
 
     test("spawn creates the child under the root and renders the tile once the prompt streams", () {
-      final result = tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/repo");
+      final result = tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/repo",
+      );
       expect(result.rootSessionId, "root");
       expect(result.messageId, "root-subagent-child");
       expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
@@ -76,7 +81,11 @@ void main() {
 
     test("finish completes the tile with bounded output and sets the child idle", () {
       tracker
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r")
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        )
         ..appendPrompt(childSessionId: "child", delta: "p");
 
       final events = tracker.finish(
@@ -105,16 +114,33 @@ void main() {
     });
 
     test("a finish before any prompt still idles the child without a tile", () {
-      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
-      final events = tracker.finish(childSessionId: "child", status: PluginToolStatus.completed, output: "o", error: null);
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      final events = tracker.finish(
+        childSessionId: "child",
+        status: PluginToolStatus.completed,
+        output: "o",
+        error: null,
+      );
       expect(events, hasLength(1));
       expect(_status(events.single), const shared.SessionStatus.idle());
     });
 
     test("cancelled and failed finishes keep only the failure text", () {
       tracker
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", prompt: "p"), directory: "/r")
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2", prompt: "p"), directory: "/r");
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k1", prompt: "p"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k2", prompt: "p"),
+          directory: "/r",
+        );
 
       final cancelled = _subtaskPart(
         tracker.finish(childSessionId: "k1", status: PluginToolStatus.cancelled, output: null, error: "stopped")[0],
@@ -131,8 +157,16 @@ void main() {
     });
 
     test("a nested spawn under a child is flattened to the root", () {
-      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
-      final nested = tracker.spawn(sessionId: "child", spawn: _spawn(childId: "grandchild"), directory: "/r");
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      final nested = tracker.spawn(
+        sessionId: "child",
+        spawn: _spawn(childId: "grandchild"),
+        directory: "/r",
+      );
       expect(nested.rootSessionId, "root");
       expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "root");
       expect(tracker.busyChildIds(sessionId: "root"), {"child", "grandchild"});
@@ -141,56 +175,110 @@ void main() {
     });
 
     test("a repeated spawn for a known child is a no-op", () {
-      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
-      final again = tracker.spawn(sessionId: "root", spawn: _spawn(childId: "child"), directory: "/r");
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
+      final again = tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/r",
+      );
       expect(again.events, isEmpty);
       expect(again.opensMessage, isFalse);
       expect(tracker.childStatuses.keys, ["child"]);
     });
 
-    test("the change listener fires on spawn, finish, forget, and clear, never on no-ops", () {
+    test("the change stream emits only when the running set changes", () async {
       var changes = 0;
-      tracker.onChanged = () => changes++;
-      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r");
+      String? changedRoot;
+      final subscription = tracker.changes.listen((change) {
+        changes++;
+        changedRoot = change.rootSessionId;
+      });
+      addTearDown(subscription.cancel);
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "k1"),
+        directory: "/r",
+      );
+      await pumpEventQueue();
       expect(changes, 1);
-      tracker.spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r");
-      expect(changes, 1, reason: "repeated spawn is a no-op");
+      expect(changedRoot, "root");
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "k1"),
+        directory: "/r",
+      );
       tracker.appendPrompt(childSessionId: "k1", delta: "p");
-      expect(changes, 1, reason: "a prompt chunk changes no running set");
+      await pumpEventQueue();
+      expect(changes, 1, reason: "repeated spawn and prompt chunks leave the running set unchanged");
       tracker.finish(childSessionId: "k1", status: PluginToolStatus.completed, output: null, error: null);
+      await pumpEventQueue();
       expect(changes, 2);
       tracker.finish(childSessionId: "k1", status: PluginToolStatus.completed, output: null, error: null);
-      expect(changes, 2);
       tracker.forgetSession(sessionId: "ghost");
-      expect(changes, 2);
-      tracker.forgetSession(sessionId: "root");
+      tracker.forgetSession(sessionId: "k1");
+      await pumpEventQueue();
+      expect(changes, 2, reason: "finished and unknown children do not change activity");
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "k2"),
+        directory: "/r",
+      );
+      await pumpEventQueue();
       expect(changes, 3);
+      tracker.forgetSession(sessionId: "k2");
+      await pumpEventQueue();
+      expect(changes, 4);
       tracker.clear();
-      expect(changes, 3, reason: "nothing to clear");
+      await pumpEventQueue();
+      expect(changes, 4, reason: "empty bookkeeping is cleared without an activity change");
     });
 
-    test("cancelAll ends every running child cancelled and idle, once", () {
+    test("cancelAll ends every running child cancelled and idle, once", () async {
       tracker
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", prompt: "p"), directory: "/r")
-        ..spawn(sessionId: "other", spawn: _spawn(childId: "k2"), directory: "/r")
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k1", prompt: "p"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "other",
+          spawn: _spawn(childId: "k2"),
+          directory: "/r",
+        )
         ..finish(childSessionId: "k2", status: PluginToolStatus.completed, output: null, error: null);
+      await pumpEventQueue();
       var changes = 0;
-      tracker.onChanged = () => changes++;
+      final subscription = tracker.changes.listen((_) => changes++);
+      addTearDown(subscription.cancel);
 
       final events = tracker.cancelAll();
+      await pumpEventQueue();
       expect(_subtaskPart(events[0]).taskState?.status, PluginToolStatus.cancelled);
       expect(_status(events[1]), const shared.SessionStatus.idle());
       expect(events, hasLength(2), reason: "the finished sibling is untouched");
       expect(tracker.hasBusyChildren, isFalse);
       expect(changes, 1);
       expect(tracker.cancelAll(), isEmpty);
+      await pumpEventQueue();
       expect(changes, 1);
     });
 
     test("childSessions lists a root's children as sessions under its directory", () {
       tracker
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1", description: "One"), directory: "/r")
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2", description: null), directory: "/r");
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k1", description: "One"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k2", description: null),
+          directory: "/r",
+        );
       final sessions = tracker.childSessions(sessionId: "root", directory: "/r");
       expect(sessions.map((session) => session.id), ["k1", "k2"]);
       expect(sessions.first.parentID, "root");
@@ -203,9 +291,21 @@ void main() {
 
     test("forgetting a root drops its children; forgetting a child drops only it; clear drops everything", () {
       tracker
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k1"), directory: "/r")
-        ..spawn(sessionId: "root", spawn: _spawn(childId: "k2"), directory: "/r")
-        ..spawn(sessionId: "other", spawn: _spawn(childId: "k3"), directory: "/r");
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k1"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "k2"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "other",
+          spawn: _spawn(childId: "k3"),
+          directory: "/r",
+        );
 
       expect(tracker.childSessionIds(sessionId: "root"), ["k1", "k2"]);
       tracker.forgetSession(sessionId: "k2");

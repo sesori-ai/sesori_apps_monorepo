@@ -36,8 +36,15 @@ _GrokSessionSummaryInfoDto _$GrokSessionSummaryInfoDtoFromJson(Map json) =>
       cwd: json['cwd'] as String?,
     );
 
-_GrokPersistedUpdateDto _$GrokPersistedUpdateDtoFromJson(Map json) =>
-    _GrokPersistedUpdateDto(
-      method: json['method'] as String?,
-      params: (json['params'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
-    );
+GrokPersistedSessionUpdateDto _$GrokPersistedSessionUpdateDtoFromJson(
+  Map json,
+) => GrokPersistedSessionUpdateDto(
+  params: GrokSessionNotificationDto.fromJson(
+    Map<String, dynamic>.from(json['params'] as Map),
+  ),
+  $type: json['method'] as String?,
+);
+
+GrokPersistedUpdateUnknownDto _$GrokPersistedUpdateUnknownDtoFromJson(
+  Map json,
+) => GrokPersistedUpdateUnknownDto($type: json['method'] as String?);

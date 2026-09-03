@@ -10,6 +10,7 @@ import "repositories/grok_catalog_repository.dart";
 import "repositories/grok_session_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
 import "services/grok_session_options_service.dart";
+import "services/grok_session_service.dart";
 import "trackers/grok_catalog_tracker.dart";
 
 /// Grok Build backend over ACP v1 with plugin-local legacy model selection.
@@ -22,7 +23,7 @@ class GrokPlugin._({
   required super.sessionOptionsService,
   required super.processFactory,
   required GrokSessionOptionsService grokSessionOptionsService,
-  required final GrokSessionCatalogRepository _sessionCatalogRepository,
+  required final GrokSessionService _sessionService,
 }) extends AcpPlugin {
   factory({
     required String binaryPath,
@@ -49,6 +50,12 @@ class GrokPlugin._({
       displayName: GrokPluginIdentity.displayName,
       discoveryTimeout: const Duration(seconds: 15),
     );
+    final sessionCatalogRepository = GrokSessionCatalogRepository(
+      api: GrokSessionStoreApi.forHome(
+        environment: environment,
+        pluginId: GrokPluginIdentity.id,
+      ),
+    );
     return GrokPlugin._(
       launchSpec: GrokBinary.launchSpec(
         binary: binaryPath,
@@ -72,8 +79,9 @@ class GrokPlugin._({
       ),
       processFactory: processFactory,
       grokSessionOptionsService: grokSessionOptionsService,
-      sessionCatalogRepository: GrokSessionCatalogRepository(
-        api: GrokSessionStoreApi.forHome(environment: environment),
+      sessionService: GrokSessionService(
+        catalogRepository: sessionCatalogRepository,
+        liveTracker: childSessionTracker,
       ),
     );
   }
@@ -167,27 +175,20 @@ class GrokPlugin._({
   // parentage comes from the live sub-agent lifecycle first and from the
   // persisted sessions tree once the tracker no longer knows the child.
   @override
-  String? sessionParentId(AcpSessionInfo info) {
-    final root = childSessionTracker.rootOf(sessionId: info.sessionId);
-    if (root != info.sessionId) return root;
-    final cwd = info.cwd;
-    return _sessionCatalogRepository.parentOf(
-      cwd: cwd == null || cwd.trim().isEmpty ? directoryForSession(sessionId: info.sessionId) : cwd,
-      sessionId: info.sessionId,
-    );
-  }
+  String? sessionParentId(AcpSessionInfo info) => _sessionService.parentId(
+    info: info,
+    fallbackDirectory: directoryForSession(sessionId: info.sessionId),
+  );
 
-  /// Persisted children first (they carry titles and times), then the live
-  /// children the tree has not caught up with yet; one entry per child id.
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    final directory = directoryForSession(sessionId: sessionId);
-    final byId = <String, PluginSession>{
-      for (final session in _sessionCatalogRepository.childSessions(cwd: directory, rootId: sessionId)) session.id: session,
-    };
-    for (final session in childSessionTracker.childSessions(sessionId: sessionId, directory: directory)) {
-      byId.putIfAbsent(session.id, () => session);
-    }
-    return byId.values.toList(growable: false);
-  }
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
+      _sessionService.includeChildrenInAllSessions(
+        sessions: await super.listAllSessions(knownDirectories: knownDirectories),
+      );
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => _sessionService.childSessions(
+    rootSessionId: sessionId,
+    fallbackDirectory: directoryForSession(sessionId: sessionId),
+  );
 }

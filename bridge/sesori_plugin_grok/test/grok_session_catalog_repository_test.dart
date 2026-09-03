@@ -50,8 +50,13 @@ void main() {
 
   setUp(() {
     sessions = Directory.systemTemp.createTempSync("grok-sessions-");
-    repository = GrokSessionCatalogRepository(api: GrokSessionStoreApi(sessionsRoot: sessions.path));
-    writeSummary(_root, {"info": {"id": _root, "cwd": _cwd}, "generated_title": "Root"});
+    repository = GrokSessionCatalogRepository(
+      api: GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test"),
+    );
+    writeSummary(_root, {
+      "info": {"id": _root, "cwd": _cwd},
+      "generated_title": "Root",
+    });
     writeSummary(_childA, {
       "info": {"id": _childA, "cwd": _cwd},
       "session_kind": "subagent",
@@ -61,9 +66,15 @@ void main() {
       "updated_at": "2026-09-02T13:46:25.056022Z",
     });
     writeUpdates(_root, [
-      {"timestamp": 1, "method": "_x.ai/session/update", "params": {"sessionId": _root, "update": {"sessionUpdate": "turn_completed"}}},
+      {
+        "timestamp": 1,
+        "method": "_x.ai/session/update",
+        "params": {
+          "sessionId": _root,
+          "update": {"sessionUpdate": "turn_completed"},
+        },
+      },
       spawnedLine(_childA, "Child A"),
-      "not json at all",
       spawnedLine(_childB, "Child B"),
       spawnedLine(_childA, "Child A again"),
     ]);
@@ -86,28 +97,76 @@ void main() {
     expect(b.time, isNull);
   });
 
+  test("one malformed update line is skipped without hiding valid spawn records", () {
+    writeUpdates(_root, [
+      spawnedLine(_childA, "Child A"),
+      {"method": "foreign/update", "params": "not a Grok session notification"},
+      "not json at all",
+      spawnedLine(_childB, "Child B"),
+    ]);
+    expect(repository.childSessions(cwd: _cwd, rootId: _root).map((session) => session.id), [_childA, _childB]);
+  });
+
   test("parentOf resolves a persisted sub-agent to its root and nothing else", () {
     expect(repository.parentOf(cwd: _cwd, sessionId: _childA), _root);
-    expect(repository.parentOf(cwd: _cwd, sessionId: _root), isNull, reason: "not a subagent");
+    expect(
+      repository.parentOf(cwd: _cwd, sessionId: _root),
+      isNull,
+      reason: "not a subagent",
+    );
     expect(repository.parentOf(cwd: _cwd, sessionId: "missing"), isNull);
-    writeSummary(_childB, {"info": {"id": _childB, "cwd": _cwd}, "session_kind": "subagent"});
+    writeSummary(_childB, {
+      "info": {"id": _childB, "cwd": _cwd},
+      "session_kind": "subagent",
+    });
     expect(repository.parentOf(cwd: _cwd, sessionId: _childB), _root);
   });
 
-  test("an unknown project, a missing store, or an unreadable summary reads as empty", () {
+  test("an unknown project or a missing store reads as empty", () {
     expect(repository.childSessions(cwd: "/elsewhere", rootId: _root), isEmpty);
     expect(repository.parentOf(cwd: "/elsewhere", sessionId: _childA), isNull);
-    final homeless = GrokSessionCatalogRepository(api: GrokSessionStoreApi(sessionsRoot: null));
+    final homeless = GrokSessionCatalogRepository(
+      api: GrokSessionStoreApi(sessionsRoot: null, pluginId: "grok-test"),
+    );
     expect(homeless.childSessions(cwd: _cwd, rootId: _root), isEmpty);
+  });
+
+  test("malformed summaries and unreadable update files propagate", () {
     File(p.join(sessionDir(_childA), "summary.json")).writeAsStringSync("{broken");
-    expect(repository.childSessions(cwd: _cwd, rootId: _root).first.title, "Child A");
-    expect(repository.parentOf(cwd: _cwd, sessionId: _childA), isNull, reason: "kind unknown without a summary");
+    expect(() => repository.childSessions(cwd: _cwd, rootId: _root), throwsFormatException);
+    expect(() => repository.parentOf(cwd: _cwd, sessionId: _childA), throwsFormatException);
+
+    writeSummary(_childA, {
+      "info": {"id": _childA, "cwd": _cwd},
+      "session_kind": "subagent",
+    });
+    File(p.join(sessionDir(_root), "updates.jsonl")).writeAsBytesSync([0xff]);
+    expect(() => repository.childSessions(cwd: _cwd, rootId: _root), throwsA(isA<FileSystemException>()));
+  });
+
+  test("resolves persisted directories and uses updated time when created time is absent", () {
+    writeSummary(_childA, {
+      "info": {"id": _childA, "cwd": _cwd},
+      "session_kind": "subagent",
+      "updated_at": "2026-09-02T13:46:25.056022Z",
+    });
+    expect(repository.persistedDirectoryForSession(sessionId: _root), _cwd);
+    expect(repository.persistedDirectoryForSession(sessionId: "missing"), isNull);
+    final time = repository.childSessions(cwd: _cwd, rootId: _root).first.time!;
+    expect(time.created, DateTime.parse("2026-09-02T13:46:25.056022Z").millisecondsSinceEpoch);
+    expect(time.updated, time.created);
+  });
+
+  test("session ids cannot escape their persisted project directory", () {
+    final api = GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test");
+    expect(() => api.readSummary(cwd: _cwd, sessionId: "../$_childA"), throwsArgumentError);
+    expect(() => api.readSpawnRecords(cwd: _cwd, sessionId: ".."), throwsArgumentError);
   });
 
   test("the store resolves under the foundation-provided home directory", () {
-    final api = GrokSessionStoreApi.forHome(environment: {"HOME": sessions.path});
+    final api = GrokSessionStoreApi.forHome(environment: {"HOME": sessions.path}, pluginId: "grok-test");
     expect(api.sessionsRoot, p.join(sessions.path, ".grok", "sessions"));
-    expect(GrokSessionStoreApi.forHome(environment: const {}).sessionsRoot, isNull);
+    expect(GrokSessionStoreApi.forHome(environment: const {}, pluginId: "grok-test").sessionsRoot, isNull);
     expect(GrokSessionStoreApi.encodeCwd(cwd: "/tmp/grok-probe/project-spawn"), "%2Ftmp%2Fgrok-probe%2Fproject-spawn");
   });
 }

@@ -1,5 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "grok_session_notification_dto.dart";
+
 part "grok_session_store_dto.freezed.dart";
 part "grok_session_store_dto.g.dart";
 
@@ -41,15 +43,22 @@ sealed class GrokSessionSummaryInfoDto with _$GrokSessionSummaryInfoDto {
   factory fromJson(Map<String, dynamic> json) => _$GrokSessionSummaryInfoDtoFromJson(json);
 }
 
-/// One line of `<session>/updates.jsonl`: a persisted notification envelope
-/// whose `params` has the same shape as the live `_x.ai/session_notification`.
-@Freezed(fromJson: true, toJson: false)
+/// One line of `<session>/updates.jsonl`. The target update method receives a
+/// fully typed notification; every other persisted method is an unknown variant
+/// and is ignored without weakening target-record validation.
+@Freezed(
+  unionKey: "method",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
 sealed class GrokPersistedUpdateDto with _$GrokPersistedUpdateDto {
-  const factory({
-    required String? method,
-    // ignore: no_slop_linter/prefer_specific_type, the notification params are parsed by their own DTO
-    required Map<String, dynamic>? params,
-  }) = _GrokPersistedUpdateDto;
+  @FreezedUnionValue("_x.ai/session/update")
+  const factory sessionUpdate({
+    required GrokSessionNotificationDto params,
+  }) = GrokPersistedSessionUpdateDto;
+
+  const factory unknown() = GrokPersistedUpdateUnknownDto;
 
   factory fromJson(Map<String, dynamic> json) => _$GrokPersistedUpdateDtoFromJson(json);
 }
