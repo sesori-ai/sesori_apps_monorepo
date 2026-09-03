@@ -44,7 +44,10 @@ const String _userInputMethod = "item/tool/requestUserInput";
 
 const String _elicitationApprovalKindKey = "codex_approval_kind";
 
-enum _ElicitationApprovalKind() { mcpToolCall, toolSuggestion }
+enum _ElicitationApprovalKind() {
+  mcpToolCall,
+  toolSuggestion,
+}
 
 class _PendingApproval({
   required final Object codexId,
@@ -105,6 +108,7 @@ class ApprovalRegistry({
   required super.emit,
   required final ApprovalResponder _respond,
   required final ApprovalErrorResponder _respondError,
+  required final String Function(String sessionId) _resolveDisplaySessionId,
   super.idGenerator,
 }) extends PendingPermissionRegistry<CodexServerRequest, _PendingApproval> {
   this
@@ -137,13 +141,14 @@ class ApprovalRegistry({
       respondError: _respondError,
     );
     final resolvedSessionId = sessionId ?? "";
+    final displaySessionId = _resolveDisplaySessionId(resolvedSessionId);
 
     if (isPermission) {
       final allowAlways = _allowsAlways(entry);
       registerPendingPermission(
         payload: entry,
         sessionId: resolvedSessionId,
-        displaySessionId: resolvedSessionId,
+        displaySessionId: displaySessionId,
         tool: _toolHintFor(method),
         description: _permissionDescriptionFor(entry),
         allowAlways: allowAlways,
@@ -152,7 +157,7 @@ class ApprovalRegistry({
       registerPendingQuestion(
         payload: entry,
         sessionId: resolvedSessionId,
-        displaySessionId: resolvedSessionId,
+        displaySessionId: displaySessionId,
         questions: [_questionInfoFor(entry)],
       );
     }

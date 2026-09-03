@@ -164,6 +164,42 @@ void main() {
       expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
     });
 
+    test("minimal child updates preserve their recorded parent", () {
+      mapper.setThreadParent(
+        threadId: "child-parent-retained",
+        parentId: "root-parent-retained",
+      );
+
+      final turnEvents = mapper.map(
+        const CodexServerNotification(
+          method: "turn/started",
+          params: {
+            "threadId": "child-parent-retained",
+            "turn": {"id": "turn-1", "startedAt": 1779293091},
+          },
+        ),
+      );
+      final activity = shared.Session.fromJson(
+        turnEvents.whereType<BridgeSseSessionUpdated>().single.info,
+      );
+      expect(activity.parentID, "root-parent-retained");
+
+      final nameEvents = mapper.map(
+        const CodexServerNotification(
+          method: "thread/name/updated",
+          params: {
+            "threadId": "child-parent-retained",
+            "threadName": "Renamed child",
+          },
+        ),
+      );
+      final renamed = shared.Session.fromJson(
+        (nameEvents.single as BridgeSseSessionUpdated).info,
+      );
+      expect(renamed.parentID, "root-parent-retained");
+      mapper.forgetThread("child-parent-retained");
+    });
+
     test("thread/started for a non-launch cwd emits that cwd's derived project id", () {
       // The bridge derives one project per cwd, so a session started outside the
       // launch dir must carry its own cwd as the project id — otherwise the

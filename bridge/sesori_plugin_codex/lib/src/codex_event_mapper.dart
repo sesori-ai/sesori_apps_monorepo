@@ -102,6 +102,18 @@ class CodexEventMapper({
   /// the current bridge run never started or resumed).
   final Map<String, String> _threadDirectory = {};
 
+  /// Direct parent for a live child thread. Minimal updates must preserve this
+  /// relationship or the bridge rejects them against the stored child row.
+  final Map<String, String> _threadParent = {};
+
+  void setThreadParent({required String threadId, required String? parentId}) {
+    if (parentId == null || parentId.isEmpty) {
+      _threadParent.remove(threadId);
+    } else {
+      _threadParent[threadId] = parentId;
+    }
+  }
+
   /// Records the normalized project [directory] the plugin resolved for
   /// [threadId]. Passing a null/empty [directory] clears the override (falls
   /// back to [projectCwd]).
@@ -133,6 +145,7 @@ class CodexEventMapper({
     _threadModel.remove(threadId);
     _threadProvider.remove(threadId);
     _threadDirectory.remove(threadId);
+    _threadParent.remove(threadId);
     _forgetItemTimes(threadId);
   }
 
@@ -149,6 +162,7 @@ class CodexEventMapper({
     setThreadTime(record);
     setThreadProvider(record.id, record.modelProvider);
     setThreadDirectory(record.id, record.directory);
+    setThreadParent(threadId: record.id, parentId: record.parentId);
     return [
       BridgeSseSessionCreated(info: _threadToSession(record).toJson()),
     ];
@@ -915,7 +929,7 @@ class CodexEventMapper({
       pluginId: pluginId,
       projectID: projectId,
       directory: projectId,
-      parentID: null,
+      parentID: _threadParent[id],
       title: title,
       time: time,
       pullRequest: null,

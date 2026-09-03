@@ -27,18 +27,23 @@ import "support/codex_plugin_test_factory.dart";
 
 void main() {
   group("CodexCatalogRepository sub-agent rollouts", () {
-    test("reads parentage from session_meta only for subagent rollouts", () {
+    test("reads sub-agent parentage and nickname from session metadata", () async {
       final repository = CodexCatalogRepository(rolloutApi: _HeaderRolloutApi());
 
       final records = {for (final record in repository.listSessionRecords()) record.id: record};
 
       expect(records["01a06259-6e4f-77f2-8bc7-000000000001"]?.parentId, isNull);
       expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.parentId, "01a06259-6e4f-77f2-8bc7-000000000001");
+      expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.agentNickname, "Raman");
       expect(
         records["01a06259-6e4f-77f2-8bc7-000000000003"]?.parentId,
         isNull,
         reason: "a plain fork is not a sub-agent",
       );
+      final children = await repository.getChildSessions(
+        sessionId: "01a06259-6e4f-77f2-8bc7-000000000001",
+      );
+      expect(children.single.title, "Raman");
     });
 
     test("lists roots only, keeps children discoverable, and resolves children by parent", () async {
@@ -203,7 +208,7 @@ void main() {
         parentThreadId: "root-1",
         parentDirectory: "/repo/parent",
         agentPath: "/root/sleeper",
-        status: const PluginSessionStatus.busy(),
+        status: const PluginSessionStatus.idle(),
       );
 
       expect(threadRepository.readThreadIds, ["child-1"]);
@@ -213,11 +218,13 @@ void main() {
       expect(child.directory, "/repo/parent");
       expect(child.model, "gpt-5.6");
       expect(child.createdAt, 10);
+      expect(announcement.status, isA<PluginSessionStatusBusy>());
       final created = announcement.events.whereType<BridgeSseSessionCreated>().single;
       final session = Session.fromJson(created.info);
       expect(session.parentID, "root-1");
       expect(session.title, "Raman");
-      expect(announcement.events.last, isA<BridgeSseSessionStatus>());
+      final announcedStatus = announcement.events.last as BridgeSseSessionStatus;
+      expect(announcedStatus.status["type"], "busy");
       expect(
         await service.handleSubAgentStarted(
           childThreadId: "child-1",
@@ -254,6 +261,7 @@ void main() {
       expect(child.name, "/root/sleeper");
       expect(child.directory, "/repo/parent");
       expect(child.agentNickname, isNull);
+      expect(announcement.status, isA<PluginSessionStatusBusy>());
     });
 
     test("merges persisted children with service-owned live children", () async {
@@ -315,11 +323,18 @@ void main() {
       expect(active.mainAgentRunning, isFalse);
       expect(active.awaitingInput, isTrue);
       expect(active.childSessionIds, ["child-1"]);
+      final rootInputScope = service.pendingInputScope(sessionId: "root-1");
+      expect(rootInputScope.displaySessionId, "root-1");
+      expect(rootInputScope.sourceSessionIds, ["root-1", "child-1"]);
+      final childInputScope = service.pendingInputScope(sessionId: "child-1");
+      expect(childInputScope.displaySessionId, "root-1");
+      expect(childInputScope.sourceSessionIds, ["child-1"]);
 
       final deferred = service.coordinateSessionEvents(
         sessionId: "root-1",
         sessionIsIdle: true,
         activityChanged: true,
+        sessionClosed: false,
         events: [
           BridgeSseSessionStatus(
             sessionID: "root-1",
@@ -339,6 +354,7 @@ void main() {
         sessionId: "child-1",
         sessionIsIdle: true,
         activityChanged: true,
+        sessionClosed: false,
         events: [const BridgeSseSessionIdle(sessionID: "child-1")],
       );
       expect(released.map((event) => event.runtimeType), [
@@ -347,6 +363,51 @@ void main() {
         BridgeSseSessionIdle,
         BridgeSseProjectUpdated,
       ]);
+      expect(service.deferredRootIds, isEmpty);
+    });
+
+    test("idles an active child before releasing its root when the thread closes", () {
+      final tracker = CodexSubAgentTracker();
+      tracker.record(
+        child: _liveChild(id: "child-1", parentId: "root-1"),
+      );
+      final service = _newService(
+        threadRepository: _ReadingThreadRepository(read: null, error: null),
+        catalogRepository: null,
+        subAgentTracker: tracker,
+      );
+      service.observeSessionStatus(
+        sessionId: "child-1",
+        status: const PluginSessionStatus.busy(),
+      );
+      service.coordinateSessionEvents(
+        sessionId: "root-1",
+        sessionIsIdle: true,
+        activityChanged: true,
+        sessionClosed: false,
+        events: [const BridgeSseSessionIdle(sessionID: "root-1")],
+      );
+      service.observeSessionStatus(
+        sessionId: "child-1",
+        status: const PluginSessionStatus.idle(),
+      );
+
+      final closed = service.coordinateSessionEvents(
+        sessionId: "child-1",
+        sessionIsIdle: false,
+        activityChanged: true,
+        sessionClosed: true,
+        events: const [],
+      );
+
+      expect(closed.map((event) => event.runtimeType), [
+        BridgeSseSessionStatus,
+        BridgeSseSessionStatus,
+        BridgeSseSessionIdle,
+        BridgeSseProjectUpdated,
+      ]);
+      expect((closed.first as BridgeSseSessionStatus).sessionID, "child-1");
+      expect((closed[1] as BridgeSseSessionStatus).sessionID, "root-1");
       expect(service.deferredRootIds, isEmpty);
     });
 
@@ -474,6 +535,7 @@ CodexSessionRecord _record({required String id, required String? cwd, required S
   cliVersion: "0.148.0",
   modelProvider: "openai",
   model: null,
+  agentNickname: null,
   parentId: parentId,
 );
 

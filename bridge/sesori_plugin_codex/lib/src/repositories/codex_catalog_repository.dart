@@ -53,6 +53,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           cliVersion: metadata?.cliVersion,
           modelProvider: metadata?.modelProvider,
           model: metadata?.model,
+          agentNickname: metadata?.agentNickname,
           parentId: metadata?.parentId,
         ),
       );
@@ -294,6 +295,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     String? modelProvider;
     String? cliVersion;
     String? model;
+    String? agentNickname;
     String? parentId;
     for (final line in lines) {
       switch (line) {
@@ -311,6 +313,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           cliVersion = payload.cliVersion;
           if (payload.threadSource == CodexRolloutThreadSource.subagent) {
             parentId = payload.parentThreadId;
+            agentNickname = payload.agentNickname;
           }
         case CodexRolloutTurnContextLineDto(:final payload):
           final candidate = payload.model;
@@ -330,6 +333,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       modelProvider: modelProvider,
       model: model,
       cliVersion: cliVersion,
+      agentNickname: agentNickname,
       parentId: parentId,
     );
   }
@@ -345,7 +349,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       projectID: directory,
       directory: directory,
       parentID: record.parentId,
-      title: record.threadName,
+      title: _usefulText(record.threadName) ?? _usefulText(record.agentNickname),
       time: created == null || updated == null
           ? null
           : PluginSessionTime(
@@ -369,6 +373,11 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     if (raw == null || raw.isEmpty) return null;
     return DateTime.tryParse(raw);
   }
+
+  String? _usefulText(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
 }
 
 class const _CodexSessionMetadata({
@@ -378,5 +387,6 @@ class const _CodexSessionMetadata({
   required final String? modelProvider,
   required final String? model,
   required final String? cliVersion,
+  required final String? agentNickname,
   required final String? parentId,
 });

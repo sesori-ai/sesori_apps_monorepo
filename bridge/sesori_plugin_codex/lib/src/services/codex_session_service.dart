@@ -25,6 +25,7 @@ final class const CodexSessionMessageRead._({
 
 final class const CodexSubAgentThreadAnnouncement({
   required final CodexThreadRecord child,
+  required final PluginSessionStatus status,
   required final List<BridgeSseEvent> events,
 });
 
@@ -130,18 +131,38 @@ class CodexSessionService({
       agentNickname: read?.agentNickname,
     );
     if (!_subAgentTracker.record(child: child)) return null;
-    _subAgentTracker.setChildActive(childId: childThreadId, active: _isActiveStatus(status));
+    // The observed 0.148.0 sequence reports a pre-start idle status before
+    // this authoritative activity fact, then active afterwards. Treat the
+    // child as pending now so a root completion cannot slip through that gap.
+    final startedStatus = _isActiveStatus(status) ? status : const PluginSessionStatus.busy();
+    _subAgentTracker.setChildActive(childId: childThreadId, active: true);
     return CodexSubAgentThreadAnnouncement(
       child: child,
+      status: startedStatus,
       events: _sessionMapper.mapChildStarted(
         child: child,
         fallbackDirectory: _launchDirectory,
-        status: status,
+        status: startedStatus,
       ),
     );
   }
 
   Set<String> get deferredRootIds => _subAgentTracker.deferredRootIds;
+
+  /// The source sessions whose pending input belongs on [sessionId]'s screen,
+  /// plus the top-most root id each snapshot should use for display routing.
+  ({String displaySessionId, List<String> sourceSessionIds}) pendingInputScope({
+    required String sessionId,
+  }) {
+    final displaySessionId = _subAgentTracker.rootOf(sessionId: sessionId) ?? sessionId;
+    return (
+      displaySessionId: displaySessionId,
+      sourceSessionIds: [
+        sessionId,
+        for (final child in _subAgentTracker.descendantsOf(parentId: sessionId)) child.id,
+      ],
+    );
+  }
 
   void observeRootTurnStarted({required String sessionId}) =>
       _subAgentTracker.cancelDeferredRootIdle(rootId: sessionId);
@@ -155,9 +176,16 @@ class CodexSessionService({
     required String? sessionId,
     required bool sessionIsIdle,
     required bool activityChanged,
+    required bool sessionClosed,
     required Iterable<BridgeSseEvent> events,
   }) {
-    final coordinated = <BridgeSseEvent>[];
+    final coordinated = <BridgeSseEvent>[
+      if (sessionClosed && activityChanged && sessionId != null && _subAgentTracker.isChild(sessionId: sessionId))
+        BridgeSseSessionStatus(
+          sessionID: sessionId,
+          status: const PluginSessionStatus.idle().toJson(),
+        ),
+    ];
     final shouldDeferIdle =
         sessionId != null && sessionIsIdle && _subAgentTracker.busyChildIds(rootId: sessionId).isNotEmpty;
     for (final event in events) {

@@ -401,6 +401,7 @@ class CodexPlugin._({
           sessionId: mappedThreadId,
           sessionIsIdle: mappedThreadId != null && _sessionStatuses[mappedThreadId] is PluginSessionStatusIdle,
           activityChanged: activityChanged,
+          sessionClosed: notification.method == "thread/closed",
           events: mappedEvents,
         )
         .forEach(_eventBuffer.add);
@@ -427,8 +428,10 @@ class CodexPlugin._({
     );
     if (announcement == null) return;
     final child = announcement.child;
+    _sessionStatuses[childId] = announcement.status;
     _eventMapper.setThreadTime(child);
     _eventMapper.setThreadProvider(childId, child.modelProvider);
+    _eventMapper.setThreadParent(threadId: childId, parentId: child.parentId);
     final directory = child.directory;
     if (directory != null) _recordThreadDirectory(childId, directory);
     announcement.events.forEach(_eventBuffer.add);
@@ -506,6 +509,7 @@ class CodexPlugin._({
         code: code,
         message: message,
       ),
+      resolveDisplaySessionId: (sessionId) => _sessionService.pendingInputScope(sessionId: sessionId).displaySessionId,
     );
     _approvalRegistry = registry;
     registry.attach(stream: client.serverRequests);
@@ -945,6 +949,7 @@ class CodexPlugin._({
             sessionId: sessionId,
             sessionIsIdle: true,
             activityChanged: activityChanged,
+            sessionClosed: false,
             events: _eventMapper.map(terminal),
           )
           .forEach(_eventBuffer.add);
@@ -1330,12 +1335,30 @@ class CodexPlugin._({
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingForSession(sessionId: sessionId) ?? const [];
+  }) async {
+    final registry = _approvalRegistry;
+    if (registry == null) return const [];
+    final scope = _sessionService.pendingInputScope(sessionId: sessionId);
+    return [
+      for (final sourceSessionId in scope.sourceSessionIds)
+        for (final question in registry.pendingForSession(sessionId: sourceSessionId))
+          question.copyWith(displaySessionId: scope.displaySessionId),
+    ];
+  }
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async => _approvalRegistry?.pendingPermissionsForSession(sessionId: sessionId) ?? const [];
+  }) async {
+    final registry = _approvalRegistry;
+    if (registry == null) return const [];
+    final scope = _sessionService.pendingInputScope(sessionId: sessionId);
+    return [
+      for (final sourceSessionId in scope.sourceSessionIds)
+        for (final permission in registry.pendingPermissionsForSession(sessionId: sourceSessionId))
+          permission.copyWith(displaySessionId: scope.displaySessionId),
+    ];
+  }
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({

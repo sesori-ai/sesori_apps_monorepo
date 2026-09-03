@@ -23,6 +23,7 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
+        resolveDisplaySessionId: (sessionId) => sessionId,
       );
       registry.attach(stream: requests.stream);
     });

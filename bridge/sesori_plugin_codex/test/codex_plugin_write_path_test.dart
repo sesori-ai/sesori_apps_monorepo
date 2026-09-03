@@ -2589,26 +2589,12 @@ void main() {
       expect(childSession.title, "Raman");
       expect(childSession.projectID, "/work/other");
       expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
-      // A repeated activity item (item/completed) does not re-announce.
-      fake.pushNotification("item/completed", {
-        "threadId": "root-1",
-        "turnId": "u-root",
-        "item": {
-          "type": "subAgentActivity",
-          "id": "call_spawn",
-          "kind": "started",
-          "agentThreadId": "child-1",
-          "agentPath": "/root/sleeper",
-        },
-      });
-      fake.pushNotification("turn/started", {
-        "threadId": "child-1",
-        "turn": {"id": "u-child", "startedAt": 1700000007},
-      });
-      await next<BridgeSseSessionStatus>((event) => event.sessionID == "child-1");
-      expect(events.whereType<BridgeSseSessionCreated>().where((event) => event.info["id"] == "child-1"), hasLength(1));
-      expect(fake.sentMethods.where((method) => method == "thread/read"), hasLength(1));
-
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status["type"],
+        "busy",
+        reason: "the started activity supersedes Codex's pre-start idle status",
+      );
       var statuses = await plugin.getSessionStatuses();
       expect(statuses["root-1"], isA<PluginSessionStatusBusy>());
       expect(statuses["child-1"], isA<PluginSessionStatusBusy>());
@@ -2623,7 +2609,8 @@ void main() {
       expect(children.single.parentID, "root-1");
       expect(children.single.directory, "/work/other");
 
-      // The root's own turn ends while the child still runs: no idle yet.
+      // The root can complete before Codex's later active notification for the
+      // child. The activity-start fact already holds the root busy.
       final rootUpdated = next<BridgeSseSessionUpdated>((event) => event.info["id"] == "root-1");
       fake.pushNotification("turn/completed", {
         "threadId": "root-1",
@@ -2642,6 +2629,80 @@ void main() {
       expect(summary.single.activeSessions.single.mainAgentRunning, isFalse);
       expect(summary.single.activeSessions.single.childSessionIds, ["child-1"]);
       expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      // A repeated activity item does not re-announce, and later child session
+      // updates retain the parent required by the bridge projection.
+      fake.pushNotification("item/completed", {
+        "threadId": "root-1",
+        "turnId": "u-root",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "call_spawn",
+          "kind": "started",
+          "agentThreadId": "child-1",
+          "agentPath": "/root/sleeper",
+        },
+      });
+      final childUpdated = next<BridgeSseSessionUpdated>((event) => event.info["id"] == "child-1");
+      fake.pushNotification("turn/started", {
+        "threadId": "child-1",
+        "turn": {"id": "u-child", "startedAt": 1700000007},
+      });
+      expect(shared.Session.fromJson((await childUpdated).info).parentID, "root-1");
+      expect(events.whereType<BridgeSseSessionCreated>().where((event) => event.info["id"] == "child-1"), hasLength(1));
+      expect(fake.sentMethods.where((method) => method == "thread/read"), hasLength(1));
+
+      final permissionAsked = next<BridgeSsePermissionAsked>((event) => event.sessionID == "child-1");
+      fake.pushServerRequest(
+        id: 201,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          "threadId": "child-1",
+          "turnId": "u-child",
+          "itemId": "item-permission",
+          "command": "ls",
+        },
+      );
+      final permissionEvent = await permissionAsked;
+      expect(permissionEvent.displaySessionId, "root-1");
+      final pendingPermissions = await plugin.getPendingPermissions(sessionId: "root-1");
+      expect(pendingPermissions.single.sessionID, "child-1");
+      expect(pendingPermissions.single.displaySessionId, "root-1");
+
+      final questionAsked = next<BridgeSseQuestionAsked>((event) => event.sessionID == "child-1");
+      fake.pushServerRequest(
+        id: 202,
+        method: "item/tool/requestUserInput",
+        params: {
+          "threadId": "child-1",
+          "turnId": "u-child",
+          "itemId": "item-question",
+          "questions": [
+            {"id": "confirm", "header": "Confirm", "question": "Continue?"},
+          ],
+        },
+      );
+      final questionEvent = await questionAsked;
+      expect(questionEvent.displaySessionId, "root-1");
+      final pendingQuestions = await plugin.getPendingQuestions(sessionId: "root-1");
+      expect(pendingQuestions.single.sessionID, "child-1");
+      expect(pendingQuestions.single.displaySessionId, "root-1");
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.awaitingInput, isTrue);
+
+      await plugin.replyToPermission(
+        requestId: permissionEvent.requestID,
+        sessionId: "child-1",
+        reply: PluginPermissionReply.once,
+      );
+      await plugin.replyToQuestion(
+        questionId: questionEvent.id,
+        sessionId: "child-1",
+        answers: const [
+          ["yes"],
+        ],
+      );
+      expect(await plugin.getPendingPermissions(sessionId: "root-1"), isEmpty);
+      expect(await plugin.getPendingQuestions(sessionId: "root-1"), isEmpty);
 
       // A no-active-turn interrupt reconciles the child to idle and releases
       // the root's deferred transition once.
