@@ -3,6 +3,7 @@ import "package:injectable/injectable.dart";
 import "../api/desktop_instance_api.dart";
 import "../api/desktop_instance_storage.dart";
 import "../foundation/bridge_process_desired_state.dart";
+import "../foundation/platform/window_host.dart";
 
 /// Layer-2 aggregate over instance coordination and persisted desktop state.
 @lazySingleton
@@ -23,4 +24,8 @@ class DesktopInstanceRepository._create({
 
   Future<void> writeBridgeDesiredState({required BridgeProcessDesiredState state}) =>
       _storage.writeBridgeDesiredState(state: state);
+
+  Future<WindowBounds?> readWindowBounds() => _storage.readWindowBounds();
+
+  Future<void> writeWindowBounds({required WindowBounds bounds}) => _storage.writeWindowBounds(bounds: bounds);
 }

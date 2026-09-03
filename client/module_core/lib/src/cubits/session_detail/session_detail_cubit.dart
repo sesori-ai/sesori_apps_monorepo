@@ -20,6 +20,7 @@ import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -31,6 +32,7 @@ import "../../utils/model_filter/default_model_selector.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
+import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
@@ -2202,38 +2204,53 @@ class SessionDetailCubit(
     emit(current.copyWith(stagedCommand: null));
   }
 
-  Future<void> abort() async {
+  /// Stops the session with the given sub-agent scope.
+  ///
+  /// Stop means "run nothing further": for `keep` and `stop` the local prompt
+  /// queue is cleared before the request so a staged send cannot drain while
+  /// it is in flight (the bridge clears its own queue). A `confirm` probe may
+  /// be refused, so it clears the queue only once the bridge accepted it.
+  /// Under `stop` every busy child session is aborted too — plugins whose
+  /// children are real sessions keep today's stop-everything behavior.
+  Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
+      if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
+      final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
+      if (root case ErrorResponse(:final error)) throw error;
+      _clearLocalPromptQueue();
+
+      // Read state after the await: an abort-driven status or transcript event
+      // may have landed meanwhile and must not be overwritten by a stale copy.
       final current = state;
-      // Stop means "run nothing further": staged local sends must not fire on
-      // the next drain. The bridge clears its own queue as part of the abort.
-      if (_promptQueue.isNotEmpty || _promptQueue.isSending || _promptQueue.awaitingBridge.isNotEmpty) {
-        _promptQueue.clear();
-        _staleOptionsRecoveryAttemptedPromptIds.clear();
-        _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
-      }
-      final futures = <Future<ApiResponse<void>>>[_sessionRepository.abortSession(sessionId: _sessionId)];
-
-      // Also abort any active child sessions (busy or retrying).
-      if (current is SessionDetailLoaded) {
-        for (final entry in current.childStatuses.entries) {
-          final status = entry.value;
-          if (status is SessionStatusBusy || status is SessionStatusRetry) {
-            futures.add(_sessionRepository.abortSession(sessionId: entry.key));
-          }
-        }
-      }
-
-      final results = await Future.wait(futures);
-      for (final result in results) {
-        if (result case ErrorResponse(:final error)) {
-          throw error;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+        final results = await Future.wait([
+          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+            if (status is SessionStatusBusy || status is SessionStatusRetry)
+              _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
+        ]);
+        for (final result in results) {
+          if (result case ErrorResponse(:final error)) throw error;
         }
       }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
+      return const SessionAbortOutcome.aborted();
+    } on SessionAbortRejectedException catch (e) {
+      return SessionAbortOutcome.rejected(rejection: e.rejection);
     } on Object catch (e, st) {
+      // The bridge may have accepted a probe whose response was lost; only the
+      // typed rejection proves nothing happened, so the queue is cleared here too.
+      _clearLocalPromptQueue();
       loge("Failed to abort session(s)", e, st);
+      return const SessionAbortOutcome.failed();
     }
+  }
+
+  void _clearLocalPromptQueue() {
+    if (_promptQueue.isEmpty && !_promptQueue.isSending && _promptQueue.awaitingBridge.isEmpty) return;
+    _promptQueue.clear();
+    _staleOptionsRecoveryAttemptedPromptIds.clear();
+    final current = state;
+    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {

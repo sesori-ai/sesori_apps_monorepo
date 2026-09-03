@@ -29,6 +29,7 @@ export "src/models/auth/product_analytics_preference_update_request.dart";
 export "src/models/auth/project_glossary_words_request.dart";
 export "src/models/auth/register_bridge_request.dart";
 export "src/models/auth/session_status_response.dart";
+export "src/models/sesori/abort_session_request.dart";
 export "src/models/sesori/active_session.dart";
 export "src/models/sesori/agent_info.dart";
 export "src/models/sesori/agent_mode.dart";

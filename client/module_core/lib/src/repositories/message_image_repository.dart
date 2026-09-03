@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/message_image_api.dart";
 import "../api/session_api.dart";
+import "../foundation/models/image/supported_raster_image_format.dart";
 import "../foundation/platform/attachment_thumbnail_storage.dart";
 import "../logging/logging.dart";
 
@@ -102,13 +103,6 @@ class MessageImageRepository({
   static const _maxFilenameBytes = 255;
   static const _thumbnailCacheMaxBytes = 64 * 1024 * 1024;
   static const _thumbnailCacheVersion = "message-thumbnail-v1";
-  static const _supportedRasterMimes = {
-    "image/bmp",
-    "image/gif",
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  };
 
   final AttachmentThumbnailStorage _thumbnailStorage = attachmentThumbnailStorage;
   final Sha256 _sha256 = Sha256();
@@ -119,9 +113,9 @@ class MessageImageRepository({
   final Set<String> _accountsRequiringCleanup = {};
   bool canLoad({required MessageAttachment attachment}) => switch (attachment) {
     MessageAttachmentInlineImage(:final mime) ||
-    MessageAttachmentStoredImage(:final mime) => _supportedRasterMimes.contains(_normalizedMime(mime: mime)),
+    MessageAttachmentStoredImage(:final mime) => supportedRasterImageFormatForMime(mime: mime) != null,
     MessageAttachmentRemoteUrl(:final mime) =>
-      _supportedRasterMimes.contains(_normalizedMime(mime: mime)) &&
+      supportedRasterImageFormatForMime(mime: mime) != null &&
           attachment.safeRemoteUri?.scheme.toLowerCase() == "https",
     MessageAttachmentMetadata() || MessageAttachmentUnknown() => false,
   };
@@ -130,7 +124,7 @@ class MessageImageRepository({
       attachment is MessageAttachmentStoredImage &&
       attachment.byteLength >= 0 &&
       attachment.byteLength <= maxTranscriptImageBytes &&
-      _supportedRasterMimes.contains(_normalizedMime(mime: attachment.mime));
+      supportedRasterImageFormatForMime(mime: attachment.mime) != null;
 
   Future<MessageImageLoadResult> load({
     required String sessionId,
@@ -177,7 +171,7 @@ class MessageImageRepository({
       final bytes = await Isolate.run(() => _tryDecodeStrictBase64Image(base64Data));
       if (bytes == null ||
           bytes.length > maxInlineMessageAttachmentBytes ||
-          !_hasExpectedSignature(bytes: bytes, mime: mime)) {
+          supportedRasterImageFormatForMime(mime: mime)?.hasExpectedSignature(bytes: bytes) != true) {
         return const MessageImageLoadRejected();
       }
       return MessageImageLoadSuccess(
@@ -204,7 +198,7 @@ class MessageImageRepository({
     );
     return switch (response) {
       MessageImageApiSuccess(:final bytes) =>
-        _hasExpectedSignature(bytes: bytes, mime: mime)
+        (supportedRasterImageFormatForMime(mime: mime)?.hasExpectedSignature(bytes: bytes) ?? false)
             ? MessageImageLoadSuccess(
                 bytes: bytes,
                 mime: mime,
@@ -250,8 +244,7 @@ class MessageImageRepository({
       rendition: rendition,
       accountGeneration: _accountGenerations[accountId] ?? 0,
     );
-    final operation = _activeStoredLoads[scope] ??
-        _startStoredLoad(scope: scope, useThumbnailCache: useThumbnailCache);
+    final operation = _activeStoredLoads[scope] ?? _startStoredLoad(scope: scope, useThumbnailCache: useThumbnailCache);
     final result = await operation;
     return switch (result) {
       _StoredDataSuccess(:final data)
@@ -274,19 +267,20 @@ class MessageImageRepository({
   }) {
     final generation = scope.accountGeneration;
     late final Future<_StoredDataResult> operation;
-    operation = _loadStoredDataWithDerivedKey(
-      scope: scope,
-      generation: generation,
-      useThumbnailCache: useThumbnailCache,
-    ).whenComplete(() {
-      if (identical(_activeStoredLoads[scope], operation)) {
-        _activeStoredLoads.remove(scope);
-      }
-      _startedAccountOperations[scope.accountId]?.remove(operation);
-      if (_startedAccountOperations[scope.accountId]?.isEmpty ?? false) {
-        _startedAccountOperations.remove(scope.accountId);
-      }
-    });
+    operation =
+        _loadStoredDataWithDerivedKey(
+          scope: scope,
+          generation: generation,
+          useThumbnailCache: useThumbnailCache,
+        ).whenComplete(() {
+          if (identical(_activeStoredLoads[scope], operation)) {
+            _activeStoredLoads.remove(scope);
+          }
+          _startedAccountOperations[scope.accountId]?.remove(operation);
+          if (_startedAccountOperations[scope.accountId]?.isEmpty ?? false) {
+            _startedAccountOperations.remove(scope.accountId);
+          }
+        });
     _activeStoredLoads[scope] = operation;
     if (scope.rendition == SessionAttachmentRendition.thumbnail) {
       (_startedAccountOperations[scope.accountId] ??= {}).add(operation);
@@ -301,9 +295,7 @@ class MessageImageRepository({
   }) async => await _loadStoredData(
     scope: scope,
     generation: generation,
-    cacheScope: useThumbnailCache
-        ? await _accountCacheScope(accountId: scope.accountId)
-        : null,
+    cacheScope: useThumbnailCache ? await _accountCacheScope(accountId: scope.accountId) : null,
     cacheKey: useThumbnailCache
         ? await _thumbnailCacheKey(
             bridgeId: scope.bridgeId,
@@ -378,7 +370,7 @@ class MessageImageRepository({
       ),
     };
     if ((expectedOriginalMime != null && mime != expectedOriginalMime) ||
-        !_supportedRasterMimes.contains(mime) ||
+        supportedRasterImageFormatForMime(mime: mime) == null ||
         response.byteLength < 0 ||
         response.byteLength > maxBytes ||
         !base64WithinLimit) {
@@ -390,7 +382,7 @@ class MessageImageRepository({
         bytes.length != response.byteLength ||
         bytes.length > maxBytes ||
         (expectedOriginalByteLength != null && bytes.length != expectedOriginalByteLength) ||
-        !_hasExpectedSignature(bytes: bytes, mime: mime)) {
+        supportedRasterImageFormatForMime(mime: mime)?.hasExpectedSignature(bytes: bytes) != true) {
       return const _StoredDataTerminal(result: MessageImageLoadRejected());
     }
     return _StoredDataSuccess(data: (bytes: bytes, mime: mime));
@@ -583,12 +575,7 @@ class MessageImageRepository({
     return MessageImageLoadFailure(cause: cause, stackTrace: stackTrace);
   }
 
-  String? _detectedRasterMime({required Uint8List bytes}) {
-    for (final mime in _supportedRasterMimes) {
-      if (_hasExpectedSignature(bytes: bytes, mime: mime)) return mime;
-    }
-    return null;
-  }
+  String? _detectedRasterMime({required Uint8List bytes}) => detectSupportedRasterImageFormat(bytes: bytes)?.mime;
 
   static String _normalizedMime({required String mime}) => mime.split(";").first.trim().toLowerCase();
 
@@ -605,14 +592,7 @@ class MessageImageRepository({
               .replaceFirst(RegExp(r"^\.+"), "")
               .replaceFirst(RegExp(r"[. ]+$"), "")
               .trim();
-    final extension = switch (mime) {
-      "image/bmp" => ".bmp",
-      "image/gif" => ".gif",
-      "image/jpeg" => ".jpg",
-      "image/png" => ".png",
-      "image/webp" => ".webp",
-      _ => null,
-    };
+    final extension = supportedRasterImageFormatForMime(mime: mime)?.filenameExtension;
     final maxBasenameBytes = _maxFilenameBytes - (extension == null ? 0 : utf8.encode(extension).length);
     final safeBasename = basename == null || basename.isEmpty || _isReservedWindowsBasename(basename: basename)
         ? "image"
@@ -639,33 +619,5 @@ class MessageImageRepository({
       byteCount += characterBytes;
     }
     return result.isEmpty ? "image" : result.toString();
-  }
-
-  bool _hasExpectedSignature({required Uint8List bytes, required String mime}) => switch (mime) {
-    "image/bmp" => _startsWith(bytes: bytes, signature: const [0x42, 0x4D]),
-    "image/gif" =>
-      _startsWith(bytes: bytes, signature: const [0x47, 0x49, 0x46, 0x38, 0x37, 0x61]) ||
-          _startsWith(bytes: bytes, signature: const [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]),
-    "image/jpeg" => _startsWith(bytes: bytes, signature: const [0xFF, 0xD8, 0xFF]),
-    "image/png" => _startsWith(
-      bytes: bytes,
-      signature: const [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
-    ),
-    "image/webp" =>
-      _startsWith(bytes: bytes, signature: const [0x52, 0x49, 0x46, 0x46]) &&
-          bytes.length >= 12 &&
-          bytes[8] == 0x57 &&
-          bytes[9] == 0x45 &&
-          bytes[10] == 0x42 &&
-          bytes[11] == 0x50,
-    _ => false,
-  };
-
-  bool _startsWith({required Uint8List bytes, required List<int> signature}) {
-    if (bytes.length < signature.length) return false;
-    for (var index = 0; index < signature.length; index++) {
-      if (bytes[index] != signature[index]) return false;
-    }
-    return true;
   }
 }

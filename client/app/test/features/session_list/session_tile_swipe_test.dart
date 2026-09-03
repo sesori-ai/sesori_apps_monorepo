@@ -140,8 +140,14 @@ void main() {
     await tester.tap(find.text("Archive"));
     await tester.pumpAndSettle();
 
-    // Archiving is permanent, so the pill confirms before it commits.
-    expect(find.textContaining("Archiving is permanent"), findsOneWidget);
+    // The confirmation makes clear that archived history remains viewable.
+    expect(
+      find.text(
+        "Archiving makes this session permanently read-only. "
+        "You can still view its history, but you can’t send new prompts or unarchive it.",
+      ),
+      findsOneWidget,
+    );
     verifyNever(
       () => cubit.archiveSession(
         sessionId: any(named: "sessionId"),

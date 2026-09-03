@@ -33,6 +33,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
     as _i746;
+import 'package:sesori_desktop_core/src/foundation/platform/window_host.dart'
+    as _i732;
 import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_orchestrator.dart'
     as _i850;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
@@ -55,6 +57,8 @@ import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
+import 'package:sesori_desktop_core/src/services/window_bounds_service.dart'
+    as _i68;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
     as _i866;
 import 'package:sesori_desktop_core/src/trackers/bridge_prompt_tracker.dart'
@@ -170,6 +174,13 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i210.DesktopInstanceRepository>(),
       ),
     );
+    gh.lazySingleton<_i68.WindowBoundsService>(
+      () => _i68.WindowBoundsService(
+        windowHost: gh<_i732.WindowHost>(),
+        repository: gh<_i210.DesktopInstanceRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(
         repository: gh<_i171.ControlCommandRepository>(),
@@ -199,6 +210,14 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
       ),
     );
+    gh.lazySingleton<_i455.DesktopStartupOrchestrator>(
+      () => _i455.DesktopStartupOrchestrator(
+        instanceService: gh<_i494.DesktopInstanceService>(),
+        processService: gh<_i765.BridgeProcessService>(),
+        applicationTerminator: gh<_i746.DesktopApplicationTerminator>(),
+        windowBoundsService: gh<_i68.WindowBoundsService>(),
+      ),
+    );
     gh.lazySingleton<_i850.DesktopBridgeTakeoverOrchestrator>(
       () => _i850.DesktopBridgeTakeoverOrchestrator(
         processService: gh<_i765.BridgeProcessService>(),
@@ -207,13 +226,6 @@ extension GetItInjectableX on _i174.GetIt {
         promptTracker: gh<_i686.BridgePromptTracker>(),
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
-      ),
-    );
-    gh.lazySingleton<_i455.DesktopStartupOrchestrator>(
-      () => _i455.DesktopStartupOrchestrator(
-        instanceService: gh<_i494.DesktopInstanceService>(),
-        processService: gh<_i765.BridgeProcessService>(),
-        applicationTerminator: gh<_i746.DesktopApplicationTerminator>(),
       ),
     );
     return this;

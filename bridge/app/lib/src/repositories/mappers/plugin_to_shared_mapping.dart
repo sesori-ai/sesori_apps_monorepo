@@ -16,6 +16,22 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
+  PluginAbortSubAgentPolicy toPlugin() => switch (this) {
+    SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,
+    SessionAbortSubAgentPolicy.keep => PluginAbortSubAgentPolicy.keep,
+    SessionAbortSubAgentPolicy.stop => PluginAbortSubAgentPolicy.stop,
+  };
+}
+
+extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
+  SessionAbortRejection toShared() => SessionAbortRejection(
+    runningSubAgentCount: runningSubAgentCount,
+    mainAgentRunning: mainAgentRunning,
+    mainAgentOnlySupported: mainAgentOnlySupported,
+  );
+}
+
 /// Maps a plugin-normalized attachment into the shared wire contract.
 extension PluginMessageAttachmentMapping on PluginMessageAttachment {
   MessageAttachment toShared() => switch (this) {

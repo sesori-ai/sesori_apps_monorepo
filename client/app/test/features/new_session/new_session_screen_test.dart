@@ -17,10 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
-import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -28,7 +25,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 import "../../helpers/voice_test_helpers.dart";
 
-class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
+class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
@@ -244,7 +241,7 @@ void main() {
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockVoiceTranscriptionSession voiceSession;
-  late MockComposerImagePicker imagePicker;
+  late MockComposerAttachmentDispatcher attachmentDispatcher;
   late MockImageClipboard imageClipboard;
   late ComposerDraftRepository composerDraftRepository;
   late MockProductAnalyticsService productAnalyticsService;
@@ -269,7 +266,7 @@ void main() {
     );
     projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
-    imagePicker = MockComposerImagePicker();
+    attachmentDispatcher = MockComposerAttachmentDispatcher();
     imageClipboard = MockImageClipboard();
     when(imageClipboard.readImage).thenAnswer((_) async => null);
     composerDraftRepository = inMemoryComposerDraftRepository();
@@ -452,7 +449,7 @@ void main() {
     GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+    GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
@@ -1937,7 +1934,7 @@ void main() {
 
   testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(

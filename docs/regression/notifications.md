@@ -11,7 +11,11 @@ Apple and Google is external.
 
 - Immediate notifications exist only for question-asked, permission-asked, and installation-update events. Completion
   fires after a debounced busy-to-idle transition, is blocked while a question or permission is pending, and is
-  suppressed for a user abort until the group is busy again.
+  suppressed for a user abort until the group is busy again. A Claude session
+  with background sub-agents stays busy until the last one and its wake-up turn
+  settle, so completion fires once for the whole span; a main-agent-only stop
+  (`keep`) does not suppress the completion the kept sub-agents later earn,
+  while a full stop does.
 - A child prompt is attributed to its display (root) session. Rate limiting is per category plus session, so a
   throttled completion never suppresses a more urgent question, and every notification for a session collapses to one
   identity derived identically by bridge, server, and client.
@@ -52,7 +56,10 @@ provider because current payload content leaves the encrypted channel.
 
 ## Failure Signals
 
-- A completion arrives while a question or permission is pending, or after abort.
+- A completion arrives while a question or permission is pending, or after a
+  full abort; a Claude session with a running background sub-agent fires a
+  completion before the sub-agent's wake-up turn settles, or fires twice; a
+  main-agent-only stop suppresses the completion of the kept sub-agents.
 - Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
 - A question is suppressed by an unrelated completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications.

@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/claude_tool_use_result.dart";
+import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/models/claude_transcript_record.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
@@ -31,6 +32,8 @@ final class const ClaudeHistoryMapper({
     final entries = <_ClaudeHistoryEntry>[];
     final assistantsByMessageId = <String, _AssistantHistoryMessage>{};
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
+    final apiErrorsByMessageId = <String, _ApiErrorHistoryMessage>{};
+    String? lastRealModel;
     // Task lifecycle replays through the same tracker the live path uses, so
     // terminal precedence has exactly one implementation.
     final tasks = ClaudeToolTracker();
@@ -41,6 +44,7 @@ final class const ClaudeHistoryMapper({
           if (skip(record)) continue;
           final blocks = _content.map(content: record.content);
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
+          if (record.model case final model? when model != "<synthetic>") lastRealModel = model;
           final assistant = assistantsByMessageId.putIfAbsent(record.id, () {
             final created = _AssistantHistoryMessage(
               id: record.id,
@@ -67,6 +71,20 @@ final class const ClaudeHistoryMapper({
               );
             }
           }
+        case ClaudeTranscriptApiErrorRecord():
+          if (skip(record)) continue;
+          final apiError = apiErrorsByMessageId.putIfAbsent(record.id, () {
+            final created = _ApiErrorHistoryMessage(
+              id: record.id,
+              timestamp: record.timestamp,
+              model: lastRealModel,
+              apiErrorStatus: record.apiErrorStatus,
+            );
+            entries.add(created);
+            return created;
+          });
+          apiError.content.add(record.content);
+          apiError.apiErrorStatus ??= record.apiErrorStatus;
         case ClaudeTranscriptUserRecord():
           if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
             continue;
@@ -81,7 +99,7 @@ final class const ClaudeHistoryMapper({
             final typedResult = results.length == 1 ? record.toolUseResult : const ClaudeToolUseResultAbsent();
             final toolResults = <ClaudeMappedToolResultContentBlock>[];
             for (final result in results) {
-              if (!tasks.isKnownTask(sessionId: sessionId, toolUseId: result.toolUseId)) {
+              if (!tasks.isKnownTask(toolUseId: result.toolUseId)) {
                 toolResults.add(result);
                 continue;
               }
@@ -101,9 +119,8 @@ final class const ClaudeHistoryMapper({
             continue;
           }
           if (blocks.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?
-              when tasks.isKnownTask(sessionId: sessionId, toolUseId: block.notification.toolUseId)) {
+              when tasks.isKnownTask(toolUseId: block.notification.toolUseId)) {
             tasks.taskNotified(
-              sessionId: sessionId,
               toolUseId: block.notification.toolUseId,
               taskId: block.notification.taskId,
               status: block.notification.status,
@@ -145,7 +162,7 @@ final class const ClaudeHistoryMapper({
     }
 
     for (final toolUseId in tasks.runningTaskToolUseIds(sessionId: sessionId).difference(residentTaskToolUseIds)) {
-      tasks.cancelTask(sessionId: sessionId, toolUseId: toolUseId);
+      tasks.cancelTask(toolUseId: toolUseId);
     }
 
     final messages = <PluginMessageWithParts>[];
@@ -153,12 +170,38 @@ final class const ClaudeHistoryMapper({
       switch (entry) {
         case _UserHistoryMessage(:final message):
           messages.add(message);
+        case _ApiErrorHistoryMessage():
+          messages.add(_buildApiError(entry: entry, sessionId: sessionId));
         case _AssistantHistoryMessage():
           final message = _buildAssistant(entry: entry, sessionId: sessionId, tasks: tasks);
           if (message != null) messages.add(message);
       }
     }
     return messages;
+  }
+
+  PluginMessageWithParts _buildApiError({
+    required _ApiErrorHistoryMessage entry,
+    required String sessionId,
+  }) {
+    final error = mapClaudeApiError(
+      blocks: _content.map(content: entry.content),
+      status: entry.apiErrorStatus,
+    );
+    return PluginMessageWithParts(
+      info: PluginMessage.error(
+        id: entry.id,
+        sessionID: sessionId,
+        agent: "claude",
+        modelID: entry.model,
+        providerID: "anthropic",
+        variant: null,
+        errorName: error.name,
+        errorMessage: error.message,
+        time: _messageTime(entry.timestamp),
+      ),
+      parts: const [],
+    );
   }
 
   PluginMessageWithParts? _buildAssistant({
@@ -181,10 +224,10 @@ final class const ClaudeHistoryMapper({
       final existingIndex = toolIndexById[part.id];
       if (existingIndex == null) {
         toolIndexById[part.id] = parts.length;
-        final task = tasks.task(sessionId: sessionId, toolUseId: part.id);
+        final task = tasks.task(toolUseId: part.id);
         if (task == null) {
           parts.add(part);
-        } else if (task.toPart(sessionId: sessionId) case final subtask?) {
+        } else if (task.toPart() case final subtask?) {
           parts.add(subtask);
         }
         continue;
@@ -217,6 +260,15 @@ final class const ClaudeHistoryMapper({
 sealed class const _ClaudeHistoryEntry();
 
 final class const _UserHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
+
+final class _ApiErrorHistoryMessage({
+  required final String id,
+  required final DateTime? timestamp,
+  required final String? model,
+  required var int? apiErrorStatus,
+}) extends _ClaudeHistoryEntry {
+  final List<Object?> content = [];
+}
 
 final class _AssistantHistoryMessage({
   required final String id,

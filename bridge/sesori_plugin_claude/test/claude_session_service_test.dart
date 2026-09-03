@@ -70,7 +70,7 @@ void main() {
       final process = await harness.firstProcess;
       await _waitForUserFrames(process, 2);
 
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
@@ -85,7 +85,7 @@ void main() {
       unawaited(harness.enqueue("first"));
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(first, "interrupt");
 
       unawaited(harness.enqueue("second"));
@@ -107,7 +107,7 @@ void main() {
       final first = await harness.firstProcess;
       await waitForFrame(first, "user");
 
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(first, "interrupt");
       first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
@@ -128,7 +128,7 @@ void main() {
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
 
-      await harness.service.abort(sessionId: testSessionId);
+      await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       await harness.waitForIdle();
 
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
@@ -222,7 +222,7 @@ void main() {
       process.emit(_result());
       await harness.waitForIdle();
 
-      await harness.service.abort(sessionId: testSessionId);
+      await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       harness.clock.elapse();
       await pump();
 
@@ -363,7 +363,7 @@ void main() {
       process.emit(_assistantTextFrame(text: "waking up"));
       await harness.waitForBusy();
 
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
@@ -559,7 +559,7 @@ void main() {
       unawaited(harness.enqueue("second"));
       await pump();
 
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
@@ -679,10 +679,114 @@ void main() {
       process.emit(_result());
       await pump();
 
-      final abort = harness.service.abort(sessionId: testSessionId);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
       final interrupt = await _waitForControlSubtype(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
+      await harness.waitForIdle();
+
+      expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+    });
+
+    test("a confirm stop is refused with the sub-agent count while sub-agents run, with no side effect", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      await pump();
+
+      final midTurn = await harness.service.abort(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+      );
+      process.emit(_result());
+      await pump();
+      final afterTurn = await harness.service.abort(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+      );
+
+      expect(
+        midTurn,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((r) => r.runningSubAgentCount, "count", 1)
+            .having((r) => r.mainAgentRunning, "main", isTrue),
+      );
+      expect(afterTurn, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isFalse));
+      expect(
+        process.written.any(
+          (frame) => frame["type"] == "control_request" && (frame["request"]! as Map)["subtype"] == "interrupt",
+        ),
+        isFalse,
+      );
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("a keep stop during a live main turn is refused: the CLI interrupt would kill the sub-agents", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      await pump();
+
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
+
+      expect(result, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
+    test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
+
+      expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("a stopped task notification settles the session instead of opening a wake-up turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+
+      process.emit({..._taskNotificationFrame(), "status": "stopped"});
+      await pump();
+
+      // The task is gone and nothing else runs: idle is settled now, and the
+      // abort must not hang either.
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
+      expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      expect(await abort.timeout(const Duration(seconds: 2)), isA<PluginAbortAccepted>());
+    });
+
+    test("a stop tears the process down and cancels its tasks; keep with no tasks does the same", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      final interrupt = await _waitForControlSubtype(process, "interrupt");
+      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
+      expect(await abort, isA<PluginAbortAccepted>());
       await harness.waitForIdle();
 
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
@@ -940,3 +1044,7 @@ Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> conten
 };
 
 int _frameSequence = 0;
+
+Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
+    .where((frame) => frame["type"] == "control_request")
+    .map((frame) => (frame["request"]! as Map)["subtype"] as String?);

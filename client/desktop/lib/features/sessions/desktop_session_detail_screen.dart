@@ -9,12 +9,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/widgets/desktop_composer_presentation_scope.dart";
 
-/// Desktop composition for the shared interactive transcript.
-///
-/// Message composition remains product-owned and arrives in the next desktop
-/// slice. Transcript actions, child-session navigation, permissions, questions,
-/// and image actions remain available here.
+/// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
   super.key,
   required final String projectId,
@@ -22,6 +19,7 @@ class const DesktopSessionDetailScreen({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
 }) extends StatelessWidget {
   @override
@@ -44,19 +42,22 @@ class const DesktopSessionDetailScreen({
         notificationCanceller: null,
         failureReporter: getIt<FailureReporter>(),
       ),
-      child: _SessionActivityAnalyticsOwner(
-        child: DesktopSessionDetailView(
-          projectId: projectId,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
-          onBack: onBack,
-          onOpenSession: onOpenSession,
-          messageImageRepository: getIt.get<MessageImageRepository>,
-          imageSaver: getIt.get<ImageSaver>,
-          imageClipboard: getIt.get<ImageClipboard>,
-          imageSharer: getIt.get<ImageSharer>,
-          canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+      child: DesktopComposerPresentationScope(
+        child: _SessionActivityAnalyticsOwner(
+          child: DesktopSessionDetailView(
+            projectId: projectId,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+            onBack: onBack,
+            onShowDiffs: onShowDiffs,
+            onOpenSession: onOpenSession,
+            messageImageRepository: getIt.get<MessageImageRepository>,
+            imageSaver: getIt.get<ImageSaver>,
+            imageClipboard: getIt.get<ImageClipboard>,
+            imageSharer: getIt.get<ImageSharer>,
+            canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+          ),
         ),
       ),
     );
@@ -70,6 +71,7 @@ class const DesktopSessionDetailView({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
@@ -94,10 +96,13 @@ class const DesktopSessionDetailView({
         readOnly: readOnly,
         banner: null,
         onBack: onBack,
-        onShowDiffs: null,
-        // Desktop exposes the complete interactive transcript first; the
-        // product-owned composer is added by the next plan slice.
-        bottomControlsBuilder: null,
+        onShowDiffs: onShowDiffs,
+        bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+            SessionDetailComposerControls(
+              projectId: projectId,
+              sessionId: sessionId,
+              state: state,
+            ),
       ),
     );
   }

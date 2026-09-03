@@ -493,7 +493,10 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   }) async {}
 
   @override
-  Future<void> abortSession({required String sessionId}) async {}
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async => const PluginAbortAccepted(workKept: false);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];

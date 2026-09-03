@@ -282,8 +282,12 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
     lastAbortSessionId = sessionId;
+    return const PluginAbortAccepted(workKept: false);
   }
 
   @override

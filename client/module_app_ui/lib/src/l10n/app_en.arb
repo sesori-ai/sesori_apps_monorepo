@@ -535,6 +535,40 @@
   "sessionDetailNoCommands": "No slash commands are available for this project.",
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",
+  "sessionDetailStopScopeTitle": "Sub-agents are running",
+  "sessionDetailStopScopeMessage": "{count, plural, =1{The main agent and 1 sub-agent are still working.} other{The main agent and {count} sub-agents are still working.}}",
+  "@sessionDetailStopScopeMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailStopScopeMessageMainIdle": "{count, plural, =1{The main agent is done, but 1 sub-agent is still working. Stop it?} other{The main agent is done, but {count} sub-agents are still working. Stop them?}}",
+  "@sessionDetailStopScopeMessageMainIdle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailStopSubAgentsOnly": "{count, plural, =1{Stop 1 sub-agent} other{Stop {count} sub-agents}}",
+  "@sessionDetailStopSubAgentsOnly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionDetailStopMainAgentOnly": "Stop main agent only",
+  "sessionDetailStopAll": "{count, plural, =1{Stop main agent and 1 sub-agent} other{Stop main agent and {count} sub-agents}}",
+  "@sessionDetailStopAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailThinking": "Thinking...",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",
@@ -845,7 +879,7 @@
   "newSessionNoHarnessTitle": "No coding harness installed",
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
-  "newSessionOptionsRefresh": "Refresh the model list",
+  "newSessionOptionsRefresh": "Refresh options",
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
@@ -856,7 +890,7 @@
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionListArchiveConfirmTitle": "Archive session?",
-  "sessionListArchiveConfirmMessage": "Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.",
+  "sessionListArchiveConfirmMessage": "Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.",
   "sessionListArchiveConfirmAction": "Archive",
   "sessionListForceDeleteTitle": "Force delete?",
   "sessionListForceArchiveTitle": "Force archive?",

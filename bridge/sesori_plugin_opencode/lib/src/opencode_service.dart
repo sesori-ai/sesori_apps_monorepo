@@ -5,6 +5,10 @@ import "package:json_annotation/json_annotation.dart" show CheckedFromJsonExcept
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Log,
+        PluginAbortAccepted,
+        PluginAbortRejectedSubAgentsRunning,
+        PluginAbortResult,
+        PluginAbortSubAgentPolicy,
         PluginAgent,
         PluginApiException,
         PluginCommand,
@@ -223,6 +227,50 @@ class OpenCodeService(
   /// [ActiveSessionTracker.resolveDisplaySessionId]). Used by the plugin to
   /// stamp `displaySessionId` on outbound permission/question events.
   String resolveDisplaySessionId(String sessionId) => tracker.resolveDisplaySessionId(sessionId);
+
+  /// Stops [sessionId] under the scoped-stop policy. Children are the direct
+  /// sub-sessions with running or waiting work.
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    final children = tracker.activeChildSessionIds(rootId: sessionId);
+    final mainAgentRunning = tracker.isTurnRunning(sessionId: sessionId);
+    if (children.isNotEmpty) {
+      switch (subAgents) {
+        case PluginAbortSubAgentPolicy.confirm:
+          return PluginAbortRejectedSubAgentsRunning(
+            runningSubAgentCount: children.length,
+            mainAgentRunning: mainAgentRunning,
+            // Aborting the root cancels the task tool and with it a foreground
+            // child, so the main agent cannot be stopped on its own.
+            mainAgentOnlySupported: false,
+          );
+        case PluginAbortSubAgentPolicy.keep when mainAgentRunning:
+          return PluginAbortRejectedSubAgentsRunning(
+            runningSubAgentCount: children.length,
+            mainAgentRunning: true,
+            mainAgentOnlySupported: false,
+          );
+        case PluginAbortSubAgentPolicy.keep:
+          return const PluginAbortAccepted(workKept: true);
+        case PluginAbortSubAgentPolicy.stop:
+          break;
+      }
+    }
+    // Background children outlive a root abort, so each one is aborted too.
+    await Future.wait([
+      abortRoot(sessionId: sessionId),
+      for (final child in children) abortRoot(sessionId: child),
+    ]);
+    return const PluginAbortAccepted(workKept: false);
+  }
+
+  /// Aborts exactly [sessionId] without touching its children.
+  Future<void> abortRoot({required String sessionId}) => repository.api.abortSession(
+    sessionId: sessionId,
+    directory: tracker.getSessionDirectory(sessionId: sessionId),
+  );
 
   /// Resolves the directory for [sessionId], fetching and registering it from
   /// the repository if the tracker has not learned it yet.

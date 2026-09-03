@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "api/models/claude_stream_message.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
+import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
 import "repositories/trackers/claude_tool_tracker.dart";
 
@@ -18,6 +19,7 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<int>> _streamedBlocks = {};
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
+  final Set<String> _mappedApiErrorSessions = {};
 
   /// Content blocks already carried by `assistant` frames, per message id.
   ///
@@ -37,6 +39,12 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<String>> _announcedChildren = {};
   final Map<String, Set<String>> _busyChildren = {};
 
+  /// Child session → root session. Nested sub-agents are flattened under the
+  /// root, so this is one level deep by construction.
+  final Map<String, String> _roots = {};
+
+  String _rootOf(String sessionId) => _roots[sessionId] ?? sessionId;
+
   void beginTurn({required String sessionId, required String directory}) {
     _directories[sessionId] = directory;
     _resetTurn(sessionId: sessionId);
@@ -48,31 +56,42 @@ final class ClaudeEventDispatcher({
   void _resetTurn({required String sessionId}) {
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
+    _mappedApiErrorSessions.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
   }
 
   void forgetSession({required String sessionId}) {
-    _messageIds.remove(sessionId);
-    _announcedMessageIds.remove(sessionId);
-    _models.remove(sessionId);
-    _clearStreamedMessages(sessionId: sessionId);
-    _tools.forgetSession(sessionId: sessionId);
+    for (final childId in _announcedChildren.remove(sessionId) ?? const <String>{}) {
+      _forgetRendered(sessionId: childId);
+      _roots.remove(childId);
+    }
+    _forgetRendered(sessionId: sessionId);
     _directories.remove(sessionId);
-    _announcedChildren.remove(sessionId);
     _busyChildren.remove(sessionId);
     // A deleted child must also leave its root's membership sets, or it keeps
     // reporting a status and blocks a later re-announcement.
-    for (final children in [..._announcedChildren.values, ..._busyChildren.values]) {
-      children.remove(sessionId);
+    if (_roots.remove(sessionId) case final root?) {
+      _announcedChildren[root]?.remove(sessionId);
+      _busyChildren[root]?.remove(sessionId);
     }
   }
 
-  /// Cancels every running sub-agent task of [sessionId] — its process is gone
-  /// — and returns the subtask part updates and child idle statuses that make
-  /// that visible.
+  void _forgetRendered({required String sessionId}) {
+    _messageIds.remove(sessionId);
+    _announcedMessageIds.remove(sessionId);
+    _mappedApiErrorSessions.remove(sessionId);
+    _models.remove(sessionId);
+    _clearStreamedMessages(sessionId: sessionId);
+    _tools.forgetSession(sessionId: sessionId);
+  }
+
+  /// Cancels every running sub-agent task of root [sessionId] and its children
+  /// — their process is gone — and returns the subtask part updates and child
+  /// idle statuses that make that visible.
   List<BridgeSseEvent> cancelTasks({required String sessionId}) => [
-    for (final task in _tools.cancelAll(sessionId: sessionId)) ..._partEvents(sessionId: sessionId, tool: task),
+    for (final owner in {sessionId, ...?_announcedChildren[sessionId]})
+      for (final task in _tools.cancelAll(sessionId: owner)) ..._partEvents(tool: task),
   ];
 
   /// Statuses of the child sessions this dispatcher announced, for every root.
@@ -117,11 +136,22 @@ final class ClaudeEventDispatcher({
 
   List<BridgeSseEvent> map({required ClaudeStreamMessage message, DateTime? now}) {
     if (message.sessionId case final sessionId? when sessionId.isNotEmpty) {
+      // A forwarded sub-agent frame renders in that sub-agent's child session,
+      // resolved from the launching task; before the task knows its sub-agent
+      // id there is no session to render into, so the frame is dropped.
       if (message
-          case ClaudeAssistantMessage(parentToolUseId: final String _) ||
-              ClaudeUserMessage(parentToolUseId: final String _) ||
-              ClaudeStreamEventMessage(parentToolUseId: final String _)) {
-        return const [];
+          case ClaudeAssistantMessage(:final String parentToolUseId) ||
+              ClaudeUserMessage(:final String parentToolUseId) ||
+              ClaudeStreamEventMessage(:final String parentToolUseId)) {
+        final childId = _tools.childSessionIdForToolUse(toolUseId: parentToolUseId);
+        if (childId == null) return const [];
+        _roots[childId] = _rootOf(sessionId);
+        return switch (message) {
+          ClaudeStreamEventMessage() => _mapStream(sessionId: childId, message: message),
+          ClaudeAssistantMessage() => _mapAssistant(sessionId: childId, message: message),
+          ClaudeUserMessage() => _mapUser(sessionId: childId, message: message, promptId: null),
+          _ => const [],
+        };
       }
       return switch (message) {
         ClaudeStreamEventMessage() => _mapStream(sessionId: sessionId, message: message),
@@ -129,8 +159,8 @@ final class ClaudeEventDispatcher({
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
-        ClaudeTaskStartedMessage() => _mapTaskStarted(sessionId: sessionId, message: message),
-        ClaudeTaskNotificationMessage() => _mapTaskNotification(sessionId: sessionId, message: message),
+        ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
+        ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -220,7 +250,7 @@ final class ClaudeEventDispatcher({
               name: name,
               input: input,
             )
-            .toPart(sessionId: sessionId),
+            .toPart(),
       ClaudeMappedToolResultContentBlock() ||
       ClaudeMappedTaskNotificationContentBlock() ||
       ClaudeMappedImageContentBlock() ||
@@ -262,7 +292,6 @@ final class ClaudeEventDispatcher({
         final partialJson = message.delta["partial_json"];
         if (partialJson is! String) return const [];
         return _partEvents(
-          sessionId: sessionId,
           tool: _tools.appendInput(
             sessionId: sessionId,
             messageId: messageId,
@@ -286,7 +315,7 @@ final class ClaudeEventDispatcher({
     final tool = _tools.stopInput(sessionId: sessionId, messageId: messageId, blockIndex: index);
     final completed = _completedStreamedParts[messageId]?.remove(index);
     return [
-      ..._partEvents(sessionId: sessionId, tool: tool),
+      ..._partEvents(tool: tool),
       if (tool == null && completed != null) BridgeSseMessagePartUpdated(part: completed),
     ];
   }
@@ -301,6 +330,25 @@ final class ClaudeEventDispatcher({
     _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
     final mapped = _content.map(content: message.message["content"]);
+    if (message.error != ClaudeAssistantError.none) {
+      _mappedApiErrorSessions.add(sessionId);
+      final error = mapClaudeApiError(blocks: mapped, status: message.apiErrorStatus);
+      return [
+        BridgeSseMessageUpdated(
+          info: PluginMessage.error(
+            id: messageId,
+            sessionID: sessionId,
+            agent: "claude",
+            modelID: _models[sessionId],
+            providerID: "anthropic",
+            variant: null,
+            errorName: error.name,
+            errorMessage: error.message,
+            time: _messageTime(message.timestamp),
+          ).toJson(),
+        ),
+      ];
+    }
     // Counted before any filtering so a skipped block still occupies its
     // ordinal, exactly as it does in the stream and the transcript.
     final firstBlockIndex = _assistantBlockCounts[messageId] ?? 0;
@@ -339,7 +387,7 @@ final class ClaudeEventDispatcher({
                 name: name,
                 input: input,
               )
-              .toPart(sessionId: sessionId),
+              .toPart(),
         _ => parts[offset],
       };
       if (part == null) continue;
@@ -375,7 +423,7 @@ final class ClaudeEventDispatcher({
           result: typedResult,
         );
         if (tool == null) continue;
-        events.addAll(_partEvents(sessionId: sessionId, tool: tool));
+        events.addAll(_partEvents(tool: tool));
         if (tool.sessionDiffRequired) events.add(BridgeSseSessionDiff(sessionID: sessionId));
         if (tool.todoRefreshRequired) events.add(BridgeSseTodoUpdated(sessionID: sessionId));
       }
@@ -413,29 +461,24 @@ final class ClaudeEventDispatcher({
   }
 
   List<BridgeSseEvent> _mapTaskStarted({
-    required String sessionId,
     required ClaudeTaskStartedMessage message,
   }) {
     final toolUseId = message.toolUseId;
     final taskId = message.taskId;
     if (toolUseId == null || taskId == null) return const [];
     return _partEvents(
-      sessionId: sessionId,
-      tool: _tools.taskStarted(sessionId: sessionId, toolUseId: toolUseId, taskId: taskId),
+      tool: _tools.taskStarted(toolUseId: toolUseId, taskId: taskId),
     );
   }
 
   List<BridgeSseEvent> _mapTaskNotification({
-    required String sessionId,
     required ClaudeTaskNotificationMessage message,
   }) {
     final toolUseId = message.toolUseId;
     final taskId = message.taskId;
     if (toolUseId == null || taskId == null) return const [];
     return _partEvents(
-      sessionId: sessionId,
       tool: _tools.taskNotified(
-        sessionId: sessionId,
         toolUseId: toolUseId,
         taskId: taskId,
         status: message.status,
@@ -453,14 +496,13 @@ final class ClaudeEventDispatcher({
     required ClaudeTaskNotification notification,
   }) {
     final tool = _tools.taskNotified(
-      sessionId: sessionId,
       toolUseId: notification.toolUseId,
       taskId: notification.taskId,
       status: notification.status,
       summary: notification.summary,
       result: notification.result,
     );
-    return tool == null ? null : _partEvents(sessionId: sessionId, tool: tool);
+    return tool == null ? null : _partEvents(tool: tool);
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -490,6 +532,8 @@ final class ClaudeEventDispatcher({
     if (!message.isError && message.subtype == ClaudeResultSubtype.success && message.permissionDenials.isEmpty) {
       return const [];
     }
+    final mappedApiError = _mappedApiErrorSessions.remove(sessionId);
+    if (mappedApiError && message.isError) return const [];
     final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
     final error = _resultError(message);
@@ -539,25 +583,29 @@ final class ClaudeEventDispatcher({
   /// implies: `session.created` + busy the first time its sub-agent id is
   /// known, and idle once it is terminal. Order matters — the bridge binds the
   /// child on `created` before it translates the part's `childSessionID`.
-  List<BridgeSseEvent> _partEvents({required String sessionId, required ClaudeTrackedTool? tool}) {
-    final part = tool?.toPart(sessionId: sessionId);
-    final directory = _directories[sessionId];
-    if (tool is! ClaudeTrackedTask || tool.childSessionId == null || directory == null) {
+  List<BridgeSseEvent> _partEvents({required ClaudeTrackedTool? tool}) {
+    final part = tool?.toPart();
+    // Children of children are flattened under the root: one directory, one
+    // parent, one place to look for them.
+    final root = tool == null ? null : _rootOf(tool.sessionId);
+    final directory = root == null ? null : _directories[root];
+    if (tool is! ClaudeTrackedTask || tool.childSessionId == null || root == null || directory == null) {
       return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
     }
     final childId = tool.childSessionId;
     final terminal = tool.state.status.isTerminal;
-    final announced = _announcedChildren.putIfAbsent(sessionId, () => {});
-    final busy = _busyChildren.putIfAbsent(sessionId, () => {});
+    final announced = _announcedChildren.putIfAbsent(root, () => {});
+    final busy = _busyChildren.putIfAbsent(root, () => {});
     final events = <BridgeSseEvent>[];
     if (childId != null && announced.add(childId)) {
+      _roots[childId] = root;
       events.add(
         BridgeSseSessionCreated(
           info: PluginSession(
             id: childId,
             projectID: directory,
             directory: directory,
-            parentID: sessionId,
+            parentID: root,
             title: switch (tool.input) {
               {"description": final String description} => description,
               _ => null,
@@ -627,7 +675,7 @@ String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Clau
 
 ({String name, String message}) _resultErrorFallback(ClaudeResultMessage result) {
   if (result.apiErrorStatus == 401 || result.apiErrorStatus == 403) {
-    return (name: "authentication_failed", message: "Claude Code authentication failed.");
+    return (name: claudeApiErrorName(status: result.apiErrorStatus), message: "Claude Code authentication failed.");
   }
   return switch (result.terminalReason) {
     ClaudeTerminalReason.budgetExhausted => (
@@ -643,7 +691,7 @@ String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Clau
       message: "Claude Code could not produce valid structured output.",
     ),
     ClaudeTerminalReason.apiError => (
-      name: "api_error",
+      name: claudeApiErrorName(status: result.apiErrorStatus),
       message: result.apiErrorStatus == null
           ? "Claude Code could not complete the API request."
           : "Claude Code could not complete the API request (HTTP ${result.apiErrorStatus}).",
