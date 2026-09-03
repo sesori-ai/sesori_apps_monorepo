@@ -36,11 +36,12 @@ background sub-agents together with the running main turn.
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
 
-³ Codex (codex-cli 0.148.0, `multi_agent` stable): the app-server emits child
-`thread/started` with `parentThreadId`, `collabAgentToolCall` items with
-`receiverThreadIds`, and `turn/interrupt` works per child thread. Whether
-interrupting the parent also closes children is unverified, so main-agent-only
-needs a live check before implementation.
+³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
+announces itself through the parent's `subAgentActivity started`
+(`agentThreadId`) and `thread/status/changed`, never `thread/started`;
+`receiverThreadIds` stays empty. `turn/interrupt` works per child thread with
+its `turnId`, and interrupting the parent leaves children running, so
+main-agent-only is supportable.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,

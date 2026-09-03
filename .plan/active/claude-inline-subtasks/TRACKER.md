@@ -159,8 +159,8 @@ implementation PR. E2E testing is performed after each PR merges.
 
 | Done | Harness | Description | State |
 |---|---|---|---|
-| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, and DeepSeek sub-agent follow-ups` | In PR |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | Not started |
+| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, and DeepSeek sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
 | [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
@@ -175,6 +175,8 @@ implementation PR. E2E testing is performed after each PR merges.
 | [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
 | [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Not started |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
+| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
 
 ## Step 1 Checklist
 
