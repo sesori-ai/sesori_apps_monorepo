@@ -7,4 +7,8 @@ enum SessionDetailNotice() {
   /// Fresh options could not be applied, or the corrected selection was still
   /// rejected; the submission remains queued.
   promptOptionsRecoveryFailed,
+
+  /// A refreshed command catalog no longer contains the queued command. The
+  /// command remains visible but blocked until the user removes it.
+  commandUnavailable,
 }

@@ -2041,6 +2041,12 @@ abstract class AppLocalizations {
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
 
+  /// No description provided for @sessionDetailUnavailableCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command unavailable'**
+  String get sessionDetailUnavailableCommand;
+
   /// No description provided for @sessionDetailSendingMessage.
   ///
   /// In en, this message translates to:
@@ -2059,11 +2065,23 @@ abstract class AppLocalizations {
   /// **'Couldn’t apply updated prompt options. Your message remains queued.'**
   String get sessionDetailPromptOptionsRecoveryFailed;
 
+  /// No description provided for @sessionDetailCommandUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'That command is no longer available. Remove it from the queue to continue.'**
+  String get sessionDetailCommandUnavailable;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get sessionDetailCancelQueued;
+
+  /// No description provided for @sessionDetailRemoveQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get sessionDetailRemoveQueued;
 
   /// No description provided for @sessionDetailPickerAgent.
   ///

@@ -1675,7 +1675,7 @@ class SessionDetailCubit(
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
-                optionsRecovered = await _refreshStalePromptOptions();
+                optionsRecovered = await _refreshStalePromptOptions(rejectedSubmission: submission);
               } finally {
                 _stalePromptOptionsRefreshInFlight = false;
               }
@@ -1714,7 +1714,7 @@ class SessionDetailCubit(
     }
   }
 
-  Future<bool> _refreshStalePromptOptions() async {
+  Future<bool> _refreshStalePromptOptions({required QueuedSessionSubmission rejectedSubmission}) async {
     final current = state;
     if (current is! SessionDetailLoaded) return false;
     final pluginId = current.pluginId;
@@ -1767,6 +1767,12 @@ class SessionDetailCubit(
                   ),
           ),
         );
+        final rejectedCommand = rejectedSubmission.command;
+        final commandUnavailable =
+            rejectedCommand != null && !commands.any((command) => command.name == rejectedCommand);
+        if (commandUnavailable) {
+          _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
+        }
 
         emit(
           latest.copyWith(
@@ -1787,7 +1793,9 @@ class SessionDetailCubit(
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
-        _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        _noticeStream.add(
+          commandUnavailable ? SessionDetailNotice.commandUnavailable : SessionDetailNotice.promptOptionsUpdated,
+        );
         return true;
       }
 
@@ -1891,7 +1899,7 @@ class SessionDetailCubit(
       QueuedTextSubmission(:final inputMode) => AnalyticsSubmission.text(
         inputMode: _analyticsInputMode(inputMode),
       ),
-      QueuedCommandSubmission() => const AnalyticsSubmission.command(),
+      QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
     };
     _reportProductEvent(
       event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),

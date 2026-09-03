@@ -7,6 +7,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
@@ -40,6 +41,18 @@ const _queuedPrompt = QueuedSessionPrompt(
   command: null,
   attachmentCount: 0,
   createdAt: 100,
+);
+
+const _reviewCommand = CommandInfo(
+  name: "review",
+  template: null,
+  hints: null,
+  description: "Review this project",
+  agent: null,
+  model: null,
+  provider: null,
+  source: CommandSource.command,
+  subtask: null,
 );
 
 SessionOptionsRepositoryResult _freshClaudeOptions() => SessionOptionsRepositoryAvailable(
@@ -128,6 +141,7 @@ void main() {
       List<QueuedSessionPrompt> snapshotQueue = const [],
       List<AgentInfo> agents = const [],
       ProviderListResponse? providerData,
+      List<CommandInfo> commands = const [],
       SessionPromptDefaults? promptDefaults,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
@@ -151,7 +165,7 @@ void main() {
             statuses: const <String, SessionStatus>{},
             agents: agents,
             providerData: providerData,
-            commands: const <CommandInfo>[],
+            commands: commands,
             canonicalSessionTitle: null,
             promptDefaults: promptDefaults,
             isRootSession: true,
@@ -306,6 +320,85 @@ void main() {
       expect(state.sendingSubmission, isNull);
       expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), [promptIds.first]);
       expect(notices, [SessionDetailNotice.promptOptionsUpdated]);
+    });
+
+    test("marks a removed command unavailable and waits for explicit removal", () async {
+      final staleError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "command unavailable",
+          ).toJson(),
+        ),
+      );
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer((_) async => _freshClaudeOptions());
+      final sentCommands = <String?>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: const [],
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        final command = invocation.namedArguments[#command] as String?;
+        sentCommands.add(command);
+        return command == null ? ApiResponse.success(null) : ApiResponse.error(staleError);
+      });
+      final cubit = await createLoadedCubit(commands: const [_reviewCommand]);
+      final notices = <SessionDetailNotice>[];
+      final noticeSubscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(noticeSubscription.cancel);
+
+      await cubit.sendMessage(
+        text: "src",
+        command: "review",
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+
+      await Future<void>.delayed(Duration.zero);
+      var state = cubit.state as SessionDetailLoaded;
+      expect(state.availableCommands, isEmpty);
+      expect(state.queuedMessages.single, isA<UnavailableQueuedCommandSubmission>());
+      expect(state.queuedMessages.single.displayText, "/review src");
+      expect(state.sendingSubmission, isNull);
+      expect(sentCommands, ["review"]);
+      expect(notices, [SessionDetailNotice.commandUnavailable]);
+
+      await cubit.sendMessage(
+        text: "continue",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect(sentCommands, ["review"], reason: "later prompts must not overtake the rejected command");
+
+      cubit.cancelQueuedMessage(0);
+      await awaitState(
+        cubit: cubit,
+        predicate: (candidate) =>
+            candidate is SessionDetailLoaded &&
+            candidate.awaitingBridgeSubmissions.length == 1 &&
+            candidate.awaitingBridgeSubmissions.single.text == "continue",
+        description: "the next prompt to be accepted after removing the unavailable command",
+      );
+
+      state = cubit.state as SessionDetailLoaded;
+      expect(sentCommands, ["review", null]);
+      expect(state.queuedMessages, isEmpty);
+      expect(state.awaitingBridgeSubmissions.single.displayText, "continue");
     });
 
     test("parks the prompt after one stale-options recovery attempt", () async {

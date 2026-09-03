@@ -10,6 +10,7 @@ sealed class const QueuedMessageBubblePresentation() {
   const factory sending() = SendingMessageBubblePresentation;
   const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
   const factory pendingReadOnly() = ReadOnlyPendingMessageBubblePresentation;
+  const factory commandUnavailable({required VoidCallback? onRemove}) = UnavailableCommandBubblePresentation;
 }
 
 final class const SendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
@@ -18,6 +19,9 @@ final class const PendingMessageBubblePresentation({required final VoidCallback 
     extends QueuedMessageBubblePresentation;
 
 final class const ReadOnlyPendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
+
+final class const UnavailableCommandBubblePresentation({required final VoidCallback? onRemove})
+    extends QueuedMessageBubblePresentation;
 
 class const QueuedMessageBubble({
   super.key,
@@ -38,7 +42,9 @@ class const QueuedMessageBubble({
     final reducedMotion = context.isReducedMotion;
     final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
     final isPending =
-        presentation is PendingMessageBubblePresentation || presentation is ReadOnlyPendingMessageBubblePresentation;
+        presentation is PendingMessageBubblePresentation ||
+        presentation is ReadOnlyPendingMessageBubblePresentation ||
+        presentation is UnavailableCommandBubblePresentation;
     final status = switch (presentation) {
       SendingMessageBubblePresentation() => _status(
         prego: prego,
@@ -49,6 +55,7 @@ class const QueuedMessageBubble({
           ),
         ),
         label: loc.sessionDetailSendingMessage,
+        color: prego.colors.textTertiary,
       ),
       PendingMessageBubblePresentation(:final onCancel) => Row(
         mainAxisSize: MainAxisSize.min,
@@ -61,6 +68,7 @@ class const QueuedMessageBubble({
               color: prego.colors.textTertiary,
             ),
             label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+            color: prego.colors.textTertiary,
           ),
           const SizedBox(width: PregoSpacing.xs),
           TextButton.icon(
@@ -88,6 +96,40 @@ class const QueuedMessageBubble({
           color: prego.colors.textTertiary,
         ),
         label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
+        color: prego.colors.textTertiary,
+      ),
+      UnavailableCommandBubblePresentation(:final onRemove) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _status(
+            prego: prego,
+            icon: Icon(
+              TablerRegular.alert_circle,
+              size: 14,
+              color: prego.colors.fgErrorPrimary,
+            ),
+            label: loc.sessionDetailUnavailableCommand,
+            color: prego.colors.textErrorPrimary,
+          ),
+          if (onRemove != null) ...[
+            const SizedBox(width: PregoSpacing.xs),
+            TextButton.icon(
+              onPressed: onRemove,
+              icon: const Icon(TablerRegular.x, size: 14),
+              label: Text(loc.sessionDetailRemoveQueued),
+              style: TextButton.styleFrom(
+                foregroundColor: prego.colors.textErrorPrimary,
+                minimumSize: const Size(44, 44),
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: PregoSpacing.md,
+                ),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: prego.textTheme.textXs.medium,
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ],
+        ],
       ),
     };
 
@@ -131,6 +173,7 @@ class const QueuedMessageBubble({
     required PregoDesignSystem prego,
     required Widget icon,
     required String label,
+    required Color color,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -139,9 +182,7 @@ class const QueuedMessageBubble({
         const SizedBox(width: PregoSpacing.xs),
         Text(
           label,
-          style: prego.textTheme.textXs.medium.copyWith(
-            color: prego.colors.textTertiary,
-          ),
+          style: prego.textTheme.textXs.medium.copyWith(color: color),
         ),
       ],
     );

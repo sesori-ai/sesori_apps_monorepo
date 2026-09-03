@@ -357,9 +357,15 @@ final class PiPlugin._({
       staleOptions: true,
     );
     final options = await _catalogService.requireOptions(projectId: session.directory);
+    if (command.trim() != command || command.isEmpty) {
+      throw const PluginOperationException("sendCommand", statusCode: 400, message: "Invalid Pi command.");
+    }
     final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
-    if (command.trim() != command || command.isEmpty || catalogCommand == null) {
-      throw const PluginOperationException("sendCommand", statusCode: 400, message: "Unsupported Pi command.");
+    if (catalogCommand == null) {
+      throw const PluginStaleOptionsException(
+        "sendCommand",
+        message: "Pi no longer offers this command.",
+      );
     }
     try {
       final dispatch = _catalogService.isNativeCompactionCommand(command: catalogCommand)

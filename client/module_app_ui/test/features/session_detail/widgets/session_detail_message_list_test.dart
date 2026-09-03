@@ -95,6 +95,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     });
   }
 
+  void replaceFirstQueuedSubmission(QueuedSessionSubmission submission) {
+    setState(() => _queuedMessages = [submission, ..._queuedMessages.skip(1)]);
+  }
+
   /// Mirrors the cubit's atomic queued→sent swap: the delivered user message
   /// lands and the bridge entry leaves in one state emission.
   void deliverBridgePrompt({
@@ -317,6 +321,38 @@ void main() {
     expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
     expect(find.text("steer it"), findsNothing);
     expect(find.text("/review src"), findsOneWidget);
+  });
+
+  testWidgets("renders an unavailable local command as removable instead of queued", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: const [
+          QueuedSessionSubmission.unavailableCommand(
+            promptId: "prm_unavailable",
+            text: "src",
+            command: "review",
+            agent: "coder",
+            agentModel: null,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Command unavailable"), findsOneWidget);
+    expect(find.text("Queued command"), findsNothing);
+    expect(find.widgetWithText(TextButton, "Remove"), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, "Remove"));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState?.lastCancelledQueuedMessageIndex, 0);
+    expect(find.text("/review src"), findsNothing);
   });
 
   testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
@@ -950,6 +986,49 @@ void main() {
     // the cancel affordance is gone.
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("an unavailable-command transition does not reattach a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const queued = QueuedSessionSubmission.command(
+      promptId: "prompt-1",
+      text: "src",
+      command: "review",
+      agent: "coder",
+      agentModel: null,
+    );
+    const unavailable = QueuedSessionSubmission.unavailableCommand(
+      promptId: "prompt-1",
+      text: "src",
+      command: "review",
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        initialQueuedMessages: const [queued],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    harnessKey.currentState!.replaceFirstQueuedSubmission(unavailable);
+    await _pumpListUpdate(tester);
+
+    expect(find.text("Command unavailable"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 

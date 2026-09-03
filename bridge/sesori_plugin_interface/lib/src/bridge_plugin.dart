@@ -150,8 +150,10 @@ sealed class BridgePluginApi() {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
-  /// A no-longer-offered agent, model, or variant uses
-  /// [PluginStaleOptionsException], as documented by [sendPrompt].
+  /// A no-longer-offered command, agent, model, or variant uses
+  /// [PluginStaleOptionsException], as documented by [sendPrompt], so callers
+  /// can refresh the catalog instead of treating a deterministic rejection as
+  /// a transient transport failure.
   ///
   /// [promptId] carries the same identity contract as [sendPrompt]'s.
   ///

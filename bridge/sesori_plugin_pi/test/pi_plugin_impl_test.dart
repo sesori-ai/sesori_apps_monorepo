@@ -116,6 +116,37 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
+    test("reports a command missing from the current catalog as stale options", () async {
+      final session = await harness.plugin.createSession(
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          sessionId: session.id,
+          promptId: "prompt-unsupported",
+          command: "removed-command",
+          arguments: "src",
+          userVisibleArguments: "src",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "Pi no longer offers this command."),
+        ),
+      );
+      expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
+    });
+
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
         directory: harness.project.path,

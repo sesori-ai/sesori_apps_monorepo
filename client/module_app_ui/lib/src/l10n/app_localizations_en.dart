@@ -1086,6 +1086,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailQueuedCommand => 'Queued command';
 
   @override
+  String get sessionDetailUnavailableCommand => 'Command unavailable';
+
+  @override
   String get sessionDetailSendingMessage => 'Sending';
 
   @override
@@ -1096,7 +1099,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t apply updated prompt options. Your message remains queued.';
 
   @override
+  String get sessionDetailCommandUnavailable =>
+      'That command is no longer available. Remove it from the queue to continue.';
+
+  @override
   String get sessionDetailCancelQueued => 'Cancel';
+
+  @override
+  String get sessionDetailRemoveQueued => 'Remove';
 
   @override
   String get sessionDetailPickerAgent => 'Agent';
