@@ -1,11 +1,24 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/codex_session_record.dart";
 import "../models/codex_thread_record.dart";
 
-/// Pure Layer-2 projection from normalized Codex thread records to bridge
-/// session contracts and lifecycle events.
+/// Pure Layer-2 projections among normalized Codex records and bridge session
+/// contracts and lifecycle events.
 class const CodexSessionMapper() {
+  CodexThreadRecord mapPersistedThread({required CodexSessionRecord record}) => CodexThreadRecord(
+    id: record.id,
+    name: record.threadName ?? record.agentNickname,
+    directory: record.cwd,
+    createdAt: record.createdAt?.millisecondsSinceEpoch,
+    updatedAt: record.updatedAt?.millisecondsSinceEpoch,
+    model: record.model,
+    modelProvider: record.modelProvider,
+    parentId: record.parentId,
+    agentNickname: record.agentNickname,
+  );
+
   PluginSession mapThread({
     required CodexThreadRecord record,
     required String fallbackDirectory,

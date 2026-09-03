@@ -291,6 +291,52 @@ void main() {
       expect(children.last.title, "Hooke");
     });
 
+    test("hydrates persisted ancestry and still announces its first live activity", () async {
+      final service = _newService(
+        threadRepository: _ReadingThreadRepository(
+          read: _liveChild(id: "child-1", parentId: "root-1"),
+          error: null,
+        ),
+        catalogRepository: _StubCatalogRepository(
+          records: [
+            _record(id: "grandchild-1", cwd: "/repo/app", parentId: "child-1"),
+            _record(id: "child-1", cwd: "/repo/app", parentId: "root-1"),
+            _record(id: "root-1", cwd: "/repo/app", parentId: null),
+          ],
+        ),
+        subAgentTracker: null,
+      );
+
+      await service.hydratePersistedChildAncestry();
+
+      expect(service.pendingInputScope(sessionId: "grandchild-1").displaySessionId, "root-1");
+      expect(service.pendingInputScope(sessionId: "root-1").sourceSessionIds, [
+        "root-1",
+        "child-1",
+        "grandchild-1",
+      ]);
+
+      final announcement = await service.handleSubAgentStarted(
+        childThreadId: "child-1",
+        parentThreadId: "root-1",
+        parentDirectory: "/repo/app",
+        agentPath: "worker",
+        status: const PluginSessionStatus.idle(),
+      );
+      expect(announcement, isNotNull);
+      expect(announcement!.status, isA<PluginSessionStatusBusy>());
+      expect(
+        await service.handleSubAgentStarted(
+          childThreadId: "child-1",
+          parentThreadId: "root-1",
+          parentDirectory: "/repo/app",
+          agentPath: "worker",
+          status: const PluginSessionStatus.busy(),
+        ),
+        isNull,
+      );
+    });
+
     test("owns effective status, deferred idle, and descendant pending input", () {
       final tracker = CodexSubAgentTracker();
       tracker.record(

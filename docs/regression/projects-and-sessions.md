@@ -178,7 +178,9 @@ state.
   `thread/read`, announces it under its direct parent with the parent's project
   directory and Codex nickname (or agent path), and never depends on a missing
   child `thread/started`. Later child activity and title updates retain that
-  parent. Catalog reads expose `thread_source == subagent` rollouts as children,
+  parent. Connection startup restores persisted lifecycle ancestry before
+  pending-input routing, and resuming a child restores the same mapper context.
+  Catalog reads expose `thread_source == subagent` rollouts as children,
   keep per-project pages root-only, preserve children in full enumeration, and
   retain the metadata nickname when the session index has no usable title.
   Deleting a Codex session removes its persisted and live descendant subtree

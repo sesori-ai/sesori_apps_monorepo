@@ -67,8 +67,10 @@ defaults and queued client sends coherent.
   earlier pre-start status said idle. Active-session summaries keep
   `mainAgentRunning` specific to the root, list busy child thread ids, and roll
   a child's pending permission or question up to the root's awaiting-input
-  state and pending-input snapshot. Closing an active child emits its idle
-  status before any deferred root release.
+  state and pending-input snapshot, including a request that arrives while
+  `thread/read` is still enriching the spawn. A stop accepted before the child's
+  `turn/started` queues its interrupt until the turn id arrives. Closing an
+  active child emits its idle status before any deferred root release.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -425,8 +427,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - A Codex root reports idle while a child is starting or still runs, never
   releases its deferred idle after the child settles, emits completion more
   than once, omits a busy child id, reports awaiting input without returning
-  the child's actionable request from the root snapshot, or leaves a closed
-  child's visible status busy.
+  the child's actionable request from the root snapshot, accepts a pre-start
+  child stop without interrupting the arriving turn, or leaves a closed child's
+  visible status busy.
 - A plain stop kills running Claude sub-agents or OpenCode child sessions
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop

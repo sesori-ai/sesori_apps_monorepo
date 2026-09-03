@@ -48,6 +48,7 @@ class CodexSessionService({
   CodexSkillRepository? _skillRepository;
   final Set<String> _loadedThreads = {};
   final Map<String, String> _threadModels = {};
+  final Set<String> _announcedSubAgentThreadIds = {};
 
   void attachAppServerRepositories({
     required CodexThreadRepository threadRepository,
@@ -65,6 +66,7 @@ class CodexSessionService({
     _skillRepository = null;
     _loadedThreads.clear();
     _threadModels.clear();
+    _announcedSubAgentThreadIds.clear();
     _subAgentTracker.clear();
   }
 
@@ -98,6 +100,38 @@ class CodexSessionService({
     ];
   }
 
+  /// Restores persisted parent relationships before a new app-server
+  /// connection can deliver child approval requests. Persisted children are
+  /// inactive until live status evidence says otherwise.
+  Future<void> hydratePersistedChildAncestry() async {
+    final List<CodexSessionRecord> records;
+    try {
+      records = await _catalogRepository.listSessionRecordsInIsolate();
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to hydrate persisted child ancestry", error, stackTrace);
+      return;
+    }
+    final pending = {
+      for (final record in records)
+        if (record.parentId != null) record.id: record,
+    };
+    while (pending.isNotEmpty) {
+      var progressed = false;
+      for (final record in pending.values.toList(growable: false)) {
+        if (pending.containsKey(record.parentId)) continue;
+        _recordPersistedChild(record: record);
+        pending.remove(record.id);
+        progressed = true;
+      }
+      if (progressed) continue;
+      Log.w("[codex] skipped cyclic persisted child ancestry");
+      break;
+    }
+  }
+
+  void _recordPersistedChild({required CodexSessionRecord record}) =>
+      _subAgentTracker.record(child: _sessionMapper.mapPersistedThread(record: record));
+
   /// Resolves and records a child named by `subAgentActivity started`, then
   /// maps its ordered creation/status events. A repeated activity returns
   /// `null` and never announces the child twice.
@@ -108,10 +142,49 @@ class CodexSessionService({
     required String? agentPath,
     required PluginSessionStatus status,
   }) async {
-    if (_subAgentTracker.isChild(sessionId: childThreadId)) return null;
-    CodexThreadRecord? read;
+    if (!_announcedSubAgentThreadIds.add(childThreadId)) return null;
+    // Record the activity's authoritative ancestry before best-effort
+    // `thread/read`: approval requests arrive on an independent stream and
+    // must resolve to the root even while that enrichment is in flight. A
+    // child hydrated from disk is known but has not yet been announced on
+    // this connection, so preserve its metadata and continue.
+    final trackedChild = _subAgentTracker.child(sessionId: childThreadId);
+    var child =
+        trackedChild ??
+        CodexThreadRecord(
+          id: childThreadId,
+          name: agentPath,
+          directory: parentDirectory,
+          createdAt: null,
+          updatedAt: null,
+          model: null,
+          modelProvider: null,
+          parentId: parentThreadId,
+          agentNickname: null,
+        );
+    if (trackedChild == null && !_subAgentTracker.record(child: child)) {
+      _announcedSubAgentThreadIds.remove(childThreadId);
+      return null;
+    }
+    // The observed 0.148.0 sequence reports a pre-start idle status before
+    // this authoritative activity fact, then active afterwards. Treat the
+    // child as pending now so a root completion cannot slip through that gap.
+    final startedStatus = _isActiveStatus(status) ? status : const PluginSessionStatus.busy();
+    _subAgentTracker.setChildActive(childId: childThreadId, active: true);
     try {
-      read = await _connectedThreadRepository.readThread(threadId: childThreadId);
+      final read = await _connectedThreadRepository.readThread(threadId: childThreadId);
+      child = CodexThreadRecord(
+        id: childThreadId,
+        name: read.agentNickname ?? read.name ?? agentPath,
+        directory: parentDirectory,
+        createdAt: read.createdAt,
+        updatedAt: read.updatedAt,
+        model: read.model,
+        modelProvider: read.modelProvider,
+        parentId: parentThreadId,
+        agentNickname: read.agentNickname,
+      );
+      _subAgentTracker.replaceChild(child: child);
     } on Object catch (error, stackTrace) {
       Log.w(
         "[codex] failed to read sub-agent thread $childThreadId of $parentThreadId; using the activity item",
@@ -119,23 +192,6 @@ class CodexSessionService({
         stackTrace,
       );
     }
-    final child = CodexThreadRecord(
-      id: childThreadId,
-      name: read?.agentNickname ?? read?.name ?? agentPath,
-      directory: parentDirectory,
-      createdAt: read?.createdAt,
-      updatedAt: read?.updatedAt,
-      model: read?.model,
-      modelProvider: read?.modelProvider,
-      parentId: parentThreadId,
-      agentNickname: read?.agentNickname,
-    );
-    if (!_subAgentTracker.record(child: child)) return null;
-    // The observed 0.148.0 sequence reports a pre-start idle status before
-    // this authoritative activity fact, then active afterwards. Treat the
-    // child as pending now so a root completion cannot slip through that gap.
-    final startedStatus = _isActiveStatus(status) ? status : const PluginSessionStatus.busy();
-    _subAgentTracker.setChildActive(childId: childThreadId, active: true);
     return CodexSubAgentThreadAnnouncement(
       child: child,
       status: startedStatus,
@@ -148,6 +204,8 @@ class CodexSessionService({
   }
 
   Set<String> get deferredRootIds => _subAgentTracker.deferredRootIds;
+
+  bool isTrackedChild({required String sessionId}) => _subAgentTracker.isChild(sessionId: sessionId);
 
   /// The source sessions whose pending input belongs on [sessionId]'s screen,
   /// plus the top-most root id each snapshot should use for display routing.
@@ -162,6 +220,17 @@ class CodexSessionService({
         for (final child in _subAgentTracker.descendantsOf(parentId: sessionId)) child.id,
       ],
     );
+  }
+
+  /// Restores canonical child ancestry from a resumed thread response. This
+  /// path replaces the live spawn activity after a bridge reconnect.
+  void observeResumedThread({
+    required CodexThreadRecord thread,
+    required PluginSessionStatus status,
+  }) {
+    if (thread.parentId == null) return;
+    _subAgentTracker.record(child: thread);
+    _subAgentTracker.setChildActive(childId: thread.id, active: _isActiveStatus(status));
   }
 
   void observeRootTurnStarted({required String sessionId}) =>
@@ -293,6 +362,7 @@ class CodexSessionService({
     for (final sessionId in sessionIds.reversed) {
       await _deleteSession(sessionId: sessionId);
     }
+    _announcedSubAgentThreadIds.removeAll(sessionIds);
     _subAgentTracker.forget(sessionId: sessionIds.first);
     return releasedRoot == null
         ? const []

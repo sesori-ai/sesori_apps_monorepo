@@ -109,6 +109,10 @@ class CodexPlugin._({
   /// exposing codex turn identifiers outside the plugin.
   final Set<String> _provisionalAcceptedTurnThreadIds = {};
 
+  /// Stop requests received after an active status but before Codex exposes the
+  /// turn id. The matching `turn/started` is interrupted as soon as it arrives.
+  final Set<String> _interruptOnTurnStartThreadIds = {};
+
   /// In-flight turn requests authorize the next authoritative `turn/started`
   /// to replace a stale active id left behind by a missing terminal event.
   final Map<String, int> _pendingTurnRequestRevisionByThread = {};
@@ -197,6 +201,7 @@ class CodexPlugin._({
       final client = _createClient();
       _client = client;
       try {
+        await _sessionService.hydratePersistedChildAncestry();
         await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
         _sessionService.attachAppServerRepositories(
@@ -270,6 +275,7 @@ class CodexPlugin._({
       _eventBuffer.add(const BridgeSseProjectUpdated());
     }
     _provisionalAcceptedTurnThreadIds.clear();
+    _interruptOnTurnStartThreadIds.clear();
     _pendingTurnRequestRevisionByThread.clear();
     _turnEvidenceRevisionByThread.keys.toList().forEach(_advanceTurnEvidenceRevision);
     _workState.set(PluginWorkState.unknown);
@@ -405,6 +411,9 @@ class CodexPlugin._({
           events: mappedEvents,
         )
         .forEach(_eventBuffer.add);
+    if (notification.method == "turn/started" && threadId != null) {
+      _interruptPendingStartIfReady(threadId: threadId);
+    }
   }
 
   /// Dispatches the typed activity fact to Layer 3 and buffers the ordered
@@ -509,7 +518,7 @@ class CodexPlugin._({
         code: code,
         message: message,
       ),
-      resolveDisplaySessionId: (sessionId) => _sessionService.pendingInputScope(sessionId: sessionId).displaySessionId,
+      resolvePendingInputScope: _sessionService.pendingInputScope,
     );
     _approvalRegistry = registry;
     registry.attach(stream: client.serverRequests);
@@ -597,11 +606,13 @@ class CodexPlugin._({
       case "turn/completed":
         if (threadId == null) return false;
         if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
+        _interruptOnTurnStartThreadIds.remove(threadId);
         _activeTurnByThread.remove(threadId);
         return _setSessionStatus(threadId, const PluginSessionStatus.idle());
       case "error":
         if (threadId == null) return false;
         if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
+        _interruptOnTurnStartThreadIds.remove(threadId);
         _activeTurnByThread.remove(threadId);
         // PluginSessionStatus has no explicit "error" — surfacing as idle
         // and letting the mapped BridgeSseSessionError carry the signal.
@@ -612,7 +623,10 @@ class CodexPlugin._({
         if ((idle || !_hasCurrentPendingTurnRequest(threadId)) && !_recordAuthoritativeTurnEvidence(threadId)) {
           return false;
         }
-        if (idle) _activeTurnByThread.remove(threadId);
+        if (idle) {
+          _interruptOnTurnStartThreadIds.remove(threadId);
+          _activeTurnByThread.remove(threadId);
+        }
         return _setSessionStatus(
           threadId,
           idle ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy(),
@@ -623,6 +637,7 @@ class CodexPlugin._({
           _recordAuthoritativeTurnEvidence(threadId);
         }
         _approvalRegistry?.cancelForSession(sessionId: threadId);
+        _interruptOnTurnStartThreadIds.remove(threadId);
         _activeTurnByThread.remove(threadId);
         final wasActive = _isActiveStatus(_sessionStatuses.remove(threadId));
         _sessionService.observeSessionStatus(
@@ -873,9 +888,13 @@ class CodexPlugin._({
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final turnId = _activeTurnByThread[sessionId];
     if (turnId == null) {
+      if (_sessionService.isTrackedChild(sessionId: sessionId) && _isActiveStatus(_sessionStatuses[sessionId])) {
+        _interruptOnTurnStartThreadIds.add(sessionId);
+      }
       _syncWorkState();
       return;
     }
+    _interruptOnTurnStartThreadIds.remove(sessionId);
     final client = _client;
     if (client == null) {
       _syncWorkState();
@@ -903,6 +922,19 @@ class CodexPlugin._({
       }
       _syncWorkState();
     }
+  }
+
+  void _interruptPendingStartIfReady({required String threadId}) {
+    if (!_interruptOnTurnStartThreadIds.remove(threadId)) return;
+    unawaited(
+      _abortSession(sessionId: threadId).catchError((Object error, StackTrace stackTrace) {
+        Log.e(
+          "[codex] failed to interrupt pending-start session $threadId",
+          error,
+          stackTrace,
+        );
+      }),
+    );
   }
 
   Future<void> _queueAlreadyIdleTurnReconciliation({
@@ -1105,6 +1137,7 @@ class CodexPlugin._({
   void _recordAuthoritativeThreadCreation(String threadId) {
     _deletedThreadIds.remove(threadId);
     _provisionalAcceptedTurnThreadIds.remove(threadId);
+    _interruptOnTurnStartThreadIds.remove(threadId);
     _pendingTurnRequestRevisionByThread.remove(threadId);
     _advanceTurnEvidenceRevision(threadId);
   }
@@ -1136,9 +1169,14 @@ class CodexPlugin._({
     required CodexThreadRecord? response,
   }) {
     if (response == null) return;
+    _sessionService.observeResumedThread(
+      thread: response,
+      status: _sessionStatuses[threadId] ?? const PluginSessionStatus.idle(),
+    );
     _eventMapper.setThreadTime(response);
     _eventMapper.setThreadModel(threadId, response.model);
     _eventMapper.setThreadProvider(threadId, response.modelProvider);
+    _eventMapper.setThreadParent(threadId: threadId, parentId: response.parentId);
     // A thread resumed from a prior bridge run never re-emits `thread/started`,
     // so learn its directory here (from the resume payload, else its rollout)
     // to keep live rename events attributed to its real project.
@@ -1244,6 +1282,7 @@ class CodexPlugin._({
     for (final deletedId in sessionIds) {
       _deletedThreadIds.add(deletedId);
       _provisionalAcceptedTurnThreadIds.remove(deletedId);
+      _interruptOnTurnStartThreadIds.remove(deletedId);
       _pendingTurnRequestRevisionByThread.remove(deletedId);
       _advanceTurnEvidenceRevision(deletedId);
     }
@@ -1335,30 +1374,12 @@ class CodexPlugin._({
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
-  }) async {
-    final registry = _approvalRegistry;
-    if (registry == null) return const [];
-    final scope = _sessionService.pendingInputScope(sessionId: sessionId);
-    return [
-      for (final sourceSessionId in scope.sourceSessionIds)
-        for (final question in registry.pendingForSession(sessionId: sourceSessionId))
-          question.copyWith(displaySessionId: scope.displaySessionId),
-    ];
-  }
+  }) async => _approvalRegistry?.pendingQuestionsForSessionTree(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingPermission>> getPendingPermissions({
     required String sessionId,
-  }) async {
-    final registry = _approvalRegistry;
-    if (registry == null) return const [];
-    final scope = _sessionService.pendingInputScope(sessionId: sessionId);
-    return [
-      for (final sourceSessionId in scope.sourceSessionIds)
-        for (final permission in registry.pendingPermissionsForSession(sessionId: sourceSessionId))
-          permission.copyWith(displaySessionId: scope.displaySessionId),
-    ];
-  }
+  }) async => _approvalRegistry?.pendingPermissionsForSessionTree(sessionId: sessionId) ?? const [];
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({

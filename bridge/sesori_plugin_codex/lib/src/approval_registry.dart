@@ -61,6 +61,9 @@ class _PendingApproval({
 /// registry stays decoupled from [CodexAppServerClient].
 typedef ApprovalResponder = void Function(Object id, Object? result);
 typedef ApprovalErrorResponder = void Function(Object id, int code, String message);
+typedef PendingInputScopeResolver = ({String displaySessionId, List<String> sourceSessionIds}) Function({
+  required String sessionId,
+});
 
 void _resolveCodexPermission({required _PendingApproval payload, required PluginPermissionReply reply}) {
   payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, reply));
@@ -108,7 +111,7 @@ class ApprovalRegistry({
   required super.emit,
   required final ApprovalResponder _respond,
   required final ApprovalErrorResponder _respondError,
-  required final String Function(String sessionId) _resolveDisplaySessionId,
+  required final PendingInputScopeResolver _resolvePendingInputScope,
   super.idGenerator,
 }) extends PendingPermissionRegistry<CodexServerRequest, _PendingApproval> {
   this
@@ -141,7 +144,7 @@ class ApprovalRegistry({
       respondError: _respondError,
     );
     final resolvedSessionId = sessionId ?? "";
-    final displaySessionId = _resolveDisplaySessionId(resolvedSessionId);
+    final displaySessionId = _resolvePendingInputScope(sessionId: resolvedSessionId).displaySessionId;
 
     if (isPermission) {
       final allowAlways = _allowsAlways(entry);
@@ -161,6 +164,24 @@ class ApprovalRegistry({
         questions: [_questionInfoFor(entry)],
       );
     }
+  }
+
+  List<PluginPendingQuestion> pendingQuestionsForSessionTree({required String sessionId}) {
+    final scope = _resolvePendingInputScope(sessionId: sessionId);
+    return [
+      for (final sourceSessionId in scope.sourceSessionIds)
+        for (final question in pendingForSession(sessionId: sourceSessionId))
+          question.copyWith(displaySessionId: scope.displaySessionId),
+    ];
+  }
+
+  List<PluginPendingPermission> pendingPermissionsForSessionTree({required String sessionId}) {
+    final scope = _resolvePendingInputScope(sessionId: sessionId);
+    return [
+      for (final sourceSessionId in scope.sourceSessionIds)
+        for (final permission in pendingPermissionsForSession(sessionId: sourceSessionId))
+          permission.copyWith(displaySessionId: scope.displaySessionId),
+    ];
   }
 
   bool _allowsAlways(_PendingApproval entry) {
