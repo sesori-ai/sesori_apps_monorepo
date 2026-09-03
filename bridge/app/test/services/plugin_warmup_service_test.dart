@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/plugin_lifecycle_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/services/plugin_warmup_service.dart";
@@ -12,10 +13,10 @@ void main() {
   test("does nothing while session-open warm-up is disabled", () async {
     final sessionRepository = _FakeSessionRepository();
     final pluginRuntime = _FakePluginRuntime();
-    final settingsService = _FakePluginWarmupSettingsService(enabled: false);
+    final settingsService = _FakePluginWarmupSettingsService(resolveEnabled: () => false);
     final service = PluginWarmupService(
       sessionRepository: sessionRepository,
-      pluginRuntime: pluginRuntime,
+      pluginLifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
       settingsService: settingsService,
     );
 
@@ -32,8 +33,8 @@ void main() {
     final pluginRuntime = _FakePluginRuntime();
     final service = PluginWarmupService(
       sessionRepository: sessionRepository,
-      pluginRuntime: pluginRuntime,
-      settingsService: _FakePluginWarmupSettingsService(enabled: true),
+      pluginLifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+      settingsService: _FakePluginWarmupSettingsService(resolveEnabled: () => true),
     );
 
     await service.warmForSession(sessionId: "session-one");
@@ -47,15 +48,16 @@ void main() {
       lookup: ({required sessionId}) => pluginLookup.future,
     );
     final pluginRuntime = _FakePluginRuntime();
-    final settingsService = _FakePluginWarmupSettingsService(enabled: true);
+    var enabled = true;
+    final settingsService = _FakePluginWarmupSettingsService(resolveEnabled: () => enabled);
     final service = PluginWarmupService(
       sessionRepository: sessionRepository,
-      pluginRuntime: pluginRuntime,
+      pluginLifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
       settingsService: settingsService,
     );
 
     final warmup = service.warmForSession(sessionId: "session-one");
-    settingsService.enabled = false;
+    enabled = false;
     pluginLookup.complete(_storedSession(id: "session-one"));
     await warmup;
 
@@ -63,10 +65,9 @@ void main() {
   });
 }
 
-typedef _SessionLookup = Future<StoredSession?> Function({required String sessionId});
-
-class _FakeSessionRepository({this.lookup}) implements SessionRepository {
-  final _SessionLookup? lookup;
+class _FakeSessionRepository({
+  final Future<StoredSession?> Function({required String sessionId})? lookup,
+}) implements SessionRepository {
   final List<String> lookups = [];
 
   @override
@@ -92,17 +93,17 @@ class _FakePluginRuntime() implements PluginRuntime {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _FakePluginWarmupSettingsService({required this.enabled}) implements PluginWarmupSettingsService {
-  bool enabled;
+class _FakePluginWarmupSettingsService({
+  required final bool Function() resolveEnabled,
+}) implements PluginWarmupSettingsService {
+  @override
+  bool get isEnabled => resolveEnabled();
 
   @override
-  bool get isEnabled => enabled;
+  Stream<bool> get states => Stream<bool>.value(isEnabled);
 
   @override
-  Stream<bool> get states => Stream<bool>.value(enabled);
-
-  @override
-  Future<bool> update({required bool enabled}) async => this.enabled = enabled;
+  Future<bool> update({required bool enabled}) async => enabled;
 }
 
 StoredSession _storedSession({required String id}) => StoredSession(

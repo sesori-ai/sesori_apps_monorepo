@@ -66,6 +66,7 @@ import "repositories/mappers/session_event_mapper.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
+import "repositories/plugin_lifecycle_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
@@ -200,6 +201,7 @@ typedef OrchestratorComposition = ({
 class Orchestrator({
     required final BridgeConfig config,
     required final RelayClient _client,
+    required final PluginLifecycleRepository _pluginLifecycleRepository,
     required final PluginLifecycleService _pluginLifecycleService,
     required final PluginRuntime _pluginRuntime,
     required final BridgeSettingsRepository _bridgeSettingsRepository,
@@ -276,7 +278,7 @@ class Orchestrator({
     );
     final pluginWarmupService = PluginWarmupService(
       sessionRepository: sessionRepository,
-      pluginRuntime: _pluginRuntime,
+      pluginLifecycleRepository: _pluginLifecycleRepository,
       settingsService: pluginWarmupSettingsService,
     );
     final pluginWarmupSettingListener = PluginWarmupSettingListener(
