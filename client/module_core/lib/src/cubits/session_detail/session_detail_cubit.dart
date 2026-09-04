@@ -1776,12 +1776,25 @@ class SessionDetailCubit(
         final providers = catalog.providers;
         final commands = catalog.commands;
         // A refresh answers with the catalog the backend has now, so a selection
-        // it no longer offers is corrected rather than retained.
+        // it no longer offers is corrected rather than retained — that
+        // correction is the whole point of refreshing.
+        //
+        // Losing the agent moves the model with it: an agent that disappeared
+        // takes its model preference along, and pairing the replacement agent
+        // with the old one's model would leave the two describing different
+        // intents. The model already on screen still wins while the agent holds.
+        final agentName = _selection.validatedAgentName(
+          agents: agents,
+          candidates: [latest.selectedAgent],
+        );
+        final replacedAgentModel = agentName == latest.selectedAgent
+            ? null
+            : agents.firstWhereOrNull((agent) => agent.name == agentName)?.model;
         final reconciled = _selection.reconcile(
           agents: agents,
           providers: providers,
-          agentNameCandidates: [latest.selectedAgent],
-          modelCandidates: [latest.selectedAgentModel],
+          agentNameCandidates: [agentName],
+          modelCandidates: [replacedAgentModel, latest.selectedAgentModel],
           retainedModel: null,
         );
         final selectedAgent = reconciled.agentName ?? _fallbackAgentName;

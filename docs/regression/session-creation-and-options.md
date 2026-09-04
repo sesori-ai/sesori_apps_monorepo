@@ -26,10 +26,15 @@ variant, and worktree mode, and creating the session with its first input.
   live session, and an agent's declared model is validated against the catalog
   before it is adopted. Hidden agents and sub-agents are never picker entries, a
   withdrawn agent falls back to the first selectable one, and the variant list a
-  screen shows always belongs to the model it currently has selected. A live
-  session may still retain a model the catalog stopped advertising — its own
-  transcript's, or the one already on screen — so a catalog change never pulls a
-  running session's model out from under it.
+  screen shows always belongs to the model it currently has selected.
+- Retention is scoped to what did not ask the catalog a new question. A live
+  session keeps its own transcript's model, and keeps the model on screen while
+  the user switches agents or the bridge reports remembered defaults, even when
+  the catalog no longer lists it. A refresh is the opposite case: it exists to
+  adopt the catalog the backend has now, so a selection that catalog no longer
+  offers is corrected there rather than preserved. Losing the agent moves the
+  model with it — the replacement agent's own declared model is preferred over
+  the departed agent's.
 - After a new session and its first prompt or command are accepted, the bridge
   remembers the complete agent, model, and effort selection per plugin. The next
   New Session screen uses it as the prefill across projects for that plugin after

@@ -248,8 +248,10 @@ defaults and queued client sends coherent.
   transcript model before falling back to agent or catalog defaults. The
   transcript model remains authoritative when a retained provider cache does
   not list it, so a terminal-imported session cannot silently resume on a
-  different provider. The selection already on screen is retained the same way,
-  so a catalog change does not pull a model out from under the user mid-session.
+  different provider. The selection already on screen is retained the same way
+  while the user switches agents or the bridge reports remembered defaults,
+  though an options refresh adopts the catalog it just fetched and corrects a
+  selection that catalog no longer offers.
   Everything the catalog is asked to supply must be something it still
   advertises as available: persisted defaults, an agent's declared model, and a
   queued prompt's model are each validated before being adopted, so an agent

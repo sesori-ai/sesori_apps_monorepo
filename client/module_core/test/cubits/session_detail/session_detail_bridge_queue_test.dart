@@ -283,6 +283,101 @@ void main() {
       expect(state.selectedAgent, "Agent");
     });
 
+    test("a refresh that drops the selected agent adopts the replacement's own model", () async {
+      // The old agent's model is still in the catalog, so it would survive on
+      // its own. It must not, because the agent that preferred it is gone.
+      const replacement = AgentInfo(
+        name: "Agent",
+        description: "Agent",
+        model: AgentModel(providerID: "anthropic", modelID: "haiku", variant: null),
+        mode: AgentMode.primary,
+      );
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer(
+        (_) async => SessionOptionsRepositoryAvailable(
+          isStale: false,
+          catalog: SessionOptionsCatalog(
+            agents: const [replacement],
+            providers: [
+              const ProviderInfo(
+                id: "anthropic",
+                name: "Anthropic",
+                defaultModelID: "opus",
+                models: {
+                  "opus": ProviderModel(
+                    id: "opus",
+                    providerID: "anthropic",
+                    name: "Opus",
+                    variants: [],
+                    family: null,
+                    releaseDate: null,
+                  ),
+                  "haiku": ProviderModel(
+                    id: "haiku",
+                    providerID: "anthropic",
+                    name: "Haiku",
+                    variants: [],
+                    family: null,
+                    releaseDate: null,
+                  ),
+                },
+              ),
+            ],
+            providersConnectedOnly: false,
+            commands: const [],
+            lastUsedPromptDefaults: null,
+          ),
+        ),
+      );
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(
+            name: "Departing",
+            description: "Departing",
+            model: AgentModel(providerID: "anthropic", modelID: "opus", variant: null),
+            mode: AgentMode.primary,
+          ),
+        ],
+        promptDefaults: const SessionPromptDefaults(
+          agent: "Departing",
+          model: AgentModel(providerID: "anthropic", modelID: "opus", variant: null),
+        ),
+        providerData: const ProviderListResponse(
+          connectedOnly: false,
+          items: [
+            ProviderInfo(
+              id: "anthropic",
+              name: "Anthropic",
+              defaultModelID: "opus",
+              models: {
+                "opus": ProviderModel(
+                  id: "opus",
+                  providerID: "anthropic",
+                  name: "Opus",
+                  variants: [],
+                  family: null,
+                  releaseDate: null,
+                ),
+              },
+            ),
+          ],
+        ),
+      );
+      expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.modelID, "opus");
+
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+      );
+      await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent == "Agent");
+
+      expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.modelID, "haiku");
+    });
+
     test("an options update for another project is ignored", () async {
       final cubit = await createLoadedCubit(
         agents: const [
