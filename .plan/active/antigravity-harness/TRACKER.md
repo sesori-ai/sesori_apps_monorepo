@@ -158,8 +158,8 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 2 architecture review rejected handwritten additions to the shared ACP initialize parser. The
   correction keeps legacy parsing unchanged, maps raw initialize data to generated typed DTOs inside Layer 1, and
   exposes only typed values to Layer 2. The second review approved the corrected architecture.
-- 2026-09-04 — The combined runtime-contract WIP measured 2,209 changed lines, so local pair resolution moved to Step 3
-  and the final guidance/regression steps were combined to retain twelve PRs. No behavior or retirement coverage was
-  dropped.
+- 2026-09-04 — The combined runtime-contract WIP measured 2,209 changed lines, so local pair resolution moved to
+  Step 3 and the final guidance/regression steps were combined to retain twelve PRs. No behavior or retirement
+  coverage was dropped.
 - 2026-09-04 — Split Step 2 verification passed: generated output is fresh, Antigravity analysis and 10 tests pass,
   shared ACP analysis and 305 tests pass, and Git/Markdown validation reports no source-width or whitespace failures.
