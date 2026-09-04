@@ -17,7 +17,7 @@ class const AntigravityRuntimeStorage() {
     }
 
     final context = _pathContext(target: target);
-    if (context.basename(serverPath) != AntigravityRelease.serverFileName(target: target)) {
+    if (!context.equals(context.basename(serverPath), AntigravityRelease.serverFileName(target: target))) {
       return const AntigravityRuntimePairInvalid(
         component: AntigravityRuntimeComponent.server,
         reason: AntigravityRuntimePairInvalidReason.wrongName,
@@ -62,13 +62,13 @@ class const AntigravityRuntimeStorage() {
           reason: AntigravityRuntimePairInvalidReason.notDistinct,
         );
       }
-      if (context.basename(resolvedServer) != AntigravityRelease.serverFileName(target: target)) {
+      if (!context.equals(context.basename(resolvedServer), AntigravityRelease.serverFileName(target: target))) {
         return const AntigravityRuntimePairInvalid(
           component: AntigravityRuntimeComponent.server,
           reason: AntigravityRuntimePairInvalidReason.wrongName,
         );
       }
-      if (context.basename(resolvedHarness) != AntigravityRelease.harnessFileName(target: target)) {
+      if (!context.equals(context.basename(resolvedHarness), AntigravityRelease.harnessFileName(target: target))) {
         return const AntigravityRuntimePairInvalid(
           component: AntigravityRuntimeComponent.harness,
           reason: AntigravityRuntimePairInvalidReason.wrongName,

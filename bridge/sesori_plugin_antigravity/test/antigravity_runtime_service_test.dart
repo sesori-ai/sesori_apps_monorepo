@@ -169,6 +169,49 @@ void main() {
     expect(api.launches.map((launch) => launch.command), [pathPair.serverPath, managedPair.serverPath]);
   });
 
+  test("falls back to managed after observable PATH boundary failures", () async {
+    final storageFailure = StateError("PATH storage failed");
+    final storage = _FakeStorage(
+      pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
+      pathResult: AntigravityRuntimeStorageFailure(
+        cause: storageFailure,
+        stackTrace: StackTrace.current,
+      ),
+    );
+    final storageFallbackApi = _FakeAcpApi(
+      outcomes: [() async => initializeResult(agentVersion: AntigravityRelease.agentVersion)],
+    );
+    final storageFallback = await _resolve(
+      service: _service(storage: storage, api: storageFallbackApi),
+      explicitServerPath: null,
+      managedServerPath: managedPair.serverPath,
+      abortSignal: StartAbortSignal.never,
+    ) as AntigravityRuntimeSelected;
+    expect(storageFallback.source, AntigravityRuntimeSource.managed);
+
+    final probeFailure = StateError("PATH probe failed");
+    final probeFallbackApi = _FakeAcpApi(
+      outcomes: [
+        () async => throw probeFailure,
+        () async => initializeResult(agentVersion: AntigravityRelease.agentVersion),
+      ],
+    );
+    final probeFallback = await _resolve(
+      service: _service(
+        storage: _FakeStorage(
+          pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
+          pathResult: const AntigravityRuntimePairFound(pair: pathPair),
+        ),
+        api: probeFallbackApi,
+      ),
+      explicitServerPath: null,
+      managedServerPath: managedPair.serverPath,
+      abortSignal: StartAbortSignal.never,
+    ) as AntigravityRuntimeSelected;
+    expect(probeFallback.source, AntigravityRuntimeSource.managed);
+    expect(probeFallbackApi.launches.map((launch) => launch.command), [pathPair.serverPath, managedPair.serverPath]);
+  });
+
   test("shares one timeout budget across PATH and managed probes", () async {
     final storage = _FakeStorage(
       pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},

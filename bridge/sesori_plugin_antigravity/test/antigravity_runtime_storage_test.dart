@@ -68,6 +68,31 @@ void main() {
     );
   });
 
+  test("matches official Windows filenames case-insensitively", () {
+    const windowsTarget = PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64);
+    final missing = storage.inspectPair(
+      serverPath: r"C:\runtime\AGY_ACP_SERVER.EXE",
+      target: windowsTarget,
+    );
+    expect(missing, isA<AntigravityRuntimePairMissing>());
+
+    if (!Platform.isWindows) return;
+    final server = p.join(
+      temporaryDirectory.path,
+      AntigravityRelease.serverFileName(target: windowsTarget).toUpperCase(),
+    );
+    final harness = p.join(
+      temporaryDirectory.path,
+      AntigravityRelease.harnessFileName(target: windowsTarget).toUpperCase(),
+    );
+    File(server).writeAsStringSync("server");
+    File(harness).writeAsStringSync("harness");
+    expect(
+      storage.inspectPair(serverPath: server, target: windowsTarget),
+      isA<AntigravityRuntimePairFound>(),
+    );
+  });
+
   test("rejects wrong resolved names and identical members", () {
     if (Platform.isWindows) return;
     final realDirectory = Directory(p.join(temporaryDirectory.path, "real"))..createSync();

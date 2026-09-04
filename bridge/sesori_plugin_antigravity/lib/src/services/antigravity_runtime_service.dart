@@ -50,6 +50,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
 
     _throwIfAborted(abortSignal: abortSignal);
     if (managedServerPath == null) return pathResolution;
+    _logRecoveredPathFailure(resolution: pathResolution);
     _remaining(timeout: timeout, deadline: deadline);
     final managedCandidate = _runtimeRepository.inspectPair(
       source: AntigravityRuntimeSource.managed,
@@ -158,6 +159,25 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
         closesSessions: snapshot.closesSessions,
       ),
     );
+  }
+
+  void _logRecoveredPathFailure({required AntigravityRuntimeResolution resolution}) {
+    switch (resolution) {
+      case AntigravityRuntimeStorageFailed(:final cause, :final stackTrace):
+        Log.w("[antigravity] PATH runtime inspection failed; trying the managed runtime", cause, stackTrace);
+      case AntigravityRuntimeProbeFailed(:final pair, :final cause, :final stackTrace):
+        Log.w(
+          '[antigravity] PATH runtime probe failed for "${pair.serverPath}"; trying the managed runtime',
+          cause,
+          stackTrace,
+        );
+      case AntigravityRuntimeSelected() ||
+          AntigravityRuntimeMissing() ||
+          AntigravityRuntimePairRejected() ||
+          AntigravityRuntimeContractRejected() ||
+          AntigravityRuntimeUnsupported():
+        return;
+    }
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch deadline}) {
