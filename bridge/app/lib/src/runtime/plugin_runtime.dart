@@ -1477,6 +1477,7 @@ class PluginRuntime({
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
       Log.d('Plugin "$pluginId" generation $generation started (${slot.state.name})');
+      _runStartWarmUp(pluginId: pluginId, plugin: started);
       return started;
     } on PluginStartAbortedException {
       slot.state = PluginRuntimeState.failed;
@@ -1500,6 +1501,17 @@ class PluginRuntime({
       await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
       return null;
     }
+  }
+
+  /// Starts the plugin's own warm-up without joining it to the start: nothing
+  /// waits on it, so a slow or failing warm-up must not delay the request that
+  /// triggered the start or retire a healthy generation.
+  void _runStartWarmUp({required String pluginId, required BridgePlugin plugin}) {
+    unawaited(
+      Future<void>.sync(plugin.onStarted).catchError((Object error, StackTrace stackTrace) {
+        Log.w('Plugin "$pluginId" start warm-up failed', error, stackTrace);
+      }),
+    );
   }
 
   Future<void> _discardStartedPlugin({

@@ -689,6 +689,7 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
+      sessionOptionsService: sessionOptionsService,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       completionListener: completionListener,
@@ -703,6 +704,7 @@ class Orchestrator({
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
+      sessionOptionsCacheUpdates: sessionOptionsService.cacheUpdates,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
@@ -793,6 +795,7 @@ class OrchestratorSession._({
     required final ChatHistoryService _chatHistoryService,
     required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
     required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+    required final SessionOptionsService _sessionOptionsService,
     required final SessionEventDispatcher _sessionEventDispatcher,
     required final PluginRuntime _pluginRuntime,
     required final CompletionPushListener _completionListener,
@@ -807,6 +810,7 @@ class OrchestratorSession._({
     required final BridgeEventMapper _mapper,
     required final SessionPromptService _sessionPromptService,
     required Stream<CatalogImportProgress> catalogImportProgress,
+    required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
     required Stream<String> pluginManagementSnapshotTokens,
     required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
     required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
@@ -879,6 +883,16 @@ class OrchestratorSession._({
     catalogImportProgress
         .listen((progress) {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
+        })
+        .addTo(_subscriptions);
+    sessionOptionsCacheUpdates
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.sessionOptionsUpdated(
+              pluginId: update.pluginId,
+              projectId: update.projectId,
+            ),
+          );
         })
         .addTo(_subscriptions);
     pluginManagementSnapshotTokens
@@ -1196,6 +1210,9 @@ class OrchestratorSession._({
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
+    // After its listeners, so no refresh they were still draining announces
+    // onto a closed stream.
+    await attempt(_sessionOptionsService.dispose);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);

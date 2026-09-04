@@ -107,7 +107,16 @@ class SessionDetailCubit(
   final CompositeSubscription _subscriptions = CompositeSubscription();
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
-  int _commandCatalogGeneration = 0;
+
+  /// Bumped whenever an options reload applies. A session reload that started
+  /// before that must not put the catalog it fetched back on screen.
+  int _optionsGeneration = 0;
+
+  /// Bumped when an options reload is requested, and recorded when one applies,
+  /// so two overlapping reads cannot let the older answer land last and undo the
+  /// newer one.
+  int _optionsReloadRequest = 0;
+  int _lastAppliedOptionsReload = 0;
   Timer? _eventRefreshCooldown;
   bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
@@ -115,6 +124,7 @@ class SessionDetailCubit(
   bool _wasPaused = false;
   bool _wasConnected = false;
   bool _stalePromptOptionsRefreshInFlight = false;
+  bool _backgroundOptionsRefreshInFlight = false;
 
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
@@ -223,6 +233,7 @@ class SessionDetailCubit(
           sequence: deferredPartEventSequence,
         );
         emit(_buildLoadedState(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch));
+        _refreshStaleOptions(snapshot: snapshot);
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
           _projectViewingService.markClaimFailed(claim: _projectViewClaim);
@@ -498,7 +509,7 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
     final connectionGeneration = _connectionGeneration;
-    final commandCatalogGeneration = _commandCatalogGeneration;
+    final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
 
     emit(
@@ -524,8 +535,6 @@ class SessionDetailCubit(
           _waitingForConnection = false;
           final derived = _deriveSnapshot(snapshot);
           final latestAssistant = derived.latestAssistant;
-          final availableAgents = derived.agents;
-          final availableProviders = derived.providers;
 
           final streamingText = _streamingBuffer.snapshot();
           _streamingBuffer.clear();
@@ -537,9 +546,12 @@ class SessionDetailCubit(
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
-          final availableCommands = commandCatalogGeneration == _commandCatalogGeneration
-              ? snapshot.commands
-              : latest.availableCommands;
+          // An options reload that landed while this snapshot was in flight read
+          // the cache more recently than the snapshot did, so it wins.
+          final optionsSuperseded = optionsGeneration != _optionsGeneration;
+          final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
+          final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
+          final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
           final availableVariants = _deriveAvailableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
@@ -593,6 +605,7 @@ class SessionDetailCubit(
               availableVariants: availableVariants,
             ),
           );
+          if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
           if (_reassertViewAfterRefresh && _routeVisible) {
             // A resume/reconnect requested this refresh; the refreshed
@@ -663,36 +676,30 @@ class SessionDetailCubit(
     logd("[session-refresh] action=${action.name} trigger=${trigger.logValue}");
   }
 
-  void _onCommandCatalogUpdated({required String pluginId}) {
-    final current = state;
-    if (current is! SessionDetailLoaded || current.pluginId != pluginId) return;
-    final generation = ++_commandCatalogGeneration;
-    unawaited(_refreshCommandCatalog(pluginId: pluginId, generation: generation));
+  /// Brings a cache the bridge served without rediscovering up to date, behind
+  /// the user: the options on screen stay usable with no loading state, and
+  /// change only if the backend's answer did. One runs at a time, because a
+  /// reconnect can re-read the same still-stale cache while the first is still
+  /// in flight.
+  void _refreshStaleOptions({required SessionDetailSnapshot snapshot}) {
+    if (!snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
+    _backgroundOptionsRefreshInFlight = true;
+    unawaited(
+      _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false).whenComplete(() {
+        _backgroundOptionsRefreshInFlight = false;
+      }),
+    );
   }
 
-  Future<void> _refreshCommandCatalog({required String pluginId, required int generation}) async {
-    try {
-      final response = await _sessionRepository.listCommands(projectId: _projectId, pluginId: pluginId);
-      if (isClosed || generation != _commandCatalogGeneration) return;
-      switch (response) {
-        case SuccessResponse(:final data):
-          final latest = state;
-          if (latest is! SessionDetailLoaded || latest.pluginId != pluginId) return;
-          emit(
-            latest.copyWith(
-              availableCommands: data.items,
-              stagedCommand: _resolveStagedCommand(
-                availableCommands: data.items,
-                stagedCommand: latest.stagedCommand,
-              ),
-            ),
-          );
-        case ErrorResponse(:final error):
-          logw("Failed to refresh command catalog", error);
-      }
-    } on Object catch (error, stackTrace) {
-      logw("Failed to refresh command catalog", error, stackTrace);
-    }
+  /// The bridge committed a new options snapshot for this session's plugin.
+  /// Reading it back is a local cache hit, so this never starts discovery — the
+  /// bridge already did that work, and this only adopts its answer.
+  void _onSessionOptionsUpdated({required String pluginId, required String? projectId}) {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.pluginId != pluginId) return;
+    // A plugin-scoped catalog names no project and applies to every one of them.
+    if (projectId != null && projectId.normalize() != _projectId.normalize()) return;
+    unawaited(_reloadOptions(mode: SessionOptionsRequestMode.cacheOnly, notify: false));
   }
 
   CommandInfo? _resolveStagedCommand({
@@ -844,8 +851,8 @@ class SessionDetailCubit(
         displaySessionId: displaySessionId,
       ),
       // The loaded session identifies its plugin after the initial snapshot,
-      // so retain catalog invalidations until that scope can be matched.
-      SesoriCommandCatalogUpdated() => true,
+      // so retain options updates until that scope can be matched.
+      SesoriSessionOptionsUpdated() => true,
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -927,8 +934,8 @@ class SessionDetailCubit(
         case final SesoriQuestionRejected event
             when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
           _onQuestionResolved(event.requestID);
-        case SesoriCommandCatalogUpdated(:final pluginId):
-          _onCommandCatalogUpdated(pluginId: pluginId);
+        case SesoriSessionOptionsUpdated(:final pluginId, :final projectId):
+          _onSessionOptionsUpdated(pluginId: pluginId, projectId: projectId);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -1720,23 +1727,50 @@ class SessionDetailCubit(
     }
   }
 
-  Future<bool> _refreshStalePromptOptions() async {
+  /// Rediscovers the catalog after the bridge rejected a send for naming an
+  /// option it no longer has. The user is waiting on this one, so it reports
+  /// both outcomes through the notice stream.
+  Future<bool> _refreshStalePromptOptions() {
+    return _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: true);
+  }
+
+  /// Brings the options on screen up to date with the bridge and re-validates
+  /// the selection against them, so a chosen agent, model, or variant that no
+  /// longer exists cannot survive on screen until the next send is rejected.
+  ///
+  /// [notify] belongs to a load the user is waiting on. A background one stays
+  /// silent: the options simply change if the backend's answer did.
+  Future<bool> _reloadOptions({
+    required SessionOptionsRequestMode mode,
+    required bool notify,
+  }) async {
     final current = state;
     if (current is! SessionDetailLoaded) return false;
     final pluginId = current.pluginId;
     if (pluginId == null) {
-      logw("Could not refresh stale prompt options because the session plugin is unresolved");
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      logw("Could not refresh prompt options because the session plugin is unresolved");
+      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
       return false;
     }
 
+    final requestGeneration = ++_optionsReloadRequest;
     try {
       final result = await _sessionRepository.loadSessionOptions(
         projectId: _projectId,
         pluginId: pluginId,
-        mode: SessionOptionsRequestMode.forceRefresh,
+        mode: mode,
       );
       if (isClosed) return false;
+      // A reload requested after this one has already applied, so it read the
+      // cache more recently and this answer must not replace it. The caller
+      // still succeeded: what is on screen is at least as fresh as what this
+      // read fetched, which is exactly what a stale-send recovery waits for.
+      // That recovery still owes the user its notice — the options did change
+      // under a selection they were rejected for, whichever read delivered it.
+      if (_lastAppliedOptionsReload > requestGeneration) {
+        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        return true;
+      }
       final latest = state;
       if (latest is! SessionDetailLoaded) return false;
 
@@ -1793,7 +1827,9 @@ class SessionDetailCubit(
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
-        _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        _optionsGeneration++;
+        _lastAppliedOptionsReload = requestGeneration;
+        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
         return true;
       }
 
@@ -1807,15 +1843,15 @@ class SessionDetailCubit(
         SessionOptionsRepositoryFailure(:final error) => error,
       };
       if (error == null) {
-        logw("Failed to refresh stale prompt options (${result.runtimeType.toString()})");
+        logw("Failed to refresh prompt options (${result.runtimeType.toString()})");
       } else {
-        logw("Failed to refresh stale prompt options", error);
+        logw("Failed to refresh prompt options", error);
       }
-      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
       return false;
     } on Object catch (error, stackTrace) {
-      logw("Failed to refresh stale prompt options", error, stackTrace);
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      logw("Failed to refresh prompt options", error, stackTrace);
+      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
       return false;
     }
   }

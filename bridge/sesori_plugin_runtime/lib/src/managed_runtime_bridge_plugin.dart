@@ -25,6 +25,11 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
   required final String displayName,
   required final String logContext,
   required final bool interruptOwnedOnly,
+  /// Backend-specific warm-up for [BridgePlugin.onStarted], or null when this
+  /// plugin has nothing to warm. Required so adding a managed plugin states its
+  /// startup intent rather than inheriting one by omission. Nothing waits on it
+  /// and the runtime never retries it.
+  required final Future<void> Function()? onStartWarmUp,
 }) implements BridgePlugin {
   Future<void>? _shutdown;
 
@@ -46,6 +51,11 @@ class ManagedRuntimeBridgePlugin<R, A extends BridgePluginApi>({
 
   @override
   PluginDiagnostics describe() => diagnostics;
+
+  @override
+  Future<void> onStarted() async {
+    await onStartWarmUp?.call();
+  }
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) {

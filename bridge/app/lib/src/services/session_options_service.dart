@@ -40,6 +40,14 @@ final class const SessionOptionsRefreshFailedUnavailable({required final Session
 
 final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
+/// A committed snapshot, announced so screens already showing these options can
+/// re-read the cache instead of continuing to render what it replaced.
+/// [projectId] is null for a plugin-scoped catalog, which every project shares.
+final class const SessionOptionsCacheUpdate({
+    required final String pluginId,
+    required final String? projectId,
+  });
+
 class SessionOptionsService({
     required final SessionOptionsRepository _repository,
     required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
@@ -54,9 +62,18 @@ class SessionOptionsService({
   }
 
   final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
+  final StreamController<SessionOptionsCacheUpdate> _cacheUpdatesController =
+      StreamController<SessionOptionsCacheUpdate>.broadcast(sync: true);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
   final KeyedParallelLock<SessionOptionsCacheKey> _invalidationLock = KeyedParallelLock<SessionOptionsCacheKey>();
   final Map<SessionOptionsCacheKey, int> _invalidationEpochs = {};
+
+  /// Committed snapshots, in commit order. A refresh that changed nothing the
+  /// cache did not already hold still announces: the commit is what proves the
+  /// snapshot current, and a consumer re-reading an unchanged cache is cheap.
+  Stream<SessionOptionsCacheUpdate> get cacheUpdates => _cacheUpdatesController.stream;
+
+  Future<void> dispose() => _cacheUpdatesController.close();
 
   Future<SessionOptionsOutcome> loadDynamic({
     required String pluginId,
@@ -265,6 +282,26 @@ class SessionOptionsService({
         invalidationEpoch: invalidationEpoch,
       ),
     );
+  }
+
+  /// Brings every project-scoped snapshot this plugin holds up to date, for a
+  /// backend change that named no session — Codex reporting changed skills, for
+  /// one. Only cached, unexpired projects are refreshed: a project the user has
+  /// never opened options for has nothing to correct, and a snapshot already
+  /// past retention should expire rather than be renewed here, which also keeps
+  /// this bounded on an installation with a long project history.
+  Future<void> refreshActiveOnlyForCachedProjects({
+    required String pluginId,
+    required int generation,
+  }) async {
+    if (!_repository.isCurrentGeneration(pluginId: pluginId, generation: generation)) return;
+    final projectIds = await _repository.listCachedProjectIds(
+      pluginId: pluginId,
+      notBefore: _clock.now().toUtc().subtract(_retention),
+    );
+    for (final projectId in projectIds) {
+      await refreshActiveOnly(pluginId: pluginId, projectId: projectId, generation: generation);
+    }
   }
 
   Future<SessionOptionsOutcome> refreshActiveOnlyForBackendSession({
@@ -495,6 +532,7 @@ class SessionOptionsService({
         }
         return _CommitFailed(outcome: _invalidatedRefreshOutcome(automatic: automatic));
       }
+      if (committed) _announceCommit(key: key);
       return committed ? const _CommitSucceeded() : const _CommitConflict();
     } on Object catch (error, stackTrace) {
       if (!await _isCurrentInvalidationEpoch(key: key, expected: invalidationEpoch)) {
@@ -513,6 +551,19 @@ class SessionOptionsService({
         ),
       );
     }
+  }
+
+  void _announceCommit({required SessionOptionsCacheKey key}) {
+    if (_cacheUpdatesController.isClosed) return;
+    _cacheUpdatesController.add(
+      SessionOptionsCacheUpdate(
+        pluginId: key.pluginId,
+        projectId: switch (key) {
+          PluginSessionOptionsCacheKey() => null,
+          ProjectSessionOptionsCacheKey(:final projectId) => projectId,
+        },
+      ),
+    );
   }
 
   bool _canReplace({

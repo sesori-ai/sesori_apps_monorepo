@@ -679,6 +679,144 @@ void main() {
     });
   });
 
+  group("SessionOptionsService cache announcements", () {
+    test("a committed project-scoped snapshot announces the project it belongs to", () async {
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      final service = _service(repository: repository, now: now);
+      final updates = <SessionOptionsCacheUpdate>[];
+      service.cacheUpdates.listen(updates.add);
+
+      await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(updates, hasLength(1));
+      expect(updates.single.pluginId, "plugin-1");
+      expect(updates.single.projectId, "project-1");
+    });
+
+    test("a committed plugin-scoped snapshot announces no project, because every one shares it", () async {
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      final service = _service(
+        repository: repository,
+        now: now,
+        scopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
+      );
+      final updates = <SessionOptionsCacheUpdate>[];
+      service.cacheUpdates.listen(updates.add);
+
+      await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(updates, hasLength(1));
+      expect(updates.single.projectId, isNull);
+    });
+
+    test("a refresh that commits nothing announces nothing", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = const SessionOptionsCaptureFailed();
+      final service = _service(repository: repository, now: now);
+      final updates = <SessionOptionsCacheUpdate>[];
+      service.cacheUpdates.listen(updates.add);
+
+      await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(updates, isEmpty);
+    });
+  });
+
+  group("SessionOptionsService cached-project refresh", () {
+    test("refreshes every cached project of the plugin and no others", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..projectPaths["project-2"] = "/projects/two"
+        ..projectPaths["project-3"] = "/projects/three";
+      for (final (projectId, path) in [("project-1", "/projects/one"), ("project-2", "/projects/two")]) {
+        repository.put(
+          _entry(
+            key: SessionOptionsCacheKey.project(
+              pluginId: "plugin-1",
+              projectId: projectId,
+              projectPath: path,
+            ),
+            response: _response(marker: "cached"),
+            capturedAt: now,
+          ),
+        );
+      }
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-2",
+            projectId: "project-3",
+            projectPath: "/projects/three",
+          ),
+          response: _response(marker: "other-plugin"),
+          capturedAt: now,
+        ),
+      );
+      final service = _service(repository: repository, now: now);
+
+      await service.refreshActiveOnlyForCachedProjects(pluginId: "plugin-1", generation: 7);
+
+      expect(
+        repository.captureCalls.map((call) => call.projectPath),
+        unorderedEquals(["/projects/one", "/projects/two"]),
+      );
+    });
+
+    test("a snapshot past retention is left to expire rather than rediscovered", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["fresh"] = "/projects/fresh"
+        ..projectPaths["ancient"] = "/projects/ancient";
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-1",
+            projectId: "fresh",
+            projectPath: "/projects/fresh",
+          ),
+          response: _response(marker: "fresh"),
+          capturedAt: now,
+        ),
+      );
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-1",
+            projectId: "ancient",
+            projectPath: "/projects/ancient",
+          ),
+          response: _response(marker: "ancient"),
+          capturedAt: now.subtract(const Duration(days: 31)),
+        ),
+      );
+      final service = _service(repository: repository, now: now);
+
+      await service.refreshActiveOnlyForCachedProjects(pluginId: "plugin-1", generation: 7);
+
+      expect(repository.captureCalls.map((call) => call.projectPath), ["/projects/fresh"]);
+    });
+
+    test("a stale generation captures nothing", () async {
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-1",
+            projectId: "project-1",
+            projectPath: "/projects/one",
+          ),
+          response: _response(marker: "cached"),
+          capturedAt: now,
+        ),
+      );
+      final service = _service(repository: repository, now: now);
+
+      await service.refreshActiveOnlyForCachedProjects(pluginId: "plugin-1", generation: 6);
+
+      expect(repository.captureCalls, isEmpty);
+    });
+  });
+
   group("SessionOptionsService refresh policy", () {
     test("capture failure retains only a previously valid row", () async {
       final repository = _FakeSessionOptionsRepository()
@@ -1798,6 +1936,19 @@ class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   }) async {
     bindingReads++;
     return backendBindings["$pluginId/$backendSessionId"];
+  }
+
+  @override
+  Future<List<String>> listCachedProjectIds({
+    required String pluginId,
+    required DateTime notBefore,
+  }) async {
+    return [
+      for (final entry in _cache.values)
+        if (entry.key case ProjectSessionOptionsCacheKey(:final projectId)
+            when entry.key.pluginId == pluginId && !entry.capturedAt.toUtc().isBefore(notBefore.toUtc()))
+          projectId,
+    ];
   }
 
   @override

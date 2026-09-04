@@ -48,6 +48,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Discovery can legitimately outlast an ordinary request: a backend that
+  /// indexes its command catalog on first use keeps the bridge waiting, and
+  /// OpenCode has been measured past half a minute on a cold server. This is the
+  /// outer deadline of that chain, so it must exceed every bridge-side one;
+  /// abandoning the request here would report a transport failure for a
+  /// slow-but-healthy catalog the bridge is about to return.
+  static const Duration _optionsTimeout = Duration(minutes: 2);
+
   Future<ApiResponse<SessionOptionsResponse>> loadSessionOptions({
     required String projectId,
     required String pluginId,
@@ -62,6 +70,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         SessionOptionsRequestMode.cacheOnly => const {"refresh": "false"},
         SessionOptionsRequestMode.forceRefresh => const {"refresh": "true"},
       },
+      timeout: _optionsTimeout,
     );
   }
 

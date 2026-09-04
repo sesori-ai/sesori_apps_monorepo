@@ -40,6 +40,39 @@ void main() {
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
   });
 
+  test("a started generation runs its warm-up exactly once", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(factory.plugins.single.onStartedCount, 1);
+  });
+
+  test("a warm-up that fails or hangs neither fails nor delays the start", () async {
+    final warmUpGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi())
+        ..onStartedHandler = () async {
+          await warmUpGate.future;
+          throw StateError("warm-up failed");
+        },
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    warmUpGate.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+  });
+
   test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
     final installGate = Completer<void>();
     final runtime = _runtime(
@@ -2016,6 +2049,14 @@ class _FakePlugin({
   int shutdownCount = 0;
   int interruptActiveWorkCount = 0;
   Future<Set<String>> Function(Duration budget)? interruptActiveWorkHandler;
+  int onStartedCount = 0;
+  Future<void> Function()? onStartedHandler;
+
+  @override
+  Future<void> onStarted() async {
+    onStartedCount++;
+    await onStartedHandler?.call();
+  }
 
   @override
   PluginStatus get currentStatus => statuses.value;

@@ -48,8 +48,8 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriPluginAuthenticationProgress.fromJson(
             json
           );
-                case 'command.catalog.updated':
-          return SesoriCommandCatalogUpdated.fromJson(
+                case 'session.options_updated':
+          return SesoriSessionOptionsUpdated.fromJson(
             json
           );
                 case 'session.created':
@@ -766,11 +766,12 @@ as PluginAuthenticationProgress,
 /// @nodoc
 @JsonSerializable()
 
-class SesoriCommandCatalogUpdated implements SesoriSseEvent {
-  const SesoriCommandCatalogUpdated({required this.pluginId,  String? $type}): $type = $type ?? 'command.catalog.updated';
-  factory SesoriCommandCatalogUpdated.fromJson(Map<String, dynamic> json) => _$SesoriCommandCatalogUpdatedFromJson(json);
+class SesoriSessionOptionsUpdated implements SesoriSseEvent {
+  const SesoriSessionOptionsUpdated({required this.pluginId, required this.projectId,  String? $type}): $type = $type ?? 'session.options_updated';
+  factory SesoriSessionOptionsUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionOptionsUpdatedFromJson(json);
 
  final  String pluginId;
+ final  String? projectId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -780,36 +781,36 @@ final String $type;
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$SesoriCommandCatalogUpdatedCopyWith<SesoriCommandCatalogUpdated> get copyWith => _$SesoriCommandCatalogUpdatedCopyWithImpl<SesoriCommandCatalogUpdated>(this, _$identity);
+$SesoriSessionOptionsUpdatedCopyWith<SesoriSessionOptionsUpdated> get copyWith => _$SesoriSessionOptionsUpdatedCopyWithImpl<SesoriSessionOptionsUpdated>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
-  return _$SesoriCommandCatalogUpdatedToJson(this, );
+  return _$SesoriSessionOptionsUpdatedToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriCommandCatalogUpdated&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionOptionsUpdated&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode => Object.hash(runtimeType,pluginId,projectId);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.commandCatalogUpdated(pluginId: $pluginId)';
+  return 'SesoriSseEvent.sessionOptionsUpdated(pluginId: $pluginId, projectId: $projectId)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $SesoriCommandCatalogUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
-  factory $SesoriCommandCatalogUpdatedCopyWith(SesoriCommandCatalogUpdated value, $Res Function(SesoriCommandCatalogUpdated) _then) = _$SesoriCommandCatalogUpdatedCopyWithImpl;
+abstract mixin class $SesoriSessionOptionsUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionOptionsUpdatedCopyWith(SesoriSessionOptionsUpdated value, $Res Function(SesoriSessionOptionsUpdated) _then) = _$SesoriSessionOptionsUpdatedCopyWithImpl;
 @useResult
 $Res call({
- String pluginId
+ String pluginId, String? projectId
 });
 
 
@@ -817,19 +818,20 @@ $Res call({
 
 }
 /// @nodoc
-class _$SesoriCommandCatalogUpdatedCopyWithImpl<$Res>
-    implements $SesoriCommandCatalogUpdatedCopyWith<$Res> {
-  _$SesoriCommandCatalogUpdatedCopyWithImpl(this._self, this._then);
+class _$SesoriSessionOptionsUpdatedCopyWithImpl<$Res>
+    implements $SesoriSessionOptionsUpdatedCopyWith<$Res> {
+  _$SesoriSessionOptionsUpdatedCopyWithImpl(this._self, this._then);
 
-  final SesoriCommandCatalogUpdated _self;
-  final $Res Function(SesoriCommandCatalogUpdated) _then;
+  final SesoriSessionOptionsUpdated _self;
+  final $Res Function(SesoriSessionOptionsUpdated) _then;
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,}) {
-  return _then(SesoriCommandCatalogUpdated(
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? projectId = freezed,}) {
+  return _then(SesoriSessionOptionsUpdated(
 pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

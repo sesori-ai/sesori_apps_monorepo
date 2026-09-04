@@ -393,6 +393,27 @@ class OpenCodePlugin._({
     return await _call(() => _service.getCommands(projectId: projectId));
   }
 
+  /// Forces OpenCode to build its command catalog before anyone asks for it.
+  ///
+  /// `GET /command` is the one endpoint that waits on MCP server initialization:
+  /// measured between one and thirty seconds on the first call per server
+  /// process, then milliseconds. Paying that here means a later options
+  /// discovery reads an already-indexed catalog. The result is discarded — only
+  /// the indexing it forces matters. A failure propagates to the runtime, which
+  /// logs it as a warning with its error and stack trace and carries on; nothing
+  /// here would add to that.
+  ///
+  /// Warms the bridge's own directory, because a plugin starts without a project
+  /// in hand. Where the slow initialization comes from a project's own MCP
+  /// configuration, this does not cover that project's first request — the read
+  /// timeout on `/command` is what keeps such a discovery from failing, and this
+  /// only removes the wait where the server's startup cost is shared.
+  @override
+  Future<void> warmUpCommandCatalog() async {
+    if (_disposed) return;
+    await _service.getCommands(projectId: null);
+  }
+
   @override
   Future<PluginSession> createSession({
     required String directory,
