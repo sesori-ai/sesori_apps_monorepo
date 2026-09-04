@@ -1000,17 +1000,11 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationStarting() ||
       PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
     };
-    final browserChallenge = switch (operationChallenge) {
-      final PluginAuthenticationBrowserChallenge challenge => challenge,
-      _ => null,
-    };
+    final browserChallenge = operationChallenge is PluginAuthenticationBrowserChallenge ? operationChallenge : null;
     final securityDescription = browserChallenge == null
         ? loc.harnessAuthenticationSecurityDescription
         : loc.harnessAuthenticationBrowserInstructions;
-    final redirectPresentation = switch (challenge) {
-      PluginAuthenticationPresentationChallenge(:final challenge) => challenge,
-      _ => null,
-    };
+    final redirectPresentation = challenge is PluginAuthenticationPresentationChallenge ? challenge.challenge : null;
     final canSubmitRedirect = browserChallenge != null &&
         redirectPresentation is! PluginAuthenticationRedirectSubmittingPresentation &&
         redirectPresentation is! PluginAuthenticationRedirectSubmittedPresentation &&
