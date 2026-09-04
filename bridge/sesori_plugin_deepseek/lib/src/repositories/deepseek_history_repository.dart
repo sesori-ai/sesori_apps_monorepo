@@ -20,6 +20,7 @@ class DeepSeekHistoryRepository({
   Future<List<PluginMessageWithParts>> getMessages({
     required AcpStdioClient client,
     required String sessionId,
+    required String rootSessionId,
   }) async {
     final subagentsByToolCallId = <String, DeepSeekSubagentReplayDto>{};
     final collector = AcpReplayCollector(
@@ -31,7 +32,13 @@ class DeepSeekHistoryRepository({
       haltClassifier: eventMapper.classifyHaltNotice,
       toolPartReplacement: ({required toolCallId, required toolPart}) {
         final replay = subagentsByToolCallId[toolCallId];
-        return replay == null ? null : subagentMapper.mapReplay(toolPart: toolPart, replay: replay);
+        return replay == null
+            ? null
+            : subagentMapper.mapReplay(
+                toolPart: toolPart,
+                replay: replay,
+                rootSessionId: rootSessionId,
+              );
       },
     );
     int? cursor;
@@ -51,7 +58,7 @@ class DeepSeekHistoryRepository({
             for (final updates in pages.reversed) {
               for (final envelope in updates) {
                 final toolCallId = envelope.update["toolCallId"];
-                final subagent = api.parseHistoryMetadata(envelope: envelope)?.subagent;
+                final subagent = envelope.metadata?.deepSeek?.subagent;
                 if (toolCallId is String && toolCallId.isNotEmpty && subagent != null) {
                   subagentsByToolCallId[toolCallId] = subagent;
                 }

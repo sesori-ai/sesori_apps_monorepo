@@ -22,6 +22,27 @@ class const DeepSeekSessionService({
     return childrenById.values.toList(growable: false);
   }
 
+  String rootSessionIdFor({
+    required String sessionId,
+    required List<PluginSession> persistedSessions,
+  }) {
+    final liveRootSessionId = childSessions.rootOf(sessionId: sessionId);
+    if (liveRootSessionId != sessionId) return liveRootSessionId;
+    final parentBySessionId = <String, String>{};
+    for (final session in persistedSessions) {
+      final parentId = session.parentID;
+      if (parentId != null) parentBySessionId[session.id] = parentId;
+    }
+    final visited = <String>{sessionId};
+    var currentSessionId = sessionId;
+    while (true) {
+      final parentId = parentBySessionId[currentSessionId];
+      if (parentId == null) return currentSessionId;
+      if (!visited.add(parentId)) return sessionId;
+      currentSessionId = parentId;
+    }
+  }
+
   Future<PluginSession> rename({
     required AcpStdioClient client,
     required String sessionId,

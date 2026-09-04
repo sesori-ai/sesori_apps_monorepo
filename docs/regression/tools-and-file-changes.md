@@ -54,11 +54,16 @@ signal that a tool changed files.
   the exact delegation call until its correlated lifecycle start opens one
   child-linked subtask tile with the normalized prompt and label. A standard
   terminal update received before a valid start instead retains the generic
-  failure card. During the release compatibility window, a protocol-v1 adapter
-  retains its generic delegation card because it supplies no lifecycle
-  replacement. Completion retains the bounded summary, abort maps to cancelled,
-  and failure, token-limit, and refusal outcomes map to error. A child-linked
-  history tile uses the live child-derived identity and bounded terminal payload.
+  failure card with every partial update applied in order. Started-delegation
+  correlation survives parent turn boundaries until both lifecycle and standard
+  tool completion arrive. The lifecycle prompt is authoritative, so the child's
+  echoed user chunk cannot duplicate or extend it. During the release
+  compatibility window, a protocol-v1 adapter retains its generic delegation
+  card because it supplies no lifecycle replacement. Completion retains the
+  bounded summary, abort maps to cancelled, and failure, token-limit, and refusal
+  outcomes map to error. Nested children retain their direct parent for
+  navigation while activity, live tiles, and history identities roll up to the
+  owning root.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
@@ -162,7 +167,8 @@ one permission-gated mutation and one repeated terminal update.
   `test/claude_subtask_lifecycle_test.dart`
 - DeepSeek sub-agents: `bridge/sesori_plugin_deepseek/lib/src/deepseek_event_mapper.dart`,
   `repositories/deepseek_history_repository.dart`,
-  `repositories/mappers/deepseek_subagent_mapper.dart`, and
+  `repositories/mappers/deepseek_subagent_mapper.dart`,
+  `repositories/trackers/deepseek_delegation_tracker.dart`, and
   `test/deepseek_{subagent,history_repository,protocol_conformance}_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`

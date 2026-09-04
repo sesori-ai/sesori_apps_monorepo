@@ -59,12 +59,13 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
   PluginMessagePart mapReplay({
     required PluginMessagePartTool toolPart,
     required DeepSeekSubagentReplayDto replay,
+    required String rootSessionId,
   }) {
     final childSessionId = replay.childSessionId;
-    final messageId = childSessionId == null ? toolPart.messageID : "${toolPart.sessionID}-subagent-$childSessionId";
+    final messageId = childSessionId == null ? toolPart.messageID : "$rootSessionId-subagent-$childSessionId";
     return PluginMessagePart.subtask(
       id: childSessionId == null ? toolPart.id : "$messageId-subtask",
-      sessionID: toolPart.sessionID,
+      sessionID: childSessionId == null ? toolPart.sessionID : rootSessionId,
       messageID: messageId,
       prompt: replay.prompt,
       description: replay.label,
@@ -97,7 +98,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
       for (final part in childParts) {
         aligned.add(
           PluginMessageWithParts(
-            info: message.info.copyWith(id: part.messageID),
+            info: message.info.copyWith(id: part.messageID, sessionID: part.sessionID),
             parts: [part],
           ),
         );

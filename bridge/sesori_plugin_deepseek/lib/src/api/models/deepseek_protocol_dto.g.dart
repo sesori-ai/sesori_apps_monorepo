@@ -220,7 +220,11 @@ Map<String, dynamic> _$DeepSeekTerminalHistoryResponseDtoToJson(
 DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
   Map json,
 ) => DeepSeekSessionUpdateEnvelopeDto(
-  metadata: (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
+  metadata: json['_meta'] == null
+      ? null
+      : DeepSeekEnvelopeMetadataDto.fromJson(
+          Map<String, dynamic>.from(json['_meta'] as Map),
+        ),
   sessionId: json['sessionId'] as String,
   update: Map<String, dynamic>.from(json['update'] as Map),
 );
@@ -228,7 +232,7 @@ DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
 Map<String, dynamic> _$DeepSeekSessionUpdateEnvelopeDtoToJson(
   DeepSeekSessionUpdateEnvelopeDto instance,
 ) => <String, dynamic>{
-  '_meta': ?instance.metadata,
+  '_meta': ?instance.metadata?.toJson(),
   'sessionId': instance.sessionId,
   'update': instance.update,
 };

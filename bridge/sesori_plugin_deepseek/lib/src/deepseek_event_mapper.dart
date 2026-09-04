@@ -5,6 +5,7 @@ import "api/deepseek_acp_api.dart";
 import "api/models/deepseek_protocol_dto.dart";
 import "deepseek_message_time_parser.dart";
 import "repositories/mappers/deepseek_subagent_mapper.dart";
+import "repositories/trackers/deepseek_delegation_tracker.dart";
 
 class DeepSeekEventMapper({
   required super.launchDirectory,
@@ -14,6 +15,7 @@ class DeepSeekEventMapper({
   required final DeepSeekAcpApi api,
   required final DeepSeekMessageTimeParser messageTimeParser,
   required final DeepSeekSubagentMapper subagentMapper,
+  required final DeepSeekDelegationTracker delegationTracker,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) =>
@@ -25,25 +27,23 @@ class DeepSeekEventMapper({
 
   var _extensionProtocolVersion = 1;
   final Map<String, Map<String, _DeferredDeepSeekDelegation>> _deferredDelegations = {};
-  final Map<String, Set<String>> _startedDelegationToolCalls = {};
 
   void setExtensionProtocolVersion({required int extensionProtocolVersion}) {
     _extensionProtocolVersion = extensionProtocolVersion;
     _deferredDelegations.clear();
-    _startedDelegationToolCalls.clear();
+    delegationTracker.clear();
   }
 
   @override
   void beginTurn({required String sessionId, required String? messageId}) {
     _deferredDelegations.remove(sessionId);
-    _startedDelegationToolCalls.remove(sessionId);
     super.beginTurn(sessionId: sessionId, messageId: messageId);
   }
 
   @override
   void forgetSession(String sessionId) {
     _deferredDelegations.remove(sessionId);
-    _startedDelegationToolCalls.remove(sessionId);
+    delegationTracker.forgetSession(sessionId: sessionId);
     super.forgetSession(sessionId);
   }
 
@@ -53,9 +53,8 @@ class DeepSeekEventMapper({
       for (final entry in _deferredDelegations.entries) {
         if (entry.value.containsKey(toolCallId)) return entry.key;
       }
-      for (final entry in _startedDelegationToolCalls.entries) {
-        if (entry.value.contains(toolCallId)) return entry.key;
-      }
+      final startedSessionId = delegationTracker.sessionIdForToolCallId(toolCallId: toolCallId);
+      if (startedSessionId != null) return startedSessionId;
     }
     return super.sessionIdForToolCallId(toolCallId: toolCallId);
   }
@@ -77,7 +76,10 @@ class DeepSeekEventMapper({
     }
     final toolCallId = update["toolCallId"];
     if (toolCallId is! String || toolCallId.isEmpty) return super.map(notification);
-    final sessionStartedCalls = _startedDelegationToolCalls[sessionId];
+    final delegationStarted = delegationTracker.isStarted(
+      parentSessionId: sessionId,
+      toolCallId: toolCallId,
+    );
     final title = switch (update["title"]) {
       final String value => value,
       _ => null,
@@ -88,12 +90,25 @@ class DeepSeekEventMapper({
     };
     switch (update["sessionUpdate"]) {
       case "tool_call" when title != null && _isDelegationTitle(title):
-        if (sessionStartedCalls?.contains(toolCallId) ?? false) return const [];
+        if (delegationStarted) {
+          if (status != null && _isTerminalToolStatus(status)) {
+            delegationTracker.markToolTerminal(parentSessionId: sessionId, toolCallId: toolCallId);
+          }
+          return const [];
+        }
         if (status != null && _isTerminalToolStatus(status)) return super.map(notification);
-        (_deferredDelegations[sessionId] ??= {})[toolCallId] = _DeferredDeepSeekDelegation(call: notification);
+        (_deferredDelegations[sessionId] ??= {}).putIfAbsent(
+          toolCallId,
+          () => _DeferredDeepSeekDelegation(call: notification),
+        );
         return const [];
       case "tool_call_update":
-        if (sessionStartedCalls?.contains(toolCallId) ?? false) return const [];
+        if (delegationStarted) {
+          if (status != null && _isTerminalToolStatus(status)) {
+            delegationTracker.markToolTerminal(parentSessionId: sessionId, toolCallId: toolCallId);
+          }
+          return const [];
+        }
         final deferred = _deferredDelegations[sessionId]?[toolCallId];
         if (deferred == null) return super.map(notification);
         if (status != null && _isTerminalToolStatus(status)) {
@@ -103,7 +118,7 @@ class DeepSeekEventMapper({
             terminalUpdate: notification,
           );
         }
-        deferred.latestUpdate = notification;
+        deferred.updates.add(notification);
         return const [];
     }
     return super.map(notification);
@@ -147,7 +162,11 @@ class DeepSeekEventMapper({
 
   List<BridgeSseEvent> _mapSubagentStarted(DeepSeekSubagentStartedDto notification) {
     _removeDeferredDelegation(sessionId: notification.sessionId, toolCallId: notification.toolCallId);
-    (_startedDelegationToolCalls[notification.sessionId] ??= {}).add(notification.toolCallId);
+    delegationTracker.start(
+      parentSessionId: notification.sessionId,
+      toolCallId: notification.toolCallId,
+      childSessionId: notification.childSessionId,
+    );
     final events = mapChildSpawned(
       sessionId: notification.sessionId,
       spawn: subagentMapper.mapStarted(notification: notification),
@@ -176,6 +195,7 @@ class DeepSeekEventMapper({
     if (params["kind"] == "ended") {
       final childSessionId = params["childSessionId"];
       if (childSessionId is String && childSessions.isChild(sessionId: childSessionId)) {
+        delegationTracker.markChildEnded(childSessionId: childSessionId);
         return mapChildFinished(
           childSessionId: childSessionId,
           status: PluginToolStatus.error,
@@ -196,7 +216,7 @@ class DeepSeekEventMapper({
     if (deferred == null) return const [];
     return [
       ...super.map(deferred.call),
-      if (deferred.latestUpdate case final update?) ...super.map(update),
+      for (final update in deferred.updates) ...super.map(update),
       if (terminalUpdate != null) ...super.map(terminalUpdate),
     ];
   }
@@ -213,6 +233,7 @@ class DeepSeekEventMapper({
   static bool _isTerminalToolStatus(String status) => status == "completed" || status == "failed";
 
   List<BridgeSseEvent> _mapSubagentEnded(DeepSeekSubagentEndedDto notification) {
+    delegationTracker.markChildEnded(childSessionId: notification.childSessionId);
     final state = subagentMapper.mapState(
       stopReason: notification.stopReason,
       summary: notification.summary,
@@ -232,5 +253,5 @@ class DeepSeekEventMapper({
 }
 
 final class _DeferredDeepSeekDelegation({required final AcpNotification call}) {
-  AcpNotification? latestUpdate;
+  final List<AcpNotification> updates = [];
 }

@@ -76,6 +76,7 @@ void main() {
       expect(result.opensMessage, isTrue);
       expect(result.events, hasLength(3));
       expect(_subtaskPart(result.events[2]).prompt, "p");
+      expect(tracker.appendPrompt(childSessionId: "child", delta: "p"), isNull);
       expect(tracker.runningChildren(sessionId: "root").single.isBackground, isTrue);
     });
 
@@ -251,7 +252,7 @@ void main() {
       expect(failed.taskState?.output, isNull);
     });
 
-    test("a nested spawn under a child is flattened to the root", () {
+    test("a nested spawn retains its direct parent while activity rolls up to the root", () {
       tracker.spawn(
         sessionId: "root",
         spawn: _spawn(childId: "child"),
@@ -263,8 +264,13 @@ void main() {
         directory: "/r",
       );
       expect(nested.rootSessionId, "root");
-      expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "root");
+      expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "child");
+      expect(tracker.childSessions(sessionId: "root", directory: "/r").map((session) => session.id), ["child"]);
+      expect(tracker.childSessions(sessionId: "child", directory: "/r").map((session) => session.id), [
+        "grandchild",
+      ]);
       expect(tracker.busyChildIds(sessionId: "root"), {"child", "grandchild"});
+      expect(tracker.parentOf(sessionId: "grandchild"), "child");
       expect(tracker.rootOf(sessionId: "grandchild"), "root");
       expect(tracker.rootOf(sessionId: "root"), "root");
     });

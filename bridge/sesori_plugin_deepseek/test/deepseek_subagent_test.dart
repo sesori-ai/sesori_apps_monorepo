@@ -21,6 +21,7 @@ void main() {
         api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
         messageTimeParser: const DeepSeekMessageTimeParser(),
         subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+        delegationTracker: DeepSeekDelegationTracker(),
       )..setSessionProject("root", "/project");
       mapper.setExtensionProtocolVersion(extensionProtocolVersion: DeepSeekAcpApi.extensionProtocolVersion);
       mapper.beginTurn(sessionId: "root", messageId: null);
@@ -47,6 +48,7 @@ void main() {
 
         final started = mapper.map(
           _startedWithIdentity(
+            parentSessionId: "root",
             mode: "foreground",
             childSessionId: childSessionId,
             toolCallId: toolCallId,
@@ -60,6 +62,59 @@ void main() {
       expect(ordinary.whereType<BridgeSseMessagePartUpdated>().single.part, isA<PluginMessagePartTool>());
     });
 
+    test("retains started delegation correlation across parent turns until both sides finish", () {
+      expect(mapper.map(_toolCall(toolCallId: "call", title: "subagent")), isEmpty);
+      mapper.map(_started(mode: "background"));
+      expect(mapper.map(_toolUpdate(toolCallId: "call", status: "completed")), isEmpty);
+
+      mapper.beginTurn(sessionId: "root", messageId: null);
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "root",
+              "update": {"sessionUpdate": "tool_call_update", "toolCallId": "call"},
+            },
+          ),
+        ),
+        isEmpty,
+      );
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), "root");
+
+      mapper.map(_ended(reason: "completed", summary: "Done"));
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
+    });
+
+    test("session and protocol resets clear started delegation correlation", () {
+      mapper.map(_toolCall(toolCallId: "call", title: "subagent"));
+      mapper.map(_started(mode: "background"));
+      mapper.forgetSession("root");
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
+
+      mapper.map(_toolCall(toolCallId: "call-2", title: "subagent"));
+      mapper.map(
+        _startedWithIdentity(
+          parentSessionId: "root",
+          mode: "background",
+          childSessionId: "child-2",
+          toolCallId: "call-2",
+        ),
+      );
+      mapper.setExtensionProtocolVersion(extensionProtocolVersion: 1);
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call-2"), isNull);
+    });
+
+    test("keeps an ended child correlated until the standard terminal update is suppressed", () {
+      mapper.map(_toolCall(toolCallId: "call", title: "subagent"));
+      mapper.map(_started(mode: "foreground"));
+
+      mapper.map(_ended(reason: "completed", summary: "Done"));
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), "root");
+      expect(mapper.map(_toolUpdate(toolCallId: "call", status: "completed")), isEmpty);
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
+    });
+
     test("retains a generic error card when delegation fails before child start", () {
       expect(mapper.map(_toolCall(toolCallId: "failed-call", title: "subagent")), isEmpty);
 
@@ -68,6 +123,61 @@ void main() {
       final tool = events.whereType<BridgeSseMessagePartUpdated>().last.part as PluginMessagePartTool;
       expect(tool.state.status, PluginToolStatus.error);
       expect(tracker.childStatuses, isEmpty);
+    });
+
+    test("replays every deferred partial update when child startup fails", () {
+      expect(mapper.map(_toolCall(toolCallId: "failed-call", title: "subagent")), isEmpty);
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "root",
+              "update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "failed-call",
+                "status": "in_progress",
+                "content": [
+                  {
+                    "type": "content",
+                    "content": {"type": "text", "text": "startup detail"},
+                  },
+                ],
+              },
+            },
+          ),
+        ),
+        isEmpty,
+      );
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "root",
+              "update": {"sessionUpdate": "tool_call_update", "toolCallId": "failed-call"},
+            },
+          ),
+        ),
+        isEmpty,
+      );
+
+      final events = mapper.map(_toolUpdate(toolCallId: "failed-call", status: "failed"));
+      final tools = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartTool>()
+          .toList(growable: false);
+      expect(tools, hasLength(4));
+      expect(tools.map((tool) => tool.state.status), [
+        PluginToolStatus.running,
+        PluginToolStatus.running,
+        PluginToolStatus.running,
+        PluginToolStatus.error,
+      ]);
+      expect(tools[1].state.output, "startup detail");
+      expect(tools[2].state.output, "startup detail");
+      expect(tools.last.state.error, "startup detail");
     });
 
     test("a malformed start releases its deferred generic delegation card", () {
@@ -114,6 +224,66 @@ void main() {
       expect(tile.childSessionID, "child");
       expect(tile.taskState?.status, PluginToolStatus.running);
       expect(tracker.runningChildren(sessionId: "root").single.isBackground, isTrue);
+    });
+
+    test("a lifecycle prompt ignores child user-message echoes", () {
+      mapper.map(_started(mode: "foreground"));
+
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "child",
+              "update": {
+                "sessionUpdate": "user_message_chunk",
+                "messageId": "launch-prompt",
+                "content": {"type": "text", "text": "Inspect the synthetic module"},
+              },
+            },
+          ),
+        ),
+        isEmpty,
+      );
+      final ended = mapper.map(_ended(reason: "completed", summary: "Done"));
+      final tile = ended.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartSubtask;
+      expect(tile.prompt, "Inspect the synthetic module");
+    });
+
+    test("a nested child retains its direct parent while its tile and activity roll up to root", () {
+      mapper.map(_started(mode: "foreground"));
+
+      final nested = mapper.map(
+        _startedWithIdentity(
+          parentSessionId: "child",
+          mode: "background",
+          childSessionId: "grandchild",
+          toolCallId: "nested-call",
+        ),
+      );
+
+      final session = nested.whereType<BridgeSseSessionCreated>().single.info;
+      expect(session["parentID"], "child");
+      expect(tracker.childSessions(sessionId: "root", directory: "/project").map((child) => child.id), [
+        "child",
+      ]);
+      expect(tracker.childSessions(sessionId: "child", directory: "/project").map((child) => child.id), [
+        "grandchild",
+      ]);
+      final tile = nested.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartSubtask;
+      expect(tile.sessionID, "root");
+      expect(tile.id, "root-subagent-grandchild-subtask");
+
+      final updated = mapper.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "grandchild",
+            "update": {"sessionUpdate": "session_info_update", "title": "Nested"},
+          },
+        ),
+      );
+      expect(updated.whereType<BridgeSseSessionUpdated>().single.info["parentID"], "child");
     });
 
     test("child standard updates inherit the root model and provider selection", () {
@@ -312,10 +482,15 @@ AcpNotification _toolUpdate({required String toolCallId, required String status}
   },
 );
 
-AcpNotification _started({required String mode}) =>
-    _startedWithIdentity(mode: mode, childSessionId: "child", toolCallId: "call");
+AcpNotification _started({required String mode}) => _startedWithIdentity(
+  parentSessionId: "root",
+  mode: mode,
+  childSessionId: "child",
+  toolCallId: "call",
+);
 
 AcpNotification _startedWithIdentity({
+  required String parentSessionId,
   required String mode,
   required String childSessionId,
   required String toolCallId,
@@ -323,7 +498,7 @@ AcpNotification _startedWithIdentity({
   method: DeepSeekAcpApi.subagentMethod,
   params: {
     "kind": "started",
-    "sessionId": "root",
+    "sessionId": parentSessionId,
     "childSessionId": childSessionId,
     "toolCallId": toolCallId,
     "prompt": "Inspect the synthetic module",

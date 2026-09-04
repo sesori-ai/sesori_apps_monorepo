@@ -154,7 +154,15 @@ class DeepSeekPlugin({
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     final client = await requireConnectedClient();
-    return await historyRepository.getMessages(client: client, sessionId: sessionId);
+    final persistedSessions = await listAllSessions(knownDirectories: const {});
+    return await historyRepository.getMessages(
+      client: client,
+      sessionId: sessionId,
+      rootSessionId: deepSeekSessionService.rootSessionIdFor(
+        sessionId: sessionId,
+        persistedSessions: persistedSessions,
+      ),
+    );
   }
 
   @override

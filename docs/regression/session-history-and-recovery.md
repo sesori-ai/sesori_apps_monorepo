@@ -25,12 +25,14 @@ reconnect or restart.
   per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; ordinary
   assistant IDs use the deterministic ACP projection. Protocol-v2 sub-agent
-  metadata is parsed by the DeepSeek repository and correlated through the
-  enclosing standard update's tool-call id; a replay-local collector callback
-  replaces that generic delegation tool with one subtask tile carrying prompt,
-  child link, and running or terminal state. A child-linked tile uses the same
-  child-derived message and part identities as live lifecycle events. Replay
-  never mutates the live child tracker or publishes lifecycle events.
+  metadata is parsed and validated once at the DeepSeek API boundary, then the
+  repository correlates that typed result through the enclosing standard
+  update's tool-call id. A replay-local collector callback replaces that generic
+  delegation tool with one subtask tile carrying prompt, child link, and running
+  or terminal state. A child-linked tile uses the same root-owned, child-derived
+  message and part identities as live lifecycle events, including when persisted
+  ancestry must resolve the root after restart. Replay never mutates the live
+  child tracker or publishes lifecycle events.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it

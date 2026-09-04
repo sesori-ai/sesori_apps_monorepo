@@ -548,14 +548,25 @@ The DeepSeek tile implementation's `architecture-implementation-review`
 rejected one deferred scoped-stop addition: interrupt request/response DTOs and
 parsers had no production consumer in this change. They were removed and stay
 owned by the later scoped-stop PR; the complete protocol-v2 source fixture
-remains pinned as integrity evidence. The approved replay callback, boundary,
-mapper, tracker, service, and composition ownership passed and were not
-re-reviewed. A correctness review found Unicode-scalar validation and child
-project/parent attribution gaps; both were fixed with regressions, and its
-focused re-review passed with no findings.
+remains pinned as integrity evidence. An initial correctness review found
+Unicode-scalar validation and child project/parent attribution gaps; both were
+fixed with regressions, and its focused re-review passed with no findings.
+
+Fresh PR feedback then identified prompt echoes, nested direct-parent and replay
+root identity mismatches, cross-turn delegation correlation, dropped partial
+startup updates, and repeated history metadata decoding. The fixes retain
+parent and root separately, resolve persisted ancestry after restart, parse and
+validate typed metadata once at the API boundary, and replay every deferred ACP
+update. A follow-up architecture implementation review required the new
+multi-turn correlation state to move from the event mapper into an injected
+`DeepSeekDelegationTracker`; the revised boundary was approved with no findings.
+A focused correctness follow-up found one final nested replay envelope still
+owned by the child; the envelope now adopts the root-owned part's session id and
+the persisted-ancestry regression asserts both identities.
 
 DeepSeek tile verification on 2026-09-04: protocol v2 vendoring and codegen
-completed; `dart analyze --fatal-infos` and 61 tests passed in
+completed; `dart analyze --fatal-infos` and 80 tests passed in
 `sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 306 tests passed in
-`sesori_plugin_acp`; `git diff --check` passed; protocol-v1 fixture bytes and
+`sesori_plugin_acp`; `dart analyze --fatal-infos` and 83 tests passed in
+`sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.

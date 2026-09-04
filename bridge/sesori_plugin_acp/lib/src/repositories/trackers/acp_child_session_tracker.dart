@@ -40,10 +40,10 @@ final class const AcpChildSessionTrackerChange({required final String rootSessio
 /// [forgetSession] and [clear].
 ///
 /// Every tile is keyed by the child session id the harness reports, never by
-/// a tool call, so one child is exactly one tile. Children are flattened under
-/// the root that owns them, so a nested spawn reported under a child id files
-/// under the same root. State survives turn boundaries because a background
-/// child outlives the turn that launched it.
+/// a tool call, so one child is exactly one tile. Tile placement and activity
+/// roll up to the owning root, while each child session retains the direct
+/// parent the harness reported for nested navigation. State survives turn
+/// boundaries because a background child outlives the turn that launched it.
 final class AcpChildSessionTracker() {
   /// Children per root, in spawn order.
   final Map<String, List<_Child>> _byRoot = {};
@@ -75,6 +75,9 @@ final class AcpChildSessionTracker() {
   /// The root that owns [sessionId]: itself unless it is a known child.
   String rootOf({required String sessionId}) => _byChild[sessionId]?.rootSessionId ?? sessionId;
 
+  /// The direct parent reported for a known child.
+  String? parentOf({required String sessionId}) => _byChild[sessionId]?.parentSessionId;
+
   /// Records that [spawn] started under [sessionId] (the parent as the harness
   /// reports it) and emits the child session, its busy status, and, when the
   /// prompt is already known, the tile. [directory] is the root's project
@@ -88,7 +91,7 @@ final class AcpChildSessionTracker() {
     final existing = _byChild[spawn.childSessionId];
     if (existing != null) {
       return AcpChildTileResult(
-        rootSessionId: root,
+        rootSessionId: existing.rootSessionId,
         messageId: existing.messageId,
         opensMessage: false,
         events: const [],
@@ -97,11 +100,13 @@ final class AcpChildSessionTracker() {
     final messageId = "$root-subagent-${spawn.childSessionId}";
     final child = _Child(
       rootSessionId: root,
+      parentSessionId: sessionId,
       childSessionId: spawn.childSessionId,
       messageId: messageId,
       partId: "$messageId-subtask",
       description: spawn.description,
       agent: spawn.agent,
+      acceptsPromptChunks: spawn.prompt == null,
       isBackground: spawn.isBackground,
     );
     if (spawn.prompt case final prompt?) child.prompt.write(prompt);
@@ -119,7 +124,7 @@ final class AcpChildSessionTracker() {
             id: spawn.childSessionId,
             projectID: directory,
             directory: directory,
-            parentID: root,
+            parentID: sessionId,
             title: spawn.description,
             time: null,
           ).toJson(),
@@ -134,7 +139,7 @@ final class AcpChildSessionTracker() {
   /// message streams under the child id; renders the tile once a prompt exists.
   AcpChildTileResult? appendPrompt({required String childSessionId, required String delta}) {
     final child = _byChild[childSessionId];
-    if (child == null || delta.isEmpty) return null;
+    if (child == null || !child.acceptsPromptChunks || delta.isEmpty) return null;
     final firstRender = child.prompt.isEmpty;
     child.prompt.write(delta);
     final part = child.partOrNull();
@@ -275,18 +280,19 @@ final class AcpChildSessionTracker() {
   /// Whether any root has child or autonomous settlement work.
   bool get hasActiveWork => hasBusyChildren || _rootHolds.values.any((holds) => holds.isNotEmpty);
 
-  /// The children of [sessionId] as sessions, for a harness whose listing
-  /// carries no parent marker. [directory] is the root's project directory.
+  /// The direct children of [sessionId] as sessions, for a harness whose
+  /// listing carries no parent marker. [directory] is the root's project.
   List<PluginSession> childSessions({required String sessionId, required String directory}) => [
-    for (final child in _byRoot[sessionId] ?? const <_Child>[])
-      PluginSession(
-        id: child.childSessionId,
-        projectID: directory,
-        directory: directory,
-        parentID: sessionId,
-        title: child.description,
-        time: null,
-      ),
+    for (final child in _byRoot[rootOf(sessionId: sessionId)] ?? const <_Child>[])
+      if (child.parentSessionId == sessionId)
+        PluginSession(
+          id: child.childSessionId,
+          projectID: directory,
+          directory: directory,
+          parentID: sessionId,
+          title: child.description,
+          time: null,
+        ),
   ];
 
   /// Statuses of every child this tracker announced, across roots.
@@ -386,11 +392,13 @@ final class AcpChildSessionTracker() {
 
 final class _Child({
   required final String rootSessionId,
+  required final String parentSessionId,
   required final String childSessionId,
   required final String messageId,
   required final String partId,
   required final String? description,
   required final String? agent,
+  required final bool acceptsPromptChunks,
   required final bool isBackground,
 }) {
   final StringBuffer prompt = StringBuffer();

@@ -3,6 +3,7 @@ import "package:deepseek_plugin/src/api/deepseek_acp_api.dart";
 import "package:deepseek_plugin/src/deepseek_event_mapper.dart";
 import "package:deepseek_plugin/src/deepseek_message_time_parser.dart";
 import "package:deepseek_plugin/src/repositories/mappers/deepseek_subagent_mapper.dart";
+import "package:deepseek_plugin/src/repositories/trackers/deepseek_delegation_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -16,6 +17,7 @@ void main() {
     api: const DeepSeekAcpApi(pluginId: "deepseek"),
     messageTimeParser: parser,
     subagentMapper: const DeepSeekSubagentMapper(agentId: "deepseek"),
+    delegationTracker: DeepSeekDelegationTracker(),
   );
 
   AcpNotification notification(Map<String, dynamic> update, [int? createdAt]) => AcpNotification(

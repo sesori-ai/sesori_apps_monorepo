@@ -5,5 +5,6 @@ export "src/repositories/deepseek_history_repository.dart";
 export "src/repositories/deepseek_session_repository.dart";
 export "src/repositories/mappers/deepseek_catalog_mapper.dart";
 export "src/repositories/mappers/deepseek_subagent_mapper.dart";
+export "src/repositories/trackers/deepseek_delegation_tracker.dart";
 export "src/services/deepseek_session_options_service.dart";
 export "src/services/deepseek_session_service.dart";

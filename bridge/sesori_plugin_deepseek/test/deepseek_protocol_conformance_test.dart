@@ -137,9 +137,26 @@ void main() {
 
     final encodedUpdate = (response.toJson()["updates"] as List).single as Map<String, dynamic>;
     expect(encodedUpdate["_meta"], metadata);
+    expect(response.updates.single.metadata?.deepSeek?.subagent?.childSessionId, "child");
+  });
+
+  test("history validates typed DeepSeek metadata before repositories consume it", () {
     expect(
-      api.parseHistoryMetadata(envelope: response.updates.single)?.subagent?.childSessionId,
-      "child",
+      () => api.parseHistoryResponse({
+        "updates": [
+          {
+            "sessionId": "root",
+            "update": {"sessionUpdate": "tool_call", "toolCallId": "call"},
+            "_meta": {
+              DeepSeekAcpApi.initializeMetadataKey: {
+                "subagent": {"label": "Child", "prompt": "Inspect", "mode": "detached"},
+              },
+            },
+          },
+        ],
+        "hasMore": false,
+      }, sessionId: "root"),
+      throwsFormatException,
     );
   });
 

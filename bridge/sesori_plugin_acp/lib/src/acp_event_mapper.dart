@@ -448,8 +448,9 @@ class AcpEventMapper({
           time: messageTime,
         );
       case "user_message_chunk":
-        // A child session's first user message is the prompt its parent gave
-        // it, which no client sent: it is the one source of the tile's prompt.
+        // When lifecycle omitted the launch prompt, a child session's first
+        // user message supplies it. Trackers whose start already carried the
+        // prompt ignore this echo and every later direct child prompt.
         if (childSessions.isChild(sessionId: sessionId)) {
           return _childPromptChunk(childSessionId: sessionId, update: update);
         }
@@ -1213,7 +1214,7 @@ class AcpEventMapper({
       pluginId: pluginId,
       projectID: project,
       directory: project,
-      parentID: childSessions.isChild(sessionId: id) ? childSessions.rootOf(sessionId: id) : null,
+      parentID: childSessions.parentOf(sessionId: id),
       title: snapshot?.title,
       time: created == null && updated == null
           ? null

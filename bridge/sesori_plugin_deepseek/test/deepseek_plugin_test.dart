@@ -123,6 +123,7 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
     api: api,
     messageTimeParser: const DeepSeekMessageTimeParser(),
     subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+    delegationTracker: DeepSeekDelegationTracker(),
   );
   return DeepSeekPlugin(
     launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),

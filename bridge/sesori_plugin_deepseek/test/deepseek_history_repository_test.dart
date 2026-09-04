@@ -19,7 +19,11 @@ void main() {
       ),
     ]);
     final repository = _repository(api: api, childSessions: AcpChildSessionTracker());
-    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "s1",
+      rootSessionId: "s1",
+    );
 
     expect(api.cursors, [null, 10]);
     expect(messages.map((message) => message.info.id), [
@@ -44,7 +48,7 @@ void main() {
     );
 
     await expectLater(
-      repository.getMessages(client: _unusedClient(), sessionId: "s1"),
+      repository.getMessages(client: _unusedClient(), sessionId: "s1", rootSessionId: "s1"),
       throwsA(
         isA<PluginOperationException>()
             .having((error) => error.operation, "operation", DeepSeekAcpApi.historyMethod)
@@ -58,13 +62,24 @@ void main() {
     final repository = _repository(
       api: _HistoryApi([
         DeepSeekTerminalHistoryResponseDto(
-          updates: [_subagentUpdate(sessionUpdate: "tool_call", ended: null)],
+          updates: [
+            _subagentUpdate(
+              sessionId: "s1",
+              childSessionId: "child-1",
+              sessionUpdate: "tool_call",
+              ended: null,
+            ),
+          ],
         ),
       ]),
       childSessions: tracker,
     );
 
-    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "s1",
+      rootSessionId: "s1",
+    );
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
     expect(tile.id, "s1-subagent-child-1-subtask");
     expect(tile.sessionID, "s1");
@@ -95,13 +110,24 @@ void main() {
     final repository = _repository(
       api: _HistoryApi([
         DeepSeekTerminalHistoryResponseDto(
-          updates: [_subagentUpdate(sessionUpdate: "tool_call", ended: null)],
+          updates: [
+            _subagentUpdate(
+              sessionId: "s1",
+              childSessionId: "child-1",
+              sessionUpdate: "tool_call",
+              ended: null,
+            ),
+          ],
         ),
       ]),
       childSessions: tracker,
     );
 
-    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "s1",
+      rootSessionId: "s1",
+    );
     final replayTile = messages.single.parts.single;
     final liveEnd = tracker.finish(
       childSessionId: "child-1",
@@ -118,14 +144,76 @@ void main() {
     await tracker.dispose();
   });
 
+  test("nested replay uses persisted ancestry when live tracking is empty", () async {
+    final tracker = AcpChildSessionTracker();
+    final api = _HistoryApi([
+      DeepSeekTerminalHistoryResponseDto(
+        updates: [
+          _subagentUpdate(
+            sessionId: "child",
+            childSessionId: "grandchild",
+            sessionUpdate: "tool_call",
+            ended: null,
+          ),
+        ],
+      ),
+    ]);
+    final rootSessionId =
+        DeepSeekSessionService(
+          repository: DeepSeekSessionRepository(api: api),
+          childSessions: tracker,
+        ).rootSessionIdFor(
+          sessionId: "child",
+          persistedSessions: const [
+            PluginSession(
+              id: "root",
+              projectID: "/project",
+              directory: "/project",
+              parentID: null,
+              title: "Root",
+              time: null,
+            ),
+            PluginSession(
+              id: "child",
+              projectID: "/project",
+              directory: "/project",
+              parentID: "root",
+              title: "Child",
+              time: null,
+            ),
+          ],
+        );
+    final repository = _repository(api: api, childSessions: tracker);
+
+    expect(rootSessionId, "root");
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "child",
+      rootSessionId: rootSessionId,
+    );
+    final tile = messages.single.parts.single as PluginMessagePartSubtask;
+    expect(messages.single.info.id, "root-subagent-grandchild");
+    expect(messages.single.info.sessionID, "root");
+    expect(tile.id, "root-subagent-grandchild-subtask");
+    expect(tile.sessionID, "root");
+    await tracker.dispose();
+  });
+
   test("latest replay metadata settles the same delegation tile", () async {
     final tracker = AcpChildSessionTracker();
     final repository = _repository(
       api: _HistoryApi([
         DeepSeekTerminalHistoryResponseDto(
           updates: [
-            _subagentUpdate(sessionUpdate: "tool_call", ended: null),
             _subagentUpdate(
+              sessionId: "s1",
+              childSessionId: "child-1",
+              sessionUpdate: "tool_call",
+              ended: null,
+            ),
+            _subagentUpdate(
+              sessionId: "s1",
+              childSessionId: "child-1",
               sessionUpdate: "tool_call_update",
               ended: const DeepSeekSubagentReplayEndedDto(
                 stopReason: DeepSeekSubagentStopReason.completed,
@@ -138,7 +226,11 @@ void main() {
       childSessions: tracker,
     );
 
-    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "s1",
+      rootSessionId: "s1",
+    );
     expect(messages.single.parts, hasLength(1));
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
     expect(tile.id, "s1-subagent-child-1-subtask");
@@ -166,6 +258,7 @@ DeepSeekHistoryRepository _repository({
       configurationTracker: AcpSessionConfigurationTracker(),
       childSessions: childSessions,
       api: api,
+      delegationTracker: DeepSeekDelegationTracker(),
     ),
     pluginId: DeepSeekIdentity.id,
   );
@@ -188,22 +281,24 @@ DeepSeekSessionUpdateEnvelopeDto _update(String sessionId, String kind, String m
     );
 
 DeepSeekSessionUpdateEnvelopeDto _subagentUpdate({
+  required String sessionId,
+  required String childSessionId,
   required String sessionUpdate,
   required DeepSeekSubagentReplayEndedDto? ended,
 }) => DeepSeekSessionUpdateEnvelopeDto(
-  metadata: {
+  metadata: DeepSeekEnvelopeMetadataDto.fromJson({
     DeepSeekAcpApi.initializeMetadataKey: DeepSeekEnvelopeDeepSeekMetadataDto(
       messageCreatedAt: 1,
       subagent: DeepSeekSubagentReplayDto(
         prompt: "Inspect the synthetic module",
         label: "Research child",
         mode: DeepSeekSubagentMode.background,
-        childSessionId: "child-1",
+        childSessionId: childSessionId,
         ended: ended,
       ),
     ).toJson(),
-  },
-  sessionId: "s1",
+  }),
+  sessionId: sessionId,
   update: {
     "sessionUpdate": sessionUpdate,
     "toolCallId": "call-1",

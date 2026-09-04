@@ -2,6 +2,8 @@ import "package:json_annotation/json_annotation.dart";
 
 part "deepseek_protocol_dto.g.dart";
 
+const String deepSeekExtensionMetadataKey = "sesori.ai/deepseek";
+
 // ignore: no_slop_linter/prefer_specific_type, json_serializable converter input is heterogeneous
 int _integer(Object? value) {
   if (value is! int) throw const FormatException("Expected integer");
@@ -155,19 +157,55 @@ class const DeepSeekTerminalHistoryResponseDto({
   Map<String, dynamic> toJson() => _$DeepSeekTerminalHistoryResponseDtoToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class const DeepSeekSessionUpdateEnvelopeDto({
-  // `_meta` is an open ACP extension container. Keep its untouched entries for
-  // the shared replay collector; the API separately parses the known DeepSeek
-  // member into [DeepSeekEnvelopeDeepSeekMetadataDto].
-  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
-  @JsonKey(name: "_meta") required final Map<String, dynamic>? metadata,
+  @JsonKey(name: "_meta") required final DeepSeekEnvelopeMetadataDto? metadata,
   required final String sessionId,
   // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
   required final Map<String, dynamic> update,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionUpdateEnvelopeDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekSessionUpdateEnvelopeDtoToJson(this);
+}
+
+/// Typed view of DeepSeek's member inside the open ACP `_meta` container while
+/// retaining every original entry for shared and forward-compatible replay.
+class const DeepSeekEnvelopeMetadataDto({
+  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+  required final Map<String, dynamic> raw,
+  required final DeepSeekEnvelopeDeepSeekMetadataDto? deepSeek,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    if (!json.containsKey(deepSeekExtensionMetadataKey)) {
+      return DeepSeekEnvelopeMetadataDto(raw: Map.unmodifiable(json), deepSeek: null);
+    }
+    final value = json[deepSeekExtensionMetadataKey];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (value is! Map<String, dynamic> || value.containsKey("messageCreatedAt") && value["messageCreatedAt"] is! int) {
+      throw const FormatException("Invalid DeepSeek history metadata");
+    }
+    final subagent = value["subagent"];
+    if (value.containsKey("subagent")) {
+      // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+      if (subagent is! Map<String, dynamic> ||
+          subagent.containsKey("childSessionId") && subagent["childSessionId"] is! String) {
+        throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+      }
+      final ended = subagent["ended"];
+      if (subagent.containsKey("ended")) {
+        // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+        if (ended is! Map<String, dynamic> || ended.containsKey("summary") && ended["summary"] is! String) {
+          throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+        }
+      }
+    }
+    return DeepSeekEnvelopeMetadataDto(
+      raw: Map.unmodifiable(json),
+      deepSeek: DeepSeekEnvelopeDeepSeekMetadataDto.fromJson(value),
+    );
+  }
+
+  Map<String, dynamic> toJson() => raw;
 }
 
 @JsonSerializable(explicitToJson: true)
