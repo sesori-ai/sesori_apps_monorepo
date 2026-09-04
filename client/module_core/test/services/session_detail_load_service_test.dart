@@ -106,6 +106,31 @@ void main() {
       verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
+    test("initial load keeps the transcript available when provider authentication is required", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.dynamic,
+        ),
+      ).thenAnswer(
+        (_) async => const SessionOptionsRepositoryAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+
+      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.messages, hasLength(1));
+      expect(snapshot.agents, isEmpty);
+      expect(snapshot.providerData, isNull);
+      expect(snapshot.commands, isEmpty);
+    });
+
     test("replayed prompt defaults override parallel session metadata", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);

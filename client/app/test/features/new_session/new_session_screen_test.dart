@@ -675,6 +675,60 @@ void main() {
     expect(find.text(loc.newSessionOptionsRefreshFailedUnavailable), findsNothing);
   });
 
+  testWidgets("authentication-required options show guidance and block creation until refresh recovers", (
+    tester,
+  ) async {
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((invocation) async {
+      final mode = invocation.namedArguments[#mode]! as SessionOptionsRequestMode;
+      return mode == SessionOptionsRequestMode.dynamic
+          ? const SessionOptionsRepositoryAuthenticationRequired(
+              actionHint: "Run the harness locally and use /login.",
+            )
+          : SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false);
+    });
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+    final alert = find.widgetWithText(
+      PregoPopupAlertsNotifications,
+      loc.newSessionAuthenticationRequiredTitle("Plugin One"),
+    );
+
+    expect(alert, findsOneWidget);
+    expect(
+      find.descendant(of: alert, matching: find.text("Run the harness locally and use /login.")),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_options_refresh")));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(PregoPickerButton, "coder"), findsOneWidget);
+    expect(
+      tester
+          .widget<IgnorePointer>(
+            find.ancestor(of: find.byType(PromptInput), matching: find.byType(IgnorePointer)).first,
+          )
+          .ignoring,
+      isFalse,
+    );
+  });
+
   testWidgets("refresh action stops spinning for a harness the user left behind", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(

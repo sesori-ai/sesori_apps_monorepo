@@ -63,17 +63,32 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
 
   void _showNotice(SessionDetailNotice notice) {
     if (!_isCurrentPage) return;
-    final (title, variant) = switch (notice) {
-      SessionDetailNotice.promptOptionsUpdated => (
+    final (title, message, variant, duration) = switch (notice) {
+      SessionDetailPromptOptionsUpdated() => (
         context.loc.sessionDetailPromptOptionsUpdated,
+        null,
         PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 3),
       ),
-      SessionDetailNotice.promptOptionsRecoveryFailed => (
+      SessionDetailPromptOptionsRecoveryFailed() => (
         context.loc.sessionDetailPromptOptionsRecoveryFailed,
+        null,
         PregoPopupAlertsNotificationsVariant.error,
+        const Duration(seconds: 3),
+      ),
+      SessionDetailAuthenticationRequired(:final actionHint) => (
+        context.loc.sessionDetailAuthenticationRequired,
+        actionHint,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 8),
       ),
     };
-    PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
+    PregoPopupAlertPresenter.of(context).show(
+      title: title,
+      content: PregoPopupAlertContent(message: message),
+      variant: variant,
+      duration: duration,
+    );
   }
 
   @override

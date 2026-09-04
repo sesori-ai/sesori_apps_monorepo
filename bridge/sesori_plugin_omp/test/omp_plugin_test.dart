@@ -120,6 +120,37 @@ void main() {
       expect(plugin.supportsFormElicitation, isTrue);
     });
 
+    test("returns scoped authentication guidance when option discovery has no models", () async {
+      final discovery = plugin.getSessionOptions(
+        projectId: "/repo",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      final initialize = await waitForFrame(AcpMethods.initialize);
+      respond(initialize, {
+        "protocolVersion": 1,
+        "agentCapabilities": {
+          "sessionCapabilities": {"close": <String, dynamic>{}},
+        },
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      final authenticate = await waitForFrame(AcpMethods.authenticate);
+      respond(authenticate, const {});
+      final create = await waitForFrame(AcpMethods.sessionNew);
+      respond(create, {"sessionId": "catalog-session"});
+      final close = await waitForFrame(AcpMethods.sessionClose);
+      respond(close, const {});
+
+      expect(
+        await discovery,
+        isA<PluginSessionOptionsDiscoveryAuthenticationRequired>()
+            .having((value) => value.actionHint, "action hint", contains("/login"))
+            .having((value) => value.actionHint, "privacy-safe action hint", isNot(contains("/repo"))),
+      );
+      expect(events, isEmpty);
+    });
+
     test("does not prompt after a partially applied model selection", () async {
       await connect();
       final creating = plugin.createSession(
@@ -420,7 +451,8 @@ void main() {
         PluginMessagePartType.text,
         PluginMessagePartType.file,
       ]);
-      final image = (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
+      final image =
+          (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));

@@ -448,7 +448,13 @@ class NewSessionCubit({
     }
 
     if (!_canApplyLoad(generation: generation, pluginId: pluginId)) return;
-    if (!_canApplySilently(mode: mode, startedFrom: previousOptions)) return;
+    final canApplySilently = _canApplySilently(mode: mode, startedFrom: previousOptions);
+    if (!canApplySilently &&
+        result is! NewSessionOptionsAuthenticationRequiredUnavailable &&
+        result is! NewSessionOptionsAuthenticationRequiredRetained) {
+      return;
+    }
+    final latestOptions = state.agentModelData?.optionsState.data;
     // The bridge answers these with an opaque error code rather than an
     // exception, so without this the screen renders a failure no log explains.
     if (result
@@ -468,6 +474,24 @@ class NewSessionCubit({
       NewSessionOptionsUnsupported() => const NewSessionOptionsUnsupportedState(),
       NewSessionOptionsUnavailable() => const NewSessionOptionsUnavailableState(),
       NewSessionOptionsLoadFailureUnavailable() => const NewSessionOptionsLoadFailureUnavailableState(),
+      NewSessionOptionsAuthenticationRequiredUnavailable(:final actionHint) =>
+        mode == NewSessionOptionsLoadMode.silentRefresh && latestOptions != null
+            ? NewSessionOptionsAuthenticationRequiredRetainedState(
+                actionHint: actionHint,
+                options: latestOptions,
+                source: source,
+              )
+            : NewSessionOptionsAuthenticationRequiredUnavailableState(actionHint: actionHint),
+      NewSessionOptionsAuthenticationRequiredRetained(
+        :final actionHint,
+        options: final retainedOptions,
+        :final source,
+      ) =>
+        NewSessionOptionsAuthenticationRequiredRetainedState(
+          actionHint: actionHint,
+          options: mode == NewSessionOptionsLoadMode.silentRefresh ? latestOptions ?? retainedOptions : retainedOptions,
+          source: source,
+        ),
       NewSessionOptionsFailureRetained(:final options, :final source) => NewSessionOptionsFailureRetainedState(
         options: options,
         source: source,
@@ -549,6 +573,7 @@ class NewSessionCubit({
     final data = state.agentModelData;
     return (data?.backendScope.isVerified ?? false) &&
         data?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
+        !(data?.optionsState.authenticationRequired ?? false) &&
         _canEditComposer;
   }
 
@@ -600,6 +625,14 @@ class NewSessionCubit({
     final source = currentOptions?.source;
     if (source == null) return;
     final next = switch (currentOptions) {
+      NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(
+        :final actionHint,
+      ) => NewSessionOptionsAuthenticationRequiredRetainedState(
+        actionHint: actionHint,
+        options: options,
+        source: source,
+      ),
       NewSessionOptionsFailureRetainedState() => NewSessionOptionsFailureRetainedState(
         options: options,
         source: source,
@@ -886,6 +919,15 @@ class NewSessionCubit({
         options: restored,
         source: source,
       ),
+      NewSessionOptionsAuthenticationRequiredRetainedState(
+        :final actionHint,
+        :final source,
+      ) =>
+        NewSessionOptionsAuthenticationRequiredRetainedState(
+          actionHint: actionHint,
+          options: restored,
+          source: source,
+        ),
       NewSessionOptionsFailureRetainedState(:final source) => NewSessionOptionsFailureRetainedState(
         options: restored,
         source: source,
@@ -893,6 +935,7 @@ class NewSessionCubit({
       NewSessionOptionsUnsupportedState() ||
       NewSessionOptionsUnavailableState() ||
       NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredUnavailableState() ||
       NewSessionOptionsFailureState() ||
       NewSessionOptionsRefreshFailureUnavailableState() => options,
     };

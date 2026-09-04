@@ -683,6 +683,44 @@ void main() {
       expect(cubit.canCreateSession, isTrue);
     });
 
+    test("authentication found by a background refresh blocks creation without reverting a newer choice", () async {
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      final refreshed = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((invocation) async {
+        return invocation.namedArguments[#mode] == SessionOptionsRequestMode.dynamic
+            ? _optionsCatalog(agentName: "agent", providers: _providerResponse().items, isStale: true)
+            : await refreshed.future;
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.selectVariant(const SessionVariant(id: "max"));
+
+      refreshed.complete(
+        const SessionOptionsRepositoryAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+      await _settle();
+
+      expect(
+        cubit.state.agentModelData?.optionsState,
+        isA<NewSessionOptionsAuthenticationRequiredRetainedState>(),
+      );
+      expect(cubit.state.agentModelData?.agentModel?.variant, "max");
+      expect(cubit.canCreateSession, isFalse);
+      expect(cubit.canRefreshOptions, isTrue);
+    });
+
     test("typed retained refresh failure preserves the staged command and prior catalog", () async {
       final command = testCommandInfo();
       when(
@@ -721,6 +759,63 @@ void main() {
       expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsFailureRetainedState>());
       expect(cubit.state.agentModelData?.commands, [command]);
       expect(cubit.state.agentModelData?.stagedCommand, command);
+    });
+
+    test("authentication-required refresh retains options but blocks creation until recovery", () async {
+      final command = testCommandInfo();
+      when(
+        pluginRepository.listPlugins,
+      ).thenAnswer((_) async => ApiResponse.success(_pluginSnapshot(bridgeId: null, plugins: [pluginA])));
+      var loadCalls = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-a",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) async {
+        loadCalls++;
+        if (loadCalls == 2) {
+          return const SessionOptionsRepositoryAuthenticationRequired(
+            actionHint: "Authenticate locally.",
+          );
+        }
+        return SessionOptionsRepositoryAvailable(
+          isStale: false,
+          catalog: SessionOptionsCatalog(
+            agents: const [],
+            providers: const [],
+            providersConnectedOnly: false,
+            commands: [command],
+            lastUsedPromptDefaults: null,
+          ),
+        );
+      });
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _waitForComposer(cubit);
+      cubit.stageCommand(command);
+
+      await cubit.refreshOptions();
+
+      expect(
+        cubit.state.agentModelData?.optionsState,
+        isA<NewSessionOptionsAuthenticationRequiredRetainedState>().having(
+          (value) => value.actionHint,
+          "action hint",
+          "Authenticate locally.",
+        ),
+      );
+      expect(cubit.state.agentModelData?.commands, [command]);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+      expect(cubit.canCreateSession, isFalse);
+      expect(cubit.canRefreshOptions, isTrue);
+
+      await cubit.refreshOptions();
+
+      expect(cubit.state.agentModelData?.optionsState, isA<NewSessionOptionsAvailableState>());
+      expect(cubit.canCreateSession, isTrue);
     });
 
     test("unexpected refresh exception preserves the prior catalog", () async {

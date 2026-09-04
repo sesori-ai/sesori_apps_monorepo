@@ -160,10 +160,20 @@ variant, and worktree mode, and creating the session with its first input.
   logged-in providers remain complete so they can replace an older complete cache.
   Model values remain exact even when the model ID contains slashes, and the configured
   pre-sweep model remains the default. A rejected or partially applied selection fails
-  before prompting.
+  before prompting. Finding no usable model returns project-scoped authentication-required
+  state with local login guidance; it does not mark the whole OMP runtime unauthenticated.
 - Pi likewise discovers every advertised model and its available thinking levels within
   the existing total probe deadline, so catalog size alone never makes a healthy refresh
-  partial or leaves an older complete cache in place.
+  partial or leaves an older complete cache in place. A missing model catalog returns the
+  same scoped authentication-required state rather than an empty successful snapshot or
+  a global runtime failure. Its bounded action directs the user to Pi's local `/login`;
+  provider diagnostics and local paths never enter that guidance.
+- Authentication-required discovery preserves any last-good durable options without
+  reporting them as a successful refresh. `/session/options` carries the condition as a
+  typed response. New Session keeps retained options visible but disables creation, keeps
+  refresh available, and shows inline and warning-popup guidance titled from the selected
+  plugin's display name. A session-detail stale-option recovery also shows the bounded
+  guidance and parks the prompt instead of retrying with unavailable options.
 
 ## Regression Levels
 
@@ -171,7 +181,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -196,8 +206,10 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 
 ## Failure Signals
 
-- Options are empty or stale where a discovery failure should be an explicit
-  error, or a partial observation overwrites a complete cache.
+- Options are empty or reported successfully where authentication-required
+  discovery should be explicit, a partial observation overwrites a complete
+  cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
+  becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - A successful creation does not become the next per-plugin prefill, a failed
   creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
@@ -266,8 +278,9 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   `lib/src/repositories/`, and package tests
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
   `lib/src/repositories/`, `lib/src/trackers/`, and package tests
-- Contract:
-  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
+- Contracts: `bridge/sesori_plugin_interface/lib/src/models/plugin_session_options.dart`,
+  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`, and
+  `shared/sesori_shared/lib/src/models/sesori/session_options_error_response.dart`
 - Client: `client/module_core/lib/src/services/new_session_options_service.dart`,
   `client/module_app_ui/lib/src/features/new_session/`,
   `client/app/lib/features/new_session/new_session_screen.dart`, and

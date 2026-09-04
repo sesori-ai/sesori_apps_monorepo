@@ -63,6 +63,7 @@ class SessionOptionsChangedRefreshListener({
       );
       switch (outcome) {
         case SessionOptionsAvailable() ||
+            SessionOptionsAuthenticationRequired() ||
             SessionOptionsAutomaticNoOp() ||
             SessionOptionsRefreshFailedRetained() ||
             SessionOptionsRefreshFailedUnavailable():

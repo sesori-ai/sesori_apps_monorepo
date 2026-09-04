@@ -129,12 +129,18 @@ void main() {
     expect(options.commands, isEmpty);
   });
 
-  test("no model, auth-shaped empty catalog, process exit, and timeout fail with diagnostics", () async {
+  test("classifies missing models while unrelated process exits and timeouts retain diagnostics", () async {
     final noModel = _ProbeHarness(stateModel: null, models: const []);
     final auth = _ProbeHarness(
       stateModel: _model(provider: "unknown", id: "unknown", reasoning: false),
       models: const [],
       stderr: PiRpcClient.noModelsDiagnosticPrefix,
+    );
+    final authExit = _ProbeHarness(
+      stateModel: _model(provider: "unknown", id: "unknown", reasoning: false),
+      models: const [],
+      stderr: PiRpcClient.noModelsDiagnosticPrefix,
+      exitOnModels: true,
     );
     final exited = _ProbeHarness(
       stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
@@ -147,19 +153,11 @@ void main() {
       ignoreModels: true,
     );
 
-    await expectLater(noModel.probe(), throwsA(isA<PiCatalogProbeException>()));
+    expect(await noModel.probeResult(), isA<PiCatalogProbeNoModels>());
+    expect(await auth.probeResult(), isA<PiCatalogProbeNoModels>());
+    expect(await authExit.probeResult(), isA<PiCatalogProbeNoModels>());
     await expectLater(
-      auth.probe(),
-      throwsA(
-        isA<PiCatalogProbeException>().having(
-          (error) => error.stderrDiagnostics,
-          "stderrDiagnostics",
-          contains(PiRpcClient.noModelsDiagnosticPrefix),
-        ),
-      ),
-    );
-    await expectLater(
-      exited.probe(),
+      exited.probeResult(),
       throwsA(
         isA<PiCatalogProbeException>().having(
           (error) => error.cause,
@@ -169,7 +167,7 @@ void main() {
       ),
     );
     await expectLater(
-      timedOut.probe(timeout: const Duration(milliseconds: 20)),
+      timedOut.probeResult(timeout: const Duration(milliseconds: 20)),
       throwsA(
         isA<PiCatalogProbeException>().having((error) => error.cause, "cause", isA<TimeoutException>()),
       ),
@@ -221,24 +219,8 @@ class _ProbeHarness({
   Future<PluginSessionOptions> probe({
     Duration timeout = const Duration(seconds: 2),
   }) async {
-    final snapshot =
-        await PiBackendCatalogRepository(
-          binaryPath: "pi",
-          environment: const {},
-          processFactory: ({required spec}) async {
-            specs.add(spec);
-            final process = FakePiProcess();
-            processes.add(process);
-            if (stderr case final value?) scheduleMicrotask(() => process.emitStderrRaw(bytes: "$value\n".codeUnits));
-            unawaited(_answer(process));
-            return process;
-          },
-          commandExecutor: const _CommandExecutor(),
-          healthTimeout: const Duration(seconds: 1),
-        ).probe(
-          projectId: path.normalize(path.absolute("project/./nested/..")),
-          totalTimeout: timeout,
-        );
+    final result = await probeResult(timeout: timeout);
+    final snapshot = (result as PiCatalogProbeObserved).snapshot;
     return PluginSessionOptions(
       agents: snapshot.agents,
       providers: snapshot.providers,
@@ -248,6 +230,27 @@ class _ProbeHarness({
           : PluginSessionOptionsCompleteness.partial,
     );
   }
+
+  Future<PiCatalogProbeResult> probeResult({
+    Duration timeout = const Duration(seconds: 2),
+  }) =>
+      PiBackendCatalogRepository(
+        binaryPath: "pi",
+        environment: const {},
+        processFactory: ({required spec}) async {
+          specs.add(spec);
+          final process = FakePiProcess();
+          processes.add(process);
+          if (stderr case final value?) scheduleMicrotask(() => process.emitStderrRaw(bytes: "$value\n".codeUnits));
+          unawaited(_answer(process));
+          return process;
+        },
+        commandExecutor: const _CommandExecutor(),
+        healthTimeout: const Duration(seconds: 1),
+      ).probe(
+        projectId: path.normalize(path.absolute("project/./nested/..")),
+        totalTimeout: timeout,
+      );
 
   Future<void> _answer(FakePiProcess process) async {
     final answered = <String>{};

@@ -370,6 +370,7 @@ void main() {
     final cases = <(SessionOptionsErrorCode, int, Type)>[
       (SessionOptionsErrorCode.cacheUnavailable, 400, SessionOptionsRepositoryCacheUnavailable),
       (SessionOptionsErrorCode.projectNotFound, 503, SessionOptionsRepositoryProjectNotFound),
+      (SessionOptionsErrorCode.authenticationRequired, 401, SessionOptionsRepositoryAuthenticationRequired),
       (SessionOptionsErrorCode.refreshFailedRetained, 502, SessionOptionsRepositoryRefreshFailedRetained),
       (SessionOptionsErrorCode.refreshFailedUnavailable, 418, SessionOptionsRepositoryRefreshFailedUnavailable),
     ];
@@ -387,7 +388,12 @@ void main() {
         (_) async => ApiResponse.error(
           ApiError.nonSuccessCode(
             errorCode: status,
-            rawErrorString: jsonEncode(SessionOptionsErrorResponse(code: code).toJson()),
+            rawErrorString: jsonEncode(
+              SessionOptionsErrorResponse(
+                code: code,
+                actionHint: code == SessionOptionsErrorCode.authenticationRequired ? "Authenticate locally." : null,
+              ).toJson(),
+            ),
           ),
         ),
       );
@@ -400,6 +406,41 @@ void main() {
 
       expect(result.runtimeType, expectedType, reason: "failed to map $code from HTTP $status");
       expect(result, isNot(isA<SessionOptionsRepositoryFailure>()));
+      if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
+        expect(actionHint, "Authenticate locally.");
+      }
+    }
+  });
+
+  test("authentication-required errors without usable guidance remain ordinary failures", () async {
+    for (final body in <Map<String, dynamic>>[
+      const {"code": "authenticationRequired"},
+      const {"code": "authenticationRequired", "actionHint": "   "},
+    ]) {
+      final api = MockSessionApi();
+      final repository = SessionRepository(api: api);
+      when(
+        () => api.loadSessionOptions(
+          projectId: "p1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(
+            errorCode: 503,
+            rawErrorString: jsonEncode(body),
+          ),
+        ),
+      );
+
+      final result = await repository.loadSessionOptions(
+        projectId: "p1",
+        pluginId: "plugin-1",
+        mode: SessionOptionsRequestMode.forceRefresh,
+      );
+
+      expect(result, isA<SessionOptionsRepositoryFailure>());
     }
   });
 
@@ -417,7 +458,10 @@ void main() {
         ApiError.nonSuccessCode(
           errorCode: 502,
           rawErrorString: jsonEncode(
-            const SessionOptionsErrorResponse(code: SessionOptionsErrorCode.refreshFailedRetained).toJson(),
+            const SessionOptionsErrorResponse(
+              code: SessionOptionsErrorCode.refreshFailedRetained,
+              actionHint: null,
+            ).toJson(),
           ),
         ),
       ),

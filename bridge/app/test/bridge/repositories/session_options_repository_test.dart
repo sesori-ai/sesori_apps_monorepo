@@ -160,10 +160,12 @@ void main() {
       expect(runtime.activeOnlyCalls, 2);
     });
 
-    test("plugin discovery failure remains distinct from an observed snapshot", () async {
-      plugin.result = const PluginSessionOptionsDiscoveryResult.failed();
+    test("plugin discovery authentication remains distinct from failure and observation", () async {
+      plugin.result = const PluginSessionOptionsDiscoveryResult.authenticationRequired(
+        actionHint: "Authenticate locally.",
+      );
 
-      final result = await repository.capture(
+      final authenticationRequired = await repository.capture(
         key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
         projectPath: "/projects/one",
         activation: SessionOptionsCaptureActivation.mayActivate,
@@ -171,7 +173,25 @@ void main() {
         expectedGeneration: null,
       );
 
-      expect(result, isA<SessionOptionsCaptureFailed>());
+      expect(
+        authenticationRequired,
+        isA<SessionOptionsCaptureAuthenticationRequired>().having(
+          (value) => value.actionHint,
+          "action hint",
+          "Authenticate locally.",
+        ),
+      );
+
+      plugin.result = const PluginSessionOptionsDiscoveryResult.failed();
+      final failed = await repository.capture(
+        key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
+        projectPath: "/projects/one",
+        activation: SessionOptionsCaptureActivation.mayActivate,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+        expectedGeneration: null,
+      );
+
+      expect(failed, isA<SessionOptionsCaptureFailed>());
     });
 
     test("commit encodes typed JSON and read decodes the exact project-scoped row", () async {

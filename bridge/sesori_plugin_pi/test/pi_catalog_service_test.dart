@@ -27,14 +27,14 @@ void main() {
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
     );
 
-    final observedOptions = (observed as PluginSessionOptionsDiscoveryObserved).options;
-    final refreshOptions = (refresh as PluginSessionOptionsDiscoveryObserved).options;
+    final observedOptions = (observed as PiOptionsObserved).options;
+    final refreshOptions = (refresh as PiOptionsObserved).options;
     expect(observedOptions.commands.map((command) => command.name), ["first", PiCatalogService.compactionCommandName]);
     final compaction = observedOptions.commands.last;
     expect(compaction.description, "Summarize the conversation so far to free up the context window");
     expect(compaction.source, PluginCommandSource.command);
     expect(service.isNativeCompactionCommand(command: compaction), isTrue);
-    expect((reused as PluginSessionOptionsDiscoveryObserved).options, same(observedOptions));
+    expect((reused as PiOptionsObserved).options, same(observedOptions));
     expect(refreshOptions.commands.map((command) => command.name), [
       "refreshed",
       PiCatalogService.compactionCommandName,
@@ -106,7 +106,7 @@ void main() {
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
-    final trackedGood = (firstObserved as PluginSessionOptionsDiscoveryObserved).options;
+    final trackedGood = (firstObserved as PiOptionsObserved).options;
     final failed = await service.getSessionOptions(
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
@@ -116,10 +116,54 @@ void main() {
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
 
-    expect(failed, isA<PluginSessionOptionsDiscoveryFailed>());
-    expect((fallback as PluginSessionOptionsDiscoveryObserved).options, same(trackedGood));
+    expect(failed, isA<PiOptionsDiscoveryFailed>());
+    expect((fallback as PiOptionsObserved).options, same(trackedGood));
     expect(tracker.snapshotFor(projectId: project), same(trackedGood));
     expect(repository.projects, hasLength(2));
+  });
+
+  test("no-model discovery stays distinct and preserves the last good snapshot", () async {
+    final good = _options(command: "good", completeness: PluginSessionOptionsCompleteness.complete);
+    final repository = _FakeCatalogRepository(results: [good, const PiCatalogProbeNoModels()]);
+    final tracker = PiCatalogTracker();
+    final service = _service(repository: repository, tracker: tracker);
+    final project = path.absolute("project");
+
+    final observed = await service.getSessionOptions(
+      projectId: project,
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+    final trackedGood = (observed as PiOptionsObserved).options;
+    final noModels = await service.getSessionOptions(
+      projectId: project,
+      discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+    );
+    final fallback = await service.getSessionOptions(
+      projectId: project,
+      discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
+    );
+
+    expect(noModels, isA<PiOptionsNoModels>());
+    expect((fallback as PiOptionsObserved).options, same(trackedGood));
+    expect(tracker.snapshotFor(projectId: project), same(trackedGood));
+  });
+
+  test("required options identify missing models with a typed cause", () async {
+    final service = _service(
+      repository: _FakeCatalogRepository(results: [const PiCatalogProbeNoModels()]),
+      tracker: PiCatalogTracker(),
+    );
+
+    await expectLater(
+      service.requireOptions(projectId: path.absolute("project")),
+      throwsA(
+        isA<PluginOperationException>().having(
+          (error) => error.cause,
+          "cause",
+          isA<PiCatalogNoModelsException>(),
+        ),
+      ),
+    );
   });
 
   test("required options preserve the catalog probe failure as cause", () async {
@@ -164,7 +208,7 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
   Future<bool> healthCheck() async => true;
 
   @override
-  Future<PiCatalogProbeSnapshot> probe({
+  Future<PiCatalogProbeResult> probe({
     required String projectId,
     required Duration totalTimeout,
   }) async {
@@ -173,16 +217,19 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
     if (active > maxActive) maxActive = active;
     final result = results.removeAt(0);
     try {
+      if (result is PiCatalogProbeResult) return result;
       final options = switch (result) {
         Future<PluginSessionOptions>() => await result,
         PluginSessionOptions() => result,
         _ => throw result,
       };
-      return (
-        agents: options.agents,
-        providers: options.providers,
-        commands: options.commands,
-        complete: options.completeness == PluginSessionOptionsCompleteness.complete,
+      return PiCatalogProbeObserved(
+        snapshot: (
+          agents: options.agents,
+          providers: options.providers,
+          commands: options.commands,
+          complete: options.completeness == PluginSessionOptionsCompleteness.complete,
+        ),
       );
     } finally {
       active--;

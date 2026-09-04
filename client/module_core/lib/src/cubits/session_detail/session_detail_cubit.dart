@@ -1677,7 +1677,7 @@ class SessionDetailCubit(
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
-              if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+              if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -1726,7 +1726,7 @@ class SessionDetailCubit(
     final pluginId = current.pluginId;
     if (pluginId == null) {
       logw("Could not refresh stale prompt options because the session plugin is unresolved");
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     }
 
@@ -1793,8 +1793,13 @@ class SessionDetailCubit(
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
-        _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        _noticeStream.add(const SessionDetailPromptOptionsUpdated());
         return true;
+      }
+
+      if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
+        _noticeStream.add(SessionDetailAuthenticationRequired(actionHint: actionHint));
+        return false;
       }
 
       final error = switch (result) {
@@ -1802,6 +1807,7 @@ class SessionDetailCubit(
         SessionOptionsRepositoryCacheUnavailable() => null,
         SessionOptionsRepositoryUnsupported() => null,
         SessionOptionsRepositoryProjectNotFound(:final error) => error,
+        SessionOptionsRepositoryAuthenticationRequired() => null,
         SessionOptionsRepositoryRefreshFailedRetained() => null,
         SessionOptionsRepositoryRefreshFailedUnavailable() => null,
         SessionOptionsRepositoryFailure(:final error) => error,
@@ -1811,11 +1817,11 @@ class SessionDetailCubit(
       } else {
         logw("Failed to refresh stale prompt options", error);
       }
-      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     } on Object catch (error, stackTrace) {
       logw("Failed to refresh stale prompt options", error, stackTrace);
-      if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
       return false;
     }
   }

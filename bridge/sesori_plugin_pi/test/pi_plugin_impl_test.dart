@@ -116,6 +116,28 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
+    test("missing catalog models return scoped privacy-safe authentication guidance", () async {
+      final missingModels = _Harness(catalogModelsAvailable: false);
+      addTearDown(missingModels.dispose);
+      final events = <BridgeSseEvent>[];
+      final subscription = missingModels.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final result = await missingModels.plugin.getSessionOptions(
+        projectId: missingModels.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      await pump();
+
+      expect(
+        result,
+        isA<PluginSessionOptionsDiscoveryAuthenticationRequired>()
+            .having((value) => value.actionHint, "action hint", contains("/login"))
+            .having((value) => value.actionHint, "privacy-safe action hint", isNot(contains("/private"))),
+      );
+      expect(events, isEmpty);
+    });
+
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
         directory: harness.project.path,
@@ -535,7 +557,11 @@ void main() {
   });
 }
 
-final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "review"}) {
+final class _Harness({
+  bool stdinCloseCompletes = true,
+  bool catalogModelsAvailable = true,
+  String catalogCommand = "review",
+}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -548,7 +574,14 @@ final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "
       processFactory: ({required spec}) async {
         final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
-        unawaited(_answerProcess(process: process, spec: spec, catalogCommand: catalogCommand));
+        unawaited(
+          _answerProcess(
+            process: process,
+            spec: spec,
+            catalogModelsAvailable: catalogModelsAvailable,
+            catalogCommand: catalogCommand,
+          ),
+        );
         return process;
       },
       commandExecutor: commands,
@@ -607,6 +640,7 @@ final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "
 Future<void> _answerProcess({
   required FakePiProcess process,
   required PiLaunchSpec spec,
+  required bool catalogModelsAvailable,
   required String catalogCommand,
 }) async {
   final answered = <String>{};
@@ -631,13 +665,20 @@ Future<void> _answerProcess({
             },
           );
         case "get_available_models":
+          if (!catalogModelsAvailable) {
+            process.emitStderrRaw(
+              bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix} /private/provider/path\n"),
+            );
+          }
           process.emitResponse(
             id: id,
             command: type,
-            data: const {
-              "models": [
-                {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
-              ],
+            data: {
+              "models": catalogModelsAvailable
+                  ? const [
+                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+                    ]
+                  : const <Object?>[],
             },
           );
         case "set_model":
