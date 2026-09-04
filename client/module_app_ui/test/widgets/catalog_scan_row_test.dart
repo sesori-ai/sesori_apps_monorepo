@@ -831,7 +831,7 @@ void main() {
     });
 
     testWidgets("expands loading and terminal cards for accessibility text", (tester) async {
-      const textScaler = TextScaler.linear(2.5);
+      const textScaler = _BodyTextScaler();
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
 
       await pumpRow(
@@ -863,4 +863,12 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+class const _BodyTextScaler() extends TextScaler {
+  @override
+  double scale(double fontSize) => fontSize <= 1 ? fontSize : fontSize * 2.5;
+
+  @override
+  double get textScaleFactor => 1;
 }

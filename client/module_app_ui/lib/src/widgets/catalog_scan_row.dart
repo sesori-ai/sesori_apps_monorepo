@@ -363,7 +363,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final wrapsText = MediaQuery.textScalerOf(context).scale(1) > 1;
+    final wrapsText = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium);
     final icon = content.icon;
     if (icon == null) throw StateError("Terminal scan cards require an icon.");
     final clipShape = _deepScanCardShape(context);
@@ -547,7 +547,7 @@ class _ScanLoadingCardState()
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final wrapsText = MediaQuery.textScalerOf(context).scale(1) > 1;
+    final wrapsText = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium);
     final clipShape = _deepScanCardShape(context);
     final outlineShape = _deepScanCardShape(
       context,
@@ -891,6 +891,11 @@ ShapeBorder _deepScanCardShape(
   return Theme.of(context).platform == TargetPlatform.iOS
       ? RoundedSuperellipseBorder(borderRadius: radius, side: side)
       : RoundedRectangleBorder(borderRadius: radius, side: side);
+}
+
+bool _isTextEnlarged({required BuildContext context, required TextStyle style}) {
+  final fontSize = style.fontSize;
+  return fontSize != null && MediaQuery.textScalerOf(context).scale(fontSize) > fontSize;
 }
 
 /// The label-only 76×36 action from the terminal Figma variants.
