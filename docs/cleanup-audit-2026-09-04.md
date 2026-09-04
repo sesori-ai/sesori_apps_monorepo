@@ -260,7 +260,11 @@ safe path segments, existing cache directory/key conventions, asynchronous
 filesystem operations, and account retirement. Keep mobile voice warm-up and
 failed-directory-lookup retry behavior. Validate one shared storage suite and
 both shell compositions; run the existing image repository and voice tests
-affected by directory-client wiring.
+affected by directory-client wiring. Move and run the
+[temporary-directory suite](../client/app/test/core/platform/temporary_directory_client_test.dart)
+in core, preserving shared-future identity, direct asynchronous failure,
+synchronous/asynchronous warm-up failure containment and retry. The shell binds
+its platform provider; core DI registers the shared client/storage once.
 
 ### E2. Measure whole-cache pruning on thumbnail downloads
 
@@ -281,11 +285,12 @@ source-level cost model, not a timing measurement. The byte limit does not
 provide a small bound on the number of thumbnail files.
 
 First measure metadata-call counts and completion time with a populated cache.
-Then make pruning bounded maintenance in the existing repository rather than
-an obligatory complete scan per result. Prefer a small batching/coalescing or
-rate-limiting change over a persistent index, new database, or timer service.
-The exact trigger should follow the measurement and keep the byte budget
-eventually enforced under sustained writes.
+E2 remains deferred, with no pruning change in this series. If measurements
+justify coalescing scans, preserve the existing awaited after-write 64 MiB budget
+contract for each successful result. Rate-limiting or eventual enforcement would
+change that contract and requires explicit behavior scope, updated attachment
+regression documentation and budget/retirement tests; it is not an equivalent
+cleanup. Do not add a persistent index, database or scheduler on this evidence.
 
 Preserve immediate account retirement, write-generation fencing, cache
 corruption recovery, and original-image non-persistence. Any deferred work must
@@ -349,21 +354,31 @@ Sources: `installRuntime` in the
 [Codex](../bridge/sesori_plugin_codex/lib/src/runtime/codex_plugin_descriptor.dart),
 [OpenCode](../bridge/sesori_plugin_opencode/lib/src/runtime/open_code_plugin_descriptor.dart),
 [Copilot](../bridge/sesori_plugin_copilot/lib/src/runtime/copilot_plugin_descriptor.dart),
+[Cursor](../bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart),
+[Pi](../bridge/sesori_plugin_pi/lib/src/runtime/pi_plugin_descriptor.dart),
+[OMP](../bridge/sesori_plugin_omp/lib/src/runtime/omp_plugin_descriptor.dart),
 and [DeepSeek](../bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_plugin_descriptor.dart)
 descriptors, plus
 [`ManagedRuntimeInstallService`](../bridge/sesori_plugin_runtime/lib/src/provisioning/managed_runtime_install_service.dart).
 
 Descriptors repeatedly construct the same HTTP client, downloader, checksum
 validator, extractor, installer, and cleaner graph and close the HTTP client in
-`finally`. Share the operation-scoped construction and ownership where this
-removes code across the actual callers. Existing installer orchestration is
-already shared; another forwarding-only layer would not help.
+`finally`. Share the dependency graph through an explicit runtime composition
+owner; leave operation-local HTTP creation and close with each descriptor.
+Installer/provision services retain injected constructors and do not gain
+construction-only inputs. Existing orchestration is already shared; another
+forwarding-only layer would not help.
 
 Preserve per-plugin manifests, probe limits, validators, asset resolution,
 setup/authentication interpretation, and attach-mode behavior. For example,
 Copilot bounds captured installer command output while the inspected Codex and
 OpenCode paths do not. Do not silently standardize such choices during an
-extraction. Assess every managed-install descriptor, but leave unsupported or
+extraction. Cursor keeps unbounded install/probe output but bounded setup
+inspection and its calendar-version validator; Pi keeps the 64 KiB per-stream
+install/probe capture limit and manifest resolver. OMP also bounds install
+output to 64 KiB and resolves Linux assets dynamically; retain that resolver rather
+than substituting `manifest.assetFor`. Assess all seven managed-install
+descriptors and their descriptor tests, but leave unsupported or
 externally installed harnesses alone.
 
 ## Disposition and deliberately retained complexity

@@ -47,9 +47,10 @@ simplification. Refactor execution scope remains pending.
   (3) inject an explicit core temporary-directory platform interface with shell
   adapters, not a loader callback. No additional mutable-state machinery added.
   The corrected version has not been re-reviewed, following repository rules.
-- Consolidated validation: 55 relative links resolve; all 25 exact titles and
+- Original consolidated validation: 55 relative links resolve; all 25 exact titles and
   scope rows agree; all 17 source-step dispositions are recorded; whitespace passes.
-  Diagnostic source files remain restored; evidence patches are unchanged.
+  Diagnostic source files were restored; evidence patches were unchanged at
+  consolidation. The later PR-feedback diagnostic revision is recorded below.
 - Implementation tests, live-plugin/platform retirement matrix: not run.
 - Scope decision: pending, including unversioned reconciliation limits in step 3.
 - Existing refresh diagnostic plan: linked handoff, not falsely retired.
@@ -58,8 +59,8 @@ simplification. Refactor execution scope remains pending.
 ## Consolidation update — 2026-09-04
 
 - #1296 reviewed at `c7f35a5c7936ac3cc1b9ed7399b7b81436c8253a`; useful
-  work is now owned by the steps above. Close its PR after this update is
-  pushed and #1295 describes the final consolidated scope.
+  work is now owned by the steps above. #1296 was closed after the consolidated
+  update was pushed to #1295.
 - #1294 verified merged as `da2e9eeb47`; selection cleanup is externally
   completed. No variant or calculator rewrite remains in this series.
 - Eleven additional steps adopted, three overlapping refactors consolidated,
@@ -71,3 +72,24 @@ simplification. Refactor execution scope remains pending.
 - Latest user steering: audit root/package/general docs and simplify every
   regression guide, removing pointless content. Steps 21–24 own this broader
   pass; historical deletion is only one part.
+
+## PR feedback corrections — 2026-09-04
+
+- Replace blanket buffer preservation with completed-snapshot retirement of
+  unchanged buffers; retain deltas received during reload without new fields.
+- Move transcript merge policy to a service-layer calculator and normalized
+  event values to repository models. Core DI registers shared native storage;
+  shell modules bind only the platform provider.
+- Installer/provision services keep injected constructors. One explicit runtime
+  composition owner builds both graphs, preserving all seven plugins' inputs.
+- Preserve directory-client failure/retry tests, defer pruning without weakening
+  its awaited budget contract, and update feature docs in behavior-changing PRs.
+- Correct the merged refresh PR states and superseded trigger/options proposals;
+  required live observation remains pending. Repair the verification table.
+- Replace the streaming diagnostic's fixed delay with an observed delta-flush
+  predicate. The final assertion still distinguishes `after` from `before-after`.
+- These valid PR findings were applied directly, without claiming that the
+  previously approved plan review covered this revised text.
+- Validation: 61 relative links, all 25 exact titles, and the contiguous 13-row
+  verification matrix pass. Revised delta diagnostic reproduces expected
+  `before-after`, actual `after` without a fixed delay; test source restored.

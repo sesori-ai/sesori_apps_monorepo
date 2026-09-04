@@ -196,7 +196,7 @@
 +        sessionID: _sessionId, messageID: "message-1", partID: "stream-part",
 +        field: "text", delta: "after",
 +      ));
-+      await Future<void>.delayed(const Duration(milliseconds: 80));
++      await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded && (state.streamingText["stream-part"]?.endsWith("after") ?? false), description: "post-refresh delta flush");
 +      expect((cubit.state as SessionDetailLoaded).streamingText["stream-part"], "before-after");
 +    });
 +

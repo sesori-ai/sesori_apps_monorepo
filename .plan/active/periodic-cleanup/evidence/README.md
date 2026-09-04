@@ -22,6 +22,13 @@ refresh. Separately executing `--name 'AUDIT: delta'` failed with expected
 refresh; an earlier draft timed out because zero-duration polling did not await
 that timer and was corrected before recording this result.
 
+PR-feedback rerun (2026-09-04): replaced the final fixed 80 ms delay with an
+`awaitState` predicate observing text ending in `after`. This waits for the
+second delta flush for both the buggy and corrected outcomes, then the exact
+assertion distinguishes them. The revised `--name 'AUDIT: delta'` invocation
+again failed with expected `before-after`, actual `after`; no timeout. The test
+source was restored afterward. No production fix or full-suite pass is claimed.
+
 The finalized patch includes both diagnostics. They were run in separate
 focused invocations during investigation; do not interpret the combined
 reproduction command as a claimed single recorded all-tests run.

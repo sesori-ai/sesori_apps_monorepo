@@ -44,23 +44,41 @@ Remain in the dedicated worktree. Do not create another worktree or working dire
 
 ### 2. Keep the streaming accumulator across silent refresh
 
-Owner: existing `SessionDetailCubit` and `StreamingTextBuffer`. Remove the
-unconditional `_streamingBuffer.clear()` when a silent snapshot is installed.
-Emit its current snapshot and keep the existing part-finalization, deletion,
-session-load, and close paths responsible for clearing retired text. Do not
-retain completed parts indefinitely or change the streaming timer.
+Owner: existing `SessionDetailCubit` and `StreamingTextBuffer`. Replace the
+unconditional `_streamingBuffer.clear()` when a silent snapshot is installed
+with targeted retirement. Capture an immutable buffer snapshot at reload start.
+For fetched messages whose existing `MessageTime.completed` is non-null, retire
+a fetched text part's buffer through `removePart` only if its current value is
+unchanged from reload start. The fetched completed text then becomes visible
+through `resolvePartContent`. This covers reconnect after a missed final-part
+event; preserving every buffer would otherwise hide the recovered final text.
+Keep buffers for unfinished messages and buffers changed during the fetch;
+final-part/deletion events and the existing session-load/close paths retain
+their clearing responsibilities. Emit the remaining buffer snapshot without
+changing the streaming timer. Do not infer completion from idle status or a
+text-length guess. Equal values cannot establish unseen event history; accept
+that limit without per-part versions or a replay journal. A buffer changed
+during the fetch remains live until its final event or a subsequent completed
+snapshot retires it.
 
 Promote the `before-` / refresh / `after` diagnostic into a focused regression.
-Cover a finalized part arriving during reload, normal completion, removal, and
-closing during reload. Expected result: the next delta retains the prefix;
-no database/wire change and no new mutable state.
+Cover missed final-part delivery followed by a completed snapshot (the full
+fetched text must be visible and no longer streaming), continuing unfinished
+text, a delta/finalized part arriving during reload, normal completion, removal,
+and closing during reload. Expected result: continuing deltas retain their
+prefix and completed catch-up is visible; no database/wire change or new mutable
+fields. The before-buffer map is invocation-local, like step 3's message inputs.
 
 ### 3. Reconcile fetched messages with changes received during reload
 
-Owner: `SessionDetailCubit._doSilentRefresh`, with a pure typed helper alongside
-existing `session_detail_resolvers.dart` functions. Capture immutable messages
-at reload start; reconcile that `before` value, the latest `live` messages and
-`fetched` messages at completion. No event journal or new state owner.
+Owner: a stateless `TranscriptSnapshotCalculator` under
+`client/module_core/lib/src/services/`, following `SessionSelectionCalculator`.
+It owns the typed before/live/fetched merge policy and returns immutable values;
+it has no locator, I/O, subscription or lifecycle. `SessionDetailCubit` captures
+immutable messages at reload start, passes `before`, latest `live` and `fetched`
+messages at completion, and installs the result behind its existing generation
+checks. Presentation resolvers do not own transcript reconciliation. No event
+journal or new mutable state owner.
 
 Use message and part IDs for matching, and value equality for changes:
 
@@ -74,9 +92,10 @@ Use message and part IDs for matching, and value equality for changes:
   parts present before but removed from live. A changed envelope must not
   replace the whole fetched part list. Preserve fetched part order and append
   genuinely new live parts in their existing order.
-- Use the existing message insertion ordering for live-only messages (extract
-  the existing helper into the resolver file if necessary, without a second
-  sorting policy). Collections and lookup maps are invocation-local values;
+- Use the existing message insertion ordering for live-only messages (move
+  the existing ordering helper into the calculator and use it from both live
+  insertion and snapshot reconciliation, without a second sorting policy).
+  Collections and lookup maps are invocation-local values;
   add no persistent per-message versions or mutable cubit fields.
 
 The required diagnostic result includes BOTH the fetched replacement of the
@@ -179,7 +198,7 @@ Change one event kind across all producers and consumers in each PR:
   prompt ID, time, provider/model, and stable IDs against existing wire fixtures.
 
 Introduce a narrow app-owned sealed payload in
-`bridge/app/lib/src/foundation/models/normalized_bridge_event.dart`:
+`bridge/app/lib/src/repositories/models/normalized_bridge_event.dart`:
 `NormalizedStatusEvent` carries required stable session ID and shared
 `SessionStatus`; `NormalizedMessageEvent` carries required shared `Message`;
 `NormalizedOtherEvent` carries the remaining already-ID-normalized
@@ -188,6 +207,8 @@ payload and preserves the existing terminal wrapper's meaning. Add the status
 variant/seam in step 6 and the message variant in step 7. This is an incremental
 replacement of the existing normalized stream's payload, not another stream.
 
+These are repository-produced domain values, not Foundation primitives. Higher
+layers may consume their data without calling repository mapping policy.
 `SessionEventMapper` owns conversion into these values using repository mapping
 extensions. `SessionEventService` exposes that final conversion after its
 identity/enrichment work; the existing dispatcher invokes it only after
@@ -266,11 +287,17 @@ and `TemporaryDirectoryClient`. Define the required platform capability
 `TemporaryDirectoryProvider` in core `foundation/platform/`, exposing async
 directory lookup. Each shell supplies a thin path_provider adapter for that
 interface. The shared client injects the interface, owns cached lookup/failure
-retry, and offers logged best-effort warm-up. Shell RegisterModules bind the
-provider and shared client/storage in phase 1 and regenerate injectable output.
-Mobile recording injects the shared client and retains warm-up. Delete the
+retry, and offers logged best-effort warm-up. Shell RegisterModules bind only their
+platform provider in phase 1. Core DI owns the shared client/storage registrations
+once, in `configureCoreDependencies` (phase 3); regenerate owning injectable
+output. Keep the mobile recording provider lazy so its shared-client dependency
+resolves after core registration, then perform the existing warm-up. Delete the
 superseded duplicate storage/cache implementations; retain only the thin native
-lookup adapters in shells. Consolidate common behavior tests in core.
+lookup adapters in shells. Consolidate common behavior tests in core, including
+`client/app/test/core/platform/temporary_directory_client_test.dart`: preserve
+shared-future identity, asynchronous direct lookup failure, synchronous and
+asynchronous warm-up failure containment, and successful retry after failure.
+Use the required provider fake at the new seam; retain no test-only constructor.
 Keep atomic flush/rename, path validation, unique temp names, finally cleanup,
 cache paths, and account-scope deletion. Metadata reads ignore temp files;
 delete opportunistic temp sweeping and both static active-path registries.
@@ -290,11 +317,15 @@ Place this cubit-owned bookkeeping beside cubit collaborators, incorporating
 #1296's useful placement correction. Keep a separate tracker per entity; a
 single visible/confirmed pair shared across all projects would mix renames.
 
-**12 — managed installer graph.** Add an explicit named composition factory on
-existing `ManagedRuntimeInstallService`, taking required manifest, executor,
-downloader, version validator, and resolver. Construct existing checksum,
-extractor, installer and cleaner dependencies there; retain the injected
-constructor for tests/custom composition. Update seven current consumers:
+**12 — managed installer graph.** Add a stateless `ManagedRuntimeComposition`
+under `sesori_plugin_runtime/lib/src/composition/managed_runtime_composition.dart`.
+Its `createInstaller` method takes required manifest, executor, downloader,
+version validator and resolver, constructs the existing checksum, extractor,
+installer and cleaner graph, and returns `ManagedRuntimeInstallService` through
+its injected constructor. Keep dependency construction out of the service;
+its constructor continues to accept only collaborators it actually uses.
+The composition class assembles a graph, never forwards install/provision calls
+or owns resources. Update seven current consumers:
 Codex, OpenCode, Copilot, Cursor, Pi, OMP, DeepSeek; discover any newly added ones.
 Descriptors retain operation-local HTTP client creation/finally close, executor
 limits/Windows shell policy, timeout, validators, and per-plugin asset resolver
@@ -306,10 +337,12 @@ new orchestration class or standardized descriptor policy.
 
 ### 13. Share provisioning composition and bounded cold-start waiting
 
-Extend existing `ManagedRuntimeProvisionService` with an explicit composition
-factory taking required manifest, version validator, and fallback executable
-candidates. It constructs the existing `ManagedRuntimeSelectionService` and
-delegates to the current injected constructor. Update the same seven managed
+Add `createProvisioner` to step 12's `ManagedRuntimeComposition`, taking
+required manifest, version validator and fallback executable candidates. It
+constructs the existing `ManagedRuntimeSelectionService` and returns
+`ManagedRuntimeProvisionService` through its injected constructor. The service
+keeps no construction-only inputs or factory; the composition owner adds no
+fields or resource lifetime. Update the same seven managed
 plugins as step 12, retaining each version probe, explicit-bin short-circuit,
 fallback ordering and exact-managed-version policy. Do not construct a default
 executor that erases per-plugin output limits or validation choices.
@@ -543,7 +576,7 @@ regression README/index before step 25 executes the recorded matrix and retires.
 | Cache | Remove one persisted field and nullable recovery state. Zero new locks/epochs/retry loops. Injected corruption supports deletion, not more recovery machinery. |
 | Typed events/queries/noise | Zero new mutable/persistent parts. Four immutable normalized payload variants replace the stream payload vocabulary; no additional stream or lifecycle owner. Reuse existing mapping owners. Public compatibility stays at the wire boundary. Cost reduction established structurally, unmeasured in time. |
 | Native files | One shared cached-directory future and existing temp-name counter replace copies; remove two static active-path sets. Accept occasional temp residue; keep account retirement. |
-| Rename/installer/provision/cold start | Preserve per-entity rename state; factory adds no long-lived state/resource owner. One immutable bounded-wait service replaces two blocks; invocation-local timeout flag only. Descriptor owns abort rollback and HTTP lifetime. |
+| Rename/installer/provision/cold start | Preserve per-entity rename state; stateless graph composition adds no long-lived state/resource owner. One immutable bounded-wait service replaces two blocks; invocation-local timeout flag only. Descriptor owns abort rollback and HTTP lifetime. |
 | Composition/auth/logging/local folds | Zero new mutable/persistent parts. Fresh cubit lifetime unchanged; existing auth generation/persistence owner remains authoritative. |
 | Fixtures/hygiene/docs | Test-local fixtures only; no production coordination. Deletions verified against callers and generation workflows. |
 
@@ -599,33 +632,34 @@ an atomic generated schema snapshot/migration with the column change; record
 actual count and generated-versus-handwritten split. Do not manufacture an
 intermediate incompatible schema to satisfy a line cap. Otherwise split only
 with a coherent update to all titles/denominators before the affected PR opens.
-Architecture plan review required now; implementation review required for
-4–13 and 16 where production contracts/owners/files change, 17 if a production
+Architecture plan review is recorded below; implementation review required for
+3–13 and 16 where production contracts/owners/files change, 17 if a production
 exception type is introduced, and 20 for dependency-boundary changes.
 No review for ordinary local method folds, logging, tests or docs.
-Steps 2–3 are localized
-existing-method logic unless implementation actually adds architecture.
+Step 2 is localized existing-method logic unless implementation adds architecture;
+step 3 introduces a service-layer calculator and requires implementation review.
 
 ## Verification and retirement
 
 Follow [regression proof boundaries](../../../docs/regression/README.md).
 Highest targeted level is **L4**, using this impact-scoped matrix; it is not a
 claim that entire feature documents have passed cumulative L4. Per PR, run the
-owning tests/analyzer and use CI for broader coverage. Reuse unchanged passing
+owning tests/analyzer and use CI for broader coverage. Each behavior-changing
+PR also updates its affected regression feature guides in that same PR; steps
+22–24 simplify and reconcile those current contracts, rather than postponing
+the first behavior update until the end. Reuse unchanged passing
 evidence instead of rerunning it. Missing required coverage keeps the plan active.
 
 | Affected feature documents | Required matrix and complete proof boundary |
 | --- | --- |
-| `session-history-and-recovery.md`, `session-turns.md`, `bridge-connectivity.md` | Steps 2–3: automated L2/L4 cubit+buffer tests above, then client E2E on macOS desktop and one supported mobile platform through a representative streaming backend: intended resume/reconnect refresh, continuing delta, finalization, snapshot-only catch-up, paged history. Record the other mobile platform as outside this scoped matrix, not passed. No network latency/protocol change claim. |
+| `session-history-and-recovery.md`, `session-turns.md`, `bridge-connectivity.md` | Steps 2–3: automated L2/L4 cubit+buffer tests above, then client E2E on macOS desktop and one supported mobile platform through a representative streaming backend: intended resume/reconnect refresh, continuing delta, finalization, missed final-event catch-up without a masking buffer, snapshot-only catch-up, paged history. Record the other mobile platform as outside this scoped matrix, not passed. No network latency/protocol change claim. |
 | `projects-and-sessions.md`, `session-archiving-and-deletion.md` | Steps 4/8: automated L2/L4 real SQLite repository/service/identity tests, deferred parent/child ordering, eviction, two plugins sharing a backend ID, current creation commit/defaults/binding notification and affected route tests. Representative faithful plugin sufficient for unchanged core policy. No destructive live user data mutation. |
 | `session-creation-and-options.md` | Step 5: automated L2/L4 real database fresh install and schema-14 upgrade (valid and unknown old completeness), explicit successful discovery after upgrade, malformed remaining JSON, retained fresh completeness policy, invalidation/generation/path tests. Fake plugin plus real DAO/repository/service is the full cache-policy boundary; SQLite host macOS, migration CI as configured. |
 | `session-turns.md`, `session-history-and-recovery.md`, `questions-and-permissions.md` | Steps 6–7: automated L2/L4 translator tests for every producing production plugin/common ACP path, status variants, user/assistant/error messages, stable IDs, terminal handoff, child routing, stored/live agreement and relay JSON round trips. Existing external API fixtures retained; compare emitted public wire fields with baseline. One headless bridge transcript/status smoke using representative live backend proves composed path. Public client wire fixtures exercise old/new decode; no backend upgrade or new capability claim. |
 | `tools-and-file-changes.md`, `bridge-connectivity.md` | Step 9: automated L2 exact dropped-category OpenCode mapping fixtures and retained toast/file/VCS/options/lifecycle cases; public client consumer inspection and decoder regression tests. Suppressed external notifications stop at plugin boundary. No UI capability claimed removed. |
-| `attachments-and-images.md`, `voice-input.md` | Step 10: automated L2/L4 shared storage, directory, image-repository, retirement, atomic replacement/concurrency/corruption and mobile recording tests. Core file suite on macOS/Linux/Windows (CI allowed). Native directory binding write/read/list/delete-scope smoke on macOS desktop, iOS and Android. Real platform lookup is required; mock-only wiring cannot prove it. |
+| `attachments-and-images.md`, `voice-input.md` | Step 10: automated L2/L4 shared storage, migrated temporary-directory cache/failure/retry suite, image-repository, retirement, atomic replacement/concurrency/corruption and mobile recording tests. Core file suite on macOS/Linux/Windows (CI allowed). Native directory binding write/read/list/delete-scope smoke on macOS desktop, iOS and Android. Real platform lookup is required; mock-only wiring cannot prove it. |
 | `projects-and-sessions.md` | Step 11: automated L2/L4 both cubit rename suites including overlapping success/failure, null originals and refresh, plus shared RenameSheet behavior/widget tests. Shared module and both shells analyze/build. Unchanged bridge persistence needs no additional live rename claim. |
 | `plugin-runtime-installation.md` | Step 12: automated L2/L4 runtime and all seven descriptor install/setup suites, manifest target mapping, checksum/failure/cancellation and client closure. Headless live installation/verification/re-inspection on macOS arm64 for every managed-install consumer using isolated runtime roots. Existing fixture tests cover platform-specific executor/resolver inputs; no new binary/platform support claim. |
-
-
 | `plugin-runtime-installation.md`, `plugin-setup-and-lifecycle.md` | Step 13: automated L2/L4 provisioning/descriptor tests for all seven managed plugins, existing-runtime precedence and each plugin's probe inputs; both Codex/OpenCode cold-start success/failure/timeout/late-failure/abort paths, including OpenCode skipped wait. Headless inspection/provisioning for all seven and live bounded cold-start smoke for Codex/OpenCode on macOS arm64. Reuse step 12 live installation evidence if unchanged. |
 | `projects-and-sessions.md`, `session-turns.md`, `tools-and-file-changes.md` | Step 14: automated worktree collision/failure/fallback tests and Codex command/turn retry and scanner suites; actual Git fixture proves the repository creation outcome. No live backend needed for unchanged typed repository calls/fixture protocol semantics. |
 | `projects-and-sessions.md`, `session-creation-and-options.md`, `session-history-and-recovery.md` | Step 16: both shell provider/screen tests and fresh cubit lifecycle assertions; real navigation through project/session/new-session/detail on macOS desktop and the mobile platform selected for steps 2–3. Preserve #1294 selection and per-surface view behavior. |
@@ -652,7 +686,8 @@ no packaging or shipped runtime artifact changes.
   against rebased code when steps 2–3 begin.
 - Architecture plan review: the materially consolidated plan was **Approved**
   on 2026-09-04, with no new findings. Original review/corrections and this
-  verdict are recorded in TRACKER.md.
+  verdict are recorded in TRACKER.md. Subsequent PR-comment corrections were
+  applied directly under repository rules; that approval predates these edits.
 - Existing `session-refresh-reconnects` diagnostic plan receives a linked
   handoff for the two reproduced issues. Its historical observation and
   retirement state remain intact; this plan does not falsely complete it.
