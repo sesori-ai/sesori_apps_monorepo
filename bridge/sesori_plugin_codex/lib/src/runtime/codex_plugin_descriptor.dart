@@ -438,7 +438,25 @@ class const CodexPluginDescriptor({
   }
 
   @override
-  Stream<PluginAuthenticationEvent> authenticate({
+  PluginAuthenticationOperation authenticate({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required HostJsonStore store,
+    required StartAbortSignal aborted,
+  }) => PluginAuthenticationOperation(
+    events: _authenticate(
+      config: config,
+      processes: processes,
+      environment: environment,
+      stateDirectory: stateDirectory,
+      aborted: aborted,
+    ),
+    kind: const PluginAuthenticationDeviceCodeOperationKind(),
+  );
+
+  Stream<PluginAuthenticationEvent> _authenticate({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,

@@ -290,18 +290,19 @@ void main() {
         ],
       );
 
+      final operation = descriptor.authenticate(
+        config: const PluginConfig(
+          values: {"port": null, "bin": "/custom/codex"},
+        ),
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+        store: const _UnusedHostJsonStore(),
+        aborted: _AbortOnThirdCheck(),
+      );
+      expect(operation.kind, isA<PluginAuthenticationDeviceCodeOperationKind>());
       await expectLater(
-        descriptor
-            .authenticate(
-              config: const PluginConfig(
-                values: {"port": null, "bin": "/custom/codex"},
-              ),
-              processes: processes,
-              environment: const <String, String>{},
-              stateDirectory: stateDirectory,
-              aborted: _AbortOnThirdCheck(),
-            )
-            .toList(),
+        operation.events.toList(),
         throwsA(isA<PluginStartAbortedException>()),
       );
     });
@@ -428,6 +429,26 @@ void main() {
       expect(result.runtimeVersion, "0.148.0");
     });
   });
+}
+
+class const _UnusedHostJsonStore() implements HostJsonStore {
+  @override
+  Future<void> delete({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> read({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String name, required String contents}) => throw UnsupportedError("unused");
 }
 
 class _ProbeProcessService({

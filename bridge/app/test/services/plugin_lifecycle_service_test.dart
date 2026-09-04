@@ -59,6 +59,94 @@ void main() {
     expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.ready);
   });
 
+  test("authentication continuation maps active-generation outcomes and terminal cleanup", () async {
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..authenticationContinuationResult = const PluginRuntimeAuthenticationContinuationConflict(
+            reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
+          );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final challenge = service.authenticate(pluginId: "one");
+    final redirectUri = Uri.parse("http://127.0.0.1/callback?code=code");
+
+    await expectLater(
+      service.submitAuthenticationRedirect(pluginId: "one", redirectUri: redirectUri),
+      throwsA(
+        isA<PluginAuthenticationContinuationConflictException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginAuthenticationContinuationConflictReason.wrongKind,
+        ),
+      ),
+    );
+    repository.authenticationEvents.add(
+      PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    );
+    await challenge;
+
+    repository.authenticationContinuationResult = const PluginRuntimeAuthenticationContinuationConflict(
+      reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
+    );
+    await expectLater(
+      service.submitAuthenticationRedirect(pluginId: "one", redirectUri: redirectUri),
+      throwsA(
+        isA<PluginAuthenticationContinuationConflictException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginAuthenticationContinuationConflictReason.alreadySubmitted,
+        ),
+      ),
+    );
+    repository.authenticationContinuationResult = const PluginRuntimeAuthenticationContinuationConflict(
+      reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+    );
+    await expectLater(
+      service.submitAuthenticationRedirect(pluginId: "one", redirectUri: redirectUri),
+      throwsA(
+        isA<PluginAuthenticationContinuationConflictException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginAuthenticationContinuationConflictReason.noActive,
+        ),
+      ),
+    );
+    repository.authenticationContinuationResult = const PluginRuntimeAuthenticationContinuationApplied();
+    await service.submitAuthenticationRedirect(pluginId: "one", redirectUri: redirectUri);
+    expect(repository.authenticationRedirects.map((request) => request.generation), everyElement(1));
+
+    repository.authenticationEvents.add(const PluginAuthenticationFailed(message: "done"));
+    await repository.authenticationEvents.close();
+    while (service.managementSnapshot.plugins.single.authenticationState != PluginAuthenticationState.idle) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    await expectLater(
+      service.submitAuthenticationRedirect(pluginId: "one", redirectUri: redirectUri),
+      throwsA(
+        isA<PluginAuthenticationContinuationConflictException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginAuthenticationContinuationConflictReason.noActive,
+        ),
+      ),
+    );
+  });
+
   test("authentication cancellation aborts upstream and emits cancelled", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Sign in."),
@@ -91,6 +179,19 @@ void main() {
     expect(repository.authenticationAborted, isTrue);
     expect(progress.single.progress, const PluginAuthenticationProgress.cancelled());
     expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.idle);
+    await expectLater(
+      service.submitAuthenticationRedirect(
+        pluginId: "one",
+        redirectUri: Uri.parse("http://127.0.0.1/callback?code=late"),
+      ),
+      throwsA(
+        isA<PluginAuthenticationContinuationConflictException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginAuthenticationContinuationConflictReason.noActive,
+        ),
+      ),
+    );
   });
 
   test("authentication cancellation remains cancelled when setup inspection fails", () async {
@@ -2513,6 +2614,9 @@ class _CommandLifecycleRepository({
       StreamController<PluginAuthenticationEvent>();
   int authenticationCalls = 0;
   bool authenticationAborted = false;
+  PluginRuntimeAuthenticationContinuationResult authenticationContinuationResult =
+      const PluginRuntimeAuthenticationContinuationApplied();
+  final List<({String pluginId, int generation, Uri redirectUri})> authenticationRedirects = [];
   Object? inspectionError;
 
   @override
@@ -2526,7 +2630,18 @@ class _CommandLifecycleRepository({
           ..addError(const PluginStartAbortedException())
           ..close();
       },
+      generation: authenticationCalls,
     );
+  }
+
+  @override
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required int generation,
+    required Uri redirectUri,
+  }) async {
+    authenticationRedirects.add((pluginId: pluginId, generation: generation, redirectUri: redirectUri));
+    return authenticationContinuationResult;
   }
 
   @override

@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/host/bridge_host_json_store.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
@@ -28,6 +29,7 @@ void main() {
     late Directory runtimeDirectory;
     late List<BridgePlugin> startedPlugins;
     late StreamController<Object?> settingsChanges;
+    late HostJsonStore registrationStore;
     late int idleTimeoutMins;
 
     setUp(() async {
@@ -61,6 +63,14 @@ void main() {
         binaryPath: "$directory/bin/sesori-bridge",
         cacheDirectory: directory,
       );
+      final pluginStateDirectory = pluginStateDirectoryPath(
+        paths: managedRuntimePaths,
+        pluginId: descriptor.id,
+        stateStorage: descriptor.stateStorage,
+      );
+      registrationStore = BridgeHostJsonStore(
+        fileApi: RuntimeFileApi(runtimeDirectory: pluginStateDirectory),
+      );
       final factory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -68,7 +78,6 @@ void main() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
@@ -80,11 +89,8 @@ void main() {
         registration: PluginRuntimeRegistration(
           descriptor: descriptor,
           config: const PluginConfig(values: <String, Object?>{"port": "4096"}),
-          stateDirectory: pluginStateDirectoryPath(
-            paths: managedRuntimePaths,
-            pluginId: descriptor.id,
-            stateStorage: descriptor.stateStorage,
-          ),
+          stateDirectory: pluginStateDirectory,
+          store: registrationStore,
         ),
         startAborted: StartAbortSignal.never,
       )) {
@@ -127,6 +133,9 @@ void main() {
       final host = descriptor.startedHosts.single;
       expect(host.config.value("port"), equals("4096"));
       expect(host.stateDirectory, equals("${runtimeDirectory.path}/plugins/fake"));
+      expect(identical(host.store, registrationStore), isTrue);
+      await host.store.write(name: "shared.json", contents: '{"ready":true}');
+      expect(await registrationStore.read(name: "shared.json"), '{"ready":true}');
       expect(host.environment, containsPair("HOME", "/home/alex"));
       expect(host.bridge.identity.pid, equals(100));
       expect(host.bridge.ownerSessionId, equals("owner-session"));
@@ -164,7 +173,6 @@ void main() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
         clock: const ServerClock(),
         environment: const <String, String>{},
         currentUser: null,

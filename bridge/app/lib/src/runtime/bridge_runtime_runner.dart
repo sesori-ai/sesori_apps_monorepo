@@ -18,6 +18,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
+        HostJsonStore,
         Log,
         PluginConfig,
         PluginStartAbortedException,
@@ -77,6 +78,7 @@ import "../server/api/terminal_prompt_api.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
 import "../server/foundation/bridge_restart_command_builder.dart";
 import "../server/foundation/bridge_restart_env.dart";
+import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/bridge_instance_repository.dart";
@@ -127,7 +129,10 @@ import "plugin_registry.dart";
 import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
 
-enum _PhoneConnectionWaitOutcome() { connected, sessionStopped }
+enum _PhoneConnectionWaitOutcome() {
+  connected,
+  sessionStopped,
+}
 
 class const BridgeRuntimeRunner._() {
   /// Soft deadline granted to the plugin's ordered `shutdown()` step. The
@@ -249,6 +254,9 @@ class const BridgeRuntimeRunner._() {
     // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
     final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
+    final pluginStoresByStateDirectory = <String, HostJsonStore>{
+      runtimeDirectory: BridgeHostJsonStore(fileApi: runtimeFileApi),
+    };
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
@@ -568,6 +576,28 @@ class const BridgeRuntimeRunner._() {
         isWindows: io.Platform.isWindows,
         platform: io.Platform.operatingSystem,
       );
+      final pluginRuntimeRegistrations = <PluginRuntimeRegistration>[];
+      for (final descriptor in knownPlugins) {
+        final stateDirectory = pluginStateDirectoryPath(
+          paths: managedRuntimePaths,
+          pluginId: descriptor.id,
+          stateStorage: descriptor.stateStorage,
+        );
+        final store = pluginStoresByStateDirectory.putIfAbsent(
+          stateDirectory,
+          () => BridgeHostJsonStore(
+            fileApi: RuntimeFileApi(runtimeDirectory: stateDirectory),
+          ),
+        );
+        pluginRuntimeRegistrations.add(
+          PluginRuntimeRegistration(
+            descriptor: descriptor,
+            config: pluginConfigs[descriptor.id]!,
+            stateDirectory: stateDirectory,
+            store: store,
+          ),
+        );
+      }
       final generationFactory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -575,7 +605,6 @@ class const BridgeRuntimeRunner._() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: processRepository,
-        runtimeFileApi: runtimeFileApi,
         clock: serverClock,
         environment: environment,
         currentUser: currentUser,
@@ -584,18 +613,7 @@ class const BridgeRuntimeRunner._() {
         settingsChanges: bridgeSettingsRepository.settingsChanges,
       );
       final activePluginRuntime = PluginRuntime(
-        registrations: [
-          for (final descriptor in knownPlugins)
-            PluginRuntimeRegistration(
-              descriptor: descriptor,
-              config: pluginConfigs[descriptor.id]!,
-              stateDirectory: pluginStateDirectoryPath(
-                paths: managedRuntimePaths,
-                pluginId: descriptor.id,
-                stateStorage: descriptor.stateStorage,
-              ),
-            ),
-        ],
+        registrations: pluginRuntimeRegistrations,
         generationFactory: generationFactory,
         setupProcesses: hostProcessService,
         environment: environment,
@@ -604,26 +622,25 @@ class const BridgeRuntimeRunner._() {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService =
-          PluginLifecycleService(
-            lifecycleRepository: lifecycleRepository,
-            preferredDefaultPluginId: preferredDefaultPluginId,
-            bridgeSettingsRepository: bridgeSettingsRepository,
-            idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: bridgeRegistrationService,
-            plugins: [
-              for (final descriptor in knownPlugins)
-                (
-                  id: descriptor.id,
-                  displayName: descriptor.displayName,
-                  activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
-                  residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
-                  sessionOptionsScope: descriptor.sessionOptionsScope,
-                  managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
-                  supportsPromptAttachments: descriptor.supportsPromptAttachments,
-                ),
-            ],
-          );
+      final activePluginLifecycleService = PluginLifecycleService(
+        lifecycleRepository: lifecycleRepository,
+        preferredDefaultPluginId: preferredDefaultPluginId,
+        bridgeSettingsRepository: bridgeSettingsRepository,
+        idleTimerScheduler: const PluginIdleTimerScheduler(),
+        bridgeIdProvider: bridgeRegistrationService,
+        plugins: [
+          for (final descriptor in knownPlugins)
+            (
+              id: descriptor.id,
+              displayName: descriptor.displayName,
+              activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
+              residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+              sessionOptionsScope: descriptor.sessionOptionsScope,
+              managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+              supportsPromptAttachments: descriptor.supportsPromptAttachments,
+            ),
+        ],
+      );
       pluginLifecycleService = activePluginLifecycleService;
       final uncontrollableDisabledPluginIds = activePluginLifecycleService.uncontrollableDisabledPluginIds(
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,

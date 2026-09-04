@@ -25,6 +25,7 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
           descriptor: _TestDescriptor(id: pluginId),
           config: const PluginConfig(values: {}),
           stateDirectory: ".",
+          store: const _UnusedHostJsonStore(),
         ),
     ],
     generationFactory: const _UnusedGenerationFactory(),
@@ -334,6 +335,26 @@ class const _TestDescriptor({@override required final String id}) extends Bridge
 
   @override
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("unused");
+}
+
+class const _UnusedHostJsonStore() implements HostJsonStore {
+  @override
+  Future<void> delete({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> read({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String name, required String contents}) => throw UnsupportedError("unused");
 }
 
 class const _UnusedHostProcessService() implements HostProcessService {
