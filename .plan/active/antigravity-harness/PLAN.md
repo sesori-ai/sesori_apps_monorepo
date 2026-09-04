@@ -223,7 +223,7 @@ bridge app -> AntigravityPluginDescriptor (composition root)
 - `AntigravityPlugin` receives all process-lifetime peers plus a descriptor-owned options-service composer. After a
   live ACP client exists, hooks may invoke that composer with the shared connection-scoped config repository and create
   the approval registry. The plugin never invokes a collaborator constructor itself.
-- `AntigravityAuthenticationOperation` receives already-composed profile and authentication services. It owns the
+- `AntigravityAuthenticationOperation` receives already-composed profile, runtime, and authentication services. It owns
   one-shot state machine and closes its composed process/HTTP leases, but it does not instantiate peers.
 - Dependencies have no production defaults. Tests fake concrete classes with `implements`; no one-implementation
   interfaces are introduced only for testing.
