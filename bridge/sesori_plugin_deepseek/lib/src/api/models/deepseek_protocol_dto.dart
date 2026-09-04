@@ -181,23 +181,8 @@ class const DeepSeekEnvelopeMetadataDto({
     }
     final value = json[deepSeekExtensionMetadataKey];
     // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
-    if (value is! Map<String, dynamic> || value.containsKey("messageCreatedAt") && value["messageCreatedAt"] is! int) {
+    if (value is! Map<String, dynamic>) {
       throw const FormatException("Invalid DeepSeek history metadata");
-    }
-    final subagent = value["subagent"];
-    if (value.containsKey("subagent")) {
-      // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
-      if (subagent is! Map<String, dynamic> ||
-          subagent.containsKey("childSessionId") && subagent["childSessionId"] is! String) {
-        throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
-      }
-      final ended = subagent["ended"];
-      if (subagent.containsKey("ended")) {
-        // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
-        if (ended is! Map<String, dynamic> || ended.containsKey("summary") && ended["summary"] is! String) {
-          throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
-        }
-      }
     }
     return DeepSeekEnvelopeMetadataDto(
       raw: Map.unmodifiable(json),
@@ -213,7 +198,17 @@ class const DeepSeekEnvelopeDeepSeekMetadataDto({
   @JsonKey(fromJson: _nullableInteger, includeIfNull: false) required final int? messageCreatedAt,
   @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayDto? subagent,
 }) {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("messageCreatedAt") && json["messageCreatedAt"] is! int) {
+      throw const FormatException("Invalid DeepSeek history metadata");
+    }
+    final subagent = json["subagent"];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (json.containsKey("subagent") && subagent is! Map<String, dynamic>) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$DeepSeekEnvelopeDeepSeekMetadataDtoToJson(this);
 }
 
@@ -266,7 +261,17 @@ class const DeepSeekSubagentReplayDto({
   @JsonKey(includeIfNull: false) required final String? childSessionId,
   @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayEndedDto? ended,
 }) {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentReplayDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("childSessionId") && json["childSessionId"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    final ended = json["ended"];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (json.containsKey("ended") && ended is! Map<String, dynamic>) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekSubagentReplayDtoFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayDtoToJson(this);
 }
 
@@ -275,7 +280,12 @@ class const DeepSeekSubagentReplayEndedDto({
   @JsonKey(unknownEnumValue: DeepSeekSubagentStopReason.unknown) required final DeepSeekSubagentStopReason stopReason,
   @JsonKey(includeIfNull: false) required final String? summary,
 }) {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentReplayEndedDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("summary") && json["summary"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekSubagentReplayEndedDtoFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayEndedDtoToJson(this);
 }
 

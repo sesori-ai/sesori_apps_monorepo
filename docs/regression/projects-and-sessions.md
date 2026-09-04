@@ -200,10 +200,10 @@ state.
   `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
   reads after import; adapter JSONL is not a second normal catalog source. Child
   reads merge those persisted rows with not-yet-persisted live protocol-v2
-  children by id, preferring persisted title and time metadata. Nested live
-  children retain their direct parent while activity rolls up to the root;
-  after restart, persisted ancestry resolves that same root before child history
-  identities are reconstructed.
+  children by id, preferring persisted title and time metadata. Nested children
+  retain their direct parent for catalog navigation and transcript ownership,
+  while activity alone rolls up to the root. Deleting a tracked parent clears
+  its full live descendant subtree from status and mapper state.
 - GitHub Copilot explicit import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans

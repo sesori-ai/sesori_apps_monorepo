@@ -181,23 +181,9 @@ class const DeepSeekAcpApi({required final String pluginId}) {
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentReplayDto parseSubagentReplay(Map<String, dynamic> json) {
-    _validateSubagentReplayJson(json);
     final replay = DeepSeekSubagentReplayDto.fromJson(json);
     _validateSubagentReplay(replay);
     return replay;
-  }
-
-  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
-  void _validateSubagentReplayJson(Map<String, dynamic> json) {
-    if (json.containsKey("childSessionId") && json["childSessionId"] is! String) {
-      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
-    }
-    if (json.containsKey("ended")) {
-      final endedJson = _json(json["ended"], method: "DeepSeek sub-agent replay end metadata");
-      if (endedJson.containsKey("summary") && endedJson["summary"] is! String) {
-        throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
-      }
-    }
   }
 
   void _validateSubagentReplay(DeepSeekSubagentReplayDto replay) {

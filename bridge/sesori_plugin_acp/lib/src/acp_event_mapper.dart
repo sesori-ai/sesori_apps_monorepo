@@ -614,7 +614,7 @@ class AcpEventMapper({
 
   /// A tile's first render needs the assistant envelope it hangs from.
   List<BridgeSseEvent> _childTileEvents(AcpChildTileResult result) => [
-    if (result.opensMessage) _toolEnvelope(sessionId: result.rootSessionId, messageId: result.messageId, time: null),
+    if (result.opensMessage) _toolEnvelope(sessionId: result.renderSessionId, messageId: result.messageId, time: null),
     ...result.events,
   ];
 

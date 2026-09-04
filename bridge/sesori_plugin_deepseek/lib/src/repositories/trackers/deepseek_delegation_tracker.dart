@@ -1,3 +1,11 @@
+sealed class const DeepSeekDelegationLookup();
+
+final class const DeepSeekDelegationNotFound() extends DeepSeekDelegationLookup;
+
+final class const DeepSeekDelegationAmbiguous() extends DeepSeekDelegationLookup;
+
+final class const DeepSeekDelegationFound({required final String sessionId}) extends DeepSeekDelegationLookup;
+
 /// Owns the correlation between DeepSeek's standard ACP delegation tool calls
 /// and its extension lifecycle notifications. A correlation survives parent
 /// turn boundaries and is released only after both the child lifecycle and the
@@ -9,11 +17,14 @@ final class DeepSeekDelegationTracker() {
   bool isStarted({required String parentSessionId, required String toolCallId}) =>
       _byParent[parentSessionId]?.containsKey(toolCallId) ?? false;
 
-  String? sessionIdForToolCallId({required String toolCallId}) {
+  DeepSeekDelegationLookup lookupToolCallId({required String toolCallId}) {
+    String? sessionId;
     for (final entry in _byParent.entries) {
-      if (entry.value.containsKey(toolCallId)) return entry.key;
+      if (!entry.value.containsKey(toolCallId)) continue;
+      if (sessionId != null) return const DeepSeekDelegationAmbiguous();
+      sessionId = entry.key;
     }
-    return null;
+    return sessionId == null ? const DeepSeekDelegationNotFound() : DeepSeekDelegationFound(sessionId: sessionId);
   }
 
   void start({

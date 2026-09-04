@@ -35,7 +35,7 @@ void main() {
         spawn: _spawn(childId: "child"),
         directory: "/repo",
       );
-      expect(result.rootSessionId, "root");
+      expect(result.renderSessionId, "root");
       expect(result.messageId, "root-subagent-child");
       expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
       expect(result.events, hasLength(2));
@@ -260,11 +260,15 @@ void main() {
       );
       final nested = tracker.spawn(
         sessionId: "child",
-        spawn: _spawn(childId: "grandchild"),
+        spawn: _spawn(childId: "grandchild", prompt: "nested"),
         directory: "/r",
       );
-      expect(nested.rootSessionId, "root");
+      expect(nested.renderSessionId, "child");
       expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "child");
+      final tile = _subtaskPart(nested.events.last);
+      expect(tile.id, "child-subagent-grandchild-subtask");
+      expect(tile.messageID, "child-subagent-grandchild");
+      expect(tile.sessionID, "child");
       expect(tracker.childSessions(sessionId: "root", directory: "/r").map((session) => session.id), ["child"]);
       expect(tracker.childSessions(sessionId: "child", directory: "/r").map((session) => session.id), [
         "grandchild",
@@ -273,6 +277,39 @@ void main() {
       expect(tracker.parentOf(sessionId: "grandchild"), "child");
       expect(tracker.rootOf(sessionId: "grandchild"), "root");
       expect(tracker.rootOf(sessionId: "root"), "root");
+    });
+
+    test("forgetting a child removes its full descendant subtree", () {
+      tracker
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "child",
+          spawn: _spawn(childId: "grandchild"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "grandchild",
+          spawn: _spawn(childId: "great-grandchild"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "sibling"),
+          directory: "/r",
+        );
+
+      expect(tracker.childSessionIds(sessionId: "child"), ["grandchild", "great-grandchild"]);
+      tracker.forgetSession(sessionId: "child");
+
+      expect(tracker.childStatuses.keys, ["sibling"]);
+      expect(tracker.childSessions(sessionId: "root", directory: "/r").map((session) => session.id), ["sibling"]);
+      expect(tracker.busyChildIds(sessionId: "root"), {"sibling"});
+      expect(tracker.isChild(sessionId: "grandchild"), isFalse);
+      expect(tracker.isChild(sessionId: "great-grandchild"), isFalse);
     });
 
     test("a repeated spawn for a known child is a no-op", () {

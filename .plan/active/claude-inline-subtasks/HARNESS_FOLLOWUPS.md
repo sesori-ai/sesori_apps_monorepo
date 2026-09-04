@@ -512,11 +512,11 @@ confirmation, no child session or partial stop) and gets that subset.
   `AcpReplayCollector` replacement callback turns the generic delegation tool
   into one subtask part without reading or mutating live tracker state.
 - `DeepSeekSessionService` merges persisted child rows with direct live tracker
-  children, preferring persisted title/time metadata by id, and resolves
-  persisted ancestry before nested history reconstructs root-owned identities.
-  Shared ACP child accounting retains direct parents for navigation while
-  rolling activity up to roots; existing delete, disconnect, process-exit, and
-  disposal cleanup owns cancellation.
+  children, preferring persisted title/time metadata by id. Live and replay
+  tiles stay in the direct parent's transcript, while shared ACP child activity
+  rolls up to the owning root. Deleting a parent clears its full tracked
+  descendant subtree; existing disconnect, process-exit, and disposal cleanup
+  owns cancellation.
 - Consumer support temporarily accepts protocol versions 1 and 2. Adapter
   v0.1.3 is not published yet, so managed target 0.1.2 and PATH floor 0.1.0 stay
   unchanged. After this consumer merges, the adapter release-prep PR records

@@ -20,10 +20,10 @@ final class const AcpRunningChild({
   required final bool isBackground,
 });
 
-/// The events one lifecycle fact produced, plus the envelope the mapper must
-/// emit first when this is the tile's first render.
+/// The events one lifecycle fact produced, plus the direct-parent session
+/// where the mapper must render the tile envelope.
 final class const AcpChildTileResult({
-  required final String rootSessionId,
+  required final String renderSessionId,
   required final String messageId,
   required final bool opensMessage,
   required final List<BridgeSseEvent> events,
@@ -40,10 +40,10 @@ final class const AcpChildSessionTrackerChange({required final String rootSessio
 /// [forgetSession] and [clear].
 ///
 /// Every tile is keyed by the child session id the harness reports, never by
-/// a tool call, so one child is exactly one tile. Tile placement and activity
-/// roll up to the owning root, while each child session retains the direct
-/// parent the harness reported for nested navigation. State survives turn
-/// boundaries because a background child outlives the turn that launched it.
+/// a tool call, so one child is exactly one tile. A tile belongs to the direct
+/// parent whose transcript launched it, while activity rolls up to the owning
+/// root. State survives turn boundaries because a background child outlives
+/// the turn that launched it.
 final class AcpChildSessionTracker() {
   /// Children per root, in spawn order.
   final Map<String, List<_Child>> _byRoot = {};
@@ -91,13 +91,13 @@ final class AcpChildSessionTracker() {
     final existing = _byChild[spawn.childSessionId];
     if (existing != null) {
       return AcpChildTileResult(
-        rootSessionId: existing.rootSessionId,
+        renderSessionId: existing.parentSessionId,
         messageId: existing.messageId,
         opensMessage: false,
         events: const [],
       );
     }
-    final messageId = "$root-subagent-${spawn.childSessionId}";
+    final messageId = "$sessionId-subagent-${spawn.childSessionId}";
     final child = _Child(
       rootSessionId: root,
       parentSessionId: sessionId,
@@ -115,7 +115,7 @@ final class AcpChildSessionTracker() {
     _notify(rootSessionId: root);
     final part = child.partOrNull();
     return AcpChildTileResult(
-      rootSessionId: root,
+      renderSessionId: sessionId,
       messageId: messageId,
       opensMessage: part != null,
       events: [
@@ -144,7 +144,7 @@ final class AcpChildSessionTracker() {
     child.prompt.write(delta);
     final part = child.partOrNull();
     return AcpChildTileResult(
-      rootSessionId: child.rootSessionId,
+      renderSessionId: child.parentSessionId,
       messageId: child.messageId,
       opensMessage: firstRender && part != null,
       events: [if (part != null) BridgeSseMessagePartUpdated(part: part)],
@@ -301,9 +301,9 @@ final class AcpChildSessionTracker() {
       entry.key: entry.value.status.isTerminal ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy(),
   };
 
-  /// Every child of [sessionId], running or finished.
+  /// Every descendant of [sessionId], running or finished.
   List<String> childSessionIds({required String sessionId}) => [
-    for (final child in _byRoot[sessionId] ?? const <_Child>[]) child.childSessionId,
+    for (final child in _descendantsOf(sessionId: sessionId)) child.childSessionId,
   ];
 
   /// The children of [sessionId] still running.
@@ -318,8 +318,8 @@ final class AcpChildSessionTracker() {
         AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
   ];
 
-  /// Drops every record of a deleted root, or the single record of a deleted
-  /// child. Emits nothing: the session is gone.
+  /// Drops every record of a deleted root or child subtree. Emits nothing:
+  /// the sessions are gone.
   void forgetSession({required String sessionId}) {
     final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
@@ -333,7 +333,7 @@ final class AcpChildSessionTracker() {
       if (hadActiveWork) _notify(rootSessionId: sessionId);
       return;
     }
-    final child = _byChild.remove(sessionId);
+    final child = _byChild[sessionId];
     if (child == null) {
       if (removedRootHolds?.isNotEmpty ?? false) {
         _signalRootHoldChange(rootSessionId: sessionId);
@@ -341,18 +341,39 @@ final class AcpChildSessionTracker() {
       }
       return;
     }
+    final removedChildren = [child, ..._descendantsOf(sessionId: sessionId)];
+    final removedChildIds = {for (final removedChild in removedChildren) removedChild.childSessionId};
     final siblings = _byRoot[child.rootSessionId];
-    siblings?.remove(child);
+    siblings?.removeWhere((candidate) => removedChildIds.contains(candidate.childSessionId));
     if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);
+    removedChildIds.forEach(_byChild.remove);
     final siblingHolds = _rootHolds[child.rootSessionId];
     final holdCount = siblingHolds?.length ?? 0;
-    siblingHolds?.removeWhere((_, heldChildSessionId) => heldChildSessionId == sessionId);
+    siblingHolds?.removeWhere((_, heldChildSessionId) => removedChildIds.contains(heldChildSessionId));
     final removedChildHold = siblingHolds != null && siblingHolds.length != holdCount;
     if (siblingHolds?.isEmpty ?? false) _rootHolds.remove(child.rootSessionId);
     if (removedChildHold) _signalRootHoldChange(rootSessionId: child.rootSessionId);
-    if (!child.status.isTerminal || removedChildHold) {
+    if (removedChildren.any((removedChild) => !removedChild.status.isTerminal) || removedChildHold) {
       _notify(rootSessionId: child.rootSessionId);
     }
+  }
+
+  List<_Child> _descendantsOf({required String sessionId}) {
+    final candidates = _byRoot[rootOf(sessionId: sessionId)] ?? const <_Child>[];
+    final descendants = <_Child>[];
+    final seen = <String>{};
+    var parentIds = <String>{sessionId};
+    while (parentIds.isNotEmpty) {
+      final nextParentIds = <String>{};
+      for (final child in candidates) {
+        if (parentIds.contains(child.parentSessionId) && seen.add(child.childSessionId)) {
+          descendants.add(child);
+          nextParentIds.add(child.childSessionId);
+        }
+      }
+      parentIds = nextParentIds;
+    }
+    return descendants;
   }
 
   /// Drops every record: the agent process that hosted the children is gone.
@@ -414,7 +435,7 @@ final class _Child({
     if (description == null || agent == null) return null;
     return PluginMessagePart.subtask(
       id: partId,
-      sessionID: rootSessionId,
+      sessionID: parentSessionId,
       messageID: messageId,
       prompt: prompt.toString(),
       description: description,

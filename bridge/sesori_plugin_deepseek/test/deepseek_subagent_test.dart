@@ -86,6 +86,20 @@ void main() {
       expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
     });
 
+    test("an ambiguous cross-session tool call id does not fall back to the active turn", () {
+      mapper.map(_started(mode: "background"));
+      mapper.map(
+        _startedWithIdentity(
+          parentSessionId: "other-root",
+          mode: "background",
+          childSessionId: "other-child",
+          toolCallId: "call",
+        ),
+      );
+
+      expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
+    });
+
     test("session and protocol resets clear started delegation correlation", () {
       mapper.map(_toolCall(toolCallId: "call", title: "subagent"));
       mapper.map(_started(mode: "background"));
@@ -125,7 +139,7 @@ void main() {
       expect(tracker.childStatuses, isEmpty);
     });
 
-    test("replays every deferred partial update when child startup fails", () {
+    test("merges a bounded deferred snapshot when child startup fails", () {
       expect(mapper.map(_toolCall(toolCallId: "failed-call", title: "subagent")), isEmpty);
       expect(
         mapper.map(
@@ -155,12 +169,34 @@ void main() {
             method: AcpMethods.sessionUpdate,
             params: {
               "sessionId": "root",
-              "update": {"sessionUpdate": "tool_call_update", "toolCallId": "failed-call"},
+              "update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "failed-call",
+                "title": "Delegation startup",
+              },
             },
           ),
         ),
         isEmpty,
       );
+      for (var index = 0; index < 256; index += 1) {
+        expect(
+          mapper.map(
+            AcpNotification(
+              method: AcpMethods.sessionUpdate,
+              params: {
+                "sessionId": "root",
+                "update": {
+                  "sessionUpdate": "tool_call_update",
+                  "toolCallId": "failed-call",
+                  "futureField-$index": index,
+                },
+              },
+            ),
+          ),
+          isEmpty,
+        );
+      }
 
       final events = mapper.map(_toolUpdate(toolCallId: "failed-call", status: "failed"));
       final tools = events
@@ -168,15 +204,13 @@ void main() {
           .map((event) => event.part)
           .whereType<PluginMessagePartTool>()
           .toList(growable: false);
-      expect(tools, hasLength(4));
+      expect(tools, hasLength(2));
       expect(tools.map((tool) => tool.state.status), [
-        PluginToolStatus.running,
-        PluginToolStatus.running,
         PluginToolStatus.running,
         PluginToolStatus.error,
       ]);
-      expect(tools[1].state.output, "startup detail");
-      expect(tools[2].state.output, "startup detail");
+      expect(tools.last.state.output, "startup detail");
+      expect(tools.last.state.title, "Delegation startup");
       expect(tools.last.state.error, "startup detail");
     });
 
@@ -250,7 +284,7 @@ void main() {
       expect(tile.prompt, "Inspect the synthetic module");
     });
 
-    test("a nested child retains its direct parent while its tile and activity roll up to root", () {
+    test("a nested child renders in its direct parent while activity rolls up to root", () {
       mapper.map(_started(mode: "foreground"));
 
       final nested = mapper.map(
@@ -270,9 +304,13 @@ void main() {
       expect(tracker.childSessions(sessionId: "child", directory: "/project").map((child) => child.id), [
         "grandchild",
       ]);
+      final envelope = nested.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(envelope["id"], "child-subagent-grandchild");
+      expect(envelope["sessionID"], "child");
       final tile = nested.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartSubtask;
-      expect(tile.sessionID, "root");
-      expect(tile.id, "root-subagent-grandchild-subtask");
+      expect(tile.sessionID, "child");
+      expect(tile.id, "child-subagent-grandchild-subtask");
+      expect(tracker.busyChildIds(sessionId: "root"), {"child", "grandchild"});
 
       final updated = mapper.map(
         const AcpNotification(

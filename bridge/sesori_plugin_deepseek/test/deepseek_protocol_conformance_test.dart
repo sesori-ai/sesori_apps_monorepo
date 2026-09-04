@@ -189,6 +189,31 @@ void main() {
       }),
       throwsFormatException,
     );
+    for (final subagent in [
+      {"label": "Child", "prompt": "Inspect", "mode": "background", "childSessionId": null},
+      {
+        "label": "Child",
+        "prompt": "Inspect",
+        "mode": "background",
+        "ended": {"stopReason": "completed", "summary": null},
+      },
+    ]) {
+      expect(
+        () => api.parseHistoryResponse({
+          "updates": [
+            {
+              "sessionId": "root",
+              "update": {"sessionUpdate": "tool_call", "toolCallId": "call"},
+              "_meta": {
+                DeepSeekAcpApi.initializeMetadataKey: {"subagent": subagent},
+              },
+            },
+          ],
+          "hasMore": false,
+        }, sessionId: "root"),
+        throwsFormatException,
+      );
+    }
   });
 
   test("sub-agent presentation fields validate Unicode scalar structure and bounds", () {

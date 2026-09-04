@@ -29,10 +29,10 @@ reconnect or restart.
   repository correlates that typed result through the enclosing standard
   update's tool-call id. A replay-local collector callback replaces that generic
   delegation tool with one subtask tile carrying prompt, child link, and running
-  or terminal state. A child-linked tile uses the same root-owned, child-derived
-  message and part identities as live lifecycle events, including when persisted
-  ancestry must resolve the root after restart. Replay never mutates the live
-  child tracker or publishes lifecycle events.
+  or terminal state. A child-linked tile uses the same direct-parent-owned,
+  child-derived message and part identities as live lifecycle events, so nested
+  tiles remain visible in the transcript that launched them. Replay never mutates
+  the live child tracker or publishes lifecycle events.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it

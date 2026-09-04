@@ -20,7 +20,6 @@ class DeepSeekHistoryRepository({
   Future<List<PluginMessageWithParts>> getMessages({
     required AcpStdioClient client,
     required String sessionId,
-    required String rootSessionId,
   }) async {
     final subagentsByToolCallId = <String, DeepSeekSubagentReplayDto>{};
     final collector = AcpReplayCollector(
@@ -37,7 +36,6 @@ class DeepSeekHistoryRepository({
             : subagentMapper.mapReplay(
                 toolPart: toolPart,
                 replay: replay,
-                rootSessionId: rootSessionId,
               );
       },
     );

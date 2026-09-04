@@ -54,7 +54,8 @@ signal that a tool changed files.
   the exact delegation call until its correlated lifecycle start opens one
   child-linked subtask tile with the normalized prompt and label. A standard
   terminal update received before a valid start instead retains the generic
-  failure card with every partial update applied in order. Started-delegation
+  failure card after folding partial fields in arrival order into one bounded
+  snapshot. Started-delegation
   correlation survives parent turn boundaries until both lifecycle and standard
   tool completion arrive. The lifecycle prompt is authoritative, so the child's
   echoed user chunk cannot duplicate or extend it. During the release
@@ -62,8 +63,8 @@ signal that a tool changed files.
   card because it supplies no lifecycle replacement. Completion retains the
   bounded summary, abort maps to cancelled, and failure, token-limit, and refusal
   outcomes map to error. Nested children retain their direct parent for
-  navigation while activity, live tiles, and history identities roll up to the
-  owning root.
+  navigation, live tiles, and history identities, while activity alone rolls up
+  to the owning root.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.

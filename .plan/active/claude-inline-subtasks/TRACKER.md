@@ -552,21 +552,26 @@ remains pinned as integrity evidence. An initial correctness review found
 Unicode-scalar validation and child project/parent attribution gaps; both were
 fixed with regressions, and its focused re-review passed with no findings.
 
-Fresh PR feedback then identified prompt echoes, nested direct-parent and replay
-root identity mismatches, cross-turn delegation correlation, dropped partial
-startup updates, and repeated history metadata decoding. The fixes retain
-parent and root separately, resolve persisted ancestry after restart, parse and
-validate typed metadata once at the API boundary, and replay every deferred ACP
-update. A follow-up architecture implementation review required the new
-multi-turn correlation state to move from the event mapper into an injected
+Fresh PR feedback then identified prompt echoes, nested parent/root accounting,
+cross-turn delegation correlation, dropped partial startup updates, and
+repeated history metadata decoding. The fixes retain direct parent and owning
+root separately and decode typed metadata once at the API boundary. A follow-up
+architecture implementation review required the new multi-turn correlation
+state to move from the event mapper into an injected
 `DeepSeekDelegationTracker`; the revised boundary was approved with no findings.
-A focused correctness follow-up found one final nested replay envelope still
-owned by the child; the envelope now adopts the root-owned part's session id and
-the persisted-ancestry regression asserts both identities.
+
+A later review caught that rolling nested tile identities up to the root
+orphaned those tiles from both root and child message reads. Live and replay
+tiles now remain in the direct parent's transcript while activity alone rolls
+up to the root. The same review made parent deletion recursive, changed
+ambiguous cross-session tool-call correlation to fail closed, replaced the
+unbounded deferred notification list with one bounded merged snapshot, and
+moved optional replay-shape validation into the DTO factories shared by direct
+and history parsing.
 
 DeepSeek tile verification on 2026-09-04: protocol v2 vendoring and codegen
-completed; `dart analyze --fatal-infos` and 80 tests passed in
-`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 306 tests passed in
+completed; `dart analyze --fatal-infos` and 82 tests passed in
+`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 308 tests passed in
 `sesori_plugin_acp`; `dart analyze --fatal-infos` and 83 tests passed in
 `sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.

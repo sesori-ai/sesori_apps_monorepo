@@ -49,14 +49,26 @@ class DeepSeekEventMapper({
 
   @override
   String? sessionIdForToolCallId({required String? toolCallId}) {
-    if (toolCallId != null && toolCallId.isNotEmpty) {
-      for (final entry in _deferredDelegations.entries) {
-        if (entry.value.containsKey(toolCallId)) return entry.key;
-      }
-      final startedSessionId = delegationTracker.sessionIdForToolCallId(toolCallId: toolCallId);
-      if (startedSessionId != null) return startedSessionId;
+    if (toolCallId == null || toolCallId.isEmpty) {
+      return super.sessionIdForToolCallId(toolCallId: toolCallId);
     }
-    return super.sessionIdForToolCallId(toolCallId: toolCallId);
+    final sessionIds = <String>{
+      for (final entry in _deferredDelegations.entries)
+        if (entry.value.containsKey(toolCallId)) entry.key,
+    };
+    switch (delegationTracker.lookupToolCallId(toolCallId: toolCallId)) {
+      case DeepSeekDelegationFound(:final sessionId):
+        sessionIds.add(sessionId);
+      case DeepSeekDelegationAmbiguous():
+        return null;
+      case DeepSeekDelegationNotFound():
+        break;
+    }
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => sessionId,
+      [] => super.sessionIdForToolCallId(toolCallId: toolCallId),
+      _ => null,
+    };
   }
 
   /// Protocol v2 delays only the two exact delegation calls until either their
@@ -111,14 +123,10 @@ class DeepSeekEventMapper({
         }
         final deferred = _deferredDelegations[sessionId]?[toolCallId];
         if (deferred == null) return super.map(notification);
+        deferred.merge(notification: notification, update: update);
         if (status != null && _isTerminalToolStatus(status)) {
-          return _flushDeferredDelegation(
-            sessionId: sessionId,
-            toolCallId: toolCallId,
-            terminalUpdate: notification,
-          );
+          return _flushDeferredDelegation(sessionId: sessionId, toolCallId: toolCallId);
         }
-        deferred.updates.add(notification);
         return const [];
     }
     return super.map(notification);
@@ -184,11 +192,7 @@ class DeepSeekEventMapper({
       final sessionId = params["sessionId"];
       final toolCallId = params["toolCallId"];
       if (sessionId is String && toolCallId is String) {
-        return _flushDeferredDelegation(
-          sessionId: sessionId,
-          toolCallId: toolCallId,
-          terminalUpdate: null,
-        );
+        return _flushDeferredDelegation(sessionId: sessionId, toolCallId: toolCallId);
       }
       return const [];
     }
@@ -207,17 +211,12 @@ class DeepSeekEventMapper({
     return const [];
   }
 
-  List<BridgeSseEvent> _flushDeferredDelegation({
-    required String sessionId,
-    required String toolCallId,
-    required AcpNotification? terminalUpdate,
-  }) {
+  List<BridgeSseEvent> _flushDeferredDelegation({required String sessionId, required String toolCallId}) {
     final deferred = _removeDeferredDelegation(sessionId: sessionId, toolCallId: toolCallId);
     if (deferred == null) return const [];
     return [
       ...super.map(deferred.call),
-      for (final update in deferred.updates) ...super.map(update),
-      if (terminalUpdate != null) ...super.map(terminalUpdate),
+      if (deferred.mergedUpdate case final update?) ...super.map(update),
     ];
   }
 
@@ -253,5 +252,40 @@ class DeepSeekEventMapper({
 }
 
 final class _DeferredDeepSeekDelegation({required final AcpNotification call}) {
-  final List<AcpNotification> updates = [];
+  static const _retainedUpdateKeys = {
+    "sessionUpdate",
+    "toolCallId",
+    "kind",
+    "title",
+    "status",
+    "content",
+    "rawOutput",
+  };
+
+  // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
+  final Map<String, dynamic> _mergedUpdate = {};
+  // ignore: no_slop_linter/prefer_specific_type, standard ACP params are heterogeneous
+  Map<String, dynamic>? _latestParams;
+
+  void merge({
+    required AcpNotification notification,
+    // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
+    required Map<String, dynamic> update,
+  }) {
+    for (final entry in update.entries) {
+      if (_retainedUpdateKeys.contains(entry.key)) _mergedUpdate[entry.key] = entry.value;
+    }
+    _latestParams = notification.params;
+  }
+
+  AcpNotification? get mergedUpdate {
+    final params = _latestParams;
+    if (params == null) return null;
+    // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
+    final mergedUpdate = Map<String, dynamic>.unmodifiable(_mergedUpdate);
+    return AcpNotification(
+      method: AcpMethods.sessionUpdate,
+      params: {...params, "update": mergedUpdate},
+    );
+  }
 }

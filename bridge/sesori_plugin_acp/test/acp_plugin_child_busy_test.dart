@@ -364,6 +364,20 @@ void main() {
       expect(plugin.childSessionTracker.childStatuses, isEmpty);
     });
 
+    test("deleting a child drops its descendant subtree from plugin state", () async {
+      final sessionId = await connectAndCreateSession();
+      spawnChild(root: sessionId, childId: "c1");
+      spawnChild(root: "c1", childId: "c2");
+      expect((await plugin.getSessionStatuses()).keys, containsAll([sessionId, "c1", "c2"]));
+
+      await plugin.deleteSession("c1");
+      await pump();
+
+      expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("deleting the root drops its children from the statuses", () async {
       final sessionId = await connectAndCreateSession();
       spawnChild(root: sessionId, childId: "c1");

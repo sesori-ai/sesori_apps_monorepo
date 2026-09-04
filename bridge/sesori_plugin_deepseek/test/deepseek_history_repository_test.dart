@@ -22,7 +22,6 @@ void main() {
     final messages = await repository.getMessages(
       client: _unusedClient(),
       sessionId: "s1",
-      rootSessionId: "s1",
     );
 
     expect(api.cursors, [null, 10]);
@@ -48,7 +47,7 @@ void main() {
     );
 
     await expectLater(
-      repository.getMessages(client: _unusedClient(), sessionId: "s1", rootSessionId: "s1"),
+      repository.getMessages(client: _unusedClient(), sessionId: "s1"),
       throwsA(
         isA<PluginOperationException>()
             .having((error) => error.operation, "operation", DeepSeekAcpApi.historyMethod)
@@ -78,7 +77,6 @@ void main() {
     final messages = await repository.getMessages(
       client: _unusedClient(),
       sessionId: "s1",
-      rootSessionId: "s1",
     );
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
     expect(tile.id, "s1-subagent-child-1-subtask");
@@ -126,7 +124,6 @@ void main() {
     final messages = await repository.getMessages(
       client: _unusedClient(),
       sessionId: "s1",
-      rootSessionId: "s1",
     );
     final replayTile = messages.single.parts.single;
     final liveEnd = tracker.finish(
@@ -144,58 +141,33 @@ void main() {
     await tracker.dispose();
   });
 
-  test("nested replay uses persisted ancestry when live tracking is empty", () async {
+  test("nested replay stays in its direct parent's history when live tracking is empty", () async {
     final tracker = AcpChildSessionTracker();
-    final api = _HistoryApi([
-      DeepSeekTerminalHistoryResponseDto(
-        updates: [
-          _subagentUpdate(
-            sessionId: "child",
-            childSessionId: "grandchild",
-            sessionUpdate: "tool_call",
-            ended: null,
-          ),
-        ],
-      ),
-    ]);
-    final rootSessionId =
-        DeepSeekSessionService(
-          repository: DeepSeekSessionRepository(api: api),
-          childSessions: tracker,
-        ).rootSessionIdFor(
-          sessionId: "child",
-          persistedSessions: const [
-            PluginSession(
-              id: "root",
-              projectID: "/project",
-              directory: "/project",
-              parentID: null,
-              title: "Root",
-              time: null,
-            ),
-            PluginSession(
-              id: "child",
-              projectID: "/project",
-              directory: "/project",
-              parentID: "root",
-              title: "Child",
-              time: null,
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [
+            _subagentUpdate(
+              sessionId: "child",
+              childSessionId: "grandchild",
+              sessionUpdate: "tool_call",
+              ended: null,
             ),
           ],
-        );
-    final repository = _repository(api: api, childSessions: tracker);
+        ),
+      ]),
+      childSessions: tracker,
+    );
 
-    expect(rootSessionId, "root");
     final messages = await repository.getMessages(
       client: _unusedClient(),
       sessionId: "child",
-      rootSessionId: rootSessionId,
     );
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
-    expect(messages.single.info.id, "root-subagent-grandchild");
-    expect(messages.single.info.sessionID, "root");
-    expect(tile.id, "root-subagent-grandchild-subtask");
-    expect(tile.sessionID, "root");
+    expect(messages.single.info.id, "child-subagent-grandchild");
+    expect(messages.single.info.sessionID, "child");
+    expect(tile.id, "child-subagent-grandchild-subtask");
+    expect(tile.sessionID, "child");
     await tracker.dispose();
   });
 
@@ -229,7 +201,6 @@ void main() {
     final messages = await repository.getMessages(
       client: _unusedClient(),
       sessionId: "s1",
-      rootSessionId: "s1",
     );
     expect(messages.single.parts, hasLength(1));
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
