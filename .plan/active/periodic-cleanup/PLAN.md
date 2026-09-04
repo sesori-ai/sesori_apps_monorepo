@@ -45,29 +45,50 @@ Remain in the dedicated worktree. Do not create another worktree or working dire
 ### 2. Keep the streaming accumulator across silent refresh
 
 Owner: existing `SessionDetailCubit` and `StreamingTextBuffer`. Replace the
-unconditional `_streamingBuffer.clear()` when a silent snapshot is installed
-with targeted retirement. Capture an immutable buffer snapshot at reload start.
-For fetched messages whose existing `MessageTime.completed` is non-null, retire
-a fetched text part's buffer through `removePart` only if its current value is
-unchanged from reload start. The fetched completed text then becomes visible
-through `resolvePartContent`. This covers reconnect after a missed final-part
-event; preserving every buffer would otherwise hide the recovered final text.
-Keep buffers for unfinished messages and buffers changed during the fetch;
-final-part/deletion events and the existing session-load/close paths retain
-their clearing responsibilities. Emit the remaining buffer snapshot without
-changing the streaming timer. Do not infer completion from idle status or a
-text-length guess. Equal values cannot establish unseen event history; accept
-that limit without per-part versions or a replay journal. A buffer changed
-during the fetch remains live until its final event or a subsequent completed
-snapshot retires it.
+unconditional clear with content reconciliation for both `MessagePartText` and
+`MessagePartReasoning`. History provides IDs and accumulated part text, not a
+universal finality signal: Codex `_messageTimeFrom`, Pi `_time` and Claude
+`_messageTime` explicitly emit `completed: null`. Do not infer finality from
+message timestamps, idle status, or the mere presence of a fetched part.
 
-Promote the `before-` / refresh / `after` diagnostic into a focused regression.
-Cover missed final-part delivery followed by a completed snapshot (the full
-fetched text must be visible and no longer streaming), continuing unfinished
-text, a delta/finalized part arriving during reload, normal completion, removal,
-and closing during reload. Expected result: continuing deltas retain their
-prefix and completed catch-up is visible; no database/wire change or new mutable
-fields. The before-buffer map is invocation-local, like step 3's message inputs.
+For each buffered part, compare its current text with the same-ID part that will
+actually be installed (the fetched list in step 2; the reconciled list in step 3).
+If the installed text starts with the entire buffered value, remove that buffer
+and display the installed text. This is exact content coverage, not a length or
+completion heuristic: a snapshot containing `before-after` can replace buffered
+`before-` even with null completion time. If the part is absent, shorter or
+divergent, keep the buffer; it contains live content the snapshot has not shown
+it can replace. Use the current accumulator, including deltas received while
+fetching, rather than a stale saved value. Existing final-part/removal events
+still retire buffers directly.
+
+Retirement alone is insufficient because a fetched part may still be growing.
+When the next delta creates an accumulator, seed it once from the installed
+text/reasoning part before appending. Pass the event's existing `messageID`
+through `_onPartDelta` for the lookup. Give `appendDelta` a required nullable
+base-text input and update its internal callers/tests in lockstep; an existing
+accumulator ignores that input. Look up the base only when a buffer is absent,
+not by rescanning transcript contents on every delta. No extra base cache,
+registry or timer is needed. Thus snapshot `before-middle` followed by delta
+`after` renders `before-middleafter`; an absent snapshot part still preserves
+the original `before-` / refresh / `after` diagnostic. Keep buffer creation
+lazy so snapshot-only text does not remain labeled streaming indefinitely.
+
+Promote the diagnostic and cover text AND reasoning: null/missing completion
+times with missed final-part events; snapshot equal to or extending the buffer;
+a shorter/absent snapshot; continuing deltas after retirement; live deltas and
+final-part events during reload; normal removal and close. Add fixture-backed
+history-to-client cases for Codex, Pi and Claude, and the existing OpenCode
+streaming case; use each loader's real IDs/part shapes rather than giving fake
+messages completion timestamps their harness never supplies.
+
+This uses existing content, not a globally ordered snapshot. A divergent rewrite
+cannot be ordered against live text without a cursor; retain live text until an
+authoritative part-update event or a covering snapshot. Do not add overlap
+stitching, replay deduplication, per-part versions or plugin-specific finality
+flags to guess missing provenance. The streaming flag still describes an active
+accumulator, not backend message completion. No new mutable fields, wire model,
+DB column or timer; existing buffer storage is reused.
 
 ### 3. Reconcile fetched messages with changes received during reload
 
@@ -102,6 +123,19 @@ The required diagnostic result includes BOTH the fetched replacement of the
 preexisting part and the new live part. Keeping the entire old live list would
 fail that case and is not an acceptable implementation. Deltas remain in the
 existing accumulator per step 2 and are never replayed as part of reconciliation.
+
+Before deriving snapshot metadata, read the latest state and reconcile messages.
+Run the existing assistant/error selection and model derivation on that same
+installed list, using the effective agent/provider catalogs after the existing
+`optionsGeneration` precedence check. Update `agent`, `assistantAgentModel` and
+any message-derived inputs to #1294's selection calculator from those results;
+do not overwrite them afterward from `_deriveSnapshot` of the raw fetched page.
+Keep explicit current user selection and options supersession rules intact.
+Children/status derivations remain with their existing owners. Cover a live
+assistant added during fetch and an existing assistant whose agent/model changes
+while the fetched page omits or predates it: transcript, assistant metadata and
+selection inputs must agree in the same emission, including newer options.
+
 Queue side effects are not replayed; they continue at their existing live and
 snapshot owners. Install the reconciled transcript before declaring refresh
 applied, consuming the coalesced stale signal, or reasserting the session view.
@@ -266,8 +300,13 @@ measurement.
 ### 9. Stop forwarding backend events with no product consumer
 
 OpenCode `SseEventMapper` stops producing the 15 internal PTY/file-watcher/LSP/
-MCP/installation/workspace/worktree variants listed in audit D3. Delete those
-`BridgeSseEvent` variants and corresponding identity/wire mapping arms; retain
+MCP/installation/workspace/worktree variants listed in audit D3. Codex also emits
+`BridgeSseMcpToolsChanged` for `mcpServer/startupStatus/updated`; suppress that
+unused notification in `CodexEventMapper` in this same step and update its mapper
+test to assert no forwarded event. Retain Codex `skills/changed` command-catalog
+invalidation and other consumed notifications. Search all constructors before
+deleting each shared variant so every producer/test is updated together. Delete
+those `BridgeSseEvent` variants and corresponding identity/wire mapping arms; retain
 exhaustive handling of the remaining union. Keep external generated OpenCode
 models and public shared/client decoders for released older bridges.
 
@@ -293,9 +332,12 @@ once, in `configureCoreDependencies` (phase 3); regenerate owning injectable
 output. Keep the mobile recording provider lazy so its shared-client dependency
 resolves after core registration, then perform the existing warm-up. Delete the
 superseded duplicate storage/cache implementations; retain only the thin native
-lookup adapters in shells. Consolidate common behavior tests in core, including
-`client/app/test/core/platform/temporary_directory_client_test.dart`: preserve
-shared-future identity, asynchronous direct lookup failure, synchronous and
+lookup adapters in shells. Move the existing suite from
+`client/app/test/core/platform/temporary_directory_client_test.dart` to
+`client/module_core/test/foundation/io/temporary_directory_client_test.dart`.
+This core suite owns shared-client behavior; only thin platform-provider adapter
+checks remain in each shell's test tree. Preserve shared-future identity,
+asynchronous direct lookup failure, synchronous and
 asynchronous warm-up failure containment, and successful retry after failure.
 Use the required provider fake at the new seam; retain no test-only constructor.
 Keep atomic flush/rename, path validation, unique temp names, finally cleanup,
@@ -571,7 +613,7 @@ regression README/index before step 25 executes the recorded matrix and retires.
 
 | Scope | Budget / evidence / limitation |
 | --- | --- |
-| Transcript | Zero new persistent or mutable cubit fields. Existing accumulator remains alive; invocation-local before/live/fetched reconciliation. Ordinary-flow failures reproduced; no globally versioned snapshot claim. |
+| Transcript | Zero new persistent or mutable cubit fields. Existing accumulator retains uncovered live content and seeds from installed text on its next creation; invocation-local before/live/fetched reconciliation. Ordinary-flow failures reproduced; no globally versioned snapshot claim. |
 | Dead paths | Remove one maintained map and three unused drain APIs plus the unused insertion API. Retain real ordering/identity guards; production callers verified. |
 | Cache | Remove one persisted field and nullable recovery state. Zero new locks/epochs/retry loops. Injected corruption supports deletion, not more recovery machinery. |
 | Typed events/queries/noise | Zero new mutable/persistent parts. Four immutable normalized payload variants replace the stream payload vocabulary; no additional stream or lifecycle owner. Reuse existing mapping owners. Public compatibility stays at the wire boundary. Cost reduction established structurally, unmeasured in time. |
@@ -598,14 +640,14 @@ contract half-migrated across plugins. Estimates include tests and generators.
 | Step | Review focus / expected result | Estimated changed lines |
 | --- | --- | --- |
 | 1 | Consolidated audit, evidence, plan and handoffs. No product/database change. | 1,500–2,000 |
-| 2 | Prefix survives refresh and finalization still clears text; low risk, localized client logic. | 80–180 |
+| 2 | Text/reasoning catch-up and continued deltas preserve content without a finality heuristic; moderate client/buffer contract risk. | 200–400 |
 | 3 | Fetched data and live changes both survive; moderate risk, no replay/provenance registry. | 450–900 |
 | 4 | Test setups no longer keep unused production paths alive; medium integrity risk, real creation and ordering tests. | 450–950 |
 | 5 | Remove unused persisted metadata and failing recovery branch; high migration sensitivity. | 600–1,500 plus schema artifacts if necessary |
 | 6 | Typed status and normalized stream seam in every producer/consumer; medium cross-plugin mapping risk. | 600–1,200 |
 | 7 | Typed messages agree in history and live events; high persisted-content sensitivity, no schema change. | 700–1,400 |
 | 8 | Scoped projections retain identity/timestamp semantics; medium query risk, no schema change. | 200–450 |
-| 9 | Drop no-consumer internal events, preserve published consumers/decoders; medium compatibility risk. | 200–500 |
+| 9 | Drop OpenCode and Codex no-consumer internal events, preserve published consumers/decoders; medium compatibility risk. | 200–500 |
 | 10 | Shared native storage/directory and fewer registries; medium filesystem/DI risk, paths unchanged. | 700–1,300 |
 | 11 | One rename algorithm retains overlap/rollback behavior; medium UI-state risk. | 200–450 |
 | 12 | One installer graph retains each plugin's inputs/lifetime; medium installation risk. | 350–800 |
@@ -633,11 +675,11 @@ actual count and generated-versus-handwritten split. Do not manufacture an
 intermediate incompatible schema to satisfy a line cap. Otherwise split only
 with a coherent update to all titles/denominators before the affected PR opens.
 Architecture plan review is recorded below; implementation review required for
-3–13 and 16 where production contracts/owners/files change, 17 if a production
+2–13 and 16 where production contracts/owners/files change, 17 if a production
 exception type is introduced, and 20 for dependency-boundary changes.
 No review for ordinary local method folds, logging, tests or docs.
-Step 2 is localized existing-method logic unless implementation adds architecture;
-step 3 introduces a service-layer calculator and requires implementation review.
+Step 2 changes the internal buffer input contract; step 3 introduces a service-layer
+calculator. Both require scoped implementation review.
 
 ## Verification and retirement
 
@@ -652,11 +694,11 @@ evidence instead of rerunning it. Missing required coverage keeps the plan activ
 
 | Affected feature documents | Required matrix and complete proof boundary |
 | --- | --- |
-| `session-history-and-recovery.md`, `session-turns.md`, `bridge-connectivity.md` | Steps 2–3: automated L2/L4 cubit+buffer tests above, then client E2E on macOS desktop and one supported mobile platform through a representative streaming backend: intended resume/reconnect refresh, continuing delta, finalization, missed final-event catch-up without a masking buffer, snapshot-only catch-up, paged history. Record the other mobile platform as outside this scoped matrix, not passed. No network latency/protocol change claim. |
+| `session-history-and-recovery.md`, `session-turns.md`, `bridge-connectivity.md` | Steps 2–3: automated L2/L4 cubit+buffer tests above, real Codex/Pi/Claude history-mapper fixtures through shared text/reasoning values into the refresh boundary (null completion), assistant metadata/selection consistency with live updates and options supersession, then client E2E on macOS desktop and one supported mobile platform through a representative streaming backend: intended resume/reconnect refresh, continuing delta, finalization, missed final-event catch-up without a masking buffer, snapshot-only catch-up, paged history. Record the other mobile platform as outside this scoped matrix, not passed. No network latency/protocol change claim. |
 | `projects-and-sessions.md`, `session-archiving-and-deletion.md` | Steps 4/8: automated L2/L4 real SQLite repository/service/identity tests, deferred parent/child ordering, eviction, two plugins sharing a backend ID, current creation commit/defaults/binding notification and affected route tests. Representative faithful plugin sufficient for unchanged core policy. No destructive live user data mutation. |
 | `session-creation-and-options.md` | Step 5: automated L2/L4 real database fresh install and schema-14 upgrade (valid and unknown old completeness), explicit successful discovery after upgrade, malformed remaining JSON, retained fresh completeness policy, invalidation/generation/path tests. Fake plugin plus real DAO/repository/service is the full cache-policy boundary; SQLite host macOS, migration CI as configured. |
 | `session-turns.md`, `session-history-and-recovery.md`, `questions-and-permissions.md` | Steps 6–7: automated L2/L4 translator tests for every producing production plugin/common ACP path, status variants, user/assistant/error messages, stable IDs, terminal handoff, child routing, stored/live agreement and relay JSON round trips. Existing external API fixtures retained; compare emitted public wire fields with baseline. One headless bridge transcript/status smoke using representative live backend proves composed path. Public client wire fixtures exercise old/new decode; no backend upgrade or new capability claim. |
-| `tools-and-file-changes.md`, `bridge-connectivity.md` | Step 9: automated L2 exact dropped-category OpenCode mapping fixtures and retained toast/file/VCS/options/lifecycle cases; public client consumer inspection and decoder regression tests. Suppressed external notifications stop at plugin boundary. No UI capability claimed removed. |
+| `tools-and-file-changes.md`, `bridge-connectivity.md` | Step 9: automated L2 exact dropped-category OpenCode mapping fixtures and Codex MCP startup-notification suppression, both mapper suites plus retained toast/file/VCS/skills-command/options/lifecycle cases; public client consumer inspection and decoder regression tests. Suppressed external notifications stop at plugin boundary. No UI capability claimed removed. |
 | `attachments-and-images.md`, `voice-input.md` | Step 10: automated L2/L4 shared storage, migrated temporary-directory cache/failure/retry suite, image-repository, retirement, atomic replacement/concurrency/corruption and mobile recording tests. Core file suite on macOS/Linux/Windows (CI allowed). Native directory binding write/read/list/delete-scope smoke on macOS desktop, iOS and Android. Real platform lookup is required; mock-only wiring cannot prove it. |
 | `projects-and-sessions.md` | Step 11: automated L2/L4 both cubit rename suites including overlapping success/failure, null originals and refresh, plus shared RenameSheet behavior/widget tests. Shared module and both shells analyze/build. Unchanged bridge persistence needs no additional live rename claim. |
 | `plugin-runtime-installation.md` | Step 12: automated L2/L4 runtime and all seven descriptor install/setup suites, manifest target mapping, checksum/failure/cancellation and client closure. Headless live installation/verification/re-inspection on macOS arm64 for every managed-install consumer using isolated runtime roots. Existing fixture tests cover platform-specific executor/resolver inputs; no new binary/platform support claim. |

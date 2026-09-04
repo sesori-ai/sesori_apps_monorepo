@@ -44,7 +44,7 @@ No live backend, full UI, performance benchmark, or full suite was run.
 | C | Persisted options completeness is never consumed and can make successful discovery unrecoverable | Unused-field trace plus real SQLite fault-injection failure | Remove column and obsolete unknown-revision recovery |
 | D1 | Status/message events discard existing types and repeatedly parse JSON internally | Producer-to-storage-to-wire trace | Two lockstep internal contract PRs |
 | D2 | Raw session events also conflate plugin observations with enriched bridge catalog data | Producer and normalization trace | Separate larger boundary redesign deferred |
-| D3 | Fifteen OpenCode event variants reach no-op client handlers | Producer/consumer search; public v1.8.2 also inspected | Drop unused internal forwarding, preserve public decoders |
+| D3 | Fifteen event variants from OpenCode, with Codex also emitting MCP-tools changes, reach no-op client handlers | Producer/consumer search; public v1.8.2 also inspected | Drop unused internal forwarding, preserve public decoders |
 | D4 | Identity lookups materialize whole sessions; scoped project activity loads the whole catalog | All production callers inspected | Narrow DAO projections, no cache |
 | E1/E3/E5 | Thumbnail storage, rename bookkeeping, installer graphs duplicated | Compared implementations and real differences | Three independent cleanup PRs |
 | E2/E4 | Per-thumbnail whole-cache scans; locally reimplemented dispatch queues | Source cost/semantics established, benefit unmeasured | Defer optimization/queue replacement pending stronger benefit |
@@ -188,15 +188,22 @@ listener/terminal-handoff accounting. Defer it as an estimated 1,200–2,400-lin
 cross-layer follow-up; do not make D1 depend on inventing a generic event envelope.
 The residual session parsing helper remains until that work is justified.
 
-**D3 — unused event transport.** OpenCode alone produces these internal groups:
+**D3 — unused event transport.** OpenCode produces these internal groups:
 PTY created/updated/exited/deleted (4), file watcher (1), LSP (2), MCP (2),
 installation (2), workspace (2), worktree (2): **15 variants**. Core passes them
 through normalization and wire mapping; current client production references
 are null-routing or ignored-case lists. Public v1.8.2 has the same no-op uses.
 Keep toast, VCS, file-edited, command/options, and lifecycle signals with real
-consumers. No traffic volume or latency reduction has been measured.
+consumers. Codex also emits `BridgeSseMcpToolsChanged` for
+`mcpServer/startupStatus/updated` in its
+[event mapper](../bridge/sesori_plugin_codex/lib/src/codex_event_mapper.dart),
+with an assertion in its
+[mapper tests](../bridge/sesori_plugin_codex/test/codex_event_mapper_test.dart).
+Include that producer/test in the same suppression step, keeping Codex's
+`skills/changed` command-catalog invalidation. No traffic volume or latency
+reduction has been measured.
 
-Stop generating unused internal events at the OpenCode mapper; delete the
+Stop generating unused internal events at the OpenCode and Codex mappers; delete the
 unused internal union cases and forwarding branches. Keep generated external
 OpenCode API models and released public wire decoders. Confirm older supported
 public clients have no meaningful consumer before suppressing each category;

@@ -28,7 +28,7 @@ transcript failures through the intended stale-data refresh path against
 delta loses its pre-refresh prefix. Diagnostic patches and results are
 [recorded there](../periodic-cleanup/evidence/README.md). Proposed cleanup steps
 2–3 own those fixes, pending implementation scope acceptance. They preserve
-active streaming text, reconcile completed snapshot catch-up and merge
+active streaming text, reconcile text/reasoning snapshot catch-up and merge
 before/live/fetched transcript values without an event journal.
 
 Normal `sendMessage` does not directly refresh or reconnect; `isRefreshing=true`
@@ -46,7 +46,7 @@ records the August diagnostic design; this tracker owns current execution state.
 | Debug refresh diagnostics | Delivered by merged #734 | Logging-only; historical validation below. |
 | Redirect `sessions.updated` to command-only refresh | Superseded by subsequent implementation | Current detail ignores this event; do not implement the old proposal. |
 | Targeted session-options wire event | Implemented subsequently | Current dedicated options event and handler replace the old deferred proposal. |
-| Transcript reconciliation | Handed to periodic-cleanup steps 2–3 | Two diagnostics fail through intended refresh; other snapshot groups remain deferred. |
+| Grouped snapshot reconciliation | Transcript portion handed to periodic-cleanup steps 2–3; other groups deferred | The intended-refresh diagnostics meet the prior reopening condition for transcript hardening. Questions, status and child snapshot groups remain deferred without a journal or grouped epoch. |
 | Transcript-only mutation epoch | Deferred | No additional epoch needed for the proposed before/live/fetched merge. |
 | Apply-live event journal/replay | Rejected | Deltas and modal effects are not safely replayable without a cursor. |
 | Versioned coherent session synchronization | Deferred | Requires separate evidence of material replay gaps/coherency needs. |

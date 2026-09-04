@@ -8,14 +8,14 @@ simplification. Refactor execution scope remains pending.
 | Step | Exact PR title | Status | PR |
 | --- | --- | --- | --- |
 | 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | In review | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
-| 2/25 | 🌿 [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Proposed | — |
+| 2/25 | ⚙️ [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Proposed | — |
 | 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Proposed | — |
 | 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Proposed | — |
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Proposed | — |
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Proposed | — |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Proposed | — |
-| 9/25 | ⚙️ [periodic-cleanup] opencode: stop forwarding unused backend events [step 9/25] | Proposed | — |
+| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Proposed | — |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
@@ -75,8 +75,8 @@ simplification. Refactor execution scope remains pending.
 
 ## PR feedback corrections — 2026-09-04
 
-- Replace blanket buffer preservation with completed-snapshot retirement of
-  unchanged buffers; retain deltas received during reload without new fields.
+- Initial buffer correction used completed-message timestamps; the subsequent
+  loader inspection below supersedes that unreliable predicate.
 - Move transcript merge policy to a service-layer calculator and normalized
   event values to repository models. Core DI registers shared native storage;
   shell modules bind only the platform provider.
@@ -93,3 +93,21 @@ simplification. Refactor execution scope remains pending.
 - Validation: 61 relative links, all 25 exact titles, and the contiguous 13-row
   verification matrix pass. Revised delta diagnostic reproduces expected
   `before-after`, actual `after` without a fixed delay; test source restored.
+
+## Follow-up PR feedback — 2026-09-04
+
+- Confirmed Codex/Pi/Claude history omits completion timestamps and that Codex
+  emits the shared MCP-tools event. Corrected the actual producer/loader scope.
+- Step 2 uses exact content coverage for text/reasoning and seeds the next
+  accumulator from installed content. No inferred finality or extra state;
+  explicit divergent-history limitation retained. Its buffer-contract change
+  raises the planned title to moderate complexity and its estimate to 200–400.
+- Step 3 derives assistant metadata and selection inputs after reconciliation,
+  using effective options catalogs. Step 9 includes Codex suppression/tests and
+  now has a plugins-scoped title; the denominator remains 25.
+- Named the source and destination of the temporary-directory test move and
+  preserved the grouped-snapshot option's transcript handoff/other-group deferral.
+- Valid review corrections applied directly; no claim of another architecture
+  approval or newly executed product tests. Prior diagnostic evidence is unchanged.
+- Validation: all 63 relative links, 25 exact titles, the contiguous 13-row
+  verification matrix and Git whitespace checks pass.
