@@ -196,9 +196,11 @@ state.
   messages to derive titles.
 - DeepSeek explicit import enumerates only adapter-owned session headers below
   the isolated plugin state. It derives projects from normalized session `cwd`,
-  preserves parent/child metadata, and never scans or imports normal
+  preserves direct parent/child metadata, and never scans or imports normal
   `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
-  reads after import; adapter JSONL is not a second normal catalog source.
+  reads after import; adapter JSONL is not a second normal catalog source. Child
+  reads merge those persisted rows with not-yet-persisted live protocol-v2
+  children by id, preferring persisted title and time metadata.
 - GitHub Copilot explicit import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans

@@ -225,11 +225,17 @@ defaults and queued client sends coherent.
   user-visible text plus those images; injected context, local paths, and URLs
   remain absent. OMP runs different sessions concurrently because its permission
   and form requests carry explicit session IDs.
-- DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
-  completion, and bounded warning errors through standard ACP plus its narrow
-  status extension. Retry and compaction-start notifications are validated but
-  intentionally emit no shared event because DeepSeek does not supply the timing
-  required by the shared retry state and the active turn is already busy.
+- DeepSeek maps text, reasoning, ordinary tools, plans, title/config updates,
+  compaction completion, and bounded warning errors through standard ACP plus
+  its narrow status and sub-agent extensions. Retry and compaction-start
+  notifications are validated but intentionally emit no shared event because
+  DeepSeek does not supply the timing required by the shared retry state and the
+  active turn is already busy. A protocol-v2 sub-agent start keeps the root and
+  plugin busy after a background parent turn settles; its terminal event updates
+  the tile and releases that child work. DeepSeek creates no autonomous
+  settlement hold because its protocol-v2 lifecycle contract has no authoritative
+  settlement event. Existing process-exit, disconnect, deletion, and disposal
+  cleanup cancels or clears remaining child activity.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other

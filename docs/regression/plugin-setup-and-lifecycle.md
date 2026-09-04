@@ -23,21 +23,24 @@ idle suspension, the management snapshot, and lifecycle commands.
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
-  release (`>=0.1.0`) and the exact managed `0.1.1` release. An old or malformed
+  release (`>=0.1.0`) and the exact managed `0.1.2` release. An old or malformed
   PATH candidate falls through to managed selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
   supported platform without an explicit path, and gives local DeepSeek
   provider/setup guidance. Managed installation verifies the immutable archive
   digest and preserves the packaged launcher with its bundled Node runtime. Startup
-  validates ACP v1 plus required DeepSeek extension metadata, owns one stdio
-  child through the host process seam, degrades on an unexpected exit, lazily
-  reconnects on demand, and shuts down idempotently without treating its own
-  termination as a crash.
+  validates ACP v1 plus required DeepSeek extension metadata and temporarily
+  accepts extension protocol v1 or v2 while adapter v0.1.3 remains unpublished.
+  The managed target and PATH floor stay at 0.1.2/0.1.0 until that release records
+  the merged consumer commit. The plugin owns one stdio child through the host
+  process seam, degrades on an unexpected exit, lazily reconnects on demand, and
+  shuts down idempotently without treating its own termination as a crash.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
-  `deepseek/*` is limited to catalog, detached history, rename, questions, and
-  bounded statuses on that same connection. Normal `DSH_HOME` remains the source
-  of settings, credentials, providers, and skills but its session root is never
-  scanned. Session, attachment, query, and spill mutations stay below plugin
+  `deepseek/*` is limited to catalog, detached history, rename, questions,
+  bounded statuses, and sub-agent lifecycle on that same connection. Normal
+  `DSH_HOME` remains the source of settings, credentials, providers, and skills,
+  but its session root is never scanned. Session, attachment, query, and spill
+  mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`

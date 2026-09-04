@@ -7,6 +7,10 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 
 typedef AcpReplayUserMessageIdOverride = String? Function({required String acpMessageId});
 typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map<String, dynamic> params});
+typedef AcpReplayToolPartReplacement = PluginMessagePart? Function({
+  required String toolCallId,
+  required PluginMessagePartTool toolPart,
+});
 typedef _AcpReplayAssistantSelection = ({String? modelId, String? providerId, String? variant});
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
@@ -31,6 +35,11 @@ class AcpReplayCollector({
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
   required final AcpHaltNotice? Function({required String text})? haltClassifier,
+
+  /// Replaces one materialized standard tool part with a harness-specific part.
+  /// Null retains the generic ACP projection. The callback is replay-local and
+  /// receives only immutable materialized data; it must not touch live state.
+  required final AcpReplayToolPartReplacement? toolPartReplacement,
 }) {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
@@ -404,7 +413,7 @@ class AcpReplayCollector({
     required _ToolDraft tool,
   }) {
     final content = tool.contentTracker.snapshot;
-    return PluginMessagePart.tool(
+    final toolPart = PluginMessagePart.tool(
       id: "${draft.id}-tool-$toolId",
       sessionID: sessionId,
       messageID: draft.id,
@@ -416,7 +425,8 @@ class AcpReplayCollector({
         error: tool.status == PluginToolStatus.error ? content.output : null,
         attachments: content.attachments,
       ),
-    );
+    ) as PluginMessagePartTool;
+    return toolPartReplacement?.call(toolCallId: toolId, toolPart: toolPart) ?? toolPart;
   }
 
   void _retainTime({required _Draft draft, required PluginMessageTime? time}) {

@@ -171,11 +171,13 @@ implementation PR. E2E testing is performed after each PR merges.
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
-| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) |
-| [ ] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
-| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Not started |
+| [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
+| [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; package version staged, release pending |
+| [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | In progress on `claude-inline-subtasks-deepseek-tiles` |
+| [ ] | DeepSeek (adapter) | `🌱 release: publish v0.1.3 for the merged consumer` | Next after the tile/live-child consumer merges |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Pending adapter v0.1.3 release |
+| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
 
@@ -534,3 +536,26 @@ A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
 service-owned lifecycle flow and replay replacement, the proportional Grok
 denied-attempt replay limitation, and terminal DeepSeek settlement cleanup
 with no findings.
+
+A fourth follow-up `architecture-plan-review` on 2026-09-04 reconciled the
+DeepSeek design to the merged adapter contract and approved the sequence:
+prompt-contract correction, monorepo tiles/live children, release preparation,
+then scoped stop. The corrected design carries a bounded truthful prompt, has
+no settlement lifecycle or autonomous hold, and uses the enclosing standard
+update's tool-call id for replay correlation.
+
+The DeepSeek tile implementation's `architecture-implementation-review`
+rejected one deferred scoped-stop addition: interrupt request/response DTOs and
+parsers had no production consumer in this change. They were removed and stay
+owned by the later scoped-stop PR; the complete protocol-v2 source fixture
+remains pinned as integrity evidence. The approved replay callback, boundary,
+mapper, tracker, service, and composition ownership passed and were not
+re-reviewed. A correctness review found Unicode-scalar validation and child
+project/parent attribution gaps; both were fixed with regressions, and its
+focused re-review passed with no findings.
+
+DeepSeek tile verification on 2026-09-04: protocol v2 vendoring and codegen
+completed; `dart analyze --fatal-infos` and 61 tests passed in
+`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 306 tests passed in
+`sesori_plugin_acp`; `git diff --check` passed; protocol-v1 fixture bytes and
+the DeepSeek runtime manifest remained unchanged.

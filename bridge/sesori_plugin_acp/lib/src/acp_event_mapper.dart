@@ -299,8 +299,7 @@ class AcpEventMapper({
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
-  String _fallbackTurnMessageId(String sessionId) =>
-      _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
+  String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
@@ -585,13 +584,14 @@ class AcpEventMapper({
   List<BridgeSseEvent> mapChildSpawned({required String sessionId, required AcpChildSpawn spawn}) {
     // Same boundary rule as [map]: an id-less session event is undeliverable.
     if (sessionId.isEmpty || spawn.childSessionId.isEmpty) return const [];
-    return _childTileEvents(
-      childSessions.spawn(
-        sessionId: sessionId,
-        spawn: spawn,
-        directory: projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId)),
-      ),
+    final directory = projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId));
+    final result = childSessions.spawn(
+      sessionId: sessionId,
+      spawn: spawn,
+      directory: directory,
     );
+    if (result.events.isNotEmpty) setSessionProject(spawn.childSessionId, directory);
+    return _childTileEvents(result);
   }
 
   /// Records the model a harness reports for a spawned child, so the child's
@@ -699,9 +699,7 @@ class AcpEventMapper({
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
-      update: messageId == null
-          ? const <String, dynamic>{}
-          : <String, dynamic>{"messageId": messageId},
+      update: messageId == null ? const <String, dynamic>{} : <String, dynamic>{"messageId": messageId},
       role: _ChunkRole.assistant,
     );
     final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
@@ -1215,7 +1213,7 @@ class AcpEventMapper({
       pluginId: pluginId,
       projectID: project,
       directory: project,
-      parentID: null,
+      parentID: childSessions.isChild(sessionId: id) ? childSessions.rootOf(sessionId: id) : null,
       title: snapshot?.title,
       time: created == null && updated == null
           ? null
@@ -1329,7 +1327,10 @@ class AcpEventMapper({
   }
 }
 
-enum _ChunkRole() { user, assistant }
+enum _ChunkRole() {
+  user,
+  assistant,
+}
 
 /// Last-known metadata for one session, merged into the `session.updated`
 /// payload a `session_info_update` emits.
@@ -1340,10 +1341,10 @@ class _SessionSnapshot() {
 }
 
 class _TextPartAccumulator({
-    required final String partId,
-    required final String messageId,
-    required final PluginMessagePartType type,
-  }) {
+  required final String partId,
+  required final String messageId,
+  required final PluginMessagePartType type,
+}) {
   final StringBuffer text = StringBuffer();
   bool isStreaming = false;
 }
@@ -1351,13 +1352,13 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
-    required final String tool,
-    required final String? title,
-    required final PluginToolStatus status,
-    required final AcpToolContentTracker contentTracker,
-    required final bool isFileMutation,
-    required var bool diffEmitted,
-    required final bool hasExplicitKind,
-    required final bool hasExplicitStatus,
-    required final PluginMessageTime? time,
-  });
+  required final String tool,
+  required final String? title,
+  required final PluginToolStatus status,
+  required final AcpToolContentTracker contentTracker,
+  required final bool isFileMutation,
+  required var bool diffEmitted,
+  required final bool hasExplicitKind,
+  required final bool hasExplicitStatus,
+  required final PluginMessageTime? time,
+});

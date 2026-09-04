@@ -20,8 +20,8 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
@@ -69,13 +69,14 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2,
-probed 2026-09-03): the harness emits `subagent/start`/`subagent/end` with
-child session ids and `ctx.subagents.interrupt` stops a continuable child; the
-adapter forwards none of it yet but is ours to extend, and the executing tool
-call is known for every start. Foreground children die with the parent while
-background ones survive, and the adapter can tell them apart, so
-main-agent-only is supportable when every running child is background.
+⁹ DeepSeek (`sesori-deepseek-acp` 0.1.3 source over dsh 0.1.1-rc.2,
+probed 2026-09-03) now has protocol-v2 lifecycle, descendant transcript, replay,
+and per-child interrupt contracts. Sesori maps its live and replayed child work
+to tiles and child sessions, including foreground/background mode; a protocol-v1
+adapter retains its generic delegation cards. Adapter v0.1.3 remains unpublished:
+managed target 0.1.2 and PATH floor 0.1.0 remain in force until release preparation
+records the merged consumer commit. Scoped stop
+is intentionally pending the subsequent runtime-pin/interrupt consumer PR.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

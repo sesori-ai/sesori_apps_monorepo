@@ -46,10 +46,17 @@ signal that a tool changed files.
   as `cancelled`.
   Process exit — natural or an explicit stop — cancels every running task.
   OpenCode subtask parts keep a null lifecycle and the child-status fallback.
-- DeepSeek projects tool calls and updates through standard ACP with exact call
-  identity, bounded presenter output, terminal result/error state, and diff
-  content. Presenter failure degrades to a generic bounded tool card instead of
-  dropping the call or result.
+- DeepSeek projects ordinary tool calls and updates through standard ACP with
+  exact call identity, bounded presenter output, terminal result/error state,
+  and diff content. Presenter failure degrades to a generic bounded tool card
+  instead of dropping the call or result. Its exact `subagent` and
+  `subagent_fork` calls render no duplicate generic card: protocol-v2 lifecycle
+  opens one child-linked subtask tile with the normalized prompt and label.
+  During the release compatibility window, a protocol-v1 adapter retains its
+  generic delegation card because it supplies no lifecycle replacement.
+  Completion retains the bounded summary, abort maps to cancelled, and failure,
+  token-limit, and refusal outcomes map to error. History replaces the same
+  delegation tool identity with one equivalent subtask part.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
@@ -69,8 +76,8 @@ signal that a tool changed files.
 |---|---|
 | L1 Smoke | Not included because proving tool behavior requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a tool part with name, terminal status, and bounded output. |
-| L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete tool lifecycle with bounded output, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
-| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity, status, and output intact; a failing tool surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
+| L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete tool lifecycle with bounded output, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. After adapter v0.1.3 publishes, DeepSeek covers foreground/background running → terminal tiles, child navigation, and no duplicate generic delegation card. |
+| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity, status, and output intact; a failing tool surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. DeepSeek: protocol-v2 replay preserves delegation identity, prompt, child link, and terminal state without changing live child activity. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
 ## Exploration Guidance

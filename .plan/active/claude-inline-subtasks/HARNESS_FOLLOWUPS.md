@@ -37,9 +37,8 @@ confirmation, no child session or partial stop) and gets that subset.
 ## Shared Rules
 
 - Backend payloads, DTOs, and lifecycle mapping stay inside the owning plugin
-  package. The generic ACP plugin gains exactly five backend-neutral seams,
-  introduced by the Grok chain (their first consumer) and reused by DeepSeek
-  and Cursor:
+  package. The generic ACP plugin gains only the backend-neutral seams below,
+  each landing with its first production consumer rather than ahead of it:
   1. `AcpChildSessionTracker`
      (`bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_child_session_tracker.dart`),
      a Layer-2 tracker with one instance per plugin, constructed at the harness
@@ -118,25 +117,19 @@ confirmation, no child session or partial stop) and gets that subset.
      reported as complete. `interruptActiveWork` uses `stop`.
   4. One abstract backend seam `cancelChild({sessionId, childSessionId})` on
      the per-harness ACP API; Grok and DeepSeek supply only the request shape.
-  5. A backend-neutral replay hook: `getSessionMessages` builds history from
+  5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
-     `PluginMessageWithParts` and never runs the live mapper. The collector
-     therefore accepts a harness-supplied replay projection that turns the
-     non-`session/update` notifications replayed by `session/load` into the
-     same `subtask` parts and child records the collector materialises. The
-     projection owns replay-local `AcpChildSessionTracker` and
-     `AcpDeferredToolCallTracker` instances created per `getSessionMessages`
-     call; it never touches either live tracker, the child change-stream
-     subscription, or the event buffer, so reading history cannot leave the
-     plugin busy, retain deferred calls, or emit live status transitions. Before the collector
-     runs, a harness may have its Layer-3 session service prepare an immutable,
-     backend-neutral `AcpReplayContext` through the harness API and repository;
-     the pure projection receives that context and performs no data access.
-     Grok uses this part of seam 5 to supply child prompts keyed by child id.
-     `mapExtension` stays a live-only seam.
-  Harness subclasses therefore override payload parsing, tool-call
-  classification, `mapExtension`, the replay projection, and `cancelChild`, and
-  nothing else.
+     `PluginMessageWithParts` without running the live mapper. A harness
+     repository may replace one fully materialized generic tool part with a
+     backend-neutral message part using the standard tool-call id. The callback
+     receives immutable replay data, performs no I/O, and never reads or mutates
+     live trackers, subscriptions, or the event buffer. DeepSeek is the first
+     consumer: its repository indexes typed metadata from those same replayed
+     standard updates, then asks its pure mapper to replace the delegation card
+     with one subtask tile. Future harness replay needs add no broader projection
+     until a concrete contract requires one. `mapExtension` stays live-only.
+  Harness subclasses add only the parsing, mapping, and transport overrides
+  required by the capability currently being delivered.
 - Child session ids are the harness's own session or thread ids. Parentage is
   data on the session record, never an id prefix.
 - One child equals one tile. Progress events do not update the tile; only
@@ -479,122 +472,63 @@ confirmation, no child session or partial stop) and gets that subset.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 
-## DeepSeek (`sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2)
+## DeepSeek (`sesori-deepseek-acp` 0.1.3 source over dsh 0.1.1-rc.2; release pending)
 
 ### Verified facts
 
-- dsh emits `subagent/start {runId, provider, id}` and `subagent/end
-  {..., stopReason: completed | aborted | error | max-tokens | refusal,
-  lastAssistantMessage?}` with the parent as scoped carrier; neither carries a
-  label, mode, or the parent tool call id. A log-only `subagent/descriptor`
-  records `mode: one-shot | continuable` and `label`.
-- Child headers inherit the parent `cwd` and set `parentSession`,
-  `origin: "subagent"`, `delegationDepth`.
-- The `subagent` tool is background (continuable) by default;
-  `run_in_background: false` runs a foreground one-shot. `subagent_fork` is
-  one-shot. A foreground child is cancelled by the parent tool's signal;
-  continuable children survive a parent cancel and are disposed only with the
-  parent agent. `ctx.subagents.interrupt(childId, {kind: "user",
-  parentSessionId})` interrupts continuable children; one-shot background
-  fork jobs cannot be interrupted individually.
-- The adapter (`src/sessions.ts`) forwards `tool/call` as a generic
-  `tool_call`, never forwards `subagent/*`, drops `session/event` for sessions
-  it does not own (so child events are discarded today), and already exposes
-  `parentSessionId`, `origin`, `delegationDepth` in `listSessions`.
-  `loadSession` and history work for any persisted id with a matching `cwd`,
-  so child history is reachable now. `_meta["sesori.ai/deepseek"]` is the
-  established extension envelope; the schema is Ajv-validated and
-  `EXTENSION_PROTOCOL_VERSION = 1`.
+- dsh emits `subagent/start` and `subagent/end` under the owning root context;
+  child headers retain direct `parentSession`, `origin: "subagent"`,
+  `delegationDepth`, and the inherited `cwd`.
+- Adapter PRs #13, #14, and #15 are merged. Protocol v2 (source commit
+  `d7a48471bf5339793beb0c9e1c1889e63f76ec92`) emits
+  `deepseek/subagent` `started {sessionId, childSessionId, toolCallId, prompt,
+  label, mode}` and `ended {sessionId, childSessionId, stopReason, summary?}`.
+  The normalized presentation prompt is required and bounded to 32,768 Unicode
+  scalar values. There is no settlement variant, settlement outcome,
+  post-child action, or uncorrelated-start wire shape.
+- History replay annotates the enclosing standard ACP delegation update at
+  `_meta["sesori.ai/deepseek"].subagent` with prompt, label, mode, optional
+  child id, and optional terminal outcome. Its `toolCallId` remains the
+  enclosing update's standard field rather than being duplicated in metadata.
+  Protocol v1 remains byte-for-byte frozen.
+- The same adapter source includes `deepseek/subagent/interrupt`, but the
+  monorepo consumes that method only in the separate scoped-stop PR.
 
-### Current plugin
+### Current plugin design
 
-- `deepseek_plugin_impl.dart` already parses `parentSessionId` from `_meta`
-  and lists persisted children through `listAllSessions`. Live child status,
-  tiles, and links are missing. `deepseek_event_mapper.dart` overrides
-  `mapExtension` for `deepseek/session/status`.
-
-### Design
-
-- **Adapter extension (protocol v2, additive; v1 stays frozen).** New
-  notification `deepseek/subagent` is sealed by `kind`: `started {sessionId,
-  childSessionId, toolCallId, prompt, label, mode: foreground | background}`;
-  `ended {sessionId, childSessionId, stopReason, summary?, postChildAction:
-  none | parentSettlementTurn}` (summary is bounded text of the last assistant
-  message); and `settlementEnded {sessionId, childSessionId, outcome}` with a
-  closed `completed | cancelled | errored` outcome enum. `toolCallId` and
-  `prompt` are required: the probe showed the `AsyncLocalStorage` scope
-  around the root `tools/execute` waterfall gives every `subagent/start` its
-  executing call id and typed call arguments, including parallel calls and
-  forks, so the adapter takes the prompt and label from that exact call and
-  there is no uncorrelated or prompt-less variant. Mode derives from the call's
-  `run_in_background` argument with the tool defaults; labels are never used
-  for correlation. A continuable child's `ended` declares
-  `parentSettlementTurn`; the adapter binds the later parent `user/message`
-  whose `source.kind` is `subagent-settled` and whose `senderSessionId` is that
-  child to the active parent turn, then emits `settlementEnded` on every
-  terminal path for that turn, normalizing completion, cancellation/interrupt,
-  and failure into its closed outcome enum. The adapter also applies the owning
-  root's provider/model
-  selection to its descendants through a root-level `agent/request`
-  listener, because children inherit `AgentOptions.provider/model`, which
-  the adapter never sets, and otherwise fail at once (probe defect). Child
-  transcripts: the adapter projects events for every descendant of an owned
-  root (ancestry resolved by walking each header's `parentSession`, since a
-  grandchild names the child, not the root) as ordinary `session/update`s
-  under the child id, while the tile keeps the direct parent. New method
-  `deepseek/subagent/interrupt {sessionId, childSessionId}` calls
-  `ctx.subagents.interrupt`. History replay: the parent log never names a
-  foreground child and parallel calls open overlapping windows, so the
-  adapter persists `toolCallId -> childSessionId` in its own session store at
-  `subagent/start`, and `history` folds that start/end info into the `_meta`
-  envelope of the parent's `subagent` tool call so a reload rebuilds the tile
-  from one page without timing-window attribution.
-- **Plugin.** DTOs and payload parsing live in `sesori_plugin_deepseek`;
-  lifecycle goes through `AcpChildSessionTracker` (seam 1). `started` opens
-  the tile keyed by its `toolCallId` and required `prompt`, and the matching
-  `subagent*` `tool_call` card is suppressed (seam 2). `started` also binds
-  `childSessionID`, label, and `isBackground` from `mode`; `ended` maps
-  `aborted` to cancelled and `error`, `max-tokens`, `refusal` to error. For
-  `parentSettlementTurn`, `DeepSeekEventMapper` atomically replaces the
-  finishing child with a backend-neutral root hold keyed by an opaque child id;
-  it releases that hold for every `settlementEnded` outcome, including a
-  cancelled or interrupted settlement turn. Only the adapter and DeepSeek
-  mapper know the dsh settlement message or turn convention; the ACP tracker
-  stores opaque holds. Abort/cancel releases through that terminal event, while
-  session delete, disconnect, and process exit clear any outstanding root holds
-  with the tracker. Tracker state is independent of the per-turn `_liveTools`
-  clear. Replay does not pass
-  through seam 5's notification hook, because
-  `DeepSeekHistoryRepository` feeds `session/update` envelopes straight into
-  `AcpReplayCollector.consume`: that repository parses the folded `_meta`
-  envelope of each `subagent*` tool call itself and hands the resulting
-  `subtask` parts to the collector, so the generic collector never learns
-  DeepSeek payloads.
-- **Busy accounting and scoped stop.** Through seams 1 and 3. A continuable
-  child's terminal event swaps its busy child entry for the settlement hold,
-  so root status and `PluginWorkState` stay busy across the prompt-less parent
-  follow-up and release only on its correlated completion.
-  `DeepSeekAcpApi.cancelChild` sends `deepseek/subagent/interrupt`.
-  Uninterruptible one-shot fork jobs are recorded with `canCancel: false` and
-  as foreground, so they never make `mainAgentOnlySupported` true, a `stop`
-  that leaves one running reports `workKept: true`, and the matrix notes they
-  cannot be stopped alone.
-- **Adapter version.** `EXTENSION_PROTOCOL_VERSION` becomes 2. The runtime
-  manifest raises `targetVersion` and `minPathVersion` to 0.1.3, so an
-  explicitly configured or PATH adapter below 0.1.3 is reported by setup as
-  needing an update instead of failing at initialization; setup tests cover
-  the floor. With the floor raised no flow launches a v1 adapter, so the
-  plugin has no v1 fallback path.
+- Typed DeepSeek DTOs validate protocol-v2 lifecycle and replay metadata at the
+  boundary. For protocol v2, `DeepSeekEventMapper` suppresses the matching
+  standard `subagent` or `subagent_fork` tool card and feeds the start/end facts
+  through the shared `AcpChildSessionTracker`; child standard updates retain the
+  child session id. Protocol v1 retains its generic delegation card because it
+  supplies no lifecycle replacement.
+  The protocol has no authoritative settlement lifecycle, so DeepSeek creates
+  no Grok-style autonomous root hold.
+- `DeepSeekHistoryRepository` indexes typed replay metadata by the enclosing
+  update's `toolCallId`. A narrow replay-local `AcpReplayCollector` replacement
+  callback turns the generic delegation tool into one subtask part without
+  reading or mutating live tracker state.
+- `DeepSeekSessionService` merges persisted child rows with live tracker
+  children, preferring persisted title/time metadata by id. Shared ACP child
+  accounting keeps roots and plugin work busy while a child runs and existing
+  delete, disconnect, process-exit, and disposal cleanup owns cancellation.
+- Consumer support temporarily accepts protocol versions 1 and 2. Adapter
+  v0.1.3 is not published yet, so managed target 0.1.2 and PATH floor 0.1.0 stay
+  unchanged. After this consumer merges, the adapter release-prep PR records
+  its consumer commit and publishes v0.1.3; the later scoped-stop PR pins target
+  and floor to 0.1.3, narrows initialization to v2, and consumes interrupt.
 
 ### PRs
 
 | Repo | Emoji | Description | Scope |
 |---|---|---|---|
-| adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | `subagent/*` and descendant `session/event` listeners, root-level `agent/request` provider/model propagation to descendants, child records, required prompt/call correlation, terminal settlement-turn correlation including cancel/error, `deepseek/subagent`, `_meta` history fold, schema and fixtures, protocol version 2 |
-| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | `deepseek/subagent/interrupt`, schema, version bump, release checksums |
-| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | DTOs, required prompt mapping, mapper feeding seams 1 and 2, settlement hold/release for every terminal outcome plus delete/disconnect/exit cleanup, `_meta` fold parsed in `DeepSeekHistoryRepository`, runtime manifest target and PATH floor 0.1.3 with setup tests; lands after the Grok lifecycle PRs |
-| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | `DeepSeekAcpApi.cancelChild` (seam 4), mixed foreground/background and unsupported-`keep` policy tests through seam 3 |
-| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | matrix footnote ⁹ resolved, regression docs |
+| adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | Merged PR #13 (`0a85fb2`): lifecycle, descendant transcripts, bindings, and protocol v2 |
+| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release intentionally pending |
+| adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
+| monorepo | 🚧 | `deepseek: inline subtask tiles and live child sessions` | In progress: v2 DTOs/fixtures, live lifecycle, replay replacement, merged child catalog; runtime policy unchanged |
+| adapter | 🌱 | `release: publish v0.1.3 for the merged consumer` | Next after the monorepo consumer merges: record its commit, tag, publish, and verify assets |
+| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | Pending: consume interrupt, pin target/PATH floor 0.1.3, narrow initialization to v2, and test mixed modes |
+| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
 ### Probe results (dsh 0.1.1-rc.2, 2026-09-03, details in `followups/deepseek-probe.md`)
 

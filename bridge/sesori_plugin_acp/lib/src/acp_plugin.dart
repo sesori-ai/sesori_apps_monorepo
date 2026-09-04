@@ -1832,6 +1832,7 @@ abstract class AcpPlugin({
       // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
       // the live stream does, so reloaded history renders it identically.
       haltClassifier: eventMapper.classifyHaltNotice,
+      toolPartReplacement: null,
     );
     List<PluginMessageWithParts> buildReplay() => collector.buildWithAssistantSelection(
       modelId: eventMapper.modelForSession(sessionId: sessionId),

@@ -18,7 +18,7 @@ void main() {
         ],
       ),
     ]);
-    final repository = _repository(api);
+    final repository = _repository(api: api, childSessions: AcpChildSessionTracker());
     final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
 
     expect(api.cursors, [null, 10]);
@@ -36,10 +36,11 @@ void main() {
 
   test("history rejects a non-progressing cursor with preserved cause", () async {
     final repository = _repository(
-      _HistoryApi([
+      api: _HistoryApi([
         const DeepSeekPaginatedHistoryResponseDto(updates: [], nextBeforeSeq: 10),
         const DeepSeekPaginatedHistoryResponseDto(updates: [], nextBeforeSeq: 10),
       ]),
+      childSessions: AcpChildSessionTracker(),
     );
 
     await expectLater(
@@ -51,21 +52,83 @@ void main() {
       ),
     );
   });
+
+  test("history replaces a running delegation tool with one child-linked subtask", () async {
+    final tracker = AcpChildSessionTracker();
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [_subagentUpdate(sessionUpdate: "tool_call", ended: null)],
+        ),
+      ]),
+      childSessions: tracker,
+    );
+
+    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final tile = messages.single.parts.single as PluginMessagePartSubtask;
+    expect(tile.id, "s1-h0-assistant-tool-call-1");
+    expect(tile.sessionID, "s1");
+    expect(tile.messageID, "s1-h0-assistant");
+    expect(tile.prompt, "Inspect the synthetic module");
+    expect(tile.description, "Research child");
+    expect(tile.childSessionID, "child-1");
+    expect(tile.taskState?.status, PluginToolStatus.running);
+    expect(tracker.childStatuses, isEmpty, reason: "history replay is isolated from live lifecycle state");
+    await tracker.dispose();
+  });
+
+  test("latest replay metadata settles the same delegation tile", () async {
+    final tracker = AcpChildSessionTracker();
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [
+            _subagentUpdate(sessionUpdate: "tool_call", ended: null),
+            _subagentUpdate(
+              sessionUpdate: "tool_call_update",
+              ended: const DeepSeekSubagentReplayEndedDto(
+                stopReason: DeepSeekSubagentStopReason.completed,
+                summary: "Done",
+              ),
+            ),
+          ],
+        ),
+      ]),
+      childSessions: tracker,
+    );
+
+    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    expect(messages.single.parts, hasLength(1));
+    final tile = messages.single.parts.single as PluginMessagePartSubtask;
+    expect(tile.id, "s1-h0-assistant-tool-call-1");
+    expect(tile.taskState?.status, PluginToolStatus.completed);
+    expect(tile.taskState?.output, "Done");
+    expect(tracker.childStatuses, isEmpty);
+    await tracker.dispose();
+  });
 }
 
-DeepSeekHistoryRepository _repository(DeepSeekAcpApi api) => DeepSeekHistoryRepository(
-  api: api,
-  messageTimeParser: const DeepSeekMessageTimeParser(),
-  eventMapper: DeepSeekEventMapper(
-    messageTimeParser: const DeepSeekMessageTimeParser(),
-    launchDirectory: "/project",
-    pluginId: DeepSeekIdentity.id,
-    configurationTracker: AcpSessionConfigurationTracker(),
-    childSessions: AcpChildSessionTracker(),
+DeepSeekHistoryRepository _repository({
+  required DeepSeekAcpApi api,
+  required AcpChildSessionTracker childSessions,
+}) {
+  const subagentMapper = DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id);
+  return DeepSeekHistoryRepository(
     api: api,
-  ),
-  pluginId: DeepSeekIdentity.id,
-);
+    messageTimeParser: const DeepSeekMessageTimeParser(),
+    subagentMapper: subagentMapper,
+    eventMapper: DeepSeekEventMapper(
+      messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: subagentMapper,
+      launchDirectory: "/project",
+      pluginId: DeepSeekIdentity.id,
+      configurationTracker: AcpSessionConfigurationTracker(),
+      childSessions: childSessions,
+      api: api,
+    ),
+    pluginId: DeepSeekIdentity.id,
+  );
+}
 
 AcpStdioClient _unusedClient() => AcpStdioClient(
   launchSpec: const AcpLaunchSpec(command: "unused", args: [], cwd: "/", environment: {}),
@@ -82,6 +145,31 @@ DeepSeekSessionUpdateEnvelopeDto _update(String sessionId, String kind, String m
         "content": {"type": "text", "text": text},
       },
     );
+
+DeepSeekSessionUpdateEnvelopeDto _subagentUpdate({
+  required String sessionUpdate,
+  required DeepSeekSubagentReplayEndedDto? ended,
+}) => DeepSeekSessionUpdateEnvelopeDto(
+  metadata: DeepSeekEnvelopeMetadataDto(
+    deepSeek: DeepSeekEnvelopeDeepSeekMetadataDto(
+      messageCreatedAt: 1,
+      subagent: DeepSeekSubagentReplayDto(
+        prompt: "Inspect the synthetic module",
+        label: "Research child",
+        mode: DeepSeekSubagentMode.background,
+        childSessionId: "child-1",
+        ended: ended,
+      ),
+    ),
+  ),
+  sessionId: "s1",
+  update: {
+    "sessionUpdate": sessionUpdate,
+    "toolCallId": "call-1",
+    "title": "subagent",
+    "status": ended == null ? "in_progress" : "completed",
+  },
+);
 
 class _HistoryApi(final List<DeepSeekHistoryResponseDto> responses) extends DeepSeekAcpApi {
   this : super(pluginId: DeepSeekIdentity.id);

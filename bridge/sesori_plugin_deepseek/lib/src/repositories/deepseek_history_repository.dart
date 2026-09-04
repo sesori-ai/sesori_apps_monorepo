@@ -5,12 +5,14 @@ import "../api/deepseek_acp_api.dart";
 import "../api/models/deepseek_protocol_dto.dart";
 import "../deepseek_event_mapper.dart";
 import "../deepseek_message_time_parser.dart";
+import "mappers/deepseek_subagent_mapper.dart";
 
 class DeepSeekHistoryRepository({
   required final DeepSeekAcpApi api,
   required final DeepSeekEventMapper eventMapper,
   required final String pluginId,
   required final DeepSeekMessageTimeParser messageTimeParser,
+  required final DeepSeekSubagentMapper subagentMapper,
 }) {
   static const int _maxPages = 100;
   static const int _pageSize = 100;
@@ -19,6 +21,7 @@ class DeepSeekHistoryRepository({
     required AcpStdioClient client,
     required String sessionId,
   }) async {
+    final subagentsByToolCallId = <String, DeepSeekSubagentReplayDto>{};
     final collector = AcpReplayCollector(
       sessionId: sessionId,
       agentId: pluginId,
@@ -26,6 +29,10 @@ class DeepSeekHistoryRepository({
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
       messageTimeResolver: ({required params}) => messageTimeParser.parse(params),
       haltClassifier: eventMapper.classifyHaltNotice,
+      toolPartReplacement: ({required toolCallId, required toolPart}) {
+        final replay = subagentsByToolCallId[toolCallId];
+        return replay == null ? null : subagentMapper.mapReplay(toolPart: toolPart, replay: replay);
+      },
     );
     int? cursor;
     final pages = <List<DeepSeekSessionUpdateEnvelopeDto>>[];
@@ -43,6 +50,11 @@ class DeepSeekHistoryRepository({
           case DeepSeekTerminalHistoryResponseDto():
             for (final updates in pages.reversed) {
               for (final envelope in updates) {
+                final toolCallId = envelope.update["toolCallId"];
+                final subagent = envelope.metadata?.deepSeek?.subagent;
+                if (toolCallId is String && toolCallId.isNotEmpty && subagent != null) {
+                  subagentsByToolCallId[toolCallId] = subagent;
+                }
                 collector.consume(envelope.toJson());
               }
             }

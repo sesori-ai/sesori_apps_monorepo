@@ -24,7 +24,12 @@ reconnect or restart.
   process. It pages at complete message boundaries, returns at most 100 messages
   per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; assistant
-  IDs use the deterministic ACP projection.
+  IDs use the deterministic ACP projection. Protocol-v2 sub-agent metadata is
+  parsed by the DeepSeek repository and correlated through the enclosing
+  standard update's tool-call id; a replay-local collector callback replaces
+  that generic delegation tool with one subtask tile carrying prompt, child link,
+  and running or terminal state. Replay never mutates the live child tracker or
+  publishes lifecycle events.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it
