@@ -194,10 +194,8 @@ class PrSourceRepository({required final GhCliApi _ghCli, required final GitCliA
       }
     }
 
-    final finalGithubLogin = await getAuthenticatedIdentity();
-    if (finalGithubLogin?.login != expectedGithubLogin.login) {
-      return const PullRequestSelectionIdentityChanged();
-    }
+    // Every query response above carried viewer.login and was fenced against
+    // [expectedGithubLogin], so the fetched data is already identity-proven.
     return PullRequestSelectionCompleted(selections: selections);
   }
 

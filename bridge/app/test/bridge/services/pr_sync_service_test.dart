@@ -557,6 +557,36 @@ void main() {
       expect(source.selectionCalls, hasLength(1));
     });
 
+    test("shares and expires a verified identity but never caches a failure", () async {
+      var now = DateTime.utc(2026, 8, 2);
+      final source = _FakePrSource()..authenticatedIdentity = null;
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: const {},
+        clock: Clock(() => now),
+      );
+      addTearDown(service.dispose);
+
+      expect(await service.verifyGithubIdentity(), isNull);
+      expect(await service.verifyGithubIdentity(), isNull);
+      expect(source.identityCallCount, 2);
+
+      source.authenticatedIdentity = _verifiedGithubLogin;
+      final concurrent = await Future.wait([service.verifyGithubIdentity(), service.verifyGithubIdentity()]);
+      expect(concurrent, everyElement(_verifiedGithubLogin));
+      expect(source.identityCallCount, 3);
+
+      now = now.add(const Duration(seconds: 29));
+      expect(await service.verifyGithubIdentity(), _verifiedGithubLogin);
+      expect(source.identityCallCount, 3);
+
+      now = now.add(const Duration(seconds: 1));
+      source.authenticatedIdentity = null;
+      expect(await service.verifyGithubIdentity(), isNull);
+      expect(source.identityCallCount, 4);
+    });
+
     test("isolates replacement exceptions and continues later projects", () async {
       final source = _FakePrSource(
         targetsByDirectory: {

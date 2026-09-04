@@ -40,11 +40,37 @@ class PrSyncService({
   bool _isDraining = false;
   bool _disposed = false;
 
-  static const _githubCliCapabilityCacheTtl = Duration(seconds: 30);
+  static const _githubCliCacheTtl = Duration(seconds: 30);
+  ({VerifiedGithubLogin login, DateTime checkedAt})? _verifiedIdentityCache;
+  Future<VerifiedGithubLogin?>? _identityVerification;
 
   Stream<PullRequestRenderedChange> get renderedChanges => _renderedChangesController.stream;
 
+  /// Verifies the active gh login, sharing one in-flight `gh api user` call and
+  /// reusing a successful result for [_githubCliCacheTtl]. Each call is a
+  /// network round trip, and an explicit refresh otherwise pays for several in
+  /// series. Failures are never cached so a fixed login is picked up at once.
   Future<VerifiedGithubLogin?> verifyGithubIdentity() async {
+    final inFlight = _identityVerification;
+    if (inFlight != null) return await inFlight;
+
+    final cached = _verifiedIdentityCache;
+    if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCacheTtl) {
+      return cached.login;
+    }
+
+    final verification = _verifyGithubIdentity();
+    _identityVerification = verification;
+    try {
+      return await verification;
+    } finally {
+      if (identical(_identityVerification, verification)) {
+        _identityVerification = null;
+      }
+    }
+  }
+
+  Future<VerifiedGithubLogin?> _verifyGithubIdentity() async {
     try {
       final identity = await _prSource.getAuthenticatedIdentity();
       if (identity == null) {
@@ -52,6 +78,7 @@ class PrSyncService({
         return null;
       }
       _identityVerificationFailureReported = false;
+      _verifiedIdentityCache = (login: identity, checkedAt: _clock.now());
       return identity;
     } on Object catch (error, stackTrace) {
       _reportIdentityVerificationFailure();
@@ -165,7 +192,7 @@ class PrSyncService({
     if (inFlight != null) return await inFlight;
 
     final cached = _githubCliCapabilityCache;
-    if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCapabilityCacheTtl) {
+    if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCacheTtl) {
       return cached.capable;
     }
 
