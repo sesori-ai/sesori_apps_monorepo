@@ -49,7 +49,9 @@
   install-abort semantics. The second wave adds service-owned runtime policy, plugin-owned identity, coherent Step 6/7
   composition, and host-backed profile chmod. The third wave extends per-asset archive budgets through traversal
   preflight and documents fresh-process first-session default-model behavior. The fourth wave adds metadata/setup
-  service ownership, Layer-2 protocol mapping, per-feature regression updates, and current-client-only new auth.
+  service ownership, Layer-2 protocol mapping, per-feature regression updates, and current-client-only new auth. The
+  fifth wave adds typed catalog/interaction mapping and policy ownership, staging-contained managed validation, and a
+  backend-neutral residency-preference hook.
 - **Implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
 
 ## Locked Decisions
@@ -65,7 +67,11 @@
   and receive an update-client hint, with no claimed CLI/bridge-host login.
 - Agent mode is always `default`; `allow_always`, `auto_edit`, `yolo`, and dangerous skip are unavailable.
 - Before a process observes a model catalog from new/load/resume, options are partial and the first session uses the
-  account default; no persistent scratch Google session is created for discovery.
+  account default; no persistent scratch Google session is created for discovery. Raw catalogs and permissions cross
+  the plugin boundary through a Layer-2 mapper before their Layer-3 policy services or trackers consume them.
+- Shared ACP retains load-first residency by default; Antigravity selects resume-first through a backend-neutral hook.
+- Managed exact probing uses an owner-only disposable home inside staging before atomic placement; it cannot touch the
+  persistent profile, authenticate, or create a session.
 - Local pair support lands before managed install.
 - Managed targets: macOS arm64, Linux x64/arm64, Windows x64/arm64; macOS x64 unsupported.
 - No database migration and no Antigravity-specific analytics.
@@ -125,3 +131,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — PR #1285 fourth review produced five actionable findings. Metadata recovery and combined setup now have
   explicit service owners; protocol normalization is Layer 2; behavior-changing PRs update regression contracts when
   they land; and new authentication requires a current client with an explicit update hint.
+- 2026-09-04 — PR #1285 fifth review produced four actionable findings. The protocol mapper now normalizes
+  catalogs and permission requests for owning services. Managed exact validation uses a disposable staging home before
+  placement, and a backend-neutral ACP hook preserves load-first behavior while Antigravity selects resume-first.
