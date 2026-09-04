@@ -91,7 +91,10 @@ List<MessageAttachment> _messageAttachmentsFromJson(Object? json) {
 }
 
 @JsonEnum()
-enum MessageAttachmentDelivery() { inline, storedReference }
+enum MessageAttachmentDelivery() {
+  inline,
+  storedReference,
+}
 
 @Freezed(unionKey: "type", fromJson: true, toJson: true)
 sealed class const MessagePart._() with _$MessagePart {
@@ -129,6 +132,7 @@ sealed class const MessagePart._() with _$MessagePart {
       ToolState(
         status: ToolStatus.pending,
         title: null,
+        shellCommand: null,
         output: null,
         error: null,
       ),
@@ -176,9 +180,7 @@ sealed class const MessagePart._() with _$MessagePart {
     required String messageID,
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the attachment.
     // Remove @Default and require attachment when the minimum supported bridge always sends it.
-    @JsonKey(fromJson: _messageAttachmentFromJson)
-    @Default(MessageAttachment.unknown())
-    MessageAttachment attachment,
+    @JsonKey(fromJson: _messageAttachmentFromJson) @Default(MessageAttachment.unknown()) MessageAttachment attachment,
   }) = MessagePartFile;
 
   @FreezedUnionValue("snapshot")
@@ -311,6 +313,7 @@ sealed class ToolState with _$ToolState {
   const factory({
     @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
     required String? title,
+    required String? shellCommand,
     required String? output,
     required String? error,
     // COMPATIBILITY 2026-07-30 (v1.6.1): Older bridges omit attachments,

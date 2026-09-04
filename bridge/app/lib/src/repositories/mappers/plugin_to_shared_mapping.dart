@@ -67,13 +67,19 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared() => ToolState(
-    status: status.toShared(),
-    title: title,
-    output: output,
-    error: error,
-    attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
-  );
+  ToolState toShared() {
+    final command = shellCommand;
+    final boundedShellCommand = command == null ? null : String.fromCharCodes(command.runes.take(maxToolOutputLength));
+    final isShellCommand = boundedShellCommand != null;
+    return ToolState(
+      status: status.toShared(),
+      title: boundedShellCommand,
+      shellCommand: boundedShellCommand,
+      output: isShellCommand ? output : null,
+      error: isShellCommand ? error : null,
+      attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
+    );
+  }
 }
 
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]

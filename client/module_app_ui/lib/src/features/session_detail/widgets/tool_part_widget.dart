@@ -15,7 +15,8 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     final prego = context.prego;
     final loc = context.loc;
     final state = part.state;
-    final toolName = state.title ?? (part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool);
+    final toolName =
+        state.shellCommand ?? state.title ?? (part.tool.isEmpty ? loc.sessionDetailToolUnknown : part.tool);
     final status = state.status;
     final output = status == ToolStatus.completed ? state.output : null;
     final errorText = status == ToolStatus.error ? state.error : null;

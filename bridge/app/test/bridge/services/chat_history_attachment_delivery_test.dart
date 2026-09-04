@@ -52,6 +52,7 @@ void main() {
         state: ToolState(
           status: ToolStatus.completed,
           title: null,
+          shellCommand: null,
           output: null,
           error: null,
           attachments: [
@@ -116,6 +117,7 @@ void main() {
         state: ToolState(
           status: ToolStatus.completed,
           title: null,
+          shellCommand: null,
           output: null,
           error: null,
           attachments: [

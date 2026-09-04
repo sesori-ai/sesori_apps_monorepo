@@ -1423,7 +1423,8 @@ void main() {
       tool: "browser",
       state: ToolState(
         status: ToolStatus.completed,
-        title: "Screenshot",
+        title: null,
+        shellCommand: null,
         output: null,
         error: null,
         attachments: [
@@ -1440,6 +1441,29 @@ void main() {
     );
 
     expect(find.text("screenshot.png"), findsOneWidget);
+  });
+
+  testWidgets("renders the released title when an older bridge omits shellCommand", (tester) async {
+    const part = MessagePart.tool(
+      id: "part-shell",
+      sessionID: "session-1",
+      messageID: "message-1",
+      tool: "shell",
+      state: ToolState(
+        status: ToolStatus.completed,
+        title: "git status --short",
+        shellCommand: null,
+        output: " M file.dart",
+        error: null,
+        attachments: [],
+      ),
+    );
+    if (part is! MessagePartTool) fail("MessagePart.tool returned a non-tool variant");
+
+    await tester.pumpWidget(_app(child: const ToolPartWidget(part: part)));
+
+    expect(find.text("git status --short"), findsOneWidget);
+    expect(find.text(" M file.dart"), findsOneWidget);
   });
 
   testWidgets("renders normalized user file attachments", (tester) async {

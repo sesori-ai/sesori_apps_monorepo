@@ -980,6 +980,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(part.tool, "shell");
       expect(part.state.status, PluginToolStatus.completed);
       expect(part.state.title, "ls -la");
+      expect(part.state.shellCommand, "ls -la");
       expect(part.state.output, contains("foo.dart"));
     });
 

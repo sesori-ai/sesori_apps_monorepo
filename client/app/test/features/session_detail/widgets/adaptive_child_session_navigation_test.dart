@@ -105,7 +105,9 @@ MessagePartSubtask _subtaskPart({String? description, String? childSessionID, To
     prompt: description ?? "",
     description: description ?? "",
     agent: "",
-    taskState: status == null ? null : ToolState(status: status, title: null, output: null, error: null),
+    taskState: status == null
+        ? null
+        : ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
     childSessionID: childSessionID,
   );
   if (part case final MessagePartSubtask subtask) return subtask;

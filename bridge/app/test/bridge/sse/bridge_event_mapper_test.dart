@@ -329,6 +329,7 @@ void main() {
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
+              shellCommand: "printf output",
               output: longOutput,
               error: null,
               attachments: const [],
@@ -368,6 +369,7 @@ void main() {
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
+              shellCommand: "printf short",
               output: "short",
               error: null,
               attachments: [],

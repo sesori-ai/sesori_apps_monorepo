@@ -2,15 +2,18 @@
 
 ## Capability
 
-How a turn's tool activity is normalized and presented: tool parts with title,
-status, bounded output, errors, attachments, and sub-agent parts, plus the
-signal that a tool changed files.
+How a turn's tool activity is normalized and presented: lightweight tool parts
+with status and attachments, explicit shell commands with bounded results, and
+sub-agent parts, plus the signal that a tool changed files.
 
 ## Required Behavior
 
 - Every plugin normalizes backend tool activity into the shared tool part
   contract: stable identity, tool name, lifecycle status (pending, running,
-  completed, error, plus a forward-compatible unknown), title, output, error.
+  completed, error, plus a forward-compatible unknown), and attachments. Shell
+  tools additionally carry the explicit command and its bounded output or error.
+  Non-shell titles, output snippets, and errors stop at the bridge remapping
+  boundary and never enter chat history or live client events.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
   shared variants retain the released `type` values and normalize known payloads
@@ -18,8 +21,8 @@ signal that a tool changed files.
   non-null compatibility defaults: empty text/name details, retry attempt zero,
   an unknown file attachment, and pending tool state. Current peers serialize
   those non-null values.
-- Tool output is bounded to the shared limit and truncated by runes, so a
-  character is never split; the rule is identical live and on replay.
+- Shell-command output is bounded to the shared limit and truncated by runes,
+  so a character is never split; the rule is identical live and on replay.
 - Backend vocabulary stays in the owning plugin. Attachments use client-safe
   sources: local paths never cross, unsafe URLs degrade to metadata.
 - A tool that mutates the workspace emits a per-session file-change signal once
@@ -27,9 +30,9 @@ signal that a tool changed files.
   updates for one completed call emit none.
 - Sub-agent, subtask, and agent parts identify their agent and stay attributed
   to the correct session, including work done by a child. Tool state survives a
-  reload with the same identity, status, and output; unknown status renders as
-  the fallback. A backend abort without a turn identifier still finalizes tools
-  in the active turn.
+  reload with the same identity and status; shell commands also retain their
+  command and result. Unknown status renders as the fallback. A backend abort
+  without a turn identifier still finalizes tools in the active turn.
 - Claude `Agent`/`Task` calls render as subtask parts keyed by the tool-use
   id, with the sub-agent description, prompt, and agent type, a lifecycle of
   their own (`pending`/`running` → `completed`, `error`, or `cancelled`), and
@@ -47,20 +50,19 @@ signal that a tool changed files.
   Process exit — natural or an explicit stop — cancels every running task.
   OpenCode subtask parts keep a null lifecycle and the child-status fallback.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
-  identity, bounded presenter output, terminal result/error state, and diff
-  content. Presenter failure degrades to a generic bounded tool card instead of
-  dropping the call or result.
+  identity, terminal state, attachments, and diff content. Presenter failure
+  degrades to a generic lightweight tool card instead of dropping the call.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
 - GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
-  must be exact while the request is live. Call identity, bounded output,
-  terminal state, and diff content then converge after `session/load`; permission
+  must be exact while the request is live. Call identity, terminal state, and
+  diff content then converge after `session/load`; permission
   decisions are process-local and are not part of replay. Backend tool names
   remain presentation data rather than shared behavior.
 - Grok uses that standard ACP lifecycle with exact live permission linkage.
-  Tool-call identity, pending-to-terminal status, bounded output or error, and
-  diff content converge between live events and `session/load`; Grok tool names
+  Tool-call identity, pending-to-terminal status, and diff content converge
+  between live events and `session/load`; Grok tool names
   remain presentation data and never become shared domain vocabulary.
 
 ## Regression Levels
@@ -68,26 +70,26 @@ signal that a tool changed files.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because proving tool behavior requires a live turn. |
-| L2 Routine | Live plugin, representative: a file-editing tool produces a tool part with name, terminal status, and bounded output. |
-| L3 Release | Client end to end (phone), every supporting production plugin: title, status, output bound, and errors normalize consistently; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards, errors, and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete tool lifecycle with bounded output, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
-| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity, status, and output intact; a failing tool surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
-| L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
+| L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
+| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
+| L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
+| L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte shell output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
 ## Exploration Guidance
 
 Vary the tool mix per run: read-only inspection, single- and multi-file edits,
 shell-style execution, a failing tool, a sub-agent task. Alternate long,
-multi-byte, and empty output; compare live with a later reload. For Copilot,
-verify permission linkage against the live call, then cold-replay the resulting
-call identity, terminal tool state, bounded output, and diff without expecting
-its process-local permission decision to replay. For Grok, compare read-only,
-mutating, failing, and long-output tools live and after `session/load`, including
-one permission-gated mutation and one repeated terminal update.
+multi-byte, and empty shell output; compare live with a later reload. For
+Copilot, verify permission linkage against the live call, then cold-replay the
+resulting call identity, terminal tool state, and diff without expecting its
+process-local permission decision to replay. For Grok, compare read-only,
+mutating, and failing tools live and after `session/load`, including one
+permission-gated mutation and one repeated terminal update.
 
 ## Failure Signals
 
-- Output exceeds the bound, truncates mid-character, or differs between live
-  streaming and replay.
+- Shell output exceeds the bound, truncates mid-character, or differs between
+  live streaming and replay; or non-shell snippets reach the client.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
 - Backend naming or payload shape reaches the client unnormalized, or a local
@@ -98,10 +100,9 @@ one permission-gated mutation and one repeated terminal update.
 - A Cursor tool extension with an originating call ID is attributed to a
   different concurrently active session.
 - A Copilot tool loses permission correlation while live, or its call identity,
-  terminal status, bounded output, or diff changes when reopened through ACP
-  history.
+  terminal status, or diff changes when reopened through ACP history.
 - A Grok tool loses live permission correlation, changes call identity or status
-  after replay, exposes unbounded output, loses diff content, or emits the wrong
+  after replay, exposes non-shell output, loses diff content, or emits the wrong
   number of file-change invalidations.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.

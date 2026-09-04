@@ -412,6 +412,7 @@ class AcpReplayCollector({
       state: PluginToolState(
         status: tool.status,
         title: tool.title,
+        shellCommand: null,
         output: content.output,
         error: tool.status == PluginToolStatus.error ? content.output : null,
         attachments: content.attachments,
