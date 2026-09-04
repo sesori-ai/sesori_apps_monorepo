@@ -569,9 +569,17 @@ unbounded deferred notification list with one bounded merged snapshot, and
 moved optional replay-shape validation into the DTO factories shared by direct
 and history parsing.
 
+A final Codex pass found that standard ACP permissions nest their tool-call ID,
+that a live child did not populate the plugin's separate directory cache, and
+that naively unioning deferred `content` with `rawOutput` lost chronological
+precedence. Server-request attribution now carries a typed ambiguous result all
+the way to cancellation, live descendant catalogs read the mapper's tracked
+root project, and the bounded snapshot makes the newest content representation
+authoritative.
+
 DeepSeek tile verification on 2026-09-04: protocol v2 vendoring and codegen
-completed; `dart analyze --fatal-infos` and 82 tests passed in
-`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 308 tests passed in
+completed; `dart analyze --fatal-infos` and 83 tests passed in
+`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 310 tests passed in
 `sesori_plugin_acp`; `dart analyze --fatal-infos` and 83 tests passed in
 `sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.

@@ -55,8 +55,9 @@ signal that a tool changed files.
   child-linked subtask tile with the normalized prompt and label. A standard
   terminal update received before a valid start instead retains the generic
   failure card after folding partial fields in arrival order into one bounded
-  snapshot. Started-delegation
-  correlation survives parent turn boundaries until both lifecycle and standard
+  snapshot. Later structured content and raw output replace each other, so the
+  newest representation remains authoritative. Started-delegation correlation
+  survives parent turn boundaries until both lifecycle and standard
   tool completion arrive. The lifecycle prompt is authoritative, so the child's
   echoed user chunk cannot duplicate or extend it. During the release
   compatibility window, a protocol-v1 adapter retains its generic delegation

@@ -160,6 +160,22 @@ void main() {
       expect(children.map((session) => session.id), ["child", "live-child"]);
       expect(children.singleWhere((session) => session.id == "live-child").projectID, "/other");
 
+      childSessionTracker.spawn(
+        sessionId: "live-child",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-grandchild",
+          description: "Live grandchild",
+          agent: DeepSeekIdentity.id,
+          prompt: "Inspect more",
+          isBackground: true,
+        ),
+        directory: "/other",
+      );
+      final grandchildren = await plugin.getChildSessions("live-child");
+      expect(grandchildren.single.id, "live-grandchild");
+      expect(grandchildren.single.projectID, "/other");
+      expect(grandchildren.single.directory, "/other");
+
       final sessions = await plugin.listAllSessions(knownDirectories: const {});
       final child = sessions.singleWhere((session) => session.id == "child");
       expect(child.parentID, "parent");

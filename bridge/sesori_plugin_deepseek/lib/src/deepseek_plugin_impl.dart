@@ -146,7 +146,9 @@ class DeepSeekPlugin({
     final persistedSessions = await listAllSessions(knownDirectories: const {});
     return deepSeekSessionService.getChildSessions(
       sessionId: sessionId,
-      directory: directoryForSession(sessionId: sessionId),
+      directory: mapper.projectForSession(
+        sessionId: childSessionTracker.rootOf(sessionId: sessionId),
+      ),
       persistedSessions: persistedSessions,
     );
   }

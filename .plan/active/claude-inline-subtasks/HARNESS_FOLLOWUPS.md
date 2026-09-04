@@ -503,8 +503,10 @@ confirmation, no child session or partial stop) and gets that subset.
   suppresses the matching standard `subagent` or `subagent_fork` tool card,
   `DeepSeekDelegationTracker` owns its cross-turn lifecycle correlation, and the
   mapper feeds start/end facts through the shared `AcpChildSessionTracker`;
-  child standard updates retain the child session id. Protocol v1 retains its
-  generic delegation card because it supplies no lifecycle replacement.
+  child standard updates retain the child session id. Typed tool-call lookup
+  carries cross-session ambiguity through standard nested permission routing,
+  which cancels rather than falling back to an unrelated active turn. Protocol
+  v1 retains its generic delegation card because it supplies no lifecycle replacement.
   The protocol has no authoritative settlement lifecycle, so DeepSeek creates
   no Grok-style autonomous root hold.
 - `DeepSeekHistoryRepository` indexes boundary-validated typed replay metadata
@@ -512,9 +514,10 @@ confirmation, no child session or partial stop) and gets that subset.
   `AcpReplayCollector` replacement callback turns the generic delegation tool
   into one subtask part without reading or mutating live tracker state.
 - `DeepSeekSessionService` merges persisted child rows with direct live tracker
-  children, preferring persisted title/time metadata by id. Live and replay
-  tiles stay in the direct parent's transcript, while shared ACP child activity
-  rolls up to the owning root. Deleting a parent clears its full tracked
+  children, preferring persisted title/time metadata by id. Live descendants
+  inherit the tracker's root project before persistence catches up. Live and
+  replay tiles stay in the direct parent's transcript, while shared ACP child
+  activity rolls up to the owning root. Deleting a parent clears its full tracked
   descendant subtree; existing disconnect, process-exit, and disposal cleanup
   owns cancellation.
 - Consumer support temporarily accepts protocol versions 1 and 2. Adapter

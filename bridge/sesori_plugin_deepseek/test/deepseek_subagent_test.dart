@@ -97,6 +97,7 @@ void main() {
         ),
       );
 
+      expect(mapper.lookupSessionForToolCallId(toolCallId: "call"), isA<AcpToolCallSessionAmbiguous>());
       expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
     });
 
@@ -198,7 +199,20 @@ void main() {
         );
       }
 
-      final events = mapper.map(_toolUpdate(toolCallId: "failed-call", status: "failed"));
+      final events = mapper.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "tool_call_update",
+              "toolCallId": "failed-call",
+              "status": "failed",
+              "rawOutput": "terminal failure",
+            },
+          },
+        ),
+      );
       final tools = events
           .whereType<BridgeSseMessagePartUpdated>()
           .map((event) => event.part)
@@ -209,9 +223,48 @@ void main() {
         PluginToolStatus.running,
         PluginToolStatus.error,
       ]);
-      expect(tools.last.state.output, "startup detail");
+      expect(tools.last.state.output, "terminal failure");
       expect(tools.last.state.title, "Delegation startup");
-      expect(tools.last.state.error, "startup detail");
+      expect(tools.last.state.error, "terminal failure");
+    });
+
+    test("later structured content replaces stale deferred raw output", () {
+      expect(mapper.map(_toolCall(toolCallId: "failed-call", title: "subagent")), isEmpty);
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "root",
+              "update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "failed-call",
+                "rawOutput": "stale progress",
+              },
+            },
+          ),
+        ),
+        isEmpty,
+      );
+
+      final events = mapper.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "tool_call_update",
+              "toolCallId": "failed-call",
+              "status": "failed",
+              "content": <Object?>[],
+            },
+          },
+        ),
+      );
+      final terminal = events.whereType<BridgeSseMessagePartUpdated>().last.part as PluginMessagePartTool;
+      expect(terminal.state.status, PluginToolStatus.error);
+      expect(terminal.state.output, isNull);
+      expect(terminal.state.error, isNull);
     });
 
     test("a malformed start releases its deferred generic delegation card", () {

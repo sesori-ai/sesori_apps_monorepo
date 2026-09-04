@@ -390,18 +390,21 @@ abstract class AcpPlugin({
     final registry = _approvalRegistry;
     if (registry == null) return;
     final attribution = _serverRequestAttribution(request: request);
-    final sessionId = attribution.sessionId;
-    // Pin heuristic sessionless attribution at receipt: another concurrent turn
-    // can dispatch before this request leaves the prompt-write buffer. Preserve
-    // exact tool correlation so a harness mapper can resolve its owning turn.
-    final routedRequest = sessionId == null || attribution.fromTool
-        ? request
-        : _serverRequestWithSession(request: request, sessionId: sessionId);
-    if (sessionId != null && _isPromptFrameWriting(sessionId: sessionId)) {
-      _promptWriteServerRequests.putIfAbsent(sessionId, () => []).add(routedRequest);
-      return;
+    switch (attribution) {
+      case AcpToolCallSessionAmbiguous():
+        registry.rejectAmbiguousServerRequest(request: request);
+      case AcpToolCallSessionNotFound():
+        registry.handleServerRequest(request: request);
+      case AcpToolCallSessionFound(:final sessionId):
+        // Pin sessionless attribution at receipt: another concurrent turn can
+        // dispatch before this request leaves the prompt-write buffer.
+        final routedRequest = _serverRequestWithSession(request: request, sessionId: sessionId);
+        if (_isPromptFrameWriting(sessionId: sessionId)) {
+          _promptWriteServerRequests.putIfAbsent(sessionId, () => []).add(routedRequest);
+          return;
+        }
+        registry.handleServerRequest(request: routedRequest);
     }
-    registry.handleServerRequest(request: routedRequest);
   }
 
   AcpServerRequest _serverRequestWithSession({required AcpServerRequest request, required String sessionId}) {
@@ -414,28 +417,57 @@ abstract class AcpPlugin({
     );
   }
 
-  ({String? sessionId, bool fromTool}) _serverRequestAttribution({required AcpServerRequest request}) {
+  AcpToolCallSessionLookup _serverRequestAttribution({required AcpServerRequest request}) {
     final rawSessionId = request.params["sessionId"];
-    if (rawSessionId != null && rawSessionId is! String) return (sessionId: null, fromTool: false);
+    if (rawSessionId != null && rawSessionId is! String) return const AcpToolCallSessionNotFound();
     final explicit = rawSessionId is String ? rawSessionId.trim() : null;
-    if (explicit != null && explicit.isNotEmpty) return (sessionId: explicit, fromTool: false);
-    final toolSessionId = _serverRequestToolSessionId(request: request);
-    if (toolSessionId != null) return (sessionId: toolSessionId, fromTool: true);
-    return (sessionId: activeTurnSessionId, fromTool: false);
+    if (explicit != null && explicit.isNotEmpty) return AcpToolCallSessionFound(sessionId: explicit);
+    final toolLookup = _serverRequestToolSessionLookup(request: request);
+    if (toolLookup is! AcpToolCallSessionNotFound) return toolLookup;
+    final activeSessionId = activeTurnSessionId;
+    return activeSessionId == null
+        ? const AcpToolCallSessionNotFound()
+        : AcpToolCallSessionFound(sessionId: activeSessionId);
   }
 
-  String? _serverRequestToolSessionId({required AcpServerRequest request}) {
-    final rawToolCallId = request.params["toolCallId"];
-    if (rawToolCallId is! String || rawToolCallId.isEmpty) return null;
-    final mapped = eventMapper.sessionIdForToolCallId(toolCallId: rawToolCallId);
-    if (mapped != null) return mapped;
-    for (final entry in _promptWriteNotifications.entries) {
-      for (final notification in entry.value) {
-        final update = notification.params["update"];
-        if (update is Map && update["toolCallId"] == rawToolCallId) return entry.key;
+  AcpToolCallSessionLookup _serverRequestToolSessionLookup({required AcpServerRequest request}) {
+    final toolCallIds = <String>{};
+    final topLevelToolCallId = request.params["toolCallId"];
+    if (topLevelToolCallId is String && topLevelToolCallId.isNotEmpty) {
+      toolCallIds.add(topLevelToolCallId);
+    }
+    final toolCall = request.params["toolCall"];
+    if (toolCall is Map) {
+      final nestedToolCallId = toolCall["toolCallId"];
+      if (nestedToolCallId is String && nestedToolCallId.isNotEmpty) {
+        toolCallIds.add(nestedToolCallId);
       }
     }
-    return null;
+    if (toolCallIds.length > 1) return const AcpToolCallSessionAmbiguous();
+    if (toolCallIds.isEmpty) return const AcpToolCallSessionNotFound();
+    final toolCallId = toolCallIds.single;
+    final sessionIds = <String>{};
+    switch (eventMapper.lookupSessionForToolCallId(toolCallId: toolCallId)) {
+      case AcpToolCallSessionFound(:final sessionId):
+        sessionIds.add(sessionId);
+      case AcpToolCallSessionAmbiguous():
+        return const AcpToolCallSessionAmbiguous();
+      case AcpToolCallSessionNotFound():
+        break;
+    }
+    for (final entry in _promptWriteNotifications.entries) {
+      if (entry.value.any((notification) {
+        final update = notification.params["update"];
+        return update is Map && update["toolCallId"] == toolCallId;
+      })) {
+        sessionIds.add(entry.key);
+      }
+    }
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
+      [] => const AcpToolCallSessionNotFound(),
+      _ => const AcpToolCallSessionAmbiguous(),
+    };
   }
 
   bool _isPromptFrameWriting({required String sessionId}) =>

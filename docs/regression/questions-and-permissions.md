@@ -42,8 +42,10 @@ reaches the backend so the turn continues.
   pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
   question capability and Sesori never invents a custom question channel.
 - DeepSeek standard ACP permissions use the request's explicit session ID when
-  present and retain the ACP active-turn fallback when an agent omits it. They
-  preserve the exact tool call ID and expose only the scopes the adapter offers;
+  present, otherwise resolve the standard nested tool-call ID against live
+  delegation state before using ACP's active-turn fallback. A tool-call ID
+  shared by concurrent sessions is cancelled as ambiguous rather than shown in
+  the wrong transcript. Permissions expose only the scopes the adapter offers;
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
@@ -55,9 +57,11 @@ reaches the backend so the turn continues.
   phone-mediated unless an existing explicit bridge auto-approval rule applies.
   Abort, process exit, and disposal cancel pending Grok requests rather than
   broadening or silently approving them.
-- A sessionless backend request is attributed to the most recently dispatched
-  active turn, falling back to the last dispatched turn at its settlement
-  boundary. A backend requiring exact form correlation must serialize prompts
+- A sessionless backend request with a live tool-call correlation is pinned to
+  that exact session at receipt. Multiple matching sessions fail closed; only a
+  request with no tool correlation falls back to the most recently dispatched
+  active turn or the last dispatched turn at its settlement boundary. A backend
+  requiring exact form correlation must serialize prompts
   process-wide so another session cannot become the attribution target. OMP
   supplies explicit session IDs on permissions and forms, so its independent
   session turns remain attributable while running concurrently.

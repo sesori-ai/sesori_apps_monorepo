@@ -490,6 +490,98 @@ void main() {
       respondTo(secondPrompt, {"stopReason": "end_turn"});
     });
 
+    test("a nested permission uses its exact tool-call session instead of the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      plugin.handleAgentNotification(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": firstSessionId,
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "shared-shape",
+              "title": "Run command",
+              "kind": "execute",
+            },
+          },
+        ),
+      );
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9001,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "shared-shape", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; index++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(permission.sessionID, firstSessionId);
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: firstSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(activePrompt, {"stopReason": "end_turn"});
+    });
+
+    test("an ambiguous nested permission cannot fall back to the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      for (final sessionId in [firstSessionId, secondSessionId]) {
+        plugin.handleAgentNotification(
+          AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": sessionId,
+              "update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "ambiguous",
+                "title": "Run command",
+                "kind": "execute",
+              },
+            },
+          ),
+        );
+      }
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9002,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "ambiguous", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && !fake.written.any((frame) => frame["id"] == 9002); index++) {
+        await pump();
+      }
+
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 9002);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+      respondTo(activePrompt, {"stopReason": "end_turn"});
+    });
+
     test("a queued prompt message uses its dispatch time", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();

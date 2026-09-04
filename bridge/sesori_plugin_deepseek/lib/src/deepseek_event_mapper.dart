@@ -48,9 +48,9 @@ class DeepSeekEventMapper({
   }
 
   @override
-  String? sessionIdForToolCallId({required String? toolCallId}) {
+  AcpToolCallSessionLookup lookupSessionForToolCallId({required String? toolCallId}) {
     if (toolCallId == null || toolCallId.isEmpty) {
-      return super.sessionIdForToolCallId(toolCallId: toolCallId);
+      return super.lookupSessionForToolCallId(toolCallId: toolCallId);
     }
     final sessionIds = <String>{
       for (final entry in _deferredDelegations.entries)
@@ -60,14 +60,22 @@ class DeepSeekEventMapper({
       case DeepSeekDelegationFound(:final sessionId):
         sessionIds.add(sessionId);
       case DeepSeekDelegationAmbiguous():
-        return null;
+        return const AcpToolCallSessionAmbiguous();
       case DeepSeekDelegationNotFound():
         break;
     }
+    switch (super.lookupSessionForToolCallId(toolCallId: toolCallId)) {
+      case AcpToolCallSessionFound(:final sessionId):
+        sessionIds.add(sessionId);
+      case AcpToolCallSessionAmbiguous():
+        return const AcpToolCallSessionAmbiguous();
+      case AcpToolCallSessionNotFound():
+        break;
+    }
     return switch (sessionIds.toList(growable: false)) {
-      [final sessionId] => sessionId,
-      [] => super.sessionIdForToolCallId(toolCallId: toolCallId),
-      _ => null,
+      [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
+      [] => const AcpToolCallSessionNotFound(),
+      _ => const AcpToolCallSessionAmbiguous(),
     };
   }
 
@@ -272,6 +280,11 @@ final class _DeferredDeepSeekDelegation({required final AcpNotification call}) {
     // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
     required Map<String, dynamic> update,
   }) {
+    if (update.containsKey("content")) {
+      _mergedUpdate.remove("rawOutput");
+    } else if (update.containsKey("rawOutput")) {
+      _mergedUpdate.remove("content");
+    }
     for (final entry in update.entries) {
       if (_retainedUpdateKeys.contains(entry.key)) _mergedUpdate[entry.key] = entry.value;
     }

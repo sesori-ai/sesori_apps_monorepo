@@ -10,6 +10,14 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+sealed class const AcpToolCallSessionLookup();
+
+final class const AcpToolCallSessionNotFound() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionAmbiguous() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionFound({required final String sessionId}) extends AcpToolCallSessionLookup;
+
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
 /// something (account, plan, model, or settings). Cursor's account/plan gate
@@ -190,17 +198,28 @@ class AcpEventMapper({
   final Map<String, Map<String, _LiveTool>> _liveTools = {};
 
   /// Resolves the live session that owns [toolCallId], when a harness extension
-  /// omits `sessionId` but carries the originating tool call id.
-  String? sessionIdForToolCallId({required String? toolCallId}) {
-    if (toolCallId == null || toolCallId.isEmpty) return null;
-    for (final entry in _liveTools.entries) {
-      if (entry.value.containsKey(toolCallId)) return entry.key;
-    }
-    for (final entry in _spawnToolCalls.entries) {
-      if (entry.value.contains(toolCallId)) return entry.key;
-    }
-    return null;
+  /// omits `sessionId` but carries the originating tool call id. Duplicate ids
+  /// across concurrent sessions are ambiguous rather than insertion-ordered.
+  AcpToolCallSessionLookup lookupSessionForToolCallId({required String? toolCallId}) {
+    if (toolCallId == null || toolCallId.isEmpty) return const AcpToolCallSessionNotFound();
+    final sessionIds = <String>{
+      for (final entry in _liveTools.entries)
+        if (entry.value.containsKey(toolCallId)) entry.key,
+      for (final entry in _spawnToolCalls.entries)
+        if (entry.value.contains(toolCallId)) entry.key,
+    };
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
+      [] => const AcpToolCallSessionNotFound(),
+      _ => const AcpToolCallSessionAmbiguous(),
+    };
   }
+
+  String? sessionIdForToolCallId({required String? toolCallId}) =>
+      switch (lookupSessionForToolCallId(toolCallId: toolCallId)) {
+        AcpToolCallSessionFound(:final sessionId) => sessionId,
+        AcpToolCallSessionNotFound() || AcpToolCallSessionAmbiguous() => null,
+      };
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
