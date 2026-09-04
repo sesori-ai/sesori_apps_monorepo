@@ -32,16 +32,22 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 
 ## Decisions
 
+A default is not a waiver: Steps 4, 7, and 8 open only after their decision
+is ticked here by the owner.
+
 - [ ] **D1** minimum supported public peer — *default* `≥ v1.6.0`
   (2026-07-24); alternative `≥ v1.7.0`. Gates Step 7. Accepted consequence:
   peers below the floor fail to decode the now-required fields.
 - [ ] **D2** identical Flutter platform adapters live once in
-  `module_app_ui/lib/src/platform/` — *default* yes; `client/AGENTS.md`
-  ownership sentence updated in Step 8.
-- [ ] **D3** paired bridge listeners merge into one owner per concern —
-  *default* yes; `bridge/app/AGENTS.md` and `bridge/AGENTS.md` "one trigger
-  per listener" becomes "one concern per listener" in Step 4. If declined,
-  Step 4 closes without a code change.
+  `module_app_ui/lib/src/platform/` (precedent: `go_router_route_source.dart`)
+  and `module_app_ui` may depend on the plugins they wrap — *default* yes;
+  Step 8 rewrites the rule in `client/AGENTS.md`, `client/desktop/AGENTS.md`,
+  and both reviewer skills.
+- [ ] **D3** the warm-up and glossary listener pairs merge into one owner per
+  concern — *default* yes; Step 4 rewrites "one trigger per listener" to "one
+  concern per listener" in `bridge/app/AGENTS.md`, `bridge/AGENTS.md`, and
+  both reviewer skills. The session-options refresh listeners are not a pair
+  and stay. If declined, Step 4 closes without a code change.
 - [ ] **D4** historical documents outside `.plan/` are deleted — *default*
   yes (list in `PLAN.md`); `docs/parallel-plugins/ARCHITECTURE.md` kept only
   if `docs/ARCHITECTURE.md` lacks its durable content.
@@ -57,7 +63,7 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 
 ## Locked Principles
 
-- [x] Behavior-preserving by default; Steps 4, 7, 10, and 11 name their
+- [x] Behavior-preserving by default; Steps 3, 7, 10, and 11 name their
   intentional changes in their PR bodies and regression documents.
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
@@ -77,14 +83,19 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 
 ## Complexity Guardrails
 
-- [x] One managed-runtime install composition owner, one provision
-  composition owner, one `BudgetedColdStart` (all in `sesori_plugin_runtime`);
-  one `ConnectionViewTracker`; one `OptimisticRenameTracker`; one
-  model-variant derivation; one `SessionActivityAnalyticsOwner` — no second
-  variant of any of them.
+- [x] One `forManifest` named constructor each on `ManagedRuntimeInstall
+  Service` and `ManagedRuntimeProvisionService`, one
+  `ManagedRuntimeColdStartService` (all in `sesori_plugin_runtime`, primary
+  constructors unchanged, no stored constituents); one `ConnectionViewTracker`
+  with empty-id normalization at the orchestrator boundary; one
+  `OptimisticRenameTracker` at `module_core/lib/src/cubits/shared/`,
+  constructed privately per cubit; one model-variant derivation; four cubit
+  composition functions in `module_core/lib/src/di/` — no second variant of
+  any of them, and no `GetIt` import under `module_core/lib/src/cubits/`.
 - [x] No listener base class, dispose mixin, generic session-options
-  service, SSE event hierarchy, refresh scheduler, or compatibility shim for
-  peers below the D1 floor.
+  service, SSE event hierarchy, refresh scheduler, shared
+  session-activity-analytics widget, or compatibility shim for peers below
+  the D1 floor.
 - [x] Step 11 ends with at most eight mutable fields and no per-session
   generation counters or in-flight sets.
 - [x] Step 6 removes no log line and adds no new log category; it only moves
@@ -121,16 +132,18 @@ PR opens.
 
 | Artifact | Decision | Owning step |
 |---|---|---|
-| Seven `installRuntime`/`ensureRuntime` compositions; two budgeted cold-start blocks | One composition owner each and one `BudgetedColdStart` in `sesori_plugin_runtime` | 2 |
-| `SessionViewTracker` + `ProjectViewTracker` | One `ConnectionViewTracker` keeping both `starts` and aggregate `changes` | 3 |
-| Warm-up, glossary, and session-options listener pairs | Three single owners (D3) | 4 |
+| Seven `installRuntime`/`ensureRuntime` compositions; two budgeted cold-start blocks | One `forManifest` constructor each and one `ManagedRuntimeColdStartService` in `sesori_plugin_runtime` (D5) | 2 |
+| `SessionViewTracker` + `ProjectViewTracker` | One `ConnectionViewTracker` keeping both `starts` and aggregate `changes`; empty ids normalized at the orchestrator boundary | 3 |
+| Warm-up and glossary listener pairs | Two single owners (D3) | 4 |
+| Session-options creation/changed refresh listeners | Keep (asymmetric: different sources, generation fence on one side) | — |
 | Worktree attempt loop ×2; Codex resolve-start block ×4; Codex JS scan loop ×2 | Fold in place | 5 |
 | 53 interpolated-error log sites | Logger arguments | 6 |
 | Markers `≤ v1.6.0` with a released Sesori peer (list in `PLAN.md` Step 7) | Retire with per-marker peer verification (D1) | 7 |
 | Backend/on-disk-format markers; every marker `> v1.6.0`; `/settings/pull-request-refresh` | Keep | — |
 | Eight app/desktop adapter pairs + `NoOpAnalyticsClient` + twin tests | One copy in `module_app_ui` (D2) | 8 |
-| Twin `SessionDetailCubit` construction, twin `_SessionActivityAnalyticsOwner`, list/new-session wrapper duplicates | Locator factories + one shared owner widget | 9 |
-| `_ProjectRenameState`/`_SessionRenameState` + rename flows; new-session vs session-detail variant derivation (detail lacks `isAvailable`); auth HTTP mapping ×2; login persist ×2 | One tracker; one derivation (detail adopts `isAvailable`); one helper each | 10 |
+| Twin `SessionDetailCubit` construction and list/new-session wrapper duplicates | Four composition functions in `module_core/lib/src/di/` | 9 |
+| Twin `_SessionActivityAnalyticsOwner` widgets | Keep (deliberately different visibility semantics) | — |
+| `_ProjectRenameState`/`_SessionRenameState` + rename flows; new-session vs session-detail variant derivation (detail lacks `isAvailable`); auth HTTP mapping ×2; login persist ×2 | One tracker (`cubits/shared/`, per-cubit instance); one derivation (D7); one helper each | 10 |
 | Desktop attention per-session generations, write chains, in-flight set | One desired-state reconciler (D6) | 11 |
 | 13 identical bridge fakes; repeated arrange blocks in 9 bridge test files | Testing libraries + file-local builders | 12 |
 | 71 identical client fakes; repeated arrange blocks in 10 client test files | `sesori_dart_core/testing.dart` + file-local builders | 13 |
@@ -140,5 +153,33 @@ PR opens.
 
 ## Plan Review
 
-- To be recorded by the Step 1 PR: `architecture-plan-review` sub-agent
-  result and applied findings.
+- **Reviewer:** `architecture-plan-review` sub-agent, 2026-09-04, on the
+  complete `.plan/active/codebase-cleanup-2/` draft.
+- **Result:** rejected with nine blocking findings; all nine were applied
+  directly without a second review, per repository policy. The corrected plan
+  is therefore **not** described as reviewer-approved.
+- **Applied findings:** (V1) the cold-start helper became
+  `ManagedRuntimeColdStartService` with its constructor and `run` inputs
+  written down; (V2) the install composition became a `forManifest` named
+  constructor that composes eagerly, keeps the primary constructor, and owns
+  the `http.Client` it opens as a single-use field, with the provision
+  counterpart's parameters stated; (V3) Step 4 rewrites the listener rule in
+  both reviewer skills as well as the AGENTS files, and D3 must be ticked
+  before it opens; (V4) the session-options refresh listeners were removed
+  from Step 4 and D3 — they are not symmetric — and recorded as declined;
+  (V5) empty view ids normalize to `null` at the orchestrator boundary for
+  sessions and projects, recorded as Step 3's intentional alignment; (V6)
+  Step 8 rewrites the platform-adapter rule in `client/desktop/AGENTS.md` and
+  both reviewer skills with the exact allowance and the existing
+  `go_router_route_source.dart` precedent, and D2 must be ticked before it
+  opens; (V7) no `GetIt` in cubits — the shared composition is four functions
+  in `module_core/lib/src/di/`; (V8) the shared session-activity-analytics
+  widget was dropped because the two owners encode different, deliberate
+  semantics; (V9) `OptimisticRenameTracker` is placed at
+  `module_core/lib/src/cubits/shared/` and constructed privately per cubit.
+- **Evidence corrections folded in:** the bridge has no
+  `legacyMissingPluginId` usage (five production usages, not six; the Drift
+  backfill is on-disk and stays); `session.dart` defaults are at lines 40 and
+  48; `sesori_plugin_runtime` imports neither annotation package; D1 must be
+  ticked before Step 7 opens; `bridge/AGENTS.md` line 35 is stale and is
+  corrected in Step 2.

@@ -84,7 +84,7 @@ Baseline facts at `480d82f090`:
   install composition repeated in seven plugin descriptors; the budgeted
   cold-start block duplicated in the Codex and OpenCode descriptors; eight
   Flutter platform adapters duplicated between `client/app` and
-  `client/desktop`; the session/project view trackers and three pairs of
+  `client/desktop`; the session/project view trackers and two pairs of
   bridge listeners; and the optimistic rename state machine duplicated between
   the project and session list cubits.
 - **Test duplication is large**: 134 repeated blocks of ≥25 normalized lines
@@ -119,7 +119,7 @@ ignore-lists in `module_core` are enforced by the repository's own
 
 ## Principles For Every Step
 
-- Behavior-preserving by default. Steps 4, 7, 10, and 11 intentionally change
+- Behavior-preserving by default. Steps 3, 7, 10, and 11 intentionally change
   observable behavior or contracts; they say so in their PR bodies and update
   the affected `docs/regression/` document in the same PR. Step 16 is the
   consistency pass, not the first place a change is documented.
@@ -168,23 +168,29 @@ any of them in the Step 1 PR review or later in `TRACKER.md`.
   markers (`session_catalog_mapper.dart`, `get_sessions_handler.dart:64`,
   `message_part.dart:316` attachments). Accepted consequence of either: a
   client or bridge below the floor fails to decode the now-required fields
-  and must update.
+  and must update. The owner ticks D1 before Step 7 opens; the default does
+  not by itself authorize a wire-contract change.
 - **D2 — Identical Flutter platform adapters live once in `module_app_ui`
-  (Step 8).** *Default:* yes. `client/AGENTS.md` currently assigns all
-  platform adapters to the shells; the step rewrites that sentence to "shells
-  own DI registration and surface-specific adapters; adapters whose
-  implementation is identical on every surface live once in
-  `module_app_ui/lib/src/platform/`". The `module_app_ui` package gains the
+  (Step 8).** *Default:* yes. `client/AGENTS.md`, `client/desktop/AGENTS.md`,
+  and both reviewer skills currently assign all platform adapters to the
+  shells and limit `module_app_ui` to UI dependencies; the step rewrites that
+  rule in all four places to "shells own DI registration and surface-specific
+  adapters; adapters over `module_core` interfaces whose implementation is
+  identical on every surface live once in `module_app_ui/lib/src/platform/`,
+  which already holds `go_router_route_source.dart`, and `module_app_ui` may
+  depend on the Flutter plugins those adapters wrap". The package gains the
   `file_selector`, `pasteboard`, `path_provider`, and `share_plus`
-  dependencies that those adapters wrap.
+  dependencies. The owner ticks D2 before Step 8 opens.
 - **D3 — Paired bridge listeners merge into one owner per concern (Step 4).**
-  *Default:* yes. `bridge/app/AGENTS.md` says each listener "owns one trigger's
-  subscription/timer lifecycle"; the three pairs below share every
-  collaborator and body and differ only by trigger stream. The step rewrites
-  the rule to "one concern per listener; a listener may subscribe to every
-  trigger of that concern through one `CompositeSubscription`". If declined,
-  Step 4 records the decision in its step file and closes without a code
-  change.
+  *Default:* yes, for the two symmetric pairs: the warm-up pair (identical
+  collaborators and body, two triggers) and the glossary pair (same
+  population call, two sources). `bridge/app/AGENTS.md` and both reviewer
+  skills say each listener "owns one trigger's subscription/timer lifecycle";
+  the step rewrites the rule to "one concern per listener; a listener may
+  subscribe to every trigger of that concern through one
+  `CompositeSubscription`" in all four places. The owner ticks D3 before
+  Step 4 opens. If declined, Step 4 records the decision in its step file and
+  closes without a code change.
 - **D4 — Historical documents outside `.plan/` are deleted (Step 15).**
   *Default:* delete `docs/codex-plugin-stability-report.md` (a finished
   2026-08-04 test report, no inbound references), `docs/cursor-acp-followups/`
@@ -225,12 +231,12 @@ PRs); the serialization column names the only hard ordering.
 | 1/17 | `🌱 [codebase-cleanup-2] docs: plan the second reliability cleanup series [step 1/17]` | 900–1,200 | — |
 | 2/17 | `⚙️ [codebase-cleanup-2] bridge(runtime, plugins): share managed-runtime composition and the budgeted cold start [step 2/17]` | 600–900 | 1 |
 | 3/17 | `⚙️ [codebase-cleanup-2] bridge(app): one connection view tracker for sessions and projects [step 3/17]` | 350–500 | 1 |
-| 4/17 | `⚙️ [codebase-cleanup-2] bridge(app): merge the paired listeners into one owner per concern [step 4/17]` | 450–650 | 3 (D3) |
+| 4/17 | `⚙️ [codebase-cleanup-2] bridge(app): merge the paired listeners into one owner per concern [step 4/17]` | 300–450 | 3 (D3) |
 | 5/17 | `🌿 [codebase-cleanup-2] bridge: fold the duplicated worktree, Codex turn, and scanner loops [step 5/17]` | 250–400 | 1 |
 | 6/17 | `🌿 [codebase-cleanup-2] bridge: pass caught errors to the logger instead of interpolating them [step 6/17]` | 150–250 | 2, 5 |
 | 7/17 | `🚧 [codebase-cleanup-2] compat: retire compatibility paths below the v1.6.0 baseline [step 7/17]` | 700–1,100 | 1 (D1) |
 | 8/17 | `⚙️ [codebase-cleanup-2] client: share the identical Flutter platform adapters between the shells [step 8/17]` | 800–1,100 | 1 (D2) |
-| 9/17 | `⚙️ [codebase-cleanup-2] client: share session-detail and list screen composition between the shells [step 9/17]` | 400–600 | 1 |
+| 9/17 | `⚙️ [codebase-cleanup-2] client: share session-detail and list screen composition between the shells [step 9/17]` | 250–400 | 1 |
 | 10/17 | `⚙️ [codebase-cleanup-2] client(module_core, module_auth): share the rename tracker and variant derivation, fold auth duplicates [step 10/17]` | 350–550 | 1 |
 | 11/17 | `🚧 [codebase-cleanup-2] client(module_desktop_core): reconcile desktop attention notifications from one desired state [step 11/17]` | 600–900 | desktop-app retired (D6) |
 | 12/17 | `⚙️ [codebase-cleanup-2] tests(bridge): consolidate identical fakes and repeated arrange blocks [step 12/17]` | 1,000–1,500 | 2, 3, 4, 5 |
@@ -265,17 +271,47 @@ budgeted cold-start sequence (`codex_plugin_descriptor.dart:648-697` and
 `_coldStartBudget`, a post-budget error sink, `reporter.markDegradedNow()` /
 `markConnected()`, and the abort-observed rollback through `plugin.shutdown`.
 
-**Change.** In `sesori_plugin_runtime`: one composition owner for installs
-(for example `ManagedRuntimeInstallService.forManifest({manifest, processes,
-probeTimeout, maxCapturedOutputCharactersPerStream})` whose `install(...)`
-owns and closes the `http.Client` it creates) and one for provisioning
-(`ManagedRuntimeProvisionService.forManifest(...)`), plus one
-`BudgetedColdStart` that owns the budget/degraded/abort-rollback sequence and
-takes the plugin tag for its log lines. Each descriptor's `installRuntime`
-and `ensureRuntime` collapse to the manifest, the output limit, and the
-optional explicit executable path; the two cold-start blocks become one call.
-No default-constructed dependencies: descriptors still pass `processes` and
-the probe timeout explicitly.
+**Change.** In `sesori_plugin_runtime`, three additions, each with its
+collaborators fixed here:
+
+- `ManagedRuntimeInstallService.forManifest({required RuntimeManifest
+  manifest, required HostProcessService processes, required Duration
+  probeTimeout, required int? maxCapturedOutputCharactersPerStream})` — a
+  named constructor that composes eagerly, exactly as the descriptors do
+  today: `HostProcessCommandExecutor(processes, runInShell: Platform.
+  isWindows, maxCapturedOutputCharactersPerStream)` → `RuntimeVersionValidator`
+  → `RuntimeInstallService(BinaryDownloadClient(httpClient), ChecksumValidator,
+  ArchiveExtractor, commandExecutor, runtimeId)` → `ManagedRuntimeCleaner` →
+  `manifest.assetFor` resolver, then delegates to the primary constructor,
+  which stays as it is. The one `http.Client` it opens is stored as a
+  `required` owned field that `install()` closes in `finally`; the instance is
+  single-use (one `install()` stream per instance, a second call throws
+  `StateError`), which matches every current call site. No stored `processes`,
+  `probeTimeout`, or output-limit fields and no construction inside
+  `install()`.
+- `ManagedRuntimeProvisionService.forManifest({required RuntimeManifest
+  manifest, required HostProcessService processes, required Duration
+  probeTimeout, required int? maxCapturedOutputCharactersPerStream, required
+  List<String> fallbackExecutableCandidates})` — eager composition of
+  `ManagedRuntimeSelectionService` over a `RuntimeVersionValidator`, delegating
+  to the existing primary constructor.
+- `ManagedRuntimeColdStartService({required Duration budget, required String
+  pluginTag})` with `Future<void> run({required Future<void> coldStart,
+  required ManagedRuntimeStatusReporter reporter, required StartAbortSignal
+  startAborted, required ManagedRuntimeBridgePlugin<Object?, BridgePluginApi>
+  plugin})` — owns the budget timeout, the post-budget error sink,
+  `reporter.markConnected()` / `markDegradedNow()`, and the abort-observed
+  rollback through `plugin.shutdown(budget: null)` followed by
+  `PluginStartAbortedException`. It coordinates one phase (connected, degraded,
+  or aborted) of the managed start.
+
+Each descriptor's `installRuntime` and `ensureRuntime` collapse to the
+manifest, the output limit, and the optional explicit executable path; the
+two cold-start blocks become one `run` call. No default-constructed
+dependencies: descriptors still pass `processes` and the probe timeout
+explicitly. `bridge/AGENTS.md` line 35 ("depends on interface") is corrected
+to name the runtime package's existing `sesori_bridge_foundation` dependency
+in the same PR.
 
 **Not done here.** Per-plugin `inspectSetup` hint text and rejection mapping
 stay local (they encode each backend's install story). Claude, Grok, and
@@ -304,38 +340,53 @@ carrying a dispose fence. Consumers: `Orchestrator` (write side),
 **Change.** One `ConnectionViewTracker` in `services/` owning the ref-counted
 state and exposing both signals every consumer needs: `starts` (per-connection
 start, what `viewStarts` is today) and `changes` (aggregate active set plus
-newly added ids). The orchestrator holds two instances (sessions, projects);
-`SessionUnseenService` keeps its exact semantics because `starts` is preserved.
-Delete both old classes and their tests in favor of one suite.
+newly added ids). `setViewing({required int connID, required String? id})`
+accepts only `null` for "nothing viewed": the empty-string normalization that
+`ProjectViewTracker` performs today (`project_view_tracker.dart:30`) moves to
+the boundary, the Orchestrator's relay view-message handling, and applies to
+sessions and projects alike. That is this step's one intentional alignment
+(an empty session id no longer counts as a viewed session). The orchestrator
+holds two instances (sessions, projects); `SessionUnseenService` keeps its
+exact semantics because `starts` is preserved. Delete both old classes and
+their tests in favor of one suite.
 
-**Size and risk.** 350–500 lines. Behavior-preserving; the two-client unseen
-invariant ("viewed by any connection means not bold for anyone") is covered by
-the merged unit suite and re-checked live in Step 17. Architecture review
-required.
+**Size and risk.** 350–500 lines. Behavior-preserving except the stated
+normalization; the two-client unseen invariant ("viewed by any connection
+means not bold for anyone") is covered by the merged unit suite and re-checked
+live in Step 17. Architecture review required.
 
 ### Step 4 — paired listeners (D3)
 
-**Evidence.** Three listener pairs in `bridge/app/lib/src/listeners/` share
-every collaborator and the same body and differ only by trigger:
+**Evidence.** Two listener pairs in `bridge/app/lib/src/listeners/` do the
+same work for the same concern and differ only by trigger:
 `viewed_session_plugin_warmup_listener.dart` (63) / `plugin_warmup_setting_
-listener.dart` (65) — same `SessionViewTracker`, `PluginWarmupService`,
-`PluginWarmupSettingsService`, same `_warm`, same fences;
+listener.dart` (65) — identical collaborators (`SessionViewTracker`,
+`PluginWarmupService`, `PluginWarmupSettingsService`), same `_warm`, same
+fences, one reacting to `viewStarts` and the other to the setting turning on;
 `current_project_glossary_listener.dart` (51) / `viewed_project_glossary_
-listener.dart` (57) — same `ProjectGlossaryPopulationService`, same
-`_populate`; `session_options_creation_refresh_listener.dart` (69) /
-`session_options_changed_refresh_listener.dart` (105) — same
-`SessionOptionsService`, same outcome switch and logging.
+listener.dart` (57) — same `ProjectGlossaryPopulationService` and the same
+`_populate`, one fed by a `Stream<String>` of route loads and the other by
+`ProjectViewTracker.changes`. The session-options refresh listeners were
+examined and are **not** a pair: the changed listener already owns two
+backend-event triggers behind a `PluginRuntime` generation fence, while the
+creation listener consumes `SessionBindingsCommitted` with no fence; only a
+15-line outcome switch is shared, and it belongs to the listeners (the
+service returns those outcomes as explicit values that other callers handle).
+Both stay.
 
-**Change.** One listener per concern — `PluginWarmupListener`,
-`ProjectGlossaryListener`, `SessionOptionsRefreshListener` — each subscribing
-to its two triggers through one `CompositeSubscription`, one
-`PendingOperations`, and one dispose fence. Orchestrator composition wires
-three listeners instead of six. `bridge/app/AGENTS.md` and `bridge/AGENTS.md`
-"one trigger per listener" wording becomes "one concern per listener".
+**Change.** One listener per concern for the two symmetric pairs —
+`PluginWarmupListener` and `ProjectGlossaryListener` — each subscribing to its
+two triggers through one `CompositeSubscription`, one `PendingOperations`, and
+one dispose fence. Orchestrator composition wires two listeners instead of
+four. The "each listener owns one trigger's subscription/timer lifecycle"
+rule is rewritten to "one concern per listener; a listener may subscribe to
+every trigger of that concern" in every place it lives: `bridge/app/AGENTS.md`,
+`bridge/AGENTS.md`, `.agents/skills/architecture-plan-review/SKILL.md`, and
+`.agents/skills/architecture-implementation-review/SKILL.md`. The owner ticks
+D3 in `TRACKER.md` before this PR opens; a default is not a waiver.
 
-**Size and risk.** 450–650 lines. Behavior-preserving (same triggers, same
+**Size and risk.** 300–450 lines. Behavior-preserving (same triggers, same
 work, same logs). Architecture review required. Regression documents:
-`session-creation-and-options.md` (automatic options refresh),
 `projects-and-sessions.md` (glossary population on view), `plugin-setup-and-
 lifecycle.md` (warm-up on view and on setting change).
 
@@ -388,12 +439,14 @@ noted): `project.dart:24,50` (nullable `time`), `:26,55` (`hasUnseenChanges`
 default), `:30-34` (`path ← id` decode fallback), `:48` (`path` empty-string
 default), `:62` (`directoryMissing` default), `:67`
 (`supportsDedicatedWorktrees` default), `:126` (`OpenProjectRequest.gitAction`
-default); `session.dart:39` (`pluginId` default), `:47`
+default); `session.dart:40` (`pluginId` default), `:48`
 (`pullRequestHistory` default); `create_session_request.dart:15` and
 `plugin_project_id_request.dart:13` (`pluginId` defaults);
-`plugin_identity.dart:20` (`legacyMissingPluginId`, six production usages
-including `client/module_core/lib/src/repositories/plugin_repository.dart:179,
-195` and the bridge's missing-attribution agent-discovery default);
+`plugin_identity.dart:20` (`legacyMissingPluginId`, five production usages:
+the three shared defaults above plus `client/module_core/lib/src/repositories/
+plugin_repository.dart:179,195`; the bridge itself has no usage — its only
+OpenCode default is the Drift migration backfill in `database.dart:171`, which
+is on-disk data and stays);
 `session_status.dart:13` (`unavailablePluginIds` default);
 `sesori_sse_event.dart:325` (nullable `SesoriProjectUpdated` payload);
 `client/module_app_ui/.../project_tile.dart:320` (null-time branch, plus
@@ -415,7 +468,9 @@ v1.8.0.
 
 **Size and risk.** 700–1,100 lines including generated code and tests. This
 is a wire-contract change: peers below the floor stop decoding, which D1
-accepts. Architecture review required. Regression documents:
+accepts. The owner ticks D1 in `TRACKER.md` before this PR opens; the default
+alone does not authorize a contract change. Architecture review required.
+Regression documents:
 `projects-and-sessions.md`, `session-creation-and-options.md`,
 `bridge-connectivity.md`, `pull-request-monitoring.md`.
 
@@ -438,11 +493,21 @@ dart` (identical). Their tests are duplicated too (`desktop_file_image_saver_
 test.dart` and the thumbnail-storage tests, 60 lines).
 
 **Change.** Move one copy of each into `client/module_app_ui/lib/src/platform/`
-(exported from the package barrel), keep `warmUp` on the shared temporary
-directory client, delete the twins and twin tests, and leave DI registration in
-each shell (an injectable module registering the shared classes). Add the
-wrapped plugin dependencies to `module_app_ui`. Rewrite the platform-adapter
-ownership sentence in `client/AGENTS.md`.
+(exported from the package barrel, next to the existing precedent
+`go_router_route_source.dart` and `external_link_opener.dart`), keep `warmUp`
+on the shared temporary directory client, delete the twins and twin tests, and
+leave DI registration in each shell (an injectable module registering the
+shared classes). Add the wrapped plugin dependencies (`file_selector`,
+`pasteboard`, `path_provider`, `share_plus`) to `module_app_ui`. The
+platform-adapter rule is rewritten in every place it lives — `client/AGENTS.md`,
+`client/desktop/AGENTS.md` lines 39–40, `.agents/skills/architecture-plan-
+review/SKILL.md`, and `.agents/skills/architecture-implementation-review/
+SKILL.md` — with this exact allowance: adapters over `module_core` interfaces
+whose implementation is identical on every surface may live in
+`module_app_ui/lib/src/platform/`; `module_app_ui` may depend on the Flutter
+plugins those adapters wrap; shells keep DI registration and every
+surface-specific adapter. The owner ticks D2 in `TRACKER.md` before this PR
+opens.
 
 **Not done here.** Adapters that genuinely differ stay in their shell:
 local-notification clients, OAuth device descriptors, lifecycle observers,
@@ -458,29 +523,33 @@ both surfaces already run this exact code. Architecture review required
 **Evidence.** `client/app/lib/features/session_detail/session_detail_screen.
 dart` (167) and `client/desktop/lib/features/sessions/desktop_session_detail_
 screen.dart` construct `SessionDetailCubit` with the same thirteen arguments
-(eleven `getIt` resolutions plus the ids), wire the same
-`SessionDetailPresentationScope` capabilities, and
-each implement a private `_SessionActivityAnalyticsOwner` (mobile derives
-visibility from `ModalRoute`; desktop additionally subscribes to `RouteSource`
-to detect a covering settings route). The project-list, session-list, and
-new-session wrappers repeat their cubit construction between shells as well
-(`project_list_screen.dart:30-57` vs `desktop_project_list_screen.dart:29-56`,
-`session_list_cubit_provider.dart:9-29` vs `desktop_session_list_screen.dart:
-11-31`, `new_session_screen.dart:15-28` vs `desktop_new_session_screen.dart:
-17-30`).
+(eleven `getIt` resolutions plus the ids) and wire the same
+`SessionDetailPresentationScope` capabilities. The project-list, session-list,
+and new-session wrappers repeat their cubit construction between shells as
+well (`project_list_screen.dart:30-57` vs `desktop_project_list_screen.dart:
+29-56`, `session_list_cubit_provider.dart:9-29` vs `desktop_session_list_
+screen.dart:11-31`, `new_session_screen.dart:15-28` vs `desktop_new_session_
+screen.dart:17-30`). Both screens also carry a private
+`_SessionActivityAnalyticsOwner`, but those two are **not** the same widget:
+the desktop owner subscribes to `RouteSource.currentRouteStream` and calls
+`cubit.setRouteVisible` on every change, while the mobile owner calls only
+`reassertViewingSession()` on re-visibility and deliberately never calls
+`setRouteVisible` (`session_detail_cubit.dart:2021-2022`). They stay separate
+(see Declined Candidates).
 
-**Change.** Cubits stay out of DI. Each affected cubit gains one
-locator-backed factory in `module_core` (for example
-`SessionDetailCubit.fromLocator({required GetIt locator, required sessionId,
-required projectId})`) so both shells construct it with one call, and
-`module_app_ui` gains one `SessionActivityAnalyticsOwner` widget whose
-route-visibility policy is an injected callback (mobile passes the `ModalRoute`
-check; desktop passes the covered-by-settings check). Delete the two private
-owners and the repeated argument lists.
+**Change.** Cubits stay out of DI and never import the container. The shared
+composition lives where container knowledge already lives, `client/module_
+core/lib/src/di/`: one file of composition functions exported from the barrel —
+`SessionDetailCubit createSessionDetailCubit({required GetIt locator, required
+String sessionId, required String projectId})`, `createProjectListCubit`,
+`createSessionListCubit`, `createNewSessionCubit` — each resolving the cubit's
+collaborators from the locator exactly as the shells do today. Each shell's
+`BlocProvider(create:)` calls the function; the eight repeated argument lists
+are deleted.
 
-**Size and risk.** 400–600 lines. Behavior-preserving. Architecture review
-required (composition seam). Regression documents: `analytics.md` (session
-activity events), `projects-and-sessions.md`.
+**Size and risk.** 250–400 lines. Behavior-preserving. Architecture review
+required (composition seam). Regression documents: `projects-and-sessions.md`
+(screens still open with the same collaborators).
 
 ### Step 10 — rename tracker, variant derivation, and auth client folds
 
@@ -502,8 +571,11 @@ same `"none"` filter and first-variant fallback but never checks
 `isAvailable`, so an unavailable model still offers variants on the detail
 screen (recorded as drift after PR #1282).
 
-**Change.** One `OptimisticRenameTracker` (module_core, owning the token,
-visible, and confirmed values and the settle rule) used by both cubits; one
+**Change.** One `OptimisticRenameTracker` at `client/module_core/lib/src/
+cubits/shared/optimistic_rename_tracker.dart` — pure Dart, owning the token,
+visible, and confirmed values and the settle rule, exposing snapshot getters
+only — constructed privately by `ProjectListCubit` and `SessionListCubit` (one
+instance per cubit, never registered in DI); one
 pure variant/availability derivation in module_core used by both the
 new-session options service and the session-detail cubit (the detail screen
 adopts the `isAvailable` rule under D7 — the one intentional behavior change
@@ -601,7 +673,8 @@ shares one pump helper. Assertions are never rewritten.
 (`shared/no_slop_linter`), and direct `json_annotation` in `bridge/app`,
 `sesori_plugin_{acp,claude,codex,cursor,grok,hermes,interface,pi,runtime,
 antigravity}`, `client/app`, `client/module_auth`, `client/module_desktop_core`
-(all import it only through `freezed_annotation`; `sesori_plugin_opencode` and
+(they import it only through `freezed_annotation`, and `sesori_plugin_runtime`
+imports neither annotation package; `sesori_plugin_opencode` and
 `sesori_plugin_deepseek` import it directly and keep it). The step confirms
 `build_runner` still resolves `json_serializable` through the transitive
 dependency before removing each line. Unused ARB keys:
@@ -656,11 +729,13 @@ Recorded so a later session does not re-investigate them without new evidence.
 | `bridge/app/tool/benchmarks` | Allowed one-off executables; analyze clean. |
 | Single-variant `PluginAuthenticationChallengeType` enum | Inside the in-flight Antigravity browser-authentication series. |
 | `bridge/app/tool/dev_control_host.dart` and the OpenCode client generator | Tooling; no production impact. |
+| Session-options refresh listener pair (`session_options_creation_refresh_listener.dart`, `session_options_changed_refresh_listener.dart`) | Not symmetric: the changed listener already owns two backend triggers behind a generation fence, the creation listener consumes binding commits with none; only a 15-line outcome switch is shared and it belongs to the listeners. |
+| Twin `_SessionActivityAnalyticsOwner` widgets in the mobile and desktop session-detail screens | Different, deliberate semantics: desktop owns a `RouteSource` subscription and calls `setRouteVisible`; mobile calls only `reassertViewingSession` and deliberately never `setRouteVisible`. A shared widget would need a sealed policy larger than the two owners. |
 
 ## Cleanup Assessment
 
 - Directly caused cleanup is inside each step: deleted twin adapters and
-  tests (8), deleted listener classes (4), deleted tracker class (3), deleted
+  tests (8), two deleted listener classes (4), deleted tracker class (3), deleted
   private rename states (10), deleted compatibility fallbacks and their tests
   (7), deleted duplicate fakes (12, 13).
 - Larger coherent cleanups have their own steps: documents (15), dependencies
@@ -671,14 +746,14 @@ Recorded so a later session does not re-investigate them without new evidence.
 
 ## Complexity Budget
 
-New production types: the install/provision composition owners and
-`BudgetedColdStart` (Step 2, replacing 7 + 7 + 2 copies), `ConnectionView
-Tracker` (Step 3, replacing 2 classes), three merged listeners (Step 4,
-replacing 6), `OptimisticRenameTracker` and one variant derivation (Step 10, replacing 2
-private classes and 2 derivation pairs), `SessionActivityAnalyticsOwner` and four locator factories (Step 9,
-replacing 2 private widgets and 8 argument lists). Net: fewer classes, and
-every new one replaces at least two copies and owns a lifecycle or an
-invariant.
+New production types: two named constructors and
+`ManagedRuntimeColdStartService` (Step 2, replacing 7 + 7 + 2 copies),
+`ConnectionViewTracker` (Step 3, replacing 2 classes), two merged listeners
+(Step 4, replacing 4), `OptimisticRenameTracker` and one variant derivation
+(Step 10, replacing 2 private classes and 2 derivation pairs), four
+composition functions in `module_core/lib/src/di/` (Step 9, replacing 8
+argument lists). Net: fewer classes, and every new one replaces at least two
+copies and owns a lifecycle or an invariant.
 
 New mutable parts: none. Step 11 removes at least twelve. Steps 3 and 4 remove
 duplicated subscriptions and fences. Nothing adds a timer, registry, dedupe
@@ -693,7 +768,9 @@ compatibility shim for peers below the D1 floor.
 - Only Step 7 changes wire contracts, under D1, with per-marker peer
   verification against the `v1.6.0` tag. Newer peers are unaffected because
   every retired default concerned fields those peers already send.
-- Steps 2–6 and 8–15 change no wire, persisted, or database shape.
+- Steps 2–6 and 8–15 change no wire, persisted, or database shape. Step 3
+  normalizes an empty relay view id to "nothing viewed" at the orchestrator
+  boundary; the relay message shape is unchanged.
 - Internal Dart APIs (plugin interface, runtime, module barrels) update in
   lockstep with their in-repository consumers; no shims.
 
@@ -712,7 +789,7 @@ compatibility shim for peers below the D1 floor.
 Affected feature documents: `plugin-runtime-installation.md`,
 `plugin-setup-and-lifecycle.md`, `session-creation-and-options.md`,
 `projects-and-sessions.md`, `bridge-connectivity.md`,
-`pull-request-monitoring.md`, `attachments-and-images.md`, `analytics.md`,
+`pull-request-monitoring.md`, `attachments-and-images.md`,
 `account-and-onboarding.md`, `notifications.md`.
 
 ### Highest required level
@@ -733,7 +810,7 @@ other) as step evidence, not as an L4 claim.
 | View tracking, warm-up, glossary population, automatic options refresh (Steps 3, 4) | Headless bridge + relay integration (two clients) | Representative | Release-target bridge host |
 | Compatibility retirement (Step 7) | Automated with exact `v1.6.0` wire fixtures + headless bridge | None | — |
 | Image save, copy, share, thumbnails (Step 8) | Client end to end | Representative | Release-target mobile platform and desktop (macOS) |
-| Session open, rename, variant availability, activity analytics (Steps 9, 10) | Client end to end + automated | Representative | Release-target mobile platform and desktop (macOS) |
+| Session open, rename, variant availability (Steps 9, 10) | Client end to end + automated | Representative | Release-target mobile platform and desktop (macOS) |
 | Login by email and Apple (Step 10) | Client end to end for email; automated for Apple | None | Release-target mobile platform |
 | Desktop attention notifications (Step 11, if executed) | Client end to end | Representative | Desktop (macOS) |
 | Everything else | Automated (full suites) + `make analyze` in all three workspaces | — | — |
