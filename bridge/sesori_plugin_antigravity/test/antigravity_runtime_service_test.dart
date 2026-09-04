@@ -124,6 +124,30 @@ void main() {
     expect(storage.pathInspections, 0);
   });
 
+  test("preserves an explicit probe timeout as control flow", () async {
+    final timeoutFailure = TimeoutException("probe timed out");
+    final storage = _FakeStorage(
+      pairResults: const {
+        "/explicit/agy_acp_server.par": AntigravityRuntimePairFound(pair: pathPair),
+      },
+      pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+    );
+
+    await expectLater(
+      _resolve(
+        service: _service(
+          storage: storage,
+          api: _FakeAcpApi(outcomes: [() async => throw timeoutFailure]),
+        ),
+        explicitServerPath: "/explicit/agy_acp_server.par",
+        managedServerPath: managedPair.serverPath,
+        abortSignal: StartAbortSignal.never,
+      ),
+      throwsA(same(timeoutFailure)),
+    );
+    expect(storage.pathInspections, 0);
+  });
+
   test("selects PATH before managed and forwards only the prepared environment", () async {
     final storage = _FakeStorage(
       pairResults: const {},

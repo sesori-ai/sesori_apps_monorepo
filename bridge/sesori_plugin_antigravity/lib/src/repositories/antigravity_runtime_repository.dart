@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -64,6 +66,8 @@ class AntigravityRuntimeRepository({
         ),
       );
     } on PluginStartAbortedException {
+      rethrow;
+    } on TimeoutException {
       rethrow;
     } on Object catch (error, stackTrace) {
       return AntigravityRuntimeProbeBoundaryFailed(

@@ -6,7 +6,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
 void main() {
-  const target = PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64);
+  final target = PlatformTarget(
+    os: Platform.isWindows ? PlatformOs.windows : PlatformOs.linux,
+    arch: PlatformArch.x64,
+  );
   const storage = AntigravityRuntimeStorage();
   late Directory temporaryDirectory;
 
