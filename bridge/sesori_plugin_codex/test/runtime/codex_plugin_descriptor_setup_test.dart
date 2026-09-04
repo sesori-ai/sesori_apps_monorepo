@@ -300,7 +300,7 @@ void main() {
         store: const _UnusedHostJsonStore(),
         aborted: _AbortOnThirdCheck(),
       );
-      expect(operation.kind, isA<PluginAuthenticationDeviceCodeOperationKind>());
+      expect(operation, isA<PluginAuthenticationDeviceCodeOperation>());
       await expectLater(
         operation.events.toList(),
         throwsA(isA<PluginStartAbortedException>()),

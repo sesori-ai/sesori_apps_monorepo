@@ -78,17 +78,19 @@ void main() {
   test("authenticate forwards safe events and aborts on shutdown", () async {
     final authenticationGate = Completer<void>();
     final authenticationStores = <HostJsonStore>[];
+    Stream<PluginAuthenticationDeviceCodeEvent> authenticationEvents({required StartAbortSignal aborted}) async* {
+      yield PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      );
+      await authenticationGate.future;
+      if (aborted.isAborted) throw const PluginStartAbortedException();
+      yield const PluginAuthenticationCompleted();
+    }
+
     final descriptor = _AuthenticationDescriptor(
-      authenticate: ({required aborted}) async* {
-        yield PluginAuthenticationDeviceCodeChallenge(
-          verificationUri: Uri.parse("https://auth.example/device"),
-          userCode: "ABCD-EFGH",
-        );
-        await authenticationGate.future;
-        if (aborted.isAborted) throw const PluginStartAbortedException();
-        yield const PluginAuthenticationCompleted();
-      },
-      kind: const PluginAuthenticationDeviceCodeOperationKind(),
+      authenticate: ({required aborted}) =>
+          PluginAuthenticationOperation.deviceCode(events: authenticationEvents(aborted: aborted)),
       recordStore: ({required store}) => authenticationStores.add(store),
     );
     final runtime = _runtime(
@@ -136,13 +138,20 @@ void main() {
   });
 
   test("browser redirects are one-shot and fenced to the active generation", () async {
-    final streams = [StreamController<PluginAuthenticationEvent>(), StreamController<PluginAuthenticationEvent>()];
+    final streams = [
+      StreamController<PluginAuthenticationBrowserEvent>(),
+      StreamController<PluginAuthenticationBrowserEvent>(),
+    ];
     var streamIndex = 0;
     final submitted = <Uri>[];
+    Completer<void>? redirectGate;
     final descriptor = _AuthenticationDescriptor(
-      authenticate: ({required aborted}) => streams[streamIndex++].stream,
-      kind: PluginAuthenticationBrowserOperationKind(
-        submitRedirect: ({required redirectUri}) async => submitted.add(redirectUri),
+      authenticate: ({required aborted}) => PluginAuthenticationOperation.browser(
+        events: streams[streamIndex++].stream,
+        submitRedirect: ({required redirectUri}) async {
+          submitted.add(redirectUri);
+          await redirectGate?.future;
+        },
       ),
       recordStore: ({required store}) {},
     );
@@ -203,17 +212,24 @@ void main() {
         PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
       ),
     );
-    expect(
-      await runtime.submitAuthenticationRedirect(
-        pluginId: "one",
-        generation: second.generation,
-        redirectUri: secondRedirect,
-      ),
-      isA<PluginRuntimeAuthenticationContinuationApplied>(),
+    redirectGate = Completer<void>();
+    final cancelledSubmission = runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: second.generation,
+      redirectUri: secondRedirect,
     );
     expect(submitted, [firstRedirect, secondRedirect]);
 
     second.abort();
+    redirectGate.complete();
+    expect(
+      await cancelledSubmission,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      ),
+    );
     final afterCancel = await runtime.submitAuthenticationRedirect(
       pluginId: "one",
       generation: second.generation,
@@ -1935,8 +1951,7 @@ class const _FakeDescriptor({
 }
 
 class const _AuthenticationDescriptor({
-  required final Stream<PluginAuthenticationEvent> Function({required StartAbortSignal aborted}) _authenticate,
-  required final PluginAuthenticationOperationKind _kind,
+  required final PluginAuthenticationOperation Function({required StartAbortSignal aborted}) _authenticate,
   required final void Function({required HostJsonStore store}) _recordStore,
 }) extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
   @override
@@ -1949,10 +1964,7 @@ class const _AuthenticationDescriptor({
     required StartAbortSignal aborted,
   }) {
     _recordStore(store: store);
-    return PluginAuthenticationOperation(
-      events: _authenticate(aborted: aborted),
-      kind: _kind,
-    );
+    return _authenticate(aborted: aborted);
   }
 }
 

@@ -273,7 +273,7 @@ class PluginRuntime({
     final authentication = _PluginRuntimeAuthentication(
       generation: ++slot.authenticationGeneration,
       abortController: abortController,
-      kind: descriptorOperation.kind,
+      operation: descriptorOperation,
     );
     slot.authentication = authentication;
     _authenticationAbortControllers.add(abortController);
@@ -310,12 +310,12 @@ class PluginRuntime({
         reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
       );
     }
-    switch (authentication.kind) {
-      case PluginAuthenticationDeviceCodeOperationKind():
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation():
         return const PluginRuntimeAuthenticationContinuationConflict(
           reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
         );
-      case PluginAuthenticationBrowserOperationKind(:final submitRedirect):
+      case PluginAuthenticationBrowserOperation(:final submitRedirect):
         if (authentication.redirectSubmitted) {
           return const PluginRuntimeAuthenticationContinuationConflict(
             reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
@@ -323,6 +323,11 @@ class PluginRuntime({
         }
         authentication.redirectSubmitted = true;
         await submitRedirect(redirectUri: redirectUri);
+        if (_shuttingDown || !identical(slot.authentication, authentication) || !authentication.acceptingContinuations) {
+          return const PluginRuntimeAuthenticationContinuationConflict(
+            reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+          );
+        }
         return const PluginRuntimeAuthenticationContinuationApplied();
     }
   }
@@ -1837,7 +1842,7 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
 class _PluginRuntimeAuthentication({
   required final int generation,
   required final StartAbortController abortController,
-  required final PluginAuthenticationOperationKind kind,
+  required final PluginAuthenticationOperation operation,
 }) {
   bool acceptingContinuations = true;
   bool redirectSubmitted = false;

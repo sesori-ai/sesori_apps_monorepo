@@ -661,8 +661,8 @@ documented invariant, they update that document immediately. Step 11 is final re
 
 ### Step 4/12: Browser continuation ownership
 
-- Replace the stream-only descriptor result with a backend-neutral authentication operation that exposes events and can
-  reject or accept a browser redirect according to its sealed operation kind. Add required `HostJsonStore` access to
+- Replace the stream-only descriptor result with sealed backend-neutral authentication operation variants that couple
+  each challenge event stream to device-code rejection or browser redirect acceptance. Add required `HostJsonStore` access to
   the authentication descriptor contract. App composition creates one store per plugin state root and shares that
   instance with authentication and the live `PluginHost`; update Codex and all fakes without a compatibility shim.
 - Route continuation only to the current plugin's single active, generation-fenced authentication. Define typed

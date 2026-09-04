@@ -20,34 +20,49 @@ abstract interface class InteractivePluginAuthenticationDescriptor() {
   });
 }
 
-/// One plugin-owned login attempt and its backend-neutral continuation kind.
-final class const PluginAuthenticationOperation({
-  required final Stream<PluginAuthenticationEvent> events,
-  required final PluginAuthenticationOperationKind kind,
-});
+/// One plugin-owned login attempt with challenge events coupled to its continuation behavior.
+sealed class const PluginAuthenticationOperation() {
+  const factory deviceCode({
+    required Stream<PluginAuthenticationDeviceCodeEvent> events,
+  }) = PluginAuthenticationDeviceCodeOperation;
 
-sealed class const PluginAuthenticationOperationKind();
+  const factory browser({
+    required Stream<PluginAuthenticationBrowserEvent> events,
+    required Future<void> Function({required Uri redirectUri}) submitRedirect,
+  }) = PluginAuthenticationBrowserOperation;
+
+  Stream<PluginAuthenticationEvent> get events;
+}
 
 /// Device-code login has no browser redirect for the bridge to submit.
-final class const PluginAuthenticationDeviceCodeOperationKind() extends PluginAuthenticationOperationKind;
+final class const PluginAuthenticationDeviceCodeOperation({
+  @override required final Stream<PluginAuthenticationDeviceCodeEvent> events,
+}) extends PluginAuthenticationOperation;
 
 /// Browser login accepts one redirect URI through the active operation.
-final class const PluginAuthenticationBrowserOperationKind({
+final class const PluginAuthenticationBrowserOperation({
+  @override required final Stream<PluginAuthenticationBrowserEvent> events,
   required final Future<void> Function({required Uri redirectUri}) submitRedirect,
-}) extends PluginAuthenticationOperationKind;
+}) extends PluginAuthenticationOperation;
 
 sealed class const PluginAuthenticationEvent();
+
+sealed class const PluginAuthenticationDeviceCodeEvent() implements PluginAuthenticationEvent;
+
+sealed class const PluginAuthenticationBrowserEvent() implements PluginAuthenticationEvent;
 
 final class const PluginAuthenticationDeviceCodeChallenge({
   required final Uri verificationUri,
   required final String userCode,
-}) extends PluginAuthenticationEvent;
+}) extends PluginAuthenticationEvent implements PluginAuthenticationDeviceCodeEvent;
 
 final class const PluginAuthenticationBrowserChallenge({
   required final Uri authorizationUri,
   required final Uri expectedCallbackUri,
-}) extends PluginAuthenticationEvent;
+}) extends PluginAuthenticationEvent implements PluginAuthenticationBrowserEvent;
 
-final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent;
+final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent
+    implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;
 
-final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent;
+final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent
+    implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;

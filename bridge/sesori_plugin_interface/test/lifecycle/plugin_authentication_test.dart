@@ -51,27 +51,22 @@ void main() {
     );
   });
 
-  test("authentication operations expose a sealed continuation kind", () async {
+  test("authentication operation variants couple challenge type and continuation", () async {
     Uri? submitted;
-    final browser = PluginAuthenticationOperation(
-      events: const Stream<PluginAuthenticationEvent>.empty(),
-      kind: PluginAuthenticationBrowserOperationKind(
-        submitRedirect: ({required redirectUri}) async => submitted = redirectUri,
-      ),
+    final browser = PluginAuthenticationOperation.browser(
+      events: const Stream<PluginAuthenticationBrowserEvent>.empty(),
+      submitRedirect: ({required redirectUri}) async => submitted = redirectUri,
     );
     final redirectUri = Uri.http("127.0.0.1", "/callback", {"code": "code"});
 
-    await (browser.kind as PluginAuthenticationBrowserOperationKind).submitRedirect(
-      redirectUri: redirectUri,
-    );
+    await (browser as PluginAuthenticationBrowserOperation).submitRedirect(redirectUri: redirectUri);
 
     expect(submitted, redirectUri);
     expect(
-      const PluginAuthenticationOperation(
-        events: Stream<PluginAuthenticationEvent>.empty(),
-        kind: PluginAuthenticationDeviceCodeOperationKind(),
-      ).kind,
-      isA<PluginAuthenticationDeviceCodeOperationKind>(),
+      const PluginAuthenticationOperation.deviceCode(
+        events: Stream<PluginAuthenticationDeviceCodeEvent>.empty(),
+      ),
+      isA<PluginAuthenticationDeviceCodeOperation>(),
     );
   });
 }

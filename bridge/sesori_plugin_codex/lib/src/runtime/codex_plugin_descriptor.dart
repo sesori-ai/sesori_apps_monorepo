@@ -445,7 +445,7 @@ class const CodexPluginDescriptor({
     required String stateDirectory,
     required HostJsonStore store,
     required StartAbortSignal aborted,
-  }) => PluginAuthenticationOperation(
+  }) => PluginAuthenticationOperation.deviceCode(
     events: _authenticate(
       config: config,
       processes: processes,
@@ -453,10 +453,9 @@ class const CodexPluginDescriptor({
       stateDirectory: stateDirectory,
       aborted: aborted,
     ),
-    kind: const PluginAuthenticationDeviceCodeOperationKind(),
   );
 
-  Stream<PluginAuthenticationEvent> _authenticate({
+  Stream<PluginAuthenticationDeviceCodeEvent> _authenticate({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
