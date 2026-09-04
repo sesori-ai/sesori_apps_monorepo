@@ -48,7 +48,8 @@
   auth/options workflows, generic artwork, pre-activation disclosure, extraction budgets, L5 Full scope, and shutdown
   install-abort semantics. The second wave adds service-owned runtime policy, plugin-owned identity, coherent Step 6/7
   composition, and host-backed profile chmod. The third wave extends per-asset archive budgets through traversal
-  preflight and documents fresh-process first-session default-model behavior.
+  preflight and documents fresh-process first-session default-model behavior. The fourth wave adds metadata/setup
+  service ownership, Layer-2 protocol mapping, per-feature regression updates, and current-client-only new auth.
 - **Implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
 
 ## Locked Decisions
@@ -60,6 +61,8 @@
 - Private profile under plugin state; no default-profile credential copy; POSIX setup applies owner-only mode through
   an injected host-backed command boundary before agent launch.
 - Remote auth uses pure-Dart generic loopback-input validation, then independent exact plugin validation before relay.
+- New browser authentication requires a current mobile/desktop client; older clients retain already-authenticated use
+  and receive an update-client hint, with no claimed CLI/bridge-host login.
 - Agent mode is always `default`; `allow_always`, `auto_edit`, `yolo`, and dangerous skip are unavailable.
 - Before a process observes a model catalog from new/load/resume, options are partial and the first session uses the
   account default; no persistent scratch Google session is created for discovery.
@@ -119,3 +122,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-03 — PR #1285 third review produced two actionable findings. Each archive's required command budget now
   covers traversal preflight and extraction, and model discovery honestly reports partial/default-only state until a
   real new/load/resume response provides the catalog.
+- 2026-09-04 — PR #1285 fourth review produced five actionable findings. Metadata recovery and combined setup now have
+  explicit service owners; protocol normalization is Layer 2; behavior-changing PRs update regression contracts when
+  they land; and new authentication requires a current client with an explicit update hint.
