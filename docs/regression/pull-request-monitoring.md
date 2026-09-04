@@ -24,9 +24,13 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
   reconciles selection. A refresh resolved against the old durable branch cannot
   overwrite that result, and local or fetched remote-ref collisions receive a
   different generated suffix.
-- Every PR-bearing read is gated on a fresh gh identity check; unknown, failed, or
-  switched login returns session and branch without PR metadata instead of another
-  account's cache. No token is stored and no GitHub login reaches clients. Routine
+- Every PR-bearing read is gated on a gh identity check at most one hour old,
+  shared with concurrent reads; gh availability and authentication are cached on
+  the same terms. Only successes are cached, so a fresh gh login is picked up on
+  the next refresh, while an unknown, failed, or switched login returns session
+  and branch without PR metadata instead of another account's cache. Fetched PR
+  data is fenced by the viewer login in the same response. No token is stored
+  and no GitHub login reaches clients. Routine
   logs carry no branch, repo slug, PR title, URL, or path; recovered failures retain
   the original error, stack, and diagnostically useful local context.
 - Presence is connection-scoped and unioned across devices; one timer serves the
