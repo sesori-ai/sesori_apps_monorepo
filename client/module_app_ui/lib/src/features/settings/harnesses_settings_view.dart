@@ -1019,7 +1019,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Semantics(
-            label: browserChallenge == null ? loc.harnessAuthenticationSecuritySemantics : securityDescription,
+            label: operationChallenge is PluginAuthenticationDeviceCodeChallenge
+                ? loc.harnessAuthenticationSecuritySemantics
+                : securityDescription,
             child: Text(
               securityDescription,
               style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
