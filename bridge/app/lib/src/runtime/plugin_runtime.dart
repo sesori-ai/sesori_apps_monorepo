@@ -323,7 +323,7 @@ class PluginRuntime({
         }
         authentication.redirectSubmitted = true;
         await submitRedirect(redirectUri: redirectUri);
-        if (_shuttingDown || !identical(slot.authentication, authentication) || !authentication.acceptingContinuations) {
+        if (_shuttingDown || authentication.aborted) {
           return const PluginRuntimeAuthenticationContinuationConflict(
             reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
           );
@@ -336,6 +336,7 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required _PluginRuntimeAuthentication authentication,
   }) {
+    authentication.aborted = true;
     if (identical(slot.authentication, authentication)) {
       authentication.acceptingContinuations = false;
     }
@@ -1846,6 +1847,7 @@ class _PluginRuntimeAuthentication({
 }) {
   bool acceptingContinuations = true;
   bool redirectSubmitted = false;
+  bool aborted = false;
 }
 
 class const _PluginLease({

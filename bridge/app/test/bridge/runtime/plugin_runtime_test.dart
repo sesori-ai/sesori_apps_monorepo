@@ -141,8 +141,10 @@ void main() {
     final streams = [
       StreamController<PluginAuthenticationBrowserEvent>(),
       StreamController<PluginAuthenticationBrowserEvent>(),
+      StreamController<PluginAuthenticationBrowserEvent>(),
     ];
     var streamIndex = 0;
+    var settleOnSubmit = false;
     final submitted = <Uri>[];
     Completer<void>? redirectGate;
     final descriptor = _AuthenticationDescriptor(
@@ -150,6 +152,7 @@ void main() {
         events: streams[streamIndex++].stream,
         submitRedirect: ({required redirectUri}) async {
           submitted.add(redirectUri);
+          if (settleOnSubmit) await streams[streamIndex - 1].close();
           await redirectGate?.future;
         },
       ),
@@ -243,8 +246,21 @@ void main() {
         PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
       ),
     );
-    await streams.last.close();
+    await streams[1].close();
     await secondDone;
+
+    settleOnSubmit = true;
+    final third = runtime.authenticate(pluginId: "one");
+    final thirdDone = third.events.drain<void>();
+    expect(
+      await runtime.submitAuthenticationRedirect(
+        pluginId: "one",
+        generation: third.generation,
+        redirectUri: Uri.parse("http://127.0.0.1/callback?code=third"),
+      ),
+      isA<PluginRuntimeAuthenticationContinuationApplied>(),
+    );
+    await thirdDone;
   });
 
   test("authenticate rejects descriptors without the optional capability", () {
