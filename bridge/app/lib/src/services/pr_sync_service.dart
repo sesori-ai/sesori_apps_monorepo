@@ -32,7 +32,7 @@ class PrSyncService({
   final Map<String, int> _pendingProjectGenerations = <String, int>{};
   Map<String, int> _activeProjectGenerations = const <String, int>{};
   final List<_PrRefreshWaiter> _refreshWaiters = <_PrRefreshWaiter>[];
-  ({bool capable, DateTime checkedAt})? _githubCliCapabilityCache;
+  DateTime? _githubCliCapableAt;
   Future<bool>? _githubCliCapabilityCheck;
   bool _identityVerificationFailureReported = false;
   Future<void>? _activeDrain;
@@ -40,7 +40,11 @@ class PrSyncService({
   bool _isDraining = false;
   bool _disposed = false;
 
-  static const _githubCliCacheTtl = Duration(seconds: 30);
+  /// How long a positive gh capability or identity result is reused. Only
+  /// successes are cached, so a fresh `gh auth login` is picked up on the next
+  /// refresh, while a logout or account switch takes up to this long to fail
+  /// closed on the user's own devices.
+  static const _githubCliCacheTtl = Duration(hours: 1);
   ({VerifiedGithubLogin login, DateTime checkedAt})? _verifiedIdentityCache;
   Future<VerifiedGithubLogin?>? _identityVerification;
 
@@ -191,9 +195,9 @@ class PrSyncService({
     final inFlight = _githubCliCapabilityCheck;
     if (inFlight != null) return await inFlight;
 
-    final cached = _githubCliCapabilityCache;
-    if (cached != null && _clock.now().difference(cached.checkedAt) < _githubCliCacheTtl) {
-      return cached.capable;
+    final capableAt = _githubCliCapableAt;
+    if (capableAt != null && _clock.now().difference(capableAt) < _githubCliCacheTtl) {
+      return true;
     }
 
     final check = _checkGithubCliCapability();
@@ -210,7 +214,7 @@ class PrSyncService({
   Future<bool> _checkGithubCliCapability() async {
     final available = await _prSource.isGithubCliAvailable();
     final capable = available && await _prSource.isGithubCliAuthenticated();
-    _githubCliCapabilityCache = (capable: capable, checkedAt: _clock.now());
+    if (capable) _githubCliCapableAt = _clock.now();
     return capable;
   }
 

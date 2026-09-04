@@ -517,7 +517,7 @@ void main() {
       expect(source.resolveCalls, hasLength(2));
     });
 
-    test("shares and expires the gh capability cache", () async {
+    test("shares and expires a positive gh capability but never caches a negative one", () async {
       var now = DateTime.utc(2026, 8, 2);
       final source = _FakePrSource(
         targetsByDirectory: {
@@ -537,24 +537,24 @@ void main() {
       );
       addTearDown(service.dispose);
 
-      await service.triggerRefresh(
-        projectIds: {"one"},
-        refreshPolicy: PrRefreshPolicy.explicit,
-      );
-      await service.triggerRefresh(
-        projectIds: {"two"},
-        refreshPolicy: PrRefreshPolicy.explicit,
-      );
-      expect(source.isAvailableCallCount, 1);
+      Future<PrRefreshOutcome> refresh(String projectId) =>
+          service.triggerRefresh(projectIds: {projectId}, refreshPolicy: PrRefreshPolicy.explicit);
 
-      now = now.add(const Duration(seconds: 30));
-      source.isAvailableResult = true;
-      await service.triggerRefresh(
-        projectIds: {"one"},
-        refreshPolicy: PrRefreshPolicy.explicit,
-      );
+      await refresh("one");
+      await refresh("two");
       expect(source.isAvailableCallCount, 2);
-      expect(source.selectionCalls, hasLength(1));
+      expect(source.selectionCalls, isEmpty);
+
+      source.isAvailableResult = true;
+      await refresh("one");
+      now = now.add(const Duration(minutes: 59));
+      await refresh("two");
+      expect(source.isAvailableCallCount, 3);
+      expect(source.selectionCalls, hasLength(2));
+
+      now = now.add(const Duration(minutes: 1));
+      await refresh("one");
+      expect(source.isAvailableCallCount, 4);
     });
 
     test("shares and expires a verified identity but never caches a failure", () async {
@@ -577,11 +577,11 @@ void main() {
       expect(concurrent, everyElement(_verifiedGithubLogin));
       expect(source.identityCallCount, 3);
 
-      now = now.add(const Duration(seconds: 29));
+      now = now.add(const Duration(minutes: 59));
       expect(await service.verifyGithubIdentity(), _verifiedGithubLogin);
       expect(source.identityCallCount, 3);
 
-      now = now.add(const Duration(seconds: 1));
+      now = now.add(const Duration(minutes: 1));
       source.authenticatedIdentity = null;
       expect(await service.verifyGithubIdentity(), isNull);
       expect(source.identityCallCount, 4);
