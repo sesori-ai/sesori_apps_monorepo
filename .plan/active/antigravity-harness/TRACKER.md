@@ -3,15 +3,15 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-4/12 merged; Step 5/12 implementation complete and awaiting publication
+- **Status:** Steps 1-4/12 merged; Step 5/12 open for review
 - **Base:** Step 4 merge `93c8982601`
 - **Current branch:** `antigravity-harness-step-5-remote-browser-handoff`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
-- **Open PR:** none
-- **Next action:** commit, push, open Step 5, and start its PR monitor
+- **Open PR:** [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
+- **Next action:** monitor Step 5 through readiness and merge
 
 ## Fixed PR Series
 
@@ -86,7 +86,7 @@
 - [x] Add typed browser transport, layered client handoff, loopback validation, shared UI, regression coverage, and
   tests.
 - [x] Complete architecture implementation review and final verification.
-- [ ] After Step 4 merges, sync, commit, push, open the Step 5 PR, and start its monitor.
+- [x] After Step 4 merges, sync, commit, push, open the Step 5 PR, and start its monitor.
 
 ## Architecture Reviews
 
