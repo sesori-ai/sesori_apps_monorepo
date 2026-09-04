@@ -590,7 +590,7 @@ class AcpEventMapper({
       spawn: spawn,
       directory: directory,
     );
-    if (result.events.isNotEmpty) setSessionProject(spawn.childSessionId, directory);
+    setSessionProject(spawn.childSessionId, directory);
     return _childTileEvents(result);
   }
 

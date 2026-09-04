@@ -220,11 +220,7 @@ Map<String, dynamic> _$DeepSeekTerminalHistoryResponseDtoToJson(
 DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
   Map json,
 ) => DeepSeekSessionUpdateEnvelopeDto(
-  metadata: json['_meta'] == null
-      ? null
-      : DeepSeekEnvelopeMetadataDto.fromJson(
-          Map<String, dynamic>.from(json['_meta'] as Map),
-        ),
+  metadata: (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
   sessionId: json['sessionId'] as String,
   update: Map<String, dynamic>.from(json['update'] as Map),
 );
@@ -232,23 +228,10 @@ DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
 Map<String, dynamic> _$DeepSeekSessionUpdateEnvelopeDtoToJson(
   DeepSeekSessionUpdateEnvelopeDto instance,
 ) => <String, dynamic>{
-  '_meta': ?instance.metadata?.toJson(),
+  '_meta': ?instance.metadata,
   'sessionId': instance.sessionId,
   'update': instance.update,
 };
-
-DeepSeekEnvelopeMetadataDto _$DeepSeekEnvelopeMetadataDtoFromJson(Map json) =>
-    DeepSeekEnvelopeMetadataDto(
-      deepSeek: json['sesori.ai/deepseek'] == null
-          ? null
-          : DeepSeekEnvelopeDeepSeekMetadataDto.fromJson(
-              Map<String, dynamic>.from(json['sesori.ai/deepseek'] as Map),
-            ),
-    );
-
-Map<String, dynamic> _$DeepSeekEnvelopeMetadataDtoToJson(
-  DeepSeekEnvelopeMetadataDto instance,
-) => <String, dynamic>{'sesori.ai/deepseek': ?instance.deepSeek?.toJson()};
 
 DeepSeekEnvelopeDeepSeekMetadataDto
 _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(Map json) =>

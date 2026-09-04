@@ -51,17 +51,19 @@ class DeepSeekHistoryRepository({
             for (final updates in pages.reversed) {
               for (final envelope in updates) {
                 final toolCallId = envelope.update["toolCallId"];
-                final subagent = envelope.metadata?.deepSeek?.subagent;
+                final subagent = api.parseHistoryMetadata(envelope: envelope)?.subagent;
                 if (toolCallId is String && toolCallId.isNotEmpty && subagent != null) {
                   subagentsByToolCallId[toolCallId] = subagent;
                 }
                 collector.consume(envelope.toJson());
               }
             }
-            return collector.buildWithAssistantSelection(
-              modelId: eventMapper.modelForSession(sessionId: sessionId),
-              providerId: eventMapper.providerForSession(sessionId: sessionId),
-              variant: null,
+            return subagentMapper.alignReplayChildIdentities(
+              messages: collector.buildWithAssistantSelection(
+                modelId: eventMapper.modelForSession(sessionId: sessionId),
+                providerId: eventMapper.providerForSession(sessionId: sessionId),
+                variant: null,
+              ),
             );
           case DeepSeekPaginatedHistoryResponseDto(:final nextBeforeSeq):
             if (cursor != null && nextBeforeSeq >= cursor) {

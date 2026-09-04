@@ -50,13 +50,15 @@ signal that a tool changed files.
   exact call identity, bounded presenter output, terminal result/error state,
   and diff content. Presenter failure degrades to a generic bounded tool card
   instead of dropping the call or result. Its exact `subagent` and
-  `subagent_fork` calls render no duplicate generic card: protocol-v2 lifecycle
-  opens one child-linked subtask tile with the normalized prompt and label.
-  During the release compatibility window, a protocol-v1 adapter retains its
-  generic delegation card because it supplies no lifecycle replacement.
-  Completion retains the bounded summary, abort maps to cancelled, and failure,
-  token-limit, and refusal outcomes map to error. History replaces the same
-  delegation tool identity with one equivalent subtask part.
+  `subagent_fork` calls render no duplicate generic card: protocol-v2 defers
+  the exact delegation call until its correlated lifecycle start opens one
+  child-linked subtask tile with the normalized prompt and label. A standard
+  terminal update received before a valid start instead retains the generic
+  failure card. During the release compatibility window, a protocol-v1 adapter
+  retains its generic delegation card because it supplies no lifecycle
+  replacement. Completion retains the bounded summary, abort maps to cancelled,
+  and failure, token-limit, and refusal outcomes map to error. A child-linked
+  history tile uses the live child-derived identity and bounded terminal payload.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
@@ -110,6 +112,10 @@ one permission-gated mutation and one repeated terminal update.
 - A Grok tool loses live permission correlation, changes call identity or status
   after replay, exposes unbounded output, loses diff content, or emits the wrong
   number of file-change invalidations.
+- A DeepSeek delegation disappears when child startup fails, renders both a
+  generic card and a child tile after a valid start, opens the wrong child
+  transcript, changes tile identity or payload bounds after replay, leaves a
+  malformed terminal child running, or mutates live child activity during replay.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 - A Claude sub-agent renders as a generic `Agent` tool card, its tile stays
@@ -154,5 +160,9 @@ one permission-gated mutation and one repeated terminal update.
 - Claude sub-agents: `bridge/sesori_plugin_claude/lib/src/repositories/trackers/claude_tool_tracker.dart`,
   `claude_event_dispatcher.dart`, `claude_history_mapper.dart`, and
   `test/claude_subtask_lifecycle_test.dart`
+- DeepSeek sub-agents: `bridge/sesori_plugin_deepseek/lib/src/deepseek_event_mapper.dart`,
+  `repositories/deepseek_history_repository.dart`,
+  `repositories/mappers/deepseek_subagent_mapper.dart`, and
+  `test/deepseek_{subagent,history_repository,protocol_conformance}_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`

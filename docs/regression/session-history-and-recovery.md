@@ -23,13 +23,14 @@ reconnect or restart.
   reads isolated persistence without resuming an agent or starting a scratch
   process. It pages at complete message boundaries, returns at most 100 messages
   per page, rejects non-progressing or over-100-page traversal, and reuses the
-  shared ACP replay collector. Direct user message IDs remain exact; assistant
-  IDs use the deterministic ACP projection. Protocol-v2 sub-agent metadata is
-  parsed by the DeepSeek repository and correlated through the enclosing
-  standard update's tool-call id; a replay-local collector callback replaces
-  that generic delegation tool with one subtask tile carrying prompt, child link,
-  and running or terminal state. Replay never mutates the live child tracker or
-  publishes lifecycle events.
+  shared ACP replay collector. Direct user message IDs remain exact; ordinary
+  assistant IDs use the deterministic ACP projection. Protocol-v2 sub-agent
+  metadata is parsed by the DeepSeek repository and correlated through the
+  enclosing standard update's tool-call id; a replay-local collector callback
+  replaces that generic delegation tool with one subtask tile carrying prompt,
+  child link, and running or terminal state. A child-linked tile uses the same
+  child-derived message and part identities as live lifecycle events. Replay
+  never mutates the live child tracker or publishes lifecycle events.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it
@@ -136,7 +137,7 @@ reconnect or restart.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. |
-| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. |
+| L2 Routine | Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. DeepSeek covers child-derived live/replay tile identity, running-root retention and terminal release, and replay isolation from lifecycle events and live tracker state. |
 | L3 Release | Client end to end on the release-target client platform, every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
@@ -193,6 +194,9 @@ rules where supported.
   a bridge restart an idle Claude root still shows a running subtask tile, or a
   busy root's live background sub-agent tile is swept to cancelled; a child
   transcript duplicates its parts after reload.
+- A DeepSeek history refresh changes a child tile's live identity, duplicates
+  that tile, leaves the root busy after its terminal lifecycle event, or emits
+  replay as live child/session activity.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
 - Grok replay mutates live defaults during initialize, stamps messages from an
@@ -219,5 +223,6 @@ Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; Pi session process repository,
 storage API, and history mapper; shared ACP event mapper, turn serialization,
-and session loader plus Copilot and Grok plugins and package tests; shared
+and session loader plus Copilot and Grok plugins and package tests; DeepSeek
+history repository, sub-agent mapper, and protocol/history tests; shared
 pagination cursor; client detail load service and cubit.

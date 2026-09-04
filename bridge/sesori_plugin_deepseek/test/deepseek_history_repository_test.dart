@@ -66,14 +66,55 @@ void main() {
 
     final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
-    expect(tile.id, "s1-h0-assistant-tool-call-1");
+    expect(tile.id, "s1-subagent-child-1-subtask");
     expect(tile.sessionID, "s1");
-    expect(tile.messageID, "s1-h0-assistant");
+    expect(tile.messageID, "s1-subagent-child-1");
+    expect(messages.single.info.id, tile.messageID);
     expect(tile.prompt, "Inspect the synthetic module");
     expect(tile.description, "Research child");
     expect(tile.childSessionID, "child-1");
     expect(tile.taskState?.status, PluginToolStatus.running);
     expect(tracker.childStatuses, isEmpty, reason: "history replay is isolated from live lifecycle state");
+    await tracker.dispose();
+  });
+
+  test("a running replay and later live end address the same child tile", () async {
+    final tracker = AcpChildSessionTracker();
+    final liveStart = tracker.spawn(
+      sessionId: "s1",
+      spawn: const AcpChildSpawn(
+        childSessionId: "child-1",
+        description: "Research child",
+        agent: DeepSeekIdentity.id,
+        prompt: "Inspect the synthetic module",
+        isBackground: true,
+      ),
+      directory: "/project",
+    );
+    final liveTile = liveStart.events.whereType<BridgeSseMessagePartUpdated>().single.part;
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [_subagentUpdate(sessionUpdate: "tool_call", ended: null)],
+        ),
+      ]),
+      childSessions: tracker,
+    );
+
+    final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
+    final replayTile = messages.single.parts.single;
+    final liveEnd = tracker.finish(
+      childSessionId: "child-1",
+      status: PluginToolStatus.completed,
+      output: "Done",
+      error: null,
+    );
+    final endedTile = liveEnd.whereType<BridgeSseMessagePartUpdated>().single.part;
+
+    expect(replayTile.id, liveTile.id);
+    expect(replayTile.messageID, liveTile.messageID);
+    expect(endedTile.id, replayTile.id);
+    expect(endedTile.messageID, replayTile.messageID);
     await tracker.dispose();
   });
 
@@ -100,7 +141,7 @@ void main() {
     final messages = await repository.getMessages(client: _unusedClient(), sessionId: "s1");
     expect(messages.single.parts, hasLength(1));
     final tile = messages.single.parts.single as PluginMessagePartSubtask;
-    expect(tile.id, "s1-h0-assistant-tool-call-1");
+    expect(tile.id, "s1-subagent-child-1-subtask");
     expect(tile.taskState?.status, PluginToolStatus.completed);
     expect(tile.taskState?.output, "Done");
     expect(tracker.childStatuses, isEmpty);
@@ -150,8 +191,8 @@ DeepSeekSessionUpdateEnvelopeDto _subagentUpdate({
   required String sessionUpdate,
   required DeepSeekSubagentReplayEndedDto? ended,
 }) => DeepSeekSessionUpdateEnvelopeDto(
-  metadata: DeepSeekEnvelopeMetadataDto(
-    deepSeek: DeepSeekEnvelopeDeepSeekMetadataDto(
+  metadata: {
+    DeepSeekAcpApi.initializeMetadataKey: DeepSeekEnvelopeDeepSeekMetadataDto(
       messageCreatedAt: 1,
       subagent: DeepSeekSubagentReplayDto(
         prompt: "Inspect the synthetic module",
@@ -160,8 +201,8 @@ DeepSeekSessionUpdateEnvelopeDto _subagentUpdate({
         childSessionId: "child-1",
         ended: ended,
       ),
-    ),
-  ),
+    ).toJson(),
+  },
   sessionId: "s1",
   update: {
     "sessionUpdate": sessionUpdate,

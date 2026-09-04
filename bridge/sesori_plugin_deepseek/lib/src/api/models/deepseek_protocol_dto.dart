@@ -155,9 +155,13 @@ class const DeepSeekTerminalHistoryResponseDto({
   Map<String, dynamic> toJson() => _$DeepSeekTerminalHistoryResponseDtoToJson(this);
 }
 
-@JsonSerializable(explicitToJson: true)
+@JsonSerializable()
 class const DeepSeekSessionUpdateEnvelopeDto({
-  @JsonKey(name: "_meta") required final DeepSeekEnvelopeMetadataDto? metadata,
+  // `_meta` is an open ACP extension container. Keep its untouched entries for
+  // the shared replay collector; the API separately parses the known DeepSeek
+  // member into [DeepSeekEnvelopeDeepSeekMetadataDto].
+  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+  @JsonKey(name: "_meta") required final Map<String, dynamic>? metadata,
   required final String sessionId,
   // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
   required final Map<String, dynamic> update,
@@ -167,17 +171,9 @@ class const DeepSeekSessionUpdateEnvelopeDto({
 }
 
 @JsonSerializable(explicitToJson: true)
-class const DeepSeekEnvelopeMetadataDto({
-  @JsonKey(name: "sesori.ai/deepseek") required final DeepSeekEnvelopeDeepSeekMetadataDto? deepSeek,
-}) {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekEnvelopeMetadataDtoFromJson(json);
-  Map<String, dynamic> toJson() => _$DeepSeekEnvelopeMetadataDtoToJson(this);
-}
-
-@JsonSerializable(explicitToJson: true)
 class const DeepSeekEnvelopeDeepSeekMetadataDto({
-  @JsonKey(fromJson: _nullableInteger) required final int? messageCreatedAt,
-  required final DeepSeekSubagentReplayDto? subagent,
+  @JsonKey(fromJson: _nullableInteger, includeIfNull: false) required final int? messageCreatedAt,
+  @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayDto? subagent,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekEnvelopeDeepSeekMetadataDtoToJson(this);
@@ -215,7 +211,7 @@ class const DeepSeekSubagentEndedDto({
   @override required final String sessionId,
   @override required final String childSessionId,
   @JsonKey(unknownEnumValue: DeepSeekSubagentStopReason.unknown) required final DeepSeekSubagentStopReason stopReason,
-  required final String? summary,
+  @JsonKey(includeIfNull: false) required final String? summary,
 }) extends DeepSeekSubagentNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentEndedDtoFromJson(json);
   @JsonKey(includeFromJson: false, includeToJson: true)
@@ -229,8 +225,8 @@ class const DeepSeekSubagentReplayDto({
   required final String prompt,
   required final String label,
   @JsonKey(unknownEnumValue: DeepSeekSubagentMode.unknown) required final DeepSeekSubagentMode mode,
-  required final String? childSessionId,
-  required final DeepSeekSubagentReplayEndedDto? ended,
+  @JsonKey(includeIfNull: false) required final String? childSessionId,
+  @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayEndedDto? ended,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentReplayDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayDtoToJson(this);
@@ -239,7 +235,7 @@ class const DeepSeekSubagentReplayDto({
 @JsonSerializable()
 class const DeepSeekSubagentReplayEndedDto({
   @JsonKey(unknownEnumValue: DeepSeekSubagentStopReason.unknown) required final DeepSeekSubagentStopReason stopReason,
-  required final String? summary,
+  @JsonKey(includeIfNull: false) required final String? summary,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentReplayEndedDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayEndedDtoToJson(this);

@@ -110,6 +110,70 @@ void main() {
     expect(() => api.parseInitializeMetadata(metadata(3)), throwsFormatException);
   });
 
+  test("history preserves additive metadata while parsing typed DeepSeek fields", () {
+    final metadata = {
+      "shared/future": {"retained": true},
+      DeepSeekAcpApi.initializeMetadataKey: {
+        "messageCreatedAt": 1,
+        "futureField": "retained",
+        "subagent": {
+          "label": "Child",
+          "prompt": "Inspect",
+          "mode": "background",
+          "childSessionId": "child",
+        },
+      },
+    };
+    final response = api.parseHistoryResponse({
+      "updates": [
+        {
+          "sessionId": "root",
+          "update": {"sessionUpdate": "tool_call", "toolCallId": "call"},
+          "_meta": metadata,
+        },
+      ],
+      "hasMore": false,
+    }, sessionId: "root");
+
+    final encodedUpdate = (response.toJson()["updates"] as List).single as Map<String, dynamic>;
+    expect(encodedUpdate["_meta"], metadata);
+    expect(
+      api.parseHistoryMetadata(envelope: response.updates.single)?.subagent?.childSessionId,
+      "child",
+    );
+  });
+
+  test("sub-agent optional fields reject explicit null", () {
+    expect(
+      () => api.parseSubagentNotification({
+        "kind": "ended",
+        "sessionId": "root",
+        "childSessionId": "child",
+        "stopReason": "completed",
+        "summary": null,
+      }),
+      throwsFormatException,
+    );
+    expect(
+      () => api.parseSubagentReplay({
+        "label": "Child",
+        "prompt": "Inspect",
+        "mode": "background",
+        "childSessionId": null,
+      }),
+      throwsFormatException,
+    );
+    expect(
+      () => api.parseSubagentReplay({
+        "label": "Child",
+        "prompt": "Inspect",
+        "mode": "background",
+        "ended": {"stopReason": "completed", "summary": null},
+      }),
+      throwsFormatException,
+    );
+  });
+
   test("sub-agent presentation fields validate Unicode scalar structure and bounds", () {
     Map<String, dynamic> started({required String prompt, String label = "Child"}) => {
       "kind": "started",
@@ -149,6 +213,16 @@ void main() {
       throwsFormatException,
     );
     expect(() => api.parseSubagentNotification(ended(List.filled(513, "😀").join())), throwsFormatException);
+    expect(() => api.parseSubagentNotification(ended("valid\uD800")), throwsFormatException);
+    expect(
+      () => api.parseSubagentReplay({
+        "label": "Child",
+        "prompt": "Inspect",
+        "mode": "background",
+        "ended": {"stopReason": "completed", "summary": "valid\uD800"},
+      }),
+      throwsFormatException,
+    );
     expect(() => api.parseSubagentNotification(started(prompt: "valid\uD800")), throwsFormatException);
     expect(() => api.parseSubagentNotification(started(prompt: " padded ")), throwsFormatException);
   });

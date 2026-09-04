@@ -123,11 +123,13 @@ confirmation, no child session or partial stop) and gets that subset.
      repository may replace one fully materialized generic tool part with a
      backend-neutral message part using the standard tool-call id. The callback
      receives immutable replay data, performs no I/O, and never reads or mutates
-     live trackers, subscriptions, or the event buffer. DeepSeek is the first
-     consumer: its repository indexes typed metadata from those same replayed
-     standard updates, then asks its pure mapper to replace the delegation card
-     with one subtask tile. Future harness replay needs add no broader projection
-     until a concrete contract requires one. `mapExtension` stays live-only.
+     live trackers, subscriptions, or the event buffer. DeepSeek consumes this
+     narrow replacement form: its repository indexes typed metadata from those
+     same replayed standard updates, then asks its pure mapper to replace the
+     delegation card with one subtask tile. Grok's earlier seam-5 work instead
+     uses collector-provided replay context to route historical extension frames;
+     it does not use the generic-tool replacement callback. `mapExtension` stays
+     live-only for the DeepSeek path.
   Harness subclasses add only the parsing, mapping, and transport overrides
   required by the capability currently being delivered.
 - Child session ids are the harness's own session or thread ids. Parentage is

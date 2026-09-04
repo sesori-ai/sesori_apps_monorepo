@@ -81,6 +81,24 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return response;
   }
 
+  /// Parses only DeepSeek's known member of the open ACP `_meta` container.
+  /// The envelope retains the original map so additive shared or future
+  /// metadata reaches replay unchanged.
+  DeepSeekEnvelopeDeepSeekMetadataDto? parseHistoryMetadata({
+    required DeepSeekSessionUpdateEnvelopeDto envelope,
+  }) {
+    final metadata = envelope.metadata;
+    if (metadata == null || !metadata.containsKey(initializeMetadataKey)) return null;
+    final json = _json(metadata[initializeMetadataKey], method: "DeepSeek history metadata");
+    if (json.containsKey("messageCreatedAt") && json["messageCreatedAt"] is! int) {
+      throw const FormatException("Invalid DeepSeek history metadata");
+    }
+    if (json.containsKey("subagent")) {
+      parseSubagentReplay(_json(json["subagent"], method: "DeepSeek sub-agent replay metadata"));
+    }
+    return DeepSeekEnvelopeDeepSeekMetadataDto.fromJson(json);
+  }
+
   Future<DeepSeekRenameResponseDto> rename({
     required AcpStdioClient client,
     required String sessionId,
@@ -154,6 +172,9 @@ class const DeepSeekAcpApi({required final String pluginId}) {
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentNotificationDto parseSubagentNotification(Map<String, dynamic> json) {
+    if (json["kind"] == "ended" && json.containsKey("summary") && json["summary"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent notification");
+    }
     final notification = DeepSeekSubagentNotificationDto.fromJson(json);
     if (!_validSubagentText(notification.sessionId, maxScalars: 256) ||
         !_validSubagentText(notification.childSessionId, maxScalars: 256)) {
@@ -177,6 +198,15 @@ class const DeepSeekAcpApi({required final String pluginId}) {
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentReplayDto parseSubagentReplay(Map<String, dynamic> json) {
+    if (json.containsKey("childSessionId") && json["childSessionId"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    if (json.containsKey("ended")) {
+      final endedJson = _json(json["ended"], method: "DeepSeek sub-agent replay end metadata");
+      if (endedJson.containsKey("summary") && endedJson["summary"] is! String) {
+        throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+      }
+    }
     final replay = DeepSeekSubagentReplayDto.fromJson(json);
     if (!_validSubagentText(replay.label, maxScalars: 256) ||
         !_validSubagentPrompt(replay.prompt) ||
@@ -207,13 +237,11 @@ class const DeepSeekAcpApi({required final String pluginId}) {
       throw const FormatException("Invalid DeepSeek history response");
     }
     for (final update in response.updates) {
-      final deepSeek = update.metadata?.deepSeek;
+      final deepSeek = parseHistoryMetadata(envelope: update);
       final createdAt = deepSeek?.messageCreatedAt;
       if (createdAt != null && (createdAt < 0 || createdAt > 9007199254740991)) {
         throw const FormatException("Invalid DeepSeek history response");
       }
-      final replay = deepSeek?.subagent;
-      if (replay != null) parseSubagentReplay(replay.toJson());
     }
   }
 

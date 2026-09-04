@@ -142,11 +142,14 @@ class DeepSeekPlugin({
   };
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => deepSeekSessionService.getChildSessions(
-    sessionId: sessionId,
-    directory: directoryForSession(sessionId: sessionId),
-    persistedSessions: await listAllSessions(knownDirectories: const {}),
-  );
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    final persistedSessions = await listAllSessions(knownDirectories: const {});
+    return deepSeekSessionService.getChildSessions(
+      sessionId: sessionId,
+      directory: directoryForSession(sessionId: sessionId),
+      persistedSessions: persistedSessions,
+    );
+  }
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {

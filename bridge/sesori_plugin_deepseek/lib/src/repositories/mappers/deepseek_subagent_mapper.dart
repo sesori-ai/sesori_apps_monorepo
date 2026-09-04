@@ -18,6 +18,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
     required DeepSeekSubagentStopReason? stopReason,
     required String? summary,
   }) {
+    final boundedSummary = _bounded(summary);
     if (stopReason == null) {
       return const PluginToolState(
         status: PluginToolStatus.running,
@@ -31,7 +32,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
       DeepSeekSubagentStopReason.completed => PluginToolState(
         status: PluginToolStatus.completed,
         title: null,
-        output: summary,
+        output: boundedSummary,
         error: null,
         attachments: const [],
       ),
@@ -48,7 +49,7 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
         status: PluginToolStatus.error,
         title: null,
         output: null,
-        error: summary ?? _errorFor(stopReason: stopReason),
+        error: boundedSummary ?? _errorFor(stopReason: stopReason),
         attachments: const [],
       ),
       DeepSeekSubagentStopReason.unknown => throw const FormatException("Unknown DeepSeek sub-agent stop reason"),
@@ -58,21 +59,55 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
   PluginMessagePart mapReplay({
     required PluginMessagePartTool toolPart,
     required DeepSeekSubagentReplayDto replay,
-  }) => PluginMessagePart.subtask(
-    // Retain the generic ACP tool identity so replay replacement is an upsert,
-    // never a second card for the same delegation call.
-    id: toolPart.id,
-    sessionID: toolPart.sessionID,
-    messageID: toolPart.messageID,
-    prompt: replay.prompt,
-    description: replay.label,
-    agent: agentId,
-    taskState: mapState(
-      stopReason: replay.ended?.stopReason,
-      summary: replay.ended?.summary,
-    ),
-    childSessionID: replay.childSessionId,
-  );
+  }) {
+    final childSessionId = replay.childSessionId;
+    final messageId = childSessionId == null ? toolPart.messageID : "${toolPart.sessionID}-subagent-$childSessionId";
+    return PluginMessagePart.subtask(
+      id: childSessionId == null ? toolPart.id : "$messageId-subtask",
+      sessionID: toolPart.sessionID,
+      messageID: messageId,
+      prompt: replay.prompt,
+      description: replay.label,
+      agent: agentId,
+      taskState: mapState(
+        stopReason: replay.ended?.stopReason,
+        summary: replay.ended?.summary,
+      ),
+      childSessionID: childSessionId,
+    );
+  }
+
+  /// Separates a child-linked replay replacement from the generic ACP message
+  /// envelope that originally owned its tool call. The resulting message and
+  /// part identities are exactly those used by the live child tracker, so a
+  /// later terminal lifecycle event updates the imported running tile.
+  List<PluginMessageWithParts> alignReplayChildIdentities({required List<PluginMessageWithParts> messages}) {
+    final aligned = <PluginMessageWithParts>[];
+    for (final message in messages) {
+      final originalParts = <PluginMessagePart>[];
+      final childParts = <PluginMessagePart>[];
+      for (final part in message.parts) {
+        (part is PluginMessagePartSubtask && part.messageID != message.info.id ? childParts : originalParts).add(
+          part,
+        );
+      }
+      if (originalParts.isNotEmpty) {
+        aligned.add(PluginMessageWithParts(info: message.info, parts: originalParts));
+      }
+      for (final part in childParts) {
+        aligned.add(
+          PluginMessageWithParts(
+            info: message.info.copyWith(id: part.messageID),
+            parts: [part],
+          ),
+        );
+      }
+    }
+    return aligned;
+  }
+
+  String? _bounded(String? value) =>
+      value == null || value.isEmpty ? null : String.fromCharCodes(value.runes.take(maxToolOutputLength));
 
   String _errorFor({required DeepSeekSubagentStopReason stopReason}) => switch (stopReason) {
     DeepSeekSubagentStopReason.error => "DeepSeek sub-agent failed",

@@ -65,9 +65,18 @@ void main() {
       throw StateError("DeepSeek never wrote $count '$method' frame(s)");
     }
 
+    final parentRow = {
+      "sessionId": "parent",
+      "cwd": "/other",
+      "title": "Parent",
+      "updatedAt": 2000,
+      "_meta": {
+        "sesori.ai/deepseek": {"createdAt": 1000},
+      },
+    };
     final sessionRow = {
       "sessionId": "child",
-      "cwd": "/repo",
+      "cwd": "/other",
       "title": "Child",
       "updatedAt": 2000,
       "_meta": {
@@ -102,7 +111,7 @@ void main() {
             "jsonrpc": "2.0",
             "id": request["id"],
             "result": {
-              "sessions": [sessionRow, malformedParentRow, blankParentRow],
+              "sessions": [parentRow, sessionRow, malformedParentRow, blankParentRow],
             },
           });
         }
@@ -135,15 +144,27 @@ void main() {
       });
       expect(await connecting, isTrue);
 
+      childSessionTracker.spawn(
+        sessionId: "parent",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-child",
+          description: "Live child",
+          agent: DeepSeekIdentity.id,
+          prompt: "Inspect",
+          isBackground: true,
+        ),
+        directory: "/repo",
+      );
+      final children = await plugin.getChildSessions("parent");
+      expect(children.map((session) => session.id), ["child", "live-child"]);
+      expect(children.singleWhere((session) => session.id == "live-child").projectID, "/other");
+
       final sessions = await plugin.listAllSessions(knownDirectories: const {});
       final child = sessions.singleWhere((session) => session.id == "child");
       expect(child.parentID, "parent");
       expect(child.time, const PluginSessionTime(created: 1000, updated: 2000, archived: null));
       expect(sessions.singleWhere((session) => session.id == "malformed-parent").parentID, isNull);
       expect(sessions.singleWhere((session) => session.id == "blank-parent").parentID, isNull);
-
-      final children = await plugin.getChildSessions("parent");
-      expect(children.map((session) => session.id), ["child"]);
 
       final events = mapper.map(
         const AcpNotification(
@@ -154,10 +175,9 @@ void main() {
           },
         ),
       );
-      expect(
-        events.whereType<BridgeSseSessionUpdated>().single.info["time"],
-        const {"created": 1000, "updated": 3000},
-      );
+      final updatedChild = events.whereType<BridgeSseSessionUpdated>().single.info;
+      expect(updatedChild["projectID"], "/other");
+      expect(updatedChild["time"], const {"created": 1000, "updated": 3000});
     } finally {
       responding = false;
       await responder;
