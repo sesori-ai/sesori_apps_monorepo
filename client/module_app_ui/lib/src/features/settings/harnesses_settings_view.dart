@@ -1054,9 +1054,12 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
               onSubmitted: (_) => unawaited(_submitRedirect()),
             ),
           const SizedBox(height: PregoSpacing.xl),
-          if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState) ...[
+          if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState ||
+              redirectPresentation is PluginAuthenticationInvalidRedirectPresentation) ...[
             Text(
-              loc.harnessAuthenticationBrowserFailed,
+              challenge is PluginAuthenticationPresentationBrowserLaunchFailedState
+                  ? loc.harnessAuthenticationBrowserFailed
+                  : loc.harnessAuthenticationInvalidRedirect,
               textAlign: TextAlign.center,
               style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
             ),
@@ -1149,7 +1152,6 @@ String _authenticationErrorDescription({
   PluginAuthenticationPresentationConflict() => context.loc.harnessAuthenticationConflict,
   PluginAuthenticationPresentationUncertain() => context.loc.harnessAuthenticationUncertain,
   PluginAuthenticationPresentationInvalidChallenge() => context.loc.harnessAuthenticationInvalidChallenge,
-  PluginAuthenticationPresentationInvalidRedirect() => context.loc.harnessAuthenticationInvalidRedirect,
   PluginAuthenticationPresentationRemoteError(:final message) => message,
   PluginAuthenticationPresentationRequestError() => context.loc.harnessAuthenticationRequestFailed,
 };

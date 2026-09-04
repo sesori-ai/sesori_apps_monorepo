@@ -74,7 +74,6 @@ sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPr
   }) = PluginAuthenticationPresentationConflict;
   const factory uncertain() = PluginAuthenticationPresentationUncertain;
   const factory invalidChallenge() = PluginAuthenticationPresentationInvalidChallenge;
-  const factory invalidRedirect() = PluginAuthenticationPresentationInvalidRedirect;
   const factory remote({required String message}) = PluginAuthenticationPresentationRemoteError;
   const factory request({required ApiError error}) = PluginAuthenticationPresentationRequestError;
 }
@@ -84,6 +83,8 @@ sealed class const PluginAuthenticationChallengePresentation() {
       PluginAuthenticationDeviceCodePresentation;
   const factory browser({required PluginAuthenticationBrowserChallenge challenge}) =
       PluginAuthenticationBrowserPresentation;
+  const factory invalidRedirect({required PluginAuthenticationBrowserChallenge challenge}) =
+      PluginAuthenticationInvalidRedirectPresentation;
   const factory redirectSubmitting({required PluginAuthenticationBrowserChallenge challenge}) =
       PluginAuthenticationRedirectSubmittingPresentation;
   const factory redirectSubmitted({required PluginAuthenticationBrowserChallenge challenge}) =
@@ -96,6 +97,9 @@ final class const PluginAuthenticationDeviceCodePresentation({
   @override required final PluginAuthenticationDeviceCodeChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
 final class const PluginAuthenticationBrowserPresentation({
+  @override required final PluginAuthenticationBrowserChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationInvalidRedirectPresentation({
   @override required final PluginAuthenticationBrowserChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
 final class const PluginAuthenticationRedirectSubmittingPresentation({

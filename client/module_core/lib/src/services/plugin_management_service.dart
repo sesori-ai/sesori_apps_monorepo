@@ -196,6 +196,16 @@ class PluginManagementService({
     }
 
     switch (result) {
+      case PluginAuthenticationStartChallenge(:final PluginAuthenticationBrowserChallenge challenge)
+          when _validatedAuthenticationRedirect(
+                rawInput: challenge.expectedCallbackUri.toString(),
+                challenge: challenge,
+              ) ==
+              null:
+        _forgetAuthentication(pluginId: pluginId);
+        return PluginAuthenticationStartResult.failed(
+          failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+        );
       case PluginAuthenticationStartChallenge(challenge: PluginAuthenticationUnsupportedChallenge()):
         _forgetAuthentication(pluginId: pluginId);
         return const PluginAuthenticationStartResult.failed(
@@ -249,24 +259,19 @@ class PluginManagementService({
     if (redirectUri == null) return const PluginAuthenticationContinuationResult.invalidRedirect();
 
     _authenticationRedirectClaims[pluginId] = fence;
-    try {
-      final result = await _pluginRepository.submitAuthenticationRedirect(pluginId: pluginId, redirectUri: redirectUri);
-      if (!_isAuthenticationFenceCurrent(pluginId: pluginId) || _authenticationFences[pluginId] != fence) {
-        return const PluginAuthenticationContinuationResult.uncertain();
-      }
-      if (result is PluginAuthenticationContinuationInvalidRedirect ||
-          result is PluginAuthenticationContinuationNotFound ||
-          result is PluginAuthenticationContinuationRequestFailure ||
-          result is PluginAuthenticationContinuationRejected &&
-              (result.reason == PluginAuthenticationContinuationRejection.noActive ||
-                  result.reason == PluginAuthenticationContinuationRejection.wrongKind)) {
-        _authenticationRedirectClaims.remove(pluginId);
-      }
-      return result;
-    } on Object {
-      if (_authenticationRedirectClaims[pluginId] == fence) _authenticationRedirectClaims.remove(pluginId);
-      rethrow;
+    final result = await _pluginRepository.submitAuthenticationRedirect(pluginId: pluginId, redirectUri: redirectUri);
+    if (!_isConnectionFenceCurrent(fence) || !_activeBridgeIdentityKnown || _activeBridgeId != fence.bridgeId ||
+        _authenticationFences[pluginId] != null && _authenticationFences[pluginId] != fence) {
+      return const PluginAuthenticationContinuationResult.uncertain();
     }
+    if (result is PluginAuthenticationContinuationInvalidRedirect ||
+        result is PluginAuthenticationContinuationNotFound ||
+        result is PluginAuthenticationContinuationRejected &&
+            (result.reason == PluginAuthenticationContinuationRejection.noActive ||
+                result.reason == PluginAuthenticationContinuationRejection.wrongKind)) {
+      _authenticationRedirectClaims.remove(pluginId);
+    }
+    return result;
   }
 
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {

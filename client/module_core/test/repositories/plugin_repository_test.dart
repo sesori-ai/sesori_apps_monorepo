@@ -414,7 +414,7 @@ void main() {
     test("maps typed authentication conflicts and malformed conflict bodies", () async {
       const conflict = PluginAuthenticationConflict(
         pluginId: "codex",
-        reasons: [PluginAuthenticationConflictReason.alreadySubmitted],
+        reasons: [PluginAuthenticationConflictReason.alreadySubmitted, PluginAuthenticationConflictReason.inFlight],
         current: _managementPlugin,
       );
       when(
@@ -442,8 +442,8 @@ void main() {
       );
       expect(
         await repository.submitAuthenticationRedirect(pluginId: "codex", redirectUri: redirectUri),
-        const PluginAuthenticationContinuationResult.rejected(
-          reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
+        isA<PluginAuthenticationContinuationRejected>().having(
+          (result) => result.reason, "reason", PluginAuthenticationContinuationRejection.alreadySubmitted,
         ),
       );
 

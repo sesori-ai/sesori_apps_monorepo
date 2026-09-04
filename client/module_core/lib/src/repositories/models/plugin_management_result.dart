@@ -63,8 +63,8 @@ final class const PluginManagementMutationResultFailure({required final ApiError
 
 /// Why a plugin authentication start or cancel did not succeed.
 ///
-/// Start and cancel fail in exactly the same ways, so they share one failure
-/// type rather than each declaring its own five-variant copy.
+/// Both commands share transport failures. Start additionally reports an
+/// update-required failure when this client cannot represent the challenge.
 sealed class const PluginAuthenticationFailure() {
   /// The bridge does not know this plugin.
   const factory notFound() = PluginAuthenticationFailureNotFound;

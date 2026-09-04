@@ -1130,38 +1130,6 @@ String toString() {
 /// @nodoc
 
 
-class PluginAuthenticationPresentationInvalidRedirect implements PluginAuthenticationPresentationError {
-  const PluginAuthenticationPresentationInvalidRedirect();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationInvalidRedirect);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'PluginAuthenticationPresentationError.invalidRedirect()';
-}
-
-
-}
-
-
-
-
-/// @nodoc
-
-
 class PluginAuthenticationPresentationRemoteError implements PluginAuthenticationPresentationError {
   const PluginAuthenticationPresentationRemoteError({required this.message});
   

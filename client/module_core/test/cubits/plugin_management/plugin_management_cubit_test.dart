@@ -141,7 +141,7 @@ void main() {
     expect(cubit.state, const PluginManagementState.loading());
   });
 
-  test("browser authentication launches, submits its redirect, and settles terminal progress", () async {
+  test("browser authentication retains invalid input and serializes redirect submission", () async {
     final browserChallenge = PluginAuthenticationBrowserChallenge(
       authorizationUri: Uri.parse("https://accounts.example/authorize"),
       expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
@@ -154,20 +154,26 @@ void main() {
     await _settle();
 
     await cubit.startAuthentication(pluginId: "codex");
-    expect(
-      (cubit.state as PluginManagementReady).authentication,
-      isA<PluginAuthenticationPresentationChallenge>(),
-    );
-    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
-    await cubit.launchAuthenticationBrowser();
-    verify(
-      () => urlLauncher.launch(Uri.parse("https://accounts.example/authorize"), mode: UrlLaunchMode.externalApp),
-    ).called(1);
+    const invalidIntent = PluginAuthenticationContinuationIntent.pasted(rawInput: "invalid");
+    when(
+      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: invalidIntent),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.invalidRedirect());
+    await cubit.submitAuthenticationRedirect(intent: invalidIntent);
+    final invalidState = (cubit.state as PluginManagementReady).authentication;
+    expect((invalidState as PluginAuthenticationPresentationChallenge).challenge,
+        isA<PluginAuthenticationInvalidRedirectPresentation>());
     const intent = PluginAuthenticationContinuationIntent.pasted(
       rawInput: "http://127.0.0.1/callback?code=opaque",
     );
+    final completion = Completer<PluginAuthenticationContinuationResult>();
+    when(
+      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent),
+    ).thenAnswer((_) => completion.future);
+    final submitting = cubit.submitAuthenticationRedirect(intent: intent);
     await cubit.submitAuthenticationRedirect(intent: intent);
     verify(() => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent)).called(1);
+    completion.complete(const PluginAuthenticationContinuationResult.applied());
+    await submitting;
 
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
     await _settle();

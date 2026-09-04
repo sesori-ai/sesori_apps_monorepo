@@ -116,7 +116,8 @@ class PluginManagementCubit({
     final authentication = latest.authentication;
     if (authentication case PluginAuthenticationPresentationChallenge(:final challenge)
         when challenge is! PluginAuthenticationDeviceCodePresentation &&
-            challenge is! PluginAuthenticationBrowserPresentation) {
+            challenge is! PluginAuthenticationBrowserPresentation &&
+            challenge is! PluginAuthenticationInvalidRedirectPresentation) {
       return;
     }
     if (authentication is! PluginAuthenticationPresentationChallenge &&
@@ -136,6 +137,12 @@ class PluginManagementCubit({
   Future<void> submitAuthenticationRedirect({required PluginAuthenticationContinuationIntent intent}) async {
     final current = state;
     if (isClosed || current is! PluginManagementReady) return;
+    if (current.authentication case PluginAuthenticationPresentationChallenge(
+      challenge: PluginAuthenticationRedirectSubmittingPresentation() ||
+          PluginAuthenticationRedirectSubmittedPresentation(),
+    )) {
+      return;
+    }
     final challenge = _authenticationChallengeData(current.authentication);
     if (challenge == null) return;
     final browserChallenge = challenge.challenge;
@@ -177,9 +184,11 @@ class PluginManagementCubit({
           ),
         );
       case PluginAuthenticationContinuationInvalidRedirect():
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.invalidRedirect(),
+        _setAuthentication(
+          PluginAuthenticationPresentationState.challenge(
+            pluginId: challenge.pluginId,
+            challenge: PluginAuthenticationChallengePresentation.invalidRedirect(challenge: browserChallenge),
+          ),
         );
       case PluginAuthenticationContinuationNotFound():
         _setAuthenticationFailure(

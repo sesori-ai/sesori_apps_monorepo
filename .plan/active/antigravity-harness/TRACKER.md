@@ -11,7 +11,6 @@
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
 - **Open PR:** [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
-- **Next action:** monitor Step 5 through readiness and merge
 
 ## Fixed PR Series
 
@@ -82,12 +81,8 @@
 - [x] After Step 3 merges, sync, commit, push, open the Step 4 PR, and start its monitor.
 
 ## Step 5 Checklist
-
 - [x] Add typed browser transport, layered client handoff, loopback validation, shared UI, regression coverage, and
   tests.
-- [x] Complete architecture implementation review and final verification.
-- [x] After Step 4 merges, sync, commit, push, open the Step 5 PR, and start its monitor.
-
 ## Architecture Reviews
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
@@ -212,6 +207,5 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 4's self-inclusive cap check used
   `git diff --numstat d85d9fcb1d36 6da24f133c` with an additions/deletions sum: 838 + 158 = 996 changed lines,
   leaving 504 lines below the 1,500-line cap.
-- 2026-09-04 — Step 5's second architecture review approved. Cap evidence:
-  `git diff --numstat 93c8982601ebbf9dd3604b1ccbae8d423cbb63ca 2ba96d530e4e2bf760b897ab20e6739d34690341`
-  totals 1189 + 308 = 1497; the final PR is 1494 changed lines after the lint-only reduction.
+- 2026-09-04 — Step 5 review/cap: `git diff --numstat 93c8982601eb 2ba96d530e4e` totals 1189 + 308 = 1497;
+  the final PR remains within the 1,500-line cap after review fixes.

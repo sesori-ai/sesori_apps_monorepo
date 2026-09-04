@@ -42,7 +42,7 @@ void main() {
   });
 
   group("authentication orchestration", () {
-    test("validates browser redirects and refreshes on terminal progress", () async {
+    test("serializes browser redirects and preserves a response across terminal progress", () async {
       final continuation = Completer<PluginAuthenticationContinuationResult>();
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
@@ -85,11 +85,6 @@ void main() {
       final first = submit();
       expect((await submit() as PluginAuthenticationContinuationRejected).reason,
           PluginAuthenticationContinuationRejection.alreadySubmitted);
-      continuation.complete(const PluginAuthenticationContinuationResult.applied());
-      expect(await first, isA<PluginAuthenticationContinuationApplied>());
-      expect((await submit() as PluginAuthenticationContinuationRejected).reason,
-          PluginAuthenticationContinuationRejection.alreadySubmitted);
-      expect(repository.authenticationRedirects, [Uri.parse(redirect)]);
       final terminals = <PluginAuthenticationTerminalUpdate>[];
       service.authenticationTerminal.listen(terminals.add);
       connection.emitAuthenticationProgress(
@@ -97,7 +92,9 @@ void main() {
         progress: const PluginAuthenticationProgress.completed(),
       );
       await _waitFor(() => repository.loadCalls == 2);
-
+      continuation.complete(const PluginAuthenticationContinuationResult.applied());
+      expect(await first, isA<PluginAuthenticationContinuationApplied>());
+      expect(repository.authenticationRedirects, [Uri.parse(redirect)]);
       expect(service.authenticationChallenges.value, isEmpty);
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });

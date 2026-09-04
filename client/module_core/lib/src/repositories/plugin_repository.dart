@@ -52,6 +52,8 @@ class PluginRepository({required final PluginApi _api}) {
     );
     return switch (response) {
       SuccessResponse() => const PluginAuthenticationContinuationResult.applied(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 400)) =>
+        const PluginAuthenticationContinuationResult.invalidRedirect(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) =>
         const PluginAuthenticationContinuationResult.notFound(),
       ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
@@ -104,38 +106,29 @@ class PluginRepository({required final PluginApi _api}) {
   }
 
   PluginAuthenticationContinuationResult _mapAuthenticationContinuationConflict({required String? body}) {
-    if (body == null) {
-      return PluginAuthenticationContinuationResult.request(
-        error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: null),
-      );
-    }
-    try {
-      final reasons = PluginAuthenticationConflict.fromJson(jsonDecodeMap(body)).reasons;
-      if (reasons.length != 1) {
-        return PluginAuthenticationContinuationResult.request(error: ApiError.jsonParsing(body));
-      }
-      return switch (reasons.single) {
-        PluginAuthenticationConflictReason.noActive => const PluginAuthenticationContinuationResult.rejected(
-          reason: PluginAuthenticationContinuationRejection.noActive,
-        ),
-        PluginAuthenticationConflictReason.wrongKind => const PluginAuthenticationContinuationResult.rejected(
-          reason: PluginAuthenticationContinuationRejection.wrongKind,
-        ),
-        PluginAuthenticationConflictReason.alreadySubmitted => const PluginAuthenticationContinuationResult.rejected(
-          reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
-        ),
-        PluginAuthenticationConflictReason.inFlight ||
-        PluginAuthenticationConflictReason.setupNotRequired ||
-        PluginAuthenticationConflictReason.unsupported ||
-        PluginAuthenticationConflictReason.unknown => PluginAuthenticationContinuationResult.request(
-          error: ApiError.jsonParsing(body),
-        ),
-      };
-    } on Object {
-      return PluginAuthenticationContinuationResult.request(error: ApiError.jsonParsing(body));
+    final parsed = _parseAuthenticationConflict(body: body);
+    switch (parsed) {
+      case _AuthenticationConflictParseFailure(:final error):
+        return PluginAuthenticationContinuationResult.request(error: error);
+      case _AuthenticationConflictParsed(:final conflict):
+        for (final reason in conflict.reasons) {
+          final rejection = switch (reason) {
+            PluginAuthenticationConflictReason.noActive => PluginAuthenticationContinuationRejection.noActive,
+            PluginAuthenticationConflictReason.wrongKind => PluginAuthenticationContinuationRejection.wrongKind,
+            PluginAuthenticationConflictReason.alreadySubmitted =>
+              PluginAuthenticationContinuationRejection.alreadySubmitted,
+            PluginAuthenticationConflictReason.inFlight ||
+            PluginAuthenticationConflictReason.setupNotRequired ||
+            PluginAuthenticationConflictReason.unsupported ||
+            PluginAuthenticationConflictReason.unknown => null,
+          };
+          if (rejection != null) return PluginAuthenticationContinuationResult.rejected(reason: rejection);
+        }
+        return PluginAuthenticationContinuationResult.request(
+          error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
+        );
     }
   }
-
   Future<CatalogImportMutationResult> startCatalogImport({required String pluginId}) async {
     return _mapCatalogImportMutation(await _api.startCatalogImport(pluginId: pluginId));
   }
@@ -179,8 +172,8 @@ class PluginRepository({required final PluginApi _api}) {
     };
   }
 
-  /// Start and cancel classify their errors identically, so both route through
-  /// this one mapper.
+  /// Start and cancel share these transport failures. Start may additionally
+  /// return update-required after a successfully decoded future challenge.
   PluginAuthenticationFailure _mapAuthenticationFailure({required ApiError error}) {
     return switch (error) {
       NonSuccessCodeError(errorCode: 404) => const PluginAuthenticationFailure.notFound(),
