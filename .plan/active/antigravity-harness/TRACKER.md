@@ -62,7 +62,8 @@
 - [x] Implement service-owned explicit -> PATH -> managed precedence and exact contract validation.
 - [x] Cover pair integrity, precedence, generated mapping, contract failures, aborts, timeouts, and cleanup.
 - [x] Complete architecture implementation review and apply valid findings.
-- [x] Run final focused analysis/tests and Git/Markdown validation.
+- [x] Run final focused analysis/tests and Git/Markdown validation, including self-inclusive merge-base numstat
+  reconciliation against the 1,500-line cap.
 - [x] Commit, push, open the Step 3 PR, and start the PR monitor.
 
 ## Architecture Reviews
@@ -178,4 +179,7 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   shared ACP analysis and 305 tests pass, and Git/Markdown validation reports no source-width or whitespace failures.
 - 2026-09-04 — PR #1286 merged as `4c587bcefe` after 16/16 CI checks, resolved review feedback, and Cubic approval.
 - 2026-09-04 — Step 3 architecture implementation review approved the local Storage -> Repository -> Service flow with
-  no violations. Antigravity analysis passes, all 27 tests pass, and Git/line-width validation is clean.
+  no violations. Antigravity analysis passes, all 29 tests pass, and Git/line-width validation is clean.
+- 2026-09-04 — Step 3's self-inclusive cap check used
+  `git diff --numstat 4c587bcefed5601a83b24d202b2edff75611cbe2 HEAD` with an additions/deletions sum: 1215 + 7 = 1222
+  changed lines, leaving 278 lines below the 1,500-line cap.

@@ -107,7 +107,6 @@ class const AntigravityRuntimeStorage() {
     final context = _pathContext(target: target);
     final separator = target.os == PlatformOs.windows ? ";" : ":";
     for (final directory in rawPath.split(separator)) {
-      if (directory.isEmpty) continue;
       final result = inspectPair(
         serverPath: context.join(directory, AntigravityRelease.serverFileName(target: target)),
         target: target,

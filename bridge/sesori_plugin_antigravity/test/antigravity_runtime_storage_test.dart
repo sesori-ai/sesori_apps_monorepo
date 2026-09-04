@@ -163,6 +163,22 @@ void main() {
     expect(result.reason, AntigravityRuntimePairInvalidReason.notSiblings);
   });
 
+  test("an empty POSIX PATH component searches the current directory", () {
+    if (Platform.isWindows) return;
+    final originalDirectory = Directory.current;
+    final paths = writePair(temporaryDirectory);
+    Directory.current = temporaryDirectory;
+    try {
+      final result = storage.findOnPath(
+        environment: const {"PATH": ":/missing"},
+        target: target,
+      ) as AntigravityRuntimePairFound;
+      expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+    } finally {
+      Directory.current = originalDirectory;
+    }
+  });
+
   test("PATH uses the first server hit and requires its sibling", () {
     final missingDirectory = Directory(p.join(temporaryDirectory.path, "missing"))..createSync();
     final pairDirectory = Directory(p.join(temporaryDirectory.path, "pair"))..createSync();

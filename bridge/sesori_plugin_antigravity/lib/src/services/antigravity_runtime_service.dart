@@ -29,12 +29,14 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
         serverPath: explicitServerPath,
         target: target,
       );
-      return await _resolveCandidate(
+      final resolution = await _resolveCandidate(
         candidate: candidate,
         probeEnvironment: probeEnvironment,
         timeout: _remaining(timeout: timeout, deadline: deadline),
         abortSignal: abortSignal,
       );
+      _remaining(timeout: timeout, deadline: deadline);
+      return resolution;
     }
 
     final pathCandidate = _runtimeRepository.inspectPath(environment: pathEnvironment, target: target);
@@ -45,24 +47,30 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
       abortSignal: abortSignal,
     );
     if (pathResolution is AntigravityRuntimeSelected || pathResolution is AntigravityRuntimeUnsupported) {
+      _remaining(timeout: timeout, deadline: deadline);
       return pathResolution;
     }
 
     _throwIfAborted(abortSignal: abortSignal);
-    if (managedServerPath == null) return pathResolution;
-    _logRecoveredPathFailure(resolution: pathResolution);
+    if (managedServerPath == null) {
+      _remaining(timeout: timeout, deadline: deadline);
+      return pathResolution;
+    }
+    _logPathBoundaryFailure(resolution: pathResolution);
     _remaining(timeout: timeout, deadline: deadline);
     final managedCandidate = _runtimeRepository.inspectPair(
       source: AntigravityRuntimeSource.managed,
       serverPath: managedServerPath,
       target: target,
     );
-    return await _resolveCandidate(
+    final managedResolution = await _resolveCandidate(
       candidate: managedCandidate,
       probeEnvironment: probeEnvironment,
       timeout: _remaining(timeout: timeout, deadline: deadline),
       abortSignal: abortSignal,
     );
+    _remaining(timeout: timeout, deadline: deadline);
+    return managedResolution;
   }
 
   Future<AntigravityRuntimeResolution> validatePair({
@@ -161,16 +169,12 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
     );
   }
 
-  void _logRecoveredPathFailure({required AntigravityRuntimeResolution resolution}) {
+  void _logPathBoundaryFailure({required AntigravityRuntimeResolution resolution}) {
     switch (resolution) {
       case AntigravityRuntimeStorageFailed(:final cause, :final stackTrace):
-        Log.w("[antigravity] PATH runtime inspection failed; trying the managed runtime", cause, stackTrace);
+        Log.w("[antigravity] PATH runtime inspection failed", cause, stackTrace);
       case AntigravityRuntimeProbeFailed(:final pair, :final cause, :final stackTrace):
-        Log.w(
-          '[antigravity] PATH runtime probe failed for "${pair.serverPath}"; trying the managed runtime',
-          cause,
-          stackTrace,
-        );
+        Log.w('[antigravity] PATH runtime probe failed for "${pair.serverPath}"', cause, stackTrace);
       case AntigravityRuntimeSelected() ||
           AntigravityRuntimeMissing() ||
           AntigravityRuntimePairRejected() ||

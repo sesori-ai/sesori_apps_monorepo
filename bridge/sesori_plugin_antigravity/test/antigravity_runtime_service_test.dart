@@ -243,6 +243,38 @@ void main() {
     expect(storage.inspectedPaths, isEmpty);
   });
 
+  test("rejects a final explicit probe result that arrives after the shared deadline", () async {
+    final storage = _FakeStorage(
+      pairResults: const {
+        "/explicit/agy_acp_server.par": AntigravityRuntimePairFound(pair: pathPair),
+      },
+      pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+    );
+    final api = _FakeAcpApi(
+      outcomes: [
+        () async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          return initializeResult(agentVersion: AntigravityRelease.agentVersion);
+        },
+      ],
+    );
+
+    await expectLater(
+      _service(storage: storage, api: api).resolve(
+        explicitServerPath: "/explicit/agy_acp_server.par",
+        managedServerPath: null,
+        pathEnvironment: const {"PATH": "/path"},
+        probeEnvironment: const {"GEMINI_HOME": "/isolated"},
+        target: target,
+        timeout: const Duration(milliseconds: 50),
+        abortSignal: StartAbortSignal.never,
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(api.launches.map((launch) => launch.command), [pathPair.serverPath]);
+    expect(storage.pathInspections, 0);
+  });
+
   test("does not inspect managed storage after cancellation at a probe boundary", () async {
     final controller = StartAbortController();
     final storage = _FakeStorage(
