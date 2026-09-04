@@ -122,7 +122,9 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   client opens the Google URL. Same-host browsers complete directly. For remote clients, pure-Dart client logic parses
   the pasted redirect and checks its generic loopback shape before submission. The Antigravity plugin independently
   validates the exact outstanding Google state, callback endpoint, and code before forwarding it to loopback.
-- Use the agent's current model as the default and expose every valid advertised model with its exact opaque ID/name.
+- Use the agent's current model as the default. Expose every valid model only after `session/new`, load, or resume has
+  advertised a catalog. Before the first catalog in a process, report partial options with no selectable model and let
+  the first new session use the upstream account default; never create a persistent scratch session for discovery.
   Do not maintain a Sesori model manifest, infer families, or send a stale/unknown model.
 - Set Antigravity mode to `default` before every prompt. Never use `auto_edit`, `yolo`, the `agy` CLI's
   `--dangerously-skip-permissions`, or automatic permission acceptance.
@@ -411,11 +413,14 @@ remains authoritative; stale/invalid tokens become a typed authentication-requir
 ### Sessions, Options, And Updates
 
 ```text
+getSessionOptions before any observed catalog
+  -> partial options, primary agent, no selectable models
+
 session/new or load/resume
   -> capture configOptions.model catalog/current value
   -> register sessionId -> canonical cwd
 
-create/send
+create/send after catalog observation
   -> validate exact requested model against last-good catalog
   -> session/set_config_option(model, exact id) when needed
   -> session/set_mode(default)
@@ -437,7 +442,9 @@ catalog import/cold resume
 ```
 
 The model tracker replaces its catalog only after a complete valid capture; a malformed refresh retains the prior
-catalog. No model IDs, account values, prompts, or tool bodies are logged.
+catalog. A fresh process does not create a Google-owned scratch session merely to populate pre-create UI: its first new
+session uses the account default, then the returned catalog becomes available for later turns and sessions. This gap is
+documented at activation. No model IDs, account values, prompts, or tool bodies are logged.
 
 ## Compatibility And Security
 
@@ -542,8 +549,8 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - Add layered profile Storage/Repository/Service ownership, auth stdout filtering, ACP/HTTP lower boundaries,
      Google/loopback validation, personal OAuth operation, callback forwarding, cancellation, and deterministic tests.
 6. `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 6/12]`
-   - Add exact model catalog/selection, fixed default mode, question conversion, persistent-approval filtering, bounded
-     tool normalization, and live/replay mapper hooks with direct collaborator tests.
+   - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
+     persistent-approval filtering, bounded tool normalization, and live/replay hooks with direct collaborator tests.
 7. `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 7/12]`
    - Create the unregistered `AntigravityPlugin` and descriptor, compose typed metadata Storage/Repository mapping,
      directory recovery, load/resume/history, turn lanes, options wiring, commands, crash/reconnect,
@@ -665,7 +672,10 @@ first. No other step has an expected overage.
 ### Step 6/12: Options, questions, permissions, and updates
 
 - Parse `configOptions` model selects including grouped options; keep exact IDs/names, current value, and a last-good
-  immutable catalog. Expose one primary Antigravity agent and provider through existing session-option contracts.
+  immutable catalog. Before new/load/resume returns the first catalog in a process, expose partial options with one
+  primary Antigravity agent and no models; the first new session uses the account default. Do not create a scratch
+  Google session for pre-create discovery. After capture, expose every valid advertised model through existing
+  session-option contracts.
 - Extend Layer-1 `AcpAgentApi` and Layer-2 `AcpSessionConfigRepository` with standard `session/set_mode`. Add
   `AntigravitySessionOptionsService(required catalogTracker, required configRepository)`; it validates the model,
   performs exact selection, then sends `default` as one operation. Test it directly with fakes in this step; defer all
@@ -678,7 +688,8 @@ first. No other step has an expected overage.
   labels back to exact IDs and reject malformed/ambiguous replies.
 - Remove `allow_always` before ordinary base permission handling. Preserve allow-once/reject/cancel and never substitute
   a different option when an offered kind is absent.
-- Cover grouped/empty/stale models, failed selection/mode, duplicate question labels/IDs, reject-kind question choices,
+- Cover fresh/restarted partial discovery, first-session account default, post-new/load/resume catalog visibility,
+  grouped/empty/stale models, failed selection/mode, duplicate question labels/IDs, reject-kind question choices,
   prompt-injection warning filtering, malformed requests, bounded payloads, and live/replay equality.
 
 ### Step 7/12: Persistent ACP plugin composition
@@ -709,9 +720,10 @@ first. No other step has an expected overage.
 - Add the package dependency and descriptor to the bridge app registry through `AntigravityIdentity.pluginId`; do not
   add a shared `Harness` case. Update exact built-in, CLI-option, app composition, and architecture inventories.
   Preserve OpenCode as preferred default and on-demand start.
-- In this activation PR, update `docs/HARNESS_CAPABILITIES.md` for personal OAuth and persistent-approval gaps and put
-  proprietary-runtime, Google terms, manual-pair, and retained-history disclosure in setup/auth guidance before either
-  action is usable. Descriptor display name is `Antigravity`; shared presentation keeps generic harness artwork.
+- In this activation PR, update `docs/HARNESS_CAPABILITIES.md` for personal OAuth, persistent approval, and
+  fresh-process first-session model-discovery gaps. Put proprietary-runtime, Google terms, manual-pair, and
+  retained-history disclosure in setup/auth guidance before either action is usable. Descriptor display name is
+  `Antigravity`; shared presentation keeps generic harness artwork.
 - Verify a missing runtime remains inert, an explicit pair is authoritative, local auth blocks only Antigravity, and a
   current client can route/list the generic built-in with the required disclosure.
 
@@ -726,9 +738,10 @@ first. No other step has an expected overage.
   validation to the service and reports sanitized outcomes without duplicating process access.
 - Extend descriptor precedence to explicit -> valid PATH -> already-installed managed. Advertise install only without
   an explicit override and on one of the five supported targets; install is always explicit.
-- Add required `extractionTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor` input,
-  and update every existing asset/caller explicitly. Give each Antigravity target a measured budget that unpacks the
-  verified payload on its packaged host; retain traversal/symlink checks and test success, not only timeout messaging.
+- Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
+  input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
+  replacing the fixed 30-second/two-minute limits. Give each Antigravity target a measured budget that completes both
+  full archive passes on its packaged host; retain traversal/symlink checks and test successful slow preflight/extract.
 - Add managed-download disclosure and five-target/macOS-x64 capability facts in this PR before Install is exposed.
 - Cover all target mappings/digests, package sibling preservation, corrupt archive/hash, partial pair, failed probe,
   shutdown-triggered abort at phase boundaries, superseded cleanup, rollback to the prior active runtime, unsupported
@@ -737,8 +750,9 @@ first. No other step has an expected overage.
 ### Step 10/12: Complete product guidance
 
 - Complete README and architecture/operator docs with the final official pair/release, manual and managed setup,
-  five-target support, macOS x64 gap, personal OAuth/remote callback, isolated profile, supervised mode, model/session/
-  history/attachment behavior, retained Google history, and terms links already surfaced at activation.
+  five-target support, macOS x64 gap, personal OAuth/remote callback, isolated profile, supervised mode, fresh-process
+  first-session default-model behavior, later model/session/history/attachment behavior, retained Google history, and
+  terms links already surfaced at activation.
 - Audit both shells: management/chooser surfaces already carrying plugin metadata show descriptor-provided
   `Antigravity`; ID-only surfaces retain the generic `antigravity` name/plug fallback. Do not add an Antigravity branch
   or asset to `PregoBrandLogo`, add a presentation-only contract, or add provider-specific analytics.
@@ -815,16 +829,17 @@ Feature matrix:
     in logs, SSE replay, or persisted state.
   - Boundary: automated, live Google service on representative macOS arm64 and Linux x64 hosts, iOS and desktop E2E.
 - **`plugin-runtime-installation.md`**
-  - Evidence: five independently pinned digests, target-sized extraction budgets, successful huge-package extraction,
-    sibling preservation, validation-before-activation, shutdown abort/recovery, rollback, cleanup, and macOS x64 gap.
+  - Evidence: five independently pinned digests, target-sized archive-command budgets, successful huge-package
+    traversal preflight and extraction, sibling preservation, validation-before-activation, shutdown abort/recovery,
+    rollback, cleanup, and macOS x64 gap.
   - Boundary: automated plus packaged execution on every listed host target.
 - **`projects-and-sessions.md`**
   - Evidence: isolated-profile metadata import, DB-only ordinary reads, canonical cwd attribution, malformed metadata
     skip, non-destructive re-import, and plugin ownership.
   - Boundary: headless bridge and live agent.
 - **`session-creation-and-options.md`**
-  - Evidence: current default, grouped account models, exact selection, stale rejection/refresh, `default` mode before
-    prompt, session creation, and remembered plugin defaults.
+  - Evidence: fresh/restarted partial discovery and account-default first session; post-new/load/resume grouped models;
+    exact selection, stale rejection/refresh, `default` mode before prompt, session creation, and remembered defaults.
   - Boundary: automated, live agent, and client E2E.
 - **`session-turns.md`**
   - Evidence: text/reasoning/tool/status streaming, accepted-send timing, model application, abort, stop-and-send,
@@ -860,9 +875,9 @@ Feature matrix:
 - **Terms/proprietary distribution:** the registry intentionally publishes Google binaries for ACP clients, while
   Google separately controls account eligibility and terms. Fetch only from the official registry URLs after explicit
   action, link current terms, and avoid legal promises or community wrappers.
-- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Replace the extractor's
-  fixed two-minute limit with required per-asset budgets, then verify successful target extraction, shutdown abort,
-  disk/timeout failure, prior-runtime rollback, and cleanup without duplicating the shared installer.
+- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Replace fixed listing and
+  extraction limits with one required per-asset command budget, then verify successful traversal preflight/extraction,
+  shutdown abort, disk/timeout failure, prior-runtime rollback, and cleanup without duplicating the shared installer.
 - **Pair drift:** server and local harness must match. Resolve/place/lease them as one directory, then validate both
   before activation.
 - **OAuth callback security:** a pasted URL is attacker-controlled input containing a short-lived code. Pure-Dart
