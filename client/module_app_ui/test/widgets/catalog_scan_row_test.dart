@@ -832,6 +832,7 @@ void main() {
 
     testWidgets("expands loading and terminal cards for accessibility text", (tester) async {
       const textScaler = TextScaler.linear(2.5);
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
 
       await pumpRow(
         tester,
@@ -840,6 +841,11 @@ void main() {
         width: 402,
       );
       expect(tester.getSize(find.byType(CatalogScanRow)).height, greaterThan(101));
+      for (final label in [loc.catalogScanRunningTitle, loc.catalogScanStartingDetail]) {
+        final text = tester.widget<Text>(find.text(label));
+        expect(text.maxLines, isNull);
+        expect(text.overflow, isNull);
+      }
       expect(tester.takeException(), isNull);
 
       await pumpRow(
@@ -849,6 +855,11 @@ void main() {
         width: 402,
       );
       expect(tester.getSize(find.byType(CatalogScanRow)).height, greaterThan(101));
+      for (final label in [loc.catalogScanFailedTitle, loc.catalogScanFailedDetail]) {
+        final text = tester.widget<Text>(find.text(label));
+        expect(text.maxLines, isNull);
+        expect(text.overflow, isNull);
+      }
       expect(tester.takeException(), isNull);
     });
   });

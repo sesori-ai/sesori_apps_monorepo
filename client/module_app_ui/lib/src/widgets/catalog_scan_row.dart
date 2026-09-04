@@ -363,15 +363,16 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
+    final wrapsText = MediaQuery.textScalerOf(context).scale(1) > 1;
+    final icon = content.icon;
+    if (icon == null) throw StateError("Terminal scan cards require an icon.");
     final clipShape = _deepScanCardShape(context);
     final outlineShape = _deepScanCardShape(
       context,
       side: BorderSide(color: colors.borderPrimary),
     );
     final (accent, markColor, actionColor) = switch (content.tone) {
-      // The working tone is rendered by the dedicated loading card above. Keeping
-      // this branch exhaustive makes the terminal card's token mapping honest.
-      _ScanTone.working => (colors.bgBrandSolid, colors.fgBrandPrimary, colors.textBrandSecondary),
+      _ScanTone.working => throw StateError("Working scans require the loading card."),
       _ScanTone.done => (
         colors.bgSuccessSecondary,
         colors.textSuccessPrimary,
@@ -388,6 +389,36 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
         colors.textErrorPrimary,
       ),
     };
+    final textBlock = Padding(
+      padding: const EdgeInsetsDirectional.only(top: 1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            content.title,
+            maxLines: wrapsText ? null : 1,
+            overflow: wrapsText ? null : TextOverflow.ellipsis,
+            style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+          ),
+          const SizedBox(height: PregoSpacing.xxs),
+          Text(
+            content.detail,
+            maxLines: wrapsText ? null : 1,
+            overflow: wrapsText ? null : TextOverflow.ellipsis,
+            style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
+          ),
+        ],
+      ),
+    );
+    final action = Padding(
+      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+      child: _ScanDismissButton(
+        label: content.actionLabel,
+        color: actionColor,
+        onPressed: content.onAction,
+      ),
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -428,51 +459,27 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                     SizedBox.square(
                       key: const ValueKey("catalog-scan-terminal-icon"),
                       dimension: _markSize,
-                      child: switch (content.icon) {
-                        final icon? => Icon(icon, size: _markSize, color: markColor),
-                        null => PregoActivityIndicator(color: markColor),
-                      },
+                      child: Icon(icon, size: _markSize, color: markColor),
                     ),
                     const SizedBox(width: PregoSpacing.sm),
                     Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.only(top: 1),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    content.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
-                                  ),
-                                  const SizedBox(height: PregoSpacing.xxs),
-                                  Text(
-                                    content.detail,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
-                                  ),
-                                ],
-                              ),
+                      child: wrapsText
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                textBlock,
+                                Align(alignment: AlignmentDirectional.centerEnd, child: action),
+                              ],
+                            )
+                          : Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: textBlock),
+                                const SizedBox(width: PregoSpacing.xs),
+                                action,
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: PregoSpacing.xs),
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
-                            child: _ScanDismissButton(
-                              label: content.actionLabel,
-                              color: actionColor,
-                              onPressed: content.onAction,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),
@@ -540,6 +547,7 @@ class _ScanLoadingCardState()
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
+    final wrapsText = MediaQuery.textScalerOf(context).scale(1) > 1;
     final clipShape = _deepScanCardShape(context);
     final outlineShape = _deepScanCardShape(
       context,
@@ -608,15 +616,15 @@ class _ScanLoadingCardState()
                           children: [
                             Text(
                               widget.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: wrapsText ? null : 1,
+                              overflow: wrapsText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
                             ),
                             const SizedBox(height: PregoSpacing.xxs),
                             Text(
                               widget.supportingText,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              maxLines: wrapsText ? null : 1,
+                              overflow: wrapsText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
                             ),
                           ],
