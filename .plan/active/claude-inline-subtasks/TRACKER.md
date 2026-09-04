@@ -174,7 +174,7 @@ implementation PR. E2E testing is performed after each PR merges.
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; package version staged, release pending |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | In progress on `claude-inline-subtasks-deepseek-tiles` |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | [PR #1293](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1293) open |
 | [ ] | DeepSeek (adapter) | `🌱 release: publish v0.1.3 for the merged consumer` | Next after the tile/live-child consumer merges |
 | [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Pending adapter v0.1.3 release |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
