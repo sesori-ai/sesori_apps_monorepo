@@ -181,5 +181,5 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 3 architecture implementation review approved the local Storage -> Repository -> Service flow with
   no violations. Antigravity analysis passes, all 29 tests pass, and Git/line-width validation is clean.
 - 2026-09-04 — Step 3's self-inclusive cap check used
-  `git diff --numstat 4c587bcefed5601a83b24d202b2edff75611cbe2 HEAD` with an additions/deletions sum: 1215 + 7 = 1222
+  `git diff --numstat 4c587bcefed5 031c4139a2c9` with an additions/deletions sum: 1215 + 7 = 1222
   changed lines, leaving 278 lines below the 1,500-line cap.
