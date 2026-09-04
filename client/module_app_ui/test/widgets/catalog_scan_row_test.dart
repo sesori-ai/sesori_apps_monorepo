@@ -1,6 +1,7 @@
 import "dart:ui" as ui;
 
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -354,6 +355,23 @@ void main() {
         isTrue,
       );
       await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
+
+      expect(cancelCount, 1);
+      expect(dismissCount, 0);
+    });
+
+    testWidgets("focuses and activates Cancel from the keyboard", (tester) async {
+      await pumpRow(
+        tester,
+        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 1, pluginIds: {"codex"}),
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, isNotNull);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
 
       expect(cancelCount, 1);
       expect(dismissCount, 0);
@@ -793,6 +811,20 @@ void main() {
         isTrue,
       );
       await tester.tap(find.text(loc.catalogScanDismiss));
+
+      expect(dismissCount, 1);
+      expect(cancelCount, 0);
+    });
+
+    testWidgets("focuses and activates Dismiss from the keyboard", (tester) async {
+      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 1));
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, isNotNull);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
 
       expect(dismissCount, 1);
       expect(cancelCount, 0);

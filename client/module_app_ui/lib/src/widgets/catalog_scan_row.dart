@@ -2,7 +2,7 @@ import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart" show PregoSkeuomorphicOverlay;
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -823,42 +823,46 @@ class const _ScanCancelButton({
       label: semanticLabel,
       onTap: onPressed,
       child: ExcludeSemantics(
-        child: SizedBox.square(
-          dimension: 36,
-          child: PregoTappable(
-            onTap: onPressed,
-            borderRadius: radius,
-            overlayInset: 1,
-            overlayColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
-              if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
-              return null;
-            }),
-            containerBuilder: (child) => DecoratedBox(
-              decoration: BoxDecoration(
-                color: colors.bgSurface4,
-                border: Border.all(color: colors.borderSecondary),
-                borderRadius: radius,
-                boxShadow: [
-                  BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: radius,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    child,
-                    PregoSkeuomorphicOverlay(
-                      innerBorderColor: colors.skeuomorphicInnerBorder,
-                      bottomShadowColor: colors.skeuomorphicShadow,
-                    ),
+        child: _ScanFocusableAction(
+          borderRadius: radius,
+          onPressed: onPressed,
+          child: SizedBox.square(
+            dimension: 36,
+            child: PregoTappable(
+              onTap: onPressed,
+              borderRadius: radius,
+              overlayInset: 1,
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
+                if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
+                return null;
+              }),
+              containerBuilder: (child) => DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colors.bgSurface4,
+                  border: Border.all(color: colors.borderSecondary),
+                  borderRadius: radius,
+                  boxShadow: [
+                    BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
                   ],
                 ),
+                child: ClipRRect(
+                  borderRadius: radius,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      child,
+                      PregoSkeuomorphicOverlay(
+                        innerBorderColor: colors.skeuomorphicInnerBorder,
+                        bottomShadowColor: colors.skeuomorphicShadow,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            child: Center(
-              child: Icon(TablerRegular.x, size: 20, color: colors.textSecondary),
+              child: Center(
+                child: Icon(TablerRegular.x, size: 20, color: colors.textSecondary),
+              ),
             ),
           ),
         ),
@@ -901,28 +905,73 @@ class const _ScanDismissButton({
       label: label,
       onTap: onPressed,
       child: ExcludeSemantics(
-        child: ConstrainedBox(
-          key: const ValueKey("catalog-scan-dismiss-action"),
-          constraints: actionConstraints,
-          child: PregoTappable(
-            onTap: onPressed,
-            borderRadius: radius,
-            overlayColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
-              if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
-              return null;
-            }),
-            containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
-            child: Center(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: prego.textTheme.textSm.medium.copyWith(color: color),
+        child: _ScanFocusableAction(
+          borderRadius: radius,
+          onPressed: onPressed,
+          child: ConstrainedBox(
+            key: const ValueKey("catalog-scan-dismiss-action"),
+            constraints: actionConstraints,
+            child: PregoTappable(
+              onTap: onPressed,
+              borderRadius: radius,
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
+                if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
+                return null;
+              }),
+              containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
+              child: Center(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: prego.textTheme.textSm.medium.copyWith(color: color),
+                ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class const _ScanFocusableAction({
+  required final BorderRadius borderRadius,
+  required final VoidCallback onPressed,
+  required final Widget child,
+}) extends StatefulWidget {
+  @override
+  State<_ScanFocusableAction> createState() => _ScanFocusableActionState();
+}
+
+class _ScanFocusableActionState() extends State<_ScanFocusableAction> {
+  bool _showFocusHighlight = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    return FocusableActionDetector(
+      onShowFocusHighlight: (show) => setState(() => _showFocusHighlight = show),
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            widget.onPressed();
+            return null;
+          },
+        ),
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: widget.borderRadius,
+          boxShadow: _showFocusHighlight
+              ? [
+                  BoxShadow(color: colors.focusRing, spreadRadius: 4),
+                  BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
+                ]
+              : null,
+        ),
+        child: widget.child,
       ),
     );
   }
