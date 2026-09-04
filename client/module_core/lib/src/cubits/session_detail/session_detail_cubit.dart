@@ -90,6 +90,7 @@ class SessionDetailCubit(
   final SessionRepository _sessionRepository = promptDispatcher;
   final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
   static const _defaultModelSelector = DefaultModelSelector();
+  static const _syntheticModelID = "<synthetic>";
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
@@ -2334,13 +2335,12 @@ class SessionDetailCubit(
         : (agents.isNotEmpty ? agents.first.name : "build");
 
     final assistantAgentModel = derived.assistantAgentModel;
-    final availableAssistantAgentModel =
-        assistantAgentModel != null && _isModelAvailable(model: assistantAgentModel, providers: providers)
-        ? assistantAgentModel
-        : null;
+    final selectableAssistantAgentModel = assistantAgentModel?.modelID == _syntheticModelID
+        ? null
+        : assistantAgentModel;
     final defaultAgentModel = hasValidPersistedModel
         ? persistedModel
-        : (availableAssistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
+        : (selectableAssistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
 
     final availableVariants = _deriveAvailableVariants(
       providers: providers,
