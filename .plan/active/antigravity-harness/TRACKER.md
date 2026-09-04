@@ -212,3 +212,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 4's self-inclusive cap check used
   `git diff --numstat d85d9fcb1d36 6da24f133c` with an additions/deletions sum: 838 + 158 = 996 changed lines,
   leaving 504 lines below the 1,500-line cap.
+- 2026-09-04 — Step 5's second architecture review approved. Cap evidence:
+  `git diff --numstat 93c8982601ebbf9dd3604b1ccbae8d423cbb63ca 2ba96d530e4e2bf760b897ab20e6739d34690341`
+  totals 1189 + 308 = 1497 changed lines, leaving 3 below the 1,500-line cap.
