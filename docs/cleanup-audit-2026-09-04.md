@@ -381,3 +381,38 @@ No evidence here establishes that removing those defenses would be safe.
 Project/session viewing trackers also have different event contracts; a common
 policy framework would increase complexity. Large-file size alone still does
 not justify splitting the orchestrator, session cubit, or ACP implementation.
+
+## Consolidation after PR comparison
+
+At the user's request, useful findings from
+[PR #1296](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1296) are now
+included in the [single cleanup plan](../.plan/active/periodic-cleanup/PLAN.md).
+The [source-step ledger](../.plan/active/periodic-cleanup/CONSOLIDATION.md) retains
+every disposition, including deferred architecture/compatibility decisions.
+
+Added executable work covers provisioning composition, bounded cold-start
+waiting, local worktree/Codex folds, error/stack logging, shell cubit composition,
+auth completion folds, substantial bridge/client fixtures, verified unused
+dependencies/keys/symbols, and completed historical documents. Source #1296's
+repo-wide census counts are attributed discovery evidence; this consolidation
+cross-checked selected implementations and callers, not a rerun of its census.
+
+Two source assumptions were corrected during inspection: OMP requires an
+asynchronous Linux libc asset resolver (manifest.assetFor returns null there),
+and the worktree suffix loop stops after a failed creation on an available
+candidate. Shared composition/loop folding must preserve those differences.
+The cold-start helper also leaves the unconditional OpenCode abort rollback
+outside its conditionally executed wait.
+
+[PR #1294](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1294) is merged
+as `da2e9eeb47`. Its calculator, model-retention semantics and regression coverage
+are retained; no second variant-consolidation step is needed. The original
+transcript reproductions are baseline evidence and will be re-executed when
+implementing the fixes on current main.
+
+The user subsequently broadened documentation scope: the plan now audits
+root/package/general documentation and simplifies every regression guide,
+including guides outside the production-code changes. Separate client and
+bridge guide passes remove stale/redundant/low-value content, followed by a
+final README/index/behavior reconciliation. Existing material proof obligations
+remain; doc edits do not manufacture passing test evidence.

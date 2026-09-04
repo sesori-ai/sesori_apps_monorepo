@@ -1,24 +1,37 @@
 # Periodic cleanup tracker
 
-Authority: [PLAN.md](PLAN.md). Fixed proposed series: fourteen steps.
-Implementation scope acceptance is pending.
+Authority: [PLAN.md](PLAN.md). Fixed proposed series: **25 steps**.
+The user authorized consolidating #1296, closing it, and broad documentation
+simplification. Refactor execution scope remains pending.
+[Source-step dispositions](CONSOLIDATION.md).
 
 | Step | Exact PR title | Status | PR |
 | --- | --- | --- | --- |
-| 1/14 | 🌱 [periodic-cleanup] docs: plan deep repository cleanup [step 1/14] | In review | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
-| 2/14 | 🌿 [periodic-cleanup] client: preserve streamed text across refresh [step 2/14] | Proposed | — |
-| 3/14 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/14] | Proposed | — |
-| 4/14 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/14] | Proposed | — |
-| 5/14 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/14] | Proposed | — |
-| 6/14 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/14] | Proposed | — |
-| 7/14 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/14] | Proposed | — |
-| 8/14 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/14] | Proposed | — |
-| 9/14 | ⚙️ [periodic-cleanup] opencode: stop forwarding unused backend events [step 9/14] | Proposed | — |
-| 10/14 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/14] | Proposed | — |
-| 11/14 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/14] | Proposed | — |
-| 12/14 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/14] | Proposed | — |
-| 13/14 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 13/14] | Proposed | — |
-| 14/14 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 14/14] | Proposed | — |
+| 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | In review | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
+| 2/25 | 🌿 [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Proposed | — |
+| 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Proposed | — |
+| 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Proposed | — |
+| 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Proposed | — |
+| 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Proposed | — |
+| 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
+| 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Proposed | — |
+| 9/25 | ⚙️ [periodic-cleanup] opencode: stop forwarding unused backend events [step 9/25] | Proposed | — |
+| 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
+| 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
+| 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
+| 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Proposed | — |
+| 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Proposed | — |
+| 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Proposed | — |
+| 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Proposed | — |
+| 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Proposed | — |
+| 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Proposed | — |
+| 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Proposed | — |
+| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Proposed | — |
+| 21/25 | 🌱 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Proposed | — |
+| 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
+| 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
+| 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
+| 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
 
 ## Evidence and execution
 
@@ -34,9 +47,27 @@ Implementation scope acceptance is pending.
   (3) inject an explicit core temporary-directory platform interface with shell
   adapters, not a loader callback. No additional mutable-state machinery added.
   The corrected version has not been re-reviewed, following repository rules.
-- Plan validation: 53 relative links resolve; all 14 exact titles agree; both
-  diagnostic patches apply; whitespace checked. Production/test sources restored.
+- Consolidated validation: 55 relative links resolve; all 25 exact titles and
+  scope rows agree; all 17 source-step dispositions are recorded; whitespace passes.
+  Diagnostic source files remain restored; evidence patches are unchanged.
 - Implementation tests, live-plugin/platform retirement matrix: not run.
 - Scope decision: pending, including unversioned reconciliation limits in step 3.
 - Existing refresh diagnostic plan: linked handoff, not falsely retired.
 - Retirement: not eligible; requires all recorded matrix rows to pass.
+
+## Consolidation update — 2026-09-04
+
+- #1296 reviewed at `c7f35a5c7936ac3cc1b9ed7399b7b81436c8253a`; useful
+  work is now owned by the steps above. Close its PR after this update is
+  pushed and #1295 describes the final consolidated scope.
+- #1294 verified merged as `da2e9eeb47`; selection cleanup is externally
+  completed. No variant or calculator rewrite remains in this series.
+- Eleven additional steps adopted, three overlapping refactors consolidated,
+  and policy-dependent/low-benefit ideas retained with explicit dispositions.
+- Architecture plan review of the material consolidation (2026-09-04):
+  **Approved**, pre-review gate passed; B-Client and B-Bridge applied, public
+  shared wire contracts unchanged. No new findings or corrections required.
+- Original retirement matrix retained and expanded for adopted work.
+- Latest user steering: audit root/package/general docs and simplify every
+  regression guide, removing pointless content. Steps 21–24 own this broader
+  pass; historical deletion is only one part.
