@@ -1779,15 +1779,24 @@ class SessionDetailCubit(
         // it no longer offers is corrected rather than retained — that
         // correction is the whole point of refreshing.
         //
-        // Losing the agent moves the model with it: an agent that disappeared
-        // takes its model preference along, and pairing the replacement agent
-        // with the old one's model would leave the two describing different
-        // intents. The model already on screen still wins while the agent holds.
+        // A replacement agent's own declared model outranks the departed one's:
+        // the agent that expressed that preference is gone. It only outranks it,
+        // though — a replacement declaring no model expresses no preference, so
+        // the model on screen is kept rather than reset to a catalog default.
+        // While the agent holds, its model holds with it.
+        //
+        // "Held" means the previous agent was a real catalog entry, not the
+        // placeholder name shown when a catalog advertised no agents at all. A
+        // catalog that later advertises an agent under that same name is a new
+        // agent, and its declared model applies.
         final agentName = _selection.validatedAgentName(
           agents: agents,
           candidates: [latest.selectedAgent],
         );
-        final replacedAgentModel = agentName == latest.selectedAgent
+        final heldSameAgent =
+            agentName == latest.selectedAgent &&
+            latest.availableAgents.any((agent) => agent.name == latest.selectedAgent);
+        final replacedAgentModel = heldSameAgent
             ? null
             : agents.firstWhereOrNull((agent) => agent.name == agentName)?.model;
         final reconciled = _selection.reconcile(

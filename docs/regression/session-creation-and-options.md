@@ -32,9 +32,9 @@ variant, and worktree mode, and creating the session with its first input.
   the user switches agents or the bridge reports remembered defaults, even when
   the catalog no longer lists it. A refresh is the opposite case: it exists to
   adopt the catalog the backend has now, so a selection that catalog no longer
-  offers is corrected there rather than preserved. Losing the agent moves the
-  model with it — the replacement agent's own declared model is preferred over
-  the departed agent's.
+  offers is corrected there rather than preserved. A replacement agent's own
+  declared model outranks the departed agent's; a replacement that declares none
+  expresses no preference, so the model on screen is kept rather than reset.
 - After a new session and its first prompt or command are accepted, the bridge
   remembers the complete agent, model, and effort selection per plugin. The next
   New Session screen uses it as the prefill across projects for that plugin after
