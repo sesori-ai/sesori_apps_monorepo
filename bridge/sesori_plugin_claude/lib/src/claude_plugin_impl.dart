@@ -41,6 +41,7 @@ final class ClaudePlugin({
   }
 
   static const String pluginId = "claude";
+  static const String _syntheticModelId = "<synthetic>";
 
   final String _launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
   final Map<String, PluginSession> _createdSessions = {};
@@ -517,7 +518,9 @@ final class ClaudePlugin({
     required bool staleOptions,
   }) {
     if (model == null) return;
-    if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
+    if (model.providerID != ClaudeBackendCatalogRepository.providerId ||
+        model.modelID.trim().isEmpty ||
+        model.modelID == _syntheticModelId) {
       throw _unsupportedSelection(
         operation: operation,
         message: "unsupported Claude model",
