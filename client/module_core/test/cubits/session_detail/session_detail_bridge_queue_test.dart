@@ -284,7 +284,11 @@ void main() {
     });
 
     test("an options update for another project is ignored", () async {
-      final cubit = await createLoadedCubit();
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Default", description: "Default", model: null, mode: AgentMode.primary),
+        ],
+      );
 
       globalEvents.add(
         SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-2")),
@@ -298,6 +302,7 @@ void main() {
           mode: any(named: "mode"),
         ),
       );
+      expect((cubit.state as SessionDetailLoaded).availableAgents.map((agent) => agent.name), ["Default"]);
     });
 
     test("refreshes stale options and retries the queued submission with a supported agent", () async {
@@ -441,6 +446,9 @@ void main() {
         ],
         promptDefaults: const SessionPromptDefaults(agent: "Default", model: null),
       );
+      final notices = <SessionDetailNotice>[];
+      final noticeSubscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(noticeSubscription.cancel);
 
       unawaited(
         cubit.sendMessage(
@@ -472,6 +480,9 @@ void main() {
           command: null,
         ),
       ).called(1);
+      // The user was told their rejected selection was corrected, even though
+      // the reload that delivered it was not the one recovery started.
+      expect(notices, [SessionDetailNotice.promptOptionsUpdated]);
     });
 
     test("parks the prompt after one stale-options recovery attempt", () async {

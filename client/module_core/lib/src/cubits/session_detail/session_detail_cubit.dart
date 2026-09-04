@@ -1765,7 +1765,12 @@ class SessionDetailCubit(
       // cache more recently and this answer must not replace it. The caller
       // still succeeded: what is on screen is at least as fresh as what this
       // read fetched, which is exactly what a stale-send recovery waits for.
-      if (_lastAppliedOptionsReload > requestGeneration) return true;
+      // That recovery still owes the user its notice — the options did change
+      // under a selection they were rejected for, whichever read delivered it.
+      if (_lastAppliedOptionsReload > requestGeneration) {
+        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
+        return true;
+      }
       final latest = state;
       if (latest is! SessionDetailLoaded) return false;
 
