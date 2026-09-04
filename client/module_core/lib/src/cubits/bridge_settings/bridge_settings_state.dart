@@ -27,6 +27,7 @@ final class const BridgeSettingsReadyFull({
   required super.pullRequestRefreshMutation,
   required final bool yoloEnabled,
   required final YoloMutationState yoloMutation,
+  required final PluginWarmupMutationState pluginWarmupMutation,
 }) extends BridgeSettingsReady;
 
 final class const BridgeSettingsReadyLegacyPartial({
@@ -84,3 +85,21 @@ final class const YoloMutationFailed({required final ApiError error}) extends Yo
 final class const YoloMutationUncertain({required final ApiError refreshError}) extends YoloMutationState;
 
 final class const YoloMutationUnsupported() extends YoloMutationState;
+
+sealed class const PluginWarmupMutationState();
+
+final class const PluginWarmupMutationIdle({required final bool enabled}) extends PluginWarmupMutationState;
+
+final class const PluginWarmupMutationInProgress({required final bool enabled}) extends PluginWarmupMutationState;
+
+final class const PluginWarmupMutationFailed({
+  required final bool enabled,
+  required final ApiError error,
+}) extends PluginWarmupMutationState;
+
+final class const PluginWarmupMutationUncertain({
+  required final bool enabled,
+  required final ApiError refreshError,
+}) extends PluginWarmupMutationState;
+
+final class const PluginWarmupMutationUnsupported() extends PluginWarmupMutationState;

@@ -628,6 +628,22 @@ class AcpEventMapper({
     required String? error,
   }) => childSessions.finish(childSessionId: childSessionId, status: status, output: output, error: error);
 
+  /// Finalizes a child while atomically replacing it with an opaque hold for a
+  /// backend-driven root settlement turn that has no ACP prompt accounting.
+  List<BridgeSseEvent> mapChildFinishedAndHoldRoot({
+    required String childSessionId,
+    required String holdId,
+    required PluginToolStatus status,
+    required String? output,
+    required String? error,
+  }) => childSessions.finishAndHoldRoot(
+    childSessionId: childSessionId,
+    holdId: holdId,
+    status: status,
+    output: output,
+    error: error,
+  );
+
   /// Hook: classify an assistant message's [text] as a backend halt notice
   /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
   /// requested work and told the user to change something. Returns the notice

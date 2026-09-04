@@ -4,24 +4,29 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "api/models/grok_session_notification_dto.dart";
 import "repositories/mappers/grok_subagent_status_mapping.dart";
 
-/// Grok Build's ACP mapper: the base session/update handling plus the
-/// `_x.ai/session_notification` sub-agent lifecycle, pushed into the shared
-/// child-session tracker.
+/// Grok Build's ACP mapper: the base session/update handling plus the Grok
+/// extension sub-agent lifecycle, pushed into the shared child-session tracker.
 class GrokEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
   required super.childSessions,
 }) extends AcpEventMapper {
-  /// Grok's extension notification; the update rides under `params.update`
-  /// with the parent as `params.sessionId`.
+  /// Grok extension lifecycle methods. Live sub-agent updates use the
+  /// notification form; replay and autonomous settlement can use the update
+  /// form with the same `params` shape.
   static const String sessionNotificationMethod = "_x.ai/session_notification";
+  static const String sessionUpdateMethod = "_x.ai/session/update";
 
   /// The tool whose call launches a sub-agent, as named in `_meta["x.ai/tool"]`.
   static const String spawnSubagentToolName = "spawn_subagent";
 
   /// The agent Grok runs when a spawn names none.
   static const String defaultSubagentType = "general-purpose";
+
+  /// Prefix used by Grok for the prompt-less root turn that reports a
+  /// completed background child.
+  static const String autonomousTurnPromptPrefix = "subagent-completed-";
 
   /// The `spawn_subagent` call and the `subagent_spawned` notification share
   /// no id, so the call renders nothing and the notification owns the tile.
@@ -39,7 +44,9 @@ class GrokEventMapper({
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
-    if (notification.method != sessionNotificationMethod) return super.mapExtension(notification);
+    if (notification.method != sessionNotificationMethod && notification.method != sessionUpdateMethod) {
+      return super.mapExtension(notification);
+    }
     final GrokSessionNotificationDto dto;
     try {
       dto = GrokSessionNotificationDto.fromJson(notification.params);
@@ -64,15 +71,44 @@ class GrokEventMapper({
           isBackground: false,
         ),
       ),
+      GrokSubagentFinished(
+        :final childSessionId,
+        :final status,
+        :final output,
+        :final error,
+        willWake: true,
+      ) =>
+        mapChildFinishedAndHoldRoot(
+          childSessionId: childSessionId,
+          holdId: childSessionId,
+          status: status.toPluginToolStatus(),
+          output: output,
+          error: error,
+        ),
       GrokSubagentFinished(:final childSessionId, :final status, :final output, :final error) => mapChildFinished(
         childSessionId: childSessionId,
         status: status.toPluginToolStatus(),
         output: output,
         error: error,
       ),
+      GrokTurnCompleted(:final promptId) => _releaseAutonomousRootTurn(
+        rootSessionId: dto.sessionId,
+        promptId: promptId,
+      ),
       // One child is one tile; progress never redraws it.
       GrokSubagentProgress() || GrokSubagentUpdateUnknown() => const [],
     };
+  }
+
+  List<BridgeSseEvent> _releaseAutonomousRootTurn({
+    required String rootSessionId,
+    required String? promptId,
+  }) {
+    if (promptId == null || !promptId.startsWith(autonomousTurnPromptPrefix)) return const [];
+    final holdId = promptId.substring(autonomousTurnPromptPrefix.length);
+    if (holdId.isEmpty) return const [];
+    childSessions.releaseRootHold(rootSessionId: rootSessionId, holdId: holdId);
+    return const [];
   }
 
   List<BridgeSseEvent> _spawned({

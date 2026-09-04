@@ -218,6 +218,7 @@ void main() {
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
         ),
       ),
     );
@@ -244,6 +245,7 @@ void main() {
     expect(find.text("Session Messages"), findsNothing);
     expect(find.text("Connection Status"), findsNothing);
     expect(find.text("Harnesses"), findsOneWidget);
+    expect(find.text("Warm harness on session open"), findsOneWidget);
     expect(find.text("30 seconds"), findsOneWidget);
     expect(find.text("v0.1.0 (1)"), findsOneWidget);
 

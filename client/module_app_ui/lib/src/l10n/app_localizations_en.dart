@@ -217,6 +217,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsYoloRetry => 'Retry YOLO setting';
 
   @override
+  String get settingsPluginWarmupTitle => 'Warm harness on session open';
+
+  @override
+  String get settingsPluginWarmupDescription =>
+      'Starts the session\'s harness when you open it to reduce delays on your first action.';
+
+  @override
+  String get settingsPluginWarmupLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsPluginWarmupDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsPluginWarmupUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsPluginWarmupLoadFailed =>
+      'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPluginWarmupUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsPluginWarmupUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
+
+  @override
   String get settingsPullRequestRefreshTitle => 'Pull request refresh';
 
   @override
@@ -1485,12 +1515,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get renameSave => 'Save';
-
-  @override
-  String get renameSessionSuccess => 'Session renamed';
-
-  @override
-  String get renameProjectSuccess => 'Project renamed';
 
   @override
   String get renameSessionFailed => 'Failed to rename session';

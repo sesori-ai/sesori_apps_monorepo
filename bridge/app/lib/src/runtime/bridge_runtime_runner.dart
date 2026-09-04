@@ -775,6 +775,7 @@ class const BridgeRuntimeRunner._() {
           yolo: bridgeSettings.yolo,
         ),
         client: relayClient,
+        pluginLifecycleRepository: lifecycleRepository,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
         bridgeSettingsRepository: bridgeSettingsRepository,

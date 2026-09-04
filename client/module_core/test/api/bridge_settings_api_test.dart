@@ -47,6 +47,7 @@ void main() {
         fromJson({
           "pullRequestRefresh": {"intervalSeconds": 30},
           "yolo": {"enabled": true},
+          "warmUpPluginsOnSessionOpen": true,
         }),
       );
     });
@@ -56,6 +57,7 @@ void main() {
     final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
     expect(settings.pullRequestRefresh.intervalSeconds, 30);
     expect(settings.yolo.enabled, isTrue);
+    expect(settings.warmUpPluginsOnSessionOpen, isTrue);
   });
 
   test("PATCH serializes and parses a committed setting variant", () async {
@@ -98,6 +100,34 @@ void main() {
       return ApiResponse.success(fromJson(const {"type": "yolo", "enabled": true}));
     });
     const update = BridgeSettingUpdate.yolo(enabled: true);
+
+    final result = await api.update(update: update);
+
+    expect((result as BridgeSettingUpdateApiCommitted).update, update);
+    final body = verify(
+      () => client.patch<BridgeSettingUpdate>(
+        "/settings",
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured.single;
+    expect(body, update.toJson());
+  });
+
+  test("PATCH serializes and parses session-open plugin warm-up", () async {
+    when(
+      () => client.patch<BridgeSettingUpdate>(
+        "/settings",
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingUpdate Function(Map<String, dynamic>);
+      return ApiResponse.success(
+        fromJson(const {"type": "warmUpPluginsOnSessionOpen", "enabled": false}),
+      );
+    });
+    const update = BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false);
 
     final result = await api.update(update: update);
 

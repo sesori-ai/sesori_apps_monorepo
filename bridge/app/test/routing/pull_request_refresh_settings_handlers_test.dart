@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/routing/get_pull_request_refresh_settings_hand
 import "package:sesori_bridge/src/routing/patch_bridge_settings_handler.dart";
 import "package:sesori_bridge/src/routing/request_handler.dart";
 import "package:sesori_bridge/src/services/permission_auto_approval_service.dart";
+import "package:sesori_bridge/src/services/plugin_warmup_settings_service.dart";
 import "package:sesori_bridge/src/services/pull_request_refresh_settings_service.dart";
 import "package:sesori_bridge/src/services/yolo_settings_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -19,15 +20,21 @@ void main() {
     late BridgeSettingsRepository repository;
     late PullRequestRefreshSettingsService service;
     late YoloSettingsService yoloService;
+    late PluginWarmupSettingsService pluginWarmupSettingsService;
 
     setUp(() async {
-      api = InMemoryBridgeSettingsApi(config: '{"pullRequestRefreshIntervalSeconds":30}');
+      api = InMemoryBridgeSettingsApi(
+        config: '{"pullRequestRefreshIntervalSeconds":30,"warmUpPluginsOnSessionOpen":true}',
+      );
       repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       service = PullRequestRefreshSettingsService(bridgeSettingsRepository: repository);
       yoloService = YoloSettingsService(
         bridgeSettingsRepository: repository,
         permissionAutoApprovalService: _FakePermissionAutoApprovalService(),
+      );
+      pluginWarmupSettingsService = PluginWarmupSettingsService(
+        bridgeSettingsRepository: repository,
       );
     });
 
@@ -49,6 +56,7 @@ void main() {
       final handler = PatchBridgeSettingsHandler(
         pullRequestRefreshSettingsService: service,
         yoloSettingsService: yoloService,
+        pluginWarmupSettingsService: pluginWarmupSettingsService,
       );
 
       expect(handler.method, HttpMethod.patch);
@@ -67,6 +75,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
+            pluginWarmupSettingsService: pluginWarmupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -90,6 +99,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
+            pluginWarmupSettingsService: pluginWarmupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -117,6 +127,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
+            pluginWarmupSettingsService: pluginWarmupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",
@@ -137,6 +148,7 @@ void main() {
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,
             yoloSettingsService: yoloService,
+            pluginWarmupSettingsService: pluginWarmupSettingsService,
           ).routeForTest(
             makeRequest(
               "PATCH",

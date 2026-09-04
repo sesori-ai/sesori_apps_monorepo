@@ -16,7 +16,9 @@ void main() {
     late YoloSettingsService service;
 
     setUp(() async {
-      api = InMemoryBridgeSettingsApi(config: '{"yolo":false,"pullRequestRefreshIntervalSeconds":30}');
+      api = InMemoryBridgeSettingsApi(
+        config: '{"yolo":false,"pullRequestRefreshIntervalSeconds":30,"warmUpPluginsOnSessionOpen":true}',
+      );
       repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       permissionAutoApprovalService = _FakePermissionAutoApprovalService();

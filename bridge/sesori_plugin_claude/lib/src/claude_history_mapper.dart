@@ -12,9 +12,10 @@ final class const ClaudeHistoryMapper({
   required final ClaudeContentMapper _content,
 }) {
   /// [residentTaskToolUseIds] names the sub-agent tasks the session's current
-  /// resident process is still running. Any other replayed task that never
-  /// reached a terminal record is dead — sub-agents die with their process —
-  /// and renders as cancelled.
+  /// resident process is still running. It reopens a task whose transcript has
+  /// an earlier terminal notification when Claude resumed the same agent. Any
+  /// other replayed task that never reached a terminal record is dead —
+  /// sub-agents die with their process — and renders as cancelled.
   ///
   /// [agentId] selects child mode: a sub-agent transcript's records are
   /// sidechain records stamped with the **parent's** session id, so they are
@@ -161,6 +162,9 @@ final class const ClaudeHistoryMapper({
       }
     }
 
+    for (final toolUseId in residentTaskToolUseIds) {
+      tasks.markTaskRunning(toolUseId: toolUseId);
+    }
     for (final toolUseId in tasks.runningTaskToolUseIds(sessionId: sessionId).difference(residentTaskToolUseIds)) {
       tasks.cancelTask(toolUseId: toolUseId);
     }

@@ -60,6 +60,19 @@ defaults and queued client sends coherent.
   client user-message id in either case. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
+- A Codex root remains effectively busy after its own turn completes while any
+  tracked descendant turn is running. The root's idle status and completion
+  signal are deferred and released exactly once after the last child settles;
+  the `subAgentActivity started` fact counts as work immediately even when an
+  earlier pre-start status said idle. An accepted resumed turn also keeps its
+  child and root provisionally busy before `turn/started` arrives.
+  Active-session summaries keep `mainAgentRunning` specific to the root, list
+  busy child thread ids, and roll a child's pending permission or question up
+  to the root's awaiting-input state and pending-input snapshot, including a
+  restored request with no live status and a request that arrives while
+  `thread/read` is still enriching the spawn. A stop or deletion accepted before
+  the child's `turn/started` queues its interrupt until the turn id arrives.
+  Closing an active child emits its idle status before any deferred root release.
 - A plain Claude prompt sent while its resident process is working is written
   immediately with `priority: next`. Claude absorbs it at the next tool
   boundary when possible, within the active agent turn; otherwise Claude keeps
@@ -177,7 +190,18 @@ defaults and queued client sends coherent.
   text-only because its initialize result does not advertise image capability.
   The exact model/reasoning tuple is validated and applied before dispatch;
   stale or rejected selection fails visibly without prompting. Different Grok
-  sessions run independently while one session remains serialized.
+  sessions run independently while one session remains serialized. Its ACP
+  sub-agent extension renders a child subtask and status and keeps the root and
+  plugin busy after the root turn settles. The child terminal event is published
+  before any derived root idle. A finish with `will_wake: true` atomically swaps
+  the child for an autonomous-root hold and releases that hold only on the
+  matching `turn_completed` prompt `subagent-completed-<child id>`. A new user
+  prompt cancels that autonomous turn and waits for the hold to clear before its
+  ACP prompt frame is dispatched. Spawn and non-final finish changes invalidate
+  the project summary. Deletion refuses a running child or root with active
+  child work until that work is stopped or finishes; global interruption,
+  process exit, and disposal cancel or clear child activity and holds without
+  leaving the root busy or delivering tracker changes to a closed event stream.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori
@@ -324,7 +348,7 @@ defaults and queued client sends coherent.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
+| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Automated Codex coverage holds root idle through a running child, releases it once, rolls child pending input into the root summary, and reconciles an already-idle child abort. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
 | L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
@@ -413,13 +437,26 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shows a transient idle between the task notification and its wake-up turn; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
+- A Codex root reports idle while a child is starting or still runs, never
+  releases its deferred idle after the child settles, emits completion more
+  than once, omits a busy child id, omits an awaiting-input root after reconnect,
+  reports awaiting input without returning the child's actionable request from
+  the root snapshot, accepts a pre-start child stop or deletion without
+  interrupting the arriving turn, re-announces deleted child activity, or leaves
+  a closed child's visible status busy.
 - A plain stop kills running Claude sub-agents or OpenCode child sessions
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop
   request hanging, or dismissing the dialog stops anything.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
-  loses text, reasoning, tool, status, or terminal failure output.
+  loses text, reasoning, tool, status, or terminal failure output. A child lets
+  its root report idle while still running, finishes after the derived root idle,
+  fails to invalidate the project summary, drops root busy state between a waking
+  child's finish and its autonomous completion, dispatches a user prompt before
+  that completion, releases a hold for an unrelated prompt, disappears locally
+  when deletion cannot stop it, survives global interruption/process exit, or
+  leaves tracker events subscribed after plugin disposal.
 - A normalized user message fails to advance the existing activity marker, or
   assistant/tool/title-only updates replace an established marker and move the
   running session as if they were user activity.

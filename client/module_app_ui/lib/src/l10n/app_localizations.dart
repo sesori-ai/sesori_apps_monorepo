@@ -481,6 +481,60 @@ abstract class AppLocalizations {
   /// **'Retry YOLO setting'**
   String get settingsYoloRetry;
 
+  /// No description provided for @settingsPluginWarmupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm harness on session open'**
+  String get settingsPluginWarmupTitle;
+
+  /// No description provided for @settingsPluginWarmupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts the session\'s harness when you open it to reduce delays on your first action.'**
+  String get settingsPluginWarmupDescription;
+
+  /// No description provided for @settingsPluginWarmupLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsPluginWarmupLoading;
+
+  /// No description provided for @settingsPluginWarmupDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsPluginWarmupDisconnected;
+
+  /// No description provided for @settingsPluginWarmupUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsPluginWarmupUnsupported;
+
+  /// No description provided for @settingsPluginWarmupLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsPluginWarmupLoadFailed;
+
+  /// No description provided for @settingsPluginWarmupUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsPluginWarmupUncertain;
+
+  /// No description provided for @settingsPluginWarmupUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsPluginWarmupUpdateFailed;
+
+  /// No description provided for @settingsPluginWarmupRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry harness warm-up setting'**
+  String get settingsPluginWarmupRetry;
+
   /// No description provided for @settingsPullRequestRefreshTitle.
   ///
   /// In en, this message translates to:
@@ -2766,18 +2820,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save'**
   String get renameSave;
-
-  /// No description provided for @renameSessionSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Session renamed'**
-  String get renameSessionSuccess;
-
-  /// No description provided for @renameProjectSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Project renamed'**
-  String get renameProjectSuccess;
 
   /// No description provided for @renameSessionFailed.
   ///

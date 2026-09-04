@@ -290,6 +290,7 @@ class _ConcurrencyHarness._({
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

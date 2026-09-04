@@ -275,8 +275,10 @@ CodexSessionRecord _record({
   required String? title,
   DateTime? createdAt,
   DateTime? updatedAt,
+  String? parentId,
 }) => CodexSessionRecord(
   id: id,
+  parentId: parentId,
   rolloutPath: "/rollouts/$id.jsonl",
   cwd: cwd,
   threadName: title,
@@ -285,6 +287,7 @@ CodexSessionRecord _record({
   cliVersion: "0.142.0",
   modelProvider: "openai",
   model: "gpt-5.4-codex",
+  agentNickname: null,
 );
 
 class _StubCodexCatalogRepository(final List<CodexSessionRecord> records) extends CodexCatalogRepository {
