@@ -26,8 +26,7 @@ final class const PluginManagementLoadResultSupported({
 
 final class const PluginManagementLoadResultUnsupported() extends PluginManagementLoadResult;
 
-final class const PluginManagementLoadResultFailure({required final ApiError error})
-    extends PluginManagementLoadResult;
+final class const PluginManagementLoadResultFailure({required final ApiError error}) extends PluginManagementLoadResult;
 
 sealed class const PluginManagementMutationResult() {
   const factory success({
@@ -78,6 +77,9 @@ sealed class const PluginAuthenticationFailure() {
   /// This plugin does not support interactive authentication.
   const factory unsupported() = PluginAuthenticationFailureUnsupported;
 
+  /// The bridge returned a challenge introduced after this client version.
+  const factory updateRequired() = PluginAuthenticationFailureUpdateRequired;
+
   /// The request may or may not have reached the bridge, so the caller must
   /// not assume either outcome.
   const factory uncertain() = PluginAuthenticationFailureUncertain;
@@ -93,14 +95,30 @@ final class const PluginAuthenticationFailureConflict({required final PluginAuth
 
 final class const PluginAuthenticationFailureUnsupported() extends PluginAuthenticationFailure;
 
+final class const PluginAuthenticationFailureUpdateRequired() extends PluginAuthenticationFailure;
+
 final class const PluginAuthenticationFailureUncertain() extends PluginAuthenticationFailure;
 
 final class const PluginAuthenticationFailureRequest({required final ApiError error})
     extends PluginAuthenticationFailure;
 
+sealed class const PluginAuthenticationChallenge();
+
+final class const PluginAuthenticationDeviceCodeChallenge({
+  required final Uri verificationUri,
+  required final String userCode,
+}) extends PluginAuthenticationChallenge;
+
+final class const PluginAuthenticationBrowserChallenge({
+  required final Uri authorizationUri,
+  required final Uri expectedCallbackUri,
+}) extends PluginAuthenticationChallenge;
+
+final class const PluginAuthenticationUnsupportedChallenge() extends PluginAuthenticationChallenge;
+
 sealed class const PluginAuthenticationStartResult() {
   const factory challenge({
-    required PluginAuthenticationChallengeResponse challenge,
+    required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationStartChallenge;
 
   const factory failed({
@@ -108,7 +126,7 @@ sealed class const PluginAuthenticationStartResult() {
   }) = PluginAuthenticationStartFailed;
 }
 
-final class const PluginAuthenticationStartChallenge({required final PluginAuthenticationChallengeResponse challenge})
+final class const PluginAuthenticationStartChallenge({required final PluginAuthenticationChallenge challenge})
     extends PluginAuthenticationStartResult;
 
 final class const PluginAuthenticationStartFailed({required final PluginAuthenticationFailure failure})
@@ -126,3 +144,39 @@ final class const PluginAuthenticationCancelSuccess() extends PluginAuthenticati
 
 final class const PluginAuthenticationCancelFailed({required final PluginAuthenticationFailure failure})
     extends PluginAuthenticationCancelResult;
+
+enum PluginAuthenticationContinuationRejection() {
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+}
+
+sealed class const PluginAuthenticationContinuationResult() {
+  const factory applied() = PluginAuthenticationContinuationApplied;
+
+  const factory invalidRedirect() = PluginAuthenticationContinuationInvalidRedirect;
+
+  const factory notFound() = PluginAuthenticationContinuationNotFound;
+
+  const factory rejected({required PluginAuthenticationContinuationRejection reason}) =
+      PluginAuthenticationContinuationRejected;
+
+  const factory uncertain() = PluginAuthenticationContinuationUncertain;
+
+  const factory request({required ApiError error}) = PluginAuthenticationContinuationRequestFailure;
+}
+
+final class const PluginAuthenticationContinuationApplied() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationInvalidRedirect() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationNotFound() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationRejected({
+  required final PluginAuthenticationContinuationRejection reason,
+}) extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationUncertain() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationRequestFailure({required final ApiError error})
+    extends PluginAuthenticationContinuationResult;

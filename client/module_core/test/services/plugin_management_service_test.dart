@@ -42,17 +42,19 @@ void main() {
   });
 
   group("authentication orchestration", () {
-    test("retains an HTTPS challenge and refreshes on terminal progress", () async {
+    test("validates browser redirects and refreshes on terminal progress", () async {
+      final continuation = Completer<PluginAuthenticationContinuationResult>();
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
-          const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "https://auth.example/device",
-              userCode: "ABCD-EFGH",
+          PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationBrowserChallenge(
+              authorizationUri: Uri.parse("https://accounts.example/authorize"),
+              expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
             ),
           ),
         )
+        ..queueAuthenticationContinuation(continuation.future)
         ..queueLoad(_supported(_response(token: "terminal")));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
@@ -65,13 +67,29 @@ void main() {
 
       final result = await service.startAuthentication(pluginId: "codex");
       expect(result, isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["codex"], isA<PluginAuthenticationBrowserChallenge>());
       expect(
-        service.authenticationChallenges.value["codex"],
-        PluginAuthenticationChallenge(
-          verificationUri: Uri.parse("https://auth.example/device"),
-          userCode: "ABCD-EFGH",
+        await service.submitAuthenticationRedirect(
+          pluginId: "codex",
+          intent: const PluginAuthenticationContinuationIntent.pasted(
+            rawInput: "http://localhost:43120/callback?code=wrong-host",
+          ),
         ),
+        isA<PluginAuthenticationContinuationInvalidRedirect>(),
       );
+      const redirect = "http://127.0.0.1:43120/callback?code=opaque";
+      Future<PluginAuthenticationContinuationResult> submit() => service.submitAuthenticationRedirect(
+        pluginId: "codex",
+        intent: const PluginAuthenticationContinuationIntent.pasted(rawInput: redirect),
+      );
+      final first = submit();
+      expect((await submit() as PluginAuthenticationContinuationRejected).reason,
+          PluginAuthenticationContinuationRejection.alreadySubmitted);
+      continuation.complete(const PluginAuthenticationContinuationResult.applied());
+      expect(await first, isA<PluginAuthenticationContinuationApplied>());
+      expect((await submit() as PluginAuthenticationContinuationRejected).reason,
+          PluginAuthenticationContinuationRejection.alreadySubmitted);
+      expect(repository.authenticationRedirects, [Uri.parse(redirect)]);
       final terminals = <PluginAuthenticationTerminalUpdate>[];
       service.authenticationTerminal.listen(terminals.add);
       connection.emitAuthenticationProgress(
@@ -84,15 +102,12 @@ void main() {
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 
-    test("rejects non-HTTPS challenge and clears operations on reconnect", () async {
+    test("requires an update for unknown challenges and clears operations on reconnect", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
           const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "http://auth.example/device",
-              userCode: "ABCD-EFGH",
-            ),
+            challenge: PluginAuthenticationUnsupportedChallenge(),
           ),
         );
       final connection = _FakeConnectionService(initialStatus: _connected);
@@ -109,7 +124,7 @@ void main() {
         isA<PluginAuthenticationStartFailed>().having(
           (result) => result.failure,
           "failure",
-          isA<PluginAuthenticationFailureRequest>(),
+          isA<PluginAuthenticationFailureUpdateRequired>(),
         ),
       );
       expect(service.authenticationChallenges.value, isEmpty);
@@ -139,9 +154,9 @@ void main() {
         progress: const PluginAuthenticationProgress.cancelled(),
       );
       start.complete(
-        const PluginAuthenticationStartResult.challenge(
-          challenge: PluginAuthenticationChallengeResponse.deviceCode(
-            verificationUrl: "https://auth.example/device",
+        PluginAuthenticationStartResult.challenge(
+          challenge: PluginAuthenticationDeviceCodeChallenge(
+            verificationUri: Uri.parse("https://auth.example/device"),
             userCode: "ABCD-EFGH",
           ),
         ),
@@ -191,9 +206,9 @@ void main() {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
-          const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "https://auth.example/device",
+          PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationDeviceCodeChallenge(
+              verificationUri: Uri.parse("https://auth.example/device"),
               userCode: "ABCD-EFGH",
             ),
           ),
@@ -1277,6 +1292,8 @@ class _FakePluginRepository() implements PluginRepository {
   final Queue<Future<PluginManagementMutationResult>> _mutations = Queue();
   final Queue<Future<PluginAuthenticationStartResult>> _authenticationStarts = Queue();
   final Queue<Future<PluginAuthenticationCancelResult>> _authenticationCancels = Queue();
+  final Queue<Future<PluginAuthenticationContinuationResult>> _authenticationContinuations = Queue();
+  final List<Uri> authenticationRedirects = [];
   int loadCalls = 0;
   int mutationCalls = 0;
 
@@ -1294,6 +1311,19 @@ class _FakePluginRepository() implements PluginRepository {
 
   void queueAuthenticationCancel(FutureOr<PluginAuthenticationCancelResult> result) {
     _authenticationCancels.add(Future<PluginAuthenticationCancelResult>.value(result));
+  }
+
+  void queueAuthenticationContinuation(FutureOr<PluginAuthenticationContinuationResult> result) {
+    _authenticationContinuations.add(Future<PluginAuthenticationContinuationResult>.value(result));
+  }
+
+  @override
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) {
+    authenticationRedirects.add(redirectUri);
+    return _authenticationContinuations.removeFirst();
   }
 
   @override

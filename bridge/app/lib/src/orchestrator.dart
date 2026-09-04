@@ -604,6 +604,7 @@ class Orchestrator({
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PostPluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginAuthenticationRedirectHandler(lifecycleService: _pluginLifecycleService),
         DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),

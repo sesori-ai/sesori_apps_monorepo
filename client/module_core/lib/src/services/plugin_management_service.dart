@@ -43,6 +43,13 @@ final class const PluginManagementIdleTimeoutInputNoTimeout() extends PluginMana
 
 final class const PluginManagementIdleTimeoutInputCustom({required final String input}) extends PluginManagementIdleTimeoutInput;
 
+sealed class const PluginAuthenticationContinuationIntent() {
+  const factory pasted({required String rawInput}) = PluginAuthenticationPastedContinuationIntent;
+}
+
+final class const PluginAuthenticationPastedContinuationIntent({required final String rawInput})
+    extends PluginAuthenticationContinuationIntent;
+
 @lazySingleton
 class PluginManagementService({
     required final PluginRepository _pluginRepository,
@@ -96,6 +103,7 @@ class PluginManagementService({
   final Set<String> _selfStartedAuthentications = {};
   final Map<String, PluginAuthenticationProgress> _pendingAuthenticationOutcomes = {};
   final Map<String, _ManagementRequestFence> _authenticationFences = {};
+  final Map<String, _ManagementRequestFence> _authenticationRedirectClaims = {};
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
@@ -188,13 +196,13 @@ class PluginManagementService({
     }
 
     switch (result) {
+      case PluginAuthenticationStartChallenge(challenge: PluginAuthenticationUnsupportedChallenge()):
+        _forgetAuthentication(pluginId: pluginId);
+        return const PluginAuthenticationStartResult.failed(
+          failure: PluginAuthenticationFailure.updateRequired(),
+        );
       case PluginAuthenticationStartChallenge(:final challenge):
-        final mapped = _mapAuthenticationChallenge(challenge);
-        if (mapped == null) {
-          _forgetAuthentication(pluginId: pluginId);
-          return PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
-        }
-        _publishAuthenticationChallenge(pluginId: pluginId, challenge: mapped);
+        _publishAuthenticationChallenge(pluginId: pluginId, challenge: challenge);
         final pending = _pendingAuthenticationOutcomes.remove(pluginId);
         if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
         return result;
@@ -207,6 +215,57 @@ class PluginManagementService({
       case PluginAuthenticationStartFailed():
         _forgetAuthentication(pluginId: pluginId);
         return result;
+    }
+  }
+
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required PluginAuthenticationContinuationIntent intent,
+  }) async {
+    final fence = _authenticationFences[pluginId];
+    if (_disposed || !_connected || fence == null || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      return const PluginAuthenticationContinuationResult.uncertain();
+    }
+    final challenge = _authenticationChallenges.value[pluginId];
+    if (challenge == null) {
+      return const PluginAuthenticationContinuationResult.rejected(
+        reason: PluginAuthenticationContinuationRejection.noActive,
+      );
+    }
+    if (challenge is! PluginAuthenticationBrowserChallenge) {
+      return const PluginAuthenticationContinuationResult.rejected(
+        reason: PluginAuthenticationContinuationRejection.wrongKind,
+      );
+    }
+    if (_authenticationRedirectClaims[pluginId] == fence) {
+      return const PluginAuthenticationContinuationResult.rejected(
+        reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
+      );
+    }
+    final rawInput = switch (intent) {
+      PluginAuthenticationPastedContinuationIntent(:final rawInput) => rawInput,
+    };
+    final redirectUri = _validatedAuthenticationRedirect(rawInput: rawInput, challenge: challenge);
+    if (redirectUri == null) return const PluginAuthenticationContinuationResult.invalidRedirect();
+
+    _authenticationRedirectClaims[pluginId] = fence;
+    try {
+      final result = await _pluginRepository.submitAuthenticationRedirect(pluginId: pluginId, redirectUri: redirectUri);
+      if (!_isAuthenticationFenceCurrent(pluginId: pluginId) || _authenticationFences[pluginId] != fence) {
+        return const PluginAuthenticationContinuationResult.uncertain();
+      }
+      if (result is PluginAuthenticationContinuationInvalidRedirect ||
+          result is PluginAuthenticationContinuationNotFound ||
+          result is PluginAuthenticationContinuationRequestFailure ||
+          result is PluginAuthenticationContinuationRejected &&
+              (result.reason == PluginAuthenticationContinuationRejection.noActive ||
+                  result.reason == PluginAuthenticationContinuationRejection.wrongKind)) {
+        _authenticationRedirectClaims.remove(pluginId);
+      }
+      return result;
+    } on Object {
+      if (_authenticationRedirectClaims[pluginId] == fence) _authenticationRedirectClaims.remove(pluginId);
+      rethrow;
     }
   }
 
@@ -321,20 +380,28 @@ class PluginManagementService({
     }
   }
 
-  PluginAuthenticationChallenge? _mapAuthenticationChallenge(PluginAuthenticationChallengeResponse challenge) {
-    return switch (challenge) {
-      PluginAuthenticationDeviceCodeChallengeResponse(
-        :final verificationUrl,
-        :final userCode,
-      ) =>
-        switch (Uri.tryParse(verificationUrl)) {
-          final uri? when uri.scheme == "https" && uri.host.isNotEmpty => PluginAuthenticationChallenge(
-            verificationUri: uri,
-            userCode: userCode,
-          ),
-          _ => null,
-        },
-    };
+  Uri? _validatedAuthenticationRedirect({
+    required String rawInput,
+    required PluginAuthenticationBrowserChallenge challenge,
+  }) {
+    if (rawInput.isEmpty || rawInput.length > PluginAuthenticationRedirectRequest.maxRedirectUrlLength) return null;
+    final redirectUri = Uri.tryParse(rawInput);
+    final expected = challenge.expectedCallbackUri;
+    if (redirectUri == null ||
+        !redirectUri.isAbsolute ||
+        redirectUri.userInfo.isNotEmpty ||
+        redirectUri.fragment.isNotEmpty ||
+        !_isLoopbackHost(expected.host) ||
+        expected.userInfo.isNotEmpty ||
+        expected.fragment.isNotEmpty ||
+        (expected.scheme != "http" && expected.scheme != "https") ||
+        redirectUri.scheme != expected.scheme ||
+        redirectUri.host != expected.host ||
+        redirectUri.port != expected.port ||
+        redirectUri.path != expected.path) {
+      return null;
+    }
+    return redirectUri;
   }
 
   bool _isAuthenticationFenceCurrent({required String pluginId}) {
@@ -363,6 +430,7 @@ class PluginManagementService({
     _authenticationRequestsInFlight.remove(pluginId);
     _pendingAuthenticationOutcomes.remove(pluginId);
     _authenticationFences.remove(pluginId);
+    _authenticationRedirectClaims.remove(pluginId);
     if (_disposed || _authenticationChallenges.isClosed || !_authenticationChallenges.value.containsKey(pluginId)) {
       return;
     }
@@ -378,6 +446,7 @@ class PluginManagementService({
     _authenticationRequestsInFlight.clear();
     _pendingAuthenticationOutcomes.clear();
     _authenticationFences.clear();
+    _authenticationRedirectClaims.clear();
     if (_disposed || _authenticationChallenges.isClosed || _authenticationChallenges.value.isEmpty) return;
     _authenticationChallenges.add(const {});
   }
@@ -688,6 +757,7 @@ class PluginManagementService({
   Future<void> onDispose() async {
     if (_disposed) return;
     _disposed = true;
+    _clearAuthentications();
     await _subscriptions.dispose();
     await _refreshTail;
     await _snapshots.close();
@@ -721,14 +791,15 @@ class const PluginInstallProgress({
   int get hashCode => Object.hash(phase, percent);
 }
 
-@immutable
-class const PluginAuthenticationChallenge({required final Uri verificationUri, required final String userCode}) {
-  @override
-  bool operator ==(Object other) =>
-      other is PluginAuthenticationChallenge && other.verificationUri == verificationUri && other.userCode == userCode;
-
-  @override
-  int get hashCode => Object.hash(verificationUri, userCode);
+bool _isLoopbackHost(String host) {
+  final normalized = host.toLowerCase();
+  if (normalized == "localhost" || normalized == "::1") return true;
+  final octets = normalized.split(".");
+  if (octets.length != 4 || octets.first != "127") return false;
+  return octets.every((octet) {
+    final value = int.tryParse(octet);
+    return value != null && value >= 0 && value <= 255 && value.toString() == octet;
+  });
 }
 
 enum _RefreshOutcome() { applied, failed, superseded, fenced }

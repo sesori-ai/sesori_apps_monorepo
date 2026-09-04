@@ -937,7 +937,24 @@ Future<void> _showAuthenticationSheet({
   // remain gated and the owning row can reopen this same sheet.
 }
 
-class const _AuthenticationSheet() extends StatelessWidget {
+class const _AuthenticationSheet() extends StatefulWidget {
+  @override
+  State<_AuthenticationSheet> createState() => _AuthenticationSheetState();
+}
+
+class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
+  final _redirectController = TextEditingController();
+
+  @override
+  void dispose() {
+    _redirectController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitRedirect() => context.read<PluginManagementCubit>().submitAuthenticationRedirect(
+    intent: PluginAuthenticationContinuationIntent.pasted(rawInput: _redirectController.text),
+  );
+
   Future<void> _copyCode({required BuildContext context, required String code}) async {
     if (!await copyTextToClipboard(text: code, operation: "authentication code") || !context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
@@ -974,15 +991,31 @@ class const _AuthenticationSheet() extends StatelessWidget {
       );
     }
 
-    final userCode = switch (challenge) {
-      PluginAuthenticationPresentationChallenge(:final userCode) ||
-      PluginAuthenticationPresentationBrowserLaunchFailedState(:final userCode) ||
-      PluginAuthenticationPresentationCancelling(:final userCode) ||
-      PluginAuthenticationPresentationCancellingUncertain(:final userCode) => userCode,
+    final operationChallenge = switch (challenge) {
+      PluginAuthenticationPresentationChallenge(:final challenge) => challenge.challenge,
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final challenge) ||
+      PluginAuthenticationPresentationCancelling(:final challenge) ||
+      PluginAuthenticationPresentationCancellingUncertain(:final challenge) => challenge,
       PluginAuthenticationPresentationIdle() ||
       PluginAuthenticationPresentationStarting() ||
       PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
     };
+    final browserChallenge = switch (operationChallenge) {
+      final PluginAuthenticationBrowserChallenge challenge => challenge,
+      _ => null,
+    };
+    final securityDescription = browserChallenge == null
+        ? loc.harnessAuthenticationSecurityDescription
+        : loc.harnessAuthenticationBrowserInstructions;
+    final redirectPresentation = switch (challenge) {
+      PluginAuthenticationPresentationChallenge(:final challenge) => challenge,
+      _ => null,
+    };
+    final canSubmitRedirect = browserChallenge != null &&
+        redirectPresentation is! PluginAuthenticationRedirectSubmittingPresentation &&
+        redirectPresentation is! PluginAuthenticationRedirectSubmittedPresentation &&
+        challenge is! PluginAuthenticationPresentationCancelling &&
+        challenge is! PluginAuthenticationPresentationCancellingUncertain;
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
       child: Column(
@@ -990,29 +1023,42 @@ class const _AuthenticationSheet() extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Semantics(
-            label: loc.harnessAuthenticationSecuritySemantics,
+            label: browserChallenge == null ? loc.harnessAuthenticationSecuritySemantics : securityDescription,
             child: Text(
-              loc.harnessAuthenticationSecurityDescription,
+              securityDescription,
               style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
           ),
           const SizedBox(height: PregoSpacing.xl),
-          PregoGroupedRows(
-            children: [
-              PregoGroupedRow(
-                key: const Key("harness_authentication_code"),
-                icon: TablerRegular.key,
-                title: Text(loc.harnessAuthenticationCodeLabel),
-                subtitle: SelectableText(userCode),
-                trailing: IconButton(
-                  key: const Key("harness_authentication_copy"),
-                  tooltip: loc.harnessAuthenticationCopyCode,
-                  onPressed: () => _copyCode(context: context, code: userCode),
-                  icon: const Icon(TablerRegular.copy),
+          if (operationChallenge case PluginAuthenticationDeviceCodeChallenge(:final userCode))
+            PregoGroupedRows(
+              children: [
+                PregoGroupedRow(
+                  key: const Key("harness_authentication_code"),
+                  icon: TablerRegular.key,
+                  title: Text(loc.harnessAuthenticationCodeLabel),
+                  subtitle: SelectableText(userCode),
+                  trailing: IconButton(
+                    key: const Key("harness_authentication_copy"),
+                    tooltip: loc.harnessAuthenticationCopyCode,
+                    onPressed: () => _copyCode(context: context, code: userCode),
+                    icon: const Icon(TablerRegular.copy),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            )
+          else
+            PregoInputField(
+              key: const Key("harness_authentication_redirect_input"),
+              controller: _redirectController,
+              label: loc.harnessAuthenticationRedirectLabel,
+              isRequired: true,
+              autofocus: false,
+              autocorrect: false,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => unawaited(_submitRedirect()),
+            ),
           const SizedBox(height: PregoSpacing.xl),
           if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState) ...[
             Text(
@@ -1053,6 +1099,18 @@ class const _AuthenticationSheet() extends StatelessWidget {
               PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
             },
           ),
+          if (browserChallenge != null) ...[
+            const SizedBox(height: PregoSpacing.md),
+            PregoButtonsSolid(
+              key: const Key("harness_authentication_submit_redirect"),
+              label: loc.harnessAuthenticationContinue,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              isLoading: redirectPresentation is PluginAuthenticationRedirectSubmittingPresentation,
+              onPressed: canSubmitRedirect ? _submitRedirect : null,
+            ),
+          ],
           const SizedBox(height: PregoSpacing.md),
           PregoButtonsSolid(
             key: const Key("harness_authentication_cancel"),
@@ -1093,9 +1151,11 @@ String _authenticationErrorDescription({
 }) => switch (error) {
   PluginAuthenticationPresentationNotFound() => context.loc.harnessAuthenticationNotFound,
   PluginAuthenticationPresentationUnsupported() => context.loc.harnessAuthenticationUnsupported,
+  PluginAuthenticationPresentationUpdateRequired() => context.loc.harnessAuthenticationUpdateRequired,
   PluginAuthenticationPresentationConflict() => context.loc.harnessAuthenticationConflict,
   PluginAuthenticationPresentationUncertain() => context.loc.harnessAuthenticationUncertain,
   PluginAuthenticationPresentationInvalidChallenge() => context.loc.harnessAuthenticationInvalidChallenge,
+  PluginAuthenticationPresentationInvalidRedirect() => context.loc.harnessAuthenticationInvalidRedirect,
   PluginAuthenticationPresentationRemoteError(:final message) => message,
   PluginAuthenticationPresentationRequestError() => context.loc.harnessAuthenticationRequestFailed,
 };

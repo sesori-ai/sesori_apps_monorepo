@@ -20,6 +20,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0));
+    registerFallbackValue(const PluginAuthenticationRedirectRequest(redirectUrl: "http://127.0.0.1"));
   });
 
   setUp(() {
@@ -353,13 +354,14 @@ void main() {
         () => api.startAuthentication(pluginId: any(named: "pluginId")),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          const PluginAuthenticationChallengeResponse.deviceCode(
-            verificationUrl: "https://auth.example/device",
-            userCode: "ABCD-EFGH",
+          const PluginAuthenticationChallengeResponse.browser(
+            authorizationUrl: "https://accounts.example/authorize",
+            expectedCallbackUrl: "http://127.0.0.1/callback",
           ),
         ),
       );
-      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartChallenge>());
+      final result = await repository.startAuthentication(pluginId: "codex") as PluginAuthenticationStartChallenge;
+      expect(result.challenge, isA<PluginAuthenticationBrowserChallenge>());
 
       const conflict = PluginAuthenticationConflict(
         pluginId: "codex",
@@ -409,10 +411,10 @@ void main() {
       ));
     });
 
-    test("maps typed cancellation conflicts and malformed conflict bodies", () async {
+    test("maps typed authentication conflicts and malformed conflict bodies", () async {
       const conflict = PluginAuthenticationConflict(
         pluginId: "codex",
-        reasons: [PluginAuthenticationConflictReason.inFlight],
+        reasons: [PluginAuthenticationConflictReason.alreadySubmitted],
         current: _managementPlugin,
       );
       when(
@@ -428,6 +430,20 @@ void main() {
           (result) => result.failure,
           "failure",
           isA<PluginAuthenticationFailureConflict>().having((failure) => failure.conflict, "conflict", conflict),
+        ),
+      );
+      final redirectUri = Uri.parse("http://127.0.0.1/callback?code=opaque");
+      when(
+        () => api.submitAuthenticationRedirect(pluginId: "codex", request: any(named: "request")),
+      ).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
+        ),
+      );
+      expect(
+        await repository.submitAuthenticationRedirect(pluginId: "codex", redirectUri: redirectUri),
+        const PluginAuthenticationContinuationResult.rejected(
+          reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
         ),
       );
 

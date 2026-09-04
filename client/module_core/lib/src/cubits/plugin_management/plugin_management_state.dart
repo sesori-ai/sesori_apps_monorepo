@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../repositories/models/plugin_management_result.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/plugin_management_service.dart";
 
@@ -67,14 +68,42 @@ sealed class PluginManagementActionState with _$PluginManagementActionState {
 sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPresentationError {
   const factory notFound() = PluginAuthenticationPresentationNotFound;
   const factory unsupported() = PluginAuthenticationPresentationUnsupported;
+  const factory updateRequired() = PluginAuthenticationPresentationUpdateRequired;
   const factory conflict({
     required PluginAuthenticationConflict conflict,
   }) = PluginAuthenticationPresentationConflict;
   const factory uncertain() = PluginAuthenticationPresentationUncertain;
   const factory invalidChallenge() = PluginAuthenticationPresentationInvalidChallenge;
+  const factory invalidRedirect() = PluginAuthenticationPresentationInvalidRedirect;
   const factory remote({required String message}) = PluginAuthenticationPresentationRemoteError;
   const factory request({required ApiError error}) = PluginAuthenticationPresentationRequestError;
 }
+
+sealed class const PluginAuthenticationChallengePresentation() {
+  const factory deviceCode({required PluginAuthenticationDeviceCodeChallenge challenge}) =
+      PluginAuthenticationDeviceCodePresentation;
+  const factory browser({required PluginAuthenticationBrowserChallenge challenge}) =
+      PluginAuthenticationBrowserPresentation;
+  const factory redirectSubmitting({required PluginAuthenticationBrowserChallenge challenge}) =
+      PluginAuthenticationRedirectSubmittingPresentation;
+  const factory redirectSubmitted({required PluginAuthenticationBrowserChallenge challenge}) =
+      PluginAuthenticationRedirectSubmittedPresentation;
+
+  PluginAuthenticationChallenge get challenge;
+}
+
+final class const PluginAuthenticationDeviceCodePresentation({
+  @override required final PluginAuthenticationDeviceCodeChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationBrowserPresentation({
+  @override required final PluginAuthenticationBrowserChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationRedirectSubmittingPresentation({
+  @override required final PluginAuthenticationBrowserChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationRedirectSubmittedPresentation({
+  @override required final PluginAuthenticationBrowserChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
 
 @Freezed()
 sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
@@ -82,23 +111,19 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
   const factory starting({required String pluginId}) = PluginAuthenticationPresentationStarting;
   const factory challenge({
     required String pluginId,
-    required Uri verificationUri,
-    required String userCode,
+    required PluginAuthenticationChallengePresentation challenge,
   }) = PluginAuthenticationPresentationChallenge;
   const factory browserLaunchFailed({
     required String pluginId,
-    required Uri verificationUri,
-    required String userCode,
+    required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationBrowserLaunchFailedState;
   const factory cancelling({
     required String pluginId,
-    required Uri verificationUri,
-    required String userCode,
+    required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationCancelling;
   const factory cancellingUncertain({
     required String pluginId,
-    required Uri verificationUri,
-    required String userCode,
+    required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationCancellingUncertain;
   const factory failed({
     required String? pluginId,
