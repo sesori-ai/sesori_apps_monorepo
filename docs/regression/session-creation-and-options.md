@@ -27,14 +27,18 @@ variant, and worktree mode, and creating the session with its first input.
   before it is adopted. Hidden agents and sub-agents are never picker entries, a
   withdrawn agent falls back to the first selectable one, and the variant list a
   screen shows always belongs to the model it currently has selected.
-- Retention is scoped to what did not ask the catalog a new question. A live
-  session keeps its own transcript's model, and keeps the model on screen while
-  the user switches agents or the bridge reports remembered defaults, even when
-  the catalog no longer lists it. A refresh is the opposite case: it exists to
-  adopt the catalog the backend has now, so a selection that catalog no longer
-  offers is corrected there rather than preserved. A replacement agent's own
-  declared model outranks the departed agent's; a replacement that declares none
-  expresses no preference, so the model on screen is kept rather than reset.
+- One order decides the model, everywhere. What the caller asked for wins when
+  the catalog still offers it: the agent just picked declares one, the bridge
+  reported a remembered default, or the selection is simply being revalidated.
+  Only when nothing asked for survives does retention apply, and it is what
+  keeps a live session usable — the session's own transcript model, or the model
+  already on screen, adopted even though the catalog does not list it. Failing
+  both, the resolved agent's declared model is used, then the catalog's default.
+- Retention is therefore a fallback, never an override: switching to an agent
+  that declares an available model does change the model, and an agent declaring
+  none leaves the current one alone. A refresh takes no retention at all, since
+  adopting the catalog it just fetched is the reason it ran; there a replacement
+  agent's declared model outranks the departed agent's.
 - After a new session and its first prompt or command are accepted, the bridge
   remembers the complete agent, model, and effort selection per plugin. The next
   New Session screen uses it as the prefill across projects for that plugin after
