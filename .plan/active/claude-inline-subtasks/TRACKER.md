@@ -580,8 +580,9 @@ authoritative.
 The next review found three additional ordering gaps—mixed replay parts,
 update-before-call delivery, and lifecycle frames racing the accepted user
 message—plus stale lifecycle resurrection after subtree deletion. Replay now
-splits into order-preserving identity runs, identifiable reordered delegation
-updates enter the same bounded accumulator, lifecycle events share prompt-write
+splits into order-preserving runs with distinct deterministic message and part
+identities, identifiable reordered delegation updates enter the same bounded
+accumulator, lifecycle events share prompt-write
 ordering, and process-scoped tracker tombstones reject late session and child
 frames until connection reset.
 

@@ -67,7 +67,8 @@ signal that a tool changed files.
   outcomes map to error. Nested children retain their direct parent for
   navigation, live tiles, and history identities, while activity alone rolls up
   to the owning root. Replay preserves ordinary part order on both sides of a
-  child tile when one ACP assistant message contains all three.
+  child tile when one ACP assistant message contains all three, using distinct
+  deterministic message and part IDs for every additional parent run.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.

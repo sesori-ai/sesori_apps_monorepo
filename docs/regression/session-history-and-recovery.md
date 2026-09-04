@@ -33,8 +33,9 @@ reconnect or restart.
   child-derived message and part identities as live lifecycle events, so nested
   tiles remain visible in the transcript that launched them. When ordinary parts
   surround a child tile in one ACP assistant message, identity splitting retains
-  their original order. Replay never mutates the live child tracker or publishes
-  lifecycle events.
+  their original order and gives every additional parent run deterministic,
+  storage-safe message and part IDs. Replay never mutates the live child tracker
+  or publishes lifecycle events.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it

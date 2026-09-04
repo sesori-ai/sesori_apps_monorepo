@@ -78,26 +78,30 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
   }
 
   /// Separates a child-linked replay replacement from the generic ACP message
-  /// envelope that originally owned its tool call. The resulting message and
-  /// part identities are exactly those used by the live child tracker, so a
-  /// later terminal lifecycle event updates the imported running tile.
+  /// envelope that originally owned its tool call. Child identities exactly
+  /// match the live tracker; the first parent run keeps its source identity and
+  /// later runs receive deterministic message and part identities for storage.
   List<PluginMessageWithParts> alignReplayChildIdentities({required List<PluginMessageWithParts> messages}) {
     final aligned = <PluginMessageWithParts>[];
     for (final message in messages) {
       var runParts = <PluginMessagePart>[];
       var runMessageId = message.info.id;
       var runSessionId = message.info.sessionID;
+      var parentRunOrdinal = 0;
       for (final part in message.parts) {
         final isChildEnvelope = part is PluginMessagePartSubtask && part.messageID != message.info.id;
         final partMessageId = isChildEnvelope ? part.messageID : message.info.id;
         final partSessionId = isChildEnvelope ? part.sessionID : message.info.sessionID;
         if (runParts.isNotEmpty && (partMessageId != runMessageId || partSessionId != runSessionId)) {
+          final isParentRun = runMessageId == message.info.id && runSessionId == message.info.sessionID;
+          if (isParentRun) parentRunOrdinal++;
           aligned.add(
             _alignedReplayRun(
               message: message,
               messageId: runMessageId,
               sessionId: runSessionId,
               parts: runParts,
+              parentRunOrdinal: isParentRun ? parentRunOrdinal : null,
             ),
           );
           runParts = [];
@@ -107,12 +111,15 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
         runParts.add(part);
       }
       if (runParts.isNotEmpty) {
+        final isParentRun = runMessageId == message.info.id && runSessionId == message.info.sessionID;
+        if (isParentRun) parentRunOrdinal++;
         aligned.add(
           _alignedReplayRun(
             message: message,
             messageId: runMessageId,
             sessionId: runSessionId,
             parts: runParts,
+            parentRunOrdinal: isParentRun ? parentRunOrdinal : null,
           ),
         );
       }
@@ -125,10 +132,27 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
     required String messageId,
     required String sessionId,
     required List<PluginMessagePart> parts,
-  }) => PluginMessageWithParts(
-    info: message.info.copyWith(id: messageId, sessionID: sessionId),
-    parts: parts,
-  );
+    required int? parentRunOrdinal,
+  }) {
+    final identitySuffix = switch (parentRunOrdinal) {
+      null || 1 => null,
+      final ordinal => "-deepseek-replay-run-$ordinal",
+    };
+    final alignedMessageId = identitySuffix == null ? messageId : "$messageId$identitySuffix";
+    return PluginMessageWithParts(
+      info: message.info.copyWith(id: alignedMessageId, sessionID: sessionId),
+      parts: [
+        for (final part in parts)
+          identitySuffix == null
+              ? part
+              : part.copyWith(
+                  id: "${part.id}$identitySuffix",
+                  sessionID: sessionId,
+                  messageID: alignedMessageId,
+                ),
+      ],
+    );
+  }
 
   String? _bounded(String? value) =>
       value == null || value.isEmpty ? null : String.fromCharCodes(value.runes.take(maxToolOutputLength));

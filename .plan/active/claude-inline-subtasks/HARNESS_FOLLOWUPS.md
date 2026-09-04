@@ -516,7 +516,9 @@ confirmation, no child session or partial stop) and gets that subset.
   by the enclosing update's `toolCallId`. A narrow replay-local
   `AcpReplayCollector` replacement callback turns the generic delegation tool
   into one subtask part without reading or mutating live tracker state. Splitting
-  its child-owned envelope preserves the order of surrounding ordinary parts.
+  its child-owned envelope preserves the order of surrounding ordinary parts;
+  every additional parent run gets deterministic storage-safe message and part
+  identities.
 - `DeepSeekSessionService` merges persisted child rows with direct live tracker
   children, preferring persisted title/time metadata by id. Live descendants
   inherit the tracker's root project before persistence catches up. Live and

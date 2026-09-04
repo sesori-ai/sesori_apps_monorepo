@@ -120,8 +120,16 @@ void main() {
     expect(messages.map((message) => message.info.id), [
       "s1-massistant-assistant",
       "s1-subagent-child-1",
-      "s1-massistant-assistant",
+      "s1-massistant-assistant-deepseek-replay-run-2",
     ]);
+    expect(messages.map((message) => message.info.id).toSet(), hasLength(3));
+    expect(messages.expand((message) => message.parts).map((part) => part.id).toSet(), hasLength(3));
+    for (final message in messages) {
+      for (final part in message.parts) {
+        expect(part.messageID, message.info.id);
+        expect(part.sessionID, message.info.sessionID);
+      }
+    }
     expect((messages[0].parts.single as PluginMessagePartText).text, "before");
     expect(messages[1].parts.single, isA<PluginMessagePartSubtask>());
     expect((messages[2].parts.single as PluginMessagePartText).text, "after");
