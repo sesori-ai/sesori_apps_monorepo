@@ -115,7 +115,7 @@ class const _MobileSessionDetailBody({
           ),
         ),
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
-            SessionDetailComposerControls(
+            MobileSessionDetailComposerControls(
               projectId: projectId,
               sessionId: sessionId,
               state: state,

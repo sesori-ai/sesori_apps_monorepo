@@ -889,8 +889,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'This session has $count sub-agents still working. Stop only the main agent, or stop everything?',
-      one: 'This session has 1 sub-agent still working. Stop only the main agent, or stop everything?',
+      other: 'The main agent and $count sub-agents are still working.',
+      one: 'The main agent and 1 sub-agent are still working.',
     );
     return '$_temp0';
   }
@@ -1527,7 +1527,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsLoadingSemantics => 'Loading session options';
 
   @override
-  String get newSessionOptionsRefresh => 'Refresh the model list';
+  String get newSessionOptionsRefresh => 'Refresh options';
 
   @override
   String get newSessionProjectUnavailable =>
@@ -1567,7 +1567,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListArchiveConfirmMessage =>
-      'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.';
+      'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.';
 
   @override
   String get sessionListArchiveConfirmAction => 'Archive';

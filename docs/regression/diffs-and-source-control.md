@@ -36,6 +36,14 @@ that baseline, and the branch and worktree facts a session carries.
   coalesce into one trailing refresh, a failed event-driven refresh retries
   after a delay while the diff screen remains open, and diffs stay encrypted
   from the relay.
+- Mobile and desktop route root, non-archived session detail into the same shared
+  diff presentation and construct the same `DiffCubit` dependencies at their
+  shell boundaries. Each shell retains navigation and connection-banner policy;
+  the desktop root remains the sole owner of its app-wide banner. Diff source
+  lines share native selection/context-menu behavior across rows without
+  copying navigation titles, change-count subtitles, file-header metadata,
+  line numbers, or +/- gutters, including inside the desktop cockpit's wide
+  right pane.
 
 ## Regression Levels
 
@@ -43,7 +51,7 @@ that baseline, and the branch and worktree facts a session carries.
 |---|---|
 | L1 Smoke | Not included because a meaningful diff requires a mutating live turn. |
 | L2 Routine | Headless bridge, representative plugin: after a session edits files the diff lists them with before/after content and line counts; dedicated uses its base branch and in-place its creation-time commit. |
-| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; eligible generated branch refinement updates source-control facts without moving the worktree; the diff list, per-file view, and refresh on the file-change signal render. |
+| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; eligible generated branch refinement updates source-control facts without moving the worktree; the diff list, per-file view, and refresh on the file-change signal render. Desktop automated coverage proves the typed route, Back behavior, and shared rendering; shared UI coverage proves selectable source lines. |
 | L4 Extended | Relay integration, every supporting production plugin: unreachable base and no-common-ancestor are distinct client-visible failures; archived sessions and removed worktrees return no diffs without erroring; a moved project still resolves git correctly; each plugin's file-change signal triggers a refresh reflecting the real change set. |
 | L5 Full | Headless bridge for large mixed changes, non-git or commitless sessions returning no diffs, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
 
@@ -59,9 +67,13 @@ and in-place sessions, and default versus explicit base branches.
 - A skipped file appears as an empty change instead of a skip reason, an
   unreachable base or missing ancestor flattens into an empty diff or opaque
   error, or an archived or missing worktree errors instead of returning nothing.
-- Line counts disagree with content, especially untracked or deletion-only.
-- Diffs never refresh after a mutating tool completes, or a moved project makes
-  git run in the old directory.
+- Line counts disagree with content, especially untracked or deletion-only,
+  diff source text cannot be selected across rows through its native context
+  menu, or copied source includes navigation, change-count, file-header,
+  line-number, or +/- gutter metadata.
+- Diffs never refresh after a mutating tool completes, a moved project makes
+  git run in the old directory, or a supported root-session file-changes action
+  cannot reach the typed shared diff route on mobile or desktop.
 - Generated refinement renames a branch after it switches or becomes published,
   moves the worktree directory, leaves durable/current branch facts disagreeing,
   or leaves Git and persistence on different branch names after failure.
@@ -69,7 +81,8 @@ and in-place sessions, and default versus explicit base branches.
 ## Known Limitations
 
 - Per-file content is bounded; oversized files are skipped, not truncated.
-- Diff rendering is phone-only; the desktop shell has no diff surface.
+- Live client end-to-end diff coverage remains phone-only. Desktop diff routing
+  and shared rendering are automated but still need a live desktop release exercise.
 - Non-git and commitless sessions have no comparison baseline and intentionally
   return an empty diff rather than a source-control result.
 - A creation-time HEAD-capture failure is currently persisted as no baseline and
@@ -82,5 +95,10 @@ and in-place sessions, and default versus explicit base branches.
   `bridge/app/lib/src/api/git_cli_api.dart`, and the diff and base-branch handlers
 - Contract: `shared/sesori_shared/lib/src/models/sesori/file_diff.dart`
 - Client: `client/module_core/lib/src/cubits/session_diffs/`,
-  `client/app/lib/features/session_diffs/`
-- Tests: `bridge/app/test/bridge/services/session_diff_service_integration_test.dart`
+  `client/module_app_ui/lib/src/features/session_diffs/`,
+  `client/app/lib/features/session_diffs/session_diffs_screen.dart`, and
+  `client/desktop/lib/features/session_diffs/desktop_session_diffs_screen.dart`
+- Tests: `bridge/app/test/bridge/services/session_diff_service_integration_test.dart`,
+  `client/module_app_ui/test/features/session_diffs/`,
+  `client/app/test/features/session_diffs/session_diffs_collapse_scroll_test.dart`, and
+  `client/desktop/test/core/routing/desktop_router_test.dart`

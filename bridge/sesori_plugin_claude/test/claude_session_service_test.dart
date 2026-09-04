@@ -392,26 +392,31 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
-    test("reads the idle timeout live at each reap arm", () async {
-      harness.idleTimeout = null;
+    test("rearms the idle timeout immediately when settings change", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_result());
       await harness.waitForIdle();
 
-      // Reaping disabled: no delay armed, process stays resident.
-      harness.clock.elapse();
+      expect(harness.clock.delays, [const Duration(minutes: 5)]);
+
+      harness.idleTimeout = null;
+      harness.idleTimeoutChanges.add(null);
+      await pump();
+      harness.clock.elapseAt(index: 0);
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
 
-      // Settings change takes effect at the next idle transition.
       harness.idleTimeout = const Duration(minutes: 1);
-      unawaited(harness.enqueue("second"));
-      await _waitForUserFrames(process, 2);
-      process.emit(_result());
-      await harness.waitForIdle();
-      harness.clock.elapse();
+      harness.idleTimeoutChanges.add(harness.idleTimeout);
+      await pump();
+      expect(harness.clock.delays, [
+        const Duration(minutes: 5),
+        const Duration(minutes: 1),
+      ]);
+
+      harness.clock.elapseAt(index: 1);
       await pump();
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
@@ -724,33 +729,55 @@ void main() {
       expect(harness.service.currentWorkState, PluginWorkState.busy);
     });
 
-    test("a keep stop interrupts the main agent but leaves the process and its tasks resident", () async {
+    test("a keep stop during a live main turn is refused: the CLI interrupt would kill the sub-agents", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
       await waitForFrame(process, "user");
       process.emit(_taskStartedFrame());
       await pump();
 
-      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
-      final interrupt = await _waitForControlSubtype(process, "interrupt");
-      process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
-      // The abort resolves only once the interrupted turn's result settles.
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
+
+      expect(result, isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentRunning, "main", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
+    test("a keep stop with an idle main agent interrupts nothing and keeps the sub-agent running", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
       process.emit(_result());
-      expect(await abort, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
       await pump();
 
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
-      expect(harness.service.currentWorkState, PluginWorkState.busy, reason: "the sub-agent still runs");
-      expect(harness.events.whereType<BridgeSseSessionIdle>(), isEmpty);
+      final result = await harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.keep);
 
-      // The kept sub-agent finishes and its wake-up turn renders and settles.
-      process.emit(_taskNotificationFrame());
-      process.emit(_assistantTextFrame(text: "Agent completed with result: hi"));
+      expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", isTrue));
+      expect(_controlSubtypes(process), isNot(contains("interrupt")));
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("a stopped task notification settles the session instead of opening a wake-up turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
       process.emit(_result());
-      await harness.waitForIdle();
+      await pump();
+      expect(harness.service.currentWorkState, PluginWorkState.busy);
 
+      process.emit({..._taskNotificationFrame(), "status": "stopped"});
+      await pump();
+
+      // The task is gone and nothing else runs: idle is settled now, and the
+      // abort must not hang either.
+      expect(await _status(harness), isA<PluginSessionStatusIdle>());
+      expect(harness.service.currentWorkState, PluginWorkState.idle);
       expect(harness.events.whereType<BridgeSseSessionIdle>(), hasLength(1));
-      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+      final abort = harness.service.abort(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      expect(await abort.timeout(const Duration(seconds: 2)), isA<PluginAbortAccepted>());
     });
 
     test("a stop tears the process down and cancels its tasks; keep with no tasks does the same", () async {
@@ -798,6 +825,7 @@ void main() {
 final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool failInterrupt = false}) {
   /// Mutable so tests can exercise runtime settings changes.
   Duration? idleTimeout = const Duration(minutes: 5);
+  final StreamController<Duration?> idleTimeoutChanges = StreamController<Duration?>.broadcast(sync: true);
 
   this {
     repository = ClaudeSessionProcessRepository(
@@ -815,6 +843,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
       approvals: approvals,
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges.stream,
     );
     subscription = service.events.listen(events.add);
   }
@@ -888,6 +917,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
   Future<void> dispose() async {
     await service.dispose();
     await subscription.cancel();
+    await idleTimeoutChanges.close();
     for (final process in processes) {
       await process.close();
     }
@@ -897,9 +927,11 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
 final class _ControlledClock() extends ServerClock {
   final List<Completer<void>> _delays = [];
 
+  final List<Duration> delays = [];
   @override
   Future<void> delay({required Duration duration}) {
     final completer = Completer<void>();
+    delays.add(duration);
     _delays.add(completer);
     return completer.future;
   }
@@ -909,6 +941,10 @@ final class _ControlledClock() extends ServerClock {
       if (!delay.isCompleted) delay.complete();
     }
     _delays.clear();
+  }
+  void elapseAt({required int index}) {
+    final delay = _delays[index];
+    if (!delay.isCompleted) delay.complete();
   }
 }
 
@@ -1022,3 +1058,7 @@ Map<String, Object?> _assistantFrame({required List<Map<String, Object?>> conten
 };
 
 int _frameSequence = 0;
+
+Iterable<String?> _controlSubtypes(FakeClaudeProcess process) => process.written
+    .where((frame) => frame["type"] == "control_request")
+    .map((frame) => (frame["request"]! as Map)["subtype"] as String?);

@@ -2529,6 +2529,231 @@ void main() {
         },
       });
     });
+
+    test("a spawned sub-agent thread becomes a child session that keeps the root busy", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        // thread/read for the child named by subAgentActivity.
+        const _Response(
+          result: {
+            "thread": {
+              "id": "child-1",
+              "parentThreadId": "root-1",
+              "agentNickname": "Raman",
+              "agentRole": null,
+              "threadSource": null,
+              "cwd": "/work/other",
+              "createdAt": 1700000006,
+              "updatedAt": 1700000006,
+            },
+          },
+        ),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      Future<T> next<T extends BridgeSseEvent>(bool Function(T event) where) => plugin.events
+          .where((event) => event is T && where(event))
+          .cast<T>()
+          .first
+          .timeout(
+            const Duration(seconds: 2),
+          );
+      await plugin.healthCheck();
+
+      fake.pushNotification("thread/started", {
+        "thread": {"id": "root-1", "cwd": "/work/other", "createdAt": 1700000000, "updatedAt": 1700000000},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "root-1",
+        "turn": {"id": "u-root", "startedAt": 1700000005},
+      });
+      // The child announces itself by status before the parent names it.
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "child-1",
+        "status": {"type": "idle"},
+      });
+      final created = next<BridgeSseSessionCreated>((event) => event.info["id"] == "child-1");
+      fake.pushNotification("item/started", {
+        "threadId": "root-1",
+        "turnId": "u-root",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "call_spawn",
+          "kind": "started",
+          "agentThreadId": "child-1",
+          "agentPath": "/root/sleeper",
+        },
+      });
+      final childSession = shared.Session.fromJson((await created).info);
+      expect(childSession.parentID, "root-1");
+      expect(childSession.title, "Raman");
+      expect(childSession.projectID, "/work/other");
+      expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
+      // A repeated activity item (item/completed) does not re-announce.
+      fake.pushNotification("item/completed", {
+        "threadId": "root-1",
+        "turnId": "u-root",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "call_spawn",
+          "kind": "started",
+          "agentThreadId": "child-1",
+          "agentPath": "/root/sleeper",
+        },
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "child-1",
+        "turn": {"id": "u-child", "startedAt": 1700000007},
+      });
+      await next<BridgeSseSessionStatus>((event) => event.sessionID == "child-1");
+      expect(events.whereType<BridgeSseSessionCreated>().where((event) => event.info["id"] == "child-1"), hasLength(1));
+      expect(fake.sentMethods.where((method) => method == "thread/read"), hasLength(1));
+
+      var statuses = await plugin.getSessionStatuses();
+      expect(statuses["root-1"], isA<PluginSessionStatusBusy>());
+      expect(statuses["child-1"], isA<PluginSessionStatusBusy>());
+      var summary = plugin.getActiveSessionsSummary();
+      expect(summary.single.id, "/work/other");
+      expect(summary.single.activeSessions.single.id, "root-1");
+      expect(summary.single.activeSessions.single.mainAgentRunning, isTrue);
+      expect(summary.single.activeSessions.single.childSessionIds, ["child-1"]);
+
+      final children = await plugin.getChildSessions("root-1");
+      expect(children.single.id, "child-1");
+      expect(children.single.parentID, "root-1");
+      expect(children.single.directory, "/work/other");
+
+      // The root's own turn ends while the child still runs: no idle yet.
+      final rootUpdated = next<BridgeSseSessionUpdated>((event) => event.info["id"] == "root-1");
+      fake.pushNotification("turn/completed", {
+        "threadId": "root-1",
+        "turn": {"id": "u-root", "completedAt": 1700000010},
+      });
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "root-1",
+        "status": {"type": "idle"},
+      });
+      await rootUpdated;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(events.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == "root-1"), isEmpty);
+      statuses = await plugin.getSessionStatuses();
+      expect(statuses["root-1"], isA<PluginSessionStatusBusy>());
+      summary = plugin.getActiveSessionsSummary();
+      expect(summary.single.activeSessions.single.mainAgentRunning, isFalse);
+      expect(summary.single.activeSessions.single.childSessionIds, ["child-1"]);
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      // A no-active-turn interrupt reconciles the child to idle and releases
+      // the root's deferred transition once.
+      final rootIdle = next<BridgeSseSessionIdle>((event) => event.sessionID == "root-1");
+      fake.respondInOrder([
+        const _Response(
+          error: {"code": -32600, "message": "no active turn to interrupt"},
+        ),
+      ]);
+      await plugin.abortSession(sessionId: "child-1", subAgents: PluginAbortSubAgentPolicy.stop);
+      await rootIdle;
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(events.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == "root-1"), hasLength(1));
+      statuses = await plugin.getSessionStatuses();
+      expect(statuses["root-1"], isA<PluginSessionStatusIdle>());
+      expect(statuses["child-1"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      await subscription.cancel();
+    });
+
+    test("deleting a busy root cancels and clears its live descendants", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "child-1",
+              "parentThreadId": "root-1",
+              "agentNickname": "Raman",
+              "cwd": "/work/other",
+            },
+          },
+        ),
+      ]);
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      await plugin.healthCheck();
+      fake.pushNotification("thread/started", {
+        "thread": {"id": "root-1", "cwd": "/work/other"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "root-1",
+        "turn": {"id": "root-turn"},
+      });
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "child-1",
+        "status": {"type": "idle"},
+      });
+      final childCreated = plugin.events
+          .where((event) => event is BridgeSseSessionCreated && event.info["id"] == "child-1")
+          .first;
+      fake.pushNotification("item/started", {
+        "threadId": "root-1",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "spawn-call",
+          "kind": "started",
+          "agentThreadId": "child-1",
+          "agentPath": "/root/sleeper",
+        },
+      });
+      await childCreated.timeout(const Duration(seconds: 1));
+      final childBusy = plugin.events
+          .where(
+            (event) =>
+                event is BridgeSseSessionStatus && event.sessionID == "child-1" && event.status["type"] == "busy",
+          )
+          .first;
+      fake.pushNotification("turn/started", {
+        "threadId": "child-1",
+        "turn": {"id": "child-turn"},
+      });
+      await childBusy.timeout(const Duration(seconds: 1));
+
+      fake.respondInOrder([
+        const _Response(result: <String, Object?>{}),
+        const _Response(result: <String, Object?>{}),
+      ]);
+      await plugin.deleteSession("root-1");
+
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {"root-1", "child-1"},
+      );
+      expect(await plugin.getSessionStatuses(), isEmpty);
+      expect(await plugin.getChildSessions("root-1"), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+      final readsBeforeLateActivity = fake.sentMethods.where((method) => method == "thread/read").length;
+      fake.pushNotification("item/started", {
+        "threadId": "root-1",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "late-parent-call",
+          "kind": "started",
+          "agentThreadId": "child-2",
+        },
+      });
+      fake.pushNotification("item/started", {
+        "threadId": "other-root",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "late-child-call",
+          "kind": "started",
+          "agentThreadId": "child-1",
+        },
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(fake.sentMethods.where((method) => method == "thread/read"), hasLength(readsBeforeLateActivity));
+      expect(events.whereType<BridgeSseSessionCreated>().where((event) => event.info["id"] == "child-1"), hasLength(1));
+      await subscription.cancel();
+    });
   });
 }
 
@@ -2676,6 +2901,11 @@ class _FakeAppServer() {
     final frame = _sent.firstWhere((f) => f.method == method);
     return frame.params ?? const {};
   }
+
+  List<Map<String, dynamic>> sentParamsForAll({required String method}) => [
+    for (final frame in _sent)
+      if (frame.method == method) frame.params ?? const {},
+  ];
 
   bool sentRequestHasParams(String method) => _sent.firstWhere((frame) => frame.method == method).params != null;
 

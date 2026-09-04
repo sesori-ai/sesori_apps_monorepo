@@ -275,8 +275,10 @@ CodexSessionRecord _record({
   required String? title,
   DateTime? createdAt,
   DateTime? updatedAt,
+  String? parentId,
 }) => CodexSessionRecord(
   id: id,
+  parentId: parentId,
   rolloutPath: "/rollouts/$id.jsonl",
   cwd: cwd,
   threadName: title,
@@ -367,6 +369,10 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
         timestamp: "2026-08-01T00:00:00Z",
         modelProvider: "openai",
         cliVersion: "0.147.0",
+        parentThreadId: null,
+        threadSource: null,
+        agentNickname: null,
+        agentPath: null,
       ),
     ),
   ];

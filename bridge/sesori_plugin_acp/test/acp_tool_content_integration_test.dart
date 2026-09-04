@@ -129,6 +129,7 @@ void main() {
           launchDirectory: "/repo",
           pluginId: "acp",
           configurationTracker: AcpSessionConfigurationTracker(),
+          childSessions: AcpChildSessionTracker(),
         );
         final collector = _collector();
         PluginMessagePart? livePart;
@@ -160,6 +161,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "acp",
         configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
       );
     });
 

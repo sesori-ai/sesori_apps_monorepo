@@ -17,10 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
-import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_mobile/features/new_session/new_session_plugin_chooser.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -28,7 +25,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 import "../../helpers/voice_test_helpers.dart";
 
-class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
+class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
 
@@ -244,7 +241,7 @@ void main() {
   late MockProjectRepository projectRepository;
   late MockVoiceTranscriptionService voiceTranscriptionService;
   late MockVoiceTranscriptionSession voiceSession;
-  late MockComposerImagePicker imagePicker;
+  late MockComposerAttachmentDispatcher attachmentDispatcher;
   late MockImageClipboard imageClipboard;
   late ComposerDraftRepository composerDraftRepository;
   late MockProductAnalyticsService productAnalyticsService;
@@ -269,7 +266,7 @@ void main() {
     );
     projectRepository = MockProjectRepository();
     voiceTranscriptionService = MockVoiceTranscriptionService();
-    imagePicker = MockComposerImagePicker();
+    attachmentDispatcher = MockComposerAttachmentDispatcher();
     imageClipboard = MockImageClipboard();
     when(imageClipboard.readImage).thenAnswer((_) async => null);
     composerDraftRepository = inMemoryComposerDraftRepository();
@@ -452,7 +449,7 @@ void main() {
     GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+    GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
     GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
@@ -1088,13 +1085,19 @@ void main() {
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
-    // The refresh action floats above the composer rather than riding the
-    // options it reloads, so scrolling must not carry it away.
+    // The refresh action shares the options scroll so it cannot cover a row.
+    // When the content fits, its fill-remaining sliver still rests it above the
+    // pinned composer and there is nothing for this drag to move.
     final refresh = find.byKey(const Key("new_session_options_refresh"));
-    expect(find.descendant(of: optionsScroll, matching: refresh), findsNothing);
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
 
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
     final refreshRect = tester.getRect(refresh);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(refreshRect.top));
     expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
 
     await tester.drag(optionsScroll, const Offset(0, -250));
@@ -1105,10 +1108,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("scrolls the last option clear of the refresh at a large text scale", (tester) async {
-    // The refresh pill is padding around its label, not a fixed box, so it
-    // grows with the text scale. The band reserved beneath the options has to
-    // grow with it or the last row stays stranded underneath.
+  testWidgets("lays out the last option before the refresh at a large text scale", (tester) async {
+    // The refresh pill grows with the text scale. Keeping it in the scroll's
+    // normal sliver flow makes that measured height part of layout rather than
+    // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.binding.setSurfaceSize(const Size(700, 400));
@@ -1119,15 +1122,50 @@ void main() {
 
     final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
     final refresh = find.byKey(const Key("new_session_options_refresh"));
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
 
     final scrollRect = tester.getRect(optionsScroll);
     await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
     await tester.pumpAndSettle();
 
-    // Scrolled to the end, the reserved band must still span everything the
-    // pill covers — measured, so it holds however tall the pill has grown.
-    final reserved = tester.widget<SingleChildScrollView>(optionsScroll).padding! as EdgeInsetsDirectional;
-    expect(reserved.bottom, greaterThanOrEqualTo(scrollRect.bottom - tester.getRect(refresh).top));
+    expect(refresh.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("keeps the refresh from covering workspace options with a multiline draft", (tester) async {
+    tester.view.physicalSize = const Size(420, 912);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 59, bottom: 34);
+    tester.view.viewPadding = const FakeViewPadding(top: 59, bottom: 34);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 344);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(EditableText),
+      "one line of a long prompt\ntwo lines\nthree lines\nfour lines\nfive lines\nsix lines",
+    );
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"), skipOffstage: false);
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh, skipOffstage: false), findsOneWidget);
+    expect(workspace.hitTestable(), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
     expect(tester.takeException(), isNull);
   });
 
@@ -1937,7 +1975,7 @@ void main() {
 
   testWidgets("restores a coalesced failed submission without remounting the composer", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(

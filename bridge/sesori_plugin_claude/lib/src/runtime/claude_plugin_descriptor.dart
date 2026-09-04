@@ -212,6 +212,7 @@ final class const ClaudePluginDescriptor({
       approvals: approvals,
       clock: host.clock,
       resolveIdleTimeout: () => host.pluginIdleTimeout,
+      idleTimeoutChanges: host.pluginIdleTimeoutChanges,
     );
     const content = ClaudeContentMapper();
     final plugin = ClaudePlugin(

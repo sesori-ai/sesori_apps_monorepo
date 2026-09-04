@@ -53,6 +53,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           cliVersion: metadata?.cliVersion,
           modelProvider: metadata?.modelProvider,
           model: metadata?.model,
+          parentId: metadata?.parentId,
         ),
       );
     }
@@ -125,7 +126,9 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return sessions;
   }
 
-  /// Filters by normalized rollout CWD before applying pagination.
+  /// Lists root sessions only, filtered by normalized rollout CWD before
+  /// applying pagination. Sub-agent rollouts are reachable through
+  /// [getChildSessions] and [listAllSessions].
   Future<List<PluginSession>> getSessions({
     required String projectId,
     required int? start,
@@ -134,6 +137,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final records = await listSessionRecordsInIsolate();
     final target = normalizeProjectDirectory(directory: projectId);
     final sessions = records
+        .where((record) => record.parentId == null)
         .map(_toPluginSession)
         .nonNulls
         .where((session) => session.directory == target)
@@ -143,6 +147,16 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     final until = pageSize == null ? sessions.length : (from + pageSize).clamp(from, sessions.length);
     if (from >= sessions.length) return const [];
     return sessions.sublist(from, until);
+  }
+
+  /// Persisted sub-agent rollouts whose direct parent is [sessionId].
+  Future<List<PluginSession>> getChildSessions({required String sessionId}) async {
+    final records = await listSessionRecordsInIsolate();
+    return records
+        .where((record) => record.parentId == sessionId)
+        .map(_toPluginSession)
+        .nonNulls
+        .toList(growable: false);
   }
 
   CodexSessionRecord? findSessionById({required String sessionId}) {
@@ -280,6 +294,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     String? modelProvider;
     String? cliVersion;
     String? model;
+    String? parentId;
     for (final line in lines) {
       switch (line) {
         case CodexRolloutSessionMetadataLineDto(:final payload):
@@ -294,6 +309,9 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           timestamp = _tryParseDate(payload.timestamp);
           modelProvider = payload.modelProvider;
           cliVersion = payload.cliVersion;
+          if (payload.threadSource == CodexRolloutThreadSource.subagent) {
+            parentId = payload.parentThreadId;
+          }
         case CodexRolloutTurnContextLineDto(:final payload):
           final candidate = payload.model;
           if (candidate != null && candidate.isNotEmpty) model = candidate;
@@ -312,6 +330,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       modelProvider: modelProvider,
       model: model,
       cliVersion: cliVersion,
+      parentId: parentId,
     );
   }
 
@@ -325,7 +344,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       id: record.id,
       projectID: directory,
       directory: directory,
-      parentID: null,
+      parentID: record.parentId,
       title: record.threadName,
       time: created == null || updated == null
           ? null
@@ -359,4 +378,5 @@ class const _CodexSessionMetadata({
   required final String? modelProvider,
   required final String? model,
   required final String? cliVersion,
+  required final String? parentId,
 });

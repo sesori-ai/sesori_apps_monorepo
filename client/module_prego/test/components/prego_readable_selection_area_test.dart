@@ -49,6 +49,76 @@ void main() {
     );
   });
 
+  testWidgets("preserves empty text blocks when requested", (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: PregoReadableSelectionArea(
+            preserveEmptyLines: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("first"),
+                Text(PregoReadableSelectionArea.emptyLineMarker),
+                Text("third"),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(await _copyAll(tester: tester), "first\n\nthird");
+  });
+
+  testWidgets("preserves a literal marker in source text", (tester) async {
+    final encodedSource = PregoReadableSelectionArea.encodeText(
+      text: PregoReadableSelectionArea.emptyLineMarker,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PregoReadableSelectionArea(
+            preserveEmptyLines: true,
+            child: Text(encodedSource),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(await _copyAll(tester: tester), PregoReadableSelectionArea.emptyLineMarker);
+  });
+
+  testWidgets("updates empty-line preservation when the widget changes", (tester) async {
+    Widget buildArea({required bool preserveEmptyLines}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: PregoReadableSelectionArea(
+            preserveEmptyLines: preserveEmptyLines,
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("first"),
+                Text(PregoReadableSelectionArea.emptyLineMarker),
+                Text("third"),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(buildArea(preserveEmptyLines: false));
+    await tester.pump();
+    expect(await _copyAll(tester: tester), "first\nthird");
+
+    await tester.pumpWidget(buildArea(preserveEmptyLines: true));
+    await tester.pump();
+    expect(await _copyAll(tester: tester), "first\n\nthird");
+  });
+
   testWidgets("copy separates adjacent text on the same visual line", (tester) async {
     await tester.pumpWidget(
       const MaterialApp(

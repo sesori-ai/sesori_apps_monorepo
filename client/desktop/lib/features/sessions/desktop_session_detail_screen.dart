@@ -9,12 +9,9 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/widgets/desktop_composer_presentation_scope.dart";
 
-/// Desktop composition for the shared interactive transcript.
-///
-/// Message composition remains product-owned and arrives in the next desktop
-/// slice. Transcript actions, child-session navigation, permissions, questions,
-/// and image actions remain available here.
+/// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
   super.key,
   required final String projectId,
@@ -22,6 +19,7 @@ class const DesktopSessionDetailScreen({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
 }) extends StatelessWidget {
   @override
@@ -39,24 +37,25 @@ class const DesktopSessionDetailScreen({
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         sessionId: sessionId,
         projectId: projectId,
-        // Desktop does not produce local session notifications until the
-        // attention-notification slice, so there is nothing to cancel here.
-        notificationCanceller: null,
+        notificationCanceller: getIt<NotificationCanceller>(),
         failureReporter: getIt<FailureReporter>(),
       ),
-      child: _SessionActivityAnalyticsOwner(
-        child: DesktopSessionDetailView(
-          projectId: projectId,
-          sessionId: sessionId,
-          sessionTitle: sessionTitle,
-          readOnly: readOnly,
-          onBack: onBack,
-          onOpenSession: onOpenSession,
-          messageImageRepository: getIt.get<MessageImageRepository>,
-          imageSaver: getIt.get<ImageSaver>,
-          imageClipboard: getIt.get<ImageClipboard>,
-          imageSharer: getIt.get<ImageSharer>,
-          canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+      child: DesktopComposerPresentationScope(
+        child: _SessionActivityAnalyticsOwner(
+          child: DesktopSessionDetailView(
+            projectId: projectId,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+            onBack: onBack,
+            onShowDiffs: onShowDiffs,
+            onOpenSession: onOpenSession,
+            messageImageRepository: getIt.get<MessageImageRepository>,
+            imageSaver: getIt.get<ImageSaver>,
+            imageClipboard: getIt.get<ImageClipboard>,
+            imageSharer: getIt.get<ImageSharer>,
+            canShareImages: defaultTargetPlatform != TargetPlatform.linux,
+          ),
         ),
       ),
     );
@@ -70,6 +69,7 @@ class const DesktopSessionDetailView({
   required final String? sessionTitle,
   required final bool readOnly,
   required final VoidCallback onBack,
+  required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
   required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
@@ -94,10 +94,13 @@ class const DesktopSessionDetailView({
         readOnly: readOnly,
         banner: null,
         onBack: onBack,
-        onShowDiffs: null,
-        // Desktop exposes the complete interactive transcript first; the
-        // product-owned composer is added by the next plan slice.
-        bottomControlsBuilder: null,
+        onShowDiffs: onShowDiffs,
+        bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+            SessionDetailComposerControls(
+              projectId: projectId,
+              sessionId: sessionId,
+              state: state,
+            ),
       ),
     );
   }
@@ -110,20 +113,35 @@ class const _SessionActivityAnalyticsOwner({required final Widget child}) extend
 
 class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
   SessionActivityAnalyticsListener? _listener;
+  StreamSubscription<AppRouteDef?>? _routeSubscription;
+  AppRouteDef? _topRoute;
   bool? _wasRouteVisible;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final isRouteVisible = ModalRoute.of(context)?.isCurrent ?? false;
-    if (isRouteVisible && _wasRouteVisible == false) {
-      context.read<SessionDetailCubit>().reassertViewingSession();
+    if (_routeSubscription == null) {
+      final routeSource = getIt<RouteSource>();
+      _topRoute = routeSource.currentRoute;
+      _routeSubscription = routeSource.currentRouteStream.listen((route) {
+        _topRoute = route;
+        _updateRouteVisibility();
+      });
+    }
+    _updateRouteVisibility();
+  }
+
+  void _updateRouteVisibility() {
+    final isRouteVisible = (ModalRoute.of(context)?.isCurrent ?? false) && !_isCoveredBySettings;
+    final cubit = context.read<SessionDetailCubit>();
+    if (_wasRouteVisible != isRouteVisible) {
+      cubit.setRouteVisible(isVisible: isRouteVisible);
     }
     _wasRouteVisible = isRouteVisible;
     final listener = _listener;
     if (listener == null) {
       _listener = SessionActivityAnalyticsListener(
-        sessionDetailCubit: context.read<SessionDetailCubit>(),
+        sessionDetailCubit: cubit,
         lifecycleSource: getIt<LifecycleSource>(),
         productAnalyticsService: getIt<ProductAnalyticsService>(),
         initialRouteVisible: isRouteVisible,
@@ -133,10 +151,28 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
     }
   }
 
+  bool get _isCoveredBySettings {
+    return switch (_topRoute) {
+      AppRouteDef.settings ||
+      AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsProfile ||
+      AppRouteDef.settingsHarnesses => true,
+      null ||
+      AppRouteDef.splash ||
+      AppRouteDef.login ||
+      AppRouteDef.projects ||
+      AppRouteDef.sessions ||
+      AppRouteDef.newSession ||
+      AppRouteDef.sessionDetail ||
+      AppRouteDef.sessionDiffs => false,
+    };
+  }
+
   @override
   void dispose() {
     final listener = _listener;
     if (listener != null) unawaited(listener.dispose());
+    unawaited(_routeSubscription?.cancel());
     super.dispose();
   }
 

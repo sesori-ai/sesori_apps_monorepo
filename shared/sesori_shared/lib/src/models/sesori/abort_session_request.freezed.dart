@@ -155,7 +155,9 @@ mixin _$SessionAbortRejection {
 
  int get runningSubAgentCount;/// Whether the main agent itself is mid-turn, which decides whether a
 /// "main agent only" stop is worth offering.
- bool get mainAgentRunning;
+ bool get mainAgentRunning;/// Whether a `keep` stop (main agent only) is honored while the main agent
+/// runs. Backends whose interrupt also stops sub-agents report false.
+ bool get mainAgentOnlySupported;
 /// Create a copy of SessionAbortRejection
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +170,16 @@ $SessionAbortRejectionCopyWith<SessionAbortRejection> get copyWith => _$SessionA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.mainAgentOnlySupported, mainAgentOnlySupported) || other.mainAgentOnlySupported == mainAgentOnlySupported));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning);
+int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning,mainAgentOnlySupported);
 
 @override
 String toString() {
-  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning)';
+  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning, mainAgentOnlySupported: $mainAgentOnlySupported)';
 }
 
 
@@ -188,7 +190,7 @@ abstract mixin class $SessionAbortRejectionCopyWith<$Res>  {
   factory $SessionAbortRejectionCopyWith(SessionAbortRejection value, $Res Function(SessionAbortRejection) _then) = _$SessionAbortRejectionCopyWithImpl;
 @useResult
 $Res call({
- int runningSubAgentCount, bool mainAgentRunning
+ int runningSubAgentCount, bool mainAgentRunning, bool mainAgentOnlySupported
 });
 
 
@@ -205,10 +207,11 @@ class _$SessionAbortRejectionCopyWithImpl<$Res>
 
 /// Create a copy of SessionAbortRejection
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? runningSubAgentCount = null,Object? mainAgentRunning = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? runningSubAgentCount = null,Object? mainAgentRunning = null,Object? mainAgentOnlySupported = null,}) {
   return _then(SessionAbortRejection(
 runningSubAgentCount: null == runningSubAgentCount ? _self.runningSubAgentCount : runningSubAgentCount // ignore: cast_nullable_to_non_nullable
 as int,mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
+as bool,mainAgentOnlySupported: null == mainAgentOnlySupported ? _self.mainAgentOnlySupported : mainAgentOnlySupported // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -221,13 +224,16 @@ as bool,
 @JsonSerializable()
 
 class _SessionAbortRejection implements SessionAbortRejection {
-  const _SessionAbortRejection({required this.runningSubAgentCount, required this.mainAgentRunning});
+  const _SessionAbortRejection({required this.runningSubAgentCount, required this.mainAgentRunning, this.mainAgentOnlySupported = false});
   factory _SessionAbortRejection.fromJson(Map<String, dynamic> json) => _$SessionAbortRejectionFromJson(json);
 
 @override final  int runningSubAgentCount;
 /// Whether the main agent itself is mid-turn, which decides whether a
 /// "main agent only" stop is worth offering.
 @override final  bool mainAgentRunning;
+/// Whether a `keep` stop (main agent only) is honored while the main agent
+/// runs. Backends whose interrupt also stops sub-agents report false.
+@override@JsonKey() final  bool mainAgentOnlySupported;
 
 /// Create a copy of SessionAbortRejection
 /// with the given fields replaced by the non-null parameter values.
@@ -242,16 +248,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.mainAgentOnlySupported, mainAgentOnlySupported) || other.mainAgentOnlySupported == mainAgentOnlySupported));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning);
+int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning,mainAgentOnlySupported);
 
 @override
 String toString() {
-  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning)';
+  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning, mainAgentOnlySupported: $mainAgentOnlySupported)';
 }
 
 
@@ -262,7 +268,7 @@ abstract mixin class _$SessionAbortRejectionCopyWith<$Res> implements $SessionAb
   factory _$SessionAbortRejectionCopyWith(_SessionAbortRejection value, $Res Function(_SessionAbortRejection) _then) = __$SessionAbortRejectionCopyWithImpl;
 @override @useResult
 $Res call({
- int runningSubAgentCount, bool mainAgentRunning
+ int runningSubAgentCount, bool mainAgentRunning, bool mainAgentOnlySupported
 });
 
 
@@ -279,10 +285,11 @@ class __$SessionAbortRejectionCopyWithImpl<$Res>
 
 /// Create a copy of SessionAbortRejection
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? runningSubAgentCount = null,Object? mainAgentRunning = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? runningSubAgentCount = null,Object? mainAgentRunning = null,Object? mainAgentOnlySupported = null,}) {
   return _then(_SessionAbortRejection(
 runningSubAgentCount: null == runningSubAgentCount ? _self.runningSubAgentCount : runningSubAgentCount // ignore: cast_nullable_to_non_nullable
 as int,mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
+as bool,mainAgentOnlySupported: null == mainAgentOnlySupported ? _self.mainAgentOnlySupported : mainAgentOnlySupported // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

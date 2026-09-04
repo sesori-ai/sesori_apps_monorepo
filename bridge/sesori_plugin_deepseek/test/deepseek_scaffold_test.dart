@@ -30,6 +30,7 @@ void main() {
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
+      childSessions: AcpChildSessionTracker(),
       messageTimeParser: const DeepSeekMessageTimeParser(),
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     );
@@ -53,6 +54,7 @@ void main() {
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
+      childSessions: AcpChildSessionTracker(),
       messageTimeParser: const DeepSeekMessageTimeParser(),
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     )..beginTurn(sessionId: "session-1", messageId: null);

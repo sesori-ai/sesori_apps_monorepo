@@ -11,6 +11,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as _i163;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
@@ -21,6 +23,8 @@ import 'package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storag
     as _i93;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
     as _i964;
+import 'package:sesori_desktop/core/platform/desktop_composer_image_picker.dart'
+    as _i925;
 import 'package:sesori_desktop/core/platform/desktop_failure_reporter.dart'
     as _i227;
 import 'package:sesori_desktop/core/platform/desktop_file_image_saver.dart'
@@ -30,9 +34,11 @@ import 'package:sesori_desktop/core/platform/desktop_file_save_client.dart'
 import 'package:sesori_desktop/core/platform/desktop_image_clipboard.dart'
     as _i87;
 import 'package:sesori_desktop/core/platform/desktop_image_sharer.dart'
-    as _i500;
+    as _i501;
 import 'package:sesori_desktop/core/platform/desktop_lifecycle_observer.dart'
     as _i670;
+import 'package:sesori_desktop/core/platform/desktop_local_notification_client.dart'
+    as _i500;
 import 'package:sesori_desktop/core/platform/desktop_oauth_device_descriptor_provider.dart'
     as _i20;
 import 'package:sesori_desktop/core/platform/desktop_pasteboard_client.dart'
@@ -79,6 +85,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i833.DeviceInfoPlugin>(
       () => registerModule.deviceInfoPlugin,
     );
+    gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
+      () => registerModule.flutterLocalNotificationsPlugin,
+    );
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
     );
@@ -99,6 +108,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
       () => _i435.MacOsLegacyKeychainClient(),
+    );
+    gh.lazySingleton<_i948.ComposerImagePicker>(
+      () => _i925.DesktopComposerImagePicker(),
     );
     gh.lazySingleton<_i316.DesktopApplicationSupportDirectory>(
       () => _i11.FlutterDesktopApplicationSupportDirectory(),
@@ -127,6 +139,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i227.DesktopFailureReporter(),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i948.LocalNotificationClient>(
+      () => _i500.DesktopLocalNotificationClient(
+        plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i87.DesktopImageClipboard(
         pasteboardClient: gh<_i210.DesktopPasteboardClient>(),
@@ -162,7 +180,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
-          _i500.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
+          _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
+    );
+    gh.lazySingleton<_i948.NotificationCanceller>(
+      () => registerModule.notificationCanceller(
+        client: gh<_i948.LocalNotificationClient>(),
+      ),
     );
     return this;
   }

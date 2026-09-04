@@ -7,6 +7,7 @@ class _EnvelopeTimeEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
@@ -29,6 +30,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
     });
 
@@ -76,6 +78,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       final afterRestart = assistantId(target: replacementMapper, promptId: "prompt-two");
 
@@ -731,6 +734,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
         method: "session/update",
@@ -1514,6 +1518,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
     : super(
         launchDirectory: "/repo",
         pluginId: "cursor",
+        childSessions: AcpChildSessionTracker(),
       );
 
   @override

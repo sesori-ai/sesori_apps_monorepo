@@ -884,6 +884,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       approvals: approvals,
       clock: const _NeverIdleClock(),
       resolveIdleTimeout: () => const Duration(minutes: 5),
+      idleTimeoutChanges: const Stream<Duration?>.empty(),
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(

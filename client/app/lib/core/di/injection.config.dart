@@ -24,8 +24,6 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
-import 'package:sesori_mobile/capabilities/media/composer_image_picker.dart'
-    as _i140;
 import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
     as _i430;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
@@ -65,6 +63,8 @@ import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
     as _i963;
+import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
+    as _i111;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
     as _i274;
 import 'package:sesori_mobile/core/platform/flutter_image_sharer.dart' as _i617;
@@ -157,6 +157,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i636.FlutterLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(
@@ -169,6 +170,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
+    gh.lazySingleton<_i948.ComposerImagePicker>(
+      () => _i111.FlutterComposerImagePicker(picker: gh<_i183.ImagePicker>()),
+    );
     gh.lazySingleton<_i948.DeepLinkSource>(
       () => _i919.AppLinksDeepLinkSource(),
     );
@@ -176,9 +180,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i186.PackageInfoInstalledAppBuildSource(
         packageInfoClient: gh<_i1024.PackageInfoClient>(),
       ),
-    );
-    gh.lazySingleton<_i140.ComposerImagePicker>(
-      () => _i140.ComposerImagePicker(picker: gh<_i183.ImagePicker>()),
     );
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i968.FileAttributionClaimStorage(

@@ -124,6 +124,12 @@ class SessionDetailCubit(
   bool _stalePromptOptionsRefreshInFlight = false;
   bool _backgroundOptionsRefreshInFlight = false;
 
+  /// Route visibility is separate from app lifecycle visibility. Desktop can
+  /// cover the nested session navigator with a root-level settings route while
+  /// leaving this cubit mounted; a covered route must not declare the session
+  /// as viewed when its load or refresh completes.
+  bool _routeVisible = true;
+
   // A disconnect invalidates capability snapshots that could authorize image sends.
   int _connectionGeneration = 0;
   final Map<int, int> _activeLoadingRefreshes = {};
@@ -239,7 +245,7 @@ class SessionDetailCubit(
         // a load that fails or waits for connection must not mark the session
         // read (clearing its bold globally) while the user only saw a
         // loading/error state.
-        _sessionViewingService.setViewingSession(_sessionId);
+        _declareViewingSessionIfVisible();
         _drainPendingEvents();
         _drainDeferredPartsForLoadedMessages();
         _tryDrainQueue();
@@ -599,7 +605,7 @@ class SessionDetailCubit(
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
-          if (_reassertViewAfterRefresh) {
+          if (_reassertViewAfterRefresh && _routeVisible) {
             // A resume/reconnect requested this refresh; the refreshed
             // transcript has rendered, so it is safe to re-declare the view
             // (which marks the session seen on the bridge).
@@ -1992,14 +1998,41 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: _sessionId));
+    }
+  }
+
+  /// Updates whether this detail route is currently visible to the user.
+  ///
+  /// A desktop root-level route can cover the nested session navigator without
+  /// disposing this cubit, so route visibility must fence both the initial load
+  /// and later refresh declarations. The mobile shell leaves the default
+  /// visible value in place and continues to use [reassertViewingSession].
+  void setRouteVisible({required bool isVisible}) {
+    if (_routeVisible == isVisible) return;
+    _routeVisible = isVisible;
+    if (isVisible) {
+      reassertViewingSession();
+    } else {
+      _sessionViewingService.clearViewingSession(_sessionId);
+    }
   }
 
   /// Restores this loaded session as the active view after a pushed child route
   /// is removed. The initial load and refresh paths own their own declarations;
   /// an unloaded or failed route must not mark the session seen.
   void reassertViewingSession() {
-    if (state is SessionDetailLoaded) _sessionViewingService.setViewingSession(_sessionId);
+    if (_routeVisible && state is SessionDetailLoaded) {
+      _sessionViewingService.setViewingSession(_sessionId);
+    }
+  }
+
+  void _declareViewingSessionIfVisible() {
+    if (_routeVisible) {
+      _sessionViewingService.setViewingSession(_sessionId);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -2129,7 +2162,10 @@ class SessionDetailCubit(
   }) async {
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller?.cancelForSession(sessionId: sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: sessionId));
+    }
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;

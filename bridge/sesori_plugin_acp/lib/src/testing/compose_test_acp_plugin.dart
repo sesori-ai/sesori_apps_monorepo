@@ -3,6 +3,7 @@ import "../acp_event_mapper.dart";
 import "../acp_process_factory.dart";
 import "../acp_session_configuration_tracker.dart";
 import "../acp_session_options_service.dart";
+import "../repositories/trackers/acp_child_session_tracker.dart";
 import "test_acp_plugin.dart";
 
 TestAcpPlugin composeTestAcpPlugin({
@@ -14,15 +15,18 @@ TestAcpPlugin composeTestAcpPlugin({
 }) {
   final configurationTracker = AcpSessionConfigurationTracker();
   final commandTracker = AcpCommandTracker();
+  final childSessionTracker = AcpChildSessionTracker();
   return TestAcpPlugin(
     id: id,
     agentDisplayName: agentDisplayName,
     launchSpec: launchSpec,
     launchDirectory: launchDirectory,
+    childSessionTracker: childSessionTracker,
     eventMapper: AcpEventMapper(
       launchDirectory: launchDirectory,
       pluginId: id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
     ),
     commandTracker: commandTracker,
     sessionOptionsService: AcpSessionOptionsService(

@@ -1720,7 +1720,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailStopScopeMessage.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{This session has 1 sub-agent still working. Stop only the main agent, or stop everything?} other{This session has {count} sub-agents still working. Stop only the main agent, or stop everything?}}'**
+  /// **'{count, plural, =1{The main agent and 1 sub-agent are still working.} other{The main agent and {count} sub-agents are still working.}}'**
   String sessionDetailStopScopeMessage(int count);
 
   /// No description provided for @sessionDetailStopScopeMessageMainIdle.
@@ -2848,7 +2848,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionOptionsRefresh.
   ///
   /// In en, this message translates to:
-  /// **'Refresh the model list'**
+  /// **'Refresh options'**
   String get newSessionOptionsRefresh;
 
   /// No description provided for @newSessionProjectUnavailable.
@@ -2914,7 +2914,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListArchiveConfirmMessage.
   ///
   /// In en, this message translates to:
-  /// **'Archiving is permanent. This session becomes read-only — you can still read it, but you cannot reopen it, send prompts, or unarchive it.'**
+  /// **'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.'**
   String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.
