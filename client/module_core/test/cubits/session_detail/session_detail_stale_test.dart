@@ -435,7 +435,18 @@ void main() {
       ).called(1);
     });
 
-    test("resume forwards the transcript model when the provider cache is stale", () async {
+    test("resume falls back when persisted and transcript models are unavailable", () async {
+      stubSessionRepositoryGetSession(
+        repository: mockSessionRepository,
+        sessionId: sessionId,
+        session: testSession(
+          id: sessionId,
+          promptDefaults: const SessionPromptDefaults(
+            agent: "coder",
+            model: AgentModel(providerID: "anthropic", modelID: "<synthetic>", variant: null),
+          ),
+        ),
+      );
       when(
         () => mockSessionService.getMessages(
           sessionId: sessionId,
@@ -448,11 +459,11 @@ void main() {
             messages: [
               MessageWithParts(
                 info: Message.error(
-                  id: "msg-custom-model",
+                  id: "msg-synthetic-model",
                   sessionID: sessionId,
                   agent: null,
-                  modelID: "test-model",
-                  providerID: "sesori-local",
+                  modelID: "<synthetic>",
+                  providerID: "anthropic",
                   errorName: "ProviderError",
                   errorMessage: "request failed",
                   time: null,
@@ -472,7 +483,7 @@ void main() {
           sessionId: sessionId,
           text: "resume",
           agent: "coder",
-          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: null,
           command: null,
         ),
@@ -498,7 +509,7 @@ void main() {
       await _awaitLoaded(cubit);
       expect(
         (cubit.state as SessionDetailLoaded).selectedAgentModel,
-        const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
+        const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
       );
 
       await cubit.sendMessage(
@@ -515,7 +526,7 @@ void main() {
           sessionId: sessionId,
           text: "resume",
           agent: "coder",
-          model: const PromptModel(providerID: "sesori-local", modelID: "test-model"),
+          model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: null,
           command: null,
         ),

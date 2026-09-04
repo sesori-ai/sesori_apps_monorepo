@@ -2334,9 +2334,13 @@ class SessionDetailCubit(
         : (agents.isNotEmpty ? agents.first.name : "build");
 
     final assistantAgentModel = derived.assistantAgentModel;
+    final availableAssistantAgentModel =
+        assistantAgentModel != null && _isModelAvailable(model: assistantAgentModel, providers: providers)
+        ? assistantAgentModel
+        : null;
     final defaultAgentModel = hasValidPersistedModel
         ? persistedModel
-        : (assistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
+        : (availableAssistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
 
     final availableVariants = _deriveAvailableVariants(
       providers: providers,
