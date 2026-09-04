@@ -202,5 +202,5 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   scoped-store composition, and Codex lockstep update with no violations. Interface (161), Codex (415), and focused app
   authentication/runtime tests (129) pass; all three packages analyze cleanly.
 - 2026-09-04 — Step 4's self-inclusive cap check used
-  `git diff --numstat d85d9fcb1d36 3f5e5018e3f6` with an additions/deletions sum: 774 + 139 = 913 changed lines,
-  leaving 587 lines below the 1,500-line cap.
+  `git diff --numstat d85d9fcb1d36 dfcf2058644a` with an additions/deletions sum: 778 + 142 = 920 changed lines,
+  leaving 580 lines below the 1,500-line cap.
