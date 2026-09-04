@@ -27,8 +27,8 @@ import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
-import "../../utils/model_filter/default_model_selector.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -83,13 +83,18 @@ class SessionDetailCubit(
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
 }) extends Cubit<SessionDetailState> {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+
+  /// Shown when a catalog offers no agent at all, so the composer still names
+  /// something. Backends that advertise agents always replace it.
+  static const String _fallbackAgentName = "build";
+
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
   final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
-  static const _defaultModelSelector = DefaultModelSelector();
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
@@ -552,7 +557,7 @@ class SessionDetailCubit(
           final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
           final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
           final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
-          final availableVariants = _deriveAvailableVariants(
+          final availableVariants = _selection.availableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
@@ -594,9 +599,9 @@ class SessionDetailCubit(
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
-              stagedCommand: _resolveStagedCommand(
-                availableCommands: availableCommands,
-                stagedCommand: preservedStagedCommand,
+              stagedCommand: _selection.resolveStagedCommand(
+                commands: availableCommands,
+                staged: preservedStagedCommand,
               ),
               queuedMessages: queue.queuedMessages,
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
@@ -700,14 +705,6 @@ class SessionDetailCubit(
     // A plugin-scoped catalog names no project and applies to every one of them.
     if (projectId != null && projectId.normalize() != _projectId.normalize()) return;
     unawaited(_reloadOptions(mode: SessionOptionsRequestMode.cacheOnly, notify: false));
-  }
-
-  CommandInfo? _resolveStagedCommand({
-    required List<CommandInfo> availableCommands,
-    required CommandInfo? stagedCommand,
-  }) {
-    if (stagedCommand == null) return null;
-    return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
   }
 
   /// Returns the latest agent-authored assistant or error [Message], or null if none.
@@ -1037,23 +1034,23 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final agents = current.availableAgents;
-    final providers = current.availableProviders;
-    final persistedAgent = promptDefaults.agent;
-    final persistedModel = promptDefaults.model;
-
-    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
-    final bool hasValidPersistedModel =
-        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
-
-    final newAgent = hasValidPersistedAgent ? persistedAgent : current.selectedAgent;
-    final newModel = hasValidPersistedModel ? persistedModel : current.selectedAgentModel;
+    // The bridge's remembered selection wins where the catalog still offers it,
+    // otherwise what is on screen stays. Reconciling the two together keeps the
+    // variant list from describing a model that is no longer selected.
+    final reconciled = _selection.reconcile(
+      agents: current.availableAgents,
+      providers: current.availableProviders,
+      agentNameCandidates: [promptDefaults.agent, current.selectedAgent],
+      modelCandidates: [promptDefaults.model],
+      retainedModel: current.selectedAgentModel,
+    );
 
     if (isClosed) return;
     emit(
       current.copyWith(
-        selectedAgent: newAgent,
-        selectedAgentModel: newModel,
+        selectedAgent: reconciled.agentName ?? current.selectedAgent,
+        selectedAgentModel: reconciled.model,
+        availableVariants: reconciled.availableVariants,
       ),
     );
   }
@@ -1775,36 +1772,57 @@ class SessionDetailCubit(
       if (latest is! SessionDetailLoaded) return false;
 
       if (result case SessionOptionsRepositoryAvailable(:final catalog)) {
-        final agents = catalog.agents
-            .whereType<AgentInfo>()
-            .where((agent) => !agent.hidden && agent.mode != AgentMode.subagent)
-            .toList();
+        final agents = _selection.selectableAgents(agents: catalog.agents);
         final providers = catalog.providers;
         final commands = catalog.commands;
-        final selectedAgent = agents.any((agent) => agent.name == latest.selectedAgent)
-            ? latest.selectedAgent
-            : (agents.firstOrNull?.name ?? "build");
-        final agentChanged = selectedAgent != latest.selectedAgent;
-        final preferredAgentModel = agents.firstWhereOrNull((agent) => agent.name == selectedAgent)?.model;
-        final selectedModelCandidate = agentChanged && preferredAgentModel != null
-            ? preferredAgentModel
-            : latest.selectedAgentModel;
-        final selectedModel = _validatedPromptModel(
-          candidate: selectedModelCandidate,
+        // A refresh answers with the catalog the backend has now, so a selection
+        // it no longer offers is corrected rather than retained — that
+        // correction is the whole point of refreshing.
+        //
+        // A replacement agent's own declared model outranks the departed one's:
+        // the agent that expressed that preference is gone. It only outranks it,
+        // though — a replacement declaring no model expresses no preference, so
+        // the model on screen is kept rather than reset to a catalog default.
+        // While the agent holds, its model holds with it.
+        //
+        // "Held" means the previous agent was a real catalog entry, not the
+        // placeholder name shown when a catalog advertised no agents at all. A
+        // catalog that later advertises an agent under that same name is a new
+        // agent, and its declared model applies.
+        final agentName = _selection.validatedAgentName(
+          agents: agents,
+          candidates: [latest.selectedAgent],
+        );
+        final heldSameAgent =
+            agentName == latest.selectedAgent &&
+            latest.availableAgents.any((agent) => agent.name == latest.selectedAgent);
+        final replacedAgentModel = heldSameAgent
+            ? null
+            : agents.firstWhereOrNull((agent) => agent.name == agentName)?.model;
+        final reconciled = _selection.reconcile(
           agents: agents,
           providers: providers,
+          agentNameCandidates: [agentName],
+          modelCandidates: [replacedAgentModel, latest.selectedAgentModel],
+          retainedModel: null,
         );
+        final selectedAgent = reconciled.agentName ?? _fallbackAgentName;
+        final selectedModel = reconciled.model;
 
         _promptQueue.replacePending(
           update: (submission) => submission.withSelection(
             agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
             agentModel: submission.agentModel == null
                 ? null
-                : _validatedPromptModel(
-                    candidate: submission.agentModel,
-                    agents: agents,
-                    providers: providers,
-                  ),
+                : _selection
+                      .reconcile(
+                        agents: agents,
+                        providers: providers,
+                        agentNameCandidates: [submission.agent],
+                        modelCandidates: [submission.agentModel],
+                        retainedModel: null,
+                      )
+                      .model,
           ),
         );
 
@@ -1815,13 +1833,10 @@ class SessionDetailCubit(
             availableCommands: commands,
             selectedAgent: selectedAgent,
             selectedAgentModel: selectedModel,
-            availableVariants: _deriveAvailableVariants(
-              providers: providers,
-              model: selectedModel,
-            ),
-            stagedCommand: _resolveStagedCommand(
-              availableCommands: commands,
-              stagedCommand: latest.stagedCommand,
+            availableVariants: reconciled.availableVariants,
+            stagedCommand: _selection.resolveStagedCommand(
+              commands: commands,
+              staged: latest.stagedCommand,
             ),
             queuedMessages: _visibleStagedItems(bridgePrompts: latest.bridgeQueuedPrompts),
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
@@ -1856,60 +1871,15 @@ class SessionDetailCubit(
     }
   }
 
+  /// A queued submission's agent, revalidated against the current catalog.
+  /// Null means "whatever the session is set to" and stays null; a withdrawn
+  /// agent falls back like any other.
   String? _validatedQueuedAgent({
     required String? candidate,
     required List<AgentInfo> agents,
   }) {
-    if (candidate == null || agents.any((agent) => agent.name == candidate)) return candidate;
-    return agents.firstOrNull?.name;
-  }
-
-  AgentModel? _validatedPromptModel({
-    required AgentModel? candidate,
-    required List<AgentInfo> agents,
-    required List<ProviderInfo> providers,
-  }) {
     if (candidate == null) return null;
-    final model = _isModelAvailable(model: candidate, providers: providers)
-        ? candidate
-        : _fallbackAgentModel(agents: agents, providers: providers);
-    if (model == null) return null;
-    // Never leave a variant-offering model unset: the composer renders the
-    // first available variant when none is selected, so an unset one would
-    // display an effort the send does not carry.
-    return _withResolvedVariant(
-      model: model,
-      availableVariants: _deriveAvailableVariants(providers: providers, model: model),
-    );
-  }
-
-  bool _isModelAvailable({required AgentModel model, required List<ProviderInfo> providers}) {
-    return providers.any(
-      (provider) => provider.id == model.providerID && provider.models.containsKey(model.modelID),
-    );
-  }
-
-  AgentModel? _fallbackAgentModel({
-    required List<AgentInfo> agents,
-    required List<ProviderInfo> providers,
-  }) {
-    if (agents.firstOrNull?.model case final model?) return model;
-    // Walk every provider: the first may be misconfigured or fully
-    // deprecated and therefore have no selectable model.
-    for (final provider in providers) {
-      final picked = _defaultModelSelector.pickFromProvider(
-        models: provider.models,
-        defaultModelID: provider.defaultModelID,
-      );
-      if (picked != null) {
-        return AgentModel(
-          providerID: provider.id,
-          modelID: picked.id,
-          variant: null,
-        );
-      }
-    }
-    return null;
+    return _selection.validatedAgentName(agents: agents, candidates: [candidate]);
   }
 
   ComposerDraft get composerDraft => _composerDraft;
@@ -2204,19 +2174,22 @@ class SessionDetailCubit(
 
     final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
     if (agentInfo == null) return;
-    // A null model means this agent has no model preference of its own.
-    final agentModel = agentInfo.model ?? current.selectedAgentModel;
-    final availableVariants = _deriveAvailableVariants(
+    // An agent with no declared model keeps the one already on screen, which is
+    // also where a declared model the catalog no longer offers falls back to.
+    final reconciled = _selection.reconcile(
+      agents: current.availableAgents,
       providers: current.availableProviders,
-      model: agentModel,
+      agentNameCandidates: [agent],
+      modelCandidates: [agentInfo.model],
+      retainedModel: current.selectedAgentModel,
     );
 
     if (isClosed) return;
     emit(
       current.copyWith(
         selectedAgent: agent,
-        selectedAgentModel: _withResolvedVariant(model: agentModel, availableVariants: availableVariants),
-        availableVariants: availableVariants,
+        selectedAgentModel: reconciled.model,
+        availableVariants: reconciled.availableVariants,
       ),
     );
   }
@@ -2227,7 +2200,7 @@ class SessionDetailCubit(
 
     final previousVariant = current.selectedAgentModel?.variant;
     final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
-    final availableVariants = _deriveAvailableVariants(
+    final availableVariants = _selection.availableVariants(
       providers: current.availableProviders,
       model: newModel,
     );
@@ -2330,7 +2303,7 @@ class SessionDetailCubit(
     final children = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(children);
     final childIds = children.map((child) => child.id).toSet();
-    final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
+    final agents = _selection.selectableAgents(agents: snapshot.agents);
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
       MessageError(
@@ -2357,26 +2330,16 @@ class SessionDetailCubit(
     final agents = derived.agents;
     final providers = derived.providers;
 
-    final persistedDefaults = snapshot.promptDefaults;
-    final persistedAgent = persistedDefaults?.agent;
-    final persistedModel = persistedDefaults?.model;
-
-    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
-    final bool hasValidPersistedModel =
-        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
-
-    final String defaultAgent = hasValidPersistedAgent
-        ? persistedAgent
-        : (agents.isNotEmpty ? agents.first.name : "build");
-
     final assistantAgentModel = derived.assistantAgentModel;
-    final defaultAgentModel = hasValidPersistedModel
-        ? persistedModel
-        : (assistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
-
-    final availableVariants = _deriveAvailableVariants(
+    // The transcript's own model is retained rather than validated: a session
+    // imported from a terminal must not silently resume on a different provider
+    // because a retained provider cache does not list what it ran on.
+    final reconciled = _selection.reconcile(
+      agents: agents,
       providers: providers,
-      model: defaultAgentModel,
+      agentNameCandidates: [snapshot.promptDefaults?.agent],
+      modelCandidates: [snapshot.promptDefaults?.model],
+      retainedModel: assistantAgentModel,
     );
 
     final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
@@ -2406,37 +2369,12 @@ class SessionDetailCubit(
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
-      selectedAgent: defaultAgent,
-      selectedAgentModel: _withResolvedVariant(
-        model: defaultAgentModel,
-        availableVariants: availableVariants,
-      ),
+      selectedAgent: reconciled.agentName ?? _fallbackAgentName,
+      selectedAgentModel: reconciled.model,
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: availableVariants,
+      availableVariants: reconciled.availableVariants,
     );
-  }
-
-  /// A model that offers variants always runs at a named one. An unset variant
-  /// resolves to the first available, which plugins declare default-first.
-  AgentModel? _withResolvedVariant({
-    required AgentModel? model,
-    required List<SessionVariant> availableVariants,
-  }) {
-    if (model == null) return null;
-    if (availableVariants.any((variant) => variant.id == model.variant)) return model;
-    return model.copyWith(variant: availableVariants.firstOrNull?.id);
-  }
-
-  List<SessionVariant> _deriveAvailableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerID = model?.providerID;
-    final modelID = model?.modelID;
-    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
-    final m = provider?.models[modelID];
-    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {

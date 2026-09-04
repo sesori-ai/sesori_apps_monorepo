@@ -21,7 +21,6 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
-import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -146,7 +145,6 @@ void main() {
       ),
       newSessionOptionsService: NewSessionOptionsService(
         sessionRepository: mockSessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
@@ -531,7 +529,6 @@ void main() {
           ),
           newSessionOptionsService: NewSessionOptionsService(
             sessionRepository: mockSessionRepository,
-            defaultModelSelector: const DefaultModelSelector(),
           ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
