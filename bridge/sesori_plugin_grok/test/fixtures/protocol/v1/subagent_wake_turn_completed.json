@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "method": "_x.ai/session/update",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "turn_completed",
+      "prompt_id": "subagent-completed-01a00000-0000-7000-8000-000000000002",
+      "stop_reason": "end_turn",
+      "usage": {}
+    }
+  }
+}

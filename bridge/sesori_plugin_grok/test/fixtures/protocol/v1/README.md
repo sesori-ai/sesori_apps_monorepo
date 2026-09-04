@@ -16,6 +16,7 @@ synthetic; no account data, credentials, prompts, transcripts, source paths, or 
 
 The `subagent_*.json` fixtures were captured on 2026-09-02 from the same artifact during an authenticated live
 probe of the sub-agent lifecycle (`.plan/completed/claude-inline-subtasks/followups/grok-probe.md`): the standard
-`spawn_subagent` `tool_call` with its `_meta`, and the `_x.ai/session_notification` frames `subagent_spawned`,
-`subagent_progress`, and `subagent_finished` (completed and cancelled). Field names, nesting, and enum values are
-verbatim; ids, descriptions, prompts, outputs, and counters are synthetic.
+`spawn_subagent` `tool_call` with its `_meta`, the `_x.ai/session_notification` frames `subagent_spawned`,
+`subagent_progress`, and `subagent_finished` (completed and cancelled), plus the autonomous parent `turn_completed`
+under `_x.ai/session/update`. Field names, nesting, and enum values are verbatim; ids, descriptions, prompts, outputs,
+and counters are synthetic.

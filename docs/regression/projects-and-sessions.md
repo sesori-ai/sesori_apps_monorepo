@@ -206,11 +206,21 @@ state.
   failure leaves the prior catalog intact. A later-page failure logs the error
   and commits the pages gathered so far as a fail-soft partial observation;
   missing previously imported rows remain because import is non-destructive.
-- Grok explicit import likewise uses only its bounded standard ACP `session/list`
-  catalog, attributes every committed project and session to `grok`, and remains
-  non-destructive on re-import. Ordinary reads return to the bridge database;
-  Sesori never scans Grok's credential, configuration, or session files and does
-  not resume a listed session merely to catalog it.
+- Grok explicit import uses bounded standard ACP `session/list` for roots, then
+  enriches each reported root from its local
+  `~/.grok/sessions/<encoded cwd>/<session id>/` summary and update records.
+  Persisted and not-yet-flushed live sub-agents appear under the root through the
+  child-session route and full enumeration, while per-project pages stay
+  root-only. Full enumeration indexes persisted root directories once, then
+  propagates each resolution into both the returned catalog family and ACP's
+  operation/event attribution caches. It therefore resolves a root outside the
+  launch directory after restart even when `session/list` omits `cwd`; a bare
+  fallback never overwrites existing bridge or agent attribution. Child titles
+  and times prefer summary metadata, and a missing store is simply empty.
+  Malformed summaries and unreadable files remain visible failures; an isolated
+  malformed update line is logged and skipped. Import remains
+  non-destructive, never reads credentials or configuration, and never resumes a
+  listed session merely to catalog it.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the
@@ -254,9 +264,11 @@ Vary the owning plugin, manual open versus import discovery, git and non-git
 folders, and whether the directory moved between runs. For Copilot, vary a
 single-page and multi-page ACP catalog, unchanged re-import, cancellation,
 first-page failure, and a later-page failure after a prior committed import.
-For Grok, vary an empty and populated ACP catalog, first import, unchanged
-re-import, cancellation, and plugin or bridge restart. Alternate empty,
-child-only, and large projects, and reorder import, listing, creation. Remove
+For Grok, vary an empty and populated ACP catalog, persisted and live children,
+a persisted root outside the launch directory, first import, unchanged
+re-import, cancellation, malformed child metadata, and plugin or bridge
+restart. Alternate empty, child-only, and large projects, and reorder import,
+listing, creation. Remove
 disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
@@ -307,8 +319,12 @@ leave the surface that started one. Restore harness eligibility afterwards.
   history, or a first-page failure mutates the committed catalog. A later-page
   fail-soft import drops prior rows instead of only adding gathered observations
   non-destructively.
-- A Grok import scans local files, resumes a listed session, loses `grok`
-  attribution, destructively removes an absent row, or ordinary catalog reads
+- A Grok import scans credentials or configuration, resumes a listed session,
+  loses `grok` attribution, destructively removes an absent row, omits a persisted
+  or live child from full enumeration, repeatedly rescans the persisted tree per
+  root, attributes a root or child to the launch directory instead of the stored
+  project, lets a bare-list fallback overwrite an already attributed directory,
+  silently treats unreadable metadata as absent, or ordinary root-catalog reads
   start Grok after import.
 - Mobile project recovery loses its CLI installation/reconnect guidance, or a
   desktop project recovery surface shows CLI commands, omits supervised Start,
@@ -351,11 +367,12 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
-- Copilot and Grok discovery are limited to sessions their public ACP catalogs
-  report; Sesori does not infer additional sessions from private files. A
-  failure after Copilot's first successful page is logged but currently
-  completes import with the pages gathered so far rather than surfacing a
-  partial status to the client.
+- Copilot discovery is limited to sessions its public ACP catalog reports. Grok
+  likewise requires each root to appear in its public ACP catalog, but augments
+  those roots with child lineage from Grok's local persisted session tree. A
+  failure after Copilot's first successful page is logged but currently completes
+  import with the pages gathered so far rather than surfacing a partial status to
+  the client.
 - User-side activity is an ordering heuristic, not proof of human intent.
   Generated backend input normalized as a user message and lifecycle-generated
   replies or rejections that clear pending input can advance it.

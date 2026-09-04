@@ -72,8 +72,9 @@ ordering, and enum values are recorded; no prompt or transcript text.
    call without a terminal update. A background child finishing with
    `will_wake: true` triggers a wake-up turn on the parent with no client
    prompt: `user_message_chunk` (a `<system-reminder>` text), a
-   `get_command_or_subagent_output` tool call, and `turn_completed` for prompt
-   id `subagent-completed-<child id>`; the original `session/prompt` had
+   `get_command_or_subagent_output` tool call, and `_x.ai/session/update`
+   `turn_completed` for prompt id `subagent-completed-<child id>`; the original
+   `session/prompt` had
    already resolved `end_turn`. A cancelled child reports `will_wake: false`
    and no wake-up turn.
 
