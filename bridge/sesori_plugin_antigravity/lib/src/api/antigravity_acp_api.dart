@@ -36,7 +36,9 @@ class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
         deadline: deadline,
         abortSignal: abortSignal,
       );
-      return AntigravityInitializeDto.fromJson(initialized.raw);
+      final result = AntigravityInitializeDto.fromJson(initialized.raw);
+      _throwIfAborted(abortSignal: abortSignal);
+      return result;
     } finally {
       await client.dispose();
     }

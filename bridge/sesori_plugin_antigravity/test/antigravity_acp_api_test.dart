@@ -6,6 +6,16 @@ import "package:antigravity_plugin/antigravity_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+class _AbortAfterInitializeSignal() implements StartAbortSignal {
+  int _polls = 0;
+
+  @override
+  bool get isAborted => ++_polls >= 4;
+
+  @override
+  Future<void> get whenAborted => Completer<void>().future;
+}
+
 void main() {
   late FakeAcpProcess process;
   late List<AcpLaunchSpec> launchSpecs;
@@ -92,6 +102,17 @@ void main() {
     final probing = probe(timeout: const Duration(seconds: 2), abortSignal: controller.signal);
     await waitForInitialize();
     controller.abort();
+    await expectLater(probing, throwsA(isA<PluginStartAbortedException>()));
+    expect(await process.exitCode, -15);
+  });
+
+  test("rechecks cancellation after initialize completes", () async {
+    final probing = probe(
+      timeout: const Duration(seconds: 2),
+      abortSignal: _AbortAfterInitializeSignal(),
+    );
+    final initialize = await waitForInitialize();
+    process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
     await expectLater(probing, throwsA(isA<PluginStartAbortedException>()));
     expect(await process.exitCode, -15);
   });
