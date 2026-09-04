@@ -50,6 +50,10 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 - [ ] **D6** Step 11 starts only after `desktop-app` retires; if it has not
   retired when every other step is merged, Step 11 is recorded as deferred and
   the series retires without it.
+- [ ] **D7** variant availability on the session screen — *default* the
+  shared derivation applies `isAvailable` on both screens (an unavailable model
+  offers no variants anywhere); alternative: keep offering variants on the
+  session screen through an explicit flag. Behavior decision for Step 10.
 
 ## Locked Principles
 

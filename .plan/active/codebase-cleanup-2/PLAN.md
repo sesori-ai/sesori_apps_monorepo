@@ -204,6 +204,14 @@ any of them in the Step 1 PR review or later in `TRACKER.md`.
   owner is exercising that flow now. If `desktop-app` has not retired when
   every other step is merged, Step 11 is recorded as deferred and the series
   retires without it.
+- **D7 — Variant availability on the session screen (Step 10).** The two
+  derivations disagree: New Session hides a model the backend marks
+  `isAvailable: false`, the session screen still offers its variants.
+  *Default:* the shared derivation applies the `isAvailable` rule on both
+  screens, so an unavailable model offers no variants anywhere. *Alternative:*
+  keep offering variants on the session screen (the shared derivation takes an
+  explicit flag). This is a behavior decision, recorded separately from the
+  deduplication so it is not folded in silently.
 
 ## Delivery Plan
 
@@ -498,8 +506,8 @@ screen (recorded as drift after PR #1282).
 visible, and confirmed values and the settle rule) used by both cubits; one
 pure variant/availability derivation in module_core used by both the
 new-session options service and the session-detail cubit (the detail screen
-adopts the `isAvailable` rule — the one intentional behavior alignment in this
-step); one response-mapping helper in the auth HTTP client; one
+adopts the `isAvailable` rule under D7 — the one intentional behavior change
+in this step); one response-mapping helper in the auth HTTP client; one
 `_completeLogin` in `AuthManager`. Delete the private copies.
 
 **Size and risk.** 350–600 lines. Behavior-preserving except the stated
