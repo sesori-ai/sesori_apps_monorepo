@@ -13,7 +13,7 @@ class CodexAuthenticationService({
 }) {
   late final Future<Never> _abort = _abortOperation();
 
-  Stream<PluginAuthenticationEvent> authenticate() async* {
+  Stream<PluginAuthenticationDeviceCodeEvent> authenticate() async* {
     try {
       await _abortable(
         _client.connect(

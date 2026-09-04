@@ -3,19 +3,20 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-2/12 merged; Step 3/12 open for review
-- **Base:** `origin/main` at `4c587bcefed5601a83b24d202b2edff75611cbe2`
-- **Current branch:** `antigravity-harness-step-3-runtime-resolution`
+- **Status:** Steps 1-3/12 merged; Step 4/12 open for review; Step 5/12 in progress locally
+- **Base:** Step 3 merge `d85d9fcb1d`
+- **Current branch:** `antigravity-harness-step-4-browser-auth-continuation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
-  [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2)
-- **Open PR:** [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3)
-- **Next action:** monitor Step 3 through readiness and begin Step 4 locally
+  [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
+  [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3)
+- **Open PR:** [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
+- **Next action:** monitor Step 4 through readiness and finish the local Step 5 implementation
 
 ## Fixed PR Series
 
 - [x] Step 1/12 — `🌱 [antigravity-harness] docs: plan Antigravity ACP support [step 1/12]`
 - [x] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
-- [ ] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
+- [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [ ] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [ ] Step 6/12 — `🚧 [antigravity-harness] feat(antigravity): add isolated profile authentication [step 6/12]`
@@ -65,6 +66,19 @@
 - [x] Run final focused analysis/tests and Git/Markdown validation, including self-inclusive merge-base numstat
   reconciliation against the 1,500-line cap.
 - [x] Commit, push, open the Step 3 PR, and start the PR monitor.
+
+## Step 4 Checklist
+
+- [x] Inspect descriptor, runtime, lifecycle, Codex authentication, scoped-store composition, and focused tests.
+- [x] Replace the stream-only descriptor return with a typed operation and sealed device-code/browser kinds.
+- [x] Pass a required per-state-root `HostJsonStore` instance to authentication and every live plugin generation.
+- [x] Add active-generation redirect routing with typed no-active, wrong-kind, and already-submitted conflicts.
+- [x] Preserve Codex device-code behavior while rejecting browser redirect submission.
+- [x] Finish focused same-request, challenge-order, generation, duplicate, cancel, shutdown, store, and cleanup
+  coverage.
+- [x] Complete architecture implementation review and apply valid findings.
+- [x] Run final focused analysis/tests and Git/Markdown validation.
+- [x] After Step 3 merges, sync, commit, push, open the Step 4 PR, and start its monitor.
 
 ## Architecture Reviews
 
@@ -183,3 +197,10 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 3's self-inclusive cap check used
   `git diff --numstat 4c587bcefed5 1c7f3d955ac1` with an additions/deletions sum: 1246 + 7 = 1253
   changed lines, leaving 247 lines below the 1,500-line cap.
+- 2026-09-04 — PR #1287 merged as `d85d9fcb1d`; Step 4 was synced to that merge before publication.
+- 2026-09-04 — Step 4 architecture implementation review approved the backend-neutral operation, generation fencing,
+  scoped-store composition, and Codex lockstep update with no violations. Interface (161), Codex (415), and focused app
+  authentication/runtime tests (129) pass; all three packages analyze cleanly.
+- 2026-09-04 — Step 4's self-inclusive cap check used
+  `git diff --numstat d85d9fcb1d36 6da24f133c` with an additions/deletions sum: 838 + 158 = 996 changed lines,
+  leaving 504 lines below the 1,500-line cap.

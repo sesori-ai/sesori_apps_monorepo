@@ -376,6 +376,45 @@ class PluginLifecycleService({
     return authentication.challenge.future;
   }
 
+  Future<void> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) async {
+    if (_setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!_knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    _requireBridgeId();
+    final authentication = _activePluginAuthentications[pluginId];
+    if (authentication == null) {
+      throw const PluginAuthenticationContinuationConflictException(
+        reason: PluginAuthenticationContinuationConflictReason.noActive,
+      );
+    }
+    final result = await _lifecycleRepository.submitAuthenticationRedirect(
+      pluginId: pluginId,
+      generation: authentication.operation.generation,
+      redirectUri: redirectUri,
+    );
+    switch (result) {
+      case PluginRuntimeAuthenticationContinuationApplied():
+        return;
+      case PluginRuntimeAuthenticationContinuationConflict(:final reason):
+        throw PluginAuthenticationContinuationConflictException(
+          reason: switch (reason) {
+            PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration =>
+              PluginAuthenticationContinuationConflictReason.noActive,
+            PluginRuntimeAuthenticationContinuationConflictReason.wrongKind =>
+              PluginAuthenticationContinuationConflictReason.wrongKind,
+            PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted =>
+              PluginAuthenticationContinuationConflictReason.alreadySubmitted,
+          },
+        );
+    }
+  }
+
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
@@ -425,6 +464,9 @@ class PluginLifecycleService({
             }
             return terminal;
           }(),
+          PluginAuthenticationBrowserChallenge() => throw StateError(
+            "Browser authentication challenge transport is not available.",
+          ),
           PluginAuthenticationCompleted() => const PluginAuthenticationProgress.completed(),
           PluginAuthenticationFailed(:final message) => () {
             Log.w('Plugin "$pluginId" authentication failed: $message');
@@ -1429,6 +1471,16 @@ class const PluginManagementPluginNotFoundException(final String pluginId) imple
 class const PluginManagementConflictException(final PluginLifecycleConflict conflict) implements Exception;
 
 class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
+
+enum PluginAuthenticationContinuationConflictReason() {
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+}
+
+class const PluginAuthenticationContinuationConflictException({
+  required final PluginAuthenticationContinuationConflictReason reason,
+}) implements Exception;
 
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
