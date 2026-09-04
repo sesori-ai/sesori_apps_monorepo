@@ -3,17 +3,17 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Step 1/12 merged; Step 2/12 open for review
-- **Base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Current branch:** `antigravity-harness-step-2-runtime-contract`
-- **Merged PR:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1)
-- **Open PR:** [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2)
-- **Next action:** monitor Step 2 through readiness; retain local-pair WIP for Step 3
+- **Status:** Steps 1-2/12 merged; Step 3/12 in progress locally
+- **Base:** `origin/main` at `4c587bcefed5601a83b24d202b2edff75611cbe2`
+- **Current branch:** `antigravity-harness-step-3-runtime-resolution`
+- **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
+  [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2)
+- **Next action:** finish and verify local runtime resolution, then open the Step 3 PR
 
 ## Fixed PR Series
 
 - [x] Step 1/12 — `🌱 [antigravity-harness] docs: plan Antigravity ACP support [step 1/12]`
-- [ ] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
+- [x] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
 - [ ] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [ ] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
@@ -51,6 +51,18 @@
 - [x] Complete architecture implementation review and apply the generated-DTO boundary finding.
 - [x] Run final focused analysis/tests and Git/Markdown validation.
 - [x] Commit, push, open the Step 2 PR, and start the PR monitor.
+
+## Step 3 Checklist
+
+- [x] Sync the successor branch to merged Step 2 and restore the retained local-pair WIP.
+- [x] Add typed pair-read and runtime-resolution outcomes at their first storage/repository consumers.
+- [x] Add exact filesystem/PATH pair inspection without creating files or processes.
+- [x] Map storage and generated initialize DTO outcomes through `AntigravityRuntimeRepository`.
+- [x] Implement service-owned explicit -> PATH -> managed precedence and exact contract validation.
+- [x] Cover pair integrity, precedence, generated mapping, contract failures, aborts, timeouts, and cleanup.
+- [x] Complete architecture implementation review and apply valid findings.
+- [x] Run final focused analysis/tests and Git/Markdown validation.
+- [ ] Commit, push, open the Step 3 PR, and start the PR monitor.
 
 ## Architecture Reviews
 
@@ -163,3 +175,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   coverage was dropped.
 - 2026-09-04 — Split Step 2 verification passed: generated output is fresh, Antigravity analysis and 11 tests pass,
   shared ACP analysis and 305 tests pass, and Git/Markdown validation reports no source-width or whitespace failures.
+- 2026-09-04 — PR #1286 merged as `4c587bcefe` after 16/16 CI checks, resolved review feedback, and Cubic approval.
+- 2026-09-04 — Step 3 architecture implementation review approved the local Storage -> Repository -> Service flow with
+  no violations. Antigravity analysis passes, all 25 tests pass, and Git/line-width validation is clean.
