@@ -909,7 +909,7 @@ class const _ScanDismissButton({
     final prego = context.prego;
     final colors = prego.colors;
     final radius = BorderRadius.circular(PregoRadius.full);
-    final actionConstraints = MediaQuery.textScalerOf(context).scale(1) > 1
+    final actionConstraints = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium)
         ? const BoxConstraints(minWidth: 76, minHeight: 36)
         : const BoxConstraints.tightFor(width: 76, height: 36);
 

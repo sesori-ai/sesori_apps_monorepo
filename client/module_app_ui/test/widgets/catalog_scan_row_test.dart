@@ -860,6 +860,9 @@ void main() {
         expect(text.maxLines, isNull);
         expect(text.overflow, isNull);
       }
+      final actionSize = tester.getSize(find.byKey(const ValueKey("catalog-scan-dismiss-action")));
+      expect(actionSize.width, greaterThan(76));
+      expect(actionSize.height, greaterThan(36));
       expect(tester.takeException(), isNull);
     });
   });
