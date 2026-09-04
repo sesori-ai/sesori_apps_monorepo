@@ -3,19 +3,20 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-2/12 merged; Step 3/12 open for review; Step 4/12 in progress locally
-- **Base:** Step 3 PR head `d4f1004b97`
+- **Status:** Steps 1-3/12 merged; Step 4/12 open for review; Step 5/12 in progress locally
+- **Base:** Step 3 merge `d85d9fcb1d`
 - **Current branch:** `antigravity-harness-step-4-browser-auth-continuation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
-  [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2)
-- **Open PR:** [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3)
-- **Next action:** monitor Step 3 through readiness and finish the local Step 4 implementation
+  [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
+  [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3)
+- **Open PR:** [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
+- **Next action:** monitor Step 4 through readiness and finish the local Step 5 implementation
 
 ## Fixed PR Series
 
 - [x] Step 1/12 — `🌱 [antigravity-harness] docs: plan Antigravity ACP support [step 1/12]`
 - [x] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
-- [ ] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
+- [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [ ] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [ ] Step 6/12 — `🚧 [antigravity-harness] feat(antigravity): add isolated profile authentication [step 6/12]`
