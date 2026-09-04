@@ -1,5 +1,20 @@
 # Session Refresh And Reconnect Assessment: Tracker
 
+## 2026-09-04 follow-up evidence
+
+The [periodic-cleanup investigation](../periodic-cleanup/PLAN.md) reproduces the
+two transcript risks below through the intended stale-data refresh path against
+`480d82f090`: an already-loaded message loses a live part, and the next streamed
+delta loses its pre-refresh prefix. Diagnostic patches and exact results are
+[recorded there](../periodic-cleanup/evidence/README.md). Proposed cleanup steps
+2–3 own these fixes, pending scope acceptance. This is a handoff of confirmed
+issues, not completion of this plan's live observation/retirement requirements.
+
+The historical sections below describe an earlier baseline: current code no
+longer uses `sessions.updated` to trigger full-detail refresh. Do not repeat
+that old proposed trigger change. PR/observation states below have not been
+re-audited as part of this handoff.
+
 ## Current State
 
 - **Plan slug:** `session-refresh-reconnects`

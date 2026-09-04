@@ -1,0 +1,205 @@
+--- a/client/module_core/test/cubits/session_detail/session_detail_event_buffer_test.dart
++++ b/client/module_core/test/cubits/session_detail/session_detail_event_buffer_test.dart
+@@ -1365,6 +1365,202 @@
+       ]);
+     });
+
++    test("AUDIT: refresh preserves live parts for an already-loaded message", () async {
++      final mockLoadService = MockSessionDetailLoadService();
++      final refresh = Completer<SessionDetailLoadResult>();
++
++      MessagePart textPart({required String id, required String text}) => MessagePart.text(
++        id: id,
++        sessionID: _sessionId,
++        messageID: "message-1",
++        text: text,
++      );
++
++      SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
++        areOptionsStale: false,
++        bridgeQueuedPrompts: const [],
++        projectId: "project-1",
++        pluginId: "opencode",
++        supportsPromptAttachments: false,
++        messages: messages,
++        olderMessagesCursor: null,
++        pendingQuestions: const <PendingQuestion>[],
++        pendingPermissions: const <PendingPermission>[],
++        childSessions: const <Session>[],
++        statuses: const <String, SessionStatus>{},
++        agents: const <AgentInfo>[],
++        providerData: null,
++        commands: const <CommandInfo>[],
++        canonicalSessionTitle: null,
++        promptDefaults: null,
++        isRootSession: true,
++        isArchived: false,
++      );
++
++      when(
++        () => mockLoadService.load(
++          sessionId: _sessionId,
++          projectId: any(named: "projectId"),
++        ),
++      ).thenAnswer(
++        (_) async => SessionDetailLoadResult.loaded(
++          snapshot: snapshot(messages: [
++            MessageWithParts(
++              info: const Message.user(
++                promptId: null,
++                id: "message-1",
++                sessionID: _sessionId,
++                agent: "build",
++                time: MessageTime(created: 100, completed: null),
++              ),
++              parts: const [],
++            ),
++          ]),
++        ),
++      );
++      when(
++        () => mockLoadService.reload(
++          sessionId: _sessionId,
++          projectId: any(named: "projectId"),
++        ),
++      ).thenAnswer((_) => refresh.future);
++
++      final cubit = createCubit(loadService: mockLoadService);
++      await _awaitLoaded(cubit);
++
++      sessionEvents.add(
++        SesoriMessagePartUpdated(
++          part: textPart(id: "part-before-refresh", text: "stale"),
++        ),
++      );
++      await Future<void>.delayed(Duration.zero);
++
++      mockConnectionService.emitDataMayBeStale();
++      await untilCalled(
++        () => mockLoadService.reload(
++          sessionId: _sessionId,
++          projectId: any(named: "projectId"),
++        ),
++      );
++
++      sessionEvents.add(
++        SesoriMessagePartUpdated(
++          part: textPart(id: "part-during-refresh", text: "live"),
++        ),
++      );
++      await Future<void>.delayed(Duration.zero);
++
++      final snapshotPart = textPart(id: "part-before-refresh", text: "fresh snapshot");
++      refresh.complete(
++        SessionDetailLoadResult.loaded(
++          snapshot: snapshot(
++            messages: [
++              MessageWithParts(
++                info: const Message.user(
++                  promptId: null,
++                  id: "message-1",
++                  sessionID: _sessionId,
++                  agent: "build",
++                  time: MessageTime(created: 100, completed: null),
++                ),
++                parts: [snapshotPart],
++              ),
++            ],
++          ),
++        ),
++      );
++      await _awaitCondition(() {
++        final state = cubit.state;
++        return state is SessionDetailLoaded && !state.isRefreshing;
++      });
++
++      final parts = (cubit.state as SessionDetailLoaded).messages.single.parts;
++      expect(parts.whereType<MessagePartText>().map((part) => (part.id, part.text)), [
++        ("part-before-refresh", "fresh snapshot"),
++        ("part-during-refresh", "live"),
++      ]);
++    });
++
++    test("AUDIT: delta after refresh preserves the preceding streamed text", () async {
++      final mockLoadService = MockSessionDetailLoadService();
++      final refresh = Completer<SessionDetailLoadResult>();
++
++      MessagePart textPart({required String id, required String text}) => MessagePart.text(
++        id: id,
++        sessionID: _sessionId,
++        messageID: "message-1",
++        text: text,
++      );
++
++      SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
++        areOptionsStale: false,
++        bridgeQueuedPrompts: const [],
++        projectId: "project-1",
++        pluginId: "opencode",
++        supportsPromptAttachments: false,
++        messages: messages,
++        olderMessagesCursor: null,
++        pendingQuestions: const <PendingQuestion>[],
++        pendingPermissions: const <PendingPermission>[],
++        childSessions: const <Session>[],
++        statuses: const <String, SessionStatus>{},
++        agents: const <AgentInfo>[],
++        providerData: null,
++        commands: const <CommandInfo>[],
++        canonicalSessionTitle: null,
++        promptDefaults: null,
++        isRootSession: true,
++        isArchived: false,
++      );
++
++      when(
++        () => mockLoadService.load(
++          sessionId: _sessionId,
++          projectId: any(named: "projectId"),
++        ),
++      ).thenAnswer(
++        (_) async => SessionDetailLoadResult.loaded(
++          snapshot: snapshot(messages: [
++            MessageWithParts(
++              info: const Message.user(
++                promptId: null,
++                id: "message-1",
++                sessionID: _sessionId,
++                agent: "build",
++                time: MessageTime(created: 100, completed: null),
++              ),
++              parts: const [],
++            ),
++          ]),
++        ),
++      );
++      when(
++        () => mockLoadService.reload(
++          sessionId: _sessionId,
++          projectId: any(named: "projectId"),
++        ),
++      ).thenAnswer((_) => refresh.future);
++
++      final cubit = createCubit(loadService: mockLoadService);
++      await _awaitLoaded(cubit);
++      sessionEvents.add(const SesoriMessagePartDelta(
++        sessionID: _sessionId, messageID: "message-1", partID: "stream-part",
++        field: "text", delta: "before-",
++      ));
++      await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded && state.streamingText["stream-part"] == "before-", description: "first streaming flush");
++      mockConnectionService.emitDataMayBeStale();
++      await untilCalled(() => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")));
++      refresh.complete(SessionDetailLoadResult.loaded(snapshot: snapshot(messages: const [])));
++      await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).isRefreshing);
++      expect((cubit.state as SessionDetailLoaded).streamingText["stream-part"], "before-");
++      sessionEvents.add(const SesoriMessagePartDelta(
++        sessionID: _sessionId, messageID: "message-1", partID: "stream-part",
++        field: "text", delta: "after",
++      ));
++      await Future<void>.delayed(const Duration(milliseconds: 80));
++      expect((cubit.state as SessionDetailLoaded).streamingText["stream-part"], "before-after");
++    });
++
+     test("keeps a finalized part that arrives before its message envelope", () async {
+       final mockLoadService = MockSessionDetailLoadService();
+       when(
