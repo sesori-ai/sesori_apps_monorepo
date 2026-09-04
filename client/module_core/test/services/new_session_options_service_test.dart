@@ -5,7 +5,6 @@ import "package:sesori_dart_core/src/repositories/models/session_options_reposit
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
 import "package:sesori_dart_core/src/services/models/new_session_selection_intent.dart";
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
-import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -22,7 +21,6 @@ void main() {
       repository = MockSessionRepository();
       service = NewSessionOptionsService(
         sessionRepository: repository,
-        defaultModelSelector: const DefaultModelSelector(),
       );
     });
 

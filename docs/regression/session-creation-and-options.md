@@ -20,6 +20,16 @@ variant, and worktree mode, and creating the session with its first input.
   default-first, and a model that offers variants always has one selected: the
   agent's declared variant when valid, otherwise the first available. Selecting a
   variant is therefore a switch between named levels, never a reset to unset.
+- One rule decides what a selection reconciles to, on every surface. A model the
+  backend reports unavailable is treated as absent everywhere: it is neither
+  selectable nor a source of variants, whether the screen is New Session or a
+  live session, and an agent's declared model is validated against the catalog
+  before it is adopted. Hidden agents and sub-agents are never picker entries, a
+  withdrawn agent falls back to the first selectable one, and the variant list a
+  screen shows always belongs to the model it currently has selected. A live
+  session may still retain a model the catalog stopped advertising — its own
+  transcript's, or the one already on screen — so a catalog change never pulls a
+  running session's model out from under it.
 - After a new session and its first prompt or command are accepted, the bridge
   remembers the complete agent, model, and effort selection per plugin. The next
   New Session screen uses it as the prefill across projects for that plugin after
@@ -214,6 +224,10 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 
 - Options are empty or stale where a discovery failure should be an explicit
   error, or a partial observation overwrites a complete cache.
+- A model the backend reports unavailable is selectable or offers variants on
+  one surface but not another, an agent's declared model is adopted without
+  being checked against the catalog, or a screen's variant list describes a
+  model it no longer has selected.
 - A successful creation does not become the next per-plugin prefill, a failed
   creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
@@ -293,7 +307,9 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`
-- Client: `client/module_core/lib/src/services/new_session_options_service.dart`,
+- Client: `client/module_core/lib/src/services/session_selection_calculator.dart`
+  (the single owner of selection reconciliation),
+  `client/module_core/lib/src/services/new_session_options_service.dart`,
   `client/module_core/lib/src/services/session_detail_load_service.dart`,
   `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`,
   `client/module_app_ui/lib/src/features/new_session/`,

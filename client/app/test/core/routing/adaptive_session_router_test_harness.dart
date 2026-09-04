@@ -253,7 +253,6 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     getIt.registerSingleton<ConnectionService>(connectionService);

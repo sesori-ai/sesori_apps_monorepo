@@ -248,7 +248,12 @@ defaults and queued client sends coherent.
   transcript model before falling back to agent or catalog defaults. The
   transcript model remains authoritative when a retained provider cache does
   not list it, so a terminal-imported session cannot silently resume on a
-  different provider.
+  different provider. The selection already on screen is retained the same way,
+  so a catalog change does not pull a model out from under the user mid-session.
+  Everything the catalog is asked to supply must be something it still
+  advertises as available: persisted defaults, an agent's declared model, and a
+  queued prompt's model are each validated before being adopted, so an agent
+  naming a model this catalog does not carry does not put it in the composer.
 - The bridge owns accepted-but-not-yet-visible prompts. An entry appears in the
   session snapshot and full-list `session.queued-prompts` events, survives
   leaving the screen, locking the phone, and reconnecting, and is visible to

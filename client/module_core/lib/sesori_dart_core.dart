@@ -193,6 +193,7 @@ export "src/services/project_viewing_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";
 export "src/services/session_list_service.dart";
+export "src/services/session_selection_calculator.dart";
 export "src/services/session_unseen_tracker.dart";
 export "src/services/session_viewing_service.dart";
 export "src/services/sse_event_tracker.dart";

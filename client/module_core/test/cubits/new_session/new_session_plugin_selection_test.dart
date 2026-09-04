@@ -17,7 +17,6 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
-import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -57,7 +56,6 @@ final class _AggregateTestOptionsService({required MockSessionRepository session
   this
     : super(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       );
 
   @override
@@ -787,7 +785,6 @@ void main() {
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(
           sessionRepository: sessionRepository,
-          defaultModelSelector: const DefaultModelSelector(),
         ),
       );
       addTearDown(cubit.close);
@@ -845,7 +842,6 @@ void main() {
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(
           sessionRepository: sessionRepository,
-          defaultModelSelector: const DefaultModelSelector(),
         ),
       );
       addTearDown(cubit.close);
@@ -940,7 +936,6 @@ void main() {
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(
           sessionRepository: sessionRepository,
-          defaultModelSelector: const DefaultModelSelector(),
         ),
       );
       addTearDown(cubit.close);
@@ -988,7 +983,6 @@ void main() {
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(
           sessionRepository: sessionRepository,
-          defaultModelSelector: const DefaultModelSelector(),
         ),
       );
       addTearDown(cubit.close);
@@ -1042,7 +1036,6 @@ void main() {
       final cubit = buildCubit(
         optionsService: NewSessionOptionsService(
           sessionRepository: sessionRepository,
-          defaultModelSelector: const DefaultModelSelector(),
         ),
       );
       addTearDown(cubit.close);

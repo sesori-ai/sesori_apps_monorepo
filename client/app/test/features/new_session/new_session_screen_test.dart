@@ -442,7 +442,6 @@ void main() {
     GetIt.instance.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
