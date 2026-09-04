@@ -959,38 +959,6 @@ String toString() {
 /// @nodoc
 
 
-class PluginAuthenticationPresentationUpdateRequired implements PluginAuthenticationPresentationError {
-  const PluginAuthenticationPresentationUpdateRequired();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationUpdateRequired);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'PluginAuthenticationPresentationError.updateRequired()';
-}
-
-
-}
-
-
-
-
-/// @nodoc
-
-
 class PluginAuthenticationPresentationConflict implements PluginAuthenticationPresentationError {
   const PluginAuthenticationPresentationConflict({required this.conflict});
   

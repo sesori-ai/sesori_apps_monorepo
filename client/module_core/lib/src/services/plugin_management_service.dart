@@ -196,21 +196,19 @@ class PluginManagementService({
     }
 
     switch (result) {
-      case PluginAuthenticationStartChallenge(:final PluginAuthenticationBrowserChallenge challenge)
-          when _validatedAuthenticationRedirect(
-                rawInput: challenge.expectedCallbackUri.toString(),
-                challenge: challenge,
-              ) ==
-              null:
-        _forgetAuthentication(pluginId: pluginId);
-        return PluginAuthenticationStartResult.failed(
-          failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
-        );
-      case PluginAuthenticationStartChallenge(challenge: PluginAuthenticationUnsupportedChallenge()):
-        _forgetAuthentication(pluginId: pluginId);
-        return const PluginAuthenticationStartResult.failed(
-          failure: PluginAuthenticationFailure.updateRequired(),
-        );
+      case PluginAuthenticationStartChallenge(:final challenge)
+          when challenge is PluginAuthenticationUnsupportedChallenge ||
+              challenge is PluginAuthenticationBrowserChallenge &&
+                  _validatedAuthenticationRedirect(
+                        rawInput: challenge.expectedCallbackUri.toString(),
+                        challenge: challenge,
+                      ) ==
+                      null:
+        const unsupportedChallenge = PluginAuthenticationUnsupportedChallenge();
+        _publishAuthenticationChallenge(pluginId: pluginId, challenge: unsupportedChallenge);
+        final pending = _pendingAuthenticationOutcomes.remove(pluginId);
+        if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+        return const PluginAuthenticationStartResult.challenge(challenge: unsupportedChallenge);
       case PluginAuthenticationStartChallenge(:final challenge):
         _publishAuthenticationChallenge(pluginId: pluginId, challenge: challenge);
         final pending = _pendingAuthenticationOutcomes.remove(pluginId);

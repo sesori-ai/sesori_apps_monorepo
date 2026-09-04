@@ -68,7 +68,6 @@ sealed class PluginManagementActionState with _$PluginManagementActionState {
 sealed class PluginAuthenticationPresentationError with _$PluginAuthenticationPresentationError {
   const factory notFound() = PluginAuthenticationPresentationNotFound;
   const factory unsupported() = PluginAuthenticationPresentationUnsupported;
-  const factory updateRequired() = PluginAuthenticationPresentationUpdateRequired;
   const factory conflict({
     required PluginAuthenticationConflict conflict,
   }) = PluginAuthenticationPresentationConflict;
@@ -83,6 +82,8 @@ sealed class const PluginAuthenticationChallengePresentation() {
       PluginAuthenticationDeviceCodePresentation;
   const factory browser({required PluginAuthenticationBrowserChallenge challenge}) =
       PluginAuthenticationBrowserPresentation;
+  const factory updateRequired({required PluginAuthenticationUnsupportedChallenge challenge}) =
+      PluginAuthenticationUpdateRequiredPresentation;
   const factory invalidRedirect({required PluginAuthenticationBrowserChallenge challenge}) =
       PluginAuthenticationInvalidRedirectPresentation;
   const factory redirectSubmitting({required PluginAuthenticationBrowserChallenge challenge}) =
@@ -98,6 +99,9 @@ final class const PluginAuthenticationDeviceCodePresentation({
 }) extends PluginAuthenticationChallengePresentation;
 final class const PluginAuthenticationBrowserPresentation({
   @override required final PluginAuthenticationBrowserChallenge challenge,
+}) extends PluginAuthenticationChallengePresentation;
+final class const PluginAuthenticationUpdateRequiredPresentation({
+  @override required final PluginAuthenticationUnsupportedChallenge challenge,
 }) extends PluginAuthenticationChallengePresentation;
 final class const PluginAuthenticationInvalidRedirectPresentation({
   @override required final PluginAuthenticationBrowserChallenge challenge,

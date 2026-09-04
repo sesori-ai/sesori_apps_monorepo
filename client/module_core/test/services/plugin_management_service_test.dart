@@ -99,14 +99,15 @@ void main() {
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 
-    test("requires an update for unknown challenges and clears operations on reconnect", () async {
+    test("retains unknown challenges for cancellation and clears them on reconnect", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
           const PluginAuthenticationStartResult.challenge(
             challenge: PluginAuthenticationUnsupportedChallenge(),
           ),
-        );
+        )
+        ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
         pluginRepository: repository,
@@ -116,17 +117,11 @@ void main() {
       addTearDown(service.onDispose);
       await _waitFor(() => service.snapshots.hasValue);
 
-      expect(
-        await service.startAuthentication(pluginId: "codex"),
-        isA<PluginAuthenticationStartFailed>().having(
-          (result) => result.failure,
-          "failure",
-          isA<PluginAuthenticationFailureUpdateRequired>(),
-        ),
-      );
-      expect(service.authenticationChallenges.value, isEmpty);
+      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["codex"], isA<PluginAuthenticationUnsupportedChallenge>());
+      expect(await service.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelSuccess>());
       connection.emitStatus(const ConnectionDisconnected());
-      expect(service.authenticationChallenges.value, isEmpty);
+      await _waitFor(() => service.authenticationChallenges.value.isEmpty);
     });
 
     test("fast terminal settles authorship before the start response returns", () async {

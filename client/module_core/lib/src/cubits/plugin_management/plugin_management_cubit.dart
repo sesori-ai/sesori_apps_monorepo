@@ -72,7 +72,9 @@ class PluginManagementCubit({
             PluginAuthenticationChallengePresentation.deviceCode(challenge: challenge),
           final PluginAuthenticationBrowserChallenge challenge =>
             PluginAuthenticationChallengePresentation.browser(challenge: challenge),
-          PluginAuthenticationUnsupportedChallenge() || null => null,
+          final PluginAuthenticationUnsupportedChallenge challenge =>
+            PluginAuthenticationChallengePresentation.updateRequired(challenge: challenge),
+          null => null,
         };
         if (presentation == null) {
           _setAuthenticationFailure(
@@ -265,7 +267,6 @@ class PluginManagementCubit({
         conflict: conflict,
       ),
       PluginAuthenticationFailureUnsupported() => const PluginAuthenticationPresentationError.unsupported(),
-      PluginAuthenticationFailureUpdateRequired() => const PluginAuthenticationPresentationError.updateRequired(),
       PluginAuthenticationFailureUncertain() => const PluginAuthenticationPresentationError.uncertain(),
       PluginAuthenticationFailureRequest(:final error) => PluginAuthenticationPresentationError.request(error: error),
     };

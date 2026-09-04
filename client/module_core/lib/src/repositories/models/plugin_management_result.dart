@@ -62,9 +62,6 @@ final class const PluginManagementMutationResultFailure({required final ApiError
     extends PluginManagementMutationResult;
 
 /// Why a plugin authentication start or cancel did not succeed.
-///
-/// Both commands share transport failures. Start additionally reports an
-/// update-required failure when this client cannot represent the challenge.
 sealed class const PluginAuthenticationFailure() {
   /// The bridge does not know this plugin.
   const factory notFound() = PluginAuthenticationFailureNotFound;
@@ -76,9 +73,6 @@ sealed class const PluginAuthenticationFailure() {
 
   /// This plugin does not support interactive authentication.
   const factory unsupported() = PluginAuthenticationFailureUnsupported;
-
-  /// The bridge returned a challenge introduced after this client version.
-  const factory updateRequired() = PluginAuthenticationFailureUpdateRequired;
 
   /// The request may or may not have reached the bridge, so the caller must
   /// not assume either outcome.
@@ -94,8 +88,6 @@ final class const PluginAuthenticationFailureConflict({required final PluginAuth
     extends PluginAuthenticationFailure;
 
 final class const PluginAuthenticationFailureUnsupported() extends PluginAuthenticationFailure;
-
-final class const PluginAuthenticationFailureUpdateRequired() extends PluginAuthenticationFailure;
 
 final class const PluginAuthenticationFailureUncertain() extends PluginAuthenticationFailure;
 

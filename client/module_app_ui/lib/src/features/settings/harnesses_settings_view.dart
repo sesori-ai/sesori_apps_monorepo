@@ -1001,9 +1001,11 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
     };
     final browserChallenge = operationChallenge is PluginAuthenticationBrowserChallenge ? operationChallenge : null;
-    final securityDescription = browserChallenge == null
-        ? loc.harnessAuthenticationSecurityDescription
-        : loc.harnessAuthenticationBrowserInstructions;
+    final securityDescription = switch (operationChallenge) {
+      PluginAuthenticationDeviceCodeChallenge() => loc.harnessAuthenticationSecurityDescription,
+      PluginAuthenticationBrowserChallenge() => loc.harnessAuthenticationBrowserInstructions,
+      PluginAuthenticationUnsupportedChallenge() => loc.harnessAuthenticationUpdateRequired,
+    };
     final redirectPresentation = challenge is PluginAuthenticationPresentationChallenge ? challenge.challenge : null;
     final canSubmitRedirect = browserChallenge != null &&
         redirectPresentation is! PluginAuthenticationRedirectSubmittingPresentation &&
@@ -1041,7 +1043,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
                 ),
               ],
             )
-          else
+          else if (browserChallenge != null)
             PregoInputField(
               key: const Key("harness_authentication_redirect_input"),
               controller: _redirectController,
@@ -1051,7 +1053,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
               autocorrect: false,
               keyboardType: TextInputType.url,
               textInputAction: TextInputAction.done,
-              onSubmitted: (_) => unawaited(_submitRedirect()),
+              onSubmitted: canSubmitRedirect ? (_) => unawaited(_submitRedirect()) : null,
             ),
           const SizedBox(height: PregoSpacing.xl),
           if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState ||
@@ -1090,7 +1092,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
               PluginAuthenticationPresentationCancellingUncertain() => null,
               PluginAuthenticationPresentationChallenge() ||
               PluginAuthenticationPresentationBrowserLaunchFailedState() =>
-                context.read<PluginManagementCubit>().launchAuthenticationBrowser,
+                operationChallenge is PluginAuthenticationUnsupportedChallenge
+                    ? null
+                    : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
               PluginAuthenticationPresentationIdle() ||
               PluginAuthenticationPresentationStarting() ||
               PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
@@ -1148,7 +1152,6 @@ String _authenticationErrorDescription({
 }) => switch (error) {
   PluginAuthenticationPresentationNotFound() => context.loc.harnessAuthenticationNotFound,
   PluginAuthenticationPresentationUnsupported() => context.loc.harnessAuthenticationUnsupported,
-  PluginAuthenticationPresentationUpdateRequired() => context.loc.harnessAuthenticationUpdateRequired,
   PluginAuthenticationPresentationConflict() => context.loc.harnessAuthenticationConflict,
   PluginAuthenticationPresentationUncertain() => context.loc.harnessAuthenticationUncertain,
   PluginAuthenticationPresentationInvalidChallenge() => context.loc.harnessAuthenticationInvalidChallenge,
