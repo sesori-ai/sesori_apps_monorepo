@@ -390,6 +390,90 @@ void main() {
       expect(notices, [SessionDetailNotice.promptOptionsUpdated]);
     });
 
+    test("an options update landing mid-recovery still retries the queued submission", () async {
+      // The forced refresh's own commit announces itself, so the cache-only
+      // reload it triggers can apply before the refresh's response returns.
+      // Recovery must still count as succeeded — the catalog on screen is the
+      // one it was waiting for.
+      final staleError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "unsupported Claude agent",
+          ).toJson(),
+        ),
+      );
+      final forcedGate = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer((_) => forcedGate.future);
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => _freshClaudeOptions());
+      var sendCount = 0;
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: "hello",
+          attachments: const [],
+          agent: any(named: "agent"),
+          model: null,
+          variant: null,
+          command: null,
+        ),
+      ).thenAnswer((_) async {
+        sendCount++;
+        return sendCount == 1 ? ApiResponse.error(staleError) : ApiResponse.success(null);
+      });
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Default", description: "Default", model: null, mode: AgentMode.primary),
+        ],
+        promptDefaults: const SessionPromptDefaults(agent: "Default", model: null),
+      );
+
+      unawaited(
+        cubit.sendMessage(
+          text: "hello",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await _awaitCondition(() => sendCount == 1);
+      // The commit behind the still-pending forced refresh reaches this client.
+      globalEvents.add(
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+      );
+      await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent == "Agent");
+      forcedGate.complete(_freshClaudeOptions());
+      await _awaitCondition(() => sendCount == 2);
+
+      expect(sendCount, 2);
+      verify(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: "hello",
+          attachments: const [],
+          agent: "Agent",
+          model: null,
+          variant: null,
+          command: null,
+        ),
+      ).called(1);
+    });
+
     test("parks the prompt after one stale-options recovery attempt", () async {
       final staleError = ApiError.nonSuccessCode(
         errorCode: 409,

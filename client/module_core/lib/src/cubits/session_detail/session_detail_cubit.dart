@@ -112,9 +112,11 @@ class SessionDetailCubit(
   /// before that must not put the catalog it fetched back on screen.
   int _optionsGeneration = 0;
 
-  /// Bumped when an options reload is requested, so two overlapping reads
-  /// cannot let the older answer land last and undo the newer one.
+  /// Bumped when an options reload is requested, and recorded when one applies,
+  /// so two overlapping reads cannot let the older answer land last and undo the
+  /// newer one.
   int _optionsReloadRequest = 0;
+  int _lastAppliedOptionsReload = 0;
   Timer? _eventRefreshCooldown;
   bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
@@ -1759,9 +1761,11 @@ class SessionDetailCubit(
         mode: mode,
       );
       if (isClosed) return false;
-      // A reload requested after this one read the cache more recently, so this
-      // answer is already history and must not replace what it found.
-      if (requestGeneration != _optionsReloadRequest) return false;
+      // A reload requested after this one has already applied, so it read the
+      // cache more recently and this answer must not replace it. The caller
+      // still succeeded: what is on screen is at least as fresh as what this
+      // read fetched, which is exactly what a stale-send recovery waits for.
+      if (_lastAppliedOptionsReload > requestGeneration) return true;
       final latest = state;
       if (latest is! SessionDetailLoaded) return false;
 
@@ -1819,6 +1823,7 @@ class SessionDetailCubit(
           ),
         );
         _optionsGeneration++;
+        _lastAppliedOptionsReload = requestGeneration;
         if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
         return true;
       }

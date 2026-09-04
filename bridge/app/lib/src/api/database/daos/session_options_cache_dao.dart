@@ -23,16 +23,20 @@ class SessionOptionsCacheDao({required AppDatabase database}) extends DatabaseAc
 
   /// Project identifiers this plugin currently holds a project-scoped snapshot
   /// for. A plugin-scoped plugin has no such rows and yields nothing.
+  ///
+  /// Projects to the id column alone: the caller refreshes each project by id
+  /// and never reads the row, so selecting whole rows would decode every cached
+  /// catalog payload for nothing.
   Future<List<String>> getCachedProjectIds({required String pluginId}) async {
-    final rows =
-        await (select(sessionOptionsCacheTable)..where(
-              (table) =>
-                  table.pluginId.equals(pluginId) &
-                  table.scope.equalsValue(PluginSessionOptionsScope.project) &
-                  table.projectId.isNotNull(),
-            ))
-            .get();
-    return [for (final row in rows) ?row.projectId];
+    final query = selectOnly(sessionOptionsCacheTable)
+      ..addColumns([sessionOptionsCacheTable.projectId])
+      ..where(
+        sessionOptionsCacheTable.pluginId.equals(pluginId) &
+            sessionOptionsCacheTable.scope.equalsValue(PluginSessionOptionsScope.project) &
+            sessionOptionsCacheTable.projectId.isNotNull(),
+      );
+    final rows = await query.get();
+    return [for (final row in rows) ?row.read(sessionOptionsCacheTable.projectId)];
   }
 
   Future<void> deleteRow({

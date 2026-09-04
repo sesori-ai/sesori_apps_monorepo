@@ -620,6 +620,8 @@ class const CodexPluginDescriptor({
       displayName: "Codex",
       logContext: "codex",
       interruptOwnedOnly: false,
+      // Codex has no first-call latency worth paying down before it is asked.
+      onStartWarmUp: null,
     );
 
     // Await cold-start (the WebSocket connect + `initialize` handshake). A

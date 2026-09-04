@@ -399,16 +399,13 @@ class OpenCodePlugin._({
   /// measured between one and thirty seconds on the first call per server
   /// process, then milliseconds. Paying that here means a later options
   /// discovery reads an already-indexed catalog. The result is discarded — only
-  /// the indexing it forces matters — and a failure is left to the real request
-  /// to report.
+  /// the indexing it forces matters. A failure propagates to the runtime, which
+  /// logs it as a warning with its error and stack trace and carries on; nothing
+  /// here would add to that.
   @override
   Future<void> warmUpCommandCatalog() async {
     if (_disposed) return;
-    try {
-      await _service.getCommands(projectId: null);
-    } on Object catch (error, stackTrace) {
-      Log.d("[opencode] command catalog warm-up failed: $error\n$stackTrace");
-    }
+    await _service.getCommands(projectId: null);
   }
 
   @override

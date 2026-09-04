@@ -90,6 +90,7 @@ ManagedRuntimeBridgePlugin<String, _Api> _plugin({
   required PluginStatusController status,
   required String? ownedRecord,
   bool interruptOwnedOnly = false,
+  Future<void> Function()? onStartWarmUp,
 }) {
   return ManagedRuntimeBridgePlugin<String, _Api>(
     api: api,
@@ -106,6 +107,7 @@ ManagedRuntimeBridgePlugin<String, _Api> _plugin({
     displayName: "Test",
     logContext: "test",
     interruptOwnedOnly: interruptOwnedOnly,
+    onStartWarmUp: onStartWarmUp,
   );
 }
 

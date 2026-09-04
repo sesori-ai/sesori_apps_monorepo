@@ -664,6 +664,7 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
+      sessionOptionsService: sessionOptionsService,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       completionListener: completionListener,
@@ -767,6 +768,7 @@ class OrchestratorSession._({
     required final ChatHistoryService _chatHistoryService,
     required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
     required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+    required final SessionOptionsService _sessionOptionsService,
     required final SessionEventDispatcher _sessionEventDispatcher,
     required final PluginRuntime _pluginRuntime,
     required final CompletionPushListener _completionListener,
@@ -1177,6 +1179,9 @@ class OrchestratorSession._({
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
+    // After its listeners, so no refresh they were still draining announces
+    // onto a closed stream.
+    await attempt(_sessionOptionsService.dispose);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);
