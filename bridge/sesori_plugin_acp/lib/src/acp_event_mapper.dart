@@ -587,6 +587,12 @@ class AcpEventMapper({
     );
   }
 
+  /// Whether [notification] must remain behind an accepted prompt whose frame
+  /// is still being written. Standard updates always do; a harness lifecycle
+  /// extension that can synchronously follow prompt receipt overrides this.
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == AcpMethods.sessionUpdate;
+
   /// Hook for non-`session/update` notifications (harness extensions such as
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
   List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
@@ -610,6 +616,7 @@ class AcpEventMapper({
       spawn: spawn,
       directory: directory,
     );
+    if (result == null) return const [];
     setSessionProject(spawn.childSessionId, directory);
     return _childTileEvents(result);
   }

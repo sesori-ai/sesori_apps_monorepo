@@ -373,13 +373,16 @@ abstract class AcpPlugin({
   /// (see `CursorApprovalRegistry`), so both wire shapes share one mapping path.
   void handleAgentNotification(AcpNotification notification) {
     final sid = notification.params["sessionId"];
+    if (sid is String && childSessionTracker.isDeleted(sessionId: sid)) return;
     if (sid is String && _suppressedSessions.contains(sid) && isResumeReplayNotification(notification)) {
       // Replay from an in-flight resume-load — drop so old history does not
       // re-stream into the live conversation or reconstruct stale live state.
       _suppressedReplayCounts[sid] = (_suppressedReplayCounts[sid] ?? 0) + 1;
       return;
     }
-    if (notification.method == AcpMethods.sessionUpdate && sid is String && _isPromptFrameWriting(sessionId: sid)) {
+    if (sid is String &&
+        eventMapper.shouldBufferDuringPromptWrite(notification: notification) &&
+        _isPromptFrameWriting(sessionId: sid)) {
       _promptWriteNotifications.putIfAbsent(sid, () => []).add(notification);
       return;
     }

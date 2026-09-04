@@ -66,6 +66,37 @@ class _TimestampingEventMapper({
       PluginMessageTime(created: createdAtMs, completed: null);
 }
 
+class _PromptOrderedChildMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  static const childMethod = "test/subagent";
+
+  @override
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == childMethod || super.shouldBufferDuringPromptWrite(notification: notification);
+
+  @override
+  List<BridgeSseEvent> mapExtension(AcpNotification notification) {
+    if (notification.method != childMethod) return super.mapExtension(notification);
+    final sessionId = notification.params["sessionId"];
+    final childSessionId = notification.params["childSessionId"];
+    if (sessionId is! String || childSessionId is! String) return const [];
+    return mapChildSpawned(
+      sessionId: sessionId,
+      spawn: AcpChildSpawn(
+        childSessionId: childSessionId,
+        description: "Child",
+        agent: pluginId,
+        prompt: "Inspect",
+        isBackground: true,
+      ),
+    );
+  }
+}
+
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
   final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
 
@@ -444,6 +475,66 @@ void main() {
       final response = fake.written.singleWhere((frame) => frame["id"] == 92);
       expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
 
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
+      final mapper = _PromptOrderedChildMapper(
+        launchDirectory: cwd,
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
+      );
+      final orderedPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
+        eventMapper: mapper,
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = orderedPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "start a child");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": _PromptOrderedChildMapper.childMethod,
+        "params": {"sessionId": sessionId, "childSessionId": "child"},
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSseSessionCreated>(), isEmpty);
+
+      flush.complete();
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSseSessionCreated>().isEmpty; index++) {
+        await pump();
+      }
+
+      final userIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info["role"] == "user",
+      );
+      final childIndex = emitted.indexWhere(
+        (event) => event is BridgeSseSessionCreated && event.info["id"] == "child",
+      );
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(childIndex, greaterThan(userIndex));
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 

@@ -227,7 +227,9 @@ defaults and queued client sends coherent.
   and form requests carry explicit session IDs.
 - DeepSeek maps text, reasoning, ordinary tools, plans, title/config updates,
   compaction completion, and bounded warning errors through standard ACP plus
-  its narrow status and sub-agent extensions. Retry and compaction-start
+  its narrow status and sub-agent extensions. Sub-agent lifecycle frames that
+  arrive while the launching prompt is still being written remain buffered
+  until the accepted user message is published. Retry and compaction-start
   notifications are validated but intentionally emit no shared event because
   DeepSeek does not supply the timing required by the shared retry state and the
   active turn is already busy. A protocol-v2 sub-agent start keeps the root and

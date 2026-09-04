@@ -84,27 +84,51 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
   List<PluginMessageWithParts> alignReplayChildIdentities({required List<PluginMessageWithParts> messages}) {
     final aligned = <PluginMessageWithParts>[];
     for (final message in messages) {
-      final originalParts = <PluginMessagePart>[];
-      final childParts = <PluginMessagePart>[];
+      var runParts = <PluginMessagePart>[];
+      var runMessageId = message.info.id;
+      var runSessionId = message.info.sessionID;
       for (final part in message.parts) {
-        (part is PluginMessagePartSubtask && part.messageID != message.info.id ? childParts : originalParts).add(
-          part,
-        );
+        final isChildEnvelope = part is PluginMessagePartSubtask && part.messageID != message.info.id;
+        final partMessageId = isChildEnvelope ? part.messageID : message.info.id;
+        final partSessionId = isChildEnvelope ? part.sessionID : message.info.sessionID;
+        if (runParts.isNotEmpty && (partMessageId != runMessageId || partSessionId != runSessionId)) {
+          aligned.add(
+            _alignedReplayRun(
+              message: message,
+              messageId: runMessageId,
+              sessionId: runSessionId,
+              parts: runParts,
+            ),
+          );
+          runParts = [];
+        }
+        runMessageId = partMessageId;
+        runSessionId = partSessionId;
+        runParts.add(part);
       }
-      if (originalParts.isNotEmpty) {
-        aligned.add(PluginMessageWithParts(info: message.info, parts: originalParts));
-      }
-      for (final part in childParts) {
+      if (runParts.isNotEmpty) {
         aligned.add(
-          PluginMessageWithParts(
-            info: message.info.copyWith(id: part.messageID, sessionID: part.sessionID),
-            parts: [part],
+          _alignedReplayRun(
+            message: message,
+            messageId: runMessageId,
+            sessionId: runSessionId,
+            parts: runParts,
           ),
         );
       }
     }
     return aligned;
   }
+
+  PluginMessageWithParts _alignedReplayRun({
+    required PluginMessageWithParts message,
+    required String messageId,
+    required String sessionId,
+    required List<PluginMessagePart> parts,
+  }) => PluginMessageWithParts(
+    info: message.info.copyWith(id: messageId, sessionID: sessionId),
+    parts: parts,
+  );
 
   String? _bounded(String? value) =>
       value == null || value.isEmpty ? null : String.fromCharCodes(value.runes.take(maxToolOutputLength));

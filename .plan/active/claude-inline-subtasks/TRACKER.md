@@ -569,7 +569,7 @@ unbounded deferred notification list with one bounded merged snapshot, and
 moved optional replay-shape validation into the DTO factories shared by direct
 and history parsing.
 
-A final Codex pass found that standard ACP permissions nest their tool-call ID,
+A subsequent Codex pass found that standard ACP permissions nest their tool-call ID,
 that a live child did not populate the plugin's separate directory cache, and
 that naively unioning deferred `content` with `rawOutput` lost chronological
 precedence. Server-request attribution now carries a typed ambiguous result all
@@ -577,9 +577,17 @@ the way to cancellation, live descendant catalogs read the mapper's tracked
 root project, and the bounded snapshot makes the newest content representation
 authoritative.
 
+The next review found three additional ordering gaps—mixed replay parts,
+update-before-call delivery, and lifecycle frames racing the accepted user
+message—plus stale lifecycle resurrection after subtree deletion. Replay now
+splits into order-preserving identity runs, identifiable reordered delegation
+updates enter the same bounded accumulator, lifecycle events share prompt-write
+ordering, and process-scoped tracker tombstones reject late session and child
+frames until connection reset.
+
 DeepSeek tile verification on 2026-09-04: protocol v2 vendoring and codegen
-completed; `dart analyze --fatal-infos` and 83 tests passed in
-`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 310 tests passed in
+completed; `dart analyze --fatal-infos` and 87 tests passed in
+`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 311 tests passed in
 `sesori_plugin_acp`; `dart analyze --fatal-infos` and 83 tests passed in
 `sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.

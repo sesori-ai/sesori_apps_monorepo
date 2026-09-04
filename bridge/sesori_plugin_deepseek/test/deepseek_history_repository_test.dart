@@ -91,6 +91,43 @@ void main() {
     await tracker.dispose();
   });
 
+  test("history preserves ordinary part order around a child-linked tile", () async {
+    final tracker = AcpChildSessionTracker();
+    final repository = _repository(
+      api: _HistoryApi([
+        DeepSeekTerminalHistoryResponseDto(
+          updates: [
+            _update("s1", "agent_message_chunk", "assistant", "before"),
+            _subagentUpdate(
+              sessionId: "s1",
+              childSessionId: "child-1",
+              sessionUpdate: "tool_call",
+              ended: null,
+            ),
+            _update("s1", "agent_message_chunk", "assistant", "after"),
+          ],
+        ),
+      ]),
+      childSessions: tracker,
+    );
+
+    final messages = await repository.getMessages(
+      client: _unusedClient(),
+      sessionId: "s1",
+    );
+
+    expect(messages, hasLength(3));
+    expect(messages.map((message) => message.info.id), [
+      "s1-massistant-assistant",
+      "s1-subagent-child-1",
+      "s1-massistant-assistant",
+    ]);
+    expect((messages[0].parts.single as PluginMessagePartText).text, "before");
+    expect(messages[1].parts.single, isA<PluginMessagePartSubtask>());
+    expect((messages[2].parts.single as PluginMessagePartText).text, "after");
+    await tracker.dispose();
+  });
+
   test("a running replay and later live end address the same child tile", () async {
     final tracker = AcpChildSessionTracker();
     final liveStart = tracker.spawn(
@@ -103,7 +140,7 @@ void main() {
         isBackground: true,
       ),
       directory: "/project",
-    );
+    )!;
     final liveTile = liveStart.events.whereType<BridgeSseMessagePartUpdated>().single.part;
     final repository = _repository(
       api: _HistoryApi([

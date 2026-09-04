@@ -49,6 +49,11 @@ final class AcpChildSessionTracker() {
   final Map<String, List<_Child>> _byRoot = {};
   final Map<String, _Child> _byChild = {};
 
+  /// Deleted roots and child subtrees for the current agent process. Late
+  /// lifecycle frames cannot recreate them; a process reset drains that old
+  /// event source and [clear] releases the tombstones.
+  final Set<String> _deletedSessionIds = {};
+
   /// Opaque backend-neutral work holds that keep a root active after a child
   /// terminal event and until its autonomous settlement turn completes. Each
   /// hold retains its originating child so deleting that child clears the
@@ -69,6 +74,9 @@ final class AcpChildSessionTracker() {
     }
   }
 
+  /// Whether [sessionId] was deleted from the current agent process.
+  bool isDeleted({required String sessionId}) => _deletedSessionIds.contains(sessionId);
+
   /// Whether [sessionId] is a child this tracker announced.
   bool isChild({required String sessionId}) => _byChild.containsKey(sessionId);
 
@@ -80,13 +88,17 @@ final class AcpChildSessionTracker() {
 
   /// Records that [spawn] started under [sessionId] (the parent as the harness
   /// reports it) and emits the child session, its busy status, and, when the
-  /// prompt is already known, the tile. [directory] is the root's project
-  /// directory; children never carry their own.
-  AcpChildTileResult spawn({
+  /// prompt is already known, the tile. Returns null for a late lifecycle
+  /// frame targeting a deleted parent or child. [directory] is the root's
+  /// project directory; children never carry their own.
+  AcpChildTileResult? spawn({
     required String sessionId,
     required AcpChildSpawn spawn,
     required String directory,
   }) {
+    if (_deletedSessionIds.contains(sessionId) || _deletedSessionIds.contains(spawn.childSessionId)) {
+      return null;
+    }
     final root = rootOf(sessionId: sessionId);
     final existing = _byChild[spawn.childSessionId];
     if (existing != null) {
@@ -321,9 +333,11 @@ final class AcpChildSessionTracker() {
   /// Drops every record of a deleted root or child subtree. Emits nothing:
   /// the sessions are gone.
   void forgetSession({required String sessionId}) {
+    _deletedSessionIds.add(sessionId);
     final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
     if (children != null) {
+      _deletedSessionIds.addAll(children.map((child) => child.childSessionId));
       final hadActiveWork =
           children.any((child) => !child.status.isTerminal) || (removedRootHolds?.isNotEmpty ?? false);
       if (removedRootHolds?.isNotEmpty ?? false) _signalRootHoldChange(rootSessionId: sessionId);
@@ -343,6 +357,7 @@ final class AcpChildSessionTracker() {
     }
     final removedChildren = [child, ..._descendantsOf(sessionId: sessionId)];
     final removedChildIds = {for (final removedChild in removedChildren) removedChild.childSessionId};
+    _deletedSessionIds.addAll(removedChildIds);
     final siblings = _byRoot[child.rootSessionId];
     siblings?.removeWhere((candidate) => removedChildIds.contains(candidate.childSessionId));
     if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);
@@ -378,7 +393,7 @@ final class AcpChildSessionTracker() {
 
   /// Drops every record: the agent process that hosted the children is gone.
   void clear() {
-    if (_byChild.isEmpty && _byRoot.isEmpty && _rootHolds.isEmpty) return;
+    if (_byChild.isEmpty && _byRoot.isEmpty && _rootHolds.isEmpty && _deletedSessionIds.isEmpty) return;
     final affectedRoots = <String>{
       for (final entry in _byRoot.entries)
         if (entry.value.any((child) => !child.status.isTerminal)) entry.key,
@@ -388,6 +403,7 @@ final class AcpChildSessionTracker() {
     _byRoot.clear();
     _byChild.clear();
     _rootHolds.clear();
+    _deletedSessionIds.clear();
     for (final rootSessionId in affectedRoots) {
       _signalRootHoldChange(rootSessionId: rootSessionId);
       _notify(rootSessionId: rootSessionId);

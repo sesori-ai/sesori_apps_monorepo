@@ -93,7 +93,7 @@ void main() {
         ),
         directory: cwd,
       );
-      result.events.forEach(plugin.emitEvent);
+      result?.events.forEach(plugin.emitEvent);
     }
 
     /// The harness mapper's push: a child finished. Tracker-driven events reach
@@ -376,6 +376,25 @@ void main() {
       expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
       expect(plugin.childSessionTracker.childStatuses, isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      emitted.clear();
+      plugin.handleAgentNotification(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "c1",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "late"},
+            },
+          },
+        ),
+      );
+      spawnChild(root: "c1", childId: "late-grandchild");
+      spawnChild(root: sessionId, childId: "c1");
+      await pump();
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(emitted, isEmpty);
     });
 
     test("deleting the root drops its children from the statuses", () async {

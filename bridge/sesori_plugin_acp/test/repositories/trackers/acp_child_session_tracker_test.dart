@@ -34,7 +34,7 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/repo",
-      );
+      )!;
       expect(result.renderSessionId, "root");
       expect(result.messageId, "root-subagent-child");
       expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
@@ -72,7 +72,7 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child", prompt: "p", isBackground: true),
         directory: "/r",
-      );
+      )!;
       expect(result.opensMessage, isTrue);
       expect(result.events, hasLength(3));
       expect(_subtaskPart(result.events[2]).prompt, "p");
@@ -262,7 +262,7 @@ void main() {
         sessionId: "child",
         spawn: _spawn(childId: "grandchild", prompt: "nested"),
         directory: "/r",
-      );
+      )!;
       expect(nested.renderSessionId, "child");
       expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "child");
       final tile = _subtaskPart(nested.events.last);
@@ -310,6 +310,33 @@ void main() {
       expect(tracker.busyChildIds(sessionId: "root"), {"sibling"});
       expect(tracker.isChild(sessionId: "grandchild"), isFalse);
       expect(tracker.isChild(sessionId: "great-grandchild"), isFalse);
+      expect(
+        tracker.spawn(
+          sessionId: "child",
+          spawn: _spawn(childId: "late-grandchild"),
+          directory: "/r",
+        ),
+        isNull,
+      );
+      expect(
+        tracker.spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        ),
+        isNull,
+      );
+
+      tracker.clear();
+      expect(
+        tracker.spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        ),
+        isNotNull,
+        reason: "a new process has drained the deleted process's late frames",
+      );
     });
 
     test("a repeated spawn for a known child is a no-op", () {
@@ -322,7 +349,7 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/r",
-      );
+      )!;
       expect(again.events, isEmpty);
       expect(again.opensMessage, isFalse);
       expect(tracker.childStatuses.keys, ["child"]);

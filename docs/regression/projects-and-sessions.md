@@ -204,8 +204,9 @@ state.
   descendant listing inherits the tracked root's project even before its parent
   appears in persisted session results. Nested children retain their direct
   parent for catalog navigation and transcript ownership, while activity alone
-  rolls up to the root. Deleting a tracked parent clears
-  its full live descendant subtree from status and mapper state.
+  rolls up to the root. Deleting a tracked parent clears its full live
+  descendant subtree from status and mapper state; process-scoped tombstones
+  reject queued lifecycle and transcript frames until that process is drained.
 - GitHub Copilot explicit import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans

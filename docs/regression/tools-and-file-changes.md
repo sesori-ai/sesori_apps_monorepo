@@ -51,8 +51,9 @@ signal that a tool changed files.
   and diff content. Presenter failure degrades to a generic bounded tool card
   instead of dropping the call or result. Its exact `subagent` and
   `subagent_fork` calls render no duplicate generic card: protocol-v2 defers
-  the exact delegation call until its correlated lifecycle start opens one
-  child-linked subtask tile with the normalized prompt and label. A standard
+  the exact delegation call and any title-bearing update that arrives before
+  it until the correlated lifecycle start opens one child-linked subtask tile
+  with the normalized prompt and label. A standard
   terminal update received before a valid start instead retains the generic
   failure card after folding partial fields in arrival order into one bounded
   snapshot. Later structured content and raw output replace each other, so the
@@ -65,7 +66,8 @@ signal that a tool changed files.
   bounded summary, abort maps to cancelled, and failure, token-limit, and refusal
   outcomes map to error. Nested children retain their direct parent for
   navigation, live tiles, and history identities, while activity alone rolls up
-  to the owning root.
+  to the owning root. Replay preserves ordinary part order on both sides of a
+  child tile when one ACP assistant message contains all three.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.

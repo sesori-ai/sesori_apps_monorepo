@@ -505,21 +505,26 @@ confirmation, no child session or partial stop) and gets that subset.
   mapper feeds start/end facts through the shared `AcpChildSessionTracker`;
   child standard updates retain the child session id. Typed tool-call lookup
   carries cross-session ambiguity through standard nested permission routing,
-  which cancels rather than falling back to an unrelated active turn. Protocol
-  v1 retains its generic delegation card because it supplies no lifecycle replacement.
-  The protocol has no authoritative settlement lifecycle, so DeepSeek creates
+  which cancels rather than falling back to an unrelated active turn. Exact
+  title-bearing updates reordered ahead of their call are deferred too, and
+  lifecycle frames stay behind an accepted prompt while its frame is writing.
+  Protocol v1 retains its generic delegation card because it supplies no
+  lifecycle replacement. The protocol has no authoritative settlement
+  lifecycle, so DeepSeek creates
   no Grok-style autonomous root hold.
 - `DeepSeekHistoryRepository` indexes boundary-validated typed replay metadata
   by the enclosing update's `toolCallId`. A narrow replay-local
   `AcpReplayCollector` replacement callback turns the generic delegation tool
-  into one subtask part without reading or mutating live tracker state.
+  into one subtask part without reading or mutating live tracker state. Splitting
+  its child-owned envelope preserves the order of surrounding ordinary parts.
 - `DeepSeekSessionService` merges persisted child rows with direct live tracker
   children, preferring persisted title/time metadata by id. Live descendants
   inherit the tracker's root project before persistence catches up. Live and
   replay tiles stay in the direct parent's transcript, while shared ACP child
   activity rolls up to the owning root. Deleting a parent clears its full tracked
-  descendant subtree; existing disconnect, process-exit, and disposal cleanup
-  owns cancellation.
+  descendant subtree and leaves process-scoped tombstones against late frames;
+  existing disconnect, process-exit, and disposal cleanup owns cancellation and
+  releases those tombstones after the old event source drains.
 - Consumer support temporarily accepts protocol versions 1 and 2. Adapter
   v0.1.3 is not published yet, so managed target 0.1.2 and PATH floor 0.1.0 stay
   unchanged. After this consumer merges, the adapter release-prep PR records

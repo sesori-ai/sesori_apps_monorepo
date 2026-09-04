@@ -39,6 +39,16 @@ void main() {
       expect(tracker.isChild(sessionId: "child"), isFalse);
     });
 
+    test("sub-agent lifecycle frames opt into accepted-prompt write ordering", () {
+      expect(mapper.shouldBufferDuringPromptWrite(notification: _started(mode: "foreground")), isTrue);
+      expect(
+        mapper.shouldBufferDuringPromptWrite(
+          notification: _ended(reason: "completed", summary: "Done"),
+        ),
+        isTrue,
+      );
+    });
+
     test("defers exact delegation calls until a correlated start and suppresses later updates", () {
       for (final title in const ["subagent", "subagent_fork"]) {
         final toolCallId = "call-$title";
@@ -101,6 +111,39 @@ void main() {
       expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
     });
 
+    test("a late lifecycle start cannot recreate a deleted child subtree", () {
+      mapper.map(_started(mode: "background"));
+      mapper.forgetSession("child");
+      tracker.forgetSession(sessionId: "child");
+
+      final events = mapper.map(
+        _startedWithIdentity(
+          parentSessionId: "child",
+          mode: "background",
+          childSessionId: "late-grandchild",
+          toolCallId: "late-call",
+        ),
+      );
+
+      final repeatedChild = mapper.map(
+        _startedWithIdentity(
+          parentSessionId: "root",
+          mode: "background",
+          childSessionId: "child",
+          toolCallId: "repeated-child-call",
+        ),
+      );
+
+      expect(events, isEmpty);
+      expect(repeatedChild, isEmpty);
+      expect(tracker.isChild(sessionId: "late-grandchild"), isFalse);
+      expect(mapper.lookupSessionForToolCallId(toolCallId: "late-call"), isA<AcpToolCallSessionNotFound>());
+      expect(
+        mapper.lookupSessionForToolCallId(toolCallId: "repeated-child-call"),
+        isA<AcpToolCallSessionNotFound>(),
+      );
+    });
+
     test("session and protocol resets clear started delegation correlation", () {
       mapper.map(_toolCall(toolCallId: "call", title: "subagent"));
       mapper.map(_started(mode: "background"));
@@ -128,6 +171,36 @@ void main() {
       expect(mapper.sessionIdForToolCallId(toolCallId: "call"), "root");
       expect(mapper.map(_toolUpdate(toolCallId: "call", status: "completed")), isEmpty);
       expect(mapper.sessionIdForToolCallId(toolCallId: "call"), isNull);
+    });
+
+    test("defers an identifiable delegation update that arrives before its call", () {
+      expect(
+        mapper.map(
+          const AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "root",
+              "update": {
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "call",
+                "title": "subagent",
+                "status": "in_progress",
+                "rawOutput": "starting",
+              },
+            },
+          ),
+        ),
+        isEmpty,
+      );
+      expect(mapper.map(_toolCall(toolCallId: "call", title: "subagent")), isEmpty);
+
+      final events = mapper.map(_started(mode: "foreground"));
+
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+        everyElement(isA<PluginMessagePartSubtask>()),
+      );
+      expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
     });
 
     test("retains a generic error card when delegation fails before child start", () {
@@ -218,11 +291,8 @@ void main() {
           .map((event) => event.part)
           .whereType<PluginMessagePartTool>()
           .toList(growable: false);
-      expect(tools, hasLength(2));
-      expect(tools.map((tool) => tool.state.status), [
-        PluginToolStatus.running,
-        PluginToolStatus.error,
-      ]);
+      expect(tools, hasLength(1));
+      expect(tools.single.state.status, PluginToolStatus.error);
       expect(tools.last.state.output, "terminal failure");
       expect(tools.last.state.title, "Delegation startup");
       expect(tools.last.state.error, "terminal failure");
