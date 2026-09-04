@@ -288,7 +288,7 @@ void main() {
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 
-    test("logs assistant failure locally and forwards it unchanged", () async {
+    test("forwards assistant failure unchanged and keeps its detail out of the log", () async {
       const backendError = "provider overload detail";
       late List<PluginMessageWithParts> messages;
       final warnings = await _captureWarnings(() async {
@@ -356,7 +356,10 @@ void main() {
       expect(aborted.state.status, PluginToolStatus.error);
       expect(aborted.state.error, "Pi tool call did not complete.");
       expect(messages.toString(), isNot(contains("private reasoning")));
-      expect(warnings, contains(backendError));
+      // The error message reaches the client verbatim, so re-logging it locally
+      // only replays backend payloads — a whole HTML error page, in practice —
+      // on every history mapping pass.
+      expect(warnings, isNot(contains(backendError)));
     });
 
     test("enforces image candidate count", () {

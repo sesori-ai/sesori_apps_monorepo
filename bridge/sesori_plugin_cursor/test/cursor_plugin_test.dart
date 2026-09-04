@@ -299,6 +299,94 @@ void main() {
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
+    test("tool-correlated extensions keep the earlier session with two turns in flight", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final connecting = plugin.ensureConnected();
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      expect(await connecting, isTrue);
+
+      Future<String> createSession({required String sessionId}) async {
+        final creating = plugin.createSession(
+          directory: "/repo",
+          parentSessionId: null,
+          parts: const [],
+          userVisibleText: null,
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        await respond("session/new", {"sessionId": sessionId});
+        return (await creating).id;
+      }
+
+      final firstSessionId = await createSession(sessionId: "s-first");
+      final secondSessionId = await createSession(sessionId: "s-second");
+      await plugin.sendPrompt(
+        promptId: "prompt-first",
+        sessionId: firstSessionId,
+        parts: const [PluginPromptPart.text(text: "first")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final firstPrompt = await waitForFrame("session/prompt");
+      await plugin.sendPrompt(
+        promptId: "prompt-second",
+        sessionId: secondSessionId,
+        parts: const [PluginPromptPart.text(text: "second")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final secondPrompt = await waitForFrame("session/prompt");
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": firstSessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "todo-tool",
+            "kind": "other",
+            "status": "pending",
+          },
+        },
+      });
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 90,
+        "method": "cursor/update_todos",
+        "params": {"toolCallId": "todo-tool", "todos": <Object?>[]},
+      });
+      await pump();
+
+      expect(events.whereType<BridgeSseTodoUpdated>().single.sessionID, firstSessionId);
+      expect(
+        fake.written.singleWhere((frame) => frame["id"] == 90)["result"],
+        isA<Map<Object?, Object?>>(),
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": secondPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {
       capture(catalogResult(), fromNewSession: true);
 

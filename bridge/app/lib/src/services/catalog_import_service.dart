@@ -5,7 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/models/catalog_import_control.dart";
 
-enum CatalogImportTrigger() { automatic, explicit, headless }
+enum CatalogImportTrigger() { automatic, explicit }
 
 enum CatalogEmptyHydrationPolicy() { complete, retry }
 
@@ -104,21 +104,7 @@ class CatalogImportService({
           _publish(CatalogImportProgress.cancelled(pluginId: pluginId));
           return;
         }
-        if (!control.explicitImportRequested && completion != null) {
-          _publish(
-            CatalogImportProgress.completed(
-              pluginId: pluginId,
-              projectsImported: 0,
-              sessionsImported: 0,
-              // No import ran, so nothing is new. Zero rather than null: null
-              // means the bridge does not report deltas at all, and this one
-              // does.
-              newItems: const CatalogImportNewItems(projects: 0, sessions: 0),
-              completedAt: completion.completedAt,
-            ),
-          );
-          return;
-        }
+        if (!control.explicitImportRequested && completion != null) return;
       }
 
       await for (final progress in _repository.importCatalog(pluginId: pluginId, control: control)) {
@@ -144,7 +130,6 @@ class CatalogImportService({
       case CatalogImportTrigger.automatic:
         control.hydrationMarkerRequested = true;
       case CatalogImportTrigger.explicit:
-      case CatalogImportTrigger.headless:
         control.explicitImportRequested = true;
     }
   }

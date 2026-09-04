@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://github.com/github/copilot-cli" target="_blank" rel="noopener">GitHub Copilot CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -143,14 +143,34 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 |---|---|
 | [OpenCode](https://opencode.ai) | Deep native integration with a bridge-managed runtime. |
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Native integration over Codex's local protocol. |
+| [GitHub Copilot CLI](https://github.com/github/copilot-cli) | ACP-based integration with managed installation of official CLI releases. |
 | [Cursor](https://cursor.com) | ACP-based integration. |
 | [Claude Code](https://claude.com) | Native stream-json integration. |
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ACP-based integration with Nous Research's coding agent. |
 | [Pi](https://github.com/badlogic/pi-mono) | Native JSONL RPC integration. |
 | [Oh My Pi](https://github.com/can1357/oh-my-pi) | ACP-based integration. |
 | [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) | ACP-based integration through Sesori's managed adapter. |
+| [Grok Build](https://x.ai/cli) | ACP-based integration with xAI's user-installed CLI. |
 
 Every integration ships enabled by default — pick your assistant when you start a session, and run several at once on the same Bridge.
+
+<details>
+<summary><strong>GitHub Copilot CLI notes</strong></summary>
+
+- **Install:** the Bridge can install the pinned official CLI release, use a
+  compatible `copilot` from your PATH, or use an explicit
+  `--copilot-bin <path>`.
+- **Login and providers:** authenticate locally with `copilot login`, a
+  supported GitHub token environment variable, or Copilot BYOK configuration.
+  Sesori never sends credentials to phone clients.
+- **License and access:** managed installation downloads an unmodified upstream
+  binary under the [GitHub Copilot CLI License](https://github.com/github/copilot-cli/blob/main/LICENSE.md).
+  It does not include Copilot service access; an eligible account and
+  organization policy are still required.
+- **Questions:** Copilot CLI does not currently forward `ask_user` interactions
+  over ACP, so Sesori does not claim question support for this harness.
+
+</details>
 
 <details>
 <summary><strong>DeepSeek Harness notes</strong></summary>
@@ -165,6 +185,32 @@ Every integration ships enabled by default — pick your assistant when you star
   and approval behavior is ask; only open projects whose code you trust.
 - **Login:** provider setup and login happen locally through DeepSeek Harness;
   Sesori does not expose provider credentials to phone clients.
+
+</details>
+
+<details>
+<summary><strong>Grok Build notes</strong></summary>
+
+- **Install:** install Grok Build through [xAI's official CLI](https://x.ai/cli).
+  Sesori requires version `1.0.5` or newer and uses `grok` from your PATH by
+  default. Point `--grok-bin <path>` at a specific binary to make it
+  authoritative. Sesori does not install or update Grok.
+- **Authentication:** sign in locally with `grok login` or configure a supported
+  API key, enterprise account, or custom model. Credentials stay on the bridge
+  machine and are never sent to phone clients.
+- **Permissions:** Sesori runs a dedicated no-leader ACP process with in-process
+  update checks disabled and Grok's normal ask mode. It never enables
+  `--always-approve` or `--yolo`; supported
+  permission requests remain available on connected clients.
+- **Models and reasoning:** selectable model IDs and reasoning effort values come
+  directly from Grok and are sent back unchanged before a turn.
+- **Content:** initial support accepts text and embedded context. Grok does not
+  currently advertise image prompt support through ACP, so image attachments
+  are unavailable for this harness.
+- **Sessions and deletion:** persisted Grok sessions can be imported and
+  continued. Deleting one from Sesori closes the live session and removes
+  Sesori's catalog/transcript, but the upstream row remains in Grok storage
+  because ACP exposes close rather than delete.
 
 </details>
 

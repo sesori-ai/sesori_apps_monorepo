@@ -233,7 +233,7 @@ String _jwt({required String userId, required int seq}) {
 
 /// A controllable stand-in for [ControlChannelTokenService]: it is both the
 /// access-token provider (sync getter + replayed stream) and the refresher used
-/// by the reconnect pre-pull. Tests drive token pushes via [emit] and simulate a
+/// by the reconnect pre-pull. Tests drive successful token pulls via [emit] and simulate a
 /// signed-out GUI via [failRefresh].
 class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider, TokenRefresher {
   final BehaviorSubject<String> _subject = BehaviorSubject<String>.seeded(current);
@@ -243,7 +243,7 @@ class _ScriptedTokenAuthority(var String current) implements AccessTokenProvider
   // is empty or sign-out-invalidated (no safe token to reconnect with).
   bool cachedTokenAvailable = true;
 
-  /// Pushes a new token, mirroring the service caching a `token_update`.
+  /// Emits a new token, mirroring the service caching a successful pull.
   void emit(String token) {
     current = token;
     _subject.add(token);
@@ -328,6 +328,7 @@ class _ReauthHarness._({
         accessTokenProvider: authority,
         bridgeIdProvider: registrationService,
       ),
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

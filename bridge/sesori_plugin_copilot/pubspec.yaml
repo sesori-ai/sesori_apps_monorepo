@@ -1,0 +1,22 @@
+name: copilot_plugin
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.2
+
+dependencies:
+  acp_plugin:
+    path: ../sesori_plugin_acp
+  http: ^1.6.0
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
+  sesori_plugin_interface:
+    path: ../sesori_plugin_interface
+  sesori_plugin_runtime:
+    path: ../sesori_plugin_runtime
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.2

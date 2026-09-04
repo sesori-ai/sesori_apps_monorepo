@@ -11,6 +11,7 @@ void main() {
     launchDirectory: "/repo",
     pluginId: "deepseek",
     configurationTracker: AcpSessionConfigurationTracker(),
+    childSessions: AcpChildSessionTracker(),
     api: const DeepSeekAcpApi(pluginId: "deepseek"),
     messageTimeParser: parser,
   );
@@ -74,8 +75,6 @@ void main() {
     final collector = AcpReplayCollector(
       sessionId: "s1",
       agentId: "deepseek",
-      modelId: null,
-      providerId: null,
       initialUserMessageId: null,
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
       messageTimeResolver: ({required params}) => parser.parse(params),
@@ -115,8 +114,6 @@ void main() {
     AcpReplayCollector collector(AcpHaltNotice? Function({required String text})? classifier) => AcpReplayCollector(
       sessionId: "s1",
       agentId: "deepseek",
-      modelId: null,
-      providerId: null,
       initialUserMessageId: null,
       messageIdOverride: null,
       messageTimeResolver: ({required params}) => parser.parse(params),

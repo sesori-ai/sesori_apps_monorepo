@@ -3,7 +3,7 @@
 > A **dependency-ordered** suggestion for the order to build toward `VISION.md` —
 > *not* a calendar and *not* a commitment (horizon is ≥ ~1 year, funding/team
 > dependent). The *what / why* lives in `VISION.md`; the *how* (layer rules) in
-> `AGENTS.md`; the active desktop workstream in `docs/desktop/PLAN.md`.
+> `AGENTS.md`; the active desktop workstream in `.plan/active/desktop-app/PLAN.md`.
 >
 > **Use it like this:** pick the earliest stage whose dependencies are met;
 > stages can overlap. Every stage still goes through `architecture-plan-review`
@@ -30,10 +30,18 @@
 
 ## Stage A — Desktop app (multi-surface) — *in progress*
 
-- **Outcome:** a downloadable desktop app that supervises the headless bridge
-  (tray + window), and a client split into shared UI + per-surface shells.
-- **Detail:** owned entirely by `docs/desktop/PLAN.md` (Phases 0–5); not
+- **Outcome:** a desktop app that supervises the headless bridge (tray +
+  window) and renders the full client cockpit (shared adaptive UI split into
+  `module_app_ui` + per-surface shells). Distribution (packaging, signing,
+  self-update, all platforms) follows in a separate `desktop-distribution`
+  plan once the implementation ships.
+- **Detail:** owned entirely by `.plan/active/desktop-app/PLAN.md`; not
   duplicated here.
+- **Later consideration (recorded, not planned):** a loopback local data path
+  for the desktop cockpit. The cockpit reuses the relay like the phone; a
+  bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
+  the working precedent) could remove the internet requirement against a
+  same-machine bridge. Revisit only once the cockpit is real.
 - **Unlocks:** always-on ergonomics; proof the core is surface-agnostic; the
   `module_app_ui` shared-UI split.
 - **Invariants:** I3 (shared brain / thin shells), I4 (headless-first).
@@ -172,7 +180,8 @@
 - **C (multi-bridge)** can follow or overlap B; the two are independent.
 - **F** should not start before **C** is real (it depends on the bridge being
   "one of many" and fully headless).
-- The desktop workstream remains paused for human reassessment after parallel
-  plugins; this roadmap does not choose its next desktop PR or phase.
+- The desktop workstream resumed on 2026-08-28 under
+  `.plan/active/desktop-app/` (superseding the earlier `docs/desktop/` plan);
+  distribution ships in a follow-up plan created at its retirement.
 - Nothing here is approved to build ahead of need — each stage earns its design
   at `architecture-plan-review` time, against the then-current code.

@@ -7,12 +7,14 @@
 enum Harness() {
   opencode,
   codex,
+  copilot,
   cursor,
   claude,
   hermes,
   pi,
   omp,
-  deepseek;
+  deepseek,
+  grok;
 }
 
 // COMPATIBILITY 2026-07-13 (v1.5.0): Old peers omit pluginId and mean OpenCode. Remove constant/export with defaults.

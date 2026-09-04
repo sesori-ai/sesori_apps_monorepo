@@ -24,6 +24,7 @@ class OmpPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required final OmpCatalogService _catalogService,
@@ -45,6 +46,7 @@ class OmpPlugin._({
     );
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final catalogApi = OmpAcpApi(
       binaryPath: binaryPath,
       processFactory: processFactory,
@@ -83,10 +85,12 @@ class OmpPlugin._({
     return OmpPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
+      childSessionTracker: childSessionTracker,
       eventMapper: AcpEventMapper(
         launchDirectory: cwd,
         pluginId: OmpPluginIdentity.id,
         configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -113,9 +117,6 @@ class OmpPlugin._({
 
   @override
   bool get supportsFormElicitation => true;
-
-  @override
-  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   void captureSessionConfig(

@@ -329,7 +329,9 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         SafeArea(
           top: false,
           bottom: false,
-          child: _AnimatedBannerSlot(banner: widget.banner, onHeightChanged: _onBannerHeightChanged),
+          child: SelectionContainer.disabled(
+            child: _AnimatedBannerSlot(banner: widget.banner, onHeightChanged: _onBannerHeightChanged),
+          ),
         ),
         // The Builder confines removePadding's full-MediaQuery dependency (it
         // reads MediaQuery.of) to this leaf element — without it the whole
@@ -337,7 +339,11 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         // captured [topNav] instance stays identical across those rebuilds, so
         // the bar itself short-circuits.
         Builder(
-          builder: (barContext) => MediaQuery.removePadding(context: barContext, removeTop: true, child: topNav),
+          builder: (barContext) => MediaQuery.removePadding(
+            context: barContext,
+            removeTop: true,
+            child: SelectionContainer.disabled(child: topNav),
+          ),
         ),
       ],
     );
@@ -501,7 +507,10 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
 
     // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      // Keep the page surface painted through the keyboard inset. The inner
+      // GlassScaffold is resized above the keyboard, but iOS 26's rounded,
+      // translucent keyboard exposes the area behind it around the corners.
+      backgroundColor: backgroundColor,
       floatingActionButton: _floatingActionButton,
       body: top_bar.PregoTopBarInsetScope(
         baseInset: topPad + PregoTopNavigation.barHeight,
@@ -718,12 +727,13 @@ class const _LargeTitleSliver({
       ),
     );
 
+    final nonSelectableTitleContent = SelectionContainer.disabled(child: titleContent);
     return SliverToBoxAdapter(
       child: PregoSizeObserver(
         onSizeChanged: (size) => onHeightChanged(size.height),
         child: pulledExtent == null
-            ? titleContent
-            : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: titleContent),
+            ? nonSelectableTitleContent
+            : _OverscrollPinnedBox(pulledExtent: pulledExtent, child: nonSelectableTitleContent),
       ),
     );
   }

@@ -146,6 +146,9 @@ class AcpApprovalRegistry({
     );
   }
 
+  /// Routes one server request received by the owning plugin.
+  void handleServerRequest({required AcpServerRequest request}) => handleRequest(request);
+
   /// Responds to a server request with a result payload.
   void respond(Object acpId, Object? result) => _respond(acpId, result);
 

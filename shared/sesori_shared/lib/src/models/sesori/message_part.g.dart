@@ -75,6 +75,10 @@ MessagePartSubtask _$MessagePartSubtaskFromJson(Map json) => MessagePartSubtask(
   prompt: json['prompt'] as String? ?? "",
   description: json['description'] as String? ?? "",
   agent: json['agent'] as String? ?? "",
+  taskState: json['taskState'] == null
+      ? null
+      : ToolState.fromJson(Map<String, dynamic>.from(json['taskState'] as Map)),
+  childSessionID: json['childSessionID'] as String?,
   $type: json['type'] as String?,
 );
 
@@ -86,6 +90,8 @@ Map<String, dynamic> _$MessagePartSubtaskToJson(MessagePartSubtask instance) =>
       'prompt': instance.prompt,
       'description': instance.description,
       'agent': instance.agent,
+      'taskState': ?instance.taskState?.toJson(),
+      'childSessionID': ?instance.childSessionID,
       'type': instance.$type,
     };
 
@@ -332,5 +338,6 @@ const _$ToolStatusEnumMap = {
   ToolStatus.running: 'running',
   ToolStatus.completed: 'completed',
   ToolStatus.error: 'error',
+  ToolStatus.cancelled: 'cancelled',
   ToolStatus.unknown: 'unknown',
 };

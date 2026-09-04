@@ -7,6 +7,7 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 
 typedef AcpReplayUserMessageIdOverride = String? Function({required String acpMessageId});
 typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map<String, dynamic> params});
+typedef _AcpReplayAssistantSelection = ({String? modelId, String? providerId, String? variant});
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -17,12 +18,6 @@ typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map
 class AcpReplayCollector({
   required final String sessionId,
   required final String agentId,
-
-  /// Model/provider stamped on replayed assistant messages. Mutable so the
-  /// plugin can set the loaded session's real model after `session/load`
-  /// returns its catalog (the collector is created before the load runs).
-  var String? modelId,
-  var String? providerId,
   required final String? initialUserMessageId,
 
   /// Overrides a replayed user's ACP message id with backend authority.
@@ -204,13 +199,31 @@ class AcpReplayCollector({
     }
   }
 
-  List<PluginMessageWithParts> build() {
+  /// Materializes replay without model-selection metadata.
+  List<PluginMessageWithParts> build() => _build(
+    selection: (modelId: null, providerId: null, variant: null),
+  );
+
+  /// Materializes replay with one authoritative assistant selection tuple.
+  ///
+  /// Selection is supplied only after `session/load` settles, so callers never
+  /// mutate partially-known collector state while notifications are arriving.
+  List<PluginMessageWithParts> buildWithAssistantSelection({
+    required String? modelId,
+    required String? providerId,
+    required String? variant,
+  }) => _build(selection: (modelId: modelId, providerId: providerId, variant: variant));
+
+  List<PluginMessageWithParts> _build({required _AcpReplayAssistantSelection selection}) {
     return [
-      for (final draft in _drafts) _buildMessage(draft),
+      for (final draft in _drafts) _buildMessage(draft: draft, selection: selection),
     ];
   }
 
-  PluginMessageWithParts _buildMessage(_Draft draft) {
+  PluginMessageWithParts _buildMessage({
+    required _Draft draft,
+    required _AcpReplayAssistantSelection selection,
+  }) {
     // A recognized halt notice (e.g. Cursor's account/plan gate, streamed as a
     // lone assistant message) is surfaced as an error message so a reloaded
     // session matches the live rendering. Only a pure-text terminal notice
@@ -230,9 +243,9 @@ class AcpReplayCollector({
             id: draft.id,
             sessionID: sessionId,
             agent: agentId,
-            modelID: modelId,
-            providerID: providerId,
-            variant: null,
+            modelID: selection.modelId,
+            providerID: selection.providerId,
+            variant: selection.variant,
             errorName: halt.errorName,
             errorMessage: assistantText,
             time: draft.time,
@@ -249,7 +262,10 @@ class AcpReplayCollector({
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
     parts.addAll(_chronologicalAssistantParts(draft: draft));
-    return PluginMessageWithParts(info: _message(draft), parts: parts);
+    return PluginMessageWithParts(
+      info: _message(draft: draft, selection: selection),
+      parts: parts,
+    );
   }
 
   bool _hasTrackableAssistantContent({
@@ -324,7 +340,7 @@ class AcpReplayCollector({
     return parts;
   }
 
-  PluginMessage _message(_Draft draft) {
+  PluginMessage _message({required _Draft draft, required _AcpReplayAssistantSelection selection}) {
     if (draft.role == "user") {
       return PluginMessage.user(
         id: draft.id,
@@ -338,9 +354,9 @@ class AcpReplayCollector({
       id: draft.id,
       sessionID: sessionId,
       agent: agentId,
-      modelID: modelId,
-      providerID: providerId,
-      variant: null,
+      modelID: selection.modelId,
+      providerID: selection.providerId,
+      variant: selection.variant,
       sender: PluginMessageSender.agent,
       time: draft.time,
     );

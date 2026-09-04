@@ -6,23 +6,20 @@ import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
-import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
 
 class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
@@ -130,6 +127,7 @@ void _registerDependencies({
   required MockConnectionService connectionService,
   required MockSessionRepository promptDispatcher,
   required MockPermissionRepository permissionRepository,
+  required MockSessionViewingService sessionViewingService,
   required MockNotificationCanceller notificationCanceller,
   required MockFailureReporter failureReporter,
   required MockVoiceTranscriptionService voiceTranscriptionService,
@@ -143,7 +141,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
-  getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
+  getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
@@ -161,6 +159,7 @@ void main() {
   late MockSessionDetailLoadService loadService;
   late MockSessionRepository promptDispatcher;
   late MockPermissionRepository permissionRepository;
+  late MockSessionViewingService sessionViewingService;
   late MockNotificationCanceller notificationCanceller;
   late MockFailureReporter failureReporter;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -177,6 +176,7 @@ void main() {
     loadService = MockSessionDetailLoadService();
     promptDispatcher = MockSessionRepository();
     permissionRepository = MockPermissionRepository();
+    sessionViewingService = stubbedSessionViewingService();
     notificationCanceller = MockNotificationCanceller();
     failureReporter = MockFailureReporter();
     voiceTranscriptionService = MockVoiceTranscriptionService();
@@ -191,6 +191,11 @@ void main() {
       ),
     );
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEvents.stream);
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
@@ -203,8 +208,10 @@ void main() {
 
     final maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
-    when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
-    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
+    stubVoiceTranscriptionService(
+      service: voiceTranscriptionService,
+      maxDurationStream: maxDurationReached.stream,
+    );
 
     when(
       () => loadService.load(
@@ -224,6 +231,7 @@ void main() {
       connectionService: connectionService,
       promptDispatcher: promptDispatcher,
       permissionRepository: permissionRepository,
+      sessionViewingService: sessionViewingService,
       notificationCanceller: notificationCanceller,
       failureReporter: failureReporter,
       voiceTranscriptionService: voiceTranscriptionService,
@@ -362,9 +370,11 @@ void main() {
       ),
     );
 
+    clearInteractions(sessionViewingService);
     navigatorKey.currentState!.pop();
     await tester.pumpAndSettle();
 
+    verify(() => sessionViewingService.setViewingSession("session-1")).called(1);
     verify(
       () => productAnalyticsService.logEvent(
         event: const ProductAnalyticsEvent.sessionActivityViewed(

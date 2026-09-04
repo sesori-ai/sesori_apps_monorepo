@@ -22,6 +22,7 @@ import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dar
 import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
+import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
 import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
@@ -96,10 +97,9 @@ class RunCommand() extends cli.Command<void> {
         help: 'Show version and exit',
       )
       ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
-      ..addMultiOption(
-        'import-plugin',
-        help: 'Import an eligible plugin catalog after startup. Repeatable.',
-      );
+      // Keep accepting the retired option so existing invocations receive the
+      // actionable warning in [run] instead of an unknown-option error.
+      ..addMultiOption('import-plugin', hide: true);
     for (final plugin in knownPlugins) {
       _pluginCliMappers[plugin.id]!.register(parser: argParser, options: plugin.options);
     }
@@ -132,6 +132,13 @@ class RunCommand() extends cli.Command<void> {
   Future<void> run() async {
     final results = argResults!;
 
+    if (results.wasParsed('import-plugin')) {
+      Console.warning(
+        'The --import-plugin option is deprecated and no longer does anything. '
+        'Re-import harnesses from the Sesori app by pulling to refresh or opening Settings > Harnesses.',
+      );
+    }
+
     if (results['version'] as bool) {
       stdout.writeln(appVersion);
       return;
@@ -162,14 +169,13 @@ class RunCommand() extends cli.Command<void> {
     } on PluginConfigException catch (e) {
       usageException(e.message);
     }
-    for (final importPluginId in options.importPluginIds) {
-      if (!knownPlugins.any((plugin) => plugin.id == importPluginId)) {
-        usageException(
-          'Cannot import unknown plugin "$importPluginId".',
-        );
-      }
-    }
     Log.level = LogLevel.values.byName(options.logLevelName);
+
+    if (options.isSupervised) {
+      // Establish ownership before sleep prevention or any other long-lived
+      // child starts, so the desktop can terminate the complete live group.
+      ProcessGroupIsolation().isolateCurrentProcess();
+    }
 
     if (!options.isSupervised) {
       final banner = BridgeStartupBannerFormatter(
@@ -418,6 +424,7 @@ class ConfigCommand() extends cli.Command<void> {
   this {
     addSubcommand(ConfigTrackCommand());
     addSubcommand(ConfigYoloCommand());
+    addSubcommand(ConfigWarmupCommand());
     addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }
@@ -597,6 +604,52 @@ class ConfigYoloCommand() extends cli.Command<void> {
         return false;
       default:
         usageException('YOLO mode must be "on" or "off".');
+    }
+  }
+}
+
+class ConfigWarmupCommand() extends cli.Command<void> {
+  @override
+  final name = 'warmup';
+
+  @override
+  final description = 'Show or set session-open plugin warm-up (on|off)';
+
+  @override
+  Future<void> run() async {
+    final results = argResults;
+    if (results == null) {
+      usageException('Unable to read command arguments.');
+    }
+    final rest = results.rest;
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
+
+    if (rest.isEmpty) {
+      final settings = await repository.loadSettings();
+      stdout.writeln(
+        'Session-open plugin warm-up: ${settings.warmUpPluginsOnSessionOpen ? 'on' : 'off'}',
+      );
+      return;
+    }
+
+    if (rest.length > 1) {
+      usageException('Expected a single session-open warm-up mode: on or off.');
+    }
+
+    final enabled = _parseWarmupArgument(rest.single);
+    await repository.updateWarmUpPluginsOnSessionOpen(enabled: enabled);
+    stdout.writeln('Session-open plugin warm-up set to ${enabled ? 'on' : 'off'}.');
+    stdout.writeln('Restart sesori-bridge to apply.');
+  }
+
+  bool _parseWarmupArgument(String value) {
+    switch (value) {
+      case 'on':
+        return true;
+      case 'off':
+        return false;
+      default:
+        usageException('Session-open warm-up mode must be "on" or "off".');
     }
   }
 }

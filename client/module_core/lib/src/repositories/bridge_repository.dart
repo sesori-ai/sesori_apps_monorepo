@@ -17,4 +17,15 @@ class BridgeRepository({required final BridgeApi _api}) {
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
   }
+
+  /// Revokes one bridge registration. The server's 404 means the registration
+  /// is already absent, which is the desired end state for device logout.
+  Future<ApiResponse<void>> deleteBridge({required String bridgeId}) async {
+    final response = await _api.deleteBridge(bridgeId: bridgeId);
+    return switch (response) {
+      SuccessResponse() => response,
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => ApiResponse.success(null),
+      ErrorResponse(:final error) => ApiResponse.error(error),
+    };
+  }
 }

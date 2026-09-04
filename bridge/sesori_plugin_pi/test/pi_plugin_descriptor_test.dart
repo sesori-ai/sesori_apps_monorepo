@@ -39,13 +39,13 @@ void main() {
       final processes = _Processes(
         outputs: const [
           _Output(stdout: "0.84.0\n", exitCode: 0),
-          _Output(stdout: "0.84.2\n", exitCode: 0),
+          _Output(stdout: "0.84.4\n", exitCode: 0),
         ],
       );
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.84.2/pi"));
-      expect(processes.executables, ["pi", contains("/state/pi/0.84.2/pi")]);
+      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.84.4/pi"));
+      expect(processes.executables, ["pi", contains("/state/pi/0.84.4/pi")]);
     });
 
     test("inspectSetup checks only version and preserves the environment", () async {
@@ -138,6 +138,7 @@ void main() {
               required catalogTimeout,
               required healthTimeout,
               required resolveIdleTimeout,
+              required idleTimeoutChanges,
               required editorTimeout,
             }) {
               capturedBinaryPath = binaryPath;
@@ -157,6 +158,7 @@ void main() {
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
+                idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
               );
             },
@@ -199,6 +201,7 @@ void main() {
               required healthTimeout,
               required resolveIdleTimeout,
               required editorTimeout,
+              required idleTimeoutChanges,
             }) {
               built = _plugin(
                 binaryPath: binaryPath,
@@ -213,6 +216,7 @@ void main() {
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
+                idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
               );
               abort.abort();
@@ -273,6 +277,7 @@ PiPlugin _plugin({
   required Duration catalogTimeout,
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
+  required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
 }) => PiPlugin(
   binaryPath: binaryPath,
@@ -287,6 +292,7 @@ PiPlugin _plugin({
   catalogTimeout: catalogTimeout,
   healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
+  idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,
 );
 
@@ -299,6 +305,8 @@ class _Host({
 }) implements PluginHost {
   @override
   final StartAbortSignal startAborted = startAborted ?? StartAbortSignal.never;
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   Map<String, String> get environment => const {"HOME": "/home/test", "PI_CODING_AGENT_DIR": "/profile"};

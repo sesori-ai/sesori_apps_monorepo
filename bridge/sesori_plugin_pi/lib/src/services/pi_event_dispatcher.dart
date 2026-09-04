@@ -1,4 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/pi_assistant_delta.dart";
 import "../api/models/pi_event.dart";
@@ -219,6 +220,13 @@ final class PiEventDispatcher({
         content: content,
         type: PluginMessagePartType.reasoning,
       ),
+      PiToolCallStartDelta(:final contentIndex, :final id, :final toolName) => _toolCallStart(
+        sessionId: sessionId,
+        state: state,
+        contentIndex: contentIndex,
+        toolId: id,
+        toolName: toolName,
+      ),
       PiToolCallEndDelta(:final contentIndex, :final toolCall) => _toolCall(
         sessionId: sessionId,
         state: state,
@@ -226,7 +234,6 @@ final class PiEventDispatcher({
         toolCall: toolCall,
       ),
       PiMessageStartDelta() ||
-      PiToolCallStartDelta() ||
       PiToolCallDelta() ||
       PiAssistantDoneDelta() ||
       PiAssistantErrorDelta() ||
@@ -455,6 +462,28 @@ final class PiEventDispatcher({
     ];
   }
 
+  List<BridgeSseEvent> _toolCallStart({
+    required String sessionId,
+    required _SessionState state,
+    required int? contentIndex,
+    required String? toolId,
+    required String? toolName,
+  }) {
+    if (contentIndex == null || contentIndex < 0) return const [];
+    if (state.messageId == null) return const [];
+    // COMPATIBILITY 2026-08-31 (v1.8.3): Pi <= 0.84.2 omits toolcall_start
+    // metadata; keep waiting for toolcall_end. Remove this fallback when
+    // PiRuntimeManifest.minPathVersion is raised to 0.84.3.
+    if (toolId == null || toolName == null || toolId.isEmpty || toolName.isEmpty) return const [];
+    return _emitToolCall(
+      sessionId: sessionId,
+      state: state,
+      contentIndex: contentIndex,
+      toolId: toolId,
+      toolName: toolName,
+    );
+  }
+
   List<BridgeSseEvent> _toolCall({
     required String sessionId,
     required _SessionState state,
@@ -462,24 +491,50 @@ final class PiEventDispatcher({
     required Map<String, Object?> toolCall,
   }) {
     if (contentIndex == null || contentIndex < 0) return const [];
-    final messageId = state.messageId;
+    if (state.messageId == null) return const [];
     final decoded = _historyMapper.decodeToolCall(raw: toolCall);
-    if (messageId == null || decoded == null) return const [];
+    if (decoded == null) return const [];
+    return _emitToolCall(
+      sessionId: sessionId,
+      state: state,
+      contentIndex: contentIndex,
+      toolId: decoded.id,
+      toolName: decoded.name,
+    );
+  }
+
+  List<BridgeSseEvent> _emitToolCall({
+    required String sessionId,
+    required _SessionState state,
+    required int contentIndex,
+    required String toolId,
+    required String toolName,
+  }) {
+    final messageId = state.messageId;
+    if (messageId == null) return const [];
+    // The content index identifies the streamed block. Prefer it over the
+    // decoded ids because start metadata and the cumulative end payload must
+    // not produce two visible cards if an upstream id is normalized differently.
+    if (!state.emittedToolContentIndexes.add(contentIndex)) return const [];
     final tool = _tools.pending(
       sessionId: sessionId,
       messageId: messageId,
-      toolId: decoded.id,
-      name: decoded.name,
+      toolId: toolId,
+      name: toolName,
     );
-    if (tool != null) state.emittedPartIds.add(tool.id);
-    return tool == null
-        ? const []
-        : [
-            ..._announce(sessionId: sessionId, state: state),
-            BridgeSseMessagePartUpdated(
-              part: _toolPart(sessionId: sessionId, tool: tool),
-            ),
-          ];
+    // The start event already announced this part; the terminal delta adds no
+    // new display state. `message_end` remains authoritative and reconciles it.
+    if (tool == null) {
+      state.emittedToolContentIndexes.remove(contentIndex);
+      return const [];
+    }
+    state.emittedPartIds.add(tool.id);
+    return [
+      ..._announce(sessionId: sessionId, state: state),
+      BridgeSseMessagePartUpdated(
+        part: _toolPart(sessionId: sessionId, tool: tool),
+      ),
+    ];
   }
 
   List<BridgeSseEvent> _toolRunning({
@@ -567,7 +622,17 @@ final class PiEventDispatcher({
 
   List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
     final status = sessionStatusFor(event: event, now: now);
-    return status == null ? const [] : [BridgeSseSessionStatus(sessionID: sessionId, status: status.toJson())];
+    if (status == null) return const [];
+    final sharedStatus = switch (status) {
+      PluginSessionStatusIdle() => const shared.SessionStatus.idle(),
+      PluginSessionStatusBusy() => const shared.SessionStatus.busy(),
+      PluginSessionStatusRetry(:final attempt, :final message, :final next) => shared.SessionStatus.retry(
+        attempt: attempt,
+        message: message,
+        next: next,
+      ),
+    };
+    return [BridgeSseSessionStatus(sessionID: sessionId, status: sharedStatus.toJson())];
   }
 
   List<BridgeSseEvent> _compactionStart({
@@ -677,6 +742,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
   bool announced = false;
   final Set<({int contentIndex, PluginMessagePartType type})> startedParts = {};
   final Set<String> emittedPartIds = {};
+  final Set<int> emittedToolContentIndexes = {};
   String? compactionMessageId;
 
   void clearMessage() {
@@ -685,6 +751,7 @@ final class _SessionState({required final PiMessageIdentityBuilder identities}) 
     announced = false;
     startedParts.clear();
     emittedPartIds.clear();
+    emittedToolContentIndexes.clear();
   }
 }
 

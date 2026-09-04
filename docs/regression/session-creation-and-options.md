@@ -44,9 +44,29 @@ variant, and worktree mode, and creating the session with its first input.
   total provider failure is explicit so bridge-owned cache retention applies.
   The plugin writes `deepseek.model` and then `deepseek.reasoning_effort`
   before prompt dispatch, fails closed on either rejection, and records the
-  selected identity only after every requested write succeeds. Catalog reads use
-  the connected adapter without creating a session or model request; selection
-  is session-local and never writes normal `DSH_HOME` settings.
+  selected identity only after every requested write succeeds. The session
+  header resolves that opaque identity through the loaded provider catalog and
+  shows the model name when available. Catalog reads use the connected adapter
+  without creating a session or model request; selection is session-local and
+  never writes normal `DSH_HOME` settings.
+- Grok exposes one primary agent and one provider group from initialize-owned
+  model state. Model IDs and canonical reasoning-effort values remain exact and
+  opaque; declared defaults stay distinct from the current selection. Explicit
+  refresh uses an initialize-only process, creates no session, and replaces the
+  last-good catalog only after a complete valid result. Malformed individual
+  models or efforts are filtered without inventing values. Before creation or a
+  turn, the complete model/effort tuple is validated against the current catalog
+  and applied through Grok's plugin-local `session/set_model` extension; a failed
+  write preserves the prior tracked selection and dispatches no prompt. An
+  effort-only load waits for the session's exact loaded model before validation.
+- GitHub Copilot discovers model, mode, model-specific reasoning, and slash-command
+  options through a bounded isolated ACP session while retaining the user's normal
+  Copilot configuration for login, settings, and BYOK. The probe closes its own
+  session and process. Equivalent probes coalesce, probes for different selected
+  models serialize, and only the selected model's returned reasoning catalog can
+  validate a turn. A stale model, mode, or reasoning value fails before prompt
+  acceptance, invalidates that selection, and refreshes without inventing an
+  option Copilot did not advertise. A catalog with no mode remains usable.
 - Read intents stay distinct: a normal load may serve a valid cache or discover,
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
@@ -67,7 +87,10 @@ variant, and worktree mode, and creating the session with its first input.
   describing the options still on screen. It spins only while the answers on
   screen are unsettled: the harness chooser stays live during a refresh, so a
   press abandoned for another harness must not leave a spinner over that
-  harness's settled options.
+  harness's settled options. When the viewport has room, the action rests above
+  the composer; when the keyboard or a multiline draft cramps that viewport,
+  it follows the option rows in their scroll content and never covers the
+  dedicated-workspace control.
 - It is one action under one name in every state. Whether a press repeats
   harness discovery, the project check, or the options themselves is decided
   behind it; the surface never names that split, because the user cannot act on
@@ -102,6 +125,12 @@ variant, and worktree mode, and creating the session with its first input.
   the unresolved URI remains `/projects/<projectId>/sessions/new`. Duplicate Send
   is blocked. Back leaves creation running, and success replaces the route only
   when that launch route is still current and the returned session is durable.
+- Mobile and desktop compose the same new-session view while retaining
+  shell-owned routing, DI, connection-banner policy, and platform capabilities.
+  Mobile keeps voice capture and keyboard visibility. Desktop is explicitly
+  text-first, constructs no voice cubit, uses its native image picker when the
+  selected plugin declares attachments, and exposes the same dedicated-workspace
+  option rather than substituting a desktop-only creation path.
 - A creation failure on the still-current route restores the exact submitted
   text/voice spans, command intent, and memory-only attachment identities once,
   and warns that manual resend can duplicate a session because response loss
@@ -142,7 +171,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; pickers, plugin chooser, detail loading, and no-harness states render. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -157,7 +186,13 @@ matching-remote, colliding, and rollback-failing branches while confirming the
 directory stays fixed and title application does not wait for branch refinement.
 For launch behavior, vary in-route versus background completion, success versus
 definitive rejection versus response loss, navigation before completion, and
-reconnect or option refresh while restoration is pending.
+reconnect or option refresh while restoration is pending. For Copilot, vary the
+account's default and explicit model/mode/reasoning choices, a model change whose
+reasoning catalog differs, no advertised mode, an exact slash command, stale
+selection rejection, and authentication failure during discovery. For Grok,
+vary default and explicit model/effort tuples, model-only and effort-only
+changes, changing catalogs, malformed optional entries, stale rejection,
+refresh failure with a last-good catalog, and headless-auth discovery failure.
 
 ## Failure Signals
 
@@ -168,7 +203,8 @@ reconnect or option refresh while restoration is pending.
   saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The refresh action disappears while its own load runs, gives no sign it was
-  pressed, or renames itself after which load it happens to be repeating.
+  pressed, renames itself after which load it happens to be repeating, or
+  covers an option row in a cramped viewport.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.
@@ -177,8 +213,16 @@ reconnect or option refresh while restoration is pending.
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
 - A DeepSeek catalog loses sound providers because one provider failed, parses
-  an opaque model ID, dispatches before both requested config writes settle, or
-  records a partially applied selection as successful.
+  an opaque model ID, exposes a catalog-resolvable opaque ID in the session
+  header, dispatches before both requested config writes settle, or records a
+  partially applied selection as successful.
+- A Copilot catalog invents an option, validates reasoning against another model,
+  overlaps unlike probes, replaces a coherent cache after authentication failure,
+  or accepts a stale selection before applying every requested config value.
+- A Grok catalog interprets an opaque ID, replaces its last-good state after a
+  failed or malformed refresh, creates a session during refresh, conflates
+  declared and current effort, validates effort against the wrong model, or
+  dispatches after a stale or partially applied selection.
 - Creation succeeds for a non-routable plugin or unknown project.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
@@ -191,12 +235,23 @@ reconnect or option refresh while restoration is pending.
   response, permits duplicate Send, hijacks a later route, loses background work,
   auto-resends, or restores an incomplete/abandoned draft without the
   duplicate-risk warning.
+- Desktop cannot open the typed new-session route, constructs voice capture,
+  hides a supported dedicated-workspace option, or bypasses the shared creation
+  view and its restoration/launch semantics.
 
 ## Known Limitations
 
-- Client end-to-end coverage is phone-only; the desktop shell cannot create.
+- Live client end-to-end coverage remains phone-only. The desktop shell can
+  create through the shared view and has automated capability/routing coverage,
+  but still needs a live desktop release exercise.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
+- Copilot's ACP catalog probe closes its scratch session, but the pinned CLI has
+  no deletion method; low-impact upstream history residue can remain in the
+  user's normal Copilot home.
+- Grok model and reasoning discovery uses its supported CLI's legacy ACP model
+  surface. Accounts and custom configurations can legitimately advertise one
+  model or no reasoning variants; absence is not a failure.
 
 ## Sources
 
@@ -207,8 +262,18 @@ reconnect or option refresh while restoration is pending.
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
 - DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/`,
   `lib/src/services/`, and package tests
+- Copilot: `bridge/sesori_plugin_copilot/lib/src/services/`,
+  `lib/src/repositories/`, and package tests
+- Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
+  `lib/src/repositories/`, `lib/src/trackers/`, and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`
-- Client: `client/module_core/lib/src/services/new_session_options_service.dart`
+- Client: `client/module_core/lib/src/services/new_session_options_service.dart`,
+  `client/module_app_ui/lib/src/features/new_session/`,
+  `client/app/lib/features/new_session/new_session_screen.dart`, and
+  `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
+- Client tests: `client/app/test/features/new_session/new_session_screen_test.dart`,
+  `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
+  and `client/desktop/test/core/routing/desktop_router_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-lifecycle`

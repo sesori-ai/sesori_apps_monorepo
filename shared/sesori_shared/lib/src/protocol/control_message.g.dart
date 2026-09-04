@@ -36,17 +36,6 @@ Map<String, dynamic> _$ControlTokenResponseToJson(
   'type': instance.$type,
 };
 
-ControlTokenUpdate _$ControlTokenUpdateFromJson(Map json) => ControlTokenUpdate(
-  accessToken: json['accessToken'] as String,
-  $type: json['type'] as String?,
-);
-
-Map<String, dynamic> _$ControlTokenUpdateToJson(ControlTokenUpdate instance) =>
-    <String, dynamic>{
-      'accessToken': instance.accessToken,
-      'type': instance.$type,
-    };
-
 ControlStatus _$ControlStatusFromJson(Map json) => ControlStatus(
   relay: $enumDecode(
     _$ControlRelayConnectionStateEnumMap,
@@ -81,7 +70,6 @@ const _$ControlRelayConnectionStateEnumMap = {
 const _$ControlPluginHealthStateEnumMap = {
   ControlPluginHealthState.healthy: 'healthy',
   ControlPluginHealthState.degraded: 'degraded',
-  ControlPluginHealthState.unavailable: 'unavailable',
   ControlPluginHealthState.unknown: 'unknown',
 };
 
@@ -127,10 +115,10 @@ Map<String, dynamic> _$ControlPromptResponseToJson(
   'type': instance.$type,
 };
 
-ControlRestart _$ControlRestartFromJson(Map json) =>
-    ControlRestart($type: json['type'] as String?);
+ControlShutdown _$ControlShutdownFromJson(Map json) =>
+    ControlShutdown($type: json['type'] as String?);
 
-Map<String, dynamic> _$ControlRestartToJson(ControlRestart instance) =>
+Map<String, dynamic> _$ControlShutdownToJson(ControlShutdown instance) =>
     <String, dynamic>{'type': instance.$type};
 
 ControlUnregisterAndExit _$ControlUnregisterAndExitFromJson(Map json) =>
@@ -147,19 +135,3 @@ ControlRegistered _$ControlRegisteredFromJson(Map json) => ControlRegistered(
 
 Map<String, dynamic> _$ControlRegisteredToJson(ControlRegistered instance) =>
     <String, dynamic>{'bridgeId': instance.bridgeId, 'type': instance.$type};
-
-ControlProvisionProgressMessage _$ControlProvisionProgressMessageFromJson(
-  Map json,
-) => ControlProvisionProgressMessage(
-  progress: ControlProvisionProgress.fromJson(
-    Map<String, dynamic>.from(json['progress'] as Map),
-  ),
-  $type: json['type'] as String?,
-);
-
-Map<String, dynamic> _$ControlProvisionProgressMessageToJson(
-  ControlProvisionProgressMessage instance,
-) => <String, dynamic>{
-  'progress': instance.progress.toJson(),
-  'type': instance.$type,
-};

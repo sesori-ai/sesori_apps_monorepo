@@ -22,8 +22,6 @@ class DeepSeekHistoryRepository({
     final collector = AcpReplayCollector(
       sessionId: sessionId,
       agentId: pluginId,
-      modelId: eventMapper.modelForSession(sessionId: sessionId),
-      providerId: eventMapper.providerForSession(sessionId: sessionId),
       initialUserMessageId: null,
       messageIdOverride: ({required acpMessageId}) => acpMessageId,
       messageTimeResolver: ({required params}) => messageTimeParser.parse(params),
@@ -48,7 +46,11 @@ class DeepSeekHistoryRepository({
                 collector.consume(envelope.toJson());
               }
             }
-            return collector.build();
+            return collector.buildWithAssistantSelection(
+              modelId: eventMapper.modelForSession(sessionId: sessionId),
+              providerId: eventMapper.providerForSession(sessionId: sessionId),
+              variant: null,
+            );
           case DeepSeekPaginatedHistoryResponseDto(:final nextBeforeSeq):
             if (cursor != null && nextBeforeSeq >= cursor) {
               throw const FormatException("DeepSeek history cursor did not progress");

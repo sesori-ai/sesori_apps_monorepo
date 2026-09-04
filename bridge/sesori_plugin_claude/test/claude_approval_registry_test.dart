@@ -346,14 +346,12 @@ ClaudeControlRequestMessage _permission({
 ClaudeControlRequestMessage _request({
   required String requestId,
   required Map<String, Object?> request,
-}) =>
-    ClaudeStreamMessage.parse({
-          "type": "control_request",
-          "request_id": requestId,
-          "request": {
-            "subtype": "can_use_tool",
-            "tool_use_id": "toolu-$requestId",
-            ...request,
-          },
-        })
-        as ClaudeControlRequestMessage;
+}) => ClaudeStreamMessage.parse({
+  "type": "control_request",
+  "request_id": requestId,
+  "request": {
+    "subtype": "can_use_tool",
+    "tool_use_id": "toolu-$requestId",
+    ...request,
+  },
+}) as ClaudeControlRequestMessage;

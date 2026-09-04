@@ -10,11 +10,16 @@ on:
       - 'client/module_core/**'
       - 'client/module_auth/**'
       - 'client/module_prego/**'
+      - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.github/scripts/publish_firebase_analytics_release_cutoff.py'
+      - '.github/scripts/test_publish_firebase_analytics_release_cutoff.py'
+      - '.github/workflows/publish-firebase-analytics-release-cutoff.yml'
+      - '.github/workflows/submit-release.yml'
       - '.tool-versions'
   pull_request:
     paths:
@@ -22,11 +27,16 @@ on:
       - 'client/module_core/**'
       - 'client/module_auth/**'
       - 'client/module_prego/**'
+      - 'client/module_app_ui/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
       - 'client/Makefile'
       - 'shared/**'
+      - '.github/scripts/publish_firebase_analytics_release_cutoff.py'
+      - '.github/scripts/test_publish_firebase_analytics_release_cutoff.py'
+      - '.github/workflows/publish-firebase-analytics-release-cutoff.yml'
+      - '.github/workflows/submit-release.yml'
       - '.tool-versions'
 
 jobs:
@@ -34,6 +44,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Test Firebase analytics release cutoff publisher
+        run: python3 .github/scripts/test_publish_firebase_analytics_release_cutoff.py
 
       - name: Read Flutter version from .tool-versions
         shell: bash
@@ -78,6 +91,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: client/module_prego
 
+      - name: Analyze module_app_ui
+        run: dart analyze --fatal-infos
+        working-directory: client/module_app_ui
+
       - name: Run tests for module_core
         run: dart test
         working-directory: client/module_core
@@ -89,6 +106,10 @@ jobs:
       - name: Run tests for module_prego
         run: flutter test
         working-directory: client/module_prego
+
+      - name: Run tests for module_app_ui
+        run: flutter test
+        working-directory: client/module_app_ui
 
       - name: Run tests for client/app
         run: flutter test

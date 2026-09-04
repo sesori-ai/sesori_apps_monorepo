@@ -291,6 +291,8 @@ class ClaudeStreamClient({
       case ClaudeStatusMessage():
       case ClaudeThinkingTokensMessage():
       case ClaudeTaskProgressMessage():
+      case ClaudeTaskStartedMessage():
+      case ClaudeTaskNotificationMessage():
       case ClaudeToolProgressMessage():
       case ClaudeHookStartedMessage():
       case ClaudeHookOutputMessage():

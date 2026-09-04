@@ -1,5 +1,8 @@
 import "dart:async";
 
+import "package:sesori_shared/sesori_shared.dart";
+
+import "../repositories/models/session_abort_result.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/session_repository.dart";
 import "session_operation_dispatcher.dart";
@@ -16,18 +19,33 @@ class SessionAbortService({
   Stream<String> get abortedSessions => _abortedSessionsController.stream;
   Stream<String> get abortFailedSessions => _abortFailedSessionsController.stream;
 
-  Future<void> abortSession({required String sessionId}) {
-    final operation = _dispatcher.dispatch<void>(
+  /// Stops [sessionId] with the given sub-agent scope.
+  ///
+  /// Push suppression follows the outcome: only a full stop marks the session
+  /// aborted; a rejection or a main-agent-only stop clears the pending mark,
+  /// because work that keeps running still earns its completion push.
+  Future<SessionAbortResult> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) {
+    final operation = _dispatcher.dispatch<SessionAbortResult>(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
       body: () async {
-        await _sessionRepository.abortSession(sessionId: sessionId);
-        _abortedSessionsController.add(sessionId);
+        final result = await _sessionRepository.abortSession(sessionId: sessionId, subAgents: subAgents);
+        // Decided by what the plugin actually did, not by the requested policy:
+        // a `keep` with nothing to keep is a full stop.
+        if (result case SessionAborted(workKept: false)) {
+          _abortedSessionsController.add(sessionId);
+        } else {
+          _abortFailedSessionsController.add(sessionId);
+        }
+        return result;
       },
     );
     _abortStartedSessionsController.add(sessionId);
-    return operation.then<void>(
-      (_) {},
+    return operation.then<SessionAbortResult>(
+      (result) => result,
       onError: (Object error, StackTrace stackTrace) {
         _abortFailedSessionsController.add(sessionId);
         Error.throwWithStackTrace(error, stackTrace);

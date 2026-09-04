@@ -5,13 +5,10 @@ import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
-import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
-import "package:sesori_mobile/features/session_list/session_tile.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "package:theme_prego/module_prego.dart";
 
@@ -524,7 +521,7 @@ void main() {
         _buildScreenApp(
           child: const SessionListCubitProvider(
             projectId: "project-1",
-            child: SessionListScreen(projectId: "project-1"),
+            child: SessionListScreen(projectId: "project-1", projectName: null),
           ),
         ),
       );
@@ -555,8 +552,10 @@ void main() {
               child: SessionListPanel(
                 projectName: "Project One",
                 onNewSession: () {},
-                onSessionTap: (_) {},
-                sessionMenuEntries: (_, _) => const [],
+                onSessionTap: ({required session}) {},
+                actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                onBack: null,
               ),
             ),
           ),
@@ -583,8 +582,10 @@ void main() {
                 projectName: "Project One",
                 selectedSessionId: session.id,
                 onNewSession: () {},
-                onSessionTap: (_) {},
-                sessionMenuEntries: (_, _) => const [],
+                onSessionTap: ({required session}) {},
+                actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+                onBack: null,
               ),
             ),
           ),

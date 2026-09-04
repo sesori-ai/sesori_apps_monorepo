@@ -490,7 +490,7 @@ $PluginToolStateCopyWith<$Res> get state {
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartSubtask extends PluginMessagePart {
-  const PluginMessagePartSubtask({required this.id, required this.sessionID, required this.messageID, required this.prompt, required this.description, required this.agent,  String? $type}): $type = $type ?? 'subtask',super._();
+  const PluginMessagePartSubtask({required this.id, required this.sessionID, required this.messageID, required this.prompt, required this.description, required this.agent, @JsonKey(includeToJson: true) required this.taskState, @JsonKey(includeToJson: true) required this.childSessionID,  String? $type}): $type = $type ?? 'subtask',super._();
   
 
 @override final  String id;
@@ -499,6 +499,13 @@ class PluginMessagePartSubtask extends PluginMessagePart {
  final  String prompt;
  final  String description;
  final  String agent;
+/// The subtask's own lifecycle, when the backend reports one. Named apart
+/// from the tool-only [state] convenience accessor, which a subtask has no
+/// business answering.
+@JsonKey(includeToJson: true) final  PluginToolState? taskState;
+/// The backend session hosting this subtask's work, when the backend
+/// exposes one. The bridge translates it to a bridge session id.
+@JsonKey(includeToJson: true) final  String? childSessionID;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -517,16 +524,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.taskState, taskState) || other.taskState == taskState)&&(identical(other.childSessionID, childSessionID) || other.childSessionID == childSessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent);
+int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent,taskState,childSessionID);
 
 @override
 String toString() {
-  return 'PluginMessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent)';
+  return 'PluginMessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent, taskState: $taskState, childSessionID: $childSessionID)';
 }
 
 
@@ -537,11 +544,11 @@ abstract mixin class $PluginMessagePartSubtaskCopyWith<$Res> implements $PluginM
   factory $PluginMessagePartSubtaskCopyWith(PluginMessagePartSubtask value, $Res Function(PluginMessagePartSubtask) _then) = _$PluginMessagePartSubtaskCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String prompt, String description, String agent
+ String id, String sessionID, String messageID, String prompt, String description, String agent,@JsonKey(includeToJson: true) PluginToolState? taskState,@JsonKey(includeToJson: true) String? childSessionID
 });
 
 
-
+$PluginToolStateCopyWith<$Res>? get taskState;
 
 }
 /// @nodoc
@@ -554,7 +561,7 @@ class _$PluginMessagePartSubtaskCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? prompt = null,Object? description = null,Object? agent = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? prompt = null,Object? description = null,Object? agent = null,Object? taskState = freezed,Object? childSessionID = freezed,}) {
   return _then(PluginMessagePartSubtask(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
@@ -562,11 +569,25 @@ as String,messageID: null == messageID ? _self.messageID : messageID // ignore: 
 as String,prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,agent: null == agent ? _self.agent : agent // ignore: cast_nullable_to_non_nullable
-as String,
+as String,taskState: freezed == taskState ? _self.taskState : taskState // ignore: cast_nullable_to_non_nullable
+as PluginToolState?,childSessionID: freezed == childSessionID ? _self.childSessionID : childSessionID // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginToolStateCopyWith<$Res>? get taskState {
+    if (_self.taskState == null) {
+    return null;
+  }
 
+  return $PluginToolStateCopyWith<$Res>(_self.taskState!, (value) {
+    return _then(_self.copyWith(taskState: value));
+  });
+}
 }
 
 /// @nodoc

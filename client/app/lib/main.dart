@@ -2,7 +2,6 @@ import "dart:async";
 import "dart:ui" as ui;
 
 import "package:cupertino_ui/cupertino_ui.dart";
-import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:firebase_messaging/firebase_messaging.dart";
@@ -11,19 +10,18 @@ import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
-import "core/extensions/appearance_mode_x.dart";
-import "core/extensions/build_context_x.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
 import "firebase_options.dart";
-import "l10n/app_localizations.dart";
 
 const _singularSdkKeyDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_KEY");
 const _singularSdkSecretDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_SECRET");
@@ -73,20 +71,23 @@ void main() async {
   await bootstrapSesoriApp(
     shouldInitializeFirebase: shouldInitializeFirebase,
     configureDependenciesFn: () async {
-      await configureDependencies(
+      final analyticsBootstrap = await configureDependencies(
         firebaseEnabled: shouldInitializeFirebase,
-        createAnalyticsRuntimeCapability: ({required authSession}) => _createAnalyticsRuntimeCapability(
+        createAnalyticsRuntimeBootstrap: ({required crawlGateService}) => _createAnalyticsRuntimeBootstrap(
           shouldInitializeFirebase: shouldInitializeFirebase,
           supportsFirebaseAnalytics: supportsFirebaseAnalytics,
-          authSession: authSession,
+          crawlGateService: crawlGateService,
         ),
       );
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
+      return analyticsBootstrap;
     },
-    startSingularAttributionFn: _startSingularAttribution,
+    prepareSingularAttributionFn: _prepareSingularAttribution,
+    applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
+    startAttributionFn: () => getIt<AttributionService>().start(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
     startNotificationStartupFn: () => startNotificationStartup(
@@ -104,9 +105,11 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
-  required Future<void> Function() configureDependenciesFn,
-  required Future<void> Function() startSingularAttributionFn,
+  required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
+  required void Function() prepareSingularAttributionFn,
+  required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
+  required void Function() startAttributionFn,
   required Future<void> Function() startProductAnalyticsFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
@@ -114,12 +117,8 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  await configureDependenciesFn();
-  try {
-    await startSingularAttributionFn();
-  } on Object catch (error, stackTrace) {
-    logw("Error bootstrapping Singular attribution", error, stackTrace);
-  }
+  final analyticsBootstrap = await configureDependenciesFn();
+  prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
   await startAnalyticsRouteListenerFn();
@@ -163,69 +162,97 @@ Future<void> bootstrapSesoriApp({
       ),
     ),
   );
+
+  unawaited(
+    _completeAnalyticsStartup(
+      crawlGate: analyticsBootstrap.crawlGate,
+      applySingularCrawlGateFn: applySingularCrawlGateFn,
+      startAttributionFn: startAttributionFn,
+    ),
+  );
 }
 
-Future<AnalyticsRuntimeCapability> _createAnalyticsRuntimeCapability({
+Future<void> _completeAnalyticsStartup({
+  required Future<AnalyticsStoreCrawlGate> crawlGate,
+  required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
+  required void Function() startAttributionFn,
+}) async {
+  try {
+    applySingularCrawlGateFn(crawlGate: await crawlGate);
+    startAttributionFn();
+  } on Object catch (error, stackTrace) {
+    logw("Error completing analytics startup", error, stackTrace);
+  }
+}
+
+Future<AnalyticsRuntimeBootstrap> _createAnalyticsRuntimeBootstrap({
   required bool shouldInitializeFirebase,
   required bool supportsFirebaseAnalytics,
-  required AuthSession authSession,
+  required AnalyticsCrawlGateService crawlGateService,
 }) async {
-  final capability = !shouldInitializeFirebase || !supportsFirebaseAnalytics
-      ? const AnalyticsRuntimeCapability.disabled(
-          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-        )
-      : await FirebaseAnalyticsStartup(analytics: FirebaseAnalytics.instance).configure(
-          ineligibilityReason: await _measurementIneligibilityReason(authSession: authSession),
-        );
+  if (!shouldInitializeFirebase || !supportsFirebaseAnalytics) {
+    return AnalyticsRuntimeBootstrap(
+      capability: const AnalyticsRuntimeCapability.disabled(
+        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      ),
+      crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+    );
+  }
+
+  final ineligibilityReason = _measurementIneligibilityReason();
+  final analyticsStartup = getIt<FirebaseAnalyticsStartup>();
+  final capability = await analyticsStartup.prepare(ineligibilityReason: ineligibilityReason);
   if (capability case AnalyticsRuntimeDisabled(:final reason)) {
     logi("Firebase analytics runtime disabled (${reason.name})");
+    return AnalyticsRuntimeBootstrap(
+      capability: capability,
+      crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+    );
   }
-  return capability;
+
+  return AnalyticsRuntimeBootstrap(
+    capability: capability,
+    crawlGate: _resolveAndApplyAnalyticsCrawlGate(
+      analyticsStartup: analyticsStartup,
+      crawlGateService: crawlGateService,
+      eligibility: defaultTargetPlatform == TargetPlatform.android
+          ? AnalyticsCrawlGateEligibility.eligibleRelease
+          : AnalyticsCrawlGateEligibility.ineligible,
+    ),
+  );
 }
 
-Future<void> _startSingularAttribution() async {
-  getIt<SingularAttributionStartup>().start(
+Future<AnalyticsStoreCrawlGate> _resolveAndApplyAnalyticsCrawlGate({
+  required FirebaseAnalyticsStartup analyticsStartup,
+  required AnalyticsCrawlGateService crawlGateService,
+  required AnalyticsCrawlGateEligibility eligibility,
+}) async {
+  var crawlGate = AnalyticsStoreCrawlGate.allow;
+  try {
+    crawlGate = await crawlGateService.resolve(eligibility: eligibility);
+  } on Object catch (error, stackTrace) {
+    logw("Failed to resolve the analytics store-crawl gate; allowing analytics", error, stackTrace);
+  }
+  await analyticsStartup.applyCrawlGate(crawlGate: crawlGate);
+  return crawlGate;
+}
+
+void _prepareSingularAttribution() {
+  getIt<SingularAttributionStartup>().prepare(
     isSupportedPlatform: _supportsSingular,
-    ineligibilityReason: await _measurementIneligibilityReason(authSession: getIt<AuthSession>()),
+    ineligibilityReason: _measurementIneligibilityReason(),
     sdkKey: _singularSdkKeyDefine,
     sdkSecret: _singularSdkSecretDefine,
   );
 }
 
-/// Unix seconds at which the release lanes compiled this binary. Builds made
-/// outside those lanes leave it 0, which reads as a build too old for a store
-/// crawl to still be running it.
-const _buildEpochSeconds = int.fromEnvironment("SESORI_BUILD_EPOCH_SECONDS");
-
-/// How long after compilation a store may still be crawling the binary. Play
-/// runs its pre-launch report against every track upload "subject to capacity",
-/// so this is a heuristic on Google's scheduling delay, not a contract.
-const _buildWindow = Duration(hours: 2);
-
-/// Whether a binary stamped at [buildEpochSeconds] could still be under a store
-/// pre-launch crawl at [now]. A clock behind the stamp says nothing about the
-/// crawl, so it reads as outside the window.
-bool isWithinBuildWindow({required int buildEpochSeconds, required DateTime now}) {
-  if (buildEpochSeconds <= 0) return false;
-  final buildTime = DateTime.fromMillisecondsSinceEpoch(buildEpochSeconds * 1000, isUtc: true);
-  return !now.isBefore(buildTime) && now.isBefore(buildTime.add(_buildWindow));
+void _applySingularCrawlGate({required AnalyticsStoreCrawlGate crawlGate}) {
+  getIt<SingularAttributionStartup>().applyCrawlGate(crawlGate: crawlGate);
 }
 
-/// Why this process must not report analytics, or null when it may.
-///
-/// Play's pre-launch report is the only store process that launches the app
-/// after an upload; TestFlight runs nothing, so only Android is gated. Crawlers
-/// never sign in, so an unauthenticated launch inside the build window is
-/// treated as one. A signed-in device keeps reporting at any time.
-Future<AnalyticsRuntimeDisabledReason?> _measurementIneligibilityReason({required AuthSession authSession}) async {
-  if (!kReleaseMode) return AnalyticsRuntimeDisabledReason.debugOrProfile;
-  if (defaultTargetPlatform == TargetPlatform.android &&
-      isWithinBuildWindow(buildEpochSeconds: _buildEpochSeconds, now: DateTime.now()) &&
-      !await authSession.hasLocallyValidSession()) {
-    return AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated;
-  }
-  return null;
-}
+/// Why this process must never report analytics, or null when it may.
+AnalyticsRuntimeDisabledReason? _measurementIneligibilityReason() =>
+    kReleaseMode ? null : AnalyticsRuntimeDisabledReason.debugOrProfile;
 
 Future<void> startNotificationStartup({
   required LocalNotificationClient localNotificationClient,
@@ -310,30 +337,9 @@ class const _SesoriAppShell() extends StatelessWidget {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
       themeMode: themeMode,
-      theme: ThemeData(
-        colorScheme: PregoColors.light.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
-        fontFamily: PregoTextTheme.fontFamily,
-        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
-        extensions: [PregoDesignSystem.light],
-        // Dark status-bar icons for the light theme's light backgrounds.
-        // Without this, transparent AppBars (e.g. ProjectListScreen) default
-        // to light/white icons that vanish against a light background.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.dark),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: PregoColors.dark.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
-        fontFamily: PregoTextTheme.fontFamily,
-        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
-        extensions: [PregoDesignSystem.dark],
-        // Light status-bar icons for the dark theme's dark backgrounds.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
-      ),
-      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-        AppLocalizations.delegate,
-        ...GlobalMaterialLocalizations.delegates,
-      ],
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      darkTheme: buildPregoThemeData(brightness: Brightness.dark),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
       // Legacy UI dependencies still need the SDK theme/localization types.
@@ -355,43 +361,14 @@ class const _SesoriAppShell() extends StatelessWidget {
                 connectionService: getIt<ConnectionService>(),
                 routeSource: getIt<RouteSource>(),
               ),
-              child: _SseToastListener(child: child ?? const SizedBox.shrink()),
+              child: SseToastListener(
+                navigatorKey: appRootNavigatorKey,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Renders accepted backend toast states through the design-system popup alert
-/// presenter on the root overlay, including global guidance on routes with no
-/// scaffold.
-class const _SseToastListener({required final Widget child}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return BlocListener<SseToastCubit, SseToastState>(
-      listener: (context, state) {
-        if (state case SseToastShow(:final title, :final message, :final variant)) {
-          final overlay = appRootNavigatorKey.currentState?.overlay;
-          if (overlay == null) return;
-          PregoPopupAlertPresenter.fromOverlayState(overlay).show(
-            title: title ?? message,
-            content: title == null ? const PregoPopupAlertContent() : PregoPopupAlertContent(message: message),
-            variant: switch (variant) {
-              SseToastVariant.info => PregoPopupAlertsNotificationsVariant.info,
-              SseToastVariant.success => PregoPopupAlertsNotificationsVariant.success,
-              SseToastVariant.warning => PregoPopupAlertsNotificationsVariant.warning,
-              SseToastVariant.error => PregoPopupAlertsNotificationsVariant.error,
-            },
-            duration: switch (variant) {
-              SseToastVariant.error || SseToastVariant.warning => const Duration(seconds: 8),
-              SseToastVariant.info || SseToastVariant.success => const Duration(seconds: 4),
-            },
-          );
-        }
-      },
-      child: child,
     );
   }
 }

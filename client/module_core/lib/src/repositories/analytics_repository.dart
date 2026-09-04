@@ -4,6 +4,7 @@ import "package:meta/meta.dart";
 import "../api/analytics_api.dart";
 import "../foundation/models/product_analytics/installation_analytics_event.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../logging/logging.dart";
 import "models/analytics_delivery_result.dart";
 
 const _analyticsDeliveryDeadline = Duration(seconds: 10);
@@ -31,6 +32,16 @@ class AnalyticsRepository {
 
   Future<AnalyticsDeliveryResult> logInstallationEvent({required InstallationAnalyticsEvent event}) =>
       _deliver(operation: () => _api.logInstallationEvent(event: event));
+
+  /// Best-effort: a suspension that cannot be lifted must not block the login
+  /// flow; the outcome events then reach a suspended SDK and are discarded.
+  Future<void> activateAfterInteractiveAuthentication() async {
+    try {
+      await _api.activateAfterInteractiveAuthentication().timeout(_deliveryDeadline);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to activate analytics after interactive authentication", error, stackTrace);
+    }
+  }
 
   Future<AnalyticsDeliveryResult> _deliver({required Future<void> Function() operation}) async {
     try {

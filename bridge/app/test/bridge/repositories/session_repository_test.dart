@@ -1611,6 +1611,76 @@ void main() {
       expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
     });
 
+    test("replayed subtask child references map to stable ids, and unbound ones to null", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
+        await repository.insertStoredSession(
+          sessionId: sessionId,
+          backendSessionId: backendSessionId,
+          pluginId: plugin.id,
+          projectId: "/repo",
+          isDedicated: false,
+          createdAt: 1,
+          worktreePath: null,
+          branchName: null,
+          baseBranch: null,
+          baseCommit: null,
+          agent: null,
+          agentModel: null,
+        );
+      }
+      plugin.messagesResult = const [
+        PluginMessageWithParts(
+          info: PluginMessageAssistant(
+            id: "message-1",
+            sessionID: "backend-s1",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            variant: null,
+            sender: PluginMessageSender.agent,
+            time: null,
+          ),
+          parts: [
+            PluginMessagePart.subtask(
+              id: "part-bound",
+              sessionID: "backend-s1",
+              messageID: "message-1",
+              prompt: "explore",
+              description: "Explore",
+              agent: "explore",
+              taskState: null,
+              childSessionID: "backend-child",
+            ),
+            PluginMessagePart.subtask(
+              id: "part-unbound",
+              sessionID: "backend-s1",
+              messageID: "message-1",
+              prompt: "review",
+              description: "Review",
+              agent: "explore",
+              taskState: null,
+              childSessionID: "backend-unpublished",
+            ),
+          ],
+        ),
+      ];
+
+      final parts = (await repository.getSessionMessages(sessionId: "stable-s1")).messages.single.parts;
+
+      expect((parts.first as MessagePartSubtask).childSessionID, equals("stable-child"));
+      expect((parts.last as MessagePartSubtask).childSessionID, isNull);
+      expect((parts.last as MessagePartSubtask).description, equals("Review"));
+    });
+
     test("session statuses report eligible inactive plugins as unavailable", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1644,7 +1714,7 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       await expectLater(
-        repository.abortSession(sessionId: "unknown"),
+        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.lastGetMessagesSessionId, isNull);
@@ -2455,7 +2525,7 @@ void main() {
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
-        () => repository.abortSession(sessionId: "gone"),
+        () => repository.abortSession(sessionId: "gone", subAgents: SessionAbortSubAgentPolicy.stop),
         () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
@@ -2864,8 +2934,12 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => activitySummaries;
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
     lastAbortSessionId = sessionId;
+    return const PluginAbortAccepted(workKept: false);
   }
 
   @override

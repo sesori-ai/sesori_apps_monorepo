@@ -1,6 +1,7 @@
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/api/models/app_client_status_response.dart";
 import "package:sesori_bridge/src/api/models/generate_session_metadata_response.dart";
+import "package:sesori_bridge/src/api/models/project_glossary_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
@@ -119,4 +120,22 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
 
   @override
   Future<AppClientStatusResponse> getAppClientStatus({required String accessToken}) => throw UnimplementedError();
+
+  @override
+  Future<ProjectGlossaryWordsResponse> getProjectGlossary({
+    required ProjectGlossaryKey projectKey,
+    required AbortSignal abortSignal,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectGlossaryAddedWordsResponse> addProjectGlossaryWords({
+    required ProjectGlossaryWordsRequest request,
+    required AbortSignal abortSignal,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectGlossaryRemovedWordsResponse> removeProjectGlossaryWords({
+    required ProjectGlossaryWordsRequest request,
+    required AbortSignal abortSignal,
+  }) => throw UnimplementedError();
 }

@@ -1,6 +1,8 @@
 # Sesori Bridge (Dart)
 
-Dart CLI compiled to a native bundle. Runs headlessly on a laptop or VM, authenticates via OAuth PKCE, connects to the relay, and routes E2E-encrypted traffic between clients and independently managed backend plugins. OpenCode, Codex, and Cursor can run concurrently in one bridge.
+Dart CLI compiled to a native bundle. It runs headlessly on a laptop or VM, authenticates via OAuth PKCE, connects to
+the relay, and routes E2E-encrypted traffic between clients and independently managed backend plugins. Registered
+harnesses can run concurrently in one bridge.
 
 ## STRUCTURE
 
@@ -23,7 +25,7 @@ lib/src/
 ├── push/                      Subsystem — push notification delivery
 ├── server/                    Subsystem — single-live-bridge enforcement, startup mutex, plugin host
 ├── updater/                   Subsystem — in-place update
-├── control/                   Subsystem — desktop control channel
+├── control/                   Desktop control channel (part of the core layered app, not a self-contained subsystem)
 ├── models/                    Bridge-wide config models
 └── persistence/               Bridge-wide diagnostics persistence
 
@@ -34,26 +36,37 @@ bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_opencode/    OpenCode implementation
 ├── sesori_plugin_codex/       Codex implementation
 ├── sesori_plugin_acp/         ACP protocol plugin base
-└── sesori_plugin_cursor/      Cursor implementation over ACP
+├── sesori_plugin_cursor/      Cursor implementation over ACP
+├── sesori_plugin_omp/         Oh My Pi implementation over ACP
+├── sesori_plugin_claude/      Claude Code implementation
+├── sesori_plugin_hermes/      Hermes implementation over ACP
+├── sesori_plugin_grok/        Grok Build implementation over ACP
+├── sesori_plugin_pi/          Pi implementation
+├── sesori_plugin_deepseek/    DeepSeek implementation over ACP
+└── sesori_plugin_copilot/     GitHub Copilot implementation over ACP
 ```
 
 ## WHERE TO LOOK
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, repeatable `--import-plugin`, etc.); every registered plugin contributes namespaced options |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags; every registered plugin contributes namespaced options; the retired import flag is a hidden warning-only no-op |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/foundation/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/foundation/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
 | Request routing  | `lib/src/routing/`                 | Explicit handlers; unmatched routes return 404          |
 | Trigger listeners | `lib/src/listeners/`               | One trigger lifecycle per class; typed output only      |
 | Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
+| Plugin registry  | `lib/src/runtime/plugin_registry.dart` | Only bridge-app composition point for concrete plugins |
 | OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |
 | Bridge instances | `lib/src/server/`                  | Single-live-bridge enforcement, startup mutex, plugin host abstractions |
 
 ## CONVENTIONS
 
-- **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/`. Core repositories, services, handlers, and shared contracts remain backend-neutral. `plugin_registry.dart` is the supported composition point that imports the OpenCode, Codex, and Cursor descriptors; do not import concrete plugins elsewhere in bridge core.
+- **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/`. Core
+  repositories, services, handlers, and shared contracts remain backend-neutral. `plugin_registry.dart` is the
+  supported composition point that imports concrete descriptors; do not import concrete plugins elsewhere in bridge
+  core.
 - **Plugin eligibility** — `plugins.disabled` is the only persisted eligibility policy. Every registered ID absent from that set is eligible; setup readiness independently gates routing. All plugin CLI options are registered, while `--plugin` and allowlists do not exist. Lists use case-insensitive display-name order with ID tie-breaking. The derived default prefers OpenCode when selectable and otherwise uses the first plugin in that order. Missing legacy `pluginId` still means OpenCode, not the first enabled plugin.
 - **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
 - **Catalog and import semantics** — project/root/detail/child reads use only the durable database catalog. `POST`, `DELETE`, and `GET /plugin/import` start, cancel, and report independent per-plugin imports; progress SSE is plugin-attributed. Imports are atomic/non-destructive, and concurrent catalog reads observe the last committed snapshot.

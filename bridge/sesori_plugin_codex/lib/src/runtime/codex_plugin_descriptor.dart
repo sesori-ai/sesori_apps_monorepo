@@ -14,6 +14,7 @@ import "../api/codex_tool_outcome_storage.dart";
 import "../api/parsers/codex_command_execution_parser.dart";
 import "../api/parsers/codex_file_change_parser.dart";
 import "../api/parsers/codex_image_bearing_item_parser.dart";
+import "../api/parsers/codex_sub_agent_item_parser.dart";
 import "../codex_config_reader.dart";
 import "../codex_event_mapper.dart";
 import "../codex_metadata_repository.dart";
@@ -22,10 +23,12 @@ import "../codex_stdio_app_server_client.dart";
 import "../repositories/codex_authentication_repository.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_sub_agent_tracker.dart";
 import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/mappers/codex_user_content_mapper.dart";
 import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
@@ -85,6 +88,8 @@ CodexManagedApi _defaultBuildApi({
         configReader: configReader,
       ),
       toolOutcomeRepository: toolOutcomeRepository,
+      subAgentTracker: CodexSubAgentTracker(),
+      sessionMapper: const CodexSessionMapper(),
       launchDirectory: launchDirectory,
     ),
     eventMapper: CodexEventMapper(
@@ -108,6 +113,7 @@ CodexManagedApi _defaultBuildApi({
     commandExecutionParser: const CodexCommandExecutionParser(),
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
+    subAgentItemParser: const CodexSubAgentItemParser(),
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,

@@ -47,6 +47,7 @@ void main() {
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
+        authMethodAllowlist: null,
         timeout: const Duration(seconds: 5),
       );
       final initialize = await waitForFrame("initialize");
@@ -66,11 +67,96 @@ void main() {
       await initializing;
     });
 
+    test("an allowlist selects only an advertised permitted method", () async {
+      final initializing = api.initialize(
+        formElicitation: false,
+        capabilityMeta: null,
+        authMethodId: null,
+        authMethodAllowlist: const {"cached_token"},
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"id": "grok.com", "name": "Interactive login"},
+            {"id": "cached_token", "name": "Cached token"},
+          ],
+        ),
+      });
+      final authenticate = await waitForFrame("authenticate");
+      expect(authenticate["params"], {"methodId": "cached_token"});
+      fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+      await initializing;
+    });
+
+    test("a rejected allowlisted method becomes a typed authentication failure", () async {
+      final initializing = api.initialize(
+        formElicitation: false,
+        capabilityMeta: null,
+        authMethodId: null,
+        authMethodAllowlist: const {"cached_token"},
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"id": "cached_token", "name": "Cached token"},
+          ],
+        ),
+      });
+      final authenticate = await waitForFrame("authenticate");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": authenticate["id"],
+        "error": {"code": -32000, "message": "Rejected"},
+      });
+
+      await expectLater(
+        initializing,
+        throwsA(
+          isA<PluginAuthenticationRequiredException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<AcpRpcException>(),
+          ),
+        ),
+      );
+    });
+
+    test("an allowlist rejects an interactive-only advertised list", () async {
+      final initializing = api.initialize(
+        formElicitation: false,
+        capabilityMeta: null,
+        authMethodId: null,
+        authMethodAllowlist: const {"cached_token", "xai.api_key"},
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"id": "grok.com", "name": "Interactive login"},
+          ],
+        ),
+      });
+      await expectLater(initializing, throwsA(isA<PluginAuthenticationRequiredException>()));
+      expect(fake.written.where((frame) => frame["method"] == "authenticate"), isEmpty);
+    });
+
     test("a terminal-only agent fails typed, naming the connection", () async {
       final initializing = api.initialize(
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
+        authMethodAllowlist: null,
         timeout: const Duration(seconds: 5),
       );
       final initialize = await waitForFrame("initialize");
@@ -103,6 +189,7 @@ void main() {
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: "login",
+        authMethodAllowlist: null,
         timeout: timeout,
       );
       final initialize = await waitForFrame("initialize");

@@ -97,9 +97,6 @@ jobs:
           bundler-cache: true
           working-directory: client/app/ios
 
-      # The build stamp mirrors the Android lane so every lane-built binary
-      # carries its build time. The analytics gate that reads it is Android-only
-      # (TestFlight runs no crawl), so on iOS the value is informational.
       - name: Generate iOS build config
         env:
           SINGULAR_SDK_KEY: ${{ secrets.SINGULAR_SDK_KEY }}
@@ -112,7 +109,6 @@ jobs:
             --config-only
             --release
             --no-codesign
-            "--dart-define=SESORI_BUILD_EPOCH_SECONDS=$(date -u +%s)"
           )
           singular_defines_path="$RUNNER_TEMP/sesori-singular-dart-defines.json"
           export SINGULAR_DEFINES_PATH="$singular_defines_path"

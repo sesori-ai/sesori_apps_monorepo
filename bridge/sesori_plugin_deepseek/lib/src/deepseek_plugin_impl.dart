@@ -12,6 +12,7 @@ class DeepSeekPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required DeepSeekEventMapper mapper,
+  required super.childSessionTracker,
   required final DeepSeekAcpApi api,
   required final DeepSeekHistoryRepository historyRepository,
   required final DeepSeekSessionService deepSeekSessionService,

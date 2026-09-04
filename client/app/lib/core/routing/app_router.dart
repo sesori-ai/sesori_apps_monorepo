@@ -1,17 +1,16 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
-import "../../features/session_list/session_list_action_dispatcher.dart";
+import "../../features/session_list/archived_sessions_artwork.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
-import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
@@ -19,11 +18,8 @@ import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
-import "../extensions/build_context_x.dart";
+import "../widgets/sesori_background_widget.dart";
 import "../widgets/sesori_logo.dart";
-import "../widgets/session_split/empty_session_detail_panel.dart";
-import "../widgets/session_split/session_split_scope.dart";
-import "../widgets/session_split/session_split_shell.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -40,20 +36,6 @@ const _sessionDiffsRouteSegment = "diffs";
 const _settingsNotificationsRouteSegment = "notifications";
 const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
-
-// WORKAROUND: go_router only recognizes package:flutter's legacy MaterialApp,
-// so builder routes under material_ui.MaterialApp become NoTransitionPages.
-// Remove this helper and the explicit pageBuilders once
-// https://github.com/flutter/flutter/issues/191132 is fixed.
-MaterialPage<void> _materialPage({required GoRouterState state, required Widget child}) {
-  return MaterialPage<void>(
-    key: state.pageKey,
-    name: state.name ?? state.path,
-    arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
-    restorationId: state.pageKey.value,
-    child: child,
-  );
-}
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -95,10 +77,7 @@ extension AppRouteToGoRoute on AppRouteDef {
     return GoRoute(
       path: path,
       routes: routes,
-      pageBuilder: (context, state) => _materialPage(
-        state: state,
-        child: _buildScreen(context: context, state: state),
-      ),
+      builder: (context, state) => _buildScreen(context: context, state: state),
     );
   }
 
@@ -261,26 +240,23 @@ List<RouteBase> _buildAppRoutes({
       routes: [
         ShellRoute(
           navigatorKey: sessionShellNavigatorKey,
-          pageBuilder: (context, state, child) {
+          builder: (context, state, child) {
             final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
             final projectViewingService = getIt<ProjectViewingService>();
 
-            return _materialPage(
-              state: state,
-              child: SessionListCubitProvider(
-                key: ValueKey("session-list-cubit-$projectId"),
-                projectId: projectId,
-                child: SessionSplitShell(
-                  projectViewingService: projectViewingService,
-                  list: _SessionListPane(
-                    projectId: projectId,
-                    projectName: projectName,
-                    selectedSessionId: selectedSessionId,
-                  ),
-                  child: child,
+            return SessionListCubitProvider(
+              key: ValueKey("session-list-cubit-$projectId"),
+              projectId: projectId,
+              child: SessionSplitShell(
+                projectViewingService: projectViewingService,
+                list: _SessionListPane(
+                  projectId: projectId,
+                  projectName: projectName,
+                  selectedSessionId: selectedSessionId,
                 ),
+                child: child,
               ),
             );
           },
@@ -302,7 +278,10 @@ List<RouteBase> _buildAppRoutes({
                       final route => throw StateError("Route ${route.def.name} is not a sessions route"),
                     };
                     return SessionSplitScope.of(context).isSplit
-                        ? const EmptySessionDetailPanel()
+                        ? EmptySessionDetailPanel(
+                            background: const SesoriBackgroundWidget(),
+                            connectionBanner: ConnectionBanner.maybeFor(context),
+                          )
                         : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
                   },
                 ),
@@ -391,10 +370,7 @@ List<RouteBase> _buildAppRoutes({
       routes: [
         GoRoute(
           path: _settingsNotificationsRouteSegment,
-          pageBuilder: (context, state) => _materialPage(
-            state: state,
-            child: AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
-          ),
+          builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
         ),
         GoRoute(
           path: _settingsHarnessesRouteSegment,
@@ -406,8 +382,9 @@ List<RouteBase> _buildAppRoutes({
           //
           // The modal is a CupertinoPage for the same reason settings itself
           // uses one: only the Cupertino route honours `fullscreenDialog` on
-          // Android too. The pushed page is an explicit MaterialPage, so it
-          // keeps the platform's push transition.
+          // Android too. Choosing per presentation requires a pageBuilder, so
+          // the pushed branch spells out the MaterialPage that go_router would
+          // otherwise supply, keeping the platform's push transition.
           pageBuilder: (context, state) {
             final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
             final child = route.screen;
@@ -417,16 +394,19 @@ List<RouteBase> _buildAppRoutes({
                 fullscreenDialog: true,
                 child: child,
               ),
-              HarnessSettingsPresentation.pushed => _materialPage(state: state, child: child),
+              HarnessSettingsPresentation.pushed => MaterialPage<void>(
+                key: state.pageKey,
+                name: state.name ?? state.path,
+                arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
+                restorationId: state.pageKey.value,
+                child: child,
+              ),
             };
           },
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
-          pageBuilder: (context, state) => _materialPage(
-            state: state,
-            child: AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
-          ),
+          builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
         ),
       ],
     ),
@@ -440,7 +420,7 @@ class const _SessionListPane({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher();
+    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute);
     // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required here so shell chrome exits the whole shell instead of the nested pane route
     final rootNavigator = Navigator.of(context);
 
@@ -454,19 +434,19 @@ class const _SessionListPane({
         // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
         onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
         onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
-        onSessionTap: (session) {
+        onSessionTap: ({required session}) {
           context.goRoute(
             AppRoute.sessionDetail(
               projectId: projectId,
               projectName: projectName,
               sessionId: session.id,
-              sessionTitle: session.title ?? "",
+              sessionTitle: session.title,
               readOnly: false,
             ),
           );
         },
-        sessionMenuEntries: (BuildContext context, Session session) =>
-            actionDispatcher.sessionMenuEntries(context: context, session: session),
+        actionDispatcher: actionDispatcher,
+        archivedEmptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
       ),
     );
   }

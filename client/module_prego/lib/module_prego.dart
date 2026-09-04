@@ -5,6 +5,7 @@ export 'components/alerts/prego_inline_alerts_notifications.dart';
 export 'components/alerts/prego_popup_alerts_notifications.dart';
 export 'components/badges/prego_tag.dart';
 export 'components/buttons/prego_buttons_icon_glass.dart';
+export 'components/buttons/prego_copy_icon_button.dart';
 export 'components/buttons/prego_picker_button.dart';
 export 'components/buttons/prego_switch.dart';
 export 'components/icons/prego_avatar_user.dart';
@@ -28,6 +29,7 @@ export 'components/navigation/prego_top_bar_inset.dart'
     show PregoTopBarInsetBuilder, PregoTopBarInsetScope, pregoTopBarInsetOf;
 export 'components/navigation/prego_top_navigation.dart';
 export 'components/navigation/prego_top_navigation_sheets.dart';
+export 'components/prego_readable_selection_area.dart';
 export 'components/prego_size_observer.dart';
 export 'components/surfaces/prego_bottom_sheet.dart';
 export 'components/surfaces/prego_grouped_notice_row.dart';

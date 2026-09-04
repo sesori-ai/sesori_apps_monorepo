@@ -1,7 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_mobile/features/session_list/session_archived_empty_state.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_mobile/features/session_list/archived_sessions_artwork.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -18,8 +18,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(
-          // ThemeData reads brightness off the colour scheme, which is what
-          // context.isDarkMode — and so the artwork choice — goes by.
+          // ThemeData reads brightness from the color scheme, which is what
+          // the product-owned artwork uses to select its export.
           colorScheme: (isDark ? PregoColors.dark : PregoColors.light).toFlutterColorScheme(),
           textTheme: (isDark ? PregoTextTheme.dark : PregoTextTheme.light).asFlutterTextTheme(),
           extensions: [isDark ? PregoDesignSystem.dark : PregoDesignSystem.light],
@@ -33,7 +33,10 @@ void main() {
         home: const Scaffold(
           body: CustomScrollView(
             slivers: [
-              SliverFillRemaining(hasScrollBody: false, child: SessionArchivedEmptyState()),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+              ),
             ],
           ),
         ),

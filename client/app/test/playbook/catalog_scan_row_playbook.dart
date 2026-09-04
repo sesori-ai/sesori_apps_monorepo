@@ -1,12 +1,10 @@
 import "dart:async";
 import "dart:math" as math;
 
-import "package:flutter/material.dart";
+import "package:flutter/widgets.dart";
 import "package:material_ui/material_ui.dart" as material;
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/widgets/catalog_scan_row.dart";
-import "package:sesori_mobile/features/project_list/widgets/project_tile.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "package:widgetbook/widgetbook.dart";
@@ -30,12 +28,11 @@ material.ThemeData _buildPregoTheme({required PregoDesignSystem designSystem}) =
   extensions: [designSystem],
 );
 
-/// A dev-only Widgetbook that renders the app-owned production scan row.
+/// A dev-only Widgetbook that renders the shared production scan row.
 ///
 /// It stays in `test/playbook` because the shared design catalog intentionally
-/// depends only on PREGO. This component needs the mobile app's localization
-/// and the core catalog-rescan state, so keeping its playbook beside the app
-/// preserves that dependency boundary without recreating the widget.
+/// depends only on PREGO. This fixture consumes the public `sesori_app_ui`
+/// surface plus core scan state without recreating the widget.
 class const CatalogScanRowPlaybook({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -176,7 +173,7 @@ Widget _buildPlayground(BuildContext context) {
 enum CatalogScanRowAction() {
   none,
   cancel,
-  dismiss;
+  dismiss,
 }
 
 class const CatalogScanRowScenario({
@@ -558,6 +555,7 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
                     project: example.project,
                     activeSessions: example.activeSessions,
                     unseen: example.unseen,
+                    onOpen: ({required context, required project, required displayName}) {},
                   ),
                 ),
               ),

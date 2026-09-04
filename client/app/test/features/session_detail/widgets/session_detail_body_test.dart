@@ -13,33 +13,28 @@ import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/capabilities/media/composer_image_picker.dart";
-import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
-import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_editor_sheet.dart";
-import "package:sesori_mobile/features/session_detail/widgets/prompt_input.dart";
-import "package:sesori_mobile/features/session_detail/widgets/queued_message_bubble.dart";
-import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
-import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
-import "package:sesori_mobile/features/session_detail/widgets/text_part_widget.dart";
-import "package:sesori_mobile/features/session_detail/widgets/user_message_card.dart";
-import "package:sesori_mobile/features/session_detail/widgets/voice_cancel_button.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
+import "../../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
-class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
-
-class MockComposerImagePicker() extends Mock implements ComposerImagePicker;
+class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
+
+class MockImageSaver() extends Mock implements ImageSaver;
+
+class MockImageSharer() extends Mock implements ImageSharer;
+
+class MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
@@ -57,6 +52,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
 }) {
+  final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
     initialLocation: startAtPreviousScreen ? "/previous" : "/",
     routes: [
@@ -75,12 +71,29 @@ Widget _buildApp({
         path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
-          child: const SessionDetailBody(
-            projectId: "project-1",
-            projectName: null,
-            sessionId: "session-1",
-            sessionTitle: "Session",
-            readOnly: false,
+          child: SessionDetailPresentationScope(
+            messageImageRepository: MockMessageImageRepository.new,
+            imageSaver: MockImageSaver.new,
+            imageClipboard: () => imageClipboard,
+            imageSharer: MockImageSharer.new,
+            canShareImages: true,
+            openExternalLink: ({required url, required mode}) async => false,
+            openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+            child: SessionDetailBody(
+              projectId: "project-1",
+              sessionId: "session-1",
+              sessionTitle: "Session",
+              readOnly: false,
+              banner: null,
+              onBack: context.pop,
+              onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
+              bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+                  MobileSessionDetailComposerControls(
+                    projectId: projectId,
+                    sessionId: sessionId,
+                    state: state,
+                  ),
+            ),
           ),
         ),
       ),
@@ -200,13 +213,15 @@ List<Object?> _captureHapticFeedback({required bool throwsPlatformException}) {
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
-  late MockComposerImagePicker imagePicker;
+  late MockVoiceTranscriptionSession voiceSession;
+  late MockComposerAttachmentDispatcher attachmentDispatcher;
   late MockImageClipboard imageClipboard;
   late StreamController<void> maxDurationReached;
 
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
+    registerFallbackValue(SessionAbortSubAgentPolicy.stop);
   });
 
   Finder semanticsWithLabel(String label) =>
@@ -235,13 +250,15 @@ void main() {
 
     maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
-    when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
-    when(() => voiceTranscriptionService.prewarmRecording()).thenAnswer((_) async {});
+    voiceSession = stubVoiceTranscriptionService(
+      service: voiceTranscriptionService,
+      maxDurationStream: maxDurationReached.stream,
+    );
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
-    imagePicker = MockComposerImagePicker();
-    GetIt.instance.registerSingleton<ComposerImagePicker>(imagePicker);
+    attachmentDispatcher = MockComposerAttachmentDispatcher();
+    GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
 
     imageClipboard = MockImageClipboard();
     when(imageClipboard.readImage).thenAnswer((_) async => null);
@@ -270,35 +287,49 @@ void main() {
       return MultiBlocProvider(
         providers: [
           BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+          BlocProvider<VoiceInputCubit>(
+            create: (_) => VoiceInputCubit(
+              service: voiceTranscriptionService,
+              session: voiceSession,
+            ),
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
-            body: PromptInput(
-              isBusy: false,
-              hasMessages: false,
-              onSend: ({required draft, required command, required attachments}) {
-                submittedDraft = draft;
-                submitted = attachments;
-              },
-              onVoiceTranscriptionCompleted: () {},
-              onDraftChanged: (_) {},
-              onDraftCleared: () {},
-              onAbort: () {},
-              surfaceStyleController: surfaceStyle,
-              composerHeader: null,
-              availableCommands: const [],
-              stagedCommand: null,
-              onCommandSelected: (_) {},
-              onCommandCleared: () {},
-              attachmentsSupported: true,
-              draftIdentity: draftIdentity,
-              restorationKey: restorationKey,
-              initialDraft: draft,
-              initialAttachments: attachments,
-              onInitialAttachmentsConsumed: () => consumed++,
+            body: ComposerPresentationScope(
+              voiceSupport: ComposerVoiceSupport.supported,
+              inputMode: ChatInputMode.voiceFirst,
+              isKeyboardVisible: false,
+              sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+              attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
+              imageClipboard: GetIt.instance.get<ImageClipboard>,
+              child: PromptInput(
+                isBusy: false,
+                hasMessages: false,
+                onSend: ({required draft, required command, required attachments}) {
+                  submittedDraft = draft;
+                  submitted = attachments;
+                },
+                onVoiceTranscriptionCompleted: () {},
+                onDraftChanged: (_) {},
+                onDraftCleared: () {},
+                onAbort: () {},
+                surfaceStyleController: surfaceStyle,
+                composerHeader: null,
+                availableCommands: const [],
+                stagedCommand: null,
+                onCommandSelected: (_) {},
+                onCommandCleared: () {},
+                attachmentsSupported: true,
+                draftIdentity: draftIdentity,
+                restorationKey: restorationKey,
+                initialDraft: draft,
+                initialAttachments: attachments,
+                onInitialAttachmentsConsumed: () => consumed++,
+              ),
             ),
           ),
         ),
@@ -592,6 +623,50 @@ void main() {
     expect(find.text("Follow up..."), findsNothing);
   });
 
+  testWidgets("header resolves an opaque assistant model ID through the provider catalog", (tester) async {
+    const modelID = "v1WyJkZWVwc2Vlay1vZmZpY2lhbCIsImRlZXBzZWVrLXY0LXBybyJd";
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      agent: "deepseek",
+      assistantAgentModel: const AgentModel(
+        providerID: "deepseek-official",
+        modelID: modelID,
+        variant: "high",
+      ),
+      availableProviders: const [
+        ProviderInfo(
+          id: "deepseek-official",
+          name: "DeepSeek Official",
+          models: {
+            modelID: ProviderModel(
+              id: modelID,
+              providerID: "deepseek-official",
+              name: "DeepSeek V4 Pro",
+              variants: ["high"],
+              family: null,
+              releaseDate: null,
+            ),
+          },
+          defaultModelID: modelID,
+        ),
+      ],
+      selectedAgent: "deepseek",
+      selectedAgentModel: const AgentModel(
+        providerID: "deepseek-official",
+        modelID: modelID,
+        variant: "high",
+      ),
+      availableVariants: const [SessionVariant(id: "high")],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text("deepseek · DeepSeek V4 Pro"), findsOneWidget);
+    expect(find.textContaining(modelID), findsNothing);
+  });
+
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -712,6 +787,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+  });
+
+  testWidgets("archiving a loaded session disposes its composer-owned voice lifecycle", (tester) async {
+    final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: loaded);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byType(PromptInput), findsOneWidget);
+
+    states.add(loaded.copyWith(isArchived: true));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+
+    expect(find.byType(PromptInput), findsNothing);
+    verify(() => voiceTranscriptionService.invalidate(session: voiceSession)).called(1);
+    verify(() => voiceTranscriptionService.close(session: voiceSession)).called(1);
   });
 
   testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {
@@ -1315,7 +1409,8 @@ void main() {
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
-    when(() => cubit.abort()).thenAnswer((_) async {});
+    when(() => cubit.abort(subAgents: any(named: "subAgents")))
+        .thenAnswer((_) async => const SessionAbortOutcome.aborted());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     // Bounded pumps throughout: the busy status keeps an activity indicator
@@ -1327,7 +1422,7 @@ void main() {
     // reachable next to the keyboard button even in the resting voice pill.
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
     await tester.tap(find.byIcon(TablerSolid.player_stop));
-    verify(() => cubit.abort()).called(1);
+    verify(() => cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm)).called(1);
 
     // Typed text flips the same button back to send: sending queues while the
     // agent works, so it must stay reachable.
@@ -1345,14 +1440,15 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.prewarmRecording()).called(1);
+    verify(() => voiceTranscriptionService.prewarm(session: voiceSession)).called(1);
   });
 
   testWidgets("voice hold acknowledges touch-down and stays silent for an empty transcript", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1370,9 +1466,11 @@ void main() {
   testWidgets("a successful transcript gives feedback when its text is inserted", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1400,11 +1498,234 @@ void main() {
     ]);
   });
 
+  testWidgets("retryable failure keeps persistent Retry and Discard until eventual success", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) async => "retried words");
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_discard")), findsOneWidget);
+    verifyNever(cubit.reportVoiceTranscriptionCompleted);
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("retried words"), findsOneWidget);
+    expect(find.text("Recording saved"), findsNothing);
+    verify(() => voiceTranscriptionService.retry(session: voiceSession)).called(1);
+    verify(cubit.reportVoiceTranscriptionCompleted).called(1);
+  });
+
+  testWidgets("sending other content serializes discard before submission", (tester) async {
+    final discardCompleter = Completer<void>();
+    final calls = <String>[];
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.discard(session: voiceSession)).thenAnswer((_) {
+      calls.add("discard");
+      return discardCompleter.future;
+    });
+    when(
+      () => cubit.sendMessage(
+        text: "send instead",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async => calls.add("send"));
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("Recording saved"), findsOneWidget);
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "send instead");
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(calls, ["discard"]);
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(calls, ["discard"], reason: "a second send must not bypass the in-flight discard");
+
+    discardCompleter.complete();
+    await tester.pumpAndSettle();
+    expect(calls, ["discard", "send"]);
+    verify(
+      () => cubit.sendMessage(
+        text: "send instead",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).called(1);
+    expect(find.text("Recording saved"), findsNothing);
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+  });
+
+  testWidgets("sending other content cancels and discards an active retry", (tester) async {
+    final retryCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
+    when(
+      () => cubit.sendMessage(
+        text: "replace retry",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "replace retry");
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pump();
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pumpAndSettle();
+
+    verifyInOrder([
+      () => voiceTranscriptionService.cancel(session: voiceSession),
+      () => voiceTranscriptionService.discard(session: voiceSession),
+      () => cubit.sendMessage(
+        text: "replace retry",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      ),
+    ]);
+    expect(find.text("Recording saved"), findsNothing);
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await tester.pump();
+    expect(find.text("replace retry"), findsNothing);
+  });
+
+  testWidgets("cancelling a manual retry restores persistent saved-recording actions", (tester) async {
+    final retryCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pump();
+    expect(find.byTooltip("Cancel transcription"), findsOneWidget);
+    await tester.tap(find.byTooltip("Cancel transcription"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
+    retryCompleter.completeError(VoiceTranscriptionError.cancelled());
+    await tester.pump();
+    expect(find.text("Recording saved"), findsOneWidget);
+  });
+
+  testWidgets("Discard removes the persistent saved-recording actions", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.retryableServerError(statusCode: 503),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("Recording saved"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("voice_saved_discard")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Recording saved"), findsNothing);
+    verify(() => voiceTranscriptionService.discard(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.retry(session: voiceSession));
+  });
+
+  testWidgets("terminal transcription failure never offers saved-recording Retry", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.serverError(statusCode: 400),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pump();
+
+    expect(find.text("Transcription failed. Record again or type instead."), findsOneWidget);
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+    expect(find.byKey(const Key("voice_saved_discard")), findsNothing);
+  });
+
+  testWidgets("missing saved recording clears Retry and explains the terminal outcome", (tester) async {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.networkError(),
+    );
+    when(() => voiceTranscriptionService.retry(session: voiceSession)).thenThrow(
+      VoiceTranscriptionError.missingRecording(),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 250));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("voice_saved_retry")));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text("The saved recording is no longer available. Record again or type instead."),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
+  });
+
   testWidgets("crossing into and out of the cancel target gives one tick at each boundary", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1434,7 +1755,7 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).called(1);
     expect(feedback, [
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
@@ -1444,9 +1765,11 @@ void main() {
 
   testWidgets("haptic platform failures do not interrupt voice recording", (tester) async {
     _captureHapticFeedback(throwsPlatformException: true);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "dictated words");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => "dictated words");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1457,17 +1780,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).called(1);
     expect(find.text("dictated words"), findsOneWidget);
   });
 
   testWidgets("transcription cancel after a recovered drag gives a fresh dismiss tick", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1503,29 +1828,31 @@ void main() {
 
   testWidgets("a very short tap starts recording immediately but never transcribes", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
   });
 
   testWidgets("a secondary pointer button does not start recording", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1539,16 +1866,17 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    verifyNever(() => voiceTranscriptionService.startRecording());
-    verifyNever(() => voiceTranscriptionService.cancelRecording());
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.start(session: voiceSession));
+    verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
   });
 
   testWidgets("the recording morph starts while the recorder is still starting", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1579,20 +1907,21 @@ void main() {
 
     await tester.tap(find.byType(VoiceCancelButton));
     await tester.pump();
-    verifyNever(() => voiceTranscriptionService.cancelRecording());
+    verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
 
     startCompleter.complete();
     await tester.pumpAndSettle();
     await gesture.up();
     await tester.pumpAndSettle();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
   });
 
   testWidgets("a short one-word recording still transcribes", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "yes");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "yes");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1603,15 +1932,17 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
-    verifyNever(() => voiceTranscriptionService.cancelRecording());
+    verify(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
     expect(find.text("yes"), findsOneWidget);
   });
 
   testWidgets("the recording limit stops and transcribes the active hold", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "limit words");
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => "limit words");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1622,7 +1953,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    verify(() => voiceTranscriptionService.stopAndTranscribe()).called(1);
+    verify(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).called(1);
     expect(find.text("Recording limit reached (15 minutes)"), findsOneWidget);
     expect(find.text("limit words"), findsOneWidget);
 
@@ -1631,9 +1962,10 @@ void main() {
 
   testWidgets("release during recorder startup discards the incomplete recording", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1641,19 +1973,19 @@ void main() {
     // Recording is requested on touch-down, then the finger lifts before the
     // recorder finishes starting up.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
     await tester.pump(const Duration(milliseconds: 100));
     await gesture.up();
     await tester.pump();
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
 
     // The recorder finishes starting after the finger already lifted, so the
     // incomplete local recording is discarded instead of uploaded.
     startCompleter.complete();
     await tester.pump();
     await tester.pumpAndSettle();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
   });
 
   testWidgets("restored mixed draft keeps voice-assisted input mode when sent", (tester) async {
@@ -1760,9 +2092,10 @@ void main() {
 
   testWidgets("a second hold during recorder startup does not start a second recording", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     final state = _loadedState(
       pendingQuestions: const [],
@@ -1787,13 +2120,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await second.up();
     await tester.pump();
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
 
     // Both holds released before startup finished, so the incomplete
     // recording is discarded as soon as startup settles.
     startCompleter.complete();
     await tester.pump();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
     await tester.pumpAndSettle();
   });
 
@@ -1802,12 +2135,13 @@ void main() {
   ) async {
     final firstStartCompleter = Completer<void>();
     var startCalls = 0;
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) {
       startCalls++;
       return startCalls == 1 ? firstStartCompleter.future : Future<void>.value();
     });
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1883,7 +2217,7 @@ void main() {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -1900,7 +2234,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(imageClipboard.readImage).called(1);
-    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
     Navigator.of(tester.element(find.byType(PromptEditorSheet))).pop();
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -1908,9 +2242,11 @@ void main() {
 
   testWidgets("recording swaps the pill chrome for the cancel target and waveform", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1940,9 +2276,10 @@ void main() {
   });
 
   testWidgets("dragging the hold onto the cancel target discards the recording", (tester) async {
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1956,8 +2293,8 @@ void main() {
 
     await gesture.up();
     await tester.pump();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
 
     // The pill rests again with nothing transcribed.
     await tester.pumpAndSettle();
@@ -1967,10 +2304,11 @@ void main() {
 
   testWidgets("dragging toward cancel during recorder startup is preserved", (tester) async {
     final startCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) => startCompleter.future);
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) => startCompleter.future);
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -1991,15 +2329,16 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
-    verifyNever(() => voiceTranscriptionService.stopAndTranscribe());
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession));
   });
 
   testWidgets("a hold during an in-flight cancel does not present a phantom recording", (tester) async {
     final cancelCompleter = Completer<void>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) => cancelCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) => cancelCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2011,7 +2350,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pump();
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
 
     // The platform cancel is still in flight: the service would silently
     // ignore a start, so the composer must not enter a recording that never
@@ -2020,25 +2359,27 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await second.up();
     await tester.pump();
-    verifyNever(() => voiceTranscriptionService.startRecording());
+    verifyNever(() => voiceTranscriptionService.start(session: voiceSession));
 
     // Once the cancel settles, recording works again.
     cancelCompleter.complete();
     await tester.pumpAndSettle();
     final third = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
-    verify(() => voiceTranscriptionService.startRecording()).called(1);
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => "");
+    verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
     await third.up();
     await tester.pumpAndSettle();
   });
 
   testWidgets("transcribing shows the shimmer and its X discards the transcription", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2056,7 +2397,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.x));
     await tester.pump();
-    verify(() => voiceTranscriptionService.cancelRecording()).called(1);
+    verify(() => voiceTranscriptionService.cancel(session: voiceSession)).called(1);
 
     // The cancel path resets the composer without waiting for the in-flight
     // upload (the real service fails it with a cancellation error).
@@ -2067,14 +2408,15 @@ void main() {
 
   testWidgets("a cancelled transcription settling late cannot corrupt the next recording", (tester) async {
     final stopCompleters = <Completer<String>>[];
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) {
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) {
       final completer = Completer<String>();
       stopCompleters.add(completer);
       return completer.future;
     });
-    when(() => voiceTranscriptionService.cancelRecording()).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2111,9 +2453,11 @@ void main() {
 
   testWidgets("the keyboard button enters typing while transcription continues", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2163,9 +2507,11 @@ void main() {
 
   testWidgets("holding the typing container's voice pill records while the text stays", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2196,9 +2542,11 @@ void main() {
 
   testWidgets("voice-first transcript rests unfocused for review before sending", (tester) async {
     final stopCompleter = Completer<String>();
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) => stopCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2222,9 +2570,10 @@ void main() {
 
   testWidgets("long voice-first transcript rests scrolled to its end without focus", (tester) async {
     final transcript = List.generate(80, (index) => "dictated phrase $index").join(" ");
-    when(() => voiceTranscriptionService.startRecording()).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.amplitudeStream).thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe()).thenAnswer((_) async => transcript);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => transcript);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2244,7 +2593,7 @@ void main() {
 
   testWidgets("accordion attach action stages a removable thumbnail without raising the keyboard", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -2284,7 +2633,7 @@ void main() {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2304,14 +2653,14 @@ void main() {
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
     verify(imageClipboard.readImage).called(1);
-    verify(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
+    verify(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null)).called(1);
   });
 
   testWidgets("keyboard image paste stages an attachment without inserting text", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
     when(imageClipboard.readImage).thenAnswer((_) async => _tinyPng);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(attachment);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2352,14 +2701,14 @@ void main() {
 
     expect(editableText.controller.text, "pasted after");
     verify(imageClipboard.readImage).called(1);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("an unsupported pasted image falls back to text paste", (tester) async {
     final bytes = Uint8List.fromList(const [0, 1, 2, 3, 4, 5, 6, 7]);
     when(imageClipboard.readImage).thenAnswer((_) async => bytes);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: bytes, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: bytes, filename: null),
     ).thenThrow(const UnsupportedAttachmentImageError());
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -2450,7 +2799,7 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
     when(
       () => cubit.sendMessage(
@@ -2477,7 +2826,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("a clipboard image is discarded after attachment support toggles", (tester) async {
@@ -2489,7 +2838,7 @@ void main() {
     final imageRead = Completer<Uint8List?>();
     when(imageClipboard.readImage).thenAnswer((_) => imageRead.future);
     when(
-      () => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null),
+      () => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null),
     ).thenReturn(ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -2508,7 +2857,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsNothing);
-    verifyNever(() => imagePicker.attachmentFromBytes(bytes: _tinyPng, filename: null));
+    verifyNever(() => attachmentDispatcher.attachmentFromBytes(bytes: _tinyPng, filename: null));
   });
 
   testWidgets("accordion offers no attach action when the plugin declares no support", (tester) async {
@@ -2534,7 +2883,7 @@ void main() {
 
   testWidgets("staged attachment survives unresolved support but cannot send", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -2581,7 +2930,7 @@ void main() {
 
   testWidgets("send includes the staged attachment and clears the strip", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -2618,7 +2967,7 @@ void main() {
 
   testWidgets("an attachment alone is sendable", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: null);
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     when(
       () => cubit.sendMessage(
         text: any(named: "text"),
@@ -2660,7 +3009,7 @@ void main() {
       ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "small.png"),
       ComposerAttachment(mime: "image/jpeg", bytes: huge, filename: "huge.jpg"),
     ];
-    when(imagePicker.pickImage).thenAnswer((_) async => answers.removeAt(0));
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => answers.removeAt(0));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2683,7 +3032,7 @@ void main() {
   });
 
   testWidgets("an oversized image is rejected with a notice", (tester) async {
-    when(imagePicker.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => throw const AttachmentTooLargeError());
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -2700,7 +3049,7 @@ void main() {
 
   testWidgets("send is refused while both a command and attachments are staged", (tester) async {
     final attachment = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "screenshot.png");
-    when(imagePicker.pickImage).thenAnswer((_) async => attachment);
+    when(attachmentDispatcher.pickImage).thenAnswer((_) async => attachment);
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       stagedCommand: const CommandInfo(
         name: "review",

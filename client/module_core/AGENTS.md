@@ -14,7 +14,7 @@ lib/src/
 ├── capabilities/     Domain services
 │   ├── relay/        RelayClient, RoomKeyStorage, relay config
 │   ├── server_connection/  ConnectionService, SSE models, connection status
-│   └── voice/        VoiceApi (HTTP calls only — recording stays in Flutter)
+│   └── voice/        VoiceApi (HTTP only; native capture stays behind the Flutter-implemented VoiceCapture contract)
 ├── cubits/           All state management (login, project_list, session_list, etc.)
 ├── di/               @InjectableInit for core DI registration
 ├── foundation/       Platform interfaces and shared models (analytics, composer)
@@ -24,7 +24,7 @@ lib/src/
 │                  the product shell, mostly under app/lib/core/platform/
 ├── repositories/     API mapping and domain-facing data operations
 ├── routing/          AppRoute enum, AuthRedirectService
-└── services/         Cross-repository orchestration and lifecycle owners
+└── services/         Cross-repository orchestration and lifecycle owners, including per-composer voice sessions
 ```
 
 ## Conventions

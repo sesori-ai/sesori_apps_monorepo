@@ -9,6 +9,10 @@ import "package:meta/meta.dart";
 /// actual serialized request for prompts with unusually large text or metadata.
 const maxComposerPromptAttachmentBytes = 50 * 1000 * 1000;
 
+/// The chosen attachment cannot be staged because it exceeds the composer
+/// transport limit.
+final class const AttachmentTooLargeError() implements Exception;
+
 /// An image staged in the composer, transmitted inline (base64 `file_data`
 /// prompt part) with the submission it accompanies.
 ///

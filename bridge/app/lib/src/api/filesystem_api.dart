@@ -54,6 +54,20 @@ class const FilesystemApi() {
     return Directory(path).listSync(followLinks: false).map((entry) => p.basename(entry.path)).toList();
   }
 
+  /// Streams at most [maximumEntries] immediate entry names from [path].
+  Future<List<String>> listEntryNamesBounded({required String path, required int maximumEntries}) async {
+    if (maximumEntries <= 0) {
+      throw ArgumentError.value(maximumEntries, "maximumEntries", "must be positive");
+    }
+
+    final names = <String>[];
+    await for (final entry in Directory(path).list(followLinks: false)) {
+      names.add(p.basename(entry.path));
+      if (names.length == maximumEntries) break;
+    }
+    return names;
+  }
+
   /// Deletes [path] and all descendants.
   void deleteDirectoryRecursively(String path) {
     Directory(path).deleteSync(recursive: true);

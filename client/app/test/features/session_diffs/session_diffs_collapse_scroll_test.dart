@@ -4,13 +4,12 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
-import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show CatalogRescanService, ConnectionService, ProductAnalyticsService, SessionRepository;
-import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -270,7 +269,7 @@ void main() {
             supportedLocales: AppLocalizations.supportedLocales,
             home: BlocProvider<DiffCubit>.value(
               value: mockCubit,
-              child: SessionDiffsBody(key: bodyKey),
+              child: SessionDiffsView(key: bodyKey, onBack: null, banner: null),
             ),
           ),
         ),
@@ -289,7 +288,7 @@ void main() {
       // Sanity: the diff viewer should have rendered after initial compute.
       expect(find.byType(CustomScrollView), findsOneWidget);
 
-      final stateBefore = tester.state(find.byType(SessionDiffsBody));
+      final stateBefore = tester.state(find.byType(SessionDiffsView));
       final initialRecomputeCount = (stateBefore as dynamic).recomputeCount as int;
 
       // Change platform brightness — this triggers didChangeDependencies on
@@ -297,7 +296,7 @@ void main() {
       tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
       await tester.pump();
 
-      final stateAfter = tester.state(find.byType(SessionDiffsBody));
+      final stateAfter = tester.state(find.byType(SessionDiffsView));
       final recomputeAfter = (stateAfter as dynamic).recomputeCount as int;
 
       // Restore brightness so the change does not leak to other tests.

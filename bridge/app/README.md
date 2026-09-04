@@ -126,7 +126,6 @@ Bridge core flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--import-plugin` | *(none)* | Start an import for this eligible plugin after startup. Repeatable. |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--data-dir` | platform Sesori data directory | Override account-bound storage for tokens, bridge ID, database, and onboarding markers. Transcript attachment bytes remain in the shared platform attachment root. |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
@@ -156,6 +155,7 @@ In addition to flags, the bridge supports subcommands:
 | `help` | Show the help message (also available via `--help` or `-h`) |
 | `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
 | `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
+| `config warmup [on\|off]` | Show or set plugin warm-up when a session screen opens. With no argument, prints the current mode. |
 | `config plugins` | List known plugin eligibility and preserved unknown disabled IDs. |
 | `config plugins enable <id>` | Remove a known plugin from the denylist. Restart the bridge to apply. |
 | `config plugins disable <id>` | Add a known plugin to the denylist. Restart the bridge to apply. |
@@ -168,7 +168,8 @@ In addition to flags, the bridge supports subcommands:
 {
   "sleepPrevention": "always",
   "yolo": false,
-  "releaseTrack": "stable"
+  "releaseTrack": "stable",
+  "warmUpPluginsOnSessionOpen": true
 }
 ```
 
@@ -176,6 +177,13 @@ Setting `"yolo": true` makes the bridge approve every permission request
 without sending the request to connected clients. The bridge prints a warning
 at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
 `sesori-bridge config yolo off` to change it without editing the file directly.
+
+`"warmUpPluginsOnSessionOpen"` defaults to `true`. When enabled, opening a
+session screen asks the bridge to start that session's plugin in the background,
+so the first later operation is less likely to pay the cold-start delay. Use
+`sesori-bridge config warmup on` or `sesori-bridge config warmup off` to change
+it from the CLI; restart a running bridge after a CLI change. Changes made
+through app settings take effect immediately on the connected bridge.
 
 To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 
@@ -208,9 +216,6 @@ legacy `pluginId` still always means OpenCode.
 
 # Disable Cursor for subsequent bridge starts
 ./dist/bridge-macos-arm64 config plugins disable cursor
-
-# Import Codex after startup
-./dist/bridge-macos-arm64 --import-plugin codex
 
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout
@@ -365,6 +370,19 @@ The crypto and protocol types live in `sesori_shared`, shared with the Flutter m
 ```bash
 dart test
 ```
+
+The supervised end-to-end test launches the native bundled helper against
+loopback fake auth, relay, and control services. Build the bundle first, then
+run the test in required mode:
+
+```bash
+dart build cli -o build/cli
+SESORI_E2E_REQUIRED=1 dart test test/integration/supervised_e2e_test.dart
+```
+
+Without a built helper, the integration test is skipped for ordinary local
+package test runs; desktop CI builds it natively on macOS, Windows, and Linux
+and sets required mode.
 
 ## License
 

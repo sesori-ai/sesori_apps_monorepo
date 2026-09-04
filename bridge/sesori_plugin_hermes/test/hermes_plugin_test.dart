@@ -425,6 +425,7 @@ HermesPlugin _plugin({
       providerId: configuredProviderId,
     );
   final commandTracker = AcpCommandTracker();
+  final childSessionTracker = AcpChildSessionTracker();
   final repository = HermesCatalogRepository(
     api: HermesAcpApi(
       binaryPath: HermesBinary.defaultBinary,
@@ -449,10 +450,12 @@ HermesPlugin _plugin({
       environment: const {},
     ),
     launchDirectory: "/repo",
+    childSessionTracker: childSessionTracker,
     eventMapper: AcpEventMapper(
       launchDirectory: "/repo",
       pluginId: "hermes",
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
     ),
     commandTracker: commandTracker,
     sessionOptionsService: AcpSessionOptionsService(

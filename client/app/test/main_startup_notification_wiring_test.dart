@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/main.dart";
 
 class MockLocalNotificationClient() extends Mock implements LocalNotificationClient;
@@ -16,16 +17,31 @@ class MockForegroundNotificationDispatcher() extends Mock implements ForegroundN
 class MockNotificationOpenDispatcher() extends Mock implements NotificationOpenDispatcher;
 
 void main() {
-  test("notification core collaborators start after configureDependencies", () async {
+  test("notification and UI startup do not await the analytics crawl gate", () async {
     final events = <String>[];
+    final crawlGate = Completer<AnalyticsStoreCrawlGate>();
+    final singularGateApplied = Completer<void>();
     final startupStarted = Completer<void>();
     final allowStartupFinish = Completer<void>();
 
-    Future<void> configureDependencies() async => events.add("configureDependencies");
+    Future<AnalyticsRuntimeBootstrap> configureDependencies() async {
+      events.add("configureDependencies");
+      return AnalyticsRuntimeBootstrap(
+        capability: const AnalyticsRuntimeCapability.enabled(),
+        crawlGate: crawlGate.future,
+      );
+    }
 
-    Future<void> startSingularAttribution() async => events.add("singularAttribution");
+    void prepareSingularAttribution() => events.add("singularAttribution.prepare");
+
+    void applySingularCrawlGate({required AnalyticsStoreCrawlGate crawlGate}) {
+      events.add("singularAttribution.${crawlGate.name}");
+      singularGateApplied.complete();
+    }
 
     void initializeDeepLinks() => events.add("deepLinks");
+
+    void startAttribution() => events.add("attribution");
 
     Future<void> startProductAnalytics() async => events.add("productAnalytics");
 
@@ -53,8 +69,10 @@ void main() {
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
       configureDependenciesFn: configureDependencies,
-      startSingularAttributionFn: startSingularAttribution,
+      prepareSingularAttributionFn: prepareSingularAttribution,
+      applySingularCrawlGateFn: applySingularCrawlGate,
       initializeDeepLinks: initializeDeepLinks,
+      startAttributionFn: startAttribution,
       startProductAnalyticsFn: startProductAnalytics,
       startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
       startNotificationStartupFn: startNotificationStartup,
@@ -67,7 +85,7 @@ void main() {
 
     expect(events, [
       "configureDependencies",
-      "singularAttribution",
+      "singularAttribution.prepare",
       "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
@@ -79,6 +97,8 @@ void main() {
       "runApp",
     ]);
 
+    crawlGate.complete(AnalyticsStoreCrawlGate.suspend);
+    await singularGateApplied.future.timeout(const Duration(seconds: 2));
     allowStartupFinish.complete();
     await Future<void>.delayed(Duration.zero);
 
@@ -86,7 +106,7 @@ void main() {
       events,
       [
         "configureDependencies",
-        "singularAttribution",
+        "singularAttribution.prepare",
         "deepLinks",
         "productAnalytics",
         "analyticsRoutes",
@@ -94,22 +114,36 @@ void main() {
         "readAppearance",
         "readChatInputMode",
         "runApp",
+        "singularAttribution.suspend",
+        "attribution",
         "notificationStartup.done",
       ],
     );
   });
 
-  test("Singular startup failure does not block app bootstrap", () async {
+  test("Singular gate application failure does not block app bootstrap", () async {
     final events = <String>[];
+    final singularGateAttempted = Completer<void>();
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: false,
-      configureDependenciesFn: () async => events.add("configureDependencies"),
-      startSingularAttributionFn: () async {
-        events.add("singularAttribution");
+      configureDependenciesFn: () async {
+        events.add("configureDependencies");
+        return AnalyticsRuntimeBootstrap(
+          capability: const AnalyticsRuntimeCapability.disabled(
+            reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+          ),
+          crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+        );
+      },
+      prepareSingularAttributionFn: () => events.add("singularAttribution.prepare"),
+      applySingularCrawlGateFn: ({required crawlGate}) {
+        events.add("singularAttribution.${crawlGate.name}");
+        singularGateAttempted.complete();
         throw StateError("startup failed");
       },
       initializeDeepLinks: () => events.add("deepLinks"),
+      startAttributionFn: () => events.add("attribution"),
       startProductAnalyticsFn: () async => events.add("productAnalytics"),
       startAnalyticsRouteListenerFn: () async => events.add("analyticsRoutes"),
       startNotificationStartupFn: () async => events.add("notificationStartup"),
@@ -117,14 +151,16 @@ void main() {
       readChatInputModeFn: () async => ChatInputMode.textFirst,
       runAppFn: (_) => events.add("runApp"),
     );
+    await singularGateAttempted.future.timeout(const Duration(seconds: 2));
 
     expect(events, [
       "configureDependencies",
-      "singularAttribution",
+      "singularAttribution.prepare",
       "deepLinks",
       "productAnalytics",
       "analyticsRoutes",
       "runApp",
+      "singularAttribution.allow",
     ]);
   });
 

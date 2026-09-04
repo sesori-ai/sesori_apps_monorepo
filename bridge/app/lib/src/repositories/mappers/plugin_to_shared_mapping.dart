@@ -11,8 +11,25 @@ extension PluginToolStatusMapping on PluginToolStatus {
     PluginToolStatus.running => ToolStatus.running,
     PluginToolStatus.completed => ToolStatus.completed,
     PluginToolStatus.error => ToolStatus.error,
+    PluginToolStatus.cancelled => ToolStatus.cancelled,
     PluginToolStatus.unknown => ToolStatus.unknown,
   };
+}
+
+extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
+  PluginAbortSubAgentPolicy toPlugin() => switch (this) {
+    SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,
+    SessionAbortSubAgentPolicy.keep => PluginAbortSubAgentPolicy.keep,
+    SessionAbortSubAgentPolicy.stop => PluginAbortSubAgentPolicy.stop,
+  };
+}
+
+extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
+  SessionAbortRejection toShared() => SessionAbortRejection(
+    runningSubAgentCount: runningSubAgentCount,
+    mainAgentRunning: mainAgentRunning,
+    mainAgentOnlySupported: mainAgentOnlySupported,
+  );
 }
 
 /// Maps a plugin-normalized attachment into the shared wire contract.
@@ -94,7 +111,15 @@ extension PluginMessagePartMapping on PluginMessagePart {
       tool: tool ?? "",
       state: state.toShared(),
     ),
-    PluginMessagePartSubtask(:final id, :final messageID, :final prompt, :final description, :final agent) =>
+    PluginMessagePartSubtask(
+      :final id,
+      :final messageID,
+      :final prompt,
+      :final description,
+      :final agent,
+      :final taskState,
+      :final childSessionID,
+    ) =>
       MessagePart.subtask(
         id: id,
         sessionID: sessionId,
@@ -102,6 +127,10 @@ extension PluginMessagePartMapping on PluginMessagePart {
         prompt: prompt,
         description: description,
         agent: agent,
+        taskState: taskState?.toShared(),
+        // Carried through as the plugin reported it. The live path translates
+        // it in `SessionEventMapper`; the history path in `SessionRepository`.
+        childSessionID: childSessionID,
       ),
     PluginMessagePartStepStart(:final id, :final messageID) => MessagePart.stepStart(
       id: id,

@@ -41,7 +41,7 @@ Three-phase init in `configureDependencies()`:
 
 **Voice Features**
 
-`VoiceTranscriptionService` — records audio via the `record` package and submits to the voice API. `WakeLockService` — keeps the screen on during active sessions using `wakelock_plus`.
+`FlutterVoiceCapture` — adapts the `record` package into one native capture session per composer. Module-core `VoiceTranscriptionService` owns recording/transcription policy through `VoiceRepository`, while `VoiceInputCubit` exposes lifecycle state to the shell. `WakeLockService` coordinates session leases over the process-wide `wakelock_plus` capability.
 
 ## Running
 
@@ -53,8 +53,8 @@ flutter run
 
 ## Mobile component playbooks
 
-App-owned widgets that need mobile localization or core state stay out of the
-shared PREGO design catalog. Launch the deep-scan row's dev-only Widgetbook with:
+Shared app presentation that needs product localization or core state stays out
+of the PREGO-only design catalog. Launch the deep-scan row's dev-only Widgetbook with:
 
 ```bash
 flutter run -t test/playbook/catalog_scan_row_playbook.dart -d chrome --web-port 7358
@@ -70,8 +70,9 @@ state only and does not start app routing, DI, relay, analytics, or services.
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release
 builds using the required compile-time credentials. Debug/profile builds and unsupported platforms remain disabled.
-An unauthenticated Android launch inside the Play pre-launch window defers startup; successful interactive
-authentication starts Singular before reporting its conversion events, while crawlers that never authenticate stay off.
+An unauthenticated Android build newer than the latest production submission in Firebase Remote Config defers startup;
+successful interactive authentication starts Singular before reporting its conversion events, while crawlers that never
+authenticate stay off. The Remote Config decision is resolved asynchronously and never delays the first product frame.
 
 Keep credentials outside Git. Create a local JSON file such as:
 
@@ -91,11 +92,12 @@ binary.
 The iOS dependency bundles Singular's vendor privacy manifest. Review the binary and update Apple/Google store
 declarations before distributing it; runtime flags do not alter that manifest.
 
-The integration does not set a custom user ID or send custom Singular events. After interactive authentication it
-sends Singular's parameter-free standard login event, plus the standard complete-registration event only when the
-auth server reports that the operation created the account. Session restore and token refresh send neither event.
-Advertising identifiers and partner data sharing are limited in SDK configuration, and Android removes both
-advertising-ID permissions. Distributed builds must satisfy the privacy/store disclosure checklist in
+The integration does not set a custom user ID or send event properties. After interactive authentication it sends
+Singular's parameter-free standard login event, plus the standard complete-registration event only when the auth
+server reports that the operation created the account. Session restore and token refresh send neither event. It also
+sends parameter-free `bridge_paired` and `first_session_run` activation events at most once per installation. Partner
+data sharing is permitted for campaign attribution while advertising identifiers remain limited, and Android removes
+both advertising-ID permissions. Distributed builds must satisfy the privacy/store disclosure checklist in
 [`docs/PRODUCT_ANALYTICS_DISCLOSURE.md`](docs/PRODUCT_ANALYTICS_DISCLOSURE.md).
 
 ## Testing

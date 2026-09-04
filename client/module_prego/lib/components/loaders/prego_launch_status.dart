@@ -73,7 +73,7 @@ class _PregoLaunchStatusState()
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PregoActivityIndicator(color: prego.colors.bgBrandSolid),
+                const PregoActivityIndicator(color: null),
                 SizedBox(height: prego.spacing.xl),
                 AnimatedSwitcher(
                   duration: reducedMotion ? Duration.zero : _transitionDuration,

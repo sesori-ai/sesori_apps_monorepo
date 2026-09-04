@@ -15,6 +15,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
         configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
@@ -56,7 +57,7 @@ void main() {
     });
 
     test("standard session/update still works via the base mapper", () {
-      mapper.beginTurn("s1");
+      mapper.beginTurn(sessionId: "s1", messageId: null);
       final events = mapper.map(
         const AcpNotification(
           method: "session/update",
@@ -73,7 +74,7 @@ void main() {
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {
-      mapper.beginTurn("s-image");
+      mapper.beginTurn(sessionId: "s-image", messageId: null);
       final file = writeTempPng("cursor-event-mapper");
 
       final part = mapper
@@ -92,7 +93,7 @@ void main() {
 
     test("cursor/generate_image finalizes active reasoning before the image", () async {
       final imageMapper = buildMapper();
-      imageMapper.beginTurn("s-thinking-image");
+      imageMapper.beginTurn(sessionId: "s-thinking-image", messageId: null);
       imageMapper.map(
         const AcpNotification(
           method: "session/update",
@@ -122,7 +123,7 @@ void main() {
     });
 
     test("cursor/generate_image accepts legacy path params", () async {
-      mapper.beginTurn("s-image-legacy");
+      mapper.beginTurn(sessionId: "s-image-legacy", messageId: null);
       final file = writeTempPng("cursor-event-mapper-legacy");
 
       expect(
@@ -246,7 +247,7 @@ void main() {
       // the image joins the in-progress assistant message in stream order,
       // instead of being emitted as a standalone sidecar message.
       final orderedMapper = buildMapper();
-      orderedMapper.beginTurn("s1");
+      orderedMapper.beginTurn(sessionId: "s1", messageId: null);
       final file = writeTempPng("cursor-ordered-image");
       const messageId = "s1-t1-assistant-a0";
 
@@ -286,7 +287,7 @@ void main() {
     });
 
     test("standard ACP images still work alongside cursor generate_image", () {
-      mapper.beginTurn("s-image");
+      mapper.beginTurn(sessionId: "s-image", messageId: null);
       final standard = mapper.map(
         const AcpNotification(
           method: "session/update",
@@ -311,7 +312,7 @@ void main() {
     });
 
     test("an account/plan gate notice becomes an error message, not assistant text", () {
-      mapper.beginTurn("sg");
+      mapper.beginTurn(sessionId: "sg", messageId: null);
       final events = mapper.map(
         const AcpNotification(
           method: "session/update",

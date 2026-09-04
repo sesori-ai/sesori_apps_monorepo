@@ -14,7 +14,9 @@ import "../foundation/relay_client.dart";
 /// `ControlChannelClient.send` directly.
 ///
 /// Observed triggers — all push-based, no timers:
-/// - plugin health: the replay-latest `BridgePlugin.status` lifecycle stream;
+/// - plugin health: the lifecycle service's ordered eligible-plugin metadata
+///   snapshots, reduced to degraded when any eligible plugin is degraded or
+///   failed and healthy otherwise (eligibility is not runtime residency);
 /// - relay connection state: [RelayClient.connectionState];
 /// - registration success: the auth-subsystem `registrations` stream, mapped
 ///   to a `registered{bridgeId}` push so the GUI can persist a readable copy
@@ -140,15 +142,10 @@ class ControlStatusNotifier({
   }
 
   ControlPluginHealthState _mapPluginMetadata(List<PluginMetadata> metadata) {
-    if (metadata.isNotEmpty && metadata.every((plugin) => plugin.state == PluginLifecycleState.ready)) {
-      return ControlPluginHealthState.healthy;
-    }
-    if (metadata.any(
-      (plugin) => plugin.state == PluginLifecycleState.ready || plugin.state == PluginLifecycleState.degraded,
-    )) {
-      return ControlPluginHealthState.degraded;
-    }
-    return ControlPluginHealthState.unavailable;
+    final hasUnhealthyEligiblePlugin = metadata.any(
+      (plugin) => plugin.state == PluginLifecycleState.degraded || plugin.state == PluginLifecycleState.failed,
+    );
+    return hasUnhealthyEligiblePlugin ? ControlPluginHealthState.degraded : ControlPluginHealthState.healthy;
   }
 
   ControlRelayConnectionState _mapRelayState(RelayConnectionState state) {

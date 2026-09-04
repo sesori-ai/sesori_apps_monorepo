@@ -1,14 +1,13 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
-import "../extensions/build_context_x.dart";
-import "../extensions/remote_failure_x.dart";
-import "markdown_styles.dart";
+import "../external_link.dart";
 
 /// Height the loading and failure states occupy, so the sheet opens at a
 /// readable size instead of a thin strip that jumps once the document lands.
@@ -45,10 +44,10 @@ class const _LegalDocumentBody() extends StatelessWidget {
     final state = context.watch<LegalDocumentCubit>().state;
 
     return switch (state) {
-      LegalDocumentLoading() => SizedBox(
+      LegalDocumentLoading() => const SizedBox(
         height: _placeholderHeight,
         child: Center(
-          child: PregoActivityIndicator(color: prego.colors.fgBrandPrimary),
+          child: PregoActivityIndicator(color: null),
         ),
       ),
       LegalDocumentFailed(:final reason) => _FailureView(reason: reason),
@@ -59,7 +58,7 @@ class const _LegalDocumentBody() extends StatelessWidget {
         padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.x3l),
         child: MarkdownBody(
           data: markdown,
-          onTapLink: handleMarkdownLinkTap,
+          onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
           styleSheet: buildLegalMarkdownStyleSheet(prego: prego),
         ),
       ),

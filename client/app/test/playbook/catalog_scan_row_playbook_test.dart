@@ -1,7 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart" as material;
-import "package:sesori_mobile/core/widgets/catalog_scan_row.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "catalog_scan_row_playbook.dart";

@@ -2,13 +2,14 @@ import "dart:async";
 import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-
     show
         BridgeDerivedProjectsPluginApi,
         BridgePluginApi,
         Log,
         NativeProjectsPluginApi,
         PersistedSessionCleanupApi,
+        PluginAbortAccepted,
+        PluginAbortRejectedSubAgentsRunning,
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
@@ -19,6 +20,7 @@ import "package:sesori_shared/sesori_shared.dart"
         ActiveSession,
         AgentModel,
         CommandListResponse,
+        MessagePartSubtask,
         MessageWithParts,
         PrState,
         ProjectActivitySummary,
@@ -27,6 +29,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PullRequestInfo,
         QueuedSessionPrompt,
         Session,
+        SessionAbortSubAgentPolicy,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusResponse,
@@ -49,6 +52,7 @@ import "mappers/pull_request_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
+import "models/session_abort_result.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
@@ -56,7 +60,10 @@ import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
 
-enum SessionBindingCommitKind() { sessionCreation, catalogSync }
+enum SessionBindingCommitKind() {
+  sessionCreation,
+  catalogSync,
+}
 
 typedef SessionBindingsCommitted = ({
   String pluginId,
@@ -77,14 +84,14 @@ typedef SessionMessagesSnapshot = ({
 });
 
 class SessionRepository({
-    required final PluginRuntime _runtime,
-    required final SessionDao _sessionDao,
-    required final ProjectsDao _projectsDao,
-    required final PullRequestDao _pullRequestDao,
-    required final SessionUnseenCalculator _unseenCalculator,
-    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
-    required final Duration _aggregateSourceDeadline,
-  }) {
+  required final PluginRuntime _runtime,
+  required final SessionDao _sessionDao,
+  required final ProjectsDao _projectsDao,
+  required final PullRequestDao _pullRequestDao,
+  required final SessionUnseenCalculator _unseenCalculator,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+  required final Duration _aggregateSourceDeadline,
+}) {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
 
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
@@ -95,9 +102,7 @@ class SessionRepository({
   final Set<String> _tombstonesLoaded = <String>{};
   int _lastProjectionTimestamp = 0;
 
-
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
-
 
   Future<SessionFamilyScope> resolveSessionFamily({
     required String sessionId,
@@ -396,11 +401,50 @@ class SessionRepository({
     body: (plugin, binding) async {
       final pluginMessages = await plugin.getSessionMessages(binding.backendSessionId);
       return (
-        messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
+        messages: await _resolveChildSessionIds(
+          pluginId: binding.pluginId,
+          messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
+        ),
         promptDefaults: pluginMessages.latestPromptDefaults(),
       );
     },
   );
+
+  /// Translates the backend child references a plugin puts on subtask parts
+  /// into bridge session ids.
+  ///
+  /// Best effort by contract: a child the bridge has not bound yet leaves the
+  /// part with a null reference instead of withholding the page, matching the
+  /// live path where the reference never gates delivery.
+  Future<List<MessageWithParts>> _resolveChildSessionIds({
+    required String pluginId,
+    required List<MessageWithParts> messages,
+  }) async {
+    final backendSessionIds = {
+      for (final message in messages)
+        for (final part in message.parts)
+          if (part case MessagePartSubtask(:final childSessionID)) ?childSessionID,
+    };
+    if (backendSessionIds.isEmpty) return messages;
+    final bindings = await getStoredSessionsByBackendIds(
+      pluginId: pluginId,
+      backendSessionIds: backendSessionIds.toList(growable: false),
+    );
+    return [
+      for (final message in messages)
+        message.copyWith(
+          parts: [
+            for (final part in message.parts)
+              switch (part) {
+                MessagePartSubtask(childSessionID: final backendSessionId?) => part.copyWith(
+                  childSessionID: bindings[backendSessionId]?.id,
+                ),
+                _ => part,
+              },
+          ],
+        ),
+    ];
+  }
 
   /// Persists the bridge-owned title override. Null removes the override so
   /// later reads fall back to the latest observed catalog title.
@@ -770,9 +814,7 @@ class SessionRepository({
           preferredProjectId: project.id,
           observedPath: project.directory,
         );
-        final hydratedProject =
-            existing ??
-            _hiddenProjectPlaceholder(projectId: project.id, path: project.directory);
+        final hydratedProject = existing ?? _hiddenProjectPlaceholder(projectId: project.id, path: project.directory);
         if (hydratedProjectIds.contains(hydratedProject.projectId)) continue;
         final sessions = await plugin.getSessions(projectId: project.directory, start: null, limit: null);
         hydratedProjectIds.add(hydratedProject.projectId);
@@ -848,8 +890,7 @@ class SessionRepository({
         observedPath: projectDirectory,
       );
       final hydratedProject =
-          existingProject ??
-          _hiddenProjectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
+          existingProject ?? _hiddenProjectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
@@ -910,7 +951,6 @@ class SessionRepository({
     };
   }
 
-
   /// The plugin and project that own [sessionId], which together scope its
   /// session options cache. `null` when the session has no stored row.
   Future<({String pluginId, String projectId})?> findSessionOptionsScope({required String sessionId}) async {
@@ -925,10 +965,19 @@ class SessionRepository({
     body: (plugin, binding) => plugin.archiveSession(sessionId: binding.backendSessionId),
   );
 
-  Future<void> abortSession({required String sessionId}) => _useSessionPlugin(
+  Future<SessionAbortResult> abortSession({
+    required String sessionId,
+    required SessionAbortSubAgentPolicy subAgents,
+  }) => _useSessionPlugin(
     sessionId: sessionId,
     operation: SessionOperation.abortSession,
-    body: (plugin, binding) => plugin.abortSession(sessionId: binding.backendSessionId),
+    body: (plugin, binding) async => switch (await plugin.abortSession(
+      sessionId: binding.backendSessionId,
+      subAgents: subAgents.toPlugin(),
+    )) {
+      PluginAbortAccepted(:final workKept) => SessionAborted(workKept: workKept),
+      final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+    },
   );
 
   Future<SessionStatusResponse> getSessionStatuses() async {
@@ -1588,19 +1637,18 @@ class SessionRepository({
       reservedSessionIds?.remove(candidate);
     }
   }
-
 }
 
 class const _PluginActivityObservation({
-    required final String pluginId,
-    required final List<PluginProjectActivitySummary> summaries,
-    required final Set<String> backendSessionIds,
-    required final List<_ActiveRootHydration> hydrations,
-  });
+  required final String pluginId,
+  required final List<PluginProjectActivitySummary> summaries,
+  required final Set<String> backendSessionIds,
+  required final List<_ActiveRootHydration> hydrations,
+});
 
 class const _ActiveRootHydration({
-    required final String summaryId,
-    required final String preferredProjectId,
-    required final String projectDirectory,
-    required final List<PluginSession> sessions,
-  });
+  required final String summaryId,
+  required final String preferredProjectId,
+  required final String projectDirectory,
+  required final List<PluginSession> sessions,
+});

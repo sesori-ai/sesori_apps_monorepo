@@ -26,6 +26,7 @@ class CursorPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
   required CursorEventMapper mapper,
+  required super.childSessionTracker,
   required final CursorCatalogService _catalogService,
   required final AcpCommandListener _catalogCommandListener,
   required final CursorCatalogTracker _catalogTracker,
@@ -65,6 +66,7 @@ class CursorPlugin._({
     );
     final catalogTracker = CursorCatalogTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
     final acpSessionOptionsService = AcpSessionOptionsService(
@@ -99,12 +101,14 @@ class CursorPlugin._({
       launchDirectory: cwd,
       pluginId: pluginId,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(
       launchSpec: launchSpec,
       launchDirectory: cwd,
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       processFactory: processFactory,
       catalogService: catalogService,
@@ -135,9 +139,6 @@ class CursorPlugin._({
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
-
-  @override
-  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {

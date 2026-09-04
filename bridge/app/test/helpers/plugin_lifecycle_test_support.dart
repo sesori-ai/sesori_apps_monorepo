@@ -10,6 +10,7 @@ import "plugin_runtime_test_support.dart";
 import "test_helpers.dart";
 
 final Expando<PluginRuntime> _runtimes = Expando<PluginRuntime>();
+final Expando<PluginLifecycleRepository> _lifecycleRepositories = Expando<PluginLifecycleRepository>();
 final Expando<BridgeSettingsRepository> _settingsRepositories = Expando<BridgeSettingsRepository>();
 
 const defaultManagementCapabilities = <PluginControlCapability>{
@@ -28,10 +29,11 @@ Future<PluginLifecycleService> createPluginLifecycleService({
   required List<BridgePluginApi> plugins,
 }) async {
   final runtime = createTestPluginRuntime(plugins: plugins);
+  final lifecycleRepository = PluginLifecycleRepository(runtime: runtime);
   final settingsRepository = createTestBridgeSettingsRepository();
   final service =
       PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: runtime),
+          lifecycleRepository: lifecycleRepository,
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: settingsRepository,
           idleTimerScheduler: const PluginIdleTimerScheduler(),
@@ -54,6 +56,7 @@ Future<PluginLifecycleService> createPluginLifecycleService({
           setupById: {for (final plugin in plugins) plugin.id: const PluginSetupReady()},
         );
   _runtimes[service] = runtime;
+  _lifecycleRepositories[service] = lifecycleRepository;
   _settingsRepositories[service] = settingsRepository;
   await Future<void>.delayed(Duration.zero);
   return service;
@@ -62,6 +65,12 @@ Future<PluginLifecycleService> createPluginLifecycleService({
 BridgeSettingsRepository createTestBridgeSettingsRepository({
   BridgeSettings settings = const BridgeSettings(),
 }) => _TestBridgeSettingsRepository(settings: settings);
+
+PluginLifecycleRepository lifecycleRepositoryForLifecycleService({required PluginLifecycleService service}) {
+  final repository = _lifecycleRepositories[service];
+  if (repository == null) throw StateError("No test plugin lifecycle repository is registered for this service.");
+  return repository;
+}
 
 BridgeSettingsRepository settingsRepositoryForLifecycleService({required PluginLifecycleService service}) {
   final repository = _settingsRepositories[service];

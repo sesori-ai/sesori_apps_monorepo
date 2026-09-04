@@ -30,15 +30,20 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
+import "listeners/current_project_glossary_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
+import "listeners/plugin_warmup_setting_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
+import "listeners/viewed_project_glossary_listener.dart";
 import "listeners/viewed_project_pr_refresh_listener.dart";
+import "listeners/viewed_session_plugin_warmup_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
 import "push/completion_push_listener.dart";
@@ -61,9 +66,13 @@ import "repositories/mappers/session_event_mapper.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
+import "repositories/plugin_lifecycle_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
+import "repositories/project_glossary_publication_repository.dart";
+import "repositories/project_glossary_repository.dart";
+import "repositories/project_glossary_scope_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
@@ -136,12 +145,19 @@ import "services/archived_session_validator.dart";
 import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
+import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
+import "services/plugin_warmup_service.dart";
+import "services/plugin_warmup_settings_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
+import "services/project_glossary_population_service.dart";
+import "services/project_glossary_scope_service.dart";
+import "services/project_glossary_scope_tracker.dart";
+import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
 import "services/project_view_tracker.dart";
@@ -185,6 +201,7 @@ typedef OrchestratorComposition = ({
 class Orchestrator({
     required final BridgeConfig config,
     required final RelayClient _client,
+    required final PluginLifecycleRepository _pluginLifecycleRepository,
     required final PluginLifecycleService _pluginLifecycleService,
     required final PluginRuntime _pluginRuntime,
     required final BridgeSettingsRepository _bridgeSettingsRepository,
@@ -213,7 +230,11 @@ class Orchestrator({
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
     const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
-    final gitCliApi = GitCliApi(processRunner: _processRunner, gitPathExists: _gitPathExists);
+    final gitCliApi = GitCliApi(
+      processRunner: _processRunner,
+      streamingProcessRunner: const StreamingProcessRunner(),
+      gitPathExists: _gitPathExists,
+    );
     final sessionRepository = SessionRepository(
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
@@ -252,6 +273,24 @@ class Orchestrator({
     );
     final sessionViewTracker = SessionViewTracker();
     final projectViewTracker = ProjectViewTracker();
+    final pluginWarmupSettingsService = PluginWarmupSettingsService(
+      bridgeSettingsRepository: _bridgeSettingsRepository,
+    );
+    final pluginWarmupService = PluginWarmupService(
+      sessionRepository: sessionRepository,
+      pluginLifecycleRepository: _pluginLifecycleRepository,
+      settingsService: pluginWarmupSettingsService,
+    );
+    final pluginWarmupSettingListener = PluginWarmupSettingListener(
+      tracker: sessionViewTracker,
+      warmupService: pluginWarmupService,
+      settingsService: pluginWarmupSettingsService,
+    );
+    final viewedSessionPluginWarmupListener = ViewedSessionPluginWarmupListener(
+      tracker: sessionViewTracker,
+      warmupService: pluginWarmupService,
+      settingsService: pluginWarmupSettingsService,
+    );
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
         sessionDao: _database.sessionDao,
@@ -337,6 +376,42 @@ class Orchestrator({
       prSyncService: prSyncService,
       settingsService: pullRequestRefreshSettingsService,
     );
+    final projectGlossaryScopeTracker = ProjectGlossaryScopeTracker(
+      bridgeIdProvider: _bridgeRegistrationService,
+    );
+    final projectGlossaryScopeService = ProjectGlossaryScopeService(
+      repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
+      bridgeIdProvider: _bridgeRegistrationService,
+      scopeTracker: projectGlossaryScopeTracker,
+    );
+    final currentProjectService = CurrentProjectService(
+      projectRepository: projectRepository,
+      projectGlossaryScopeTracker: projectGlossaryScopeTracker,
+    );
+    final sesoriServerApi = SesoriServerApi(
+      authBackendUrl: config.authBackendURL,
+      client: _httpClient,
+      requestDeadline: SesoriServerApi.defaultRequestDeadline,
+      tokenRefresher: _tokenRefresher,
+    );
+    final projectGlossaryPopulationService = ProjectGlossaryPopulationService(
+      projectRepository: projectRepository,
+      scopeService: projectGlossaryScopeService,
+      glossaryRepository: ProjectGlossaryRepository(
+        gitCliApi: gitCliApi,
+        filesystemApi: const FilesystemApi(),
+      ),
+      termCalculator: const ProjectGlossaryTermCalculator(),
+      publicationRepository: ProjectGlossaryPublicationRepository(api: sesoriServerApi),
+    );
+    final currentProjectGlossaryListener = CurrentProjectGlossaryListener(
+      source: currentProjectService.loadedProjectIds,
+      service: projectGlossaryPopulationService,
+    );
+    final viewedProjectGlossaryListener = ViewedProjectGlossaryListener(
+      tracker: projectViewTracker,
+      service: projectGlossaryPopulationService,
+    );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
       projectActivityRepository: ProjectActivityRepository(
@@ -379,18 +454,12 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
     );
     final sessionCreationService = SessionCreationService(
-      sessionMetadataRepository: SessionMetadataRepository(
-        api: SesoriServerApi(
-          authBackendUrl: config.authBackendURL,
-          client: _httpClient,
-          requestDeadline: SesoriServerApi.defaultRequestDeadline,
-          tokenRefresher: _tokenRefresher,
-        ),
-      ),
+      sessionMetadataRepository: SessionMetadataRepository(api: sesoriServerApi),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
+      sessionOptionsService: sessionOptionsService,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
@@ -542,6 +611,7 @@ class Orchestrator({
         PatchBridgeSettingsHandler(
           pullRequestRefreshSettingsService: pullRequestRefreshSettingsService,
           yoloSettingsService: yoloSettingsService,
+          pluginWarmupSettingsService: pluginWarmupSettingsService,
         ),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
@@ -551,7 +621,7 @@ class Orchestrator({
           pluginIds: pluginComposition.sessionOptionsScopeById.keys.toSet(),
         ),
         RestartBridgeHandler(restartService: _restartService),
-        GetCurrentProjectHandler(projectRepository: projectRepository),
+        GetCurrentProjectHandler(currentProjectService: currentProjectService),
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
@@ -642,6 +712,12 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       prSyncService: prSyncService,
       viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
+      pluginWarmupSettingListener: pluginWarmupSettingListener,
+      viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
+      currentProjectGlossaryListener: currentProjectGlossaryListener,
+      viewedProjectGlossaryListener: viewedProjectGlossaryListener,
+      projectGlossaryPopulationService: projectGlossaryPopulationService,
+      currentProjectService: currentProjectService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       projectViewTracker: projectViewTracker,
@@ -740,6 +816,12 @@ class OrchestratorSession._({
     required final SessionRepository _sessionRepository,
     required final PrSyncService _prSyncService,
     required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
+    required final PluginWarmupSettingListener _pluginWarmupSettingListener,
+    required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
+    required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
+    required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
+    required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
+    required final CurrentProjectService _currentProjectService,
     required final SessionUnseenService _sessionUnseenService,
     required final SessionViewTracker _sessionViewTracker,
     required final ProjectViewTracker _projectViewTracker,
@@ -892,6 +974,10 @@ class OrchestratorSession._({
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
+    _pluginWarmupSettingListener.start();
+    _viewedSessionPluginWarmupListener.start();
+    _currentProjectGlossaryListener.start();
+    _viewedProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
     final lifecycleFuture = Future<void>.microtask(
@@ -1012,7 +1098,7 @@ class OrchestratorSession._({
         .addTo(_subscriptions);
     // Live re-auth: when the token provider emits a token whose auth IDENTITY
     // differs from the one the relay socket is actually authenticated with
-    // (supervised mode: the GUI pushed a token_update after an account switch;
+    // (supervised mode: a later GUI token pull observes an account switch;
     // standalone: a re-login as another user picked up by the next refresh),
     // drop the relay so the reconnect loop below re-authenticates on the fresh
     // token — the same path a relay-side disconnect drives, so both triggers
@@ -1021,7 +1107,7 @@ class OrchestratorSession._({
     // Identity-gated on purpose: the relay validates the JWT once at connect
     // and never re-checks it for the lifetime of the socket, so a routine
     // same-user token rotation (TokenService refreshing near expiry during
-    // metadata generation or push sends, or the GUI pushing a routine refresh)
+    // metadata generation or push sends, or a routine GUI token pull)
     // keeps the open socket fully valid. Dropping it would disconnect every
     // phone mid-flight for nothing — see [_requiresRelayReauth].
     _accessTokenProvider.tokenStream
@@ -1043,6 +1129,7 @@ class OrchestratorSession._({
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
+    _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
     StackTrace? firstTeardownStackTrace;
@@ -1071,9 +1158,15 @@ class OrchestratorSession._({
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
+      attempt(_currentProjectGlossaryListener.dispose),
+      attempt(_viewedProjectGlossaryListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
+    await Future.wait([
+      attempt(_currentProjectService.dispose),
+      attempt(_projectGlossaryPopulationService.dispose),
+    ]);
     Log.v(
       "[shutdown] routed requests and relay completions drained "
       "(+${teardownSw.elapsedMilliseconds}ms)",
@@ -1108,9 +1201,13 @@ class OrchestratorSession._({
     await attempt(_completionListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
-    await attempt(_viewedProjectPrRefreshListener.dispose);
+    await Future.wait([
+      attempt(_viewedProjectPrRefreshListener.dispose),
+      attempt(_pluginWarmupSettingListener.dispose),
+      attempt(_viewedSessionPluginWarmupListener.dispose),
+    ]);
     await attempt(_prSyncService.drain);
-    Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("[shutdown] maintenance + view listeners + pr-sync disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
     // api.dispose() call is gone since the descriptor flip.
@@ -1172,7 +1269,12 @@ class OrchestratorSession._({
         break;
       }
 
-      Log.w("Relay connection lost. Reconnecting...");
+      // 1001 with no reason is the local ping timeout (no pong within the ping
+      // interval); anything else came from the relay's close frame.
+      Log.w(
+        "Relay connection lost (closeCode=${_client.closeCode(connection: connection)} "
+        "closeReason=${_client.closeReason(connection: connection)}). Reconnecting...",
+      );
       _sseManager.orphanAll();
       activePhoneIncarnations.clear();
       // Every phone connection died with the relay link; drop their view
@@ -1213,7 +1315,7 @@ class OrchestratorSession._({
         // Don't reconnect without a usable token: in supervised mode a
         // signed-out / mid-login GUI yields no token, and reconnecting would
         // re-authenticate the relay from a stale cached token. Back off and
-        // retry — a later refresh (or a token_update push) recovers.
+        // retry — a later successful refresh pull recovers.
         if (!await _refreshAccessToken()) {
           Log.w("No access token available — deferring reconnect (retrying in $backoff)");
           backoff = _nextBackoff(backoff, takenOver: takenOver);
@@ -1258,6 +1360,7 @@ class OrchestratorSession._({
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
+    _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
       Log.d(

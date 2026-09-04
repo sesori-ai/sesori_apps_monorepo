@@ -3,9 +3,9 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/features/session_list/session_list_scaffold.dart";
-import "package:sesori_mobile/l10n/app_localizations.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -28,6 +28,7 @@ void main() {
     required SessionListState state,
     ConnectionOverlayState overlay = const ConnectionOverlayState.hidden(connected: true),
     String? projectName = "Sesori_app_monorepo",
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
     when(() => cubit.state).thenReturn(state);
 
@@ -38,14 +39,20 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+            child: child!,
+          ),
           home: BlocProvider<SessionListCubit>.value(
             value: cubit,
             child: SessionListScaffold(
               projectName: projectName,
               onBack: null,
               onNewSession: () {},
-              onSessionTap: (_) {},
-              sessionMenuEntries: (context, session) => const [],
+              onSessionTap: ({required session}) {},
+              actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+              archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
+              connectionBanner: null,
             ),
           ),
         ),
@@ -176,5 +183,29 @@ void main() {
 
     // The popover shows the same (already-complete) slug — a second occurrence.
     expect(find.text("sesori-ai/sesori_apps_monorepo"), findsNWidgets(2));
+  });
+
+  testWidgets("last session scrolls clear of the floating new-task button at large text scales", (tester) async {
+    final sessions = [
+      for (var index = 0; index < 12; index++) testSession(id: "s$index", title: "Task $index"),
+    ];
+    await pumpScaffold(
+      tester,
+      state: SessionListState.loaded(sessions: sessions, baseBranch: "main", repoSlug: null),
+      projectName: "P",
+      textScaler: const TextScaler.linear(2.5),
+    );
+
+    final scrollView = tester.widget<CustomScrollView>(find.byType(CustomScrollView));
+    scrollView.controller!.jumpTo(scrollView.controller!.position.maxScrollExtent);
+    await tester.pump();
+
+    final lastTile = find.ancestor(of: find.text("Task 11"), matching: find.byType(SessionTile));
+    final loc = AppLocalizations.of(tester.element(find.byType(SessionListScaffold)))!;
+    final newTaskButton = find.widgetWithText(PregoButtonsSolid, loc.sessionListNewTask);
+    expect(lastTile, findsOneWidget);
+    expect(newTaskButton, findsOneWidget);
+    expect(tester.getSize(newTaskButton).height, greaterThan(80));
+    expect(tester.getBottomLeft(lastTile).dy, lessThan(tester.getTopLeft(newTaskButton).dy));
   });
 }

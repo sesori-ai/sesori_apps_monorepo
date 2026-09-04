@@ -150,6 +150,15 @@ sealed class const MessagePart._() with _$MessagePart {
     // COMPATIBILITY 2026-08-25 (v1.8.1): Released bridges can omit the subtask agent.
     // Remove @Default and require agent when the minimum supported bridge always sends it.
     @Default("") String agent,
+
+    /// The subtask's own lifecycle, authoritative for its inline status. Null
+    /// when the backend reports none, leaving consumers to infer it.
+    required ToolState? taskState,
+
+    /// The session hosting this subtask's work, when the backend exposes one
+    /// and the bridge could resolve it. Null leaves consumers to their own
+    /// association, so a part is never withheld for an unresolved reference.
+    required String? childSessionID,
   }) = MessagePartSubtask;
 
   @FreezedUnionValue("step-start")
@@ -275,9 +284,12 @@ extension MessageAttachmentSafety on MessageAttachment {
   }
 }
 
-/// Lifecycle of a tool invocation. Wire values mirror OpenCode's tool-state
-/// `status` discriminator 1:1; [unknown] is the forward-compatible fallback for
-/// any status a newer bridge emits that this client does not yet model.
+/// Lifecycle of a tool invocation, and of a subtask that reports one. Wire
+/// values mirror OpenCode's tool-state `status` discriminator, plus
+/// [cancelled] for work a backend stopped before it produced a result;
+/// [unknown] is the forward-compatible fallback for any status a newer bridge
+/// emits that this client does not yet model, which is how a client older
+/// than [cancelled] reads it.
 @JsonEnum()
 enum ToolStatus() {
   @JsonValue("pending")
@@ -288,6 +300,8 @@ enum ToolStatus() {
   completed,
   @JsonValue("error")
   error,
+  @JsonValue("cancelled")
+  cancelled,
   @JsonValue("unknown")
   unknown,
 }

@@ -1,9 +1,9 @@
-
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/main.dart";
 
@@ -23,8 +23,11 @@ void main() {
 
     await configureDependencies(
       firebaseEnabled: false,
-      createAnalyticsRuntimeCapability: ({required authSession}) async => const AnalyticsRuntimeCapability.disabled(
-        reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => AnalyticsRuntimeBootstrap(
+        capability: const AnalyticsRuntimeCapability.disabled(
+          reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+        ),
+        crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
       ),
     );
     getIt.unregister<FlutterSecureStorage>();

@@ -45,6 +45,8 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/opencode_dark.svg" : "assets/svgs/brands/opencode_light.svg",
       final id when id == Harness.codex.name =>
         isDark ? "assets/svgs/brands/codex_dark.svg" : "assets/svgs/brands/codex_light.svg",
+      final id when id == Harness.copilot.name =>
+        isDark ? "assets/svgs/brands/copilot_dark.svg" : "assets/svgs/brands/copilot_light.svg",
       final id when id == Harness.cursor.name =>
         isDark ? "assets/svgs/brands/cursor_dark.svg" : "assets/svgs/brands/cursor_light.svg",
       final id when id == Harness.claude.name =>
@@ -55,6 +57,8 @@ class const PregoBrandLogo({
         isDark ? "assets/svgs/brands/pi_dark.svg" : "assets/svgs/brands/pi_light.svg",
       final id when id == Harness.omp.name => "assets/svgs/brands/omp.svg",
       final id when id == Harness.deepseek.name => "assets/svgs/brands/deepseek.svg",
+      final id when id == Harness.grok.name =>
+        isDark ? "assets/svgs/brands/grok_dark.svg" : "assets/svgs/brands/grok_light.svg",
       _ => null,
     };
   }
@@ -68,12 +72,14 @@ class const PregoBrandLogo({
   static String displayNameFor(String pluginId) => switch (pluginId) {
     final id when id == Harness.opencode.name => "OpenCode",
     final id when id == Harness.codex.name => "Codex",
+    final id when id == Harness.copilot.name => "GitHub Copilot",
     final id when id == Harness.cursor.name => "Cursor",
     final id when id == Harness.claude.name => "Claude Code",
     final id when id == Harness.hermes.name => "Hermes Agent",
     final id when id == Harness.pi.name => "Pi",
     final id when id == Harness.omp.name => "Oh My Pi",
     final id when id == Harness.deepseek.name => "DeepSeek",
+    final id when id == Harness.grok.name => "Grok Build",
     _ => pluginId,
   };
 }

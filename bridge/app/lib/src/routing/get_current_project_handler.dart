@@ -1,10 +1,10 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/project_repository.dart";
+import "../services/current_project_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/current` — returns project for a given project id.
-class GetCurrentProjectHandler({required final ProjectRepository _projectRepository})
+class GetCurrentProjectHandler({required final CurrentProjectService _currentProjectService})
     extends BodyRequestHandler<ProjectIdRequest, Project> {
   this
     : super(
@@ -21,6 +21,6 @@ class GetCurrentProjectHandler({required final ProjectRepository _projectReposit
     final projectId = body.projectId;
     requireNonEmpty(request: request, value: projectId, label: "project id");
 
-    return await _projectRepository.getProject(projectId: projectId);
+    return await _currentProjectService.getCurrentProject(projectId: projectId);
   }
 }

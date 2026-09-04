@@ -7,6 +7,14 @@
     "mobile-mcp": {
       "command": "npx",
       "args": ["-y", "@mobilenext/mobile-mcp@1.0.2"]
+    },
+    "peekaboo": {
+      "command": "./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh",
+      "args": ["peekaboo"]
+    },
+    "agent-device": {
+      "command": "./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh",
+      "args": ["agent-device"]
     }
   }
 }

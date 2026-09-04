@@ -4,5 +4,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 @LazySingleton(as: AttributionClient)
 class NoOpAttributionClient() implements AttributionClient {
   @override
+  bool get isReady => false;
+
+  @override
   Future<void> logEvent({required AttributionEvent event}) async {}
 }

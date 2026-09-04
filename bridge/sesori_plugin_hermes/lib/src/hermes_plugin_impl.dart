@@ -19,6 +19,7 @@ class HermesPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -29,9 +30,6 @@ class HermesPlugin({
         id: HermesPluginIdentity.id,
         agentDisplayName: HermesPluginIdentity.displayName,
       );
-
-  @override
-  bool get cancelsActiveTurnForQueuedInput => true;
 
   @override
   void captureSessionConfig(

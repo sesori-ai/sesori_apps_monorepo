@@ -74,7 +74,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -423,7 +423,10 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       when(
-        () => mockSessionService.abortSession(sessionId: any(named: "sessionId")),
+        () => mockSessionService.abortSession(
+          sessionId: any(named: "sessionId"),
+          subAgents: any(named: "subAgents"),
+        ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
       final analyticsService = stubbedProductAnalyticsService();
       final cubit = _buildCubit(
@@ -449,7 +452,7 @@ void main() {
         isTrue,
       );
       expect(await cubit.rejectQuestion("question-2"), isTrue);
-      await cubit.abort();
+      await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
       final events = verify(
         () => analyticsService.logEvent(

@@ -275,6 +275,7 @@ void main() {
       identityTracker: identities,
       startupExitTimeout: const Duration(milliseconds: 50),
       historyRpcTimeout: const Duration(seconds: 2),
+      abortRpcTimeout: const Duration(seconds: 1),
       promptRpcTimeout: const Duration(minutes: 30),
     );
     addTearDown(repository.dispose);
@@ -1710,6 +1711,49 @@ void main() {
     expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionMessageId);
   });
 
+  test("abort force-replaces Pi when its acknowledgement waits on hidden steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process])..abortRpcTimeout = const Duration(milliseconds: 10);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-active",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "active")],
+      userVisibleText: "active",
+      variant: null,
+      model: null,
+    );
+    await service.sendPrompt(
+      sessionId: "session",
+      promptId: "prompt-steering",
+      directory: "/project",
+      parts: [const PluginPromptPart.text(text: "steering")],
+      userVisibleText: "steering",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt");
+
+    final warnings = await _captureWarnings(() async {
+      final abort = service.abort(sessionId: "session");
+      await waitForCommand(process: process, type: "abort");
+      await abort;
+    });
+
+    expect(warnings, contains("abort acknowledgement timed out; forcing process replacement"));
+    expect(process.killed, isTrue);
+    expect(fixture.repository.residentSessionIds, isEmpty);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
+  });
+
   test("shutdown interruption accepts process exit before abort response", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1908,13 +1952,12 @@ void main() {
     expect(second.killed, isTrue);
   });
 
-  test("reads the configured idle timeout live at each reap arm", () async {
+  test("rearms the idle timeout immediately when settings change", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final clock = _ManualClock();
     final service = fixture.service(clock: clock);
-    fixture.idleTimeout = null;
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1931,28 +1974,24 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
 
-    expect(clock.delays, isEmpty);
-    clock.elapse();
+    expect(clock.delays, [const Duration(minutes: 5)]);
+
+    fixture.idleTimeout = null;
+    fixture.idleTimeoutChanges.add(null);
+    await pump();
+    clock.elapseAt(index: 0);
     await pump();
     expect(fixture.repository.residentSessionIds, contains("session"));
 
     fixture.idleTimeout = const Duration(minutes: 1);
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prompt-reap",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "second")],
-      userVisibleText: "second",
-      variant: null,
-      model: null,
-    );
-    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
+    fixture.idleTimeoutChanges.add(fixture.idleTimeout);
+    await pump();
+    expect(clock.delays, [
+      const Duration(minutes: 5),
+      const Duration(minutes: 1),
+    ]);
 
-    expect(clock.delays, [const Duration(minutes: 1)]);
-    clock.elapse();
+    clock.elapseAt(index: 1);
     await pump();
     expect(process.killed, isTrue);
   });
@@ -2300,7 +2339,9 @@ final class _Fixture({
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
   Duration? idleTimeout = const Duration(minutes: 5);
+  final StreamController<Duration?> idleTimeoutChanges = StreamController<Duration?>.broadcast(sync: true);
   Duration historyRpcTimeout = const Duration(seconds: 2);
+  Duration abortRpcTimeout = const Duration(seconds: 1);
   Duration promptRpcTimeout = const Duration(seconds: 2);
   late final _Storage storage = storageOverride ?? _Storage(initialResolvedSession: _resolved());
   final List<PiLaunchSpec> spawned = [];
@@ -2322,6 +2363,7 @@ final class _Fixture({
     identityTracker: identities,
     startupExitTimeout: const Duration(milliseconds: 50),
     historyRpcTimeout: historyRpcTimeout,
+    abortRpcTimeout: abortRpcTimeout,
     promptRpcTimeout: promptRpcTimeout,
   );
 
@@ -2344,6 +2386,7 @@ final class _Fixture({
       extensionUiService: extension,
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges.stream,
     );
     extensions.add(extension);
     _services.add(service);
@@ -2354,6 +2397,7 @@ final class _Fixture({
     for (final service in _services) {
       await service.dispose();
     }
+    await idleTimeoutChanges.close();
     await repository.dispose();
     for (final process in _processes) {
       await process.close();
@@ -2403,14 +2447,23 @@ final class _HistoryStorage({required super.storageApi}) extends PiSessionHistor
 final class _ManualClock() implements ServerClock {
   Completer<void>? _delay;
   final List<Duration> delays = [];
+  final List<Completer<void>> _allDelays = [];
 
   @override
   Future<void> delay({required Duration duration}) {
     delays.add(duration);
-    return (_delay = Completer<void>()).future;
+    final completer = Completer<void>();
+    _allDelays.add(completer);
+    _delay = completer;
+    return completer.future;
   }
 
   void elapse() => _delay?.complete();
+
+  void elapseAt({required int index}) {
+    final delay = _allDelays[index];
+    if (!delay.isCompleted) delay.complete();
+  }
 
   @override
   DateTime now() => DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);

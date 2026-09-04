@@ -42,6 +42,7 @@ class HermesAcpApi({
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: null,
+      authMethodAllowlist: null,
       timeout: _remaining(timeout: timeout, stopwatch: stopwatch),
     );
   }

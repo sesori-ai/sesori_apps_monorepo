@@ -18,29 +18,22 @@ import "../foundation/control_channel_client.dart";
 /// [ControlMessage.tokenRequest] and awaiting the id-correlated
 /// [ControlMessage.tokenResponse], forwarding `forceRefresh` so the GUI knows
 /// whether to mint a fresh token. The latest token is cached so the synchronous
-/// [accessToken] getter and [tokenStream] reflect it.
+/// [accessToken] getter and [tokenStream] reflect it. Every pull is stamped with
+/// a monotonic sequence when issued, and its token or sign-out invalidation
+/// applies only if it is newer than the write currently reflected in the cache.
+/// Thus a slow older pull cannot overwrite a newer pull or clear a newer
+/// sign-out, and a later forced refresh is never masked by an older routine pull
+/// that finishes first.
 ///
-/// The GUI is the authoritative token source: a pushed [ControlMessage.tokenUpdate]
-/// is adopted directly into the cache (driving [accessToken]/[tokenStream]). A pull
-/// also seeds the cache. Every cache write (a token or a sign-out invalidation) is
-/// stamped with a monotonic sequence at the moment it is ordered — a pull when it
-/// is issued, a push when it is adopted — and applies only if it is newer than the
-/// write currently reflected in the cache. So the newest-ISSUED decision always
-/// wins regardless of which response arrives first: a slow older pull can neither
-/// overwrite a newer pushed/pulled token nor clear a newer sign-out, and a later
-/// forced refresh is never masked by an older routine pull that completes first.
-///
-/// A null [ControlTokenResponse] (signed out / mid-login) invalidates the cache: the
-/// synchronous [accessToken] getter throws again until a fresh token (pull or push)
-/// arrives, so a reconnect can never re-authenticate the relay as a signed-out user
-/// from a stale cached token. (`tokenUpdate.accessToken` is non-null, so a push can
-/// never signal sign-out — only a null `tokenResponse` can.)
+/// A null [ControlTokenResponse] (signed out / mid-login) invalidates the cache:
+/// the synchronous [accessToken] getter throws again until a fresh pull succeeds,
+/// so a reconnect can never re-authenticate the relay as a signed-out user from
+/// a stale cached token.
 ///
 /// It does NOT subscribe to [ControlChannelClient.inbound] itself: the
 /// `BridgeControlMessageDispatcher` owns the single inbound subscription and
-/// decode, delivering token-class messages through the typed delegates
-/// [handleTokenResponse] and [handleTokenUpdate]. The request-correlation state
-/// and the `token_request` send path stay here.
+/// decode, delivering replies through [handleTokenResponse]. The request-
+/// correlation state and the `token_request` send path stay here.
 class ControlChannelTokenService({
   required final ControlChannelClient _client,
   final Duration _requestTimeout = _defaultRequestTimeout,
@@ -49,29 +42,25 @@ class ControlChannelTokenService({
 
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject<String>();
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
-  // Monotonic sequence stamped on every write candidate at the moment it is
-  // ordered: a pull captures its seq when it is ISSUED; a push takes a fresh seq
-  // when it is ADOPTED (so it always outranks every pull already in flight).
+  // Monotonic sequence stamped on every pull when it is issued.
   int _nextSeq = 0;
   // The seq of the write currently reflected in the cache. A write applies only
-  // if its seq is newer than this, so the newest-ISSUED decision wins regardless
-  // of which response happens to arrive first: an older in-flight pull can never
-  // overwrite a newer push/pull's token nor clear a newer sign-out, and a later
-  // forced refresh is never masked just because an older routine pull completed
-  // first.
+  // if its seq is newer than this, so the newest-issued pull wins regardless of
+  // which response arrives first: an older in-flight pull can never overwrite a
+  // newer pull's token nor clear a newer sign-out.
   int _appliedSeq = -1;
   // A null token_response (signed out / mid-login) sets this so the synchronous
   // accessToken getter throws even though the BehaviorSubject still holds the
-  // last (now stale) value — a BehaviorSubject cannot un-emit. Cleared the next
-  // time a real token is cached (pull or push).
+  // last (now stale) value — a BehaviorSubject cannot un-emit. Cleared by the
+  // next successful pull.
   bool _invalidated = false;
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
   /// The most recently cached access token. Only valid after the first token is
   /// cached (the bootstrap [getAccessToken] the composition root awaits before
-  /// exposing this provider, or a pushed [ControlMessage.tokenUpdate]), and only
-  /// while it has not been invalidated by a signed-out [ControlTokenResponse].
+  /// exposing this provider), and only while it has not been invalidated by a
+  /// signed-out [ControlTokenResponse].
   /// Throws [StateError] in either unavailable case so a caller can never read a
   /// missing or stale-after-sign-out token.
   @override
@@ -112,8 +101,8 @@ class ControlChannelTokenService({
     }
     // Stamp this pull's issue order. Its result (cache the token, or invalidate
     // on null) applies only if it is still the newest-issued write when it
-    // resolves — a later pull or a GUI push (each taking a higher seq) wins even
-    // if it completes first.
+    // resolves — a later pull with a higher sequence wins even if it completes
+    // first.
     final seq = _nextSeq++;
     final id = "token-$seq";
     final completer = Completer<String?>();
@@ -132,20 +121,18 @@ class ControlChannelTokenService({
       final accessToken = await completer.future.timeout(_requestTimeout);
       if (accessToken == null) {
         // Signed out / mid-login: invalidate any previously cached token so a
-        // reconnect can't re-authenticate the relay from a stale token. The GUI
-        // push (token_update) is non-null and so can never signal this. Apply
+        // reconnect can't re-authenticate the relay from a stale token. Apply
         // only if this is still the newest-issued write, so a stale null can't
-        // clear a newer token (push or a later pull issued after the sign-out).
+        // clear a token from a later pull issued after the sign-out.
         _applyWrite(seq, _invalidateCache);
         throw const ControlTokenUnavailableException(
           "The desktop app could not supply an access token (signed out or mid-login).",
         );
       }
       // Seed the cache so the synchronous getter and tokenStream stay current,
-      // but only if this is still the newest-issued write: a GUI token_update
-      // push or a later pull must not be reverted by a slow older pull, even one
-      // that completes after them. The caller still receives this pull's own
-      // token below regardless.
+      // but only if this is still the newest-issued write: a later pull must not
+      // be reverted by a slow older pull, even one that completes after it. The
+      // caller still receives this pull's own token below regardless.
       _applyWrite(seq, () => _cacheToken(accessToken));
       return accessToken;
     } on TimeoutException {
@@ -192,19 +179,9 @@ class ControlChannelTokenService({
     }
   }
 
-  /// Adopts a token the GUI pushed without a request. It takes a fresh seq at
-  /// adoption time, so it outranks every pull already in flight and becomes the
-  /// newest write — a slow older pull resolving afterwards can't revert it.
-  /// (Non-null by protocol, so a push never invalidates the cache — only a null
-  /// pull response can.) Called by the control-message dispatcher.
-  void handleTokenUpdate({required String accessToken}) {
-    if (_disposed) return;
-    _applyWrite(_nextSeq++, () => _cacheToken(accessToken));
-  }
-
   /// Runs [write] only if [seq] is newer than the write currently reflected in
   /// the cache, advancing [_appliedSeq] when it does. This makes the
-  /// newest-issued write win regardless of completion order, so an older pull
+  /// newest-issued pull win regardless of completion order, so an older pull
   /// resolving late can neither overwrite a newer token nor clear a newer
   /// sign-out.
   void _applyWrite(int seq, void Function() write) {

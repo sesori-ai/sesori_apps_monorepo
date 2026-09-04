@@ -131,9 +131,85 @@ void main() {
       expect(PluginToolStatus.running.toShared(), equals(ToolStatus.running));
       expect(PluginToolStatus.completed.toShared(), equals(ToolStatus.completed));
       expect(PluginToolStatus.error.toShared(), equals(ToolStatus.error));
+      expect(PluginToolStatus.cancelled.toShared(), equals(ToolStatus.cancelled));
       // Unlike message-part type, unknown is a real renderable state and maps
       // through rather than throwing.
       expect(PluginToolStatus.unknown.toShared(), equals(ToolStatus.unknown));
+    });
+
+    test("cancelled keeps a wire value an older client degrades to unknown", () {
+      const state = PluginToolState(
+        status: PluginToolStatus.cancelled,
+        title: null,
+        output: null,
+        error: null,
+        attachments: [],
+      );
+
+      final json = state.toShared().toJson();
+
+      expect(json["status"], equals("cancelled"));
+      expect(ToolState.fromJson({...json, "status": "a-status-from-a-newer-bridge"}).status, equals(ToolStatus.unknown));
+    });
+
+    test("only completed, error, cancelled and unknown are terminal", () {
+      expect(
+        {for (final status in PluginToolStatus.values) status: status.isTerminal},
+        equals({
+          PluginToolStatus.pending: false,
+          PluginToolStatus.running: false,
+          PluginToolStatus.completed: true,
+          PluginToolStatus.error: true,
+          PluginToolStatus.cancelled: true,
+          PluginToolStatus.unknown: true,
+        }),
+      );
+    });
+  });
+
+  group("PluginMessagePartSubtask.toShared()", () {
+    test("carries the subtask lifecycle and its child reference for translation", () {
+      const part = PluginMessagePart.subtask(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        prompt: "explore",
+        description: "Explore",
+        agent: "explore",
+        taskState: PluginToolState(
+          status: PluginToolStatus.cancelled,
+          title: null,
+          output: null,
+          error: null,
+          attachments: [],
+        ),
+        childSessionID: "backend-child",
+      );
+
+      final shared = part.toShared(sessionId: "stable-session") as MessagePartSubtask;
+
+      expect(shared.taskState?.status, equals(ToolStatus.cancelled));
+      expect(shared.childSessionID, equals("backend-child"));
+      expect(shared.sessionID, equals("stable-session"));
+    });
+
+    test("omits an absent lifecycle and child reference from the wire payload", () {
+      const part = PluginMessagePart.subtask(
+        id: "p1",
+        sessionID: "s1",
+        messageID: "m1",
+        prompt: "explore",
+        description: "Explore",
+        agent: "explore",
+        taskState: null,
+        childSessionID: null,
+      );
+
+      final json = part.toShared(sessionId: "stable-session").toJson();
+
+      expect(json.containsKey("childSessionID"), isFalse);
+      expect(json.containsKey("taskState"), isFalse);
+      expect((MessagePart.fromJson(json) as MessagePartSubtask).childSessionID, isNull);
     });
   });
 

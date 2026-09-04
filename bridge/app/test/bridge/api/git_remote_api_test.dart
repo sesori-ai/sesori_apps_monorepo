@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -15,6 +16,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -32,6 +34,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -49,6 +52,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -66,6 +70,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -83,6 +88,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -100,6 +106,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -117,6 +124,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -134,6 +142,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -156,6 +165,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -172,6 +182,7 @@ void main() {
       );
 
       await GitCliApi(
+        streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: mockRunner,
         gitPathExists: ({required String gitPath}) => true,
       ).hasGitHubRemote(
@@ -188,6 +199,7 @@ void main() {
       );
 
       await GitCliApi(
+        streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: mockRunner,
         gitPathExists: ({required String gitPath}) => true,
       ).hasGitHubRemote(
@@ -211,6 +223,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(
@@ -228,6 +241,7 @@ void main() {
 
       final result =
           await GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: mockRunner,
             gitPathExists: ({required String gitPath}) => true,
           ).hasGitHubRemote(

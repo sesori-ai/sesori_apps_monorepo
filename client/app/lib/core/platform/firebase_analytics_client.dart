@@ -3,13 +3,19 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../di/firebase_register_module.dart";
+import "firebase_analytics_startup.dart";
 
 @firebaseEnabledEnvironment
 @LazySingleton(as: AnalyticsClient)
 class FirebaseAnalyticsClient({
   required final FirebaseAnalytics _analytics,
   required final AnalyticsRuntimeCapability _capability,
+  required final FirebaseAnalyticsStartup _startup,
 }) implements AnalyticsClient {
+  @override
+  Future<void> activateAfterInteractiveAuthentication() =>
+      _startup.activateAfterInteractiveAuthentication();
+
   @override
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {
     if (!_capability.isEnabled) throw StateError("Product analytics runtime is disabled");

@@ -27,12 +27,16 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
-  test("enables a new release install only after suspension and consent", () async {
-    final capability = await startup.configure(ineligibilityReason: null);
+  test("enables an eligible release only after the crawl gate allows it", () async {
+    final capability = await startup.prepare(ineligibilityReason: null);
 
     expect(capability, isA<AnalyticsRuntimeEnabled>());
+    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
+    verifyNoMoreInteractions(analytics);
+
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
+
     verifyInOrder([
-      () => analytics.setAnalyticsCollectionEnabled(false),
       () => analytics.setConsent(
         adPersonalizationSignalsConsentGranted: false,
         adStorageConsentGranted: false,
@@ -50,54 +54,37 @@ void main() {
   test("keeps collection off for ineligible processes", () async {
     for (final reason in [
       AnalyticsRuntimeDisabledReason.debugOrProfile,
-      AnalyticsRuntimeDisabledReason.recentBuildUnauthenticated,
+      AnalyticsRuntimeDisabledReason.unsupportedPlatform,
     ]) {
-      final capability = await startup.configure(ineligibilityReason: reason);
+      final capability = await startup.prepare(ineligibilityReason: reason);
 
       expect(
         capability,
         isA<AnalyticsRuntimeDisabled>().having((value) => value.reason, "reason", reason),
       );
+      await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
     }
 
     verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(2);
     verifyNoMoreInteractions(analytics);
   });
 
-  test("fails closed when collection cannot be suspended", () async {
-    when(
-      () => analytics.setAnalyticsCollectionEnabled(false),
-    ).thenAnswer((_) async => throw StateError("suspend failed"));
+  test("a store-crawl suspension keeps the SDK off with an operational runtime", () async {
+    final capability = await startup.prepare(ineligibilityReason: null);
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
 
-    final capability = await startup.configure(ineligibilityReason: null);
-
-    expect(
-      capability,
-      isA<AnalyticsRuntimeDisabled>().having(
-        (value) => value.reason,
-        "reason",
-        AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-      ),
-    );
+    expect(capability, isA<AnalyticsRuntimeEnabled>());
     verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
     verifyNoMoreInteractions(analytics);
   });
 
-  test("fails closed when release collection cannot be enabled", () async {
-    when(
-      () => analytics.setAnalyticsCollectionEnabled(true),
-    ).thenAnswer((_) async => throw StateError("enable failed"));
+  test("interactive authentication lifts the resolved store-crawl suspension once", () async {
+    await startup.prepare(ineligibilityReason: null);
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
 
-    final capability = await startup.configure(ineligibilityReason: null);
+    await startup.activateAfterInteractiveAuthentication();
+    await startup.activateAfterInteractiveAuthentication();
 
-    expect(
-      capability,
-      isA<AnalyticsRuntimeDisabled>().having(
-        (value) => value.reason,
-        "reason",
-        AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
-      ),
-    );
     verifyInOrder([
       () => analytics.setAnalyticsCollectionEnabled(false),
       () => analytics.setConsent(
@@ -111,6 +98,84 @@ void main() {
       ),
       () => analytics.setAnalyticsCollectionEnabled(true),
     ]);
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("interactive authentication lifts a pending gate before it resolves", () async {
+    await startup.prepare(ineligibilityReason: null);
+
+    await startup.activateAfterInteractiveAuthentication();
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.suspend);
+
+    verifyInOrder([
+      () => analytics.setAnalyticsCollectionEnabled(false),
+      () => analytics.setConsent(
+        adPersonalizationSignalsConsentGranted: false,
+        adStorageConsentGranted: false,
+        adUserDataConsentGranted: false,
+        personalizationStorageConsentGranted: false,
+        securityStorageConsentGranted: false,
+        analyticsStorageConsentGranted: true,
+        functionalityStorageConsentGranted: true,
+      ),
+      () => analytics.setAnalyticsCollectionEnabled(true),
+    ]);
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("activation after an allowing gate is a no-op", () async {
+    await startup.prepare(ineligibilityReason: null);
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
+    clearInteractions(analytics);
+
+    await startup.activateAfterInteractiveAuthentication();
+
+    verifyZeroInteractions(analytics);
+  });
+
+  test("fails closed when collection cannot be suspended", () async {
+    when(
+      () => analytics.setAnalyticsCollectionEnabled(false),
+    ).thenAnswer((_) async => throw StateError("suspend failed"));
+
+    final capability = await startup.prepare(ineligibilityReason: null);
+
+    expect(
+      capability,
+      isA<AnalyticsRuntimeDisabled>().having(
+        (value) => value.reason,
+        "reason",
+        AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+      ),
+    );
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
+    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
+    verifyNoMoreInteractions(analytics);
+  });
+
+  test("keeps collection off and permits a later retry when enabling fails", () async {
+    when(
+      () => analytics.setAnalyticsCollectionEnabled(true),
+    ).thenAnswer((_) async => throw StateError("enable failed"));
+
+    final capability = await startup.prepare(ineligibilityReason: null);
+    await startup.applyCrawlGate(crawlGate: AnalyticsStoreCrawlGate.allow);
+    await startup.activateAfterInteractiveAuthentication();
+
+    expect(capability, isA<AnalyticsRuntimeEnabled>());
+    verify(() => analytics.setAnalyticsCollectionEnabled(false)).called(1);
+    verify(
+      () => analytics.setConsent(
+        adPersonalizationSignalsConsentGranted: false,
+        adStorageConsentGranted: false,
+        adUserDataConsentGranted: false,
+        personalizationStorageConsentGranted: false,
+        securityStorageConsentGranted: false,
+        analyticsStorageConsentGranted: true,
+        functionalityStorageConsentGranted: true,
+      ),
+    ).called(2);
+    verify(() => analytics.setAnalyticsCollectionEnabled(true)).called(2);
     verifyNoMoreInteractions(analytics);
   });
 }

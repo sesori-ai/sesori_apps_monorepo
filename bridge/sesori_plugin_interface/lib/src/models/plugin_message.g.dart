@@ -53,6 +53,8 @@ Map<String, dynamic> _$PluginMessagePartSubtaskToJson(
   'prompt': instance.prompt,
   'description': instance.description,
   'agent': instance.agent,
+  'taskState': ?instance.taskState?.toJson(),
+  'childSessionID': ?instance.childSessionID,
   'type': instance.$type,
 };
 
@@ -181,6 +183,7 @@ const _$PluginToolStatusEnumMap = {
   PluginToolStatus.running: 'running',
   PluginToolStatus.completed: 'completed',
   PluginToolStatus.error: 'error',
+  PluginToolStatus.cancelled: 'cancelled',
   PluginToolStatus.unknown: 'unknown',
 };
 

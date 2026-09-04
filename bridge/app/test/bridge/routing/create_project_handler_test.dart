@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
@@ -58,6 +59,7 @@ void main() {
           sessionDao: db.sessionDao,
           plugin: plugin,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: ProcessRunner(),
             gitPathExists: ({required String gitPath}) =>
                 FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,

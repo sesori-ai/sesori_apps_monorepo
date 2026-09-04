@@ -22,6 +22,7 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_omp` | Oh My Pi implementation over ACP |
 | `sesori_plugin_claude` | Claude Code backend implementation |
 | `sesori_plugin_hermes` | Hermes implementation over ACP |
+| `sesori_plugin_grok` | Grok Build implementation over ACP |
 | `sesori_plugin_pi` | Pi backend implementation |
 | `app` | CLI entry point: auth, relay, encryption, catalog, request routing, and plugin composition |
 
@@ -122,7 +123,6 @@ current default.
 ```bash
 sesori-bridge config plugins
 sesori-bridge config plugins disable cursor
-sesori-bridge --import-plugin codex
 ```
 
 Eligible plugins are inspected without installing anything. Ready plugins may
@@ -133,11 +133,11 @@ browsing, or another plugin.
 
 Normal project, root-session, session-detail, and child reads use the durable
 database catalog only. Import is a non-destructive observation of one plugin:
-`POST /plugin/import` starts, `DELETE /plugin/import` cancels, and
-`GET /plugin/import` returns the latest per-plugin statuses; progress is also
-published as plugin-attributed SSE. Repeated `--import-plugin <id>` flags expose
-the same start operation to headless runs. Catalog readers continue to see the
-last committed snapshot while import enumerates or publishes.
+connected Sesori apps start it through `POST /plugin/import`, cancel it through
+`DELETE /plugin/import`, and read the latest per-plugin statuses through
+`GET /plugin/import`; progress is also published as plugin-attributed SSE.
+Catalog readers continue to see the last committed snapshot while import
+enumerates or publishes.
 
 ## Security
 

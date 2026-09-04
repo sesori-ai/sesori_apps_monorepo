@@ -11,6 +11,7 @@ import "claude_history_mapper.dart";
 import "models/claude_agent_selection.dart";
 import "models/claude_effort_level.dart";
 import "models/claude_permission_mode.dart";
+import "models/claude_subagent_session_id.dart";
 import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/claude_session_process_repository.dart";
 import "repositories/claude_transcript_catalog_repository.dart";
@@ -192,10 +193,14 @@ final class ClaudePlugin({
   Future<void> deleteWorkspace({required String projectId, required String worktreePath}) async {}
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => const [];
+  Future<List<PluginSession>> getChildSessions(String sessionId) => _transcripts.getChildSessions(sessionId: sessionId);
 
   @override
-  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => _sessions.sessionStatuses;
+  // Roots from the session service, children from the dispatcher: disjoint ids.
+  Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => {
+    ..._sessions.sessionStatuses,
+    ..._eventDispatcher.childSessionStatuses(),
+  };
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
@@ -206,7 +211,9 @@ final class ClaudePlugin({
     try {
       return _history.map(
         sessionId: sessionId,
+        agentId: ClaudeSubagentSessionId.agentIdOf(sessionId),
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
+        residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
       );
     } on Object catch (error) {
       throw PluginOperationException(
@@ -288,9 +295,8 @@ final class ClaudePlugin({
       _sessions.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId);
 
   @override
-  Future<void> abortSession({required String sessionId}) async {
-    await _sessions.abort(sessionId: sessionId);
-  }
+  Future<PluginAbortResult> abortSession({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) =>
+      _sessions.abort(sessionId: sessionId, subAgents: subAgents);
 
   @override
   // Claude declares plugin-scoped options, so projectId does not select a catalog.
@@ -390,10 +396,12 @@ final class ClaudePlugin({
       (byProject[directory] ??= []).add(
         PluginActiveSession(
           id: entry.key,
-          mainAgentRunning: running,
+          // Busy also covers background-only activity; the main agent runs only
+          // while a turn does.
+          mainAgentRunning: _sessions.isTurnRunning(sessionId: entry.key),
           awaitingInput: awaitingInput,
           isRetrying: entry.value is PluginSessionStatusRetry,
-          childSessionIds: const [],
+          childSessionIds: _eventDispatcher.busyChildSessionIds(sessionId: entry.key),
         ),
       );
     }
@@ -432,6 +440,12 @@ final class ClaudePlugin({
     required String? command,
     required int attachmentCount,
   }) async {
+    // A sub-agent transcript is not a Claude process session: nothing can be
+    // resumed under its id, so a write to it is refused rather than spawning a
+    // CLI that fails.
+    if (ClaudeSubagentSessionId.agentIdOf(sessionId) != null) {
+      throw PluginOperationException(operation, statusCode: 400, message: "sub-agent sessions are read-only");
+    }
     _validateModel(model, operation: operation, staleOptions: true);
     final effort = _effort(variant, operation: operation, staleOptions: true);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: true);
@@ -471,7 +485,7 @@ final class ClaudePlugin({
     _validateModel(model, operation: operation, staleOptions: false);
     final effort = _effort(variant, operation: operation, staleOptions: false);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: false);
-    _eventDispatcher.beginTurn(sessionId: sessionId);
+    _eventDispatcher.beginTurn(sessionId: sessionId, directory: directory);
     try {
       await _sessions.enqueueInitialTurn(
         sessionId: sessionId,
@@ -504,7 +518,11 @@ final class ClaudePlugin({
   }) {
     if (model == null) return;
     if (model.providerID != ClaudeBackendCatalogRepository.providerId || model.modelID.trim().isEmpty) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude model", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude model",
+        staleOptions: staleOptions,
+      );
     }
   }
 
@@ -516,7 +534,11 @@ final class ClaudePlugin({
     if (variant == null) return null;
     final effort = ClaudeEffortLevel.tryParse(variant.id);
     if (effort == null) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude effort", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude effort",
+        staleOptions: staleOptions,
+      );
     }
     return effort;
   }
@@ -529,7 +551,11 @@ final class ClaudePlugin({
     if (agent == null) return null;
     final selection = ClaudeAgentSelection.tryParse(agent);
     if (selection == null) {
-      throw _unsupportedSelection(operation: operation, message: "unsupported Claude agent", staleOptions: staleOptions);
+      throw _unsupportedSelection(
+        operation: operation,
+        message: "unsupported Claude agent",
+        staleOptions: staleOptions,
+      );
     }
     return selection.permissionMode;
   }
@@ -546,7 +572,7 @@ final class ClaudePlugin({
       id: record.id,
       projectID: directory,
       directory: directory,
-      parentID: null,
+      parentID: record.parentId,
       title: record.title,
       time: createdAt == null || updatedAt == null
           ? null
@@ -557,7 +583,25 @@ final class ClaudePlugin({
   String? _directoryForSession(String sessionId) => _findSession(sessionId)?.directory;
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
+    if (event is ClaudeSessionProcessExited) {
+      // Sub-agents live only inside the resident process.
+      _eventDispatcher.cancelTasks(sessionId: event.sessionId).forEach(_eventBuffer.add);
+      return;
+    }
     if (event case ClaudeSessionProcessMessage(:final message, :final interrupted, :final promptId)) {
+      // Between an acknowledged interrupt and the interrupted turn's result the
+      // CLI can still stream that turn's output; a full stop tears the process
+      // down, a main-agent-only stop keeps it, so assistant output is dropped
+      // here. User echoes still render (they are the prompt's transcript identity)
+      // and so do forwarded sub-agent frames, which belong to the kept work.
+      if (interrupted) {
+        switch (message) {
+          case ClaudeAssistantMessage(parentToolUseId: null) || ClaudeStreamEventMessage(parentToolUseId: null):
+            return;
+          case ClaudeStreamMessage():
+            break;
+        }
+      }
       if (message is ClaudeResultMessage) {
         final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
           sessionId: event.sessionId,
@@ -604,7 +648,7 @@ final class ClaudePlugin({
 
   void _handleTurnDispatched(ClaudeTurnDispatched event) {
     _unstartedSessions.remove(event.sessionId);
-    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId);
+    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId, directory: event.directory);
     final command = event.command;
     if (command == null) return;
     final visible = event.displayText;

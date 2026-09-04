@@ -1,6 +1,9 @@
 /// The AI activity indicator: a sparkle that twinkles while an agent works.
 library;
 
+import "package:flutter/foundation.dart";
+import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
@@ -24,6 +27,13 @@ enum PregoAiLoaderFillMode() {
 /// them, a solid brand sparkle: the same still frame the platform's
 /// reduced-motion preference forces, so a caller can use it as a static "has
 /// activity" mark without a second widget.
+///
+/// On iOS and macOS the twinkle is a native platform view animated by the
+/// render server, so a screen of working sessions schedules no Flutter frames.
+/// Android deliberately keeps the Flutter painter: hybrid-composition platform
+/// views in scrolling list rows wreck Android scroll performance (measured
+/// on-device, 2026-08-31) even though they improve idle battery. Every static
+/// state uses the painter too.
 ///
 /// The sparkle is decorative — it always accompanies a label that carries the
 /// meaning, so it is excluded from semantics.
@@ -74,15 +84,36 @@ class const PregoAiLoader({
 class _PregoAiLoaderState()
     extends State<PregoAiLoader>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
+  static const _nativeViewType = "sesori/native-ai-loader";
+
   /// One full twinkle. Slow enough to read as breathing rather than blinking.
+  /// The native renderer hardcodes the same period.
   static const Duration _period = Duration(milliseconds: 1400);
+
+  /// Whether this platform has a native twinkle renderer registered by the
+  /// theme_prego plugin. iOS and macOS: on Android the sparkle sits in
+  /// scrolling list rows, where per-row platform views cost far more in scroll
+  /// jank than they save in idle battery.
+  static bool get _nativeTwinkleSupported {
+    if (kIsWeb) return false;
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.macOS => true,
+      TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
+    };
+  }
+
+  bool get _usesNativeTwinkle => _nativeTwinkleSupported && widget.fillMode == .keyframed && widget.color == null;
 
   /// Constructed unstarted: whether it may run depends on [MediaQuery], which
   /// cannot be read until `didChangeDependencies`.
   late final AnimationController _loop = AnimationController(vsync: this, duration: _period);
 
+  /// The Flutter loop only ever animates where no native renderer exists: on
+  /// native platforms every animated frame is the platform view's, and the
+  /// painter is only built for static states — a repeating controller there
+  /// would schedule the very frames the native view exists to avoid.
   @override
-  bool get motionEnabled => widget.animate;
+  bool get motionEnabled => widget.animate && !_usesNativeTwinkle;
 
   @override
   void startMotion() {
@@ -99,7 +130,11 @@ class _PregoAiLoaderState()
   @override
   void didUpdateWidget(PregoAiLoader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.animate != widget.animate) syncMotion();
+    if (oldWidget.animate != widget.animate ||
+        oldWidget.fillMode != widget.fillMode ||
+        oldWidget.color != widget.color) {
+      syncMotion();
+    }
   }
 
   @override
@@ -116,20 +151,63 @@ class _PregoAiLoaderState()
       // own it would repaint whatever layer it was composited into — the whole
       // list row. CustomPaint adds no boundary itself.
       child: RepaintBoundary(
-        child: CustomPaint(
-          size: Size.square(widget.size),
-          painter: _AiLoaderPainter(
-            repaint: _loop,
-            // A resting sparkle always shows the solid keyframe, so the phase
-            // offset only applies while the loop runs.
-            phase: motionAllowed ? widget.phase : 0,
-            fillMode: widget.fillMode,
-            solid: widget.color ?? colors.textPrimaryOnBrand,
-            outline: widget.color ?? colors.textPrimary,
-            faded: widget.color ?? colors.textDisabled,
-          ),
-        ),
+        child: _twinkle(context: context, colors: colors),
       ),
+    );
+  }
+
+  Widget _twinkle({required BuildContext context, required PregoColors colors}) {
+    final twinkling = widget.animate && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled;
+    if (twinkling && _usesNativeTwinkle) {
+      final nativeView = _nativeTwinkle(colors: colors);
+      if (nativeView != null) {
+        return SizedBox.square(dimension: widget.size, child: nativeView);
+      }
+    }
+
+    return CustomPaint(
+      size: Size.square(widget.size),
+      painter: _AiLoaderPainter(
+        repaint: _loop,
+        // A resting sparkle always shows the solid keyframe, so the phase
+        // offset only applies while the loop runs.
+        phase: motionAllowed ? widget.phase : 0,
+        fillMode: widget.fillMode,
+        solid: widget.color ?? colors.textPrimaryOnBrand,
+        outline: widget.color ?? colors.textPrimary,
+        faded: widget.color ?? colors.textDisabled,
+      ),
+    );
+  }
+
+  Widget? _nativeTwinkle({required PregoColors colors}) {
+    if (!_nativeTwinkleSupported) return null;
+
+    final params = <String, num>{
+      "solid": colors.textPrimaryOnBrand.toARGB32(),
+      "outline": colors.textPrimary.toARGB32(),
+      "faded": colors.textDisabled.toARGB32(),
+      "phase": widget.phase,
+    };
+    final nativeView = defaultTargetPlatform == TargetPlatform.iOS
+        ? UiKitView(
+            viewType: _nativeViewType,
+            creationParams: params,
+            creationParamsCodec: const StandardMessageCodec(),
+            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+          )
+        : AppKitView(
+            viewType: _nativeViewType,
+            creationParams: params,
+            creationParamsCodec: const StandardMessageCodec(),
+            hitTestBehavior: PlatformViewHitTestBehavior.transparent,
+          );
+    // Native views consume creationParams only at creation, so a keyframe
+    // colour change (a theme switch while a sparkle is visible) must recreate
+    // the view. The phase participates for the same reason.
+    return KeyedSubtree(
+      key: ValueKey(Object.hash(params["solid"], params["outline"], params["faded"], widget.phase)),
+      child: nativeView,
     );
   }
 }
@@ -170,6 +248,9 @@ class _AiLoaderPainter({
   /// shape — and the outline keyframe just drops the fill away. Interpolating
   /// the fill's alpha instead of switching paint styles keeps the sparkle the
   /// same size across the whole loop.
+  ///
+  /// The native iOS/macOS renderer embeds this same geometry with the arcs
+  /// pre-converted to cubics; a change here must be mirrored there.
   static final Path _sparkle = Path()
     ..moveTo(12, 3)
     ..cubicTo(12.375, 3, 12.711, 3.231, 12.846, 3.581)
@@ -233,6 +314,9 @@ class _AiLoaderPainter({
   /// The colour, fill opacity and scale of the sparkle at [t] in the loop:
   /// solid brand at full size, hollowing out and shrinking to the outline, then
   /// filling back in as a faded sparkle before returning to brand.
+  ///
+  /// The native iOS/macOS renderer implements these same keyframes; a change
+  /// here must be mirrored there.
   (Color, double, double) _keyframe(double t) {
     if (t < _outlineAt) {
       final p = t / _outlineAt;

@@ -22,6 +22,10 @@ SvgAssetLoader _loaderOf(WidgetTester tester) =>
 List<String> _pathElements(String svg) =>
     RegExp(r"<path\b[^>]*>").allMatches(svg).map((match) => match.group(0)!).toList();
 
+List<String> _pathData(String svg) => RegExp(
+  r'<path\b[^>]*\bd="([^"]+)"',
+).allMatches(svg).map((match) => match.group(1)!).toList();
+
 void main() {
   for (final mapping in <({String pluginId, String lightAsset, String darkAsset})>[
     (
@@ -33,6 +37,11 @@ void main() {
       pluginId: Harness.codex.name,
       lightAsset: "assets/svgs/brands/codex_light.svg",
       darkAsset: "assets/svgs/brands/codex_dark.svg",
+    ),
+    (
+      pluginId: Harness.copilot.name,
+      lightAsset: "assets/svgs/brands/copilot_light.svg",
+      darkAsset: "assets/svgs/brands/copilot_dark.svg",
     ),
     (
       pluginId: Harness.cursor.name,
@@ -63,6 +72,11 @@ void main() {
       pluginId: Harness.deepseek.name,
       lightAsset: "assets/svgs/brands/deepseek.svg",
       darkAsset: "assets/svgs/brands/deepseek.svg",
+    ),
+    (
+      pluginId: Harness.grok.name,
+      lightAsset: "assets/svgs/brands/grok_light.svg",
+      darkAsset: "assets/svgs/brands/grok_dark.svg",
     ),
   ]) {
     testWidgets("maps ${mapping.pluginId} to its bundled artwork", (tester) async {
@@ -101,12 +115,14 @@ void main() {
   test("names each harness it has a mark for, and speaks an unknown id as-is", () {
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
+    expect(PregoBrandLogo.displayNameFor(Harness.copilot.name), "GitHub Copilot");
     expect(PregoBrandLogo.displayNameFor(Harness.cursor.name), "Cursor");
     expect(PregoBrandLogo.displayNameFor(Harness.claude.name), "Claude Code");
     expect(PregoBrandLogo.displayNameFor(Harness.hermes.name), "Hermes Agent");
     expect(PregoBrandLogo.displayNameFor(Harness.pi.name), "Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.omp.name), "Oh My Pi");
     expect(PregoBrandLogo.displayNameFor(Harness.deepseek.name), "DeepSeek");
+    expect(PregoBrandLogo.displayNameFor(Harness.grok.name), "Grok Build");
     expect(PregoBrandLogo.displayNameFor("future-plugin"), "future-plugin");
   });
 
@@ -120,10 +136,34 @@ void main() {
     expect(light, isNot(contains("<circle")));
   });
 
+  test("Copilot artwork keeps the same Primer icon with theme contrast", () {
+    final light = File("assets/svgs/brands/copilot_light.svg").readAsStringSync();
+    final dark = File("assets/svgs/brands/copilot_dark.svg").readAsStringSync();
+
+    expect(_pathElements(dark), _pathElements(light));
+    expect(light, contains('fill="#000000"'));
+    expect(dark, contains('fill="#FFFFFF"'));
+    expect(light, contains("primer.style/octicons/icon/copilot-24"));
+  });
+
   test("DeepSeek artwork keeps its brand-blue fill in both themes", () {
     final artwork = File("assets/svgs/brands/deepseek.svg").readAsStringSync();
 
     expect(artwork, contains('fill="#4D6BFE"'));
+  });
+
+  test("Grok artwork keeps the official geometry and theme contrast", () {
+    final light = File("assets/svgs/brands/grok_light.svg").readAsStringSync();
+    final dark = File("assets/svgs/brands/grok_dark.svg").readAsStringSync();
+
+    expect(_pathData(dark), _pathData(light));
+    expect(light, contains('fill="#0A0A0A"'));
+    expect(dark, contains('fill="white"'));
+    for (final artwork in [light, dark]) {
+      expect(artwork, isNot(contains("<script")));
+      expect(artwork, isNot(contains("href=")));
+      expect(artwork, isNot(contains("<metadata")));
+    }
   });
 
   testWidgets("forwards size and keeps the mark decorative", (tester) async {

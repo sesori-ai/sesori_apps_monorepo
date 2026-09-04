@@ -4,6 +4,7 @@ import "dart:io";
 import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
+import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
@@ -11,6 +12,7 @@ import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -18,6 +20,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
+import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
 
@@ -31,6 +34,7 @@ void main() {
     late SessionMutationDispatcher mutationDispatcher;
     late NewSessionDefaultsRepository defaultsRepository;
     late SessionCreationService service;
+    late FakeSessionOptionsService sessionOptionsService;
 
     setUp(() async {
       db = createTestDatabase();
@@ -40,11 +44,13 @@ void main() {
       );
       plugin = _FakePlugin();
       metadataRepository = _FakeSessionMetadataRepository();
+      sessionOptionsService = FakeSessionOptionsService();
       worktreeService = _FakeWorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
+            streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: NoopProcessRunner(),
             gitPathExists: ({required String gitPath}) => true,
           ),
@@ -70,6 +76,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
     });
 
@@ -135,6 +142,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
 
       final creation = localService.createSession(
@@ -267,6 +275,7 @@ void main() {
         sessionRepository: repository,
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
 
       final creation = localService.createSession(
@@ -294,7 +303,7 @@ void main() {
       await runtime.dispose();
     });
 
-    test("maps stale command selections during creation to a generic bad request", () async {
+    test("maps stale command selections during creation to a typed rejection", () async {
       plugin.sendCommandError = const PluginStaleOptionsException(
         "sendCommand",
         message: "unsupported command model",
@@ -307,20 +316,23 @@ void main() {
             pluginId: "fake",
             dedicatedWorktree: false,
             parts: [PromptPart.text(text: "Review it")],
-            variant: null,
+            variant: SessionVariant(id: "high"),
             agent: null,
             model: PromptModel(providerID: "provider", modelID: "withdrawn"),
             command: "review",
           ),
         ),
         throwsA(
-          isA<PluginOperationException>()
-              .having((error) => error.statusCode, "status", 400)
-              .having((error) => error.cause, "cause", isA<PluginStaleOptionsException>()),
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginStaleOptionsException>(),
+          ),
         ),
       );
       expect(metadataRepository.generateCalls, isZero);
       expect(await defaultsRepository.read(pluginId: "fake"), isNull);
+      expect(sessionOptionsService.explicitInvalidations, [(pluginId: "fake", projectId: "/repo")]);
     });
 
     test("stores the created root and remembers its complete plugin-scoped selection", () async {
@@ -380,6 +392,7 @@ void main() {
         ),
         newSessionDefaultsRepository: gatedDefaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -423,6 +436,7 @@ void main() {
         ),
         newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
         sessionMutationDispatcher: mutationDispatcher,
+        sessionOptionsService: sessionOptionsService,
       );
       late Session created;
 
@@ -845,6 +859,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (userVisibleText == null && variant != null) throw StateError("command variant applied during creation");
     createCalls++;
     lastCreateDirectory = directory;
     lastCreateUserVisibleText = userVisibleText;
@@ -888,6 +903,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendCommandError != null && variant?.id != "high") throw StateError("missing command variant");
     if (sendCommandError case final error?) throw error;
   }
 

@@ -49,6 +49,7 @@ final class PiPlugin._({
     required Duration catalogTimeout,
     required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
+    required Stream<Duration?> idleTimeoutChanges,
     required Duration editorTimeout,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
@@ -65,6 +66,10 @@ final class PiPlugin._({
       identityTracker: identities,
       startupExitTimeout: startupExitTimeout,
       historyRpcTimeout: historyRpcTimeout,
+      // Pi's abort response waits for full agent idleness, which can include
+      // an already queued steering continuation. Bound that acknowledgement
+      // tightly so Stop can force process replacement instead of stalling.
+      abortRpcTimeout: const Duration(seconds: 1),
       // Pi can run model-backed automatic compaction before acknowledging a
       // prompt, so prompt preflight needs the same generous bound as a turn.
       promptRpcTimeout: const Duration(minutes: 30),
@@ -86,6 +91,7 @@ final class PiPlugin._({
       extensionUiService: extensionUiService,
       clock: clock,
       resolveIdleTimeout: resolveIdleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges,
     );
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
@@ -353,22 +359,33 @@ final class PiPlugin._({
       staleOptions: true,
     );
     final options = await _catalogService.requireOptions(projectId: session.directory);
-    if (command.trim() != command ||
-        command.isEmpty ||
-        !options.commands.any((candidate) => candidate.name == command)) {
+    final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
+    if (command.trim() != command || command.isEmpty || catalogCommand == null) {
       throw const PluginOperationException("sendCommand", statusCode: 400, message: "Unsupported Pi command.");
     }
     try {
-      await _sessionService.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        directory: session.directory,
-        command: command,
-        arguments: arguments,
-        userVisibleArguments: userVisibleArguments,
-        variant: variant,
-        model: model,
-      );
+      final dispatch = _catalogService.isNativeCompactionCommand(command: catalogCommand)
+          ? _sessionService.compact(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            )
+          : _sessionService.sendCommand(
+              sessionId: sessionId,
+              promptId: promptId,
+              directory: session.directory,
+              command: command,
+              arguments: arguments,
+              userVisibleArguments: userVisibleArguments,
+              variant: variant,
+              model: model,
+            );
+      await dispatch;
     } on PluginOperationException {
       rethrow;
     } on Object catch (error, stackTrace) {
@@ -380,7 +397,13 @@ final class PiPlugin._({
   }
 
   @override
-  Future<void> abortSession({required String sessionId}) => _sessionService.abort(sessionId: sessionId);
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+  }) async {
+    await _sessionService.abort(sessionId: sessionId);
+    return const PluginAbortAccepted(workKept: false);
+  }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) =>
       _sessionService.interruptActiveWork(budget: budget);

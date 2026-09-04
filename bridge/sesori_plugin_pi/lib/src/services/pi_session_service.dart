@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -119,7 +120,7 @@ final class _PiQueuedPromptTurn({
   _PiQueueState queueState = _PiQueueState.visible;
 }
 
-final class _PiCommandTurn({
+sealed class _PiCommandTurn({
   required super.promptId,
   required super.payload,
   required super.model,
@@ -128,6 +129,25 @@ final class _PiCommandTurn({
   required final Completer<void> acceptance,
 }) extends _PiTurn;
 
+final class _PiSlashCommandTurn({
+  required super.promptId,
+  required super.payload,
+  required super.model,
+  required super.variant,
+  required super.userVisibleText,
+  required super.acceptance,
+}) extends _PiCommandTurn;
+
+final class _PiCompactionTurn({
+  required super.promptId,
+  required super.payload,
+  required super.model,
+  required super.variant,
+  required super.userVisibleText,
+  required super.acceptance,
+  required final String? customInstructions,
+}) extends _PiCommandTurn;
+
 final class PiSessionService({
   required final PiSessionProcessRepository processRepository,
   required final PiSessionCatalogRepository catalogRepository,
@@ -135,10 +155,12 @@ final class PiSessionService({
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
+  required final Stream<Duration?> idleTimeoutChanges,
 }) {
   this {
-    _frameSubscription = _processes.frames.listen(_handleFrame);
-    _exitSubscription = _processes.exits.listen(_handleExit);
+    _processes.frames.listen(_handleFrame).addTo(_subscriptions);
+    _processes.exits.listen(_handleExit).addTo(_subscriptions);
+    idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   final PiSessionProcessRepository _processes = processRepository;
@@ -152,8 +174,7 @@ final class PiSessionService({
   final PendingOperations _activeIdleReaps = PendingOperations();
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
-  late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -351,32 +372,83 @@ final class PiSessionService({
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
   }) {
-    if (_disposed) return Future.error(const PiRpcDisposedException());
-    final state = _sessions[sessionId];
-    if (state != null && state.isAdmitted(promptId: promptId)) return Future.value();
-    if (state?.hasWork ?? false) {
-      return Future.error(PiSessionBusyException(sessionId: sessionId));
-    }
-    final execution = arguments.isEmpty ? "/$command" : "/$command $arguments";
-    final visibleArguments = userVisibleArguments?.trim();
-    final visible = visibleArguments == null || visibleArguments.isEmpty
-        ? "/$command"
-        : "/$command $userVisibleArguments";
+    final (:execution, :visible) = _commandText(
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+    );
     final acceptance = Completer<void>();
-    final payload = PiPromptPayload(message: execution, images: const []);
-    _admit(
+    return _admitCommandTurn(
       sessionId: sessionId,
       directory: directory,
-      turn: _PiCommandTurn(
+      turn: _PiSlashCommandTurn(
         promptId: promptId,
-        payload: payload,
+        payload: PiPromptPayload(message: execution, images: const []),
         model: model,
         variant: variant,
         userVisibleText: visible,
         acceptance: acceptance,
       ),
     );
-    return acceptance.future;
+  }
+
+  Future<void> compact({
+    required String sessionId,
+    required String promptId,
+    required String directory,
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+    required PluginSessionVariant? variant,
+    required ({String providerID, String modelID})? model,
+  }) {
+    final commandText = _commandText(
+      command: command,
+      arguments: arguments,
+      userVisibleArguments: userVisibleArguments,
+    );
+    final acceptance = Completer<void>();
+    return _admitCommandTurn(
+      sessionId: sessionId,
+      directory: directory,
+      turn: _PiCompactionTurn(
+        promptId: promptId,
+        payload: PiPromptPayload(message: commandText.visible, images: const []),
+        model: model,
+        variant: variant,
+        userVisibleText: commandText.visible,
+        acceptance: acceptance,
+        customInstructions: arguments.isEmpty ? null : arguments,
+      ),
+    );
+  }
+
+  Future<void> _admitCommandTurn({
+    required String sessionId,
+    required String directory,
+    required _PiCommandTurn turn,
+  }) {
+    if (_disposed) return Future.error(const PiRpcDisposedException());
+    final state = _sessions[sessionId];
+    if (state != null && state.isAdmitted(promptId: turn.promptId)) return Future.value();
+    if (state?.hasWork ?? false) {
+      return Future.error(PiSessionBusyException(sessionId: sessionId));
+    }
+    _admit(sessionId: sessionId, directory: directory, turn: turn);
+    return turn.acceptance.future;
+  }
+
+  ({String execution, String visible}) _commandText({
+    required String command,
+    required String arguments,
+    required String? userVisibleArguments,
+  }) {
+    final execution = arguments.isEmpty ? "/$command" : "/$command $arguments";
+    final visibleArguments = userVisibleArguments?.trim();
+    final visible = visibleArguments == null || visibleArguments.isEmpty
+        ? "/$command"
+        : "/$command $userVisibleArguments";
+    return (execution: execution, visible: visible);
   }
 
   void _admit({required String sessionId, required String directory, required _PiTurn turn}) {
@@ -476,11 +548,22 @@ final class PiSessionService({
       turn
         ..promptDispatched = true
         ..agentStarted = state.agentRunning;
-      await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
+      if (turn case _PiCompactionTurn(:final customInstructions)) {
+        await _processes.dispatchCompaction(
+          connection: connection,
+          customInstructions: customInstructions,
+        );
+      } else {
+        await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
+      }
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       turn.responseSucceeded = true;
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.complete();
+      }
+      if (turn is _PiCompactionTurn) {
+        _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+        return;
       }
       await Future<void>.delayed(Duration.zero);
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
@@ -619,6 +702,15 @@ final class PiSessionService({
             } else {
               turn.settlementObservedBeforeAcceptance = true;
             }
+          }
+        }
+        if (event is PiCompactionStartEvent) {
+          for (final turn in generationTurns.whereType<_PiCompactionTurn>()) {
+            if (!turn.promptDispatched) continue;
+            if (!turn.userMessageEmitted) {
+              _emitMissingUserMessage(sessionId: processFrame.sessionId, turn: turn);
+            }
+            if (!turn.acceptance.isCompleted) turn.acceptance.complete();
           }
         }
         final now = _clock.now();
@@ -838,6 +930,7 @@ final class PiSessionService({
         StackTrace.current,
       );
     }
+    if (failed && turn is _PiCompactionTurn) _clearCompaction(sessionId: sessionId);
     if (!failed && turn.promptDispatched && !turn.userMessageEmitted) {
       _emitMissingUserMessage(sessionId: sessionId, turn: turn);
     } else if (!turn.userMessageEmitted) {
@@ -953,6 +1046,7 @@ final class PiSessionService({
     if (hadQueuedPresentations) _emitQueueUpdate(sessionId: sessionId, state: state);
     _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
     final connection = cancelled.firstOrNull?.connection;
+    var forceTeardown = false;
     try {
       final idleReap = state.idleReap;
       if (idleReap != null) await idleReap;
@@ -961,15 +1055,30 @@ final class PiSessionService({
           case PiSessionAbortAcknowledged():
             break;
           case PiSessionAbortProcessExited(:final innerError, :final innerStackTrace):
+            forceTeardown = true;
             if (!processExitIsExpected) {
               Log.w("[pi] abort command failed for session id=$sessionId", innerError, innerStackTrace);
             }
         }
       }
+    } on TimeoutException catch (error, stack) {
+      forceTeardown = true;
+      if (!processExitIsExpected) {
+        Log.w(
+          "[pi] abort acknowledgement timed out; forcing process replacement for session id=$sessionId",
+          error,
+          stack,
+        );
+      }
     } on Object catch (error, stack) {
+      forceTeardown = true;
       Log.w("[pi] abort command failed for session id=$sessionId", error, stack);
     } finally {
-      await _processes.teardown(sessionId: sessionId);
+      if (forceTeardown) {
+        await _processes.teardown(sessionId: sessionId, gracefulTimeout: Duration.zero);
+      } else {
+        await _processes.teardown(sessionId: sessionId);
+      }
     }
     _emit(
       BridgeSseSessionStatus(
@@ -1050,6 +1159,15 @@ final class PiSessionService({
       pending.addAll(children[id] ?? const []);
     }
     return descendants;
+  }
+
+  void _handleIdleTimeoutChange(Duration? _) {
+    if (_disposed) return;
+    for (final entry in _sessions.entries) {
+      final state = entry.value;
+      if (state.hasWork || state.residentGeneration == null || state.idleReap != null) continue;
+      _scheduleIdleReap(sessionId: entry.key, state: state);
+    }
   }
 
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
@@ -1154,8 +1272,7 @@ final class PiSessionService({
         }
       }
     }
-    await _frameSubscription.cancel();
-    await _exitSubscription.cancel();
+    await _subscriptions.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
     await _activeIdleReaps.drain();

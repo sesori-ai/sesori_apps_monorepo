@@ -46,6 +46,10 @@ _Project _$ProjectFromJson(Map json) => _Project(
   directoryMissing: json['directoryMissing'] as bool? ?? false,
   supportsDedicatedWorktrees:
       json['supportsDedicatedWorktrees'] as bool? ?? true,
+  voiceGlossaryKey: _$JsonConverterFromJson<String, ProjectGlossaryKey>(
+    json['voiceGlossaryKey'],
+    const ProjectGlossaryKeyJsonConverter().fromJson,
+  ),
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
@@ -56,7 +60,21 @@ Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'hasUnseenChanges': instance.hasUnseenChanges,
   'directoryMissing': instance.directoryMissing,
   'supportsDedicatedWorktrees': instance.supportsDedicatedWorktrees,
+  'voiceGlossaryKey': ?_$JsonConverterToJson<String, ProjectGlossaryKey>(
+    instance.voiceGlossaryKey,
+    const ProjectGlossaryKeyJsonConverter().toJson,
+  ),
 };
+
+Value? _$JsonConverterFromJson<Json, Value>(
+  Object? json,
+  Value? Function(Json json) fromJson,
+) => json == null ? null : fromJson(json as Json);
+
+Json? _$JsonConverterToJson<Json, Value>(
+  Value? value,
+  Json? Function(Value value) toJson,
+) => value == null ? null : toJson(value);
 
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
   created: (json['created'] as num).toInt(),
