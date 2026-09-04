@@ -119,7 +119,7 @@ ignore-lists in `module_core` are enforced by the repository's own
 
 ## Principles For Every Step
 
-- Behavior-preserving by default. Steps 4, 7, and 11 intentionally change
+- Behavior-preserving by default. Steps 4, 7, 10, and 11 intentionally change
   observable behavior or contracts; they say so in their PR bodies and update
   the affected `docs/regression/` document in the same PR. Step 16 is the
   consistency pass, not the first place a change is documented.
@@ -223,7 +223,7 @@ PRs); the serialization column names the only hard ordering.
 | 7/17 | `🚧 [codebase-cleanup-2] compat: retire compatibility paths below the v1.6.0 baseline [step 7/17]` | 700–1,100 | 1 (D1) |
 | 8/17 | `⚙️ [codebase-cleanup-2] client: share the identical Flutter platform adapters between the shells [step 8/17]` | 800–1,100 | 1 (D2) |
 | 9/17 | `⚙️ [codebase-cleanup-2] client: share session-detail and list screen composition between the shells [step 9/17]` | 400–600 | 1 |
-| 10/17 | `⚙️ [codebase-cleanup-2] client(module_core, module_auth): share the optimistic rename tracker and fold auth client duplicates [step 10/17]` | 350–550 | 1 |
+| 10/17 | `⚙️ [codebase-cleanup-2] client(module_core, module_auth): share the rename tracker and variant derivation, fold auth duplicates [step 10/17]` | 350–550 | 1 |
 | 11/17 | `🚧 [codebase-cleanup-2] client(module_desktop_core): reconcile desktop attention notifications from one desired state [step 11/17]` | 600–900 | desktop-app retired (D6) |
 | 12/17 | `⚙️ [codebase-cleanup-2] tests(bridge): consolidate identical fakes and repeated arrange blocks [step 12/17]` | 1,000–1,500 | 2, 3, 4, 5 |
 | 13/17 | `⚙️ [codebase-cleanup-2] tests(client): consolidate shared mocks and repeated arrange blocks [step 13/17]` | 1,000–1,500 | 8, 9, 10 |
@@ -474,7 +474,7 @@ owners and the repeated argument lists.
 required (composition seam). Regression documents: `analytics.md` (session
 activity events), `projects-and-sessions.md`.
 
-### Step 10 — optimistic rename tracker and auth client folds
+### Step 10 — rename tracker, variant derivation, and auth client folds
 
 **Evidence.** `_ProjectRenameState` (`project_list_cubit.dart:44-92`) and
 `_SessionRenameState` (`session_list_cubit.dart:35-83`) are identical modulo
@@ -485,17 +485,28 @@ PR #1281 on 2026-09-03). `client/module_auth/lib/src/client/http_api_client.
 dart:176-207` and `:255-286` map an `http.Response` to `ApiResponse`
 identically; `auth_manager.dart:686-756` repeats the decode → parse →
 `_persistAuthenticatedResult` → `AuthLoginResult` block in `loginWithEmail` and
-`loginWithApple` (a third parse-and-rethrow block at `:862`).
+`loginWithApple` (a third parse-and-rethrow block at `:862`). Model-variant
+derivation exists twice with divergent rules: `new_session_options_service.
+dart:433-460` (`availableVariants`, `_validatedModel`) drops a model whose
+provider entry is missing or `!isAvailable`, while `session_detail_cubit.dart:
+2422-2440` (`_deriveAvailableVariants`, `_withResolvedVariant`) applies the
+same `"none"` filter and first-variant fallback but never checks
+`isAvailable`, so an unavailable model still offers variants on the detail
+screen (recorded as drift after PR #1282).
 
 **Change.** One `OptimisticRenameTracker` (module_core, owning the token,
 visible, and confirmed values and the settle rule) used by both cubits; one
-response-mapping helper in the auth HTTP client; one `_completeLogin` in
-`AuthManager`. Delete the private copies.
+pure variant/availability derivation in module_core used by both the
+new-session options service and the session-detail cubit (the detail screen
+adopts the `isAvailable` rule — the one intentional behavior alignment in this
+step); one response-mapping helper in the auth HTTP client; one
+`_completeLogin` in `AuthManager`. Delete the private copies.
 
-**Size and risk.** 350–550 lines. Behavior-preserving; rename and login suites
-already exist. Architecture review required (new production class).
-Regression documents: `projects-and-sessions.md` (rename),
-`account-and-onboarding.md` (login).
+**Size and risk.** 350–600 lines. Behavior-preserving except the stated
+alignment; rename, options, and login suites already exist. Architecture
+review required (new production class). Regression documents:
+`projects-and-sessions.md` (rename), `session-creation-and-options.md`
+(variant availability), `account-and-onboarding.md` (login).
 
 ### Step 11 — desktop attention reconciler (D6)
 
@@ -655,8 +666,8 @@ Recorded so a later session does not re-investigate them without new evidence.
 New production types: the install/provision composition owners and
 `BudgetedColdStart` (Step 2, replacing 7 + 7 + 2 copies), `ConnectionView
 Tracker` (Step 3, replacing 2 classes), three merged listeners (Step 4,
-replacing 6), `OptimisticRenameTracker` (Step 10, replacing 2 private
-classes), `SessionActivityAnalyticsOwner` and four locator factories (Step 9,
+replacing 6), `OptimisticRenameTracker` and one variant derivation (Step 10, replacing 2
+private classes and 2 derivation pairs), `SessionActivityAnalyticsOwner` and four locator factories (Step 9,
 replacing 2 private widgets and 8 argument lists). Net: fewer classes, and
 every new one replaces at least two copies and owns a lifecycle or an
 invariant.
@@ -714,7 +725,7 @@ other) as step evidence, not as an L4 claim.
 | View tracking, warm-up, glossary population, automatic options refresh (Steps 3, 4) | Headless bridge + relay integration (two clients) | Representative | Release-target bridge host |
 | Compatibility retirement (Step 7) | Automated with exact `v1.6.0` wire fixtures + headless bridge | None | — |
 | Image save, copy, share, thumbnails (Step 8) | Client end to end | Representative | Release-target mobile platform and desktop (macOS) |
-| Session open, rename, activity analytics (Steps 9, 10) | Client end to end + automated | Representative | Release-target mobile platform and desktop (macOS) |
+| Session open, rename, variant availability, activity analytics (Steps 9, 10) | Client end to end + automated | Representative | Release-target mobile platform and desktop (macOS) |
 | Login by email and Apple (Step 10) | Client end to end for email; automated for Apple | None | Release-target mobile platform |
 | Desktop attention notifications (Step 11, if executed) | Client end to end | Representative | Desktop (macOS) |
 | Everything else | Automated (full suites) + `make analyze` in all three workspaces | — | — |

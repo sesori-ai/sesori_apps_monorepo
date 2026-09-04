@@ -53,7 +53,7 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 
 ## Locked Principles
 
-- [x] Behavior-preserving by default; Steps 4, 7, and 11 name their
+- [x] Behavior-preserving by default; Steps 4, 7, 10, and 11 name their
   intentional changes in their PR bodies and regression documents.
 - [x] Nothing is extracted unless it replaces at least two copies and owns
   state, a lifecycle, or an invariant.
@@ -76,7 +76,8 @@ production code); 14 after 8 (`module_app_ui` pubspec); 16 after 2–15; 17 last
 - [x] One managed-runtime install composition owner, one provision
   composition owner, one `BudgetedColdStart` (all in `sesori_plugin_runtime`);
   one `ConnectionViewTracker`; one `OptimisticRenameTracker`; one
-  `SessionActivityAnalyticsOwner` — no second variant of any of them.
+  model-variant derivation; one `SessionActivityAnalyticsOwner` — no second
+  variant of any of them.
 - [x] No listener base class, dispose mixin, generic session-options
   service, SSE event hierarchy, refresh scheduler, or compatibility shim for
   peers below the D1 floor.
@@ -100,7 +101,7 @@ Fixed titles and order. Status is GitHub's; evidence is in `steps/step-NN.md`.
 | 7/17 | `🚧 [codebase-cleanup-2] compat: retire compatibility paths below the v1.6.0 baseline [step 7/17]` |
 | 8/17 | `⚙️ [codebase-cleanup-2] client: share the identical Flutter platform adapters between the shells [step 8/17]` |
 | 9/17 | `⚙️ [codebase-cleanup-2] client: share session-detail and list screen composition between the shells [step 9/17]` |
-| 10/17 | `⚙️ [codebase-cleanup-2] client(module_core, module_auth): share the optimistic rename tracker and fold auth client duplicates [step 10/17]` |
+| 10/17 | `⚙️ [codebase-cleanup-2] client(module_core, module_auth): share the rename tracker and variant derivation, fold auth duplicates [step 10/17]` |
 | 11/17 | `🚧 [codebase-cleanup-2] client(module_desktop_core): reconcile desktop attention notifications from one desired state [step 11/17]` |
 | 12/17 | `⚙️ [codebase-cleanup-2] tests(bridge): consolidate identical fakes and repeated arrange blocks [step 12/17]` |
 | 13/17 | `⚙️ [codebase-cleanup-2] tests(client): consolidate shared mocks and repeated arrange blocks [step 13/17]` |
@@ -125,7 +126,7 @@ PR opens.
 | Backend/on-disk-format markers; every marker `> v1.6.0`; `/settings/pull-request-refresh` | Keep | — |
 | Eight app/desktop adapter pairs + `NoOpAnalyticsClient` + twin tests | One copy in `module_app_ui` (D2) | 8 |
 | Twin `SessionDetailCubit` construction, twin `_SessionActivityAnalyticsOwner`, list/new-session wrapper duplicates | Locator factories + one shared owner widget | 9 |
-| `_ProjectRenameState`/`_SessionRenameState` + rename flows; auth HTTP mapping ×2; login persist ×2 | One tracker; one helper each | 10 |
+| `_ProjectRenameState`/`_SessionRenameState` + rename flows; new-session vs session-detail variant derivation (detail lacks `isAvailable`); auth HTTP mapping ×2; login persist ×2 | One tracker; one derivation (detail adopts `isAvailable`); one helper each | 10 |
 | Desktop attention per-session generations, write chains, in-flight set | One desired-state reconciler (D6) | 11 |
 | 13 identical bridge fakes; repeated arrange blocks in 9 bridge test files | Testing libraries + file-local builders | 12 |
 | 71 identical client fakes; repeated arrange blocks in 10 client test files | `sesori_dart_core/testing.dart` + file-local builders | 13 |
