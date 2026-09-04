@@ -67,8 +67,11 @@ class SessionOptionsRepository({
     return session?.projectId;
   }
 
-  Future<List<String>> listCachedProjectIds({required String pluginId}) {
-    return _cacheDao.getCachedProjectIds(pluginId: pluginId);
+  Future<List<String>> listCachedProjectIds({
+    required String pluginId,
+    required DateTime notBefore,
+  }) {
+    return _cacheDao.getCachedProjectIds(pluginId: pluginId, notBefore: notBefore);
   }
 
   bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);

@@ -402,6 +402,12 @@ class OpenCodePlugin._({
   /// the indexing it forces matters. A failure propagates to the runtime, which
   /// logs it as a warning with its error and stack trace and carries on; nothing
   /// here would add to that.
+  ///
+  /// Warms the bridge's own directory, because a plugin starts without a project
+  /// in hand. Where the slow initialization comes from a project's own MCP
+  /// configuration, this does not cover that project's first request — the read
+  /// timeout on `/command` is what keeps such a discovery from failing, and this
+  /// only removes the wait where the server's startup cost is shared.
   @override
   Future<void> warmUpCommandCatalog() async {
     if (_disposed) return;

@@ -763,6 +763,39 @@ void main() {
       );
     });
 
+    test("a snapshot past retention is left to expire rather than rediscovered", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["fresh"] = "/projects/fresh"
+        ..projectPaths["ancient"] = "/projects/ancient";
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-1",
+            projectId: "fresh",
+            projectPath: "/projects/fresh",
+          ),
+          response: _response(marker: "fresh"),
+          capturedAt: now,
+        ),
+      );
+      repository.put(
+        _entry(
+          key: const SessionOptionsCacheKey.project(
+            pluginId: "plugin-1",
+            projectId: "ancient",
+            projectPath: "/projects/ancient",
+          ),
+          response: _response(marker: "ancient"),
+          capturedAt: now.subtract(const Duration(days: 31)),
+        ),
+      );
+      final service = _service(repository: repository, now: now);
+
+      await service.refreshActiveOnlyForCachedProjects(pluginId: "plugin-1", generation: 7);
+
+      expect(repository.captureCalls.map((call) => call.projectPath), ["/projects/fresh"]);
+    });
+
     test("a stale generation captures nothing", () async {
       final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
       repository.put(
@@ -1906,10 +1939,14 @@ class _FakeSessionOptionsRepository() implements SessionOptionsRepository {
   }
 
   @override
-  Future<List<String>> listCachedProjectIds({required String pluginId}) async {
+  Future<List<String>> listCachedProjectIds({
+    required String pluginId,
+    required DateTime notBefore,
+  }) async {
     return [
       for (final entry in _cache.values)
-        if (entry.key case ProjectSessionOptionsCacheKey(:final projectId) when entry.key.pluginId == pluginId)
+        if (entry.key case ProjectSessionOptionsCacheKey(:final projectId)
+            when entry.key.pluginId == pluginId && !entry.capturedAt.toUtc().isBefore(notBefore.toUtc()))
           projectId,
     ];
   }

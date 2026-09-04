@@ -286,15 +286,19 @@ class SessionOptionsService({
 
   /// Brings every project-scoped snapshot this plugin holds up to date, for a
   /// backend change that named no session — Codex reporting changed skills, for
-  /// one. Only cached projects are refreshed: a project the user has never
-  /// opened options for has nothing to correct, and discovering for it would
-  /// start work no screen is waiting on.
+  /// one. Only cached, unexpired projects are refreshed: a project the user has
+  /// never opened options for has nothing to correct, and a snapshot already
+  /// past retention should expire rather than be renewed here, which also keeps
+  /// this bounded on an installation with a long project history.
   Future<void> refreshActiveOnlyForCachedProjects({
     required String pluginId,
     required int generation,
   }) async {
     if (!_repository.isCurrentGeneration(pluginId: pluginId, generation: generation)) return;
-    final projectIds = await _repository.listCachedProjectIds(pluginId: pluginId);
+    final projectIds = await _repository.listCachedProjectIds(
+      pluginId: pluginId,
+      notBefore: _clock.now().toUtc().subtract(_retention),
+    );
     for (final projectId in projectIds) {
       await refreshActiveOnly(pluginId: pluginId, projectId: projectId, generation: generation);
     }

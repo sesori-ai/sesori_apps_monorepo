@@ -21,19 +21,28 @@ class SessionOptionsCacheDao({required AppDatabase database}) extends DatabaseAc
         .getSingleOrNull();
   }
 
-  /// Project identifiers this plugin currently holds a project-scoped snapshot
-  /// for. A plugin-scoped plugin has no such rows and yields nothing.
+  /// Project identifiers this plugin holds a project-scoped snapshot for that
+  /// was captured at or after [notBefore]. A plugin-scoped plugin has no such
+  /// rows and yields nothing.
+  ///
+  /// [notBefore] is the retention horizon: a row older than it is already
+  /// expired, so rediscovering for it would renew what should be dropped and
+  /// pay for a backend capture per historical project.
   ///
   /// Projects to the id column alone: the caller refreshes each project by id
   /// and never reads the row, so selecting whole rows would decode every cached
   /// catalog payload for nothing.
-  Future<List<String>> getCachedProjectIds({required String pluginId}) async {
+  Future<List<String>> getCachedProjectIds({
+    required String pluginId,
+    required DateTime notBefore,
+  }) async {
     final query = selectOnly(sessionOptionsCacheTable)
       ..addColumns([sessionOptionsCacheTable.projectId])
       ..where(
         sessionOptionsCacheTable.pluginId.equals(pluginId) &
             sessionOptionsCacheTable.scope.equalsValue(PluginSessionOptionsScope.project) &
-            sessionOptionsCacheTable.projectId.isNotNull(),
+            sessionOptionsCacheTable.projectId.isNotNull() &
+            sessionOptionsCacheTable.capturedAt.isBiggerOrEqualValue(notBefore.millisecondsSinceEpoch),
       );
     final rows = await query.get();
     return [for (final row in rows) ?row.read(sessionOptionsCacheTable.projectId)];
