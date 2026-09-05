@@ -58,12 +58,22 @@ void main() {
             environment: const {},
             stateDirectory: '/state',
             startAborted: StartAbortSignal.never,
+            runtimeInUse: RuntimeInUseSignal.never,
           )
           .toList();
 
       expect(events, hasLength(1));
       expect(events.single, isA<ProvisionFailed>());
       expect((events.single as ProvisionFailed).message, contains('does not support installing'));
+    });
+
+    test('the default descriptor never asks for a managed runtime upgrade', () {
+      const descriptor = _MinimalDescriptor();
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(config: const PluginConfig.empty(), stateDirectory: '/state'),
+        isFalse,
+      );
     });
 
     test('a descriptor can reject configuration with PluginConfigException', () {

@@ -269,12 +269,21 @@ class const OpenCodePluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: OpenCodeRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> installRuntime({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
@@ -305,6 +314,7 @@ class const OpenCodePluginDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -340,21 +350,22 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: RuntimeVersionValidator(
-        commandExecutor: executor,
-        manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
-      ),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: executor,
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+          ),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
     if (selection case ManagedRuntimeSelected(:final version)) {
       return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
@@ -430,6 +441,7 @@ class const OpenCodePluginDescriptor({
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
+        inventory: const ManagedRuntimeInventory(manifest: manifest),
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],

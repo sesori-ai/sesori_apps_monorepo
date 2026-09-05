@@ -182,10 +182,19 @@ class const CursorPluginDescriptor({
           processes: host.processes,
           maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
         ),
+        inventory: const ManagedRuntimeInventory(manifest: manifest),
       ),
       // Cursor has no desktop-app-bundled CLI to fall back to.
       fallbackExecutableCandidates: const [],
     );
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: CursorRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
   }
 
   @override
@@ -195,6 +204,7 @@ class const CursorPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = CursorRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
@@ -224,6 +234,7 @@ class const CursorPluginDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -255,20 +266,21 @@ class const CursorPluginDescriptor({
     required String stateDirectory,
   }) async {
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: const CursorRuntimeManifest(),
-      versionValidator: _versionValidatorFor(
-        processes: processes,
-        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-      ),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.minimum,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: const CursorRuntimeManifest(),
+          versionValidator: _versionValidatorFor(
+            processes: processes,
+            maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          ),
+          inventory: const ManagedRuntimeInventory(manifest: CursorRuntimeManifest()),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
 
     /// What to tell the user when nothing usable was found and Sesori can
     /// install the runtime itself.
@@ -296,8 +308,8 @@ class const CursorPluginDescriptor({
           ),
         };
       }
-      if (selection.primaryRejection case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) ||
-          ManagedRuntimeVersionRejected()) {
+      if (selection.primaryRejection
+          case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected()) {
         return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
       }
       return const PluginSetupUnknown(

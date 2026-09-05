@@ -5,11 +5,64 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("CursorPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    const config = PluginConfig(
+      values: {
+        CursorPluginDescriptor.binOption: "cursor-agent",
+        CursorPluginDescriptor.apiEndpointOption: null,
+      },
+    );
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("cursor-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const CursorRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const CursorRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("2026.07.20-abc1234");
+
+      expect(
+        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("2026.07.20-abc1234");
+
+      expect(
+        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("CursorPluginDescriptor.inspectSetup", () {
     const stateDirectory = "/state";
     const config = PluginConfig(
@@ -176,7 +229,10 @@ void main() {
 
     test("reports the managed runtime version selected after PATH is missing", () async {
       const manifest = CursorRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           const ProcessException("cursor-agent", ["--version"], "missing", 2),
