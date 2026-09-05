@@ -127,15 +127,13 @@ final class const OmpPluginDescriptor({
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     if (_explicitBin(host.config) != null) return;
     const manifest = OmpRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-        inventory: const ManagedRuntimeInventory(manifest: manifest),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(host: host, explicitExecutablePath: null);
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(host: host, explicitExecutablePath: null);
   }
 
   @override

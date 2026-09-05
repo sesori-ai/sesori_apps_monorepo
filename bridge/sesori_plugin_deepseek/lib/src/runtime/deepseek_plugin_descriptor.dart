@@ -92,18 +92,16 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     const manifest = DeepSeekRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-        inventory: const ManagedRuntimeInventory(manifest: manifest),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(
-      host: host,
-      explicitExecutablePath: _explicitBin(config: host.config),
-    );
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(
+          host: host,
+          explicitExecutablePath: _explicitBin(config: host.config),
+        );
   }
 
   @override

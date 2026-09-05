@@ -2,6 +2,9 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
 import "../provisioning/managed_runtime_cleaner.dart";
 import "../provisioning/managed_runtime_install_service.dart";
+import "../provisioning/managed_runtime_inventory.dart";
+import "../provisioning/managed_runtime_provision_service.dart";
+import "../provisioning/managed_runtime_selection_service.dart";
 import "../provisioning/runtime_install_service.dart";
 import "../provisioning/runtime_manifest.dart";
 import "../provisioning/runtime_version_validator.dart";
@@ -35,6 +38,25 @@ class const ManagedRuntimeComposition() {
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
       assetResolver: assetResolver,
+    );
+  }
+
+  /// The selection graph behind [ManagedRuntimeProvisionService]: PATH and
+  /// [fallbackExecutableCandidates] probed through [versionValidator], then the
+  /// managed inventory for [manifest].
+  ManagedRuntimeProvisionService createProvisioner({
+    required RuntimeManifest manifest,
+    required RuntimeVersionValidator versionValidator,
+    required List<String> fallbackExecutableCandidates,
+  }) {
+    return ManagedRuntimeProvisionService(
+      manifest: manifest,
+      selectionService: ManagedRuntimeSelectionService(
+        manifest: manifest,
+        versionValidator: versionValidator,
+        inventory: ManagedRuntimeInventory(manifest: manifest),
+      ),
+      fallbackExecutableCandidates: fallbackExecutableCandidates,
     );
   }
 }

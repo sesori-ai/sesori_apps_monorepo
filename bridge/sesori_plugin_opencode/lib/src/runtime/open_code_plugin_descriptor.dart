@@ -426,16 +426,12 @@ class const OpenCodePluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
-    return ManagedRuntimeProvisionService(
+    return const ManagedRuntimeComposition().createProvisioner(
       manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
+      versionValidator: RuntimeVersionValidator(
+        commandExecutor: commandExecutor,
         manifest: manifest,
-        versionValidator: RuntimeVersionValidator(
-          commandExecutor: commandExecutor,
-          manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
-        ),
-        inventory: const ManagedRuntimeInventory(manifest: manifest),
+        probeTimeout: _versionProbeTimeout,
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],
@@ -681,38 +677,10 @@ class const OpenCodePluginDescriptor({
       // health probe but stalls a REST call must not hang start() under the
       // bridge's cross-instance startup mutex. Past the budget the cold-start
       // keeps running in the background and the plugin starts degraded.
-      final coldStart = api.initialize();
-      var budgetExceeded = false;
-      // The sink keeps a post-budget failure from surfacing as an unhandled
-      // async error once the await below has moved on; the awaited path
-      // observes (and logs) every pre-budget failure itself.
-      unawaited(
-        coldStart.catchError((Object error, StackTrace stackTrace) {
-          if (budgetExceeded) {
-            Log.w("[opencode] cold-start failed after the start budget: $error");
-          }
-        }),
-      );
-      try {
-        await coldStart.timeout(
-          _coldStartBudget,
-          onTimeout: () {
-            budgetExceeded = true;
-            Log.w(
-              "[opencode] cold-start did not finish within ${_coldStartBudget.inSeconds}s — "
-              "starting degraded while it keeps running in the background",
-            );
-          },
-        );
-        if (budgetExceeded) {
-          reporter.markDegradedNow();
-        } else {
-          reporter.markConnected();
-        }
-      } on Object catch (error) {
-        Log.w("[opencode] cold-start did not complete cleanly: $error");
-        reporter.markDegradedNow();
-      }
+      await ManagedRuntimeColdStartService(
+        budget: _coldStartBudget,
+        logTag: "opencode",
+      ).run(coldStart: api.initialize(), reporter: reporter);
     }
 
     // The cold-start is a phase boundary like any other: an abort observed here

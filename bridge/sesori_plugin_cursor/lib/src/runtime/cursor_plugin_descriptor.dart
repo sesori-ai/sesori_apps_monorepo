@@ -167,15 +167,11 @@ class const CursorPluginDescriptor({
 
   ManagedRuntimeProvisionService _buildDefaultProvisionService({required PluginHost host}) {
     const manifest = CursorRuntimeManifest();
-    return ManagedRuntimeProvisionService(
+    return const ManagedRuntimeComposition().createProvisioner(
       manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidatorFor(
-          processes: host.processes,
-          maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-        ),
-        inventory: const ManagedRuntimeInventory(manifest: manifest),
+      versionValidator: _versionValidatorFor(
+        processes: host.processes,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
       ),
       // Cursor has no desktop-app-bundled CLI to fall back to.
       fallbackExecutableCandidates: const [],
