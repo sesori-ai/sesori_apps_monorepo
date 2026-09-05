@@ -216,71 +216,44 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     final colorOffset = _random.nextInt(_workspaceColors.length);
     final animalOffset = _random.nextInt(_workspaceAnimals.length);
 
-    // Advancing both curated lists keeps every bounded candidate distinct.
+    Future<_WorktreeCandidateAttempt> attemptCandidate(String branchName) => _attemptWorktreeCandidate(
+      projectPath: projectPath,
+      branchName: branchName,
+      startPoint: startPoint,
+      baseBranch: baseBranch,
+      baseCommit: baseCommit,
+    );
+
+    // Advancing both curated lists keeps every bounded candidate distinct. A
+    // failed creation on an available slug moves on to the next slug.
     for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-      final branchName = _workspaceSlug(
-        colorIndex: (colorOffset + attempt) % _workspaceColors.length,
-        animalIndex: (animalOffset + attempt) % _workspaceAnimals.length,
+      final attempted = await attemptCandidate(
+        _workspaceSlug(
+          colorIndex: (colorOffset + attempt) % _workspaceColors.length,
+          animalIndex: (animalOffset + attempt) % _workspaceAnimals.length,
+        ),
       );
-      final worktreePath = "$projectPath/$_worktreeDir/$branchName";
-
-      if (await _worktreeRepository.branchExists(
-        projectPath: projectPath,
-        branchName: branchName,
-      )) {
-        continue;
-      }
-      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
-        continue;
-      }
-
-      final created = await _worktreeRepository.createWorktree(
-        projectPath: projectPath,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        startPoint: startPoint,
-      );
-
-      if (created) {
-        return WorktreeSuccess(
-          path: worktreePath,
-          branchName: branchName,
-          baseBranch: baseBranch,
-          baseCommit: baseCommit,
-        );
-      }
+      if (attempted case _WorktreeCandidateCreated(:final success)) return success;
     }
 
     final lastSlug = _workspaceSlug(
       colorIndex: (colorOffset + _maxWorktreeCreationAttempts - 1) % _workspaceColors.length,
       animalIndex: (animalOffset + _maxWorktreeCreationAttempts - 1) % _workspaceAnimals.length,
     );
+    // Suffixed candidates skip taken names but stop after one failed creation
+    // on an available name: git itself refused, so another suffix will not help.
     final suffixOffset = _random.nextInt(_suffixSpace);
     for (var suffixAttempt = 0; suffixAttempt < _maxWorktreeCreationAttempts; suffixAttempt++) {
-      final branchName = "$lastSlug-${_hexSuffix((suffixOffset + suffixAttempt) % _suffixSpace)}";
-      final worktreePath = "$projectPath/$_worktreeDir/$branchName";
-      if (await _worktreeRepository.branchExists(
-        projectPath: projectPath,
-        branchName: branchName,
-      )) {
-        continue;
-      }
-      if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
-        continue;
-      }
-      final created = await _worktreeRepository.createWorktree(
-        projectPath: projectPath,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        startPoint: startPoint,
+      final attempted = await attemptCandidate(
+        "$lastSlug-${_hexSuffix((suffixOffset + suffixAttempt) % _suffixSpace)}",
       );
-      if (created) {
-        return WorktreeSuccess(
-          path: worktreePath,
-          branchName: branchName,
-          baseBranch: baseBranch,
-          baseCommit: baseCommit,
-        );
+      switch (attempted) {
+        case _WorktreeCandidateCreated(:final success):
+          return success;
+        case _WorktreeCandidateTaken():
+          continue;
+        case _WorktreeCandidateFailed():
+          break;
       }
       break;
     }
@@ -296,6 +269,36 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
 
   static String _workspaceSlug({required int colorIndex, required int animalIndex}) =>
       "${_workspaceColors[colorIndex]}-${_workspaceAnimals[animalIndex]}";
+
+  /// Creates the worktree for [branchName] unless the branch or path is taken.
+  Future<_WorktreeCandidateAttempt> _attemptWorktreeCandidate({
+    required String projectPath,
+    required String branchName,
+    required String startPoint,
+    required String baseBranch,
+    required String baseCommit,
+  }) async {
+    final worktreePath = "$projectPath/$_worktreeDir/$branchName";
+    if (await _worktreeRepository.branchExists(projectPath: projectPath, branchName: branchName) ||
+        _worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+      return const _WorktreeCandidateTaken();
+    }
+    final created = await _worktreeRepository.createWorktree(
+      projectPath: projectPath,
+      worktreePath: worktreePath,
+      branchName: branchName,
+      startPoint: startPoint,
+    );
+    if (!created) return const _WorktreeCandidateFailed();
+    return _WorktreeCandidateCreated(
+      success: WorktreeSuccess(
+        path: worktreePath,
+        branchName: branchName,
+        baseBranch: baseBranch,
+        baseCommit: baseCommit,
+      ),
+    );
+  }
 
   Future<GeneratedBranchRenameResult> renameGeneratedBranch({
     required String worktreePath,
@@ -314,9 +317,9 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchChanged);
     }
     if (await _worktreeRepository.hasUpstream(
-      worktreePath: worktreePath,
-      branchName: initialBranchName,
-    ) ||
+          worktreePath: worktreePath,
+          branchName: initialBranchName,
+        ) ||
         await _worktreeRepository.hasRemoteBranch(
           worktreePath: worktreePath,
           branchName: initialBranchName,
@@ -457,3 +460,14 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     );
   }
 }
+
+/// Outcome of one generated worktree candidate.
+sealed class const _WorktreeCandidateAttempt();
+
+/// The branch or path already exists; the candidate was never tried.
+final class const _WorktreeCandidateTaken() extends _WorktreeCandidateAttempt;
+
+/// The candidate was available but git refused to create the worktree.
+final class const _WorktreeCandidateFailed() extends _WorktreeCandidateAttempt;
+
+final class const _WorktreeCandidateCreated({required final WorktreeSuccess success}) extends _WorktreeCandidateAttempt;
