@@ -608,8 +608,8 @@ packaging-only change.
 |---|---|---|
 | 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
-| 3/5 | Typed protocol boundary and conformance | Prepared on `claude-inline-subtasks-deepseek-protocol` |
-| 4/5 | Live lifecycle, correlation, catalogs | Pending slice 3 merge |
+| 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
+| 4/5 | Live lifecycle, correlation, catalogs | Prepared on `claude-inline-subtasks-deepseek-live` |
 | 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
 
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
@@ -650,3 +650,10 @@ check lives in its DTO factory, consistent with replay metadata; semantic checks
 remain in the API. Architecture implementation review approved with no findings.
 Initialization remains v1-only until slice 4 installs the live consumer. No
 fixture bytes, runtime pins, interrupt consumer, or live/replay projection changed.
+
+Slice 4 verification: DeepSeek analysis and all 82 tests passed. Live lifecycle,
+correlation, and child catalog composition now accept protocol v2 alongside v1.
+Duplicate call/update deferral was consolidated into one branch; replay methods
+and future-only nullable terminal mapping remain out of this slice. Runtime
+pins and both fixture versions remain untouched; release still waits for slice 5.
+Architecture implementation and focused correctness reviews found no issues.

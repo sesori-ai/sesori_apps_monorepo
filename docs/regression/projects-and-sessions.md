@@ -198,6 +198,9 @@ state.
   tiles while activity rolls up to the owning root. Deleting a tracked parent
   clears its descendant state; process-scoped tombstones reject late lifecycle
   starts and transcript updates until the old event source is drained.
+- DeepSeek child reads merge persisted and live direct children, with persisted
+  metadata winning. Live descendants inherit the tracked root's project before
+  their headers reach persistence; only activity rolls up to the root.
 - DeepSeek explicit import enumerates only adapter-owned session headers below
   the isolated plugin state. It derives projects from normalized session `cwd`,
   preserves parent/child metadata, and never scans or imports normal

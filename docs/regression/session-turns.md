@@ -227,7 +227,9 @@ defaults and queued client sends coherent.
   and form requests carry explicit session IDs.
 - DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
   completion, and bounded warning errors through standard ACP plus its narrow
-  status extension. Retry and compaction-start notifications are validated but
+  status and sub-agent extensions. Lifecycle frames arriving while the accepted
+  prompt is still writing stay buffered behind its user-message publication.
+  Retry and compaction-start notifications are validated but
   intentionally emit no shared event because DeepSeek does not supply the timing
   required by the shared retry state and the active turn is already busy.
 - Normalized user-message events feed the durable user-side activity marker used

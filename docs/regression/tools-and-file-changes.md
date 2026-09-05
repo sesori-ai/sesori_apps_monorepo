@@ -49,7 +49,13 @@ signal that a tool changed files.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
   identity, bounded presenter output, terminal result/error state, and diff
   content. Presenter failure degrades to a generic bounded tool card instead of
-  dropping the call or result.
+  dropping the call or result. With protocol v2, correlated sub-agent starts
+  replace exact `subagent`/`subagent_fork` cards with one child-linked tile;
+  identifiable updates arriving before their call are deferred too. Start/end
+  events retain the direct parent's transcript and keep root activity busy.
+  Launch prompts remain authoritative without child prompt echoes; malformed
+  ends finalize known children as error. Startup failures retain one generic
+  terminal card. Protocol v1 keeps generic cards; v2 replay projection is pending.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.

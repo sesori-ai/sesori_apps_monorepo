@@ -22,7 +22,7 @@ void main() {
         final value = (fixture["value"] as Map).cast<String, dynamic>();
         definitions.add(definition);
         expect(
-          _decode(api: api, definition: definition, value: value),
+          _decode(api: api, protocolVersion: protocolVersion, definition: definition, value: value),
           isA<Map<String, dynamic>>(),
           reason: definition,
         );
@@ -38,7 +38,7 @@ void main() {
         if (!expectedDefinitions.contains(definition)) continue;
         final value = (fixture["value"] as Map).cast<String, dynamic>();
         expect(
-          () => _decode(api: api, definition: definition, value: value),
+          () => _decode(api: api, protocolVersion: protocolVersion, definition: definition, value: value),
           throwsA(anything),
           reason: definition,
         );
@@ -97,7 +97,7 @@ void main() {
     expect(() => api.parseQuestionRequest(questions), throwsFormatException);
   });
 
-  test("initialization stays on v1 until the live v2 consumer is installed", () {
+  test("initialization accepts v1 and v2 while the managed adapter release is pending", () {
     Map<String, dynamic> metadata({required int version}) => {
       "extensionProtocolVersion": version,
       "adapterVersion": "0.1.3",
@@ -106,7 +106,7 @@ void main() {
     };
 
     expect(api.parseInitializeMetadata(metadata(version: 1)).extensionProtocolVersion, 1);
-    expect(() => api.parseInitializeMetadata(metadata(version: 2)), throwsFormatException);
+    expect(api.parseInitializeMetadata(metadata(version: 2)).extensionProtocolVersion, 2);
     expect(() => api.parseInitializeMetadata(metadata(version: 3)), throwsFormatException);
   });
 
@@ -271,8 +271,7 @@ void main() {
 }
 
 Set<String> _definitionsFor({required int protocolVersion}) => {
-  // V2 initialization is enabled alongside live lifecycle consumption, not by these DTOs alone.
-  if (protocolVersion == 1) "initializeMetadata",
+  "initializeMetadata",
   "promptMetadata",
   "catalogRequest",
   "catalogResponse",
@@ -288,10 +287,11 @@ Set<String> _definitionsFor({required int protocolVersion}) => {
 
 Map<String, dynamic> _decode({
   required DeepSeekAcpApi api,
+  required int protocolVersion,
   required String definition,
   required Map<String, dynamic> value,
 }) => switch (definition) {
-  "initializeMetadata" => api.parseInitializeMetadata(value).toJson(),
+  "initializeMetadata" => _initialize(api: api, protocolVersion: protocolVersion, value: value),
   "promptMetadata" => api.parsePromptMetadata(value).toJson(),
   "catalogRequest" => _catalogRequest(value),
   "catalogResponse" => api.parseCatalogResponse(value).toJson(),
@@ -305,6 +305,19 @@ Map<String, dynamic> _decode({
   "subagentNotification" => api.parseSubagentNotification(value).toJson(),
   _ => throw StateError("Unknown fixture definition $definition"),
 };
+
+Map<String, dynamic> _initialize({
+  required DeepSeekAcpApi api,
+  required int protocolVersion,
+  required Map<String, dynamic> value,
+}) {
+  final metadata = api.parseInitializeMetadata(value);
+  // The consumer supports both versions, but each corpus describes one wire version.
+  if (metadata.extensionProtocolVersion != protocolVersion) {
+    throw FormatException("Initialize metadata does not conform to protocol v$protocolVersion");
+  }
+  return metadata.toJson();
+}
 
 Map<String, dynamic> _catalogRequest(Map<String, dynamic> value) {
   final request = DeepSeekCatalogRequestDto.fromJson(value);

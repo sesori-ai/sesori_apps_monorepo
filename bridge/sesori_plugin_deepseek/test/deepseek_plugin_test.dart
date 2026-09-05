@@ -122,6 +122,8 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
     childSessions: childSessionTracker,
     api: api,
     messageTimeParser: const DeepSeekMessageTimeParser(),
+    subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+    delegationTracker: DeepSeekDelegationTracker(),
   );
   return DeepSeekPlugin(
     launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
@@ -135,8 +137,9 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
       pluginId: DeepSeekIdentity.id,
       messageTimeParser: const DeepSeekMessageTimeParser(),
     ),
-    deepSeekSessionService: const DeepSeekSessionService(
-      repository: DeepSeekSessionRepository(api: api),
+    deepSeekSessionService: DeepSeekSessionService(
+      repository: const DeepSeekSessionRepository(api: api),
+      childSessions: childSessionTracker,
     ),
     deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
       repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
