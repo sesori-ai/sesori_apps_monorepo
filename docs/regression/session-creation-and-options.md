@@ -24,8 +24,9 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude and Codex list models and effort variants strongest first (Claude:
   Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
   generation first, then Astra, Sol, Terra, Luna, the bare model, and other
-  suffixes such as Mini, with `ultra` down to `low`), and the model picker
-  keeps a plugin's declared order for models without a release date.
+  suffixes such as Mini, with `ultra` down to `low`). OpenCode lists models
+  newest release first, undated last, ties by name. The model picker never
+  reorders models: it shows each plugin's declared order.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a

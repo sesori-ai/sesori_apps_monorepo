@@ -100,7 +100,7 @@ void main() {
       expect(sections.single.models.map((m) => m.modelID), ["kept"]);
     });
 
-    test("sorts dated models newest first with name ties, then undated models in catalog order", () {
+    test("keeps models in the order the plugin declared them", () {
       final sections = build(
         providers: [
           _provider(
@@ -109,16 +109,12 @@ void main() {
               _model(id: "undated-b", name: "B undated"),
               _model(id: "old", name: "Old", releaseDate: DateTime(2024)),
               _model(id: "undated-a", name: "A undated"),
-              _model(id: "new-z", name: "Z new", releaseDate: DateTime(2026)),
-              _model(id: "new-a", name: "A new", releaseDate: DateTime(2026)),
+              _model(id: "new", name: "New", releaseDate: DateTime(2026)),
             ],
           ),
         ],
       );
-      expect(
-        sections.single.models.map((m) => m.modelID),
-        ["new-a", "new-z", "old", "undated-b", "undated-a"],
-      );
+      expect(sections.single.models.map((m) => m.modelID), ["undated-b", "old", "undated-a", "new"]);
     });
 
     test("marks one representative per family as visible by default", () {
