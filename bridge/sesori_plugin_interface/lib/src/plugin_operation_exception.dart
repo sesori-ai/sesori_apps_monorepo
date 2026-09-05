@@ -32,6 +32,10 @@ class PluginOperationException implements Exception {
   /// `true` when this failure means the target entity does not exist.
   bool get isNotFound => statusCode == 404;
 
+  /// `true` when the backend could not be reached at all, so retrying the same
+  /// call cannot succeed until the plugin becomes routable again.
+  bool get isUnavailable => statusCode == 503;
+
   @override
   String toString() {
     final status = statusCode == null ? "" : " with status $statusCode";

@@ -417,7 +417,7 @@ class _FamilyRepository() implements SessionRepository {
   }
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -425,6 +425,12 @@ class _FamilyRepository() implements SessionRepository {
     if (record == null) throw _notFound(sessionId: sessionId, operation: operation);
     return record.stored;
   }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) => requireStoredSession(sessionId: sessionId, operation: operation);
 
   @override
   Future<List<String>> getSessionSubtreeIds({required String sessionId}) async => [
