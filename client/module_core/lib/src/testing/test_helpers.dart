@@ -733,39 +733,6 @@ PendingQuestion testPendingQuestion() => const PendingQuestion(
   ],
 );
 
-SesoriQuestionAsked testMultiSseQuestionAsked({
-  String id = "question-multi",
-  String sessionID = "session-1",
-}) => SesoriQuestionAsked(
-  id: id,
-  sessionID: sessionID,
-  displaySessionId: null,
-  questions: const [
-    QuestionInfo(
-      question: "Which language do you prefer?",
-      header: "Language",
-      options: [
-        QuestionOption(label: "Dart", description: "Flutter language"),
-        QuestionOption(label: "Kotlin", description: "Android language"),
-      ],
-    ),
-    QuestionInfo(
-      question: "Which IDE do you use?",
-      header: "IDE",
-      options: [
-        QuestionOption(label: "VS Code", description: "Microsoft editor"),
-        QuestionOption(label: "IntelliJ", description: "JetBrains IDE"),
-      ],
-    ),
-    QuestionInfo(
-      question: "Any additional notes?",
-      header: "Notes",
-      options: [],
-      custom: true,
-    ),
-  ],
-);
-
 AgentInfo testAgentInfo() => const AgentInfo(
   name: "coder",
   description: "A coding assistant",

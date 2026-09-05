@@ -2473,24 +2473,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 background task} other{{count} background tasks}}'**
   String sessionListBackgroundTasks(int count);
 
-  /// No description provided for @sessionListStaleProjectTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Project directory not found'**
-  String get sessionListStaleProjectTitle;
-
-  /// No description provided for @sessionListStaleProjectMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.'**
-  String get sessionListStaleProjectMessage;
-
-  /// No description provided for @sessionListStaleProjectBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Go back'**
-  String get sessionListStaleProjectBack;
-
   /// No description provided for @voiceRecord.
   ///
   /// In en, this message translates to:
@@ -2568,12 +2550,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The saved recording is no longer available. Record again or type instead.'**
   String get voiceErrorSavedRecordingMissing;
-
-  /// No description provided for @voiceErrorNetwork.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not reach the server. Check your connection.'**
-  String get voiceErrorNetwork;
 
   /// No description provided for @voiceErrorNotAuthenticated.
   ///

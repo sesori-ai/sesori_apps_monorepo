@@ -7,8 +7,6 @@ environment:
 
 dependencies:
   meta: ^1.19.0
-  freezed_annotation: ^3.1.0
-  json_annotation: ^4.12.0
   path: ^1.9.1
   sesori_bridge_foundation:
     path: ../sesori_bridge_foundation
@@ -17,7 +15,4 @@ dependencies:
 
 dev_dependencies:
   lints: ^6.1.0
-  freezed: ^4.0.0
-  json_serializable: ^6.14.1
-  build_runner: any
   test: ^1.31.2

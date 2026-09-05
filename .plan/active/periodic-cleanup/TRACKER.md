@@ -26,8 +26,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Merged | [#1328](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1328) |
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Merged | [#1329](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1329) |
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Merged | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
-| 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | In review | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
-| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Proposed | — |
+| 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Merged | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
+| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | In review | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌱 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Proposed | — |
 | 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
 | 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
@@ -365,3 +365,29 @@ asked to start working the plan; steps execute in order from step 2.
   repeated setup is smaller and already goes through existing stub helpers, so
   folding it here would have pushed this PR past its size budget without making
   those suites clearer.
+
+## Step 20 execution — 2026-09-05
+
+- Every candidate re-verified against implementation main before deletion; each
+  named symbol and key appeared only in its own defining file (plus generated
+  localization) with no consumer in production, test, generated or tool code.
+- Dependencies removed: `re_highlight`, `fake_async` and `json_annotation` from
+  `client/app` (the highlighter is used only by `module_app_ui`, which keeps its
+  own declaration); `cupertino_icons` from `client/design_catalog`;
+  `_fe_analyzer_shared` from `shared/no_slop_linter`; and the annotation and
+  generator set (`freezed_annotation`, `json_annotation`, `freezed`,
+  `json_serializable`, `build_runner`) plus the now-inert `build.yaml` from
+  `bridge/sesori_plugin_runtime`, which contains no annotated source and no
+  generated file. `sesori_plugin_antigravity` was left to its active series.
+- Symbols and keys removed: `currentProjectName` (its whole file), `kStatusGreen`
+  and `kStatusPurple` (`kStatusAmber` stays; the session tile uses it), `logwf`,
+  `testMultiSseQuestionAsked`, `lerpTextStyleNonNull` and the four localization
+  keys `sessionListStaleProjectTitle`, `sessionListStaleProjectMessage`,
+  `sessionListStaleProjectBack`, `voiceErrorNetwork`, with localizations
+  regenerated from the ARB. Dropping the text-style helper made
+  `package:flutter/painting.dart` unnecessary in `lerp_utils.dart`.
+- Line split, measured at PR head `18dde01358` against merge base `ee6826dbc1`
+  (`git diff --numstat ee6826dbc1..18dde01358 -- . ':(exclude).plan'`):
+  4+/137- outside the plan directory, so this step is almost entirely deletion.
+- The narrow repository methods from step 4 remain their own finding; this scan
+  did not revisit them.
