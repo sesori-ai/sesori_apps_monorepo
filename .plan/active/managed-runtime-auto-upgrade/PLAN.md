@@ -227,10 +227,16 @@ harness that is already ready while its upgrade downloads.
 ## Failure Semantics
 
 - Download, checksum, extraction, or probe failure: `ProvisionFailed`, logged
-  locally with detail, sanitized on the wire; older supported runtime stays
-  selected; below-minimum case stays runtime-missing with the descriptor's
-  "needs a newer" hint. The next bridge start retries because the superseded
-  directory (or none) still exists.
+  locally with detail, sanitized on the wire.
+  - Older supported runtime: it stays selected and ready. Its directory still
+    exists, so the next bridge start triggers the upgrade again.
+  - Below-minimum runtime: its obsolete directory was already removed before
+    the download (the user requires obsolete cleanup not to wait on the
+    replacement), so no superseded directory remains. The harness stays
+    runtime-missing with the descriptor's generic "Install from Sesori" hint,
+    and the next bridge start does not retry automatically; the user presses
+    Install, exactly today's manual path. Accepted rather than adding a retry
+    marker independent of the directory.
 - Shutdown mid-upgrade: existing abort path; partial files are redone next
   start because the sentinel is written last.
 - Sweep failure on any directory: logged and skipped (best effort, unchanged).
@@ -276,8 +282,8 @@ implementation appears to need any of these, stop and ask.
 - The provision-notice message that names `bundledVersion` for an older
   managed runtime is corrected in Step 2.
 - The "This bridge needs a newer X. Install it from Sesori" hints in OpenCode,
-  Codex, and Cursor remain accurate for the below-minimum and failed-upgrade
-  cases and stay.
+  Codex, and Cursor stay: they describe a below-minimum runtime until its
+  obsolete directory is swept, after which the generic install hint applies.
 - `docs/regression/plugin-runtime-installation.md` Known Limitations currently
   states managed runtime refresh is not covered; Step 4 replaces it.
 - No obsolete transport shapes, flags, or database artifacts were found.
@@ -374,6 +380,11 @@ harness across production plugins.
   exactly as for a manual Install; accepted, bounded by download time.
 - Below-minimum directories for a platform without a pinned asset are left in
   place because nothing can replace them; the harness stays runtime-missing.
+- A below-minimum upgrade whose download fails does not retry on the next
+  start, because its obsolete directory is gone; the harness stays
+  runtime-missing until the user presses Install. Deferring the obsolete
+  sweep until after a successful install would restore the retry, but the
+  user explicitly required obsolete cleanup not to wait on the replacement.
 - Console output shows no install progress for a headless startup upgrade;
   the log records start, outcome, and failure detail.
 
