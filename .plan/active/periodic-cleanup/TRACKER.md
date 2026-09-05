@@ -497,7 +497,12 @@ and the owning suites. Disposition per guide:
   invented to justify deleting coverage.
 - Line split: `git diff --numstat 1f6abbd8d6..6489ffb2ae -- 'docs/regression/*.md'`
   gives 81+/56-. `6489ffb2ae` is the last commit that changed a guide, and the
-  pathspec excludes this tracker, so the figure holds at any later head.
+  pathspec excludes this tracker, so the figure holds at any later head. That
+  137-line total is well under PLAN.md's 500-1,200 estimate for this step. The
+  estimate was scoped from guide size before the audit; the audit found six
+  guides needing changes and five needing none, and the plan forbids imposing a
+  line target or inventing a limitation to close the gap, so the measured total
+  is the honest result rather than a shortfall to be padded.
 - Title kept from this tracker; the planned 🌱 became 🌿 because review has to
   confirm the moved attachment coverage is preserved by level cumulativity and
   that the new popup-alerts level table claims only coverage that exists.
