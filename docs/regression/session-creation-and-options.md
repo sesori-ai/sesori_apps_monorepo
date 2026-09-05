@@ -21,9 +21,11 @@ variant, and worktree mode, and creating the session with its first input.
   has one selected: the agent's declared variant when valid, otherwise the
   model's declared default, otherwise the first listed. Selecting a variant is
   therefore a switch between named levels, never a reset to unset.
-- Claude lists models and effort variants strongest first (Fable, Opus,
-  Sonnet, Haiku; `max` down to `low`), and the model picker keeps a plugin's
-  declared order for models without a release date.
+- Claude and Codex list models and effort variants strongest first (Claude:
+  Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
+  generation first, then Astra, Sol, Terra, Luna, the bare model, and other
+  suffixes such as Mini, with `ultra` down to `low`), and the model picker
+  keeps a plugin's declared order for models without a release date.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a

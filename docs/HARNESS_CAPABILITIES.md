@@ -20,7 +20,7 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 Other plugins still declare variants default-first (the client falls back to
 the first listed variant when no default is declared) and models in catalog
