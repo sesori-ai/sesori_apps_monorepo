@@ -587,6 +587,29 @@ void main() {
       expect(source.identityCallCount, 4);
     });
 
+    test("skips the identity query when gh is unavailable or unauthenticated", () async {
+      final source = _FakePrSource()..isAvailableResult = false;
+      final service = _service(
+        source: source,
+        pullRequests: _FakePullRequestRepository(),
+        sessionsByProject: const {},
+      );
+      addTearDown(service.dispose);
+
+      expect(await service.verifyGithubIdentity(), isNull);
+      expect(source.identityCallCount, 0);
+
+      source
+        ..isAvailableResult = true
+        ..isAuthenticatedResult = false;
+      expect(await service.verifyGithubIdentity(), isNull);
+      expect(source.identityCallCount, 0);
+
+      source.isAuthenticatedResult = true;
+      expect(await service.verifyGithubIdentity(), _verifiedGithubLogin);
+      expect(source.identityCallCount, 1);
+    });
+
     test("isolates replacement exceptions and continues later projects", () async {
       final source = _FakePrSource(
         targetsByDirectory: {
