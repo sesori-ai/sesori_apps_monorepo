@@ -829,7 +829,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final messageEvent = events.whereType<BridgeSseMessageUpdated>().single;
-      final message = shared.Message.fromJson(messageEvent.info) as shared.MessageAssistant;
+      final message = messageEvent.info as PluginMessageAssistant;
       expect(message.modelID, "gpt-session");
     });
 
@@ -1125,9 +1125,9 @@ void main() {
       final visibleError = plugin.events
           .where((event) => event is BridgeSseMessageUpdated)
           .cast<BridgeSseMessageUpdated>()
-          .map((event) => shared.Message.fromJson(event.info))
-          .where((message) => message is shared.MessageError)
-          .cast<shared.MessageError>()
+          .map((event) => event.info)
+          .where((message) => message is PluginMessageError)
+          .cast<PluginMessageError>()
           .first;
       fake.pushNotification("error", {
         "threadId": "t-terminal",
@@ -1730,19 +1730,19 @@ void main() {
       final errorIndex = emittedEvents.indexWhere(
         (event) =>
             event is BridgeSseMessageUpdated &&
-            switch (shared.Message.fromJson(event.info)) {
-              shared.MessageError(errorMessage: "You've hit your usage limit.") => true,
+            switch (event.info) {
+              PluginMessageError(errorMessage: "You've hit your usage limit.") => true,
               _ => false,
             },
       );
       final idleIndex = emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle);
       expect(errorIndex, greaterThanOrEqualTo(0));
       expect(idleIndex, greaterThan(errorIndex));
-      final error = shared.Message.fromJson((emittedEvents[errorIndex] as BridgeSseMessageUpdated).info);
+      final error = (emittedEvents[errorIndex] as BridgeSseMessageUpdated).info;
       expect(error.id, "u-failed");
       expect(
         error.time,
-        shared.MessageTime(
+        PluginMessageTime(
           created: DateTime.utc(2026, 8, 20, 8, 0, 5).millisecondsSinceEpoch,
           completed: null,
         ),

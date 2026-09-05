@@ -67,7 +67,7 @@ class CodexEventMapper({
   /// Live app-server updates carry item lifecycle timestamps separately from
   /// the item itself. Retain them so completion and canonical tool upserts do
   /// not replace a timestamped message envelope with an undated one.
-  final Map<({String threadId, String itemId}), shared.MessageTime> _itemTimes = {};
+  final Map<({String threadId, String itemId}), PluginMessageTime> _itemTimes = {};
 
   /// Records the model codex resolved for [threadId] so subsequent
   /// live-streamed assistant messages are stamped with the model actually in
@@ -222,7 +222,7 @@ class CodexEventMapper({
             timestampSeconds: turn?["completedAt"],
           ),
           if (_turnErrorMessage(threadId: threadId, turn: turn) case final errorMessage?)
-            BridgeSseMessageUpdated(info: errorMessage.toJson()),
+            BridgeSseMessageUpdated(info: errorMessage),
           BridgeSseSessionIdle(sessionID: threadId),
         ];
 
@@ -328,7 +328,7 @@ class CodexEventMapper({
       errorName: "CodexError",
       errorMessage: message,
       time: _rolloutMessageTime(timestamp),
-    ).toJson(),
+    ),
   );
 
   /// Renders a complete repository-owned canonical tool upsert.
@@ -342,7 +342,7 @@ class CodexEventMapper({
     title: tool.title,
     status: tool.status,
     output: tool.output,
-    time: _sharedMessageTime(tool.time),
+    time: tool.time,
     attachments: tool.attachments,
   );
 
@@ -474,11 +474,11 @@ class CodexEventMapper({
         return _userMessageEvents(
           threadId: threadId,
           itemId: itemId,
-          message: shared.Message.user(
+          message: PluginMessage.user(
             id: itemId,
             sessionID: threadId,
             agent: null,
-            time: time == null ? null : shared.MessageTime(created: time.created, completed: null),
+            time: time == null ? null : PluginMessageTime(created: time.created, completed: null),
             // Codex echoes the id the bridge sent with turn/start, so an
             // item caused by a bridge send names its prompt; one typed in the
             // Codex CLI carries none.
@@ -580,7 +580,7 @@ class CodexEventMapper({
     required String itemId,
     required String tool,
     required PluginToolStatus status,
-    required shared.MessageTime? time,
+    required PluginMessageTime? time,
     required List<PluginMessageAttachment> attachments,
     String? title,
     String? output,
@@ -588,7 +588,7 @@ class CodexEventMapper({
   }) {
     return [
       BridgeSseMessageUpdated(
-        info: _assistantMessage(itemId: itemId, threadId: threadId, time: time).toJson(),
+        info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
       ),
       BridgeSseMessagePartUpdated(
         part: PluginMessagePart.tool(
@@ -712,23 +712,24 @@ class CodexEventMapper({
   /// responses), falling back to the global config model when unknown. Provider
   /// comes from the thread's `thread/started.modelProvider`. The persisted
   /// rollout path is authoritative on re-fetch.
-  shared.Message _assistantMessage({
+  PluginMessage _assistantMessage({
     required String itemId,
     required String threadId,
-    required shared.MessageTime? time,
+    required PluginMessageTime? time,
   }) {
-    return shared.Message.assistant(
+    return PluginMessage.assistant(
       id: itemId,
       sessionID: threadId,
       agent: "codex",
       modelID: _threadModel[threadId] ?? config.model,
       providerID: _threadProvider[threadId] ?? config.modelProvider ?? "openai",
-      sender: shared.MessageSender.agent,
+      variant: null,
+      sender: PluginMessageSender.agent,
       time: time,
     );
   }
 
-  shared.MessageTime? _recordAppServerItemTime({
+  PluginMessageTime? _recordAppServerItemTime({
     required Map<String, dynamic> params,
     required String threadId,
     required String? itemId,
@@ -739,7 +740,7 @@ class CodexEventMapper({
     final previous = _itemTimes[key];
     final created = _milliseconds(params["startedAtMs"]) ?? previous?.created;
     if (created == null) return previous;
-    final time = shared.MessageTime(
+    final time = PluginMessageTime(
       created: created,
       completed: completed ? _milliseconds(params["completedAtMs"]) ?? previous?.completed : previous?.completed,
     );
@@ -772,13 +773,6 @@ class CodexEventMapper({
 
   int? _secondsToMilliseconds(Object? value) => value is num ? (value * Duration.millisecondsPerSecond).round() : null;
 
-  shared.MessageTime? _sharedMessageTime(PluginMessageTime? time) => time == null
-      ? null
-      : shared.MessageTime(
-          created: time.created,
-          completed: time.completed,
-        );
-
   void _forgetItemTimes(String threadId) => _itemTimes.removeWhere((key, _) => key.threadId == threadId);
 
   /// Emits the message envelope and its (single) content part. The part id
@@ -787,13 +781,13 @@ class CodexEventMapper({
   List<BridgeSseEvent> _messageEvents({
     required String threadId,
     required String itemId,
-    required shared.Message message,
+    required PluginMessage message,
     required PluginMessagePartType partType,
     required String partSuffix,
     required String? text,
   }) {
     return [
-      BridgeSseMessageUpdated(info: message.toJson()),
+      BridgeSseMessageUpdated(info: message),
       _messagePartEvent(
         threadId: threadId,
         itemId: itemId,
@@ -808,12 +802,12 @@ class CodexEventMapper({
   List<BridgeSseEvent> _userMessageEvents({
     required String threadId,
     required String itemId,
-    required shared.Message message,
+    required PluginMessage message,
     required String? text,
     required List<PluginMessageAttachment> attachments,
   }) {
     return [
-      BridgeSseMessageUpdated(info: message.toJson()),
+      BridgeSseMessageUpdated(info: message),
       if (text != null)
         _messagePartEvent(
           threadId: threadId,

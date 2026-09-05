@@ -77,8 +77,8 @@ void main() {
       expect(tracker.runningChildren(sessionId: _root).single.isBackground, isFalse);
 
       final prompted = mapper.map(_fixture("subagent_child_prompt.json"));
-      final envelope = shared.Message.fromJson(prompted.whereType<BridgeSseMessageUpdated>().single.info);
-      expect(envelope, isA<shared.MessageAssistant>());
+      final envelope = prompted.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(envelope, isA<PluginMessageAssistant>());
       expect(envelope.id, _tileMessageId);
       expect(envelope.sessionID, _root);
       final tile = _subtask(prompted.whereType<BridgeSseMessagePartUpdated>().single);

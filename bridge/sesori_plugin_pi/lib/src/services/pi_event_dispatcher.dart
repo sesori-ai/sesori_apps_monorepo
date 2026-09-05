@@ -169,7 +169,7 @@ final class PiEventDispatcher({
     return mapped == null
         ? const []
         : [
-            BridgeSseMessageUpdated(info: mapped.info.toJson()),
+            BridgeSseMessageUpdated(info: mapped.info),
             for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
           ];
   }
@@ -299,7 +299,7 @@ final class PiEventDispatcher({
       ];
     }
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final partId in removedPartIds)
         BridgeSseMessagePartRemoved(sessionID: sessionId, messageID: messageId, partID: partId),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
@@ -328,7 +328,7 @@ final class PiEventDispatcher({
     );
     final mapped = _historyMapper.mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -363,7 +363,7 @@ final class PiEventDispatcher({
     );
     if (mapped == null) return const [];
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -383,7 +383,7 @@ final class PiEventDispatcher({
     );
     if (mapped == null) return const [];
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -635,7 +635,7 @@ final class PiEventDispatcher({
     final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
     return [
       ..._status(sessionId: sessionId, event: event, now: now),
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -680,7 +680,7 @@ final class PiEventDispatcher({
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -710,7 +710,7 @@ final class PiEventDispatcher({
     if (messageId == null || message == null) return const [];
     state.announced = true;
     final mapped = _historyMapper.mapAssistantMessage(sessionId: sessionId, messageId: messageId, message: message);
-    return [BridgeSseMessageUpdated(info: mapped.info.toJson())];
+    return [BridgeSseMessageUpdated(info: mapped.info)];
   }
 
   _SessionState _session(String sessionId) => _sessions.putIfAbsent(

@@ -377,7 +377,7 @@ final class ClaudeEventDispatcher({
             errorName: error.name,
             errorMessage: error.message,
             time: _messageTime(message.timestamp),
-          ).toJson(),
+          ),
         ),
       ];
     }
@@ -403,7 +403,7 @@ final class ClaudeEventDispatcher({
           sessionId: sessionId,
           messageId: messageId,
           time: _messageTime(message.timestamp),
-        ).toJson(),
+        ),
       ),
     ];
     for (var offset = 0; offset < mapped.length; offset++) {
@@ -485,7 +485,7 @@ final class ClaudeEventDispatcher({
           agent: null,
           time: _messageTime(message.timestamp),
           promptId: promptId,
-        ).toJson(),
+        ),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
@@ -581,7 +581,7 @@ final class ClaudeEventDispatcher({
           errorName: error.name,
           errorMessage: error.message,
           time: null,
-        ).toJson(),
+        ),
       ),
     ];
   }
@@ -606,7 +606,7 @@ final class ClaudeEventDispatcher({
     _announcedMessageIds[sessionId] = messageId;
     return [
       BridgeSseMessageUpdated(
-        info: _assistantMessage(sessionId: sessionId, messageId: messageId).toJson(),
+        info: _assistantMessage(sessionId: sessionId, messageId: messageId),
       ),
     ];
   }

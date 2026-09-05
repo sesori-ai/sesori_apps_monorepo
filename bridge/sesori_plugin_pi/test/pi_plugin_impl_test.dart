@@ -212,7 +212,7 @@ void main() {
       await idle;
 
       expect(events.whereType<BridgeSseSessionCompacted>(), hasLength(1));
-      expect(events.whereType<BridgeSseMessageUpdated>().first.info["promptId"], "prompt-compact");
+      expect((events.whereType<BridgeSseMessageUpdated>().first.info as PluginMessageUser).promptId, "prompt-compact");
       final visibleText = events
           .whereType<BridgeSseMessagePartUpdated>()
           .where((event) => event.part.type == PluginMessagePartType.text)
@@ -245,7 +245,12 @@ void main() {
       final process = await harness.nextSessionProcess();
       final request = await waitForCommand(process: process, type: "compact");
       final runningUpdate = harness.plugin.events.firstWhere(
-        (event) => event is BridgeSseMessageUpdated && event.info["promptId"] == null,
+        (event) =>
+            event is BridgeSseMessageUpdated &&
+            switch (event.info) {
+              PluginMessageUser(promptId: final id) => id == null,
+              PluginMessageAssistant() || PluginMessageError() => true,
+            },
       );
       process.emit(frame: {"type": "compaction_start", "reason": "manual"});
       await accepted;
@@ -257,7 +262,7 @@ void main() {
       process.emitFailure(id: request["id"]! as String, command: "compact", error: "compaction failed");
 
       final removedEvent = await removed;
-      expect((removedEvent as BridgeSseMessageRemoved).messageID, running.info["id"]);
+      expect((removedEvent as BridgeSseMessageRemoved).messageID, running.info.id);
       await Future.wait([failed, idle]);
       expect(harness.plugin.getActiveSessionsSummary(), isEmpty);
     });

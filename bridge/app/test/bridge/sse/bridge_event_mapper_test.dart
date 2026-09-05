@@ -73,28 +73,6 @@ void main() {
       );
     });
 
-    test("maps a system sender through the shared message update", () {
-      final result = mapEvent(
-        BridgeSseMessageUpdated(
-          info: const PluginMessage.assistant(
-            id: "m-system",
-            sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-            variant: null,
-            sender: PluginMessageSender.system,
-            time: null,
-          ).toJson(),
-        ),
-      );
-
-      expect(result, isA<SesoriMessageUpdated>());
-      final event = result! as SesoriMessageUpdated;
-      expect(event.info, isA<MessageAssistant>());
-      expect((event.info as MessageAssistant).sender, MessageSender.system);
-    });
-
     test("builds the public status event from the normalized shared status", () {
       const status = SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000);
 

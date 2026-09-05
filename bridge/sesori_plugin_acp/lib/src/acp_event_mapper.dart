@@ -281,16 +281,17 @@ class AcpEventMapper({
     required String sessionId,
     required String message,
   }) => BridgeSseMessageUpdated(
-    info: shared.Message.error(
+    info: PluginMessage.error(
       id: "${_fallbackTurnMessageId(sessionId)}-error",
       sessionID: sessionId,
       agent: pluginId,
       modelID: modelForSession(sessionId: sessionId),
       providerID: providerForSession(sessionId: sessionId),
+      variant: null,
       errorName: "ACP prompt failed",
       errorMessage: message,
       time: null,
-    ).toJson(),
+    ),
   );
 
   /// Emits complete snapshots for text and reasoning parts streamed during the
@@ -384,7 +385,7 @@ class AcpEventMapper({
     if (mutations.isEmpty) return const [];
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId, time: time).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId, time: time),
       ),
       for (final mutation in mutations)
         BridgeSseMessagePartUpdated(
@@ -777,7 +778,7 @@ class AcpEventMapper({
     if (started.add(identity.messageId)) {
       events.add(
         BridgeSseMessageUpdated(
-          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null, time: time).toJson(),
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null, time: time),
         ),
       );
     }
@@ -874,7 +875,7 @@ class AcpEventMapper({
     if (started.add(partId)) {
       if (started.add(messageId)) {
         events.add(
-          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null, time: time).toJson()),
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null, time: time)),
         );
       }
       events.add(
@@ -970,16 +971,17 @@ class AcpEventMapper({
     _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     return [
       BridgeSseMessageUpdated(
-        info: shared.Message.error(
+        info: PluginMessage.error(
           id: messageId,
           sessionID: sessionId,
           agent: pluginId,
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
+          variant: null,
           errorName: notice.errorName,
           errorMessage: message,
-          time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
-        ).toJson(),
+          time: time,
+        ),
       ),
     ];
   }
@@ -1154,15 +1156,16 @@ class AcpEventMapper({
     required PluginMessageTime? time,
   }) {
     return BridgeSseMessageUpdated(
-      info: shared.Message.assistant(
+      info: PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        sender: shared.MessageSender.agent,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
-      ).toJson(),
+        variant: null,
+        sender: PluginMessageSender.agent,
+        time: time,
+      ),
     );
   }
 
@@ -1195,7 +1198,7 @@ class AcpEventMapper({
     );
   }
 
-  shared.Message _messageFor(
+  PluginMessage _messageFor(
     _ChunkRole role,
     String messageId,
     String sessionId, {
@@ -1203,21 +1206,22 @@ class AcpEventMapper({
     required PluginMessageTime? time,
   }) {
     return switch (role) {
-      _ChunkRole.user => shared.Message.user(
+      _ChunkRole.user => PluginMessage.user(
         id: messageId,
         sessionID: sessionId,
         agent: null,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
+        time: time,
         promptId: promptId,
       ),
-      _ChunkRole.assistant => shared.Message.assistant(
+      _ChunkRole.assistant => PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        sender: shared.MessageSender.agent,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
+        variant: null,
+        sender: PluginMessageSender.agent,
+        time: time,
       ),
     };
   }

@@ -406,7 +406,7 @@ void main() {
       });
 
       final replayed = (await loading).single;
-      expect(replayed.info.id, liveMessage.info["id"]);
+      expect(replayed.info.id, liveMessage.info.id);
       expect(replayed.parts.single.id, livePart.id);
       expect(replayed.parts.single.messageID, replayed.info.id);
     });

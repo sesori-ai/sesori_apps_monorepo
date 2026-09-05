@@ -14,7 +14,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Merged | [#1305](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1305) |
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Merged | [#1308](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1308) |
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | In review | [#1309](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1309) |
-| 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
+| 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | In progress (local, awaiting step 6 merge) | — |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Proposed | — |
 | 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Proposed | — |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
@@ -161,3 +161,17 @@ asked to start working the plan; steps execute in order from step 2.
   publication/generation checks. Orchestrator delivers status through
   `BridgeEventMapper.buildSessionStatusEvent`; the history listener ignores
   status and handoff payloads. The message variant follows in step 7.
+
+## Step 7 execution — 2026-09-05
+
+- `BridgeSseMessageUpdated.info` is a `PluginMessage`; ACP, Claude, Codex,
+  OpenCode and Pi emit typed envelopes (ACP and Codex stop building shared
+  messages internally). OpenCode drops an unknown message role at the plugin
+  boundary instead of relaying a raw payload.
+- `NormalizedMessageEvent` joins the normalized payload; the mapper converts
+  once through `toSharedMessage`, the orchestrator delivers it through
+  `BridgeEventMapper.buildMessageUpdatedEvent`, and the history listener stores
+  the same shared value with no decode/drop branch.
+- The residual session parse-failure log names the event type, error and stack
+  without dumping the payload. Failure-reporter failures are logged instead of
+  swallowed in the mapper, orchestrator and SSE manager.
