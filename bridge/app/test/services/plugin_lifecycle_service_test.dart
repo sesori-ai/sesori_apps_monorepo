@@ -1975,6 +1975,282 @@ void main() {
     expect(repository.startCalls, 1);
   });
 
+  test("startup upgrades only eligible plugins with a superseded managed runtime", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..installGate = installGate
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    // Returns synchronously: bridge startup must not wait on a download.
+    service.upgradeManagedRuntimes();
+    expect(repository.upgradeQueries, ["one"]);
+
+    await Future<void>.delayed(Duration.zero);
+    expect(repository.installCalls, 1);
+    expect(progress, isEmpty, reason: "the install is admitted but still gated on the download");
+
+    installGate.complete();
+    await installSettled(progress: progress);
+    expect(repository.startCalls, isZero, reason: "a startup upgrade never spawns a process");
+    expect(progress.last.phase, PluginInstallPhase.completed);
+  });
+
+  test("startup skips a plugin whose descriptor reports no superseded runtime", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+
+    service.upgradeManagedRuntimes();
+
+    expect(repository.upgradeQueries, ["one"]);
+    expect(repository.installCalls, isZero);
+  });
+
+  test("startup does not ask a disabled plugin whether it needs an upgrade", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {"one"},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+
+    service.upgradeManagedRuntimes();
+
+    expect(repository.upgradeQueries, isEmpty);
+    expect(repository.installCalls, isZero);
+  });
+
+  test("a startup upgrade makes a blocked harness ready without starting it", () async {
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+    final ready = <List<String>>[];
+    final readySubscription = service.readyPluginIds.listen(ready.add);
+    addTearDown(readySubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    await installSettled(progress: progress);
+
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, isZero);
+    expect(ready.last, ["one"]);
+  });
+
+  test("a failed startup upgrade leaves the previous setup in place", () async {
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionFailed(message: "download died")]
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    const priorSetup = PluginSetupReady.versioned(runtimeVersion: "1.0.0");
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": priorSetup},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    await installSettled(progress: progress);
+
+    expect(progress.single.phase, PluginInstallPhase.failed);
+    expect(repository.inspectCalls, isZero, reason: "a failed upgrade must not re-inspect");
+    expect(service.setupSnapshot.plugins.single.runtimeVersion, "1.0.0");
+  });
+
+  test("an explicit install joins a running startup upgrade and a refresh conflicts", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..installGate = installGate
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+
+    expect(repository.installCalls, 1, reason: "the explicit install joined the upgrade already in flight");
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
+      throwsA(
+        isA<PluginManagementConflictException>().having(
+          (error) => error.conflict.reasons,
+          "reasons",
+          [PluginLifecycleConflictReason.transitioning],
+        ),
+      ),
+    );
+
+    installGate.complete();
+    await installSettled(progress: progress);
+    expect(
+      repository.startCalls,
+      1,
+      reason: "the explicit Install carries the user's intent to start, so it promotes the upgrade",
+    );
+  });
+
+  test("an explicit install joining during the post-upgrade inspection still starts the harness", () async {
+    final inspectionGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: inspectionGate,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    // The download is done and the upgrade is inside its re-inspection, past
+    // the point where it already chose reinspect-only.
+    await _waitUntil(() => repository.inspectCalls == 1);
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    inspectionGate.complete();
+    await installSettled(progress: progress);
+
+    expect(repository.installCalls, 1, reason: "the explicit install joined rather than starting a second one");
+    expect(repository.startCalls, 1, reason: "a promotion arriving during the inspection is still honoured");
+  });
+
+  test("a startup upgrade alone still does not start the harness", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..installGate = installGate
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    installGate.complete();
+    await installSettled(progress: progress);
+
+    expect(repository.startCalls, isZero);
+  });
+
   test("install requires the install capability", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
@@ -2610,6 +2886,8 @@ class _CommandLifecycleRepository({
   int installCalls = 0;
   List<RuntimeProvisionProgress> installEvents = const [];
   Completer<void>? installGate;
+  bool needsUpgrade = false;
+  final List<String> upgradeQueries = [];
   final StreamController<PluginAuthenticationEvent> authenticationEvents =
       StreamController<PluginAuthenticationEvent>();
   int authenticationCalls = 0;
@@ -2649,6 +2927,12 @@ class _CommandLifecycleRepository({
     installCalls++;
     await installGate?.future;
     yield* Stream.fromIterable(installEvents);
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+    upgradeQueries.add(pluginId);
+    return needsUpgrade;
   }
 
   @override
@@ -2867,4 +3151,12 @@ Future<void> _waitFor(bool Function() predicate) async {
     await Future<void>.delayed(Duration.zero);
   }
   throw StateError("condition was not reached");
+}
+
+Future<void> _waitUntil(bool Function() predicate) async {
+  for (var attempt = 0; attempt < 200; attempt++) {
+    if (predicate()) return;
+    await Future<void>.delayed(Duration.zero);
+  }
+  throw StateError("condition did not become true");
 }
