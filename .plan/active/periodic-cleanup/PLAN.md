@@ -1,7 +1,7 @@
 # Periodic cleanup
 
-Status: proposed scope; investigation/planning requested, implementation scope
-acceptance pending. Plan PR: [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295).
+Status: executing; implementation scope accepted by the user on 2026-09-05
+(step 1 merged as #1295). Plan PR: [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295).
 Baseline: `480d82f090`. Date: 2026-09-04. Slug: `periodic-cleanup`.
 
 ## Goal, evidence, and scope
@@ -35,9 +35,9 @@ bus, or broad cubit/orchestrator rewrite.
 The source changes are substantial in aggregate: approximately 8,000–15,000 changed implementation/test/generated lines,
 plus roughly 3,000 historical-document deletions, across twenty-two implementation
 or cleanup PRs. The user explicitly authorized consolidating useful findings
-and closing #1296. That is authorization for this plan update; executing the
-refactor series remains a separate scope decision before step 2. The root
-AGENTS.md requires approval before a considerable refactor.
+and closing #1296, and on 2026-09-05 accepted executing the refactor series by
+asking to start working the plan. That acceptance is the approval the root
+AGENTS.md requires before a considerable refactor.
 Remain in the dedicated worktree. Do not create another worktree or working directory.
 
 ## Implementation contracts
@@ -58,8 +58,11 @@ and display the installed text. This is exact content coverage, not a length or
 completion heuristic: a snapshot containing `before-after` can replace buffered
 `before-` even with null completion time. If the part is absent, shorter or
 divergent, keep the buffer; it contains live content the snapshot has not shown
-it can replace. Use the current accumulator, including deltas received while
-fetching, rather than a stale saved value. Existing final-part/removal events
+it can replace. A fetched part that ends with the entire buffered value also
+covers it: after a reconnect outside the replay window the accumulator holds
+only the tail of a part, and the snapshot is the sole source of its prefix. Use
+the current accumulator, including deltas received while fetching, rather than
+a stale saved value. Existing final-part/removal events
 still retire buffers directly.
 
 Retirement alone is insufficient because a fetched part may still be growing.
@@ -722,7 +725,8 @@ no packaging or shipped runtime artifact changes.
 - Repository-wide documentation maintenance and simplification of all regression
   guides, including removing pointless content: explicitly requested during
   consolidation. Steps 21–24 own it; no narrow historical-report-only scope.
-- Refactor implementation scope acceptance: pending; no production edits in step 1.
+- Refactor implementation scope: accepted 2026-09-05 when the user asked to
+  start working the plan; no production edits were made in step 1.
 - #1294 merged and owns selection reconciliation; source diff inspected, no
   additional variant cleanup scheduled. Revalidate the original diagnostics
   against rebased code when steps 2–3 begin.

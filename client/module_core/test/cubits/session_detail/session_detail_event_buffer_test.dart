@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_detail_resolvers.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
@@ -1365,6 +1366,147 @@ void main() {
       ]);
     });
 
+    group("streamed text across a silent refresh", () {
+      // History from several backends carries no completion time, so every
+      // refreshed message below is an assistant message with `completed: null`
+      // and the outcome must follow from part content alone.
+      for (final kind in _StreamedPartKind.values) {
+        Future<
+          ({
+            SessionDetailCubit cubit,
+            Completer<SessionDetailLoadResult> refresh,
+          })
+        >
+        startStreaming({required String delta}) async {
+          final mockLoadService = MockSessionDetailLoadService();
+          final refresh = Completer<SessionDetailLoadResult>();
+          when(
+            () => mockLoadService.load(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          ).thenAnswer(
+            (_) async => SessionDetailLoadResult.loaded(
+              snapshot: _snapshot(messages: [_assistantMessage(parts: const [])]),
+            ),
+          );
+          when(
+            () => mockLoadService.reload(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          ).thenAnswer((_) => refresh.future);
+          final cubit = createCubit(loadService: mockLoadService);
+          await _awaitLoaded(cubit);
+          sessionEvents.add(kind.delta(delta: delta));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: delta);
+          mockConnectionService.emitDataMayBeStale();
+          await untilCalled(
+            () => mockLoadService.reload(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          );
+          return (cubit: cubit, refresh: refresh);
+        }
+
+        Future<void> completeRefresh({
+          required SessionDetailCubit cubit,
+          required Completer<SessionDetailLoadResult> refresh,
+          required List<MessagePart> parts,
+        }) async {
+          refresh.complete(
+            SessionDetailLoadResult.loaded(
+              snapshot: _snapshot(messages: [_assistantMessage(parts: parts)]),
+            ),
+          );
+          await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).isRefreshing);
+        }
+
+        test("${kind.name}: a snapshot covering the streamed text retires the buffer", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-after")],
+          );
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.streamingText, isEmpty);
+          expect(
+            state.resolvePartContent(partId: _streamedPartId, messageId: _streamedMessageId),
+            (text: "before-after", isStreaming: false),
+          );
+        });
+
+        test("${kind.name}: a delta after retirement continues from the installed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-middle")],
+          );
+
+          sessionEvents.add(kind.delta(delta: "after"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-middleafter");
+        });
+
+        test("${kind.name}: a shorter or absent snapshot part keeps the streamed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          sessionEvents.add(kind.delta(delta: "during-"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-during-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-")],
+          );
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, {_streamedPartId: "before-during-"});
+
+          sessionEvents.add(kind.delta(delta: "after"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-during-after");
+        });
+
+        test("${kind.name}: a snapshot ending with a tail-only buffer retires it and supplies the prefix", () async {
+          // A reconnect outside the replay window delivers deltas from the
+          // middle of a part; only the snapshot knows how it started.
+          final (:cubit, :refresh) = await startStreaming(delta: "-after");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-after")],
+          );
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.streamingText, isEmpty);
+          expect(
+            state.resolvePartContent(partId: _streamedPartId, messageId: _streamedMessageId),
+            (text: "before-after", isStreaming: false),
+          );
+        });
+
+        test("${kind.name}: a divergent snapshot part keeps the streamed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "rewritten")],
+          );
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, {_streamedPartId: "before-"});
+        });
+
+        test("${kind.name}: a final part event during the reload still retires the buffer", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          sessionEvents.add(SesoriMessagePartUpdated(part: kind.part(content: "before-final")));
+          await _awaitCondition(() => (cubit.state as SessionDetailLoaded).streamingText.isEmpty);
+          await completeRefresh(cubit: cubit, refresh: refresh, parts: const []);
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
+        });
+      }
+    });
+
     test("keeps a finalized part that arrives before its message envelope", () async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -1806,4 +1948,77 @@ Future<void> _awaitCondition(bool Function() condition) async {
     await Future<void>.delayed(Duration.zero);
   }
   fail("Timed out waiting for condition");
+}
+
+const _streamedMessageId = "message-1";
+const _streamedPartId = "stream-part";
+
+/// Text and reasoning parts stream through the same buffer; each case runs for both.
+enum _StreamedPartKind() {
+  text,
+  reasoning;
+
+  MessagePart part({required String content}) => switch (this) {
+    _StreamedPartKind.text => MessagePart.text(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      text: content,
+    ),
+    _StreamedPartKind.reasoning => MessagePart.reasoning(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      text: content,
+    ),
+  };
+
+  SesoriMessagePartDelta delta({required String delta}) => SesoriMessagePartDelta(
+    sessionID: _sessionId,
+    messageID: _streamedMessageId,
+    partID: _streamedPartId,
+    field: name,
+    delta: delta,
+  );
+}
+
+MessageWithParts _assistantMessage({required List<MessagePart> parts}) => MessageWithParts(
+  info: const Message.assistant(
+    id: _streamedMessageId,
+    sessionID: _sessionId,
+    agent: "build",
+    modelID: null,
+    providerID: null,
+    time: MessageTime(created: 100, completed: null),
+  ),
+  parts: parts,
+);
+
+SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+  areOptionsStale: false,
+  bridgeQueuedPrompts: const [],
+  projectId: "project-1",
+  pluginId: "opencode",
+  supportsPromptAttachments: false,
+  messages: messages,
+  olderMessagesCursor: null,
+  pendingQuestions: const <PendingQuestion>[],
+  pendingPermissions: const <PendingPermission>[],
+  childSessions: const <Session>[],
+  statuses: const <String, SessionStatus>{},
+  agents: const <AgentInfo>[],
+  providerData: null,
+  commands: const <CommandInfo>[],
+  canonicalSessionTitle: null,
+  promptDefaults: null,
+  isRootSession: true,
+  isArchived: false,
+);
+
+Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded && state.streamingText[partId] == text,
+    description: "streaming text '$text' for $partId",
+  );
 }
