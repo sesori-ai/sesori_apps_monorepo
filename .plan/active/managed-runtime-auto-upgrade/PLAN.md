@@ -232,7 +232,8 @@ harness that is already ready while its upgrade downloads.
     exists, so the next bridge start triggers the upgrade again.
   - Below-minimum runtime: its obsolete directory was already removed before
     the download (the user requires obsolete cleanup not to wait on the
-    replacement), so no superseded directory remains. The harness stays
+    replacement), so no managed directory other than the pinned target
+    remains for the startup trigger to find. The harness stays
     runtime-missing with the descriptor's generic "Install from Sesori" hint,
     and the next bridge start does not retry automatically; the user presses
     Install, exactly today's manual path. Accepted rather than adding a retry
