@@ -696,27 +696,7 @@ class AuthManager(
     }
     _ensureSuccess(response, context: "Email/password login failed");
 
-    final decodedBody = jsonDecodeMap(response.body);
-    final AuthLoginResponse authResponse;
-    try {
-      authResponse = AuthLoginResponse.fromJson(decodedBody);
-    } on Object catch (e) {
-      throw Exception("Failed to parse auth response: ${e.toString()}");
-    }
-
-    final bool persisted = await _persistAuthenticatedResult(
-      generation: generation,
-      accessToken: authResponse.accessToken,
-      refreshToken: authResponse.refreshToken,
-      user: authResponse.user,
-      clearOAuthState: true,
-      requireOAuthOwnership: false,
-      oauthSessionToken: null,
-    );
-    if (!persisted) {
-      throw const _AuthFlowSuperseded();
-    }
-    return AuthLoginResult(user: authResponse.user, accountStatus: authResponse.accountStatus);
+    return await _completeInteractiveLogin(generation: generation, authResponse: _parseLoginResponse(response));
   }
 
   @override
@@ -730,14 +710,24 @@ class AuthManager(
 
     _ensureSuccess(response, context: "Apple Sign-In failed");
 
-    final decodedBody = jsonDecodeMap(response.body);
-    final AuthLoginResponse authResponse;
-    try {
-      authResponse = AuthLoginResponse.fromJson(decodedBody);
-    } on Object catch (e) {
-      throw Exception("Failed to parse auth response: ${e.toString()}");
-    }
+    return await _completeInteractiveLogin(generation: generation, authResponse: _parseLoginResponse(response));
+  }
 
+  AuthLoginResponse _parseLoginResponse(http.Response response) {
+    try {
+      return AuthLoginResponse.fromJson(jsonDecodeMap(response.body));
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(_AuthResponseParsingException(innerError: error), stackTrace);
+    }
+  }
+
+  /// Persists a successful email or Apple login for [generation] and reports
+  /// the account status; a login superseded by logout or a newer login throws
+  /// and leaves no tokens behind.
+  Future<AuthLoginResult> _completeInteractiveLogin({
+    required int generation,
+    required AuthLoginResponse authResponse,
+  }) async {
     final bool persisted = await _persistAuthenticatedResult(
       generation: generation,
       accessToken: authResponse.accessToken,
@@ -966,6 +956,15 @@ class AuthManager(
       throw StateError("$context (HTTP ${response.statusCode})");
     }
   }
+}
+
+/// A login response the server accepted but the client could not parse.
+///
+/// The body may carry tokens, so only the cause's type is presented; the
+/// typed cause itself stays available to the logging caller.
+final class const _AuthResponseParsingException({required final Object innerError}) implements Exception {
+  @override
+  String toString() => "Failed to parse auth response (innerError: ${innerError.runtimeType.toString()})";
 }
 
 final class const _AuthFlowSuperseded() implements Exception {

@@ -294,3 +294,18 @@ asked to start working the plan; steps execute in order from step 2.
   `BlocProvider(create:)`; route ids, disposal and surface presentation stay in
   the shells, and the session-activity analytics owners remain separate. No
   GetIt import in cubits, no singleton, static locator or wrapper widget.
+
+## Step 17 execution — 2026-09-05
+
+- `HttpApiClient._toApiResponse` is the single response-to-`ApiResponse` branch
+  for ordinary and multipart requests: non-2xx keeps status and raw body, an
+  empty 2xx body reaches `fromJson(null)`, and a decode/parse failure logs the
+  typed `_JsonResponseParsingException` under the per-operation label before
+  returning `ApiError.jsonParsing`. `AuthManager._completeInteractiveLogin`
+  takes the captured generation and parsed `AuthLoginResponse`, runs the
+  existing `_persistAuthenticatedResult` call (OAuth state cleared, no OAuth
+  ownership) and returns `AuthLoginResult`; email keeps its own request, 401
+  message and validation, Apple its own request. The shared parse now throws the
+  file-local `_AuthResponseParsingException(innerError:)` whose presentation
+  names only the cause type, replacing the string-only wrapping. OAuth polling
+  and token refresh are untouched.
