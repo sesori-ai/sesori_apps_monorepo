@@ -696,46 +696,13 @@ final RegExp _codeModeCommandInvocationPrefixPattern = RegExp(
 
 bool _hasSingleCodeModeCommandInvocation(String source) {
   var invocationCount = 0;
-  int? quote;
-  var escaped = false;
-  var inLineComment = false;
-  var inBlockComment = false;
+  final lexical = _JsLexicalState();
   for (var index = 0; index < source.length; index++) {
     final current = source.codeUnitAt(index);
     final next = index + 1 < source.length ? source.codeUnitAt(index + 1) : null;
-    if (inLineComment) {
-      if (current == 0x0A || current == 0x0D) inLineComment = false;
-      continue;
-    }
-    if (inBlockComment) {
-      if (current == 0x2A && next == 0x2F) {
-        inBlockComment = false;
-        index++;
-      }
-      continue;
-    }
-    if (quote != null) {
-      if (escaped) {
-        escaped = false;
-      } else if (current == 0x5C) {
-        escaped = true;
-      } else if (current == quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (current == 0x2F && next == 0x2F) {
-      inLineComment = true;
-      index++;
-      continue;
-    }
-    if (current == 0x2F && next == 0x2A) {
-      inBlockComment = true;
-      index++;
-      continue;
-    }
-    if (current == 0x22 || current == 0x27 || current == 0x60) {
-      quote = current;
+    final skipped = lexical.skipNonCode(current: current, next: next);
+    if (skipped != null) {
+      index += skipped;
       continue;
     }
     final invocation = _codeModeCommandInvocationPrefixPattern.matchAsPrefix(
@@ -825,46 +792,13 @@ int? _matchingInvocationEnd({
   }
 
   var depth = 0;
-  int? quote;
-  var escaped = false;
-  var inLineComment = false;
-  var inBlockComment = false;
+  final lexical = _JsLexicalState();
   for (var index = openParenthesisIndex; index < source.length; index++) {
     final current = source.codeUnitAt(index);
     final next = index + 1 < source.length ? source.codeUnitAt(index + 1) : null;
-    if (inLineComment) {
-      if (current == 0x0A || current == 0x0D) inLineComment = false;
-      continue;
-    }
-    if (inBlockComment) {
-      if (current == 0x2A && next == 0x2F) {
-        inBlockComment = false;
-        index++;
-      }
-      continue;
-    }
-    if (quote != null) {
-      if (escaped) {
-        escaped = false;
-      } else if (current == 0x5C) {
-        escaped = true;
-      } else if (current == quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (current == 0x2F && next == 0x2F) {
-      inLineComment = true;
-      index++;
-      continue;
-    }
-    if (current == 0x2F && next == 0x2A) {
-      inBlockComment = true;
-      index++;
-      continue;
-    }
-    if (current == 0x22 || current == 0x27 || current == 0x60) {
-      quote = current;
+    final skipped = lexical.skipNonCode(current: current, next: next);
+    if (skipped != null) {
+      index += skipped;
       continue;
     }
     if (index > openParenthesisIndex && _nestedToolInvocationPrefixPattern.matchAsPrefix(source, index) != null) {
@@ -878,4 +812,54 @@ int? _matchingInvocationEnd({
     }
   }
   return null;
+}
+
+/// Tracks whether a JavaScript scan is inside a string or comment so callers
+/// only inspect code. Shared by both rollout scanners so quoted escapes and
+/// line/block comments are recognised identically.
+final class _JsLexicalState() {
+  int? _quote;
+  var _escaped = false;
+  var _inLineComment = false;
+  var _inBlockComment = false;
+
+  /// Consumes [current] (with [next] as lookahead). Returns how many extra
+  /// code units the caller must skip (0 or 1) when the character is not code,
+  /// or null when [current] is code the caller should inspect.
+  int? skipNonCode({required int current, required int? next}) {
+    if (_inLineComment) {
+      if (current == 0x0A || current == 0x0D) _inLineComment = false;
+      return 0;
+    }
+    if (_inBlockComment) {
+      if (current == 0x2A && next == 0x2F) {
+        _inBlockComment = false;
+        return 1;
+      }
+      return 0;
+    }
+    if (_quote case final quote?) {
+      if (_escaped) {
+        _escaped = false;
+      } else if (current == 0x5C) {
+        _escaped = true;
+      } else if (current == quote) {
+        _quote = null;
+      }
+      return 0;
+    }
+    if (current == 0x2F && next == 0x2F) {
+      _inLineComment = true;
+      return 1;
+    }
+    if (current == 0x2F && next == 0x2A) {
+      _inBlockComment = true;
+      return 1;
+    }
+    if (current == 0x22 || current == 0x27 || current == 0x60) {
+      _quote = current;
+      return 0;
+    }
+    return null;
+  }
 }

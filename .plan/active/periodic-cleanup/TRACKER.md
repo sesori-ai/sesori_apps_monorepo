@@ -21,7 +21,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Merged | [#1320](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1320) |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Merged | [#1322](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1322) |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | In review | [#1323](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1323) |
-| 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Proposed | — |
+| 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | In progress (local, awaiting step 13 merge) | — |
 | 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Proposed | — |
 | 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Proposed | — |
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Proposed | — |
@@ -256,3 +256,17 @@ asked to start working the plan; steps execute in order from step 2.
   Descriptors keep API creation, OpenCode's condition for waiting at all, and
   the unconditional abort-rollback check. Unit tests cover completion, failure
   and budget exhaustion with a late failure; descriptor suites pass unchanged.
+
+## Step 14 execution — 2026-09-05
+
+- `WorktreeService.create`: both candidate loops share one attempt helper that
+  returns taken / failed / created; the slug loop moves on after a failed
+  creation while the suffix loop still stops after one, and collision checks,
+  candidate order, bounds and fallback outcome are unchanged.
+- `CodexSessionService`: `_prepareTurn` resumes when needed and derives model,
+  mode and effort once; `startTurn` and `sendCommand` keep exactly one forced
+  resume retry on `CodexThreadNotFoundException`, recompute through it, and
+  retain their different arguments and result shapes.
+- Rollout tool mapper: one `_JsLexicalState` owns the string/comment cursor
+  advance used by both scanners; quoted escapes and line/block comments are
+  handled identically. Owning suites pass unchanged; no new tests were needed.
