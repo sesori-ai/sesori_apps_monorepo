@@ -5,7 +5,6 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
@@ -25,21 +24,7 @@ class const DesktopSessionDetailScreen({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => SessionDetailCubit(
-        getIt<ConnectionService>(),
-        loadService: getIt<SessionDetailLoadService>(),
-        promptDispatcher: getIt<SessionRepository>(),
-        permissionRepository: getIt<PermissionRepository>(),
-        sessionViewingService: getIt<SessionViewingService>(),
-        projectViewingService: getIt<ProjectViewingService>(),
-        lifecycleSource: getIt<LifecycleSource>(),
-        composerDraftRepository: getIt<ComposerDraftRepository>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        sessionId: sessionId,
-        projectId: projectId,
-        notificationCanceller: getIt<NotificationCanceller>(),
-        failureReporter: getIt<FailureReporter>(),
-      ),
+      create: (_) => createSessionDetailCubit(locator: getIt, sessionId: sessionId, projectId: projectId),
       child: DesktopComposerPresentationScope(
         child: _SessionActivityAnalyticsOwner(
           child: DesktopSessionDetailView(

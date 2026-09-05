@@ -104,6 +104,7 @@ export "src/cubits/sse_toast/sse_toast_cubit.dart";
 export "src/cubits/sse_toast/sse_toast_state.dart";
 export "src/cubits/voice_input/voice_input_cubit.dart";
 export "src/cubits/voice_input/voice_input_state.dart";
+export "src/di/cubit_composition.dart";
 export "src/di/injection.dart";
 export "src/errors/remote_failure_reason.dart";
 export "src/foundation/io/file_attachment_thumbnail_storage.dart";
