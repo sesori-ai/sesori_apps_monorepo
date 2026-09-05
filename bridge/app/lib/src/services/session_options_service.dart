@@ -16,7 +16,8 @@ const Duration _staleAfter = Duration(days: 1);
 
 sealed class const SessionOptionsOutcome();
 
-final class const SessionOptionsAvailable({required final SessionOptionsResponse response}) extends SessionOptionsOutcome;
+final class const SessionOptionsAvailable({required final SessionOptionsResponse response})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome;
 
@@ -27,16 +28,18 @@ sealed class const SessionOptionsRefreshFailure();
 final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
 
 final class const SessionOptionsCaughtRefreshFailure({
-    required final Object cause,
-    required final StackTrace causeStackTrace,
-  }) extends SessionOptionsRefreshFailure {
+  required final Object cause,
+  required final StackTrace causeStackTrace,
+}) extends SessionOptionsRefreshFailure {
   @override
   String toString() => "SessionOptionsCaughtRefreshFailure";
 }
 
-final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
-final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
@@ -44,24 +47,26 @@ final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 /// re-read the cache instead of continuing to render what it replaced.
 /// [projectId] is null for a plugin-scoped catalog, which every project shares.
 final class const SessionOptionsCacheUpdate({
-    required final String pluginId,
-    required final String? projectId,
-  });
+  required final String pluginId,
+  required final String? projectId,
+});
 
 class SessionOptionsService({
-    required final SessionOptionsRepository _repository,
-    required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
-    required Map<String, PluginSessionOptionsScope> pluginScopes,
-    required final ServerClock _clock,
-    required final Duration _retention,
-  }) {
-  this{
+  required final SessionOptionsRepository _repository,
+  required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
+  required Map<String, PluginSessionOptionsScope> pluginScopes,
+  required final ServerClock _clock,
+  required final Duration _retention,
+}) {
+  this {
     if (_retention.isNegative) {
       throw ArgumentError.value(_retention, "retention", "must not be negative");
     }
   }
 
-  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
+  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(
+    pluginScopes,
+  );
   final StreamController<SessionOptionsCacheUpdate> _cacheUpdatesController =
       StreamController<SessionOptionsCacheUpdate>.broadcast(sync: true);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
@@ -242,7 +247,10 @@ class SessionOptionsService({
     if (resolved == null) return;
     final key = resolved.key;
     _invalidationEpochs[key] = _invalidationEpoch(key: key) + 1;
-    await _invalidationLock.use(key: key, operation: () => _repository.delete(key: key));
+    await _invalidationLock.use(
+      key: key,
+      operation: () => _repository.delete(key: key),
+    );
   }
 
   /// Holds a commit until every delete already issued for [key] has settled,
@@ -513,7 +521,6 @@ class SessionOptionsService({
       key: key,
       revision: expectedRevision == null ? 1 : expectedRevision + 1,
       capturedAt: capturedAt,
-      completeness: observation.completeness,
       response: observation.response,
     );
     try {
@@ -673,19 +680,14 @@ class SessionOptionsService({
     try {
       entry = await _repository.read(key: key);
     } on SessionOptionsCacheDecodingException catch (error) {
-      final revision = error.revision;
-      if (revision == null) {
-        if (retryAfterDeleteConflict) {
-          return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
-        }
-        Log.w("Unable to recover undecodable session options cache for plugin ${key.pluginId}");
-        return null;
-      }
-      Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
+      Log.w(
+        "Recovering from undecodable session options cache for plugin ${key.pluginId} "
+        "(discarding revision ${error.revision})",
+      );
       if (!await _isCurrentCacheKey(key: key)) return null;
       final deleted = await _repository.deleteIfRevision(
         key: key,
-        expectedRevision: revision,
+        expectedRevision: error.revision,
       );
       if (!deleted && retryAfterDeleteConflict) {
         return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
@@ -805,19 +807,22 @@ class SessionOptionsService({
 }
 
 final class const _ResolvedSessionOptions({
-    required final SessionOptionsCacheKey key,
-    required final String projectId,
-    required final String projectPath,
-  });
+  required final SessionOptionsCacheKey key,
+  required final String projectId,
+  required final String projectPath,
+});
 
-enum _RefreshIntent() { reuse, forced }
+enum _RefreshIntent() {
+  reuse,
+  forced,
+}
 
 final class _RefreshCoordinator({
-    required var _RefreshIntent intent,
-    required var int? generation,
-    required var int invalidationEpoch,
-    required var Future<SessionOptionsOutcome> terminal,
-  });
+  required var _RefreshIntent intent,
+  required var int? generation,
+  required var int invalidationEpoch,
+  required var Future<SessionOptionsOutcome> terminal,
+});
 
 sealed class const _CommitAttempt();
 

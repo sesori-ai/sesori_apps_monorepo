@@ -11,8 +11,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | Merged | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
 | 2/25 | ⚙️ [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Merged | [#1299](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1299) |
 | 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Merged | [#1303](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1303) |
-| 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | In review | [#1305](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1305) |
-| 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Proposed | — |
+| 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Merged | [#1305](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1305) |
+| 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | In review | [#1308](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1308) |
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Proposed | — |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Proposed | — |
@@ -128,3 +128,22 @@ asked to start working the plan; steps execute in order from step 2.
 - Not added: per-harness Codex/Pi/Claude history fixtures in the client suite.
   The cubit reads no harness-specific field; the null-completion assistant
   fixture is the whole boundary it observes. Recorded here for step 25's matrix.
+
+## Step 5 execution — 2026-09-05
+
+- Schema 15 rebuilds the options-cache table without the completeness column
+  through a Drift `TableMigration` (SQL column copy, no enum deserialization).
+  Entry, DAO row, and service commit lose the field; capture-time
+  `_canReplace` is unchanged. `SessionOptionsCacheDecodingException.revision`
+  is non-null and the pre-row ArgumentError conversion plus unknown-revision
+  retry branch are gone. Recovery log names plugin and revision only, keeping
+  the payload-bearing cause off the log as the existing privacy test requires.
+- Migration test upgrades a v14 row whose stored completeness is `unknown`,
+  verifies the column is dropped, rows and the project cascade survive.
+- Line split, measured at PR head `74a8c616d1` against merge base `338c9b8cb9`
+  (`git diff --numstat 338c9b8cb9..74a8c616d1`, classifying paths matching
+  `drift_schemas/`, `.g.dart`, `.steps.dart`, or `test/drift/default/generated/`
+  as generated): total 5466+/313- = generated 5224+/100- + handwritten
+  242+/213-. Self-inclusive: the handwritten figure counts this tracker note as
+  it stood at that head; this sentence adds a few lines more. Generators:
+  build_runner, drift_dev schema dump/steps/generate.
