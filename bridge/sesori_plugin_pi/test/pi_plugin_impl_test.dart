@@ -14,7 +14,7 @@ void main() {
   group("PiPlugin", () {
     late _Harness harness;
 
-    setUp(() => harness = _Harness());
+    setUp(() => harness = _Harness(failCommandDiscovery: false));
     tearDown(() => harness.dispose());
 
     test("creates a lazy session and buffers creation before any backend output", () async {
@@ -114,6 +114,70 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 400)),
       );
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
+    });
+
+    test("reports a command missing from the current catalog as stale options", () async {
+      final session = await harness.plugin.createSession(
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await expectLater(
+        harness.plugin.sendCommand(
+          sessionId: session.id,
+          promptId: "prompt-unsupported",
+          command: "removed-command",
+          arguments: "src",
+          userVisibleArguments: "src",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "Pi no longer offers this command."),
+        ),
+      );
+      expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
+    });
+
+    test("failed command discovery does not claim that a command was removed", () async {
+      final partial = _Harness(failCommandDiscovery: true);
+      addTearDown(partial.dispose);
+      final session = await partial.plugin.createSession(
+        directory: partial.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      await expectLater(
+        partial.plugin.sendCommand(
+          sessionId: session.id,
+          promptId: "prompt-review",
+          command: "review",
+          arguments: "src",
+          userVisibleArguments: "src",
+          variant: null,
+          agent: null,
+          model: null,
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error is PluginStaleOptionsException, "stale options", isFalse)
+              .having((error) => error.statusCode, "status", 503),
+        ),
+      );
+      expect(partial.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
     test("starts an empty session through command acceptance and rejects missing paths", () async {
@@ -268,7 +332,7 @@ void main() {
     });
 
     test("an upstream compact command remains an ordinary slash command", () async {
-      final custom = _Harness(catalogCommand: PiCatalogService.compactionCommandName);
+      final custom = _Harness(failCommandDiscovery: false, catalogCommand: PiCatalogService.compactionCommandName);
       addTearDown(custom.dispose);
       final commands = await custom.plugin.getCommands(projectId: custom.project.path);
       expect(commands, hasLength(1));
@@ -496,7 +560,7 @@ void main() {
     });
 
     test("shutdown bounds stalled process teardown by its caller budget", () async {
-      final bounded = _Harness(stdinCloseCompletes: false);
+      final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
         directory: bounded.project.path,
@@ -517,7 +581,7 @@ void main() {
     });
 
     test("API disposal cannot lock in a longer lifecycle shutdown budget", () async {
-      final bounded = _Harness(stdinCloseCompletes: false);
+      final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
         directory: bounded.project.path,
@@ -540,7 +604,11 @@ void main() {
   });
 }
 
-final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "review"}) {
+final class _Harness({
+  required bool failCommandDiscovery,
+  bool stdinCloseCompletes = true,
+  String catalogCommand = "review",
+}) {
   this {
     root = Directory.systemTemp.createTempSync("pi-plugin-");
     project = Directory("${root.path}/project")..createSync();
@@ -553,7 +621,14 @@ final class _Harness({bool stdinCloseCompletes = true, String catalogCommand = "
       processFactory: ({required spec}) async {
         final process = FakePiProcess(stdinCloseCompletes: stdinCloseCompletes);
         processes.add((spec: spec, process: process));
-        unawaited(_answerProcess(process: process, spec: spec, catalogCommand: catalogCommand));
+        unawaited(
+          _answerProcess(
+            process: process,
+            spec: spec,
+            catalogCommand: catalogCommand,
+            failCommandDiscovery: failCommandDiscovery,
+          ),
+        );
         return process;
       },
       commandExecutor: commands,
@@ -613,6 +688,7 @@ Future<void> _answerProcess({
   required FakePiProcess process,
   required PiLaunchSpec spec,
   required String catalogCommand,
+  required bool failCommandDiscovery,
 }) async {
   final answered = <String>{};
   while (!process.killed && !process.stdinClosed) {
@@ -655,6 +731,8 @@ Future<void> _answerProcess({
               "levels": ["high"],
             },
           );
+        case "get_commands" when failCommandDiscovery:
+          process.emitFailure(id: id, command: type, error: "command discovery temporarily unavailable");
         case "get_commands":
           process.emitResponse(
             id: id,

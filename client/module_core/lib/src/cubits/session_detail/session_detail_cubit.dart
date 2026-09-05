@@ -1736,7 +1736,7 @@ class SessionDetailCubit(
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
-                optionsRecovered = await _refreshStalePromptOptions();
+                optionsRecovered = await _refreshStalePromptOptions(rejectedSubmission: submission);
               } finally {
                 _stalePromptOptionsRefreshInFlight = false;
               }
@@ -1778,8 +1778,27 @@ class SessionDetailCubit(
   /// Rediscovers the catalog after the bridge rejected a send for naming an
   /// option it no longer has. The user is waiting on this one, so it reports
   /// both outcomes through the notice stream.
-  Future<bool> _refreshStalePromptOptions() {
-    return _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: true);
+  Future<bool> _refreshStalePromptOptions({required QueuedSessionSubmission rejectedSubmission}) async {
+    final recovered = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
+    if (isClosed) return false;
+    if (!recovered) {
+      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+      return false;
+    }
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return false;
+    // A cache update may have overtaken the forced refresh. Reconcile against
+    // the catalog actually applied to the screen in either case.
+    final rejectedCommand = rejectedSubmission.command;
+    final commandUnavailable =
+        rejectedCommand != null && !latest.availableCommands.any((command) => command.name == rejectedCommand);
+    if (commandUnavailable) {
+      _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
+    }
+    _noticeStream.add(
+      commandUnavailable ? SessionDetailNotice.commandUnavailable : SessionDetailNotice.promptOptionsUpdated,
+    );
+    return true;
   }
 
   /// Brings the options on screen up to date with the bridge and re-validates
@@ -1954,7 +1973,7 @@ class SessionDetailCubit(
       QueuedTextSubmission(:final inputMode) => AnalyticsSubmission.text(
         inputMode: _analyticsInputMode(inputMode),
       ),
-      QueuedCommandSubmission() => const AnalyticsSubmission.command(),
+      QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
     };
     _reportProductEvent(
       event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),

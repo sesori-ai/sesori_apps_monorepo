@@ -865,6 +865,24 @@ void main() {
     );
   });
 
+  testWidgets("explains when a queued command is no longer available", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(SessionDetailNotice.commandUnavailable);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.text("That command is no longer available. Remove it from the queue to continue."),
+      findsOneWidget,
+    );
+  });
+
   testWidgets("closes an open question when it leaves pending state", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final states = StreamController<SessionDetailState>.broadcast();

@@ -21,6 +21,17 @@ sealed class const QueuedSessionSubmission() {
     required AgentModel? agentModel,
   }) = QueuedCommandSubmission;
 
+  /// A command rejected before acceptance because a refreshed catalog no
+  /// longer offers it. It stays visible and removable without being retried or
+  /// allowing later submissions to overtake it.
+  const factory unavailableCommand({
+    required String promptId,
+    required String text,
+    required String command,
+    required String? agent,
+    required AgentModel? agentModel,
+  }) = UnavailableQueuedCommandSubmission;
+
   /// Stable identity for this prompt across retries: the bridge queues,
   /// dedupes, and stamps the eventual transcript message under it.
   String get promptId;
@@ -64,6 +75,14 @@ sealed class const QueuedSessionSubmission() {
       agent: agent,
       agentModel: agentModel,
     ),
+    UnavailableQueuedCommandSubmission(:final promptId, :final text, :final command) =>
+      QueuedSessionSubmission.unavailableCommand(
+        promptId: promptId,
+        text: text,
+        command: command,
+        agent: agent,
+        agentModel: agentModel,
+      ),
   };
 }
 
@@ -92,6 +111,20 @@ final class const QueuedCommandSubmission({
   /// The bridge's command paths carry only the text part, so a queued command
   /// can never hold images. Keeping that off the variant means a command
   /// submission cannot silently strip attachments on its way to the bridge.
+  @override
+  List<ComposerAttachment> get attachments => const [];
+}
+
+final class const UnavailableQueuedCommandSubmission({
+  @override required final String promptId,
+  @override required final String text,
+  @override required final String command,
+  @override required final String? agent,
+  @override required final AgentModel? agentModel,
+}) extends QueuedSessionSubmission {
+  @override
+  ComposerInputMode get inputMode => ComposerInputMode.typed;
+
   @override
   List<ComposerAttachment> get attachments => const [];
 }

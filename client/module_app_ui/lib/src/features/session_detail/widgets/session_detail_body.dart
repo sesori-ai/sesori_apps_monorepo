@@ -72,6 +72,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         context.loc.sessionDetailPromptOptionsRecoveryFailed,
         PregoPopupAlertsNotificationsVariant.error,
       ),
+      SessionDetailNotice.commandUnavailable => (
+        context.loc.sessionDetailCommandUnavailable,
+        PregoPopupAlertsNotificationsVariant.error,
+      ),
     };
     PregoPopupAlertPresenter.of(context).show(title: title, variant: variant);
   }

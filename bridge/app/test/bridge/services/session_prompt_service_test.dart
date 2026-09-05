@@ -278,6 +278,26 @@ void main() {
       expect(plugin.lastSendCommand, isNull);
     });
 
+    test("invalidates the options cache when a command leaves the plugin catalog", () async {
+      plugin.sendCommandError = const PluginStaleOptionsException(
+        "sendCommand",
+        message: "command unavailable",
+      );
+
+      await expectLater(
+        sendCommand(command: "removed-command"),
+        throwsA(
+          isA<StaleSessionPromptOptionsException>().having(
+            (error) => error.cause,
+            "cause",
+            isA<PluginStaleOptionsException>(),
+          ),
+        ),
+      );
+
+      expect(optionsService.explicitInvalidations.single, (pluginId: "fake", projectId: "/repo"));
+    });
+
     test("invalidates the options cache and rethrows when the plugin reports stale options", () async {
       plugin.sendPromptError = const PluginStaleOptionsException("sendPrompt", message: "unsupported agent");
 

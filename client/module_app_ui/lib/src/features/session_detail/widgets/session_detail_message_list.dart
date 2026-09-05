@@ -265,18 +265,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
-    final previous = <QueuedSessionSubmission>{
-      ?oldWidget.sendingSubmission,
-      ...oldWidget.queuedMessages,
+    final previousPromptIds = <String>{
+      ?oldWidget.sendingSubmission?.promptId,
+      for (final submission in oldWidget.queuedMessages) submission.promptId,
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
-      ...oldWidget.awaitingBridgeSubmissions,
+      for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
     };
     return [
       ?widget.sendingSubmission,
       ...widget.queuedMessages,
       ...widget.awaitingBridgeSubmissions,
-    ].any((submission) => !previous.contains(submission));
+    ].any((submission) => !previousPromptIds.contains(submission.promptId));
   }
 
   List<String> _rowIdsFor({
@@ -503,6 +503,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             localAttachments: submission.attachments,
             presentation: transientSubmission.isSending
                 ? const QueuedMessageBubblePresentation.sending()
+                : submission is UnavailableQueuedCommandSubmission
+                ? QueuedMessageBubblePresentation.commandUnavailable(
+                    onRemove: onCancelQueuedMessage == null
+                        ? null
+                        : () => _cancelQueuedSubmission(submission: submission),
+                  )
                 : transientSubmission.awaitingBridge || onCancelQueuedMessage == null
                 ? const QueuedMessageBubblePresentation.pendingReadOnly()
                 : QueuedMessageBubblePresentation.pending(
