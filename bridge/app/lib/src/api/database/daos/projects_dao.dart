@@ -13,8 +13,8 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
   }
 
   /// Creation and last-activity timestamps for [projectIds], keyed by id; an
-  /// id with no row is absent. Projects to the three columns the activity
-  /// reconciliation reads instead of loading every project row.
+  /// id with no row is absent. The query selects only the three columns the
+  /// activity reconciliation reads instead of loading every project row.
   Future<Map<String, ({int createdAt, int updatedAt})>> getActivityTimestamps({required Set<String> projectIds}) async {
     if (projectIds.isEmpty) return const {};
     final query = selectOnly(projectsTable)
