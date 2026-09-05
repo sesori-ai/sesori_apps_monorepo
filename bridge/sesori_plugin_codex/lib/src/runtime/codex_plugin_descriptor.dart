@@ -423,23 +423,21 @@ class const CodexPluginDescriptor({
     }
 
     const manifest = CodexRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: RuntimeVersionValidator(
-          commandExecutor: HostProcessCommandExecutor(
-            processes: host.processes,
-            runInShell: io.Platform.isWindows,
-            maxCapturedOutputCharactersPerStream: null,
-          ),
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
           manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
-        ),
-        inventory: const ManagedRuntimeInventory(manifest: manifest),
-      ),
-      fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
-    ).provision(host: host, explicitExecutablePath: null);
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: HostProcessCommandExecutor(
+              processes: host.processes,
+              runInShell: io.Platform.isWindows,
+              maxCapturedOutputCharactersPerStream: null,
+            ),
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+          ),
+          fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
+        )
+        .provision(host: host, explicitExecutablePath: null);
   }
 
   @override
@@ -654,38 +652,10 @@ class const CodexPluginDescriptor({
     // readiness probe but stalls the handshake must not hang start() under the
     // bridge's cross-instance startup mutex. Past the budget the cold-start
     // keeps running in the background and the plugin starts degraded.
-    final coldStart = api.initialize();
-    var budgetExceeded = false;
-    // The sink keeps a post-budget failure from surfacing as an unhandled async
-    // error once the await below has moved on; the awaited path observes (and
-    // logs) every pre-budget failure itself.
-    unawaited(
-      coldStart.catchError((Object error, StackTrace stackTrace) {
-        if (budgetExceeded) {
-          Log.w("[codex] cold-start failed after the start budget: $error");
-        }
-      }),
-    );
-    try {
-      await coldStart.timeout(
-        _coldStartBudget,
-        onTimeout: () {
-          budgetExceeded = true;
-          Log.w(
-            "[codex] cold-start did not finish within ${_coldStartBudget.inSeconds}s — "
-            "starting degraded while it keeps running in the background",
-          );
-        },
-      );
-      if (budgetExceeded) {
-        reporter.markDegradedNow();
-      } else {
-        reporter.markConnected();
-      }
-    } on Object catch (error) {
-      Log.w("[codex] cold-start did not complete cleanly: $error");
-      reporter.markDegradedNow();
-    }
+    await ManagedRuntimeColdStartService(
+      budget: _coldStartBudget,
+      logTag: "codex",
+    ).run(coldStart: api.initialize(), reporter: reporter);
 
     // The cold-start is a phase boundary: an abort observed here must roll back
     // everything acquired so far (api transport, monitor, the owned child)
