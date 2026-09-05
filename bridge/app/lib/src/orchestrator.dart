@@ -970,7 +970,7 @@ class OrchestratorSession._({
         unawaited(_processPluginEventInOrder(source));
       },
       onError: (Object e, StackTrace st) {
-        Log.w("plugin event stream error: $e");
+        Log.w("plugin event stream error", e, st);
         unawaited(
           _failureReporter.recordFailure(
             error: e,
@@ -1637,7 +1637,7 @@ class OrchestratorSession._({
         );
       }
     } catch (e, st) {
-      Log.e("[sse] error processing event $eventType: $e\n$st");
+      Log.e("[sse] error processing event $eventType", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
@@ -1861,7 +1861,7 @@ class OrchestratorSession._({
         projects: await _sessionRepository.getProjectActivitySummaries(),
       );
     } catch (e, st) {
-      Log.e("[sse] error building projects summary: $e\n$st");
+      Log.e("[sse] error building projects summary", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
@@ -1978,14 +1978,14 @@ class OrchestratorSession._({
       try {
         cachedToken = _accessTokenProvider.accessToken;
       } on Object {
-        Log.w("Token refresh failed and no cached token is available; deferring reconnect: $e");
+        Log.w("Token refresh failed and no cached token is available; deferring reconnect", e);
         return false;
       }
       if (cachedToken.isEmpty) {
-        Log.w("Token refresh failed and the cached token is empty; deferring reconnect: $e");
+        Log.w("Token refresh failed and the cached token is empty; deferring reconnect", e);
         return false;
       }
-      Log.w("Token refresh failed; reconnecting with the cached token: $e");
+      Log.w("Token refresh failed; reconnecting with the cached token", e);
       return true;
     }
   }
@@ -2136,8 +2136,8 @@ class OrchestratorSession._({
           try {
             encrypted = await _keyExchangeManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
-          } catch (e) {
-            Log.e("failed key exchange for connId $connID: $e");
+          } catch (e, st) {
+            Log.e("failed key exchange for connId $connID", e, st);
             break processMessage;
           }
 

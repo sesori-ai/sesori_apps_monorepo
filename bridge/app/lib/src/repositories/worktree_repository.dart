@@ -15,13 +15,12 @@ import "models/worktree_types.dart";
 const _worktreeDir = ".worktrees";
 
 class WorktreeRepository({
-    required final ProjectsDao _projectsDao,
-    required final SessionDao _sessionDao,
-    required final FilesystemApi _filesystemApi,
-    required final GitCliApi _gitApi,
-    required final PluginRuntime _runtime,
-  }) {
-
+  required final ProjectsDao _projectsDao,
+  required final SessionDao _sessionDao,
+  required final FilesystemApi _filesystemApi,
+  required final GitCliApi _gitApi,
+  required final PluginRuntime _runtime,
+}) {
   Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
     required String parentSessionId,
   }) async {
@@ -196,7 +195,7 @@ class WorktreeRepository({
         startPoint: startPointResult.ref,
       );
     } on Object catch (error) {
-      Log.w("[WorktreeRepository] failed to resolve base branch/commit for $projectPath: $error");
+      Log.w("[WorktreeRepository] failed to resolve base branch/commit for $projectPath", error);
       return null;
     }
   }
@@ -300,4 +299,6 @@ class WorktreeRepository({
   }
 }
 
-enum _WorktreeOperation() { deleteWorkspace }
+enum _WorktreeOperation() {
+  deleteWorkspace,
+}

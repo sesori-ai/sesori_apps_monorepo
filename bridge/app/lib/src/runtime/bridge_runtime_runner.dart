@@ -475,8 +475,8 @@ class const BridgeRuntimeRunner._() {
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();
-        } on Object catch (error) {
-          Log.w("Update reconciliation failed (non-fatal): $error");
+        } on Object catch (error, stackTrace) {
+          Log.w("Update reconciliation failed (non-fatal)", error, stackTrace);
         }
       }
 
@@ -683,8 +683,8 @@ class const BridgeRuntimeRunner._() {
         if (updatesEnabledForThisInstall) {
           try {
             await updateLifecycle.reconcile();
-          } on Object catch (error) {
-            Log.w("Update reconciliation after predecessor exit failed (non-fatal): $error");
+          } on Object catch (error, stackTrace) {
+            Log.w("Update reconciliation after predecessor exit failed (non-fatal)", error, stackTrace);
           }
         }
       }
@@ -1276,7 +1276,7 @@ class const BridgeRuntimeRunner._() {
         // method doc), so surface the failure instead of degrading.
         rethrow;
       }
-      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity: $error");
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity", error);
     }
     return _fallbackCurrentBridgeIdentity(
       currentUser: currentUser,

@@ -104,9 +104,9 @@ class PushDispatcher({
     unawaited(
       _client.sendNotification(payload).catchError((Object e) {
         if (e is TokenRefreshException || (e is PushSendException && e.statusCode == 401)) {
-          Log.e("[push] auth failure, credentials may need re-authentication: $e");
+          Log.e("[push] auth failure, credentials may need re-authentication", e);
         } else {
-          Log.w("[push] send error: $e");
+          Log.w("[push] send error", e);
         }
       }),
     );

@@ -80,7 +80,7 @@ class BridgeHostProcessService({
       // caller stop it, so nothing thrown by the process-table read — Errors
       // included — may fail the spawn. Fall back to the partial spawn-time
       // identity.
-      Log.w("Post-spawn identity inspection failed for pid ${spawnIdentity.pid}\n$error");
+      Log.w("Post-spawn identity inspection failed for pid ${spawnIdentity.pid}", error);
       return spawnIdentity;
     }
 

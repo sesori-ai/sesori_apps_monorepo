@@ -161,7 +161,7 @@ class BridgeEventMapper({
           ),
       };
     } catch (e, st) {
-      Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");
+      Log.e("[sse-mapper] error mapping event ${event.runtimeType}", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
