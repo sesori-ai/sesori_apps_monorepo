@@ -24,6 +24,7 @@ import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
+import "../shared/optimistic_rename_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -39,57 +40,6 @@ enum _ProjectFetchOutcome() {
   applied,
   failed,
   superseded,
-}
-
-/// Tracks every in-flight rename so out-of-order completions preserve the
-/// newest confirmed name and the latest unresolved user intent.
-final class _ProjectRenameState({required String? confirmedName}) {
-  final Map<int, String> _pendingNames = {};
-  int _visibleToken = 0;
-  late String _visibleName;
-  int _confirmedToken = 0;
-  String? _confirmedName = confirmedName;
-
-  String get visibleName => _visibleName;
-  String? get confirmedName => _confirmedName;
-  bool get isSettled => _pendingNames.isEmpty;
-
-  void begin({required int token, required String name}) {
-    _pendingNames[token] = name;
-    _visibleToken = token;
-    _visibleName = name;
-  }
-
-  void complete({required int token, required String name, required bool succeeded}) {
-    _pendingNames.remove(token);
-    if (succeeded && token > _confirmedToken) {
-      _confirmedToken = token;
-      _confirmedName = name;
-    }
-    if (!succeeded && token == _visibleToken && _pendingNames.isNotEmpty) {
-      _selectLatestVisibleName();
-    }
-  }
-
-  void _selectLatestVisibleName() {
-    final firstPendingRename = _pendingNames.entries.first;
-    var latestPendingToken = firstPendingRename.key;
-    var latestPendingName = firstPendingRename.value;
-    for (final MapEntry(:key, :value) in _pendingNames.entries.skip(1)) {
-      if (key > latestPendingToken) {
-        latestPendingToken = key;
-        latestPendingName = value;
-      }
-    }
-    final confirmedName = _confirmedName;
-    if (_confirmedToken > latestPendingToken && confirmedName != null) {
-      _visibleToken = _confirmedToken;
-      _visibleName = confirmedName;
-      return;
-    }
-    _visibleToken = latestPendingToken;
-    _visibleName = latestPendingName;
-  }
 }
 
 class ProjectListCubit(
@@ -109,7 +59,7 @@ class ProjectListCubit(
 
   /// Keeps pre-rename list responses from repainting an old name while the
   /// mutation is still pending.
-  final Map<String, _ProjectRenameState> _renameStateByProjectId = {};
+  final Map<String, OptimisticRenameTracker> _renameStateByProjectId = {};
   int _nextRenameToken = 0;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
@@ -645,7 +595,7 @@ class ProjectListCubit(
   Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
     return projects.map((project) {
       final renameState = _renameStateByProjectId[project.id];
-      return renameState == null ? project : project.copyWith(name: renameState.visibleName);
+      return renameState == null ? project : project.copyWith(name: renameState.visibleValue);
     });
   }
 
@@ -715,9 +665,9 @@ class ProjectListCubit(
     final token = ++_nextRenameToken;
     final renameState = _renameStateByProjectId.putIfAbsent(
       projectId,
-      () => _ProjectRenameState(confirmedName: currentState.projects[index].name),
+      () => OptimisticRenameTracker(confirmedValue: currentState.projects[index].name),
     );
-    renameState.begin(token: token, name: name);
+    renameState.begin(token: token, value: name);
     final projects = [...currentState.projects];
     projects[index] = projects[index].copyWith(name: name);
     _emitOrdered(
@@ -775,7 +725,7 @@ class ProjectListCubit(
   }) {
     final renameState = _renameStateByProjectId[projectId];
     if (renameState == null) return;
-    renameState.complete(token: token, name: name, succeeded: succeeded);
+    renameState.complete(token: token, value: name, succeeded: succeeded);
     if (!renameState.isSettled) {
       final currentState = state;
       if (!isClosed && currentState is ProjectListLoaded) {
@@ -794,7 +744,7 @@ class ProjectListCubit(
     final index = currentState.projects.indexWhere((project) => project.id == projectId);
     final projects = [...currentState.projects];
     if (index >= 0) {
-      projects[index] = projects[index].copyWith(name: renameState.confirmedName);
+      projects[index] = projects[index].copyWith(name: renameState.confirmedValue);
     }
     _emitOrdered(
       loaded: currentState,
