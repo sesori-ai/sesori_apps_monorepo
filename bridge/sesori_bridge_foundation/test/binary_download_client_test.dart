@@ -61,6 +61,47 @@ void main() {
     expect(progress.last.fraction, equals(1.0));
   });
 
+  test("an unwritable destination fails the download instead of crashing the isolate", () async {
+    final tempDir = await Directory.systemTemp.createTemp("binary-download-client");
+    addTearDown(() async {
+      if (tempDir.existsSync()) {
+        final destination = File(p.join(tempDir.path, "asset.tar.gz"));
+        if (destination.existsSync()) Process.runSync("chmod", ["600", destination.path]);
+        await tempDir.delete(recursive: true);
+      }
+    });
+    final destination = p.join(tempDir.path, "asset.tar.gz");
+    // Read-only, matching a managed runtime directory the bridge cannot write.
+    File(destination).writeAsStringSync("");
+    Process.runSync("chmod", ["400", destination]);
+
+    // Several chunks with real gaps between them: a single-chunk body would
+    // surface the failure from the awaited close() and hide the defect. An
+    // IOSink defers its open to the first write, so with more writes in flight
+    // the open error escaped as an unhandled asynchronous error and terminated
+    // the bridge process instead of failing this download.
+    Stream<List<int>> body() async* {
+      for (var chunk = 0; chunk < 5; chunk++) {
+        yield List<int>.filled(1024, 7);
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    final client = MockClient.streaming(
+      (_, _) async => http.StreamedResponse(body(), 200, contentLength: 5 * 1024),
+    );
+    final download = BinaryDownloadClient(httpClient: client)
+        .download(url: "https://example.test/asset.tar.gz", destinationPath: destination)
+        .toList();
+
+    await expectLater(
+      download,
+      throwsA(
+        isA<DownloadException>().having((error) => error.kind, "kind", DownloadFailureKind.failed),
+      ),
+    );
+  }, skip: Platform.isWindows ? "POSIX permission bits do not gate writes on Windows" : null);
+
   test("a connection-phase failure is wrapped as a network DownloadException", () async {
     final client = _SendErrorClient(const SocketException("connection refused"));
     await expectLater(
