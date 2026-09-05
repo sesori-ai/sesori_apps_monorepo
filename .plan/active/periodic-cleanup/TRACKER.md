@@ -22,8 +22,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Merged | [#1322](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1322) |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Merged | [#1323](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1323) |
 | 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Merged | [#1324](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1324) |
-| 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | In review | [#1326](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1326) |
-| 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | In progress (local, awaiting step 15 merge) | — |
+| 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Merged | [#1326](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1326) |
+| 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | In review | [#1328](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1328) |
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Proposed | — |
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Proposed | — |
 | 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Proposed | — |
