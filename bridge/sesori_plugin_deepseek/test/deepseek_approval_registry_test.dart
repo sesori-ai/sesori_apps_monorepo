@@ -53,6 +53,8 @@ void main() {
       childSessions: childSessionTracker,
       api: api,
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+      delegationTracker: DeepSeekDelegationTracker(),
     );
     final plugin = DeepSeekPlugin(
       launchSpec: const AcpLaunchSpec(command: "deepseek", args: []),
@@ -67,8 +69,9 @@ void main() {
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: const DeepSeekMessageTimeParser(),
       ),
-      deepSeekSessionService: const DeepSeekSessionService(
-        repository: DeepSeekSessionRepository(api: api),
+      deepSeekSessionService: DeepSeekSessionService(
+        repository: const DeepSeekSessionRepository(api: api),
+        childSessions: childSessionTracker,
       ),
       deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
         repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),

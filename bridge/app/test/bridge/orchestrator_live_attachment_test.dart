@@ -324,6 +324,7 @@ class _LiveAttachmentHarness({
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

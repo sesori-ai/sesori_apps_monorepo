@@ -49,6 +49,7 @@ final class PiPlugin._({
     required Duration catalogTimeout,
     required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
+    required Stream<Duration?> idleTimeoutChanges,
     required Duration editorTimeout,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
@@ -90,6 +91,7 @@ final class PiPlugin._({
       extensionUiService: extensionUiService,
       clock: clock,
       resolveIdleTimeout: resolveIdleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges,
     );
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
@@ -362,6 +364,13 @@ final class PiPlugin._({
     }
     final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
     if (catalogCommand == null) {
+      if (options.completeness != PluginSessionOptionsCompleteness.complete) {
+        throw const PluginOperationException(
+          "sendCommand",
+          statusCode: 503,
+          message: "Pi command availability could not be confirmed because catalog discovery was incomplete.",
+        );
+      }
       throw const PluginStaleOptionsException(
         "sendCommand",
         message: "Pi no longer offers this command.",

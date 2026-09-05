@@ -35,7 +35,62 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _ProjectFetchOutcome() { applied, failed, superseded }
+enum _ProjectFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
+
+/// Tracks every in-flight rename so out-of-order completions preserve the
+/// newest confirmed name and the latest unresolved user intent.
+final class _ProjectRenameState({required String? confirmedName}) {
+  final Map<int, String> _pendingNames = {};
+  int _visibleToken = 0;
+  late String _visibleName;
+  int _confirmedToken = 0;
+  String? _confirmedName = confirmedName;
+
+  String get visibleName => _visibleName;
+  String? get confirmedName => _confirmedName;
+  bool get isSettled => _pendingNames.isEmpty;
+
+  void begin({required int token, required String name}) {
+    _pendingNames[token] = name;
+    _visibleToken = token;
+    _visibleName = name;
+  }
+
+  void complete({required int token, required String name, required bool succeeded}) {
+    _pendingNames.remove(token);
+    if (succeeded && token > _confirmedToken) {
+      _confirmedToken = token;
+      _confirmedName = name;
+    }
+    if (!succeeded && token == _visibleToken && _pendingNames.isNotEmpty) {
+      _selectLatestVisibleName();
+    }
+  }
+
+  void _selectLatestVisibleName() {
+    final firstPendingRename = _pendingNames.entries.first;
+    var latestPendingToken = firstPendingRename.key;
+    var latestPendingName = firstPendingRename.value;
+    for (final MapEntry(:key, :value) in _pendingNames.entries.skip(1)) {
+      if (key > latestPendingToken) {
+        latestPendingToken = key;
+        latestPendingName = value;
+      }
+    }
+    final confirmedName = _confirmedName;
+    if (_confirmedToken > latestPendingToken && confirmedName != null) {
+      _visibleToken = _confirmedToken;
+      _visibleName = confirmedName;
+      return;
+    }
+    _visibleToken = latestPendingToken;
+    _visibleName = latestPendingName;
+  }
+}
 
 class ProjectListCubit(
   final ProjectRepository _projectRepository,
@@ -51,6 +106,11 @@ class ProjectListCubit(
   required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+
+  /// Keeps pre-rename list responses from repainting an old name while the
+  /// mutation is still pending.
+  final Map<String, _ProjectRenameState> _renameStateByProjectId = {};
+  int _nextRenameToken = 0;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
@@ -570,7 +630,7 @@ class ProjectListCubit(
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
   }) {
     final ordered = _projectListService.orderProjects(
-      projects: projects,
+      projects: _withOptimisticProjectNames(projects: projects),
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
     );
@@ -580,6 +640,13 @@ class ProjectListCubit(
         unseenByProjectId: _unseenByProjectId(ordered),
       ),
     );
+  }
+
+  Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
+    return projects.map((project) {
+      final renameState = _renameStateByProjectId[project.id];
+      return renameState == null ? project : project.copyWith(name: renameState.visibleName);
+    });
   }
 
   /// Creates a new project named [name] below [parentPath].
@@ -636,18 +703,104 @@ class ProjectListCubit(
     return _projectRepository.parentHostPath(path: path);
   }
 
-  /// Renames the project with [projectId] to [name].
-  /// Returns `true` on success (and refreshes the project list), `false` on error.
+  /// Renames a project optimistically. Returns `false` after restoring the
+  /// prior name when the bridge rejects the rename.
   Future<bool> renameProject({required String projectId, required String name}) async {
-    final response = await _projectRepository.renameProject(projectId: projectId, name: name);
-    if (isClosed) return false;
+    final currentState = state;
+    if (currentState is! ProjectListLoaded) return false;
+
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    if (index < 0) return false;
+
+    final token = ++_nextRenameToken;
+    final renameState = _renameStateByProjectId.putIfAbsent(
+      projectId,
+      () => _ProjectRenameState(confirmedName: currentState.projects[index].name),
+    );
+    renameState.begin(token: token, name: name);
+    final projects = [...currentState.projects];
+    projects[index] = projects[index].copyWith(name: name);
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
+
+    final ApiResponse<Project> response;
+    try {
+      response = await _projectRepository.renameProject(projectId: projectId, name: name);
+    } on Object {
+      _completeProjectRename(
+        projectId: projectId,
+        token: token,
+        name: name,
+        succeeded: false,
+      );
+      return false;
+    }
+
     switch (response) {
       case SuccessResponse():
-        await refreshProjects();
+        _completeProjectRename(
+          projectId: projectId,
+          token: token,
+          name: name,
+          succeeded: true,
+        );
+        if (!isClosed) {
+          unawaited(
+            _refreshProjects(
+              force: true,
+              catalogRefresh: false,
+            ),
+          );
+        }
         return true;
       case ErrorResponse():
+        _completeProjectRename(
+          projectId: projectId,
+          token: token,
+          name: name,
+          succeeded: false,
+        );
         return false;
     }
+  }
+
+  void _completeProjectRename({
+    required String projectId,
+    required int token,
+    required String name,
+    required bool succeeded,
+  }) {
+    final renameState = _renameStateByProjectId[projectId];
+    if (renameState == null) return;
+    renameState.complete(token: token, name: name, succeeded: succeeded);
+    if (!renameState.isSettled) {
+      final currentState = state;
+      if (!isClosed && currentState is ProjectListLoaded) {
+        _emitOrdered(
+          loaded: currentState,
+          projects: currentState.projects,
+          activityByProjectId: _sseEventTracker.currentSessionActivity,
+        );
+      }
+      return;
+    }
+
+    _renameStateByProjectId.remove(projectId);
+    final currentState = state;
+    if (isClosed || currentState is! ProjectListLoaded) return;
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    final projects = [...currentState.projects];
+    if (index >= 0) {
+      projects[index] = projects[index].copyWith(name: renameState.confirmedName);
+    }
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
   }
 
   /// Discovers an existing project at [path].
@@ -758,7 +911,7 @@ class ProjectListCubit(
               )
               .projects;
           final sortedProjects = _projectListService.orderProjects(
-            projects: mergedProjects,
+            projects: _withOptimisticProjectNames(projects: mergedProjects),
             activityByProjectId: _sseEventTracker.currentSessionActivity,
             listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
           );

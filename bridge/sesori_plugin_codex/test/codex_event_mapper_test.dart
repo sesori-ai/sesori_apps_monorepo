@@ -71,9 +71,9 @@ void main() {
         BridgeSseSessionStatus(:final sessionID, :final status) => {
           "type": "session.status",
           "sessionID": sessionID,
-          "status": status,
+          "status": status.toJson(),
         },
-        BridgeSseMessageUpdated(:final info) => {"type": "message.updated", "info": info},
+        BridgeSseMessageUpdated(:final info) => {"type": "message.updated", "info": info.toJson()},
         _ => throw ArgumentError("parseAsSesori: unhandled ${event.runtimeType}"),
       };
       return shared.SesoriSseEvent.fromJson(payload);
@@ -164,6 +164,42 @@ void main() {
       expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
     });
 
+    test("minimal child updates preserve their recorded parent", () {
+      mapper.setThreadParent(
+        threadId: "child-parent-retained",
+        parentId: "root-parent-retained",
+      );
+
+      final turnEvents = mapper.map(
+        const CodexServerNotification(
+          method: "turn/started",
+          params: {
+            "threadId": "child-parent-retained",
+            "turn": {"id": "turn-1", "startedAt": 1779293091},
+          },
+        ),
+      );
+      final activity = shared.Session.fromJson(
+        turnEvents.whereType<BridgeSseSessionUpdated>().single.info,
+      );
+      expect(activity.parentID, "root-parent-retained");
+
+      final nameEvents = mapper.map(
+        const CodexServerNotification(
+          method: "thread/name/updated",
+          params: {
+            "threadId": "child-parent-retained",
+            "threadName": "Renamed child",
+          },
+        ),
+      );
+      final renamed = shared.Session.fromJson(
+        (nameEvents.single as BridgeSseSessionUpdated).info,
+      );
+      expect(renamed.parentID, "root-parent-retained");
+      mapper.forgetThread("child-parent-retained");
+    });
+
     test("thread/started for a non-launch cwd emits that cwd's derived project id", () {
       // The bridge derives one project per cwd, so a session started outside the
       // launch dir must carry its own cwd as the project id — otherwise the
@@ -251,7 +287,7 @@ void main() {
 
       final status = events.whereType<BridgeSseSessionStatus>().single;
       expect(status.sessionID, "t-activity");
-      expect(shared.SessionStatus.fromJson(status.status), isA<shared.SessionStatusBusy>());
+      expect(status.status, isA<PluginSessionStatusBusy>());
       expect(parseAsSesori(status), isA<shared.SesoriSessionStatus>());
     });
 
@@ -320,12 +356,12 @@ void main() {
       );
 
       expect(
-        shared.SessionStatus.fromJson((active.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (active.single as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(
-        shared.SessionStatus.fromJson((idle.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusIdle>(),
+        (idle.single as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusIdle>(),
       );
     });
 
@@ -349,8 +385,8 @@ void main() {
 
       expect(events, hasLength(2));
       final message = events[0] as BridgeSseMessageUpdated;
-      final parsed = shared.Message.fromJson(message.info);
-      expect(parsed, isA<shared.MessageUser>());
+      final parsed = message.info;
+      expect(parsed, isA<PluginMessageUser>());
       expect(parsed.id, "i-user");
       expect(parsed.sessionID, "t-1");
       expect(parseAsSesori(message), isA<shared.SesoriMessageUpdated>());
@@ -381,8 +417,8 @@ void main() {
         ),
       );
 
-      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
-      expect((parsed as shared.MessageUser).promptId, "prm_1");
+      final parsed = (events[0] as BridgeSseMessageUpdated).info;
+      expect((parsed as PluginMessageUser).promptId, "prm_1");
     });
 
     test("item userMessage typed in the codex CLI stays unattributed", () {
@@ -403,8 +439,8 @@ void main() {
         ),
       );
 
-      final parsed = shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info);
-      expect((parsed as shared.MessageUser).promptId, isNull);
+      final parsed = (events[0] as BridgeSseMessageUpdated).info;
+      expect((parsed as PluginMessageUser).promptId, isNull);
     });
 
     test("item userMessage hides bridge context while preserving authored content", () {
@@ -440,7 +476,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       expect(events, hasLength(3));
-      final user = shared.Message.fromJson((events.first as BridgeSseMessageUpdated).info) as shared.MessageUser;
+      final user = (events.first as BridgeSseMessageUpdated).info as PluginMessageUser;
       expect(user.promptId, "prm_user_content");
       final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
       expect(parts.first.type, PluginMessagePartType.text);
@@ -667,16 +703,16 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ),
       );
 
-      final startedUser = shared.Message.fromJson((userStarted.first as BridgeSseMessageUpdated).info);
-      final completedUser = shared.Message.fromJson((userCompleted.first as BridgeSseMessageUpdated).info);
-      final startedAssistant = shared.Message.fromJson((assistantStarted.first as BridgeSseMessageUpdated).info);
-      final completedAssistant = shared.Message.fromJson((assistantCompleted.first as BridgeSseMessageUpdated).info);
-      expect(startedUser.time, const shared.MessageTime(created: 1779293100123, completed: null));
+      final startedUser = (userStarted.first as BridgeSseMessageUpdated).info;
+      final completedUser = (userCompleted.first as BridgeSseMessageUpdated).info;
+      final startedAssistant = (assistantStarted.first as BridgeSseMessageUpdated).info;
+      final completedAssistant = (assistantCompleted.first as BridgeSseMessageUpdated).info;
+      expect(startedUser.time, const PluginMessageTime(created: 1779293100123, completed: null));
       expect(completedUser.time, startedUser.time);
-      expect(startedAssistant.time, const shared.MessageTime(created: 1779293101000, completed: null));
+      expect(startedAssistant.time, const PluginMessageTime(created: 1779293101000, completed: null));
       expect(
         completedAssistant.time,
-        const shared.MessageTime(created: 1779293101000, completed: 1779293102000),
+        const PluginMessageTime(created: 1779293101000, completed: 1779293102000),
       );
     });
 
@@ -724,8 +760,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       expect(
-        shared.Message.fromJson((completed.first as BridgeSseMessageUpdated).info).time,
-        const shared.MessageTime(created: 1779293103000, completed: 1779293104000),
+        (completed.first as BridgeSseMessageUpdated).info.time,
+        const PluginMessageTime(created: 1779293103000, completed: 1779293104000),
       );
     });
 
@@ -753,8 +789,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       expect(started, hasLength(2));
       expect(
-        shared.Message.fromJson((started[0] as BridgeSseMessageUpdated).info),
-        isA<shared.MessageAssistant>(),
+        (started[0] as BridgeSseMessageUpdated).info,
+        isA<PluginMessageAssistant>(),
       );
       final startedPart = (started[1] as BridgeSseMessagePartUpdated).part;
       expect(startedPart.tool, "compact");
@@ -789,7 +825,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
 
       expect(events, hasLength(2));
-      expect(shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info), isA<shared.MessageAssistant>());
+      expect((events[0] as BridgeSseMessageUpdated).info, isA<PluginMessageAssistant>());
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.type, PluginMessagePartType.text);
       expect(part.text, "Hi. What do you need changed?");
@@ -826,11 +862,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ),
       );
 
-      final message = shared.Message.fromJson(
-        (events[0] as BridgeSseMessageUpdated).info,
-      );
-      expect(message, isA<shared.MessageAssistant>());
-      final assistant = message as shared.MessageAssistant;
+      final message = (events[0] as BridgeSseMessageUpdated).info;
+      expect(message, isA<PluginMessageAssistant>());
+      final assistant = message as PluginMessageAssistant;
       expect(assistant.agent, equals("codex"));
       expect(assistant.providerID, equals("openai"));
       expect(assistant.modelID, equals("gpt-5.5"));
@@ -868,9 +902,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           },
         ),
       );
-      final assistant = shared.Message.fromJson(
-        (events[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant = (events[0] as BridgeSseMessageUpdated).info as PluginMessageAssistant;
       expect(assistant.modelID, equals("gpt-5.4-mini"));
       expect(assistant.providerID, equals("openai"));
 
@@ -885,9 +917,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           },
         ),
       );
-      final assistant2 = shared.Message.fromJson(
-        (events2[0] as BridgeSseMessageUpdated).info,
-      ) as shared.MessageAssistant;
+      final assistant2 = (events2[0] as BridgeSseMessageUpdated).info as PluginMessageAssistant;
       expect(assistant2.modelID, equals("gpt-5.5"));
     });
 
@@ -935,8 +965,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       expect(events, hasLength(2));
       expect(
-        shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info),
-        isA<shared.MessageAssistant>(),
+        (events[0] as BridgeSseMessageUpdated).info,
+        isA<PluginMessageAssistant>(),
       );
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.type, PluginMessagePartType.tool);
@@ -1029,8 +1059,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         "/usr/bin/false",
       );
       expect(
-        shared.Message.fromJson((running[0] as BridgeSseMessageUpdated).info).time,
-        shared.MessageTime(created: DateTime.utc(2026, 7, 23, 8).millisecondsSinceEpoch, completed: null),
+        (running[0] as BridgeSseMessageUpdated).info.time,
+        PluginMessageTime(created: DateTime.utc(2026, 7, 23, 8).millisecondsSinceEpoch, completed: null),
       );
       final rawPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       final latePart = (lateItem[1] as BridgeSseMessagePartUpdated).part;
@@ -1309,8 +1339,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final part = (events[1] as BridgeSseMessagePartUpdated).part;
       expect(part.state.status, PluginToolStatus.completed);
       expect(
-        shared.Message.fromJson((events[0] as BridgeSseMessageUpdated).info).time,
-        const shared.MessageTime(created: 1779293200000, completed: 1779293201000),
+        (events[0] as BridgeSseMessageUpdated).info.time,
+        const PluginMessageTime(created: 1779293200000, completed: 1779293201000),
       );
       rolloutLifecycle.clearRolloutTurn(threadId: "t-completed");
     });
@@ -1859,12 +1889,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       expect(events, hasLength(3));
       final event = events[1] as BridgeSseMessageUpdated;
-      final message = shared.Message.fromJson(event.info) as shared.MessageError;
+      final message = event.info as PluginMessageError;
       expect(message.id, "u-quota");
       expect(message.sessionID, "t-quota");
       expect(message.errorName, "CodexError");
       expect(message.errorMessage, "You've hit your usage limit.");
-      expect(message.time, const shared.MessageTime(created: 1700000010000, completed: 1700000010000));
+      expect(message.time, const PluginMessageTime(created: 1700000010000, completed: 1700000010000));
       expect(parseAsSesori(event), isA<shared.SesoriMessageUpdated>());
     });
 
@@ -1963,7 +1993,7 @@ class _ToolLifecycleHarness({
     final events = <BridgeSseEvent>[];
     for (final tool in _toolTracker.observeRolloutLine(threadId: threadId, line: line)) {
       events.addAll(
-        _eventMapper.mapProjectedTool(threadId: threadId, tool: tool),
+        _eventMapper.mapProjectedTool(threadId: threadId, tool: tool, children: const []),
       );
     }
     return events;
@@ -1994,7 +2024,7 @@ class _ToolLifecycleHarness({
     if (tool == null || threadId is! String) {
       return _eventMapper.map(notification);
     }
-    return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool);
+    return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool, children: const []);
   }
 
   void clearRolloutTurn({required String threadId}) {

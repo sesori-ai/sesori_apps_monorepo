@@ -34,11 +34,15 @@ class BridgePluginHostImpl({
   @override required final HostPortService ports,
   @override required final HostJsonStore store,
   required final Duration? Function() _resolveIdleTimeout,
+  required final Stream<Duration?> _pluginIdleTimeoutChanges,
 }) implements PluginHost {
   /// Live view over the bridge's runtime-mutable per-plugin idle timeout, so
   /// a settings change reaches the plugin without a restart.
   @override
   Duration? get pluginIdleTimeout => _resolveIdleTimeout();
+
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => _pluginIdleTimeoutChanges;
 
   /// Set by the bridge runner from `ensureRuntime`'s [ProvisionReady] result,
   /// after the host is built and before `start()` runs; `null` when the plugin

@@ -14,10 +14,12 @@ import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/codex_model_repository.dart";
 import "package:codex_plugin/src/repositories/codex_skill_repository.dart";
+import "package:codex_plugin/src/repositories/codex_sub_agent_tracker.dart";
 import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:codex_plugin/src/repositories/codex_tool_outcome_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_rollout_tool_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
@@ -275,7 +277,7 @@ void main() {
     await outcomes.recordError(sessionId: "session-1", callId: "call-1");
     final service = _newService(toolOutcomeRepository: outcomes);
 
-    await service.deleteSession(sessionId: "session-1");
+    await service.deleteSessionSubtree(sessionIds: const ["session-1"]);
 
     expect(await outcomes.readStatuses(sessionId: "session-1"), isEmpty);
   });
@@ -288,7 +290,7 @@ void main() {
       toolOutcomeRepository: outcomes,
     );
 
-    await service.deleteSession(sessionId: "session-1");
+    await service.deleteSessionSubtree(sessionIds: const ["session-1"]);
 
     expect(
       await outcomes.readStatuses(sessionId: "session-1"),
@@ -402,6 +404,8 @@ CodexSessionService _newService({
           configReader: CodexConfigReader(environment: const {}),
         ),
     toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
+    subAgentTracker: CodexSubAgentTracker(),
+    sessionMapper: const CodexSessionMapper(),
     launchDirectory: "/repo",
   );
 }
@@ -464,6 +468,7 @@ class _RecordingMessageRepository() extends CodexMessageRepository {
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -564,6 +569,9 @@ class _StubThreadRepository() extends CodexThreadRepository {
       updatedAt: null,
       model: null,
       modelProvider: null,
+      parentId: null,
+      agentNickname: null,
+      agentPath: null,
     );
   }
 

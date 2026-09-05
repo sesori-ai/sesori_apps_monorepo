@@ -554,7 +554,7 @@ as List<String>,
 /// @nodoc
 mixin _$PiCatalogCommandDto {
 
-@JsonKey(fromJson: _stringOrNull) String? get name;@JsonKey(fromJson: _stringOrNull) String? get description;@JsonKey(fromJson: _commandSource) PiCatalogCommandSource get source;
+@JsonKey(fromJson: _stringOrNull) String? get name;@JsonKey(fromJson: _stringOrNull) String? get description;@JsonKey(fromJson: _commandSource) PiCatalogCommandSource get source;@JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) String? get sourcePath;
 /// Create a copy of PiCatalogCommandDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -565,12 +565,12 @@ $PiCatalogCommandDtoCopyWith<PiCatalogCommandDto> get copyWith => _$PiCatalogCom
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourcePath, sourcePath) || other.sourcePath == sourcePath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,source);
+int get hashCode => Object.hash(runtimeType,name,description,source,sourcePath);
 
 
 
@@ -581,7 +581,7 @@ abstract mixin class $PiCatalogCommandDtoCopyWith<$Res>  {
   factory $PiCatalogCommandDtoCopyWith(PiCatalogCommandDto value, $Res Function(PiCatalogCommandDto) _then) = _$PiCatalogCommandDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _stringOrNull) String? description,@JsonKey(fromJson: _commandSource) PiCatalogCommandSource source
+@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _stringOrNull) String? description,@JsonKey(fromJson: _commandSource) PiCatalogCommandSource source,@JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) String? sourcePath
 });
 
 
@@ -598,12 +598,13 @@ class _$PiCatalogCommandDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiCatalogCommandDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = freezed,Object? description = freezed,Object? source = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = freezed,Object? description = freezed,Object? source = null,Object? sourcePath = freezed,}) {
   return _then(PiCatalogCommandDto(
 name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
-as PiCatalogCommandSource,
+as PiCatalogCommandSource,sourcePath: freezed == sourcePath ? _self.sourcePath : sourcePath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -615,12 +616,13 @@ as PiCatalogCommandSource,
 @JsonSerializable(createToJson: false)
 
 class _PiCatalogCommandDto implements PiCatalogCommandDto {
-  const _PiCatalogCommandDto({@JsonKey(fromJson: _stringOrNull) required this.name, @JsonKey(fromJson: _stringOrNull) required this.description, @JsonKey(fromJson: _commandSource) required this.source});
+  const _PiCatalogCommandDto({@JsonKey(fromJson: _stringOrNull) required this.name, @JsonKey(fromJson: _stringOrNull) required this.description, @JsonKey(fromJson: _commandSource) required this.source, @JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) required this.sourcePath});
   factory _PiCatalogCommandDto.fromJson(Map<String, dynamic> json) => _$PiCatalogCommandDtoFromJson(json);
 
 @override@JsonKey(fromJson: _stringOrNull) final  String? name;
 @override@JsonKey(fromJson: _stringOrNull) final  String? description;
 @override@JsonKey(fromJson: _commandSource) final  PiCatalogCommandSource source;
+@override@JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) final  String? sourcePath;
 
 /// Create a copy of PiCatalogCommandDto
 /// with the given fields replaced by the non-null parameter values.
@@ -632,12 +634,12 @@ _$PiCatalogCommandDtoCopyWith<_PiCatalogCommandDto> get copyWith => __$PiCatalog
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiCatalogCommandDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.source, source) || other.source == source)&&(identical(other.sourcePath, sourcePath) || other.sourcePath == sourcePath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,source);
+int get hashCode => Object.hash(runtimeType,name,description,source,sourcePath);
 
 
 
@@ -648,7 +650,7 @@ abstract mixin class _$PiCatalogCommandDtoCopyWith<$Res> implements $PiCatalogCo
   factory _$PiCatalogCommandDtoCopyWith(_PiCatalogCommandDto value, $Res Function(_PiCatalogCommandDto) _then) = __$PiCatalogCommandDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _stringOrNull) String? description,@JsonKey(fromJson: _commandSource) PiCatalogCommandSource source
+@JsonKey(fromJson: _stringOrNull) String? name,@JsonKey(fromJson: _stringOrNull) String? description,@JsonKey(fromJson: _commandSource) PiCatalogCommandSource source,@JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) String? sourcePath
 });
 
 
@@ -665,12 +667,13 @@ class __$PiCatalogCommandDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiCatalogCommandDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = freezed,Object? description = freezed,Object? source = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = freezed,Object? description = freezed,Object? source = null,Object? sourcePath = freezed,}) {
   return _then(_PiCatalogCommandDto(
 name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
-as PiCatalogCommandSource,
+as PiCatalogCommandSource,sourcePath: freezed == sourcePath ? _self.sourcePath : sourcePath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

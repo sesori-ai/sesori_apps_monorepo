@@ -13,6 +13,49 @@ import "package:web_socket_channel/web_socket_channel.dart";
 class _MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 
 void main() {
+  test("disconnect closes an active SSE stream without encryption errors", () async {
+    final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
+    final roomKeyStorage = _MockRoomKeyStorage();
+    when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
+    final socket = _FakeWebSocket();
+    final client = RelayClient.withChannelConnector(
+      relayHost: "relay.example.com",
+      cryptoService: RelayCryptoService(),
+      roomKeyStorage: roomKeyStorage,
+      authToken: null,
+      channelConnector: (_) => socket.channel,
+      boundedJsonEncoder: null,
+      maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+    );
+    final outgoing = StreamIterator<Object?>(socket.outgoing);
+    addTearDown(() async {
+      await outgoing.cancel();
+      await client.disconnect();
+      await socket.close();
+    });
+    final resumeReady = outgoing.moveNext();
+    final connectFuture = client.connect();
+    expect(await resumeReady.timeout(const Duration(seconds: 1)), isTrue);
+    final encryptor = RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
+    socket.serverSink.add(
+      await frame(utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())), encryptor: encryptor),
+    );
+    await connectFuture.timeout(const Duration(seconds: 1));
+    final sseClosed = client.subscribeSse("/event").drain<void>();
+    expect(await outgoing.moveNext().timeout(const Duration(seconds: 1)), isTrue);
+
+    final socketClosed = outgoing.moveNext();
+    final logs = <String>[];
+    await runZoned(
+      client.disconnect,
+      zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logs.add(line)),
+    );
+    await sseClosed.timeout(const Duration(seconds: 1));
+    expect(await socketClosed.timeout(const Duration(seconds: 1)), isFalse);
+    expect(client.connectionState, RelayClientConnectionState.disconnected);
+    expect(logs, isEmpty);
+  });
+
   test("replays resume when the bridge reconnects during handshake", () async {
     final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
     final roomKeyStorage = _MockRoomKeyStorage();

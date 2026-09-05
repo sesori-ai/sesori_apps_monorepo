@@ -1,0 +1,33 @@
+{
+  "protocolVersion": 1,
+  "agentInfo": {
+    "name": "antigravity-acp",
+    "title": "Google Antigravity",
+    "version": "agy_acp_server_20260818_01_RC01"
+  },
+  "agentCapabilities": {
+    "loadSession": true,
+    "mcpCapabilities": {
+      "http": true,
+      "sse": true
+    },
+    "promptCapabilities": {
+      "audio": true,
+      "embeddedContext": true,
+      "image": true
+    },
+    "sessionCapabilities": {
+      "list": {},
+      "resume": {}
+    },
+    "auth": {
+      "logout": {}
+    }
+  },
+  "authMethods": [
+    {"id": "oauth-personal"},
+    {"id": "oauth-business"},
+    {"id": "gemini-api-key"},
+    {"id": "agent-platform"}
+  ]
+}

@@ -124,6 +124,12 @@ sealed class CodexRolloutErrorDto with _$CodexRolloutErrorDto {
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutErrorDtoFromJson(json);
 }
 
+/// Persisted `session_meta.thread_source`; absent for root rollouts.
+enum CodexRolloutThreadSource() {
+  subagent,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMetadataPayloadDto {
   const factory({
@@ -132,10 +138,14 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
     required String? timestamp,
     @JsonKey(name: "model_provider") required String? modelProvider,
     @JsonKey(name: "cli_version") required String? cliVersion,
+    @JsonKey(name: "parent_thread_id") required String? parentThreadId,
+    @JsonKey(name: "thread_source", unknownEnumValue: CodexRolloutThreadSource.unknown)
+    required CodexRolloutThreadSource? threadSource,
+    @JsonKey(name: "agent_nickname") required String? agentNickname,
+    @JsonKey(name: "agent_path") required String? agentPath,
   }) = _CodexRolloutSessionMetadataPayloadDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutSessionMetadataPayloadDtoFromJson(json);
 }
 
 @Freezed(fromJson: true, toJson: false)
@@ -145,8 +155,7 @@ sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPay
     @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required String? effort,
   }) = _CodexRolloutTurnContextPayloadDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexRolloutTurnContextPayloadDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;
@@ -157,8 +166,7 @@ sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {
     @JsonKey(name: "turn_id") required String? turnId,
   }) = _CodexRolloutItemMetadataDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexRolloutItemMetadataDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutItemMetadataDtoFromJson(json);
 }
 
 @Freezed(
@@ -225,8 +233,7 @@ sealed class CodexRolloutResponseItemDto with _$CodexRolloutResponseItemDto {
 
   const factory unknown() = CodexRolloutUnknownResponseItemDto;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexRolloutResponseItemDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexRolloutResponseItemDtoFromJson(json);
 }
 
 @Freezed(
@@ -329,6 +336,9 @@ sealed class CodexToolArgumentsDto with _$CodexToolArgumentsDto {
     @JsonKey(name: "file_path") required Object? filePath,
     required Object? query,
     @JsonKey(name: "cell_id") required Object? cellId,
+    @JsonKey(name: "task_name", fromJson: _stringOrNull) required String? taskName,
+    @JsonKey(fromJson: _stringOrNull) required String? message,
+    @JsonKey(name: "agent_type", fromJson: _stringOrNull) required String? agentType,
   }) = _CodexToolArgumentsDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);

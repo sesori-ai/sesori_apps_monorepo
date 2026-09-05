@@ -70,9 +70,9 @@ void main() {
       // The phone parses this via the shared `Message.fromJson` `role`
       // discriminator, so a live error must arrive as `role: "error"` with
       // flat error fields — not as `role: "assistant"` with the error dropped.
-      expect(event.info["role"], equals("error"));
-      expect(event.info["errorName"], equals("ProviderAuthError"));
-      expect(event.info["errorMessage"], equals("invalid api key"));
+      expect(event.info, isA<PluginMessageError>());
+      expect((event.info as PluginMessageError).errorName, equals("ProviderAuthError"));
+      expect((event.info as PluginMessageError).errorMessage, equals("invalid api key"));
     });
 
     test("maps a live non-errored assistant message.updated to the assistant role", () {
@@ -80,8 +80,7 @@ void main() {
 
       expect(result, isA<BridgeSseMessageUpdated>());
       final event = result! as BridgeSseMessageUpdated;
-      expect(event.info["role"], equals("assistant"));
-      expect(event.info.containsKey("errorName"), isFalse);
+      expect(event.info, isA<PluginMessageAssistant>());
     });
 
     test("maps session.created using provided canonical projectID", () {
@@ -136,13 +135,13 @@ void main() {
         promptId: "prm_1",
       );
 
-      expect((result! as BridgeSseMessageUpdated).info["promptId"], equals("prm_1"));
+      expect(((result! as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, equals("prm_1"));
     });
 
     test("leaves a user message with no resolved prompt unattributed", () {
       final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")));
 
-      expect((result! as BridgeSseMessageUpdated).info.containsKey("promptId"), isFalse);
+      expect(((result! as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, isNull);
     });
   });
 }

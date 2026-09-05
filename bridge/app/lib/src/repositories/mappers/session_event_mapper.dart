@@ -1,7 +1,32 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../models/normalized_bridge_event.dart";
+import "plugin_message_mapper.dart";
+import "plugin_session_status_mapper.dart";
+
 class const SessionEventMapper() {
+  /// Converts an id-translated event into the value higher layers consume.
+  ///
+  /// The final step of normalization: payload kinds with a typed shared form
+  /// are mapped here, once, so delivery and storage never re-parse them.
+  NormalizedBridgeEvent normalize({required BridgeSseEvent event}) => switch (event) {
+    BridgeSseTerminalHandoff(:final event) => NormalizedTerminalHandoff(payload: _normalizePayload(event: event)),
+    _ => _normalizePayload(event: event),
+  };
+
+  NormalizedBridgePayload _normalizePayload({required BridgeSseEvent event}) => switch (event) {
+    BridgeSseTerminalHandoff() => throw StateError("terminal handoff must not wrap another terminal handoff"),
+    BridgeSseSessionStatus(:final sessionID, :final status) => NormalizedStatusEvent(
+      sessionId: sessionID,
+      status: status.toSharedSessionStatus(),
+    ),
+    BridgeSseMessageUpdated(:final info) => NormalizedMessageEvent(
+      message: info.toSharedMessage(sessionId: info.sessionID),
+    ),
+    _ => NormalizedOtherEvent(event: event),
+  };
+
   Session? sessionInfo({required BridgeSseEvent event}) {
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => sessionInfo(event: event),
@@ -31,7 +56,7 @@ class const SessionEventMapper() {
       BridgeSseQueuedPromptsUpdated(:final sessionID) ||
       BridgeSseTodoUpdated(:final sessionID) => {sessionID},
       BridgeSseSessionError(:final sessionID) || BridgeSseTuiToastShow(:final sessionID) => {?sessionID},
-      BridgeSseMessageUpdated(:final info) => {Message.fromJson(info).sessionID},
+      BridgeSseMessageUpdated(:final info) => {info.sessionID},
       BridgeSseMessagePartUpdated(:final part) => {part.sessionID},
       BridgeSsePermissionAsked(:final sessionID, :final displaySessionId) ||
       BridgeSsePermissionReplied(:final sessionID, :final displaySessionId) ||
@@ -171,11 +196,9 @@ class const SessionEventMapper() {
         ),
         null => null,
       },
-      BridgeSseMessageUpdated(:final info) => switch (Message.fromJson(info)) {
-        final message => switch (mapped(message.sessionID)) {
-          final sessionId? => BridgeSseMessageUpdated(info: message.copyWith(sessionID: sessionId).toJson()),
-          null => null,
-        },
+      BridgeSseMessageUpdated(:final info) => switch (mapped(info.sessionID)) {
+        final sessionId? => BridgeSseMessageUpdated(info: info.copyWith(sessionID: sessionId)),
+        null => null,
       },
       BridgeSseMessageRemoved(:final sessionID, :final messageID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseMessageRemoved(sessionID: sessionId, messageID: messageID),

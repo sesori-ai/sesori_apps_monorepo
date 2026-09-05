@@ -212,24 +212,27 @@ final class const ClaudePluginDescriptor({
       approvals: approvals,
       clock: host.clock,
       resolveIdleTimeout: () => host.pluginIdleTimeout,
+      idleTimeoutChanges: host.pluginIdleTimeoutChanges,
     );
     const content = ClaudeContentMapper();
+    final catalogService = ClaudeCatalogService(
+      catalog: const ClaudeBackendCatalogRepository(),
+      processes: processes,
+      probeSessionId: _generateUuidV4(),
+      discoveryDirectory: host.stateDirectory,
+    );
     final plugin = ClaudePlugin(
       processes: processes,
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),
       sessions: sessions,
-      catalogService: ClaudeCatalogService(
-        catalog: const ClaudeBackendCatalogRepository(),
-        processes: processes,
-        probeSessionId: _generateUuidV4(),
-        discoveryDirectory: host.stateDirectory,
-      ),
+      catalogService: catalogService,
       approvals: approvals,
       eventDispatcher: ClaudeEventDispatcher(
         content: content,
         tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => catalogService.cached?.catalogModelId(apiModel: apiModel),
       ),
       history: const ClaudeHistoryMapper(content: content),
       eventBuffer: eventBuffer,

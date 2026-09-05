@@ -8,9 +8,9 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/session_repository.dart";
-import "../utils/model_filter/default_model_selector.dart";
 import "models/new_session_options_source.dart";
 import "models/new_session_selection_intent.dart";
+import "session_selection_calculator.dart";
 
 part "new_session_options_service.freezed.dart";
 
@@ -34,16 +34,20 @@ sealed class const NewSessionOptionsLoadResult();
 /// background. A silent refresh reaches the bridge as a forced one; the
 /// distinction is that nobody is waiting on it, so it must not overwrite what
 /// the user does while it runs.
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
+enum NewSessionOptionsLoadMode() {
+  dynamicLoad,
+  forcedRefresh,
+  silentRefresh,
+}
 
 /// Loaded options, and whether the bridge served them from a snapshot old
 /// enough to be worth refreshing behind the user's back. Only a cache the
 /// bridge chose not to rediscover is stale; anything just discovered is not.
 final class const NewSessionOptionsLoaded({
-    required final NewSessionOptionsData options,
-    required final NewSessionOptionsSource source,
-    required final bool isStale,
-  }) extends NewSessionOptionsLoadResult;
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+  required final bool isStale,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -51,17 +55,24 @@ final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadRe
 
 final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureRetained({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsFailureRetained({
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureUnavailable({required final ApiError error, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsFailureUnavailable({
+  required final ApiError error,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsRefreshFailureUnavailable() extends NewSessionOptionsLoadResult;
 
 @lazySingleton
 class NewSessionOptionsService({
-    required final SessionRepository _sessionRepository,
-    required final DefaultModelSelector _defaultModelSelector,
-  }) {
+  required final SessionRepository _sessionRepository,
+}) {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+
   Future<NewSessionOptionsLoadResult> load({
     required String projectId,
     required String pluginId,
@@ -126,12 +137,13 @@ class NewSessionOptionsService({
         // A refresh nobody asked for must not take working options away. The
         // bridge served these moments ago, so the honest answer is that the
         // update failed, not that there is nothing left to choose from.
-        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
-            ? const NewSessionOptionsRefreshFailureUnavailable()
-            : NewSessionOptionsFailureRetained(
-                options: previousOptions,
-                source: NewSessionOptionsSource.aggregate,
-              ),
+        NewSessionOptionsLoadMode.silentRefresh =>
+          previousOptions == null
+              ? const NewSessionOptionsRefreshFailureUnavailable()
+              : NewSessionOptionsFailureRetained(
+                  options: previousOptions,
+                  source: NewSessionOptionsSource.aggregate,
+                ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
@@ -215,9 +227,7 @@ class NewSessionOptionsService({
     required NewSessionSelectionIntent? restoredSelection,
     required NewSessionOptionsData? previousOptions,
   }) {
-    final agents = catalog.agents
-        .where((agent) => !agent.hidden && agent.mode != AgentMode.subagent)
-        .toList(growable: false);
+    final agents = _selection.selectableAgents(agents: catalog.agents);
     final providers = catalog.providers;
     final commands = catalog.commands;
     final effectiveSelection = _mergeSelection(
@@ -225,52 +235,44 @@ class NewSessionOptionsService({
       lastUsedPromptDefaults: catalog.lastUsedPromptDefaults,
     );
 
-    final defaultAgent = agents.firstOrNull?.name;
-    final restoredAgent = effectiveSelection?.agentName;
-    final selectedAgent = restoredAgent != null && agents.any((agent) => agent.name == restoredAgent)
-        ? restoredAgent
-        : defaultAgent;
-    final selectedAgentInfo = selectedAgent == null
-        ? null
-        : agents.firstWhereOrNull((agent) => agent.name == selectedAgent);
-    final defaultAgentModel =
-        _validatedModel(
-          providers: providers,
-          model: selectedAgentInfo?.model,
-        ) ??
-        _pickDefaultModel(providers: providers);
-
     final restoredModel = effectiveSelection?.model;
-    final validatedRestoredModel = _validatedModel(
+    final reconciled = _selection.reconcile(
+      agents: agents,
       providers: providers,
-      model: restoredModel == null
-          ? null
-          : AgentModel(
-              providerID: restoredModel.providerId,
-              modelID: restoredModel.modelId,
-              variant: null,
-            ),
+      agentNameCandidates: [effectiveSelection?.agentName],
+      modelCandidates: [
+        if (restoredModel != null)
+          AgentModel(providerID: restoredModel.providerId, modelID: restoredModel.modelId, variant: null),
+      ],
+      // Only the catalog decides here: nothing has been run yet, so there is no
+      // prior selection this screen would be wrong to discard.
+      retainedModel: null,
     );
+
+    // A restored variant applies only to a restored model the catalog still
+    // offers. Falling back to a different model discards the variant with it,
+    // because an effort level named for one model means nothing on another.
+    final restoredModelSurvived =
+        restoredModel != null &&
+        reconciled.model?.providerID == restoredModel.providerId &&
+        reconciled.model?.modelID == restoredModel.modelId;
     final selectedAgentModel = _applyVariantIntent(
       providers: providers,
-      model: validatedRestoredModel ?? defaultAgentModel,
-      variantIntent: restoredModel == null || validatedRestoredModel != null
-          ? effectiveSelection?.variant
-          : null,
+      model: reconciled.model,
+      variantIntent: restoredModel == null || restoredModelSurvived ? effectiveSelection?.variant : null,
     );
-    final stagedCommandName = previousOptions?.stagedCommand?.name;
-    final stagedCommand = stagedCommandName == null
-        ? null
-        : commands.firstWhereOrNull((command) => command.name == stagedCommandName);
 
     return NewSessionOptionsData(
       agents: agents,
       providers: providers,
       commands: commands,
-      selectedAgent: selectedAgent,
+      selectedAgent: reconciled.agentName,
       selectedAgentModel: selectedAgentModel,
-      stagedCommand: stagedCommand,
-      availableVariants: availableVariants(providers: providers, model: selectedAgentModel),
+      stagedCommand: _selection.resolveStagedCommand(
+        commands: commands,
+        staged: previousOptions?.stagedCommand,
+      ),
+      availableVariants: reconciled.availableVariants,
     );
   }
 
@@ -307,7 +309,7 @@ class NewSessionOptionsService({
   }) {
     if (model == null || variantIntent == null) return model;
     final id = variantIntent.id;
-    return availableVariants(providers: providers, model: model).any((variant) => variant.id == id)
+    return _selection.availableVariants(providers: providers, model: model).any((variant) => variant.id == id)
         ? model.copyWith(variant: id)
         : model;
   }
@@ -322,15 +324,21 @@ class NewSessionOptionsService({
     final modelIntent = selectionIntent?.model;
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
-      model:
-          _validatedModel(
+      model: _selection
+          .reconcile(
+            agents: options.agents,
             providers: options.providers,
-            model: modelIntent == null
-                ? null
-                : AgentModel(providerID: modelIntent.providerId, modelID: modelIntent.modelId, variant: null),
-          ) ??
-          _validatedModel(providers: options.providers, model: agentInfo.model) ??
-          options.selectedAgentModel,
+            agentNameCandidates: [agent],
+            modelCandidates: [
+              if (modelIntent != null)
+                AgentModel(providerID: modelIntent.providerId, modelID: modelIntent.modelId, variant: null),
+              agentInfo.model,
+            ],
+            // The model already on screen survives a switch to an agent whose
+            // own declared model the catalog no longer offers.
+            retainedModel: options.selectedAgentModel,
+          )
+          .model,
       variantIntent: selectionIntent?.variant,
     );
     return NewSessionOptionsData(
@@ -340,7 +348,7 @@ class NewSessionOptionsService({
       selectedAgent: agent,
       selectedAgentModel: selectedAgentModel,
       stagedCommand: options.stagedCommand,
-      availableVariants: availableVariants(providers: options.providers, model: selectedAgentModel),
+      availableVariants: _selection.availableVariants(providers: options.providers, model: selectedAgentModel),
     );
   }
 
@@ -351,21 +359,21 @@ class NewSessionOptionsService({
     required NewSessionVariantIntent? variantIntent,
   }) {
     final requested = AgentModel(providerID: providerId, modelID: modelId, variant: null);
-    if (_validatedModel(providers: options.providers, model: requested) == null) return null;
+    if (!_selection.isModelAvailable(providers: options.providers, model: requested)) return null;
 
     final agentModel = options.agents
         .firstWhereOrNull(
           (agent) => agent.model?.providerID == providerId && agent.model?.modelID == modelId,
         )
         ?.model;
-    final variants = availableVariants(providers: options.providers, model: requested);
+    final variants = _selection.availableVariants(providers: options.providers, model: requested);
     final previousVariant = options.selectedAgentModel?.variant;
     final agentVariant = agentModel?.variant;
     final selectedVariant = previousVariant != null && variants.any((variant) => variant.id == previousVariant)
         ? previousVariant
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
-        : variants.firstOrNull?.id;
+        : _selection.defaultVariant(providers: options.providers, model: requested);
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
       model: requested.copyWith(variant: selectedVariant),
@@ -428,49 +436,5 @@ class NewSessionOptionsService({
       stagedCommand: null,
       availableVariants: options.availableVariants,
     );
-  }
-
-  List<SessionVariant> availableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerId = model?.providerID;
-    final modelId = model?.modelID;
-    if (providerId == null || modelId == null) return const [];
-    final providerModel = providers.firstWhereOrNull((provider) => provider.id == providerId)?.models[modelId];
-    if (providerModel == null || !providerModel.isAvailable) return const [];
-    return providerModel.variants
-        .where((variant) => variant != "none")
-        .map((variant) => SessionVariant(id: variant))
-        .toList(growable: false);
-  }
-
-  AgentModel? _validatedModel({required List<ProviderInfo> providers, required AgentModel? model}) {
-    if (model == null) return null;
-    final providerModel = providers
-        .firstWhereOrNull((provider) => provider.id == model.providerID)
-        ?.models[model.modelID];
-    if (providerModel == null || !providerModel.isAvailable) return null;
-    final variants = availableVariants(providers: providers, model: model);
-    final variant = model.variant;
-    return model.copyWith(
-      variant: variants.any((available) => available.id == variant) ? variant : variants.firstOrNull?.id,
-    );
-  }
-
-  AgentModel? _pickDefaultModel({required List<ProviderInfo> providers}) {
-    for (final provider in providers) {
-      final model = _defaultModelSelector.pickFromProvider(
-        models: provider.models,
-        defaultModelID: provider.defaultModelID,
-      );
-      if (model != null) {
-        return _validatedModel(
-          providers: providers,
-          model: AgentModel(providerID: provider.id, modelID: model.id, variant: null),
-        );
-      }
-    }
-    return null;
   }
 }

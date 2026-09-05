@@ -13,7 +13,6 @@ class SessionOptionsCacheTable() extends Table {
   TextColumn get capturedProjectPath => text().nullable()();
   IntColumn get revision => integer()();
   IntColumn get capturedAt => integer()();
-  Column<String> get completeness => textEnum<PluginSessionOptionsCompleteness>()();
   TextColumn get agentsJson => text()();
   TextColumn get providersJson => text()();
   TextColumn get commandsJson => text()();

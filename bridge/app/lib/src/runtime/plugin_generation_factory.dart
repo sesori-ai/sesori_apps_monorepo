@@ -4,9 +4,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../server/api/loopback_port_api.dart";
-import "../server/api/runtime_file_api.dart";
 import "../server/host/bridge_host_info_impl.dart";
-import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_port_service.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/bridge_plugin_host_impl.dart";
@@ -21,6 +19,7 @@ class const PluginRuntimeRegistration({
   required final BridgePluginDescriptor descriptor,
   required final PluginConfig config,
   required final String stateDirectory,
+  required final HostJsonStore store,
 });
 
 /// A failure isolated to one descriptor's runtime resolution or start attempt.
@@ -50,7 +49,6 @@ class PluginGenerationFactory({
   required final StartupMutexRepository _startupMutexRepository,
   required final BridgeInstanceService _bridgeInstanceService,
   required final ProcessRepository _processRepository,
-  required RuntimeFileApi runtimeFileApi,
   required final ServerClock _clock,
   required Map<String, String> environment,
   required final ProcessUser? _currentUser,
@@ -59,14 +57,26 @@ class PluginGenerationFactory({
   /// Read live at each [PluginHost.pluginIdleTimeout] access so runtime
   /// settings changes reach plugins without a restart.
   required final int Function({required String pluginId}) _resolveIdleTimeoutMins,
+  required final Stream<Object?> _settingsChanges,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
-  final Map<String, RuntimeFileApi> _fileApisByStateDirectory = <String, RuntimeFileApi>{
-    runtimeFileApi.runtimeDirectory: runtimeFileApi,
-  };
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
   bool _drainScheduled = false;
   bool _draining = false;
+
+  Duration? _idleTimeoutForPlugin({required String pluginId}) {
+    final minutes = _resolveIdleTimeoutMins(pluginId: pluginId);
+    return minutes > 0 ? Duration(minutes: minutes) : null;
+  }
+
+  Stream<Duration?> _idleTimeoutChangesForPlugin({required String pluginId}) {
+    var previous = _idleTimeoutForPlugin(pluginId: pluginId);
+    return _settingsChanges.map<Duration?>((_) => _idleTimeoutForPlugin(pluginId: pluginId)).where((current) {
+      if (current == previous) return false;
+      previous = current;
+      return true;
+    });
+  }
 
   Future<void> enforceBridgeOwnership() => _attemptBatch(attempt: 1, batch: const []);
 
@@ -243,10 +253,6 @@ class PluginGenerationFactory({
       throw StateError('Plugin "${descriptor.id}" registration has an unexpected state directory.');
     }
     await io.Directory(stateDirectory).create(recursive: true);
-    final fileApi = _fileApisByStateDirectory.putIfAbsent(
-      stateDirectory,
-      () => RuntimeFileApi(runtimeDirectory: stateDirectory),
-    );
     return BridgePluginHostImpl(
       config: request.registration.config,
       stateDirectory: stateDirectory,
@@ -268,11 +274,9 @@ class PluginGenerationFactory({
         platform: io.Platform.operatingSystem,
       ),
       ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
-      store: BridgeHostJsonStore(fileApi: fileApi),
-      resolveIdleTimeout: () {
-        final minutes = _resolveIdleTimeoutMins(pluginId: descriptor.id);
-        return minutes > 0 ? Duration(minutes: minutes) : null;
-      },
+      store: request.registration.store,
+      resolveIdleTimeout: () => _idleTimeoutForPlugin(pluginId: descriptor.id),
+      pluginIdleTimeoutChanges: _idleTimeoutChangesForPlugin(pluginId: descriptor.id),
     );
   }
 }

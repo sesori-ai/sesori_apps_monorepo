@@ -1,5 +1,4 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "api/models/claude_stream_message.dart";
 import "models/claude_task_notification.dart";
@@ -12,10 +11,21 @@ import "repositories/trackers/claude_tool_tracker.dart";
 final class ClaudeEventDispatcher({
   required final ClaudeContentMapper _content,
   required final ClaudeToolTracker _tools,
+
+  /// Translates an API model name into the catalog's picker id; null keeps the
+  /// name as reported.
+  required final String? Function({required String apiModel}) _catalogModelId,
 }) {
   final Map<String, String> _messageIds = {};
   final Map<String, String> _announcedMessageIds = {};
+
+  /// The model the stream last reported per session, an API name such as
+  /// `claude-opus-5`. Used only when the turn declared no selection.
   final Map<String, String> _models = {};
+
+  /// What the turn was dispatched with, per session: the picker id and effort
+  /// the user chose, when known.
+  final Map<String, ({String? model, String? variant})> _turnSelections = {};
   final Map<String, Set<int>> _streamedBlocks = {};
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
@@ -45,10 +55,31 @@ final class ClaudeEventDispatcher({
 
   String _rootOf(String sessionId) => _roots[sessionId] ?? sessionId;
 
-  void beginTurn({required String sessionId, required String directory}) {
+  /// [model] and [variant] are the picker id and effort the turn runs with,
+  /// null when the CLI decides; messages are stamped with them so the client
+  /// matches the catalog instead of a raw API name.
+  void beginTurn({
+    required String sessionId,
+    required String directory,
+    required String? model,
+    required String? variant,
+  }) {
     _directories[sessionId] = directory;
+    _turnSelections[sessionId] = (model: model, variant: variant);
     _resetTurn(sessionId: sessionId);
   }
+
+  /// The turn's model also goes through the resolver: a resumed session with
+  /// no Sesori selection records the API name the CLI reported as its applied
+  /// model, and a picker id never matches a `resolvedModel`, so the lookup is
+  /// a no-op for one and the fix for the other.
+  String? _modelId({required String sessionId}) {
+    final model = _turnSelections[sessionId]?.model ?? _models[sessionId];
+    if (model == null) return null;
+    return _catalogModelId(apiModel: model) ?? model;
+  }
+
+  String? _variant({required String sessionId}) => _turnSelections[sessionId]?.variant;
 
   /// Clears completed-turn stream state.
   void completeTurn({required String sessionId}) => _resetTurn(sessionId: sessionId);
@@ -82,6 +113,7 @@ final class ClaudeEventDispatcher({
     _announcedMessageIds.remove(sessionId);
     _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
+    _turnSelections.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -339,13 +371,13 @@ final class ClaudeEventDispatcher({
             id: messageId,
             sessionID: sessionId,
             agent: "claude",
-            modelID: _models[sessionId],
+            modelID: _modelId(sessionId: sessionId),
             providerID: "anthropic",
-            variant: null,
+            variant: _variant(sessionId: sessionId),
             errorName: error.name,
             errorMessage: error.message,
             time: _messageTime(message.timestamp),
-          ).toJson(),
+          ),
         ),
       ];
     }
@@ -371,7 +403,7 @@ final class ClaudeEventDispatcher({
           sessionId: sessionId,
           messageId: messageId,
           time: _messageTime(message.timestamp),
-        ).toJson(),
+        ),
       ),
     ];
     for (var offset = 0; offset < mapped.length; offset++) {
@@ -453,7 +485,7 @@ final class ClaudeEventDispatcher({
           agent: null,
           time: _messageTime(message.timestamp),
           promptId: promptId,
-        ).toJson(),
+        ),
       ),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
     ];
@@ -516,11 +548,11 @@ final class ClaudeEventDispatcher({
     return [
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: shared.SessionStatus.retry(
+        status: PluginSessionStatus.retry(
           attempt: attempt,
           message: _retryMessage(message),
           next: now.millisecondsSinceEpoch + delay,
-        ).toJson(),
+        ),
       ),
     ];
   }
@@ -543,13 +575,13 @@ final class ClaudeEventDispatcher({
           id: messageId,
           sessionID: sessionId,
           agent: "claude",
-          modelID: _models[sessionId],
+          modelID: _modelId(sessionId: sessionId),
           providerID: "anthropic",
-          variant: null,
+          variant: _variant(sessionId: sessionId),
           errorName: error.name,
           errorMessage: error.message,
           time: null,
-        ).toJson(),
+        ),
       ),
     ];
   }
@@ -562,9 +594,9 @@ final class ClaudeEventDispatcher({
     id: messageId,
     sessionID: sessionId,
     agent: "claude",
-    modelID: _models[sessionId],
+    modelID: _modelId(sessionId: sessionId),
     providerID: "anthropic",
-    variant: null,
+    variant: _variant(sessionId: sessionId),
     sender: PluginMessageSender.agent,
     time: time,
   );
@@ -574,7 +606,7 @@ final class ClaudeEventDispatcher({
     _announcedMessageIds[sessionId] = messageId;
     return [
       BridgeSseMessageUpdated(
-        info: _assistantMessage(sessionId: sessionId, messageId: messageId).toJson(),
+        info: _assistantMessage(sessionId: sessionId, messageId: messageId),
       ),
     ];
   }
@@ -616,6 +648,10 @@ final class ClaudeEventDispatcher({
       );
       if (!terminal) busy.add(childId);
       events.add(_childStatus(childId: childId, busy: !terminal));
+    } else if (childId != null && !terminal && busy.add(childId)) {
+      // Claude can resume an already-announced agent after it stopped. Restore
+      // the child to busy before publishing the reopened subtask part.
+      events.add(_childStatus(childId: childId, busy: true));
     }
     if (part != null) events.add(BridgeSseMessagePartUpdated(part: part));
     if (childId != null && terminal && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));
@@ -647,7 +683,7 @@ PluginMessagePart _textPart({
 
 BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
   sessionID: childId,
-  status: (busy ? const shared.SessionStatus.busy() : const shared.SessionStatus.idle()).toJson(),
+  status: busy ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle(),
 );
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;

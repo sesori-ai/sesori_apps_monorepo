@@ -8,4 +8,10 @@ class const CodexSessionRecord({
   required final String? cliVersion,
   required final String? modelProvider,
   required final String? model,
+  required final String? agentNickname,
+  required final String? agentPath,
+
+  /// The parent thread of a sub-agent rollout (`session_meta.parent_thread_id`
+  /// with `thread_source: subagent`); `null` for a root rollout.
+  required final String? parentId,
 });

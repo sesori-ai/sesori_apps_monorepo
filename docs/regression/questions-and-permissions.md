@@ -41,8 +41,9 @@ reaches the backend so the turn continues.
   option, it cancels rather than escalating or selecting another scope. The
   pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
   question capability and Sesori never invents a custom question channel.
-- DeepSeek standard ACP permissions use the request's explicit session ID when
-  present and retain the ACP active-turn fallback when an agent omits it. They
+- DeepSeek standard ACP permissions use explicit session IDs or exact tracked
+  tool-call attribution, retained across parent turns. Ambiguity cancels; only
+  unattributed requests use the ACP active-turn fallback. These permissions
   preserve the exact tool call ID and expose only the scopes the adapter offers;
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
@@ -55,12 +56,18 @@ reaches the backend so the turn continues.
   phone-mediated unless an existing explicit bridge auto-approval rule applies.
   Abort, process exit, and disposal cancel pending Grok requests rather than
   broadening or silently approving them.
-- A sessionless backend request is attributed to the most recently dispatched
-  active turn, falling back to the last dispatched turn at its settlement
+- A sessionless ACP request first resolves its top-level or nested
+  `toolCall.toolCallId` against tracked calls. An exact match retains its session;
+  an ambiguous match cancels rather than falling back to another active turn.
+  Without tool-call attribution, a sessionless backend request uses the most
+  recently dispatched active turn, or the last dispatched turn at its settlement
   boundary. A backend requiring exact form correlation must serialize prompts
   process-wide so another session cannot become the attribution target. OMP
   supplies explicit session IDs on permissions and forms, so its independent
   session turns remain attributable while running concurrently.
+- Deleting a tracked ACP parent retires pending input for its full descendant
+  subtree, including a running grandchild of a finished child, so removed
+  sessions cannot leave unanswered requests holding the plugin busy.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears

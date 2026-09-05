@@ -1,5 +1,4 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/pi_assistant_delta.dart";
 import "../api/models/pi_event.dart";
@@ -170,7 +169,7 @@ final class PiEventDispatcher({
     return mapped == null
         ? const []
         : [
-            BridgeSseMessageUpdated(info: mapped.info.toJson()),
+            BridgeSseMessageUpdated(info: mapped.info),
             for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
           ];
   }
@@ -300,7 +299,7 @@ final class PiEventDispatcher({
       ];
     }
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final partId in removedPartIds)
         BridgeSseMessagePartRemoved(sessionID: sessionId, messageID: messageId, partID: partId),
       for (final part in parts) BridgeSseMessagePartUpdated(part: part),
@@ -329,7 +328,7 @@ final class PiEventDispatcher({
     );
     final mapped = _historyMapper.mapBashExecution(sessionId: sessionId, messageId: messageId, message: message);
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -364,7 +363,7 @@ final class PiEventDispatcher({
     );
     if (mapped == null) return const [];
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -384,7 +383,7 @@ final class PiEventDispatcher({
     );
     if (mapped == null) return const [];
     return [
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -623,16 +622,7 @@ final class PiEventDispatcher({
   List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
     final status = sessionStatusFor(event: event, now: now);
     if (status == null) return const [];
-    final sharedStatus = switch (status) {
-      PluginSessionStatusIdle() => const shared.SessionStatus.idle(),
-      PluginSessionStatusBusy() => const shared.SessionStatus.busy(),
-      PluginSessionStatusRetry(:final attempt, :final message, :final next) => shared.SessionStatus.retry(
-        attempt: attempt,
-        message: message,
-        next: next,
-      ),
-    };
-    return [BridgeSseSessionStatus(sessionID: sessionId, status: sharedStatus.toJson())];
+    return [BridgeSseSessionStatus(sessionID: sessionId, status: status)];
   }
 
   List<BridgeSseEvent> _compactionStart({
@@ -645,7 +635,7 @@ final class PiEventDispatcher({
     final mapped = _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId);
     return [
       ..._status(sessionId: sessionId, event: event, now: now),
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -690,7 +680,7 @@ final class PiEventDispatcher({
     final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
-      BridgeSseMessageUpdated(info: mapped.info.toJson()),
+      BridgeSseMessageUpdated(info: mapped.info),
       for (final part in mapped.parts) BridgeSseMessagePartUpdated(part: part),
     ];
   }
@@ -720,7 +710,7 @@ final class PiEventDispatcher({
     if (messageId == null || message == null) return const [];
     state.announced = true;
     final mapped = _historyMapper.mapAssistantMessage(sessionId: sessionId, messageId: messageId, message: message);
-    return [BridgeSseMessageUpdated(info: mapped.info.toJson())];
+    return [BridgeSseMessageUpdated(info: mapped.info)];
   }
 
   _SessionState _session(String sessionId) => _sessions.putIfAbsent(

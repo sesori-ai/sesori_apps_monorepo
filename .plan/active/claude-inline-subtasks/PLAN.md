@@ -3,7 +3,9 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** Completed 2026-09-02 (Step 8/8; L4 matrix recorded in `TRACKER.md`)
+- **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
+  `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
+  `HARNESS_FOLLOWUPS.md`, retired again when their coverage PRs merge
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
@@ -12,6 +14,14 @@
 - **Delivery:** eight PRs: plan, contract + client tile, Claude lifecycle,
   Claude child sessions, Claude live sub-agent streaming, scoped stop,
   regression docs, retirement
+- **DeepSeek consumer split (2026-09-04):** supersede oversized PR #1293 with
+  five sequential, approximately 1,500-line slices. Exact scopes, titles,
+  budgets, and the verbatim-fixture exception are in `HARNESS_FOLLOWUPS.md`;
+  progress is in `TRACKER.md`. Preserve intended behavior and valid review
+  fixes; improve the implementation where worthwhile within each slice's budget.
+  User-directed release change (2026-09-05): publish adapter 0.1.3 before
+  slice 4 merges, then pin it and require v2 in that same PR instead of retaining
+  temporary v1 compatibility. Replay remains slice 5; final coverage gates stand.
 
 ## Goal
 

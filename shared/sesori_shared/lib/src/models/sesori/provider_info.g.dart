@@ -33,6 +33,7 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   variants: (json['variants'] as List<dynamic>)
       .map((e) => e as String)
       .toList(),
+  defaultVariant: json['defaultVariant'] as String?,
   family: json['family'] as String?,
   isAvailable: json['isAvailable'] as bool? ?? true,
   releaseDate: _$JsonConverterFromJson<String, DateTime>(
@@ -47,6 +48,7 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'providerID': instance.providerID,
       'name': instance.name,
       'variants': instance.variants,
+      'defaultVariant': ?instance.defaultVariant,
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
       'releaseDate': ?_$JsonConverterToJson<String, DateTime>(

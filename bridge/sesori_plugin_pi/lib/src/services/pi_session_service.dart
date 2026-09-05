@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
@@ -24,7 +24,11 @@ final class const PiTurnCancelledException({required final String sessionId}) im
   String toString() => "Pi turn was cancelled";
 }
 
-enum _PiQueueState() { visible, released, cancelled }
+enum _PiQueueState() {
+  visible,
+  released,
+  cancelled,
+}
 
 final class _PiSessionTurnState({required final String initialDirectory}) {
   /// See [recentPromptIds]. 64 comfortably exceeds any realistic gap between
@@ -70,8 +74,7 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   bool isAdmitted({required String promptId}) =>
       turns.any(
         (turn) =>
-            turn.promptId == promptId &&
-            (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
+            turn.promptId == promptId && (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
       ) ||
       recentPromptIds.contains(promptId);
 
@@ -154,10 +157,12 @@ final class PiSessionService({
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
+  required final Stream<Duration?> idleTimeoutChanges,
 }) {
   this {
-    _frameSubscription = _processes.frames.listen(_handleFrame);
-    _exitSubscription = _processes.exits.listen(_handleExit);
+    _processes.frames.listen(_handleFrame).addTo(_subscriptions);
+    _processes.exits.listen(_handleExit).addTo(_subscriptions);
+    idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   final PiSessionProcessRepository _processes = processRepository;
@@ -171,8 +176,7 @@ final class PiSessionService({
   final PendingOperations _activeIdleReaps = PendingOperations();
   final StreamController<BridgeSseEvent> _events = StreamController.broadcast();
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
-  late final StreamSubscription<PiSessionProcessFrame> _frameSubscription;
-  late final StreamSubscription<PiSessionProcessExit> _exitSubscription;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -212,10 +216,7 @@ final class PiSessionService({
       return true;
     }
     final index = state.queue.indexWhere(
-      (turn) =>
-          turn is _PiQueuedPromptTurn &&
-          turn.promptId == promptId &&
-          turn.queueState == _PiQueueState.visible,
+      (turn) => turn is _PiQueuedPromptTurn && turn.promptId == promptId && turn.queueState == _PiQueueState.visible,
     );
     if (index == -1) return false;
     final turn = state.queue.removeAt(index) as _PiQueuedPromptTurn;
@@ -468,7 +469,7 @@ final class PiSessionService({
       _emit(
         BridgeSseSessionStatus(
           sessionID: sessionId,
-          status: const shared.SessionStatus.busy().toJson(),
+          status: const PluginSessionStatus.busy(),
         ),
       );
       _emit(const BridgeSseProjectUpdated());
@@ -726,8 +727,10 @@ final class PiSessionService({
               (mapped is BridgeSseSessionStatus || mapped is BridgeSseSessionIdle);
           if (!serviceOwnsLifecycle) _emit(mapped);
           if (mapped is! BridgeSseMessageUpdated) continue;
-          final promptId = mapped.info["promptId"];
-          if (promptId is! String) continue;
+          final info = mapped.info;
+          if (info is! PluginMessageUser) continue;
+          final promptId = info.promptId;
+          if (promptId == null) continue;
           final correlated = _turnForPrompt(state: state, promptId: promptId);
           if (correlated == null) continue;
           correlated.userMessageEmitted = true;
@@ -783,7 +786,7 @@ final class PiSessionService({
     _emit(
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: const shared.SessionStatus.busy().toJson(),
+        status: const PluginSessionStatus.busy(),
       ),
     );
     _emit(const BridgeSseProjectUpdated());
@@ -795,7 +798,7 @@ final class PiSessionService({
     _emit(
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: const shared.SessionStatus.idle().toJson(),
+        status: const PluginSessionStatus.idle(),
       ),
     );
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
@@ -845,7 +848,7 @@ final class PiSessionService({
       _emit(
         BridgeSseSessionStatus(
           sessionID: exit.sessionId,
-          status: const shared.SessionStatus.idle().toJson(),
+          status: const PluginSessionStatus.idle(),
         ),
       );
       _emit(BridgeSseSessionError(sessionID: exit.sessionId));
@@ -950,7 +953,7 @@ final class PiSessionService({
         _emit(
           BridgeSseSessionStatus(
             sessionID: sessionId,
-            status: const shared.SessionStatus.busy().toJson(),
+            status: const PluginSessionStatus.busy(),
           ),
         );
         _emit(const BridgeSseProjectUpdated());
@@ -961,7 +964,7 @@ final class PiSessionService({
     _emit(
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: const shared.SessionStatus.idle().toJson(),
+        status: const PluginSessionStatus.idle(),
       ),
     );
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
@@ -988,7 +991,10 @@ final class PiSessionService({
     );
     mappedEvents.forEach(_emit);
     turn.userMessageEmitted = mappedEvents.any(
-      (mapped) => mapped is BridgeSseMessageUpdated && mapped.info["promptId"] == turn.promptId,
+      (mapped) => switch (mapped) {
+        BridgeSseMessageUpdated(info: PluginMessageUser(:final promptId)) => promptId == turn.promptId,
+        _ => false,
+      },
     );
   }
 
@@ -1081,7 +1087,7 @@ final class PiSessionService({
     _emit(
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: const shared.SessionStatus.idle().toJson(),
+        status: const PluginSessionStatus.idle(),
       ),
     );
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
@@ -1098,8 +1104,7 @@ final class PiSessionService({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
       await Future.wait([
-        for (final sessionId in activeSessionIds)
-          _abort(sessionId: sessionId, processExitIsExpected: true),
+        for (final sessionId in activeSessionIds) _abort(sessionId: sessionId, processExitIsExpected: true),
       ]);
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1159,16 +1164,22 @@ final class PiSessionService({
     return descendants;
   }
 
+  void _handleIdleTimeoutChange(Duration? _) {
+    if (_disposed) return;
+    for (final entry in _sessions.entries) {
+      final state = entry.value;
+      if (state.hasWork || state.residentGeneration == null || state.idleReap != null) continue;
+      _scheduleIdleReap(sessionId: entry.key, state: state);
+    }
+  }
+
   void _scheduleIdleReap({required String sessionId, required _PiSessionTurnState state}) {
     final generation = ++state.idleGeneration;
     final idleTimeout = _resolveIdleTimeout();
     if (idleTimeout == null) return;
     unawaited(() async {
       await _clock.delay(duration: idleTimeout);
-      if (_disposed ||
-          !identical(_sessions[sessionId], state) ||
-          state.hasWork ||
-          state.idleGeneration != generation) {
+      if (_disposed || !identical(_sessions[sessionId], state) || state.hasWork || state.idleGeneration != generation) {
         return;
       }
       _extensionUi.cancelForOwner(sessionId: sessionId, processGeneration: null);
@@ -1261,8 +1272,7 @@ final class PiSessionService({
         }
       }
     }
-    await _frameSubscription.cancel();
-    await _exitSubscription.cancel();
+    await _subscriptions.cancel();
     await _extensionUi.dispose();
     await _processes.dispose(shutdownBudget: shutdownBudget);
     await _activeIdleReaps.drain();

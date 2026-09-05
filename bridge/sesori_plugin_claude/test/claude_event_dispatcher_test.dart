@@ -1,6 +1,5 @@
 import "package:claude_plugin/claude_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 void main() {
@@ -8,7 +7,51 @@ void main() {
     late ClaudeEventDispatcher mapper;
 
     setUp(() {
-      mapper = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
+      mapper = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+    });
+
+    test("stamps messages with the turn's picker id and effort, mapping the stream model otherwise", () {
+      mapper = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => apiModel == "claude-opus-5" ? "opus[1m]" : null,
+      );
+      PluginMessage assistantAfterText({required String messageId}) {
+        _map(
+          mapper,
+          _stream(
+            "message_start",
+            event: {
+              "message": {"id": messageId, "model": "claude-opus-5"},
+            },
+          ),
+        );
+        final textStart = _map(
+          mapper,
+          _stream(
+            "content_block_start",
+            event: {
+              "index": 0,
+              "content_block": {"type": "text", "text": ""},
+            },
+          ),
+        );
+        return (textStart.first as BridgeSseMessageUpdated).info;
+      }
+
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: "fable", variant: "high");
+      final selected = assistantAfterText(messageId: "msg-1") as PluginMessageAssistant;
+      expect(selected.modelID, "fable");
+      expect(selected.variant, "high");
+
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
+      final mapped = assistantAfterText(messageId: "msg-2") as PluginMessageAssistant;
+      expect(mapped.modelID, "opus[1m]");
+      expect(mapped.variant, isNull);
     });
 
     test("creates an assistant when its first visible block starts", () {
@@ -53,9 +96,9 @@ void main() {
       );
 
       expect(started, isEmpty);
-      final info = shared.Message.fromJson((textStart.first as BridgeSseMessageUpdated).info);
-      expect(info, isA<shared.MessageAssistant>());
-      final assistant = info as shared.MessageAssistant;
+      final info = (textStart.first as BridgeSseMessageUpdated).info;
+      expect(info, isA<PluginMessageAssistant>());
+      final assistant = info as PluginMessageAssistant;
       expect(assistant.id, "msg-1");
       expect(assistant.agent, "claude");
       expect(assistant.modelID, "claude-opus-5");
@@ -143,7 +186,7 @@ void main() {
       expect(complete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(stopped.whereType<BridgeSseMessagePartUpdated>().single.part.text, "answer");
 
-      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
       final replayed = _map(
         mapper,
         _assistant(
@@ -349,7 +392,7 @@ void main() {
 
       expect(assistant, isEmpty);
       expect(user, isEmpty);
-      expect((shared.Message.fromJson(error.info) as shared.MessageError).modelID, "claude-opus-5");
+      expect((error.info as PluginMessageError).modelID, "claude-opus-5");
     });
 
     test("keeps a prompt that merely mentions internal command markers", () {
@@ -363,7 +406,7 @@ void main() {
         ),
       );
 
-      expect((mentioned.first as BridgeSseMessageUpdated).info["id"], "user-mention");
+      expect((mentioned.first as BridgeSseMessageUpdated).info.id, "user-mention");
       expect(
         (mentioned.last as BridgeSseMessagePartUpdated).part.text,
         "What does <command-name> mean in <local-command-stdout> output?",
@@ -536,7 +579,7 @@ void main() {
         ),
       );
 
-      final user = shared.Message.fromJson((visible.first as BridgeSseMessageUpdated).info) as shared.MessageUser;
+      final user = (visible.first as BridgeSseMessageUpdated).info as PluginMessageUser;
       expect(user.id, "user-frame");
       expect(user.time?.created, DateTime.utc(2026, 8, 10, 10).millisecondsSinceEpoch);
       expect((visible.last as BridgeSseMessagePartUpdated).part.id, "user-frame-block-0");
@@ -564,7 +607,7 @@ void main() {
         ),
       );
 
-      expect((replayed.first as BridgeSseMessageUpdated).info["id"], "replay-frame");
+      expect((replayed.first as BridgeSseMessageUpdated).info.id, "replay-frame");
       expect((replayed.last as BridgeSseMessagePartUpdated).part.text, "authored follow-up");
       expect(contextOnly, isEmpty);
     });
@@ -603,9 +646,9 @@ void main() {
         },
       );
 
-      final info = shared.Message.fromJson((assistantEvents.single as BridgeSseMessageUpdated).info);
-      expect(info, isA<shared.MessageError>());
-      final error = info as shared.MessageError;
+      final info = (assistantEvents.single as BridgeSseMessageUpdated).info;
+      expect(info, isA<PluginMessageError>());
+      final error = info as PluginMessageError;
       expect(error.id, "synthetic-error-message");
       expect(error.errorName, "api_error");
       expect(error.errorMessage, "You've hit your session limit");
@@ -632,7 +675,7 @@ void main() {
                 },
               ).single
               as BridgeSseSessionStatus;
-      final status = shared.SessionStatus.fromJson(retry.status) as shared.SessionStatusRetry;
+      final status = retry.status as PluginSessionStatusRetry;
       expect(status.attempt, 2);
       expect(status.message, "rate_limit");
       expect(status.next, inInclusiveRange(before + 5000, DateTime.now().millisecondsSinceEpoch + 5000));
@@ -653,7 +696,7 @@ void main() {
                 },
               ).single
               as BridgeSseMessageUpdated;
-      final info = shared.Message.fromJson(error.info) as shared.MessageError;
+      final info = error.info as PluginMessageError;
       expect(info.errorName, "api_error");
       expect(info.errorMessage, "  raw backend detail must be forwarded  ");
       expect(info.modelID, "claude-opus-5");
@@ -673,7 +716,7 @@ void main() {
                 },
               ).single
               as BridgeSseMessageUpdated;
-      final multipleInfo = shared.Message.fromJson(multipleErrors.info) as shared.MessageError;
+      final multipleInfo = multipleErrors.info as PluginMessageError;
       expect(multipleInfo.errorMessage, "first backend error\nsecond backend error");
     });
 
@@ -704,9 +747,7 @@ void main() {
         ),
         ..._map(mapper, _user(uuid: "result-frame", content: resultContent)),
       ];
-      final liveInfo = shared.Message.fromJson(
-        liveEvents.whereType<BridgeSseMessageUpdated>().last.info,
-      );
+      final liveInfo = liveEvents.whereType<BridgeSseMessageUpdated>().last.info;
       final liveParts = <String, PluginMessagePart>{
         for (final event in liveEvents.whereType<BridgeSseMessagePartUpdated>()) event.part.id: event.part,
       };
@@ -748,6 +789,7 @@ void main() {
               ),
             ],
             residentTaskToolUseIds: const {},
+            catalogModelId: null,
           )
           .single;
 
@@ -767,7 +809,7 @@ void main() {
           ],
         ),
       );
-      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
       final staleDelta = _map(
         mapper,
         _stream(

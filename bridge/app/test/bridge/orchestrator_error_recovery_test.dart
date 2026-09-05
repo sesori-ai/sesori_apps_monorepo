@@ -27,9 +27,10 @@ void main() {
     final database = createTestDatabase();
     final pluginRuntime = createRegisteredTestPluginRuntime(pluginIds: const ["opencode"]);
     final bridgeSettingsRepository = createTestBridgeSettingsRepository();
+    final pluginLifecycleRepository = PluginLifecycleRepository(runtime: pluginRuntime);
     final lifecycleService =
         PluginLifecycleService(
-          lifecycleRepository: PluginLifecycleRepository(runtime: pluginRuntime),
+          lifecycleRepository: pluginLifecycleRepository,
           preferredDefaultPluginId: legacyMissingPluginId,
           bridgeSettingsRepository: bridgeSettingsRepository,
           idleTimerScheduler: const PluginIdleTimerScheduler(),
@@ -66,6 +67,7 @@ void main() {
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: pluginLifecycleRepository,
       pluginLifecycleService: lifecycleService,
       pluginRuntime: pluginRuntime,
       bridgeSettingsRepository: bridgeSettingsRepository,
@@ -144,6 +146,7 @@ void main() {
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -201,6 +204,7 @@ void main() {
           yolo: false,
         ),
         client: _ThrowingConnectRelayClient(connectGate: connectGate.future),
+        pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
         pluginLifecycleService: lifecycleService,
         pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
         bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -323,6 +327,7 @@ class _TestHarness._({
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),

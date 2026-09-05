@@ -6,6 +6,7 @@ import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
+import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
@@ -16,20 +17,13 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
-  /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
-  /// model carries — without a null-assertion (`!`). Known variants always
-  /// encode to a map; the fallback only covers an unknown variant whose raw
-  /// payload is not a map.
-  static Map<String, dynamic> _asMap(Object? json) => json is Map<String, dynamic> ? json : const <String, dynamic>{};
-
-  /// Normalizes a `message.updated` payload into the shared-`Message` JSON
-  /// shape the phone parses, mirroring the REST load path
-  /// ([PluginModelMapper.mapMessageWithParts]). Crucially this collapses an
-  /// errored assistant message (`role: "assistant"` + `error`) into the
-  /// `role: "error"` shape via [AssistantMessageMapper]; forwarding the raw
-  /// OpenCode payload would keep `role: "assistant"` and the phone would drop
-  /// the error, leaving a blank turn until the session is re-opened.
-  Map<String, dynamic> _mapMessageInfo(Message info, {required String? promptId}) {
+  /// Maps a `message.updated` payload to its plugin envelope, mirroring the
+  /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
+  /// collapses an errored assistant message (`role: "assistant"` + `error`)
+  /// into the error envelope via [AssistantMessageMapper]; forwarding it as an
+  /// assistant message would leave a blank turn on the phone until the session
+  /// is re-opened.
+  PluginMessage? _mapMessageInfo(Message info, {required String? promptId}) {
     final pluginMessage = switch (info) {
       UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
@@ -41,12 +35,11 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         promptId: promptId,
       ),
       AssistantMessage() => _assistantMessageMapper.map(info),
-      // Unknown roles from a newer OpenCode server: fall through to the raw
-      // payload below so the phone can still attempt to decode it.
+      // Unknown roles from a newer OpenCode server have no plugin shape the
+      // bridge can deliver; the event is dropped here.
       _ => null,
     };
-    if (pluginMessage == null) return _asMap(info.toJson());
-    return _asMap(pluginMessage.toJson());
+    return pluginMessage;
   }
 
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
@@ -72,10 +65,12 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       ),
       SseSessionError(:final sessionID) => BridgeSseSessionError(sessionID: sessionID),
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
-      SseSessionStatus(:final sessionID, :final status) => BridgeSseSessionStatus(
-        sessionID: sessionID,
-        status: _asMap(status.toJson()),
-      ),
+      SseSessionStatus(:final sessionID, :final status) => switch (knownPluginSessionStatus(status)) {
+        final pluginStatus? => BridgeSseSessionStatus(sessionID: sessionID, status: pluginStatus),
+        // A status kind this plugin does not know carries nothing the bridge
+        // can deliver; the event is dropped here instead of at the relay.
+        null => null,
+      },
       // COMPATIBILITY 2026-05-18 (v0.7.0): Older OpenCode runtimes emit session.idle. Remove this branch and manifest variant when those runtimes are unsupported.
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
       SseCommandExecuted(:final name, :final sessionID, :final arguments, :final messageID) => BridgeSseCommandExecuted(
@@ -84,7 +79,10 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info, promptId: promptId)),
+      SseMessageUpdated(:final info) => switch (_mapMessageInfo(info, promptId: promptId)) {
+        final message? => BridgeSseMessageUpdated(info: message),
+        null => null,
+      },
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,

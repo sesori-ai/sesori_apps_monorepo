@@ -376,6 +376,66 @@ class PluginLifecycleService({
     return authentication.challenge.future;
   }
 
+  Future<void> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) async {
+    if (_setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!_knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    _requireBridgeId();
+    final authentication = _activePluginAuthentications[pluginId];
+    if (authentication == null) {
+      throw _authenticationContinuationConflict(
+        pluginId: pluginId,
+        reason: PluginAuthenticationContinuationConflictReason.noActive,
+      );
+    }
+    final result = await _lifecycleRepository.submitAuthenticationRedirect(
+      pluginId: pluginId,
+      generation: authentication.operation.generation,
+      redirectUri: redirectUri,
+    );
+    switch (result) {
+      case PluginRuntimeAuthenticationContinuationApplied():
+        return;
+      case PluginRuntimeAuthenticationContinuationConflict(:final reason):
+        throw _authenticationContinuationConflict(
+          pluginId: pluginId,
+          reason: switch (reason) {
+            PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration =>
+              PluginAuthenticationContinuationConflictReason.noActive,
+            PluginRuntimeAuthenticationContinuationConflictReason.wrongKind =>
+              PluginAuthenticationContinuationConflictReason.wrongKind,
+            PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted =>
+              PluginAuthenticationContinuationConflictReason.alreadySubmitted,
+          },
+        );
+    }
+  }
+
+  PluginAuthenticationContinuationConflictException _authenticationContinuationConflict({
+    required String pluginId,
+    required PluginAuthenticationContinuationConflictReason reason,
+  }) => PluginAuthenticationContinuationConflictException(
+    reason: reason,
+    conflict: PluginAuthenticationConflict(
+      pluginId: pluginId,
+      reasons: [
+        switch (reason) {
+          PluginAuthenticationContinuationConflictReason.noActive => PluginAuthenticationConflictReason.noActive,
+          PluginAuthenticationContinuationConflictReason.wrongKind => PluginAuthenticationConflictReason.wrongKind,
+          PluginAuthenticationContinuationConflictReason.alreadySubmitted =>
+            PluginAuthenticationConflictReason.alreadySubmitted,
+        },
+      ],
+      current: _managementRowForPluginId(pluginId),
+    ),
+  );
+
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
@@ -420,6 +480,23 @@ class PluginLifecycleService({
                 PluginAuthenticationChallengeResponse.deviceCode(
                   verificationUrl: verificationUri.toString(),
                   userCode: userCode,
+                ),
+              );
+            }
+            return terminal;
+          }(),
+          PluginAuthenticationBrowserChallenge(:final authorizationUri, :final expectedCallbackUri) => () {
+            if (authorizationUri.scheme != "https" ||
+                authorizationUri.host.isEmpty ||
+                !expectedCallbackUri.isAbsolute ||
+                expectedCallbackUri.host.isEmpty) {
+              throw StateError("Plugin authentication returned invalid browser challenge URLs.");
+            }
+            if (!authentication.challenge.isCompleted) {
+              authentication.challenge.complete(
+                PluginAuthenticationChallengeResponse.browser(
+                  authorizationUrl: authorizationUri.toString(),
+                  expectedCallbackUrl: expectedCallbackUri.toString(),
                 ),
               );
             }
@@ -1429,6 +1506,17 @@ class const PluginManagementPluginNotFoundException(final String pluginId) imple
 class const PluginManagementConflictException(final PluginLifecycleConflict conflict) implements Exception;
 
 class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
+
+enum PluginAuthenticationContinuationConflictReason() {
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+}
+
+class const PluginAuthenticationContinuationConflictException({
+  required final PluginAuthenticationContinuationConflictReason reason,
+  required final PluginAuthenticationConflict conflict,
+}) implements Exception;
 
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 

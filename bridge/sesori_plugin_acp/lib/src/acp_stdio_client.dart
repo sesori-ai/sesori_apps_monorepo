@@ -82,14 +82,57 @@ class AcpStdioClient({
     required String method,
     Object? params,
     Duration timeout = const Duration(seconds: 60),
+  }) => _dispatchRequest(
+    method: method,
+    params: params,
+    timeout: timeout,
+    activitySessionId: null,
+  );
+
+  /// Dispatches a long-running session request with an inactivity deadline.
+  /// Each inbound notification or server request explicitly attributed to
+  /// [sessionId] restarts [inactivityTimeout]; other sessions do not.
+  Future<({Future<dynamic> response})> dispatchSessionRequest({
+    required String method,
+    required Object? params,
+    required String sessionId,
+    required Duration inactivityTimeout,
+  }) => _dispatchRequest(
+    method: method,
+    params: params,
+    timeout: inactivityTimeout,
+    activitySessionId: sessionId,
+  );
+
+  Future<({Future<dynamic> response})> _dispatchRequest({
+    required String method,
+    required Object? params,
+    required Duration timeout,
+    required String? activitySessionId,
   }) async {
     final id = _nextId++;
     final frame = <String, Object?>{"jsonrpc": "2.0", "id": id, "method": method};
     if (params != null) frame["params"] = params;
-    final dispatched = await _transport.dispatch(id: id, frame: frame, timeout: timeout);
+    final dispatched = activitySessionId == null
+        ? await _transport.dispatch(id: id, frame: frame, timeout: timeout)
+        : await _transport.dispatchWithInactivityTimeout(
+            id: id,
+            frame: frame,
+            timeout: timeout,
+            activityMatcher: (incoming) => _isSessionActivity(
+              frame: incoming,
+              sessionId: activitySessionId,
+            ),
+          );
     final response = _mapResponse(dispatched.response);
     response.ignore();
     return (response: response);
+  }
+
+  bool _isSessionActivity({required JsonObject frame, required String sessionId}) {
+    if (frame["method"] is! String) return false;
+    final params = frame["params"];
+    return params is Map && params["sessionId"] == sessionId;
   }
 
   Future<dynamic> _mapResponse(Future<JsonObject> response) async {

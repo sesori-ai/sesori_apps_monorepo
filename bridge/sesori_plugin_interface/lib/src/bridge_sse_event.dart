@@ -2,6 +2,7 @@ import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_queued_prompt.dart";
+import "models/plugin_session_status.dart";
 
 sealed class const BridgeSseEvent();
 
@@ -52,10 +53,7 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
-/// [status] uses the shared session-status JSON shape with a `type` discriminator.
-/// `PluginSessionStatus.toJson()` produces that shape for plugin-owned status.
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
-class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
+class const BridgeSseSessionStatus({required final String sessionID, required final PluginSessionStatus status})
     extends BridgeSseEvent;
 
 class const BridgeSseSessionIdle({required final String sessionID}) extends BridgeSseEvent;
@@ -78,8 +76,7 @@ class const BridgeSseQueuedPromptsUpdated({
   required final List<PluginQueuedPrompt> prompts,
 }) extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
-class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
+class const BridgeSseMessageUpdated({required final PluginMessage info}) extends BridgeSseEvent;
 
 class const BridgeSseMessageRemoved({required final String sessionID, required final String messageID})
     extends BridgeSseEvent;

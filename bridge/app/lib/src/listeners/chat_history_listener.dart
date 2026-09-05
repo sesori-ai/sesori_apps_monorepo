@@ -2,8 +2,8 @@ import "dart:async";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/normalized_bridge_event.dart";
 import "../services/chat_history_service.dart";
 import "../services/session_event_dispatcher.dart";
 
@@ -43,23 +43,19 @@ class ChatHistoryListener({
     );
   }
 
-  Future<void> _capture({required String pluginId, required BridgeSseEvent event}) {
+  Future<void> _capture({required String pluginId, required NormalizedBridgeEvent event}) {
     return switch (event) {
-      BridgeSseServerConnected() => _chatHistoryService.invalidatePluginHistory(pluginId: pluginId),
-      BridgeSseMessageUpdated(:final info) => _captureMessage(info: info),
-      _ => Future<void>.value(),
+      NormalizedOtherEvent(event: BridgeSseServerConnected()) => _chatHistoryService.invalidatePluginHistory(
+        pluginId: pluginId,
+      ),
+      NormalizedMessageEvent(:final message) => _chatHistoryService.captureMessage(
+        sessionId: message.sessionID,
+        message: message,
+      ),
+      // A forced-stop handoff carries no finalized message, and a status
+      // change stores nothing.
+      NormalizedOtherEvent() || NormalizedStatusEvent() || NormalizedTerminalHandoff() => Future<void>.value(),
     };
-  }
-
-  Future<void> _captureMessage({required Map<String, dynamic> info}) async {
-    final Message message;
-    try {
-      message = Message.fromJson(info);
-    } on Object catch (error, stackTrace) {
-      Log.w("Ignoring an undecodable message event; it will not be stored", error, stackTrace);
-      return;
-    }
-    await _chatHistoryService.captureMessage(sessionId: message.sessionID, message: message);
   }
 
   /// Memoized so a second caller joins the same drain instead of returning

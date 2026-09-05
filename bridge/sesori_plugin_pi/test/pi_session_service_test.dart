@@ -681,12 +681,15 @@ void main() {
     final statuses = events.whereType<BridgeSseSessionStatus>().toList();
     final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
     final userMessage = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-      (event) => event.info["promptId"] == "prompt-5",
+      (event) => switch (event.info) {
+        PluginMessageUser(promptId: final id) => id == "prompt-5",
+        _ => false,
+      },
     );
     final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
-    expect(statuses.first.status["type"], "busy");
-    expect(statuses.last.status["type"], "idle");
-    expect(userMessage.info["role"], "user");
+    expect(statuses.first.status, const PluginSessionStatus.busy());
+    expect(statuses.last.status, const PluginSessionStatus.idle());
+    expect(userMessage.info, isA<PluginMessageUser>());
     expect(events.indexOf(userMessage), lessThan(events.indexOf(emptyQueue)));
     expect(events.indexOf(statuses.last), lessThan(idleIndex));
   });
@@ -838,7 +841,7 @@ void main() {
     expect(
       events
           .whereType<BridgeSseMessageUpdated>()
-          .map((event) => event.info["promptId"])
+          .map((event) => (event.info as PluginMessageUser).promptId)
           .where((promptId) => promptId == "prompt-8" || promptId == "prompt-9"),
       ["prompt-8", "prompt-9"],
     );
@@ -1037,7 +1040,7 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     final nextModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
-    expect(events.whereType<BridgeSseSessionStatus>().last.status["type"], "busy");
+    expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
 
     process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
     final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
@@ -1239,10 +1242,10 @@ void main() {
 
     final userMessages = events
         .whereType<BridgeSseMessageUpdated>()
-        .where((event) => event.info["role"] == "user")
+        .where((event) => event.info is PluginMessageUser)
         .toList();
     expect(userMessages, hasLength(1));
-    expect(userMessages.single.info["promptId"], "image-only");
+    expect((userMessages.single.info as PluginMessageUser).promptId, "image-only");
   });
 
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {
@@ -1435,7 +1438,7 @@ void main() {
     await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
-    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info.id;
 
     process.exit(code: 9);
 
@@ -1473,14 +1476,14 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
     final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
     final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-    expect(runningPart.messageID, runningMessage.info["id"]);
+    expect(runningPart.messageID, runningMessage.info.id);
     expect(runningPart.state.status, PluginToolStatus.running);
     expect(runningPart.state.title, "Compacting context");
 
     process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
     await pump();
 
-    expect(events.whereType<BridgeSseMessageUpdated>().last.info["id"], runningMessage.info["id"]);
+    expect(events.whereType<BridgeSseMessageUpdated>().last.info.id, runningMessage.info.id);
     final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
@@ -1695,7 +1698,7 @@ void main() {
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
-    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info.id;
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     expect(steeringPrompt["message"], "queued");
     expect(steeringPrompt["streamingBehavior"], "steer");
@@ -1855,15 +1858,18 @@ void main() {
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
 
     final messageInfos = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
-    expect(messageInfos.map((info) => info["role"]), ["assistant", "assistant"]);
-    expect(messageInfos.map((info) => info["sender"]), ["system", "agent"]);
+    expect(messageInfos.map((info) => info.runtimeType), [PluginMessageAssistant, PluginMessageAssistant]);
+    expect(
+      messageInfos.map((info) => (info as PluginMessageAssistant).sender),
+      [PluginMessageSender.system, PluginMessageSender.agent],
+    );
     expect(
       events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
       containsAllInOrder(["[PR Monitor] report", "Handled report"]),
     );
     expect(
-      events.whereType<BridgeSseSessionStatus>().map((event) => event.status["type"]),
-      ["busy", "idle"],
+      events.whereType<BridgeSseSessionStatus>().map((event) => event.status),
+      [const PluginSessionStatus.busy(), const PluginSessionStatus.idle()],
     );
     expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
     expect(service.currentWorkState, PluginWorkState.idle);
@@ -1952,13 +1958,12 @@ void main() {
     expect(second.killed, isTrue);
   });
 
-  test("reads the configured idle timeout live at each reap arm", () async {
+  test("rearms the idle timeout immediately when settings change", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final clock = _ManualClock();
     final service = fixture.service(clock: clock);
-    fixture.idleTimeout = null;
 
     await service.sendPrompt(
       sessionId: "session",
@@ -1975,28 +1980,24 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "session");
 
-    expect(clock.delays, isEmpty);
-    clock.elapse();
+    expect(clock.delays, [const Duration(minutes: 5)]);
+
+    fixture.idleTimeout = null;
+    fixture.idleTimeoutChanges.add(null);
+    await pump();
+    clock.elapseAt(index: 0);
     await pump();
     expect(fixture.repository.residentSessionIds, contains("session"));
 
     fixture.idleTimeout = const Duration(minutes: 1);
-    await service.sendPrompt(
-      sessionId: "session",
-      promptId: "prompt-reap",
-      directory: "/project",
-      parts: [const PluginPromptPart.text(text: "second")],
-      userVisibleText: "second",
-      variant: null,
-      model: null,
-    );
-    final secondPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
-    process.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
-    process.emit(frame: {"type": "agent_settled"});
-    await _waitForIdle(service: service, sessionId: "session");
+    fixture.idleTimeoutChanges.add(fixture.idleTimeout);
+    await pump();
+    expect(clock.delays, [
+      const Duration(minutes: 5),
+      const Duration(minutes: 1),
+    ]);
 
-    expect(clock.delays, [const Duration(minutes: 1)]);
-    clock.elapse();
+    clock.elapseAt(index: 1);
     await pump();
     expect(process.killed, isTrue);
   });
@@ -2344,6 +2345,7 @@ final class _Fixture({
 }) {
   final List<FakePiProcess> _processes = List.of(processes);
   Duration? idleTimeout = const Duration(minutes: 5);
+  final StreamController<Duration?> idleTimeoutChanges = StreamController<Duration?>.broadcast(sync: true);
   Duration historyRpcTimeout = const Duration(seconds: 2);
   Duration abortRpcTimeout = const Duration(seconds: 1);
   Duration promptRpcTimeout = const Duration(seconds: 2);
@@ -2390,6 +2392,7 @@ final class _Fixture({
       extensionUiService: extension,
       clock: clock,
       resolveIdleTimeout: () => idleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges.stream,
     );
     extensions.add(extension);
     _services.add(service);
@@ -2400,6 +2403,7 @@ final class _Fixture({
     for (final service in _services) {
       await service.dispose();
     }
+    await idleTimeoutChanges.close();
     await repository.dispose();
     for (final process in _processes) {
       await process.close();
@@ -2449,14 +2453,23 @@ final class _HistoryStorage({required super.storageApi}) extends PiSessionHistor
 final class _ManualClock() implements ServerClock {
   Completer<void>? _delay;
   final List<Duration> delays = [];
+  final List<Completer<void>> _allDelays = [];
 
   @override
   Future<void> delay({required Duration duration}) {
     delays.add(duration);
-    return (_delay = Completer<void>()).future;
+    final completer = Completer<void>();
+    _allDelays.add(completer);
+    _delay = completer;
+    return completer.future;
   }
 
   void elapse() => _delay?.complete();
+
+  void elapseAt({required int index}) {
+    final delay = _allDelays[index];
+    if (!delay.isCompleted) delay.complete();
+  }
 
   @override
   DateTime now() => DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);

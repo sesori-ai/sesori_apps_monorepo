@@ -646,6 +646,12 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => _events.stream;
 
   @override
+  WindowHostState get currentState => WindowHostState.focused;
+
+  @override
+  Stream<WindowHostState> get states => const Stream<WindowHostState>.empty();
+
+  @override
   Future<void> initialize({
     required bool hidden,
     required WindowBounds? initialBounds,

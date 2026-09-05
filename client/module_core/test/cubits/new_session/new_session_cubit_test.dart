@@ -21,7 +21,6 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
-import "package:sesori_dart_core/src/utils/model_filter/default_model_selector.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -146,7 +145,6 @@ void main() {
       ),
       newSessionOptionsService: NewSessionOptionsService(
         sessionRepository: mockSessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
       projectRepository: mockProjectRepository,
       selectionTracker: selectionTracker,
@@ -531,7 +529,6 @@ void main() {
           ),
           newSessionOptionsService: NewSessionOptionsService(
             sessionRepository: mockSessionRepository,
-            defaultModelSelector: const DefaultModelSelector(),
           ),
           projectRepository: mockProjectRepository,
           selectionTracker: selectionTracker,
@@ -1242,6 +1239,7 @@ void main() {
                       providerID: "active",
                       name: "Current",
                       variants: [],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1250,6 +1248,7 @@ void main() {
                       providerID: "active",
                       name: "Offline",
                       variants: [],
+                      defaultVariant: null,
                       family: null,
                       isAvailable: false,
                       releaseDate: null,
@@ -1455,6 +1454,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: [],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1463,6 +1463,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-5",
                       variants: ["provisional-effort", "high"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1541,6 +1542,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: ["fast", "slow"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1784,6 +1786,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: [],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1799,6 +1802,7 @@ void main() {
                       providerID: "anthropic",
                       name: "Claude 3",
                       variants: ["deep"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1855,6 +1859,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: [],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -1870,6 +1875,7 @@ void main() {
                       providerID: "anthropic",
                       name: "Claude 3",
                       variants: ["fast"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -2249,6 +2255,7 @@ const _modelSelectionProviders = ProviderListResponse(
           providerID: "openai",
           name: "GPT-4",
           variants: ["fast"],
+          defaultVariant: null,
           family: null,
           releaseDate: null,
         ),
@@ -2264,6 +2271,7 @@ const _modelSelectionProviders = ProviderListResponse(
           providerID: "anthropic",
           name: "Claude 3",
           variants: ["deep"],
+          defaultVariant: null,
           family: null,
           releaseDate: null,
         ),
@@ -2286,6 +2294,7 @@ ProviderListResponse _providerResponseWithVariants(List<String> variants) {
             providerID: "openai",
             name: "GPT-4",
             variants: variants,
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

@@ -34,7 +34,6 @@ class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
 
   final Map<String, List<PendingTrackedEvent>> _insertionOrderByPlugin = {};
   final Map<({String pluginId, String backendSessionId}), PendingSessionEvent> _sessions = {};
-  final Map<({String pluginId, String backendParentId}), List<PendingSessionEvent>> _children = {};
   final Map<({String pluginId, String backendSessionId}), List<PendingTranslationEvent>> _translations = {};
 
   this {
@@ -78,8 +77,6 @@ class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
     }
     _replaceSession(key: bindingKey);
     _sessions[bindingKey] = event;
-    final key = (pluginId: event.pluginId, backendParentId: parentId);
-    (_children[key] ??= []).add(event);
     return _append(event: event);
   }
 
@@ -90,20 +87,6 @@ class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
     _sessions.remove(key);
     _insertionOrder(event.pluginId).remove(event);
     return event;
-  }
-
-  List<PendingSessionEvent> takeChildren({
-    required String pluginId,
-    required String backendParentId,
-  }) {
-    final children = _children.remove((pluginId: pluginId, backendParentId: backendParentId));
-    if (children == null) return const [];
-    for (final child in children) {
-      final key = (pluginId: child.pluginId, backendSessionId: child.session.id);
-      if (identical(_sessions[key], child)) _sessions.remove(key);
-      _insertionOrder(child.pluginId).remove(child);
-    }
-    return children;
   }
 
   bool isBindingPending({
@@ -125,34 +108,6 @@ class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
     }
     (_translations[key] ??= []).add(event);
     return _append(event: event);
-  }
-
-  List<PendingTranslationEvent> takeTranslations({
-    required String pluginId,
-    required String backendSessionId,
-  }) {
-    final translations = _translations.remove((pluginId: pluginId, backendSessionId: backendSessionId));
-    if (translations == null) return const [];
-    for (final event in translations) {
-      _insertionOrder(event.pluginId).remove(event);
-    }
-    return translations;
-  }
-
-  List<PendingTrackedEvent> takeReady({
-    required String pluginId,
-    required String backendSessionId,
-  }) {
-    final readyBindings = {
-      (pluginId: pluginId, backendSessionId: backendSessionId),
-    };
-    final ready = <PendingTrackedEvent>[];
-    while (true) {
-      final event = takeNextReady(readyBindings: readyBindings);
-      if (event == null) break;
-      ready.add(event);
-    }
-    return ready;
   }
 
   PendingTrackedEvent? takeNextReady({
@@ -207,12 +162,6 @@ class SessionEventTracker({required final int maxPendingEntriesPerPlugin}) {
     _insertionOrder(event.pluginId).remove(event);
     final bindingKey = (pluginId: event.pluginId, backendSessionId: event.session.id);
     if (identical(_sessions[bindingKey], event)) _sessions.remove(bindingKey);
-    if (event.session.parentID case final parentId?) {
-      final parentKey = (pluginId: event.pluginId, backendParentId: parentId);
-      final siblings = _children[parentKey];
-      siblings?.remove(event);
-      if (siblings?.isEmpty ?? false) _children.remove(parentKey);
-    }
     if (dropTranslations) {
       final translations = _translations.remove(bindingKey);
       translations?.forEach((translation) => _insertionOrder(translation.pluginId).remove(translation));

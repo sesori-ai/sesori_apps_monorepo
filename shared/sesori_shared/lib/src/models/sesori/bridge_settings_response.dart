@@ -11,6 +11,9 @@ sealed class BridgeSettingsResponse with _$BridgeSettingsResponse {
   const factory({
     required PullRequestRefreshSettingsResponse pullRequestRefresh,
     required YoloSettingsResponse yolo,
+    // COMPATIBILITY 2026-09-03 (v1.8.3): Public v1.8.2 bridges omit this setting; remove null handling
+    // once those bridges are no longer supported.
+    required bool? warmUpPluginsOnSessionOpen,
   }) = _BridgeSettingsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);

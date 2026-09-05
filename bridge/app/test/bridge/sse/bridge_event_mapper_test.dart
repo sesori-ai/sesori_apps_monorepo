@@ -73,56 +73,24 @@ void main() {
       );
     });
 
-    test("maps a system sender through the shared message update", () {
-      final result = mapEvent(
-        BridgeSseMessageUpdated(
-          info: const PluginMessage.assistant(
-            id: "m-system",
-            sessionID: "s1",
-            agent: null,
-            modelID: null,
-            providerID: null,
-            variant: null,
-            sender: PluginMessageSender.system,
-            time: null,
-          ).toJson(),
-        ),
-      );
+    test("builds the public status event from the normalized shared status", () {
+      const status = SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000);
 
-      expect(result, isA<SesoriMessageUpdated>());
-      final event = result! as SesoriMessageUpdated;
-      expect(event.info, isA<MessageAssistant>());
-      expect((event.info as MessageAssistant).sender, MessageSender.system);
-    });
+      final event = mapper.buildSessionStatusEvent(sessionId: "s1", status: status) as SesoriSessionStatus;
 
-    test("maps serialized plugin retry status through the shared SSE union", () {
-      final result = mapEvent(
-        BridgeSseSessionStatus(
-          sessionID: "s1",
-          status: const PluginSessionStatus.retry(
-            attempt: 1,
-            message: "provider overloaded",
-            next: 2000,
-          ).toJson(),
-        ),
-      );
-
-      expect(result, isA<SesoriSessionStatus>());
-      final event = result! as SesoriSessionStatus;
       expect(event.sessionID, "s1");
-      expect(
-        event.status,
-        const SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000),
-      );
+      expect(event.status, status);
     });
 
-    test("attributes command catalog updates to their source plugin", () {
+    test("sends no wire event for a command catalog change", () {
+      // It refreshes the bridge's own options cache instead; clients hear about
+      // it as session.options_updated once that refresh commits.
       final result = mapper.map(
         event: const BridgeSseCommandCatalogUpdated(),
         pluginId: "cursor",
       );
 
-      expect(result, const SesoriCommandCatalogUpdated(pluginId: "cursor"));
+      expect(result, isNull);
     });
 
     test("maps toast session attribution to the wire event", () {

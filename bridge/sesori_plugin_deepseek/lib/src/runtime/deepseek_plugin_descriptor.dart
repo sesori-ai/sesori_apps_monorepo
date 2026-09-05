@@ -16,6 +16,8 @@ import "../repositories/deepseek_catalog_repository.dart";
 import "../repositories/deepseek_history_repository.dart";
 import "../repositories/deepseek_session_repository.dart";
 import "../repositories/mappers/deepseek_catalog_mapper.dart";
+import "../repositories/mappers/deepseek_subagent_mapper.dart";
+import "../repositories/trackers/deepseek_delegation_tracker.dart";
 import "../services/deepseek_session_options_service.dart";
 import "../services/deepseek_session_service.dart";
 import "deepseek_runtime_manifest.dart";
@@ -23,7 +25,7 @@ import "deepseek_runtime_manifest.dart";
 const int _probeOutputLimit = 64 * 1024;
 
 class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
-  static const String minVersion = "0.1.0";
+  static const String minVersion = "0.1.3";
   static const String targetVersion = DeepSeekRuntimeManifest.targetVersion;
   static const String binOption = "bin";
   static const Duration _probeTimeout = Duration(seconds: 10);
@@ -239,6 +241,8 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     const messageTimeParser = DeepSeekMessageTimeParser();
+    const subagentMapper = DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id);
+    final delegationTracker = DeepSeekDelegationTracker();
     final mapper = DeepSeekEventMapper(
       launchDirectory: cwd,
       pluginId: DeepSeekIdentity.id,
@@ -246,6 +250,8 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       childSessions: childSessionTracker,
       api: api,
       messageTimeParser: messageTimeParser,
+      subagentMapper: subagentMapper,
+      delegationTracker: delegationTracker,
     );
     const catalogMapper = DeepSeekCatalogMapper();
     const catalogRepository = DeepSeekCatalogRepository(api: api, mapper: catalogMapper);
@@ -272,8 +278,9 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: messageTimeParser,
       ),
-      deepSeekSessionService: const DeepSeekSessionService(
-        repository: DeepSeekSessionRepository(api: api),
+      deepSeekSessionService: DeepSeekSessionService(
+        repository: const DeepSeekSessionRepository(api: api),
+        childSessions: childSessionTracker,
       ),
       deepSeekSessionOptionsService: deepSeekOptions,
       commandTracker: commandTracker,

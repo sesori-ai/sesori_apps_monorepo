@@ -245,8 +245,7 @@ final class ClaudeToolTracker() {
       switch (result) {
         case ClaudeToolUseResultAsyncLaunched(:final agentId):
           tool.taskId ??= agentId;
-          if (!_isTerminal(tool.status)) tool.status = PluginToolStatus.running;
-          return tool.snapshot(sessionDiffRequired: false);
+          return _markTaskRunning(tool);
         case ClaudeToolUseResultCompleted(:final agentId):
           tool.taskId ??= agentId;
         case ClaudeToolUseResultAbsent() || ClaudeToolUseResultUnknown():
@@ -271,11 +270,30 @@ final class ClaudeToolTracker() {
   }
 
   /// Binds a `task_started` frame to its launching call.
+  ///
+  /// Claude can resume the same background agent after it previously stopped,
+  /// reusing both ids. A repeated start therefore reopens the task rather than
+  /// leaving its prior terminal presentation in place.
   ClaudeTrackedTool? taskStarted({required String toolUseId, required String taskId}) {
     final task = _tasks[toolUseId];
     if (task == null) return null;
     task.taskId ??= taskId;
-    if (!_isTerminal(task.status)) task.status = PluginToolStatus.running;
+    return _markTaskRunning(task);
+  }
+
+  /// Reconciles a replayed task with the resident process's current lifecycle.
+  ClaudeTrackedTool? markTaskRunning({required String toolUseId}) {
+    final task = _tasks[toolUseId];
+    return task == null ? null : _markTaskRunning(task);
+  }
+
+  ClaudeTrackedTool _markTaskRunning(_TrackedTool task) {
+    task
+      ..notified = false
+      ..status = PluginToolStatus.running
+      ..output = null
+      ..error = null
+      ..attachments = const [];
     return task.snapshot(sessionDiffRequired: false);
   }
 

@@ -62,6 +62,17 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return _mapRequired(dto: dto, operation: "thread/start");
   }
 
+  /// Reads a stored or loaded thread without resuming it. Sub-agent threads
+  /// never announce themselves through `thread/started`, so this is how their
+  /// parentage and nickname are learned once the parent names them.
+  Future<CodexThreadRecord> readThread({required String threadId}) async {
+    final dto = await _request(
+      operation: "thread/read",
+      request: () => _appServerApi.readThread(threadId: threadId),
+    );
+    return _mapRequired(dto: dto, operation: "thread/read");
+  }
+
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
     final dto = await _request(
       operation: "thread/resume",
@@ -120,30 +131,6 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return dto == null ? null : mapStartedNotification(dto: dto);
   }
 
-  PluginSession toPluginSession({
-    required CodexThreadRecord record,
-    required String fallbackDirectory,
-    required String? parentSessionId,
-  }) {
-    final directory = record.directory ?? normalizeProjectDirectory(directory: fallbackDirectory);
-    final created = record.createdAt;
-    final updated = record.updatedAt;
-    return PluginSession(
-      id: record.id,
-      projectID: directory,
-      directory: directory,
-      parentID: parentSessionId,
-      title: record.name,
-      time: created == null || updated == null
-          ? null
-          : PluginSessionTime(
-              created: created,
-              updated: updated,
-              archived: null,
-            ),
-    );
-  }
-
   CodexThreadRecord _mapRequired({
     required CodexThreadEnvelopeDto dto,
     required String operation,
@@ -168,8 +155,20 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       updatedAt: _milliseconds(thread.updatedAt),
       model: _usefulText(dto.model),
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
+      parentId: _subAgentParentId(thread: thread),
+      agentNickname: _usefulText(thread.agentNickname),
+      agentPath: null,
     );
   }
+
+  String? _subAgentParentId({required CodexThreadDto thread}) => switch (thread.threadSource) {
+    CodexThreadSource.subAgent ||
+    CodexThreadSource.subAgentReview ||
+    CodexThreadSource.subAgentCompact ||
+    CodexThreadSource.subAgentThreadSpawn ||
+    CodexThreadSource.subAgentOther => _usefulText(thread.parentThreadId),
+    CodexThreadSource.unknown || null => null,
+  };
 
   ({CodexTurnInputDto input, int inlineBytes}) _mapTurnInput({
     required PluginPromptPart part,

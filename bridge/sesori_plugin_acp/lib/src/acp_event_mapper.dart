@@ -10,6 +10,14 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+sealed class const AcpToolCallSessionLookup();
+
+final class const AcpToolCallSessionNotFound() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionAmbiguous() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionFound({required final String sessionId}) extends AcpToolCallSessionLookup;
+
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
 /// something (account, plan, model, or settings). Cursor's account/plan gate
@@ -19,7 +27,7 @@ import "repositories/trackers/acp_tool_content_tracker.dart";
 /// `stopReason: end_turn` — indistinguishable from real assistant prose — so a
 /// backend that knows its own gate wording recognizes it (see
 /// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
-/// [shared.Message.error] instead of quiet assistant text, giving the user an
+/// [PluginMessage.error] instead of quiet assistant text, giving the user an
 /// explicit "the turn did not run" signal. Classification carries no replacement
 /// message; the mapper always forwards the original backend text unchanged.
 class const AcpHaltNotice({
@@ -31,9 +39,10 @@ class const AcpHaltNotice({
 /// Translates ACP `session/update` notifications into bridge-neutral
 /// [BridgeSseEvent]s.
 ///
-/// Like the codex mapper, the `info` maps on session/message events MUST be
-/// sesori-schema JSON (parseable by `Message.fromJson` / `Session.fromJson`),
-/// so we build typed `sesori_shared` models and `.toJson()` them.
+/// Message envelopes are typed [PluginMessage] values; bridge core maps them to
+/// the shared model once. Session payloads are still sesori-schema JSON
+/// (parseable by `Session.fromJson`), so those are built as `sesori_shared`
+/// models and `.toJson()`-ed.
 ///
 /// ACP differs from codex's app-server protocol in two ways that shape this
 /// mapper:
@@ -190,17 +199,28 @@ class AcpEventMapper({
   final Map<String, Map<String, _LiveTool>> _liveTools = {};
 
   /// Resolves the live session that owns [toolCallId], when a harness extension
-  /// omits `sessionId` but carries the originating tool call id.
-  String? sessionIdForToolCallId({required String? toolCallId}) {
-    if (toolCallId == null || toolCallId.isEmpty) return null;
-    for (final entry in _liveTools.entries) {
-      if (entry.value.containsKey(toolCallId)) return entry.key;
-    }
-    for (final entry in _spawnToolCalls.entries) {
-      if (entry.value.contains(toolCallId)) return entry.key;
-    }
-    return null;
+  /// omits `sessionId` but carries the originating tool call id. Duplicate ids
+  /// across concurrent sessions are ambiguous rather than insertion-ordered.
+  AcpToolCallSessionLookup lookupSessionForToolCallId({required String? toolCallId}) {
+    if (toolCallId == null || toolCallId.isEmpty) return const AcpToolCallSessionNotFound();
+    final sessionIds = <String>{
+      for (final entry in _liveTools.entries)
+        if (entry.value.containsKey(toolCallId)) entry.key,
+      for (final entry in _spawnToolCalls.entries)
+        if (entry.value.contains(toolCallId)) entry.key,
+    };
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
+      [] => const AcpToolCallSessionNotFound(),
+      _ => const AcpToolCallSessionAmbiguous(),
+    };
   }
+
+  String? sessionIdForToolCallId({required String? toolCallId}) =>
+      switch (lookupSessionForToolCallId(toolCallId: toolCallId)) {
+        AcpToolCallSessionFound(:final sessionId) => sessionId,
+        AcpToolCallSessionNotFound() || AcpToolCallSessionAmbiguous() => null,
+      };
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
@@ -262,16 +282,17 @@ class AcpEventMapper({
     required String sessionId,
     required String message,
   }) => BridgeSseMessageUpdated(
-    info: shared.Message.error(
+    info: PluginMessage.error(
       id: "${_fallbackTurnMessageId(sessionId)}-error",
       sessionID: sessionId,
       agent: pluginId,
       modelID: modelForSession(sessionId: sessionId),
       providerID: providerForSession(sessionId: sessionId),
+      variant: null,
       errorName: "ACP prompt failed",
       errorMessage: message,
       time: null,
-    ).toJson(),
+    ),
   );
 
   /// Emits complete snapshots for text and reasoning parts streamed during the
@@ -299,8 +320,7 @@ class AcpEventMapper({
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
-  String _fallbackTurnMessageId(String sessionId) =>
-      _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
+  String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
@@ -366,7 +386,7 @@ class AcpEventMapper({
     if (mutations.isEmpty) return const [];
     return [
       BridgeSseMessageUpdated(
-        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId, time: time).toJson(),
+        info: _messageFor(_ChunkRole.user, messageId, sessionId, promptId: promptId, time: time),
       ),
       for (final mutation in mutations)
         BridgeSseMessagePartUpdated(
@@ -449,8 +469,9 @@ class AcpEventMapper({
           time: messageTime,
         );
       case "user_message_chunk":
-        // A child session's first user message is the prompt its parent gave
-        // it, which no client sent: it is the one source of the tile's prompt.
+        // When lifecycle omitted the launch prompt, a child session's first
+        // user message supplies it. Trackers whose start already carried the
+        // prompt ignore this echo and every later direct child prompt.
         if (childSessions.isChild(sessionId: sessionId)) {
           return _childPromptChunk(childSessionId: sessionId, update: update);
         }
@@ -472,12 +493,9 @@ class AcpEventMapper({
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "available_commands_update":
         // The advertised commands themselves are tracked by AcpCommandTracker
-        // and served via getCommands. The catalog is process-wide, while the
-        // options-change event retains the originating session for persistence.
-        return [
-          const BridgeSseCommandCatalogUpdated(),
-          BridgeSseSessionOptionsChanged(sessionID: sessionId),
-        ];
+        // and served via getCommands. The options-change event retains the
+        // originating session, which is what resolves the catalog to refresh.
+        return [BridgeSseSessionOptionsChanged(sessionID: sessionId)];
       case "session_info_update":
         // The notification may carry `updatedAt` (ISO 8601 or epoch) — keep
         // the snapshot's recency fresh even when no title change is emitted.
@@ -571,6 +589,12 @@ class AcpEventMapper({
     );
   }
 
+  /// Whether [notification] must remain behind an accepted prompt whose frame
+  /// is still being written. Standard updates always do; a harness lifecycle
+  /// extension that can synchronously follow prompt receipt overrides this.
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == AcpMethods.sessionUpdate;
+
   /// Hook for non-`session/update` notifications (harness extensions such as
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
   List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
@@ -588,13 +612,15 @@ class AcpEventMapper({
   List<BridgeSseEvent> mapChildSpawned({required String sessionId, required AcpChildSpawn spawn}) {
     // Same boundary rule as [map]: an id-less session event is undeliverable.
     if (sessionId.isEmpty || spawn.childSessionId.isEmpty) return const [];
-    return _childTileEvents(
-      childSessions.spawn(
-        sessionId: sessionId,
-        spawn: spawn,
-        directory: projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId)),
-      ),
+    final directory = projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId));
+    final result = childSessions.spawn(
+      sessionId: sessionId,
+      spawn: spawn,
+      directory: directory,
     );
+    if (result == null) return const [];
+    setSessionProject(spawn.childSessionId, directory);
+    return _childTileEvents(result);
   }
 
   /// Records the model a harness reports for a spawned child, so the child's
@@ -616,7 +642,7 @@ class AcpEventMapper({
 
   /// A tile's first render needs the assistant envelope it hangs from.
   List<BridgeSseEvent> _childTileEvents(AcpChildTileResult result) => [
-    if (result.opensMessage) _toolEnvelope(sessionId: result.rootSessionId, messageId: result.messageId, time: null),
+    if (result.opensMessage) _toolEnvelope(sessionId: result.renderSessionId, messageId: result.messageId, time: null),
     ...result.events,
   ];
 
@@ -627,6 +653,22 @@ class AcpEventMapper({
     required String? output,
     required String? error,
   }) => childSessions.finish(childSessionId: childSessionId, status: status, output: output, error: error);
+
+  /// Finalizes a child while atomically replacing it with an opaque hold for a
+  /// backend-driven root settlement turn that has no ACP prompt accounting.
+  List<BridgeSseEvent> mapChildFinishedAndHoldRoot({
+    required String childSessionId,
+    required String holdId,
+    required PluginToolStatus status,
+    required String? output,
+    required String? error,
+  }) => childSessions.finishAndHoldRoot(
+    childSessionId: childSessionId,
+    holdId: holdId,
+    status: status,
+    output: output,
+    error: error,
+  );
 
   /// Hook: classify an assistant message's [text] as a backend halt notice
   /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
@@ -686,9 +728,7 @@ class AcpEventMapper({
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
-      update: messageId == null
-          ? const <String, dynamic>{}
-          : <String, dynamic>{"messageId": messageId},
+      update: messageId == null ? const <String, dynamic>{} : <String, dynamic>{"messageId": messageId},
       role: _ChunkRole.assistant,
     );
     final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
@@ -739,7 +779,7 @@ class AcpEventMapper({
     if (started.add(identity.messageId)) {
       events.add(
         BridgeSseMessageUpdated(
-          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null, time: time).toJson(),
+          info: _messageFor(_ChunkRole.assistant, identity.messageId, sessionId, promptId: null, time: time),
         ),
       );
     }
@@ -836,7 +876,7 @@ class AcpEventMapper({
     if (started.add(partId)) {
       if (started.add(messageId)) {
         events.add(
-          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null, time: time).toJson()),
+          BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId, promptId: null, time: time)),
         );
       }
       events.add(
@@ -932,16 +972,17 @@ class AcpEventMapper({
     _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     return [
       BridgeSseMessageUpdated(
-        info: shared.Message.error(
+        info: PluginMessage.error(
           id: messageId,
           sessionID: sessionId,
           agent: pluginId,
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
+          variant: null,
           errorName: notice.errorName,
           errorMessage: message,
-          time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
-        ).toJson(),
+          time: time,
+        ),
       ),
     ];
   }
@@ -1116,15 +1157,16 @@ class AcpEventMapper({
     required PluginMessageTime? time,
   }) {
     return BridgeSseMessageUpdated(
-      info: shared.Message.assistant(
+      info: PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        sender: shared.MessageSender.agent,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
-      ).toJson(),
+        variant: null,
+        sender: PluginMessageSender.agent,
+        time: time,
+      ),
     );
   }
 
@@ -1157,7 +1199,7 @@ class AcpEventMapper({
     );
   }
 
-  shared.Message _messageFor(
+  PluginMessage _messageFor(
     _ChunkRole role,
     String messageId,
     String sessionId, {
@@ -1165,21 +1207,22 @@ class AcpEventMapper({
     required PluginMessageTime? time,
   }) {
     return switch (role) {
-      _ChunkRole.user => shared.Message.user(
+      _ChunkRole.user => PluginMessage.user(
         id: messageId,
         sessionID: sessionId,
         agent: null,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
+        time: time,
         promptId: promptId,
       ),
-      _ChunkRole.assistant => shared.Message.assistant(
+      _ChunkRole.assistant => PluginMessage.assistant(
         id: messageId,
         sessionID: sessionId,
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        sender: shared.MessageSender.agent,
-        time: time == null ? null : shared.MessageTime(created: time.created, completed: time.completed),
+        variant: null,
+        sender: PluginMessageSender.agent,
+        time: time,
       ),
     };
   }
@@ -1202,7 +1245,7 @@ class AcpEventMapper({
       pluginId: pluginId,
       projectID: project,
       directory: project,
-      parentID: null,
+      parentID: childSessions.parentOf(sessionId: id),
       title: snapshot?.title,
       time: created == null && updated == null
           ? null
@@ -1316,7 +1359,10 @@ class AcpEventMapper({
   }
 }
 
-enum _ChunkRole() { user, assistant }
+enum _ChunkRole() {
+  user,
+  assistant,
+}
 
 /// Last-known metadata for one session, merged into the `session.updated`
 /// payload a `session_info_update` emits.
@@ -1327,10 +1373,10 @@ class _SessionSnapshot() {
 }
 
 class _TextPartAccumulator({
-    required final String partId,
-    required final String messageId,
-    required final PluginMessagePartType type,
-  }) {
+  required final String partId,
+  required final String messageId,
+  required final PluginMessagePartType type,
+}) {
   final StringBuffer text = StringBuffer();
   bool isStreaming = false;
 }
@@ -1338,13 +1384,13 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
-    required final String tool,
-    required final String? title,
-    required final PluginToolStatus status,
-    required final AcpToolContentTracker contentTracker,
-    required final bool isFileMutation,
-    required var bool diffEmitted,
-    required final bool hasExplicitKind,
-    required final bool hasExplicitStatus,
-    required final PluginMessageTime? time,
-  });
+  required final String tool,
+  required final String? title,
+  required final PluginToolStatus status,
+  required final AcpToolContentTracker contentTracker,
+  required final bool isFileMutation,
+  required var bool diffEmitted,
+  required final bool hasExplicitKind,
+  required final bool hasExplicitStatus,
+  required final PluginMessageTime? time,
+});

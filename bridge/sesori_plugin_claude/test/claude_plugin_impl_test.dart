@@ -136,9 +136,9 @@ void main() {
       expect(visibleParts.single.part.text, "visible prompt");
       expect(visibleParts.single.part.messageID, "replay-user-1");
       final user = events.whereType<BridgeSseMessageUpdated>().where(
-        (event) => event.info["role"] == "user",
+        (event) => event.info is PluginMessageUser,
       );
-      expect(user.single.info["id"], "replay-user-1");
+      expect(user.single.info.id, "replay-user-1");
       await subscription.cancel();
     });
 
@@ -176,6 +176,27 @@ void main() {
           isA<PluginStaleOptionsException>()
               .having((error) => error.statusCode, "status", 409)
               .having((error) => error.message, "message", "unsupported Claude agent"),
+        ),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
+    test("rejects Claude's synthetic model before enqueueing", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: "Agent",
+          model: (providerID: "anthropic", modelID: "<synthetic>"),
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "unsupported Claude model"),
         ),
       );
       expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
@@ -295,7 +316,7 @@ void main() {
       );
       expect(visible.single.part.messageID, "replay-user-2");
       final message = events.whereType<BridgeSseMessageUpdated>().where(
-        (event) => event.info["id"] == "replay-user-2" && event.info["role"] == "user",
+        (event) => event.info.id == "replay-user-2" && event.info is PluginMessageUser,
       );
       expect(message, hasLength(1));
       await subscription.cancel();
@@ -329,9 +350,9 @@ void main() {
       await pump();
 
       final user = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["id"] == "echo-image",
+        (event) => event.info.id == "echo-image",
       );
-      expect(user.info["promptId"], "prm_image");
+      expect((user.info as PluginMessageUser).promptId, "prm_image");
       expect(
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type),
         containsAll([
@@ -378,10 +399,10 @@ void main() {
       await pump();
 
       final messageIndex = events.indexWhere(
-        (event) => event is BridgeSseMessageUpdated && event.info["id"] == "replay-steer",
+        (event) => event is BridgeSseMessageUpdated && event.info.id == "replay-steer",
       );
       final message = events[messageIndex] as BridgeSseMessageUpdated;
-      expect(message.info["promptId"], "prm_steer");
+      expect((message.info as PluginMessageUser).promptId, "prm_steer");
       final emptyQueueIndex = events.indexWhere(
         (event) => event is BridgeSseQueuedPromptsUpdated && event.prompts.isEmpty,
       );
@@ -422,7 +443,12 @@ void main() {
 
       final messageIndex = events.indexWhere(
         (event) =>
-            event is BridgeSseMessageUpdated && event.info["role"] == "user" && event.info["promptId"] == "prm_cmd",
+            event is BridgeSseMessageUpdated &&
+            event.info is PluginMessageUser &&
+            switch (event.info) {
+              PluginMessageUser(promptId: final id) => id == "prm_cmd",
+              _ => false,
+            },
       );
       expect(messageIndex, greaterThanOrEqualTo(0));
       final emptyQueueIndex = events.indexWhere(
@@ -462,7 +488,12 @@ void main() {
       await pump();
 
       expect(
-        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == "prm_unmappable"),
+        events.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == "prm_unmappable",
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
@@ -499,9 +530,9 @@ void main() {
 
       // A buffered frame delivered while abort clears the queue must not
       // inherit the aborted turn's identity.
-      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
+      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info.id == "late-echo");
       expect(lateEchoes, hasLength(1));
-      expect(lateEchoes.single.info["promptId"], isNull);
+      expect((lateEchoes.single.info as PluginMessageUser).promptId, isNull);
       await subscription.cancel();
     });
 
@@ -630,7 +661,7 @@ void main() {
       final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
       expect(retry.attempt, 2);
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
-      expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
+      expect((events.whereType<BridgeSseSessionStatus>().last.status as PluginSessionStatusRetry).next, retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
 
       // The retried request streaming again is the recovery signal; the turn
@@ -649,8 +680,8 @@ void main() {
 
       expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
       expect(
-        shared.SessionStatus.fromJson(events.whereType<BridgeSseSessionStatus>().last.status),
-        isA<shared.SessionStatusBusy>(),
+        events.whereType<BridgeSseSessionStatus>().last.status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       await subscription.cancel();
@@ -700,7 +731,7 @@ void main() {
       await pump();
 
       final errorEvent = events.whereType<BridgeSseMessageUpdated>().last;
-      final error = shared.Message.fromJson(errorEvent.info) as shared.MessageError;
+      final error = errorEvent.info as PluginMessageError;
       expect(error.errorName, "api_error");
       expect(error.errorMessage, "Claude Code could not complete the API request (HTTP 500).");
       expect(
@@ -788,7 +819,7 @@ void main() {
 
       final errors = events
           .whereType<BridgeSseMessageUpdated>()
-          .map((event) => shared.Message.fromJson(event.info))
+          .map((event) => event.info)
           .whereType<shared.MessageError>();
       expect(errors, isEmpty);
       await subscription.cancel();
@@ -884,6 +915,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       approvals: approvals,
       clock: const _NeverIdleClock(),
       resolveIdleTimeout: () => const Duration(minutes: 5),
+      idleTimeoutChanges: const Stream<Duration?>.empty(),
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(
@@ -902,7 +934,11 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         discoveryDirectory: temporary.path,
       ),
       approvals: approvals,
-      eventDispatcher: ClaudeEventDispatcher(content: content, tools: ClaudeToolTracker()),
+      eventDispatcher: ClaudeEventDispatcher(
+        content: content,
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      ),
       history: const ClaudeHistoryMapper(content: content),
       eventBuffer: eventBuffer,
       clock: const _NeverIdleClock(),

@@ -42,6 +42,79 @@ void main() {
       "authMethods": authMethods,
     };
 
+    test("initializeOnly returns auth methods without authenticating", () async {
+      final initializing = api.initializeOnly(
+        formElicitation: false,
+        capabilityMeta: null,
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"id": "oauth-personal", "name": "Log in with Google"},
+          ],
+        ),
+      });
+
+      final result = await initializing;
+
+      expect(result.authMethods.single.id, "oauth-personal");
+      expect(fake.written.where((frame) => frame["method"] == "authenticate"), isEmpty);
+    });
+
+    test("initializeOnly returns an unsupported negotiated version for probe policy", () async {
+      final initializing = api.initializeOnly(
+        formElicitation: false,
+        capabilityMeta: null,
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          ...initializeResult(authMethods: const []),
+          "protocolVersion": 2,
+        },
+      });
+
+      expect((await initializing).protocolVersion, 2);
+    });
+
+    test("authenticate can continue an initializeOnly result", () async {
+      final initializing = api.initializeOnly(
+        formElicitation: false,
+        capabilityMeta: null,
+        timeout: const Duration(seconds: 5),
+      );
+      final initialize = await waitForFrame("initialize");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": initializeResult(
+          authMethods: [
+            {"id": "oauth-personal", "name": "Log in with Google"},
+          ],
+        ),
+      });
+      final initialized = await initializing;
+
+      final authenticating = api.authenticate(
+        initializeResult: initialized,
+        authMethodId: "oauth-personal",
+        authMethodAllowlist: null,
+        timeout: const Duration(seconds: 5),
+      );
+      final authenticate = await waitForFrame("authenticate");
+      expect(authenticate["params"], {"methodId": "oauth-personal"});
+      fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+
+      await authenticating;
+    });
+
     test("picks the first non-terminal auth method when none is configured", () async {
       final initializing = api.initialize(
         formElicitation: false,

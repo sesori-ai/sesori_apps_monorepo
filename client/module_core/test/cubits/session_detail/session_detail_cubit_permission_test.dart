@@ -74,7 +74,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -903,6 +903,7 @@ ProviderListResponse _providers() {
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

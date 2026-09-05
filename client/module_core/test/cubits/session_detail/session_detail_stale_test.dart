@@ -78,7 +78,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
@@ -358,6 +358,7 @@ void main() {
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
                     variants: [],
+                    defaultVariant: null,
                     family: null,
                     releaseDate: null,
                   ),
@@ -1758,6 +1759,7 @@ ProviderListResponse _providers() {
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

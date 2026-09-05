@@ -21,6 +21,23 @@ import "../widgets/desktop_cockpit_shell.dart";
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _desktopSessionNavigatorKey = GlobalKey<NavigatorState>();
+final Completer<void> _desktopRouterReady = Completer<void>();
+bool _desktopRouterReadyScheduled = false;
+
+/// Completes only after the product router has mounted through its first frame.
+Future<void> get desktopRouterReady => _desktopRouterReady.future;
+
+void scheduleDesktopRouterReady() {
+  if (_desktopRouterReady.isCompleted || _desktopRouterReadyScheduled) {
+    return;
+  }
+  _desktopRouterReadyScheduled = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!_desktopRouterReady.isCompleted) {
+      _desktopRouterReady.complete();
+    }
+  });
+}
 
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _newSessionRouteSegment = "new";
@@ -358,7 +375,9 @@ void _openSettings({required BuildContext context, required String currentPath})
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
-  final routeState = GoRouterState.of(context);
+  // The list's context need not belong to the current detail route.
+  // ignore: no_slop_linter/avoid_raw_go_router, reads current route state inside the typed routing boundary
+  final routeState = GoRouter.of(context).state;
   if (routeState.pathParameters[sessionIdPathParam] != sessionId) {
     return;
   }

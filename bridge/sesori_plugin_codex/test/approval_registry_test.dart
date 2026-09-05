@@ -23,6 +23,10 @@ void main() {
         emit: emitted.add,
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
+        resolvePendingInputScope: ({required sessionId}) => (
+          displaySessionId: sessionId,
+          sourceSessionIds: [sessionId],
+        ),
       );
       registry.attach(stream: requests.stream);
     });

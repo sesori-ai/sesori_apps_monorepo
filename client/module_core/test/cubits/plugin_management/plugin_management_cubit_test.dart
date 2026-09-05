@@ -37,6 +37,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 1));
+    registerFallbackValue(const PluginAuthenticationContinuationIntent.pasted(rawInput: "redirect"));
     registerFallbackValue(Uri.parse("https://example.com"));
     registerFallbackValue(UrlLaunchMode.externalApp);
   });
@@ -65,13 +66,19 @@ void main() {
     when(
       () => service.startAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer(
-      (_) async => const PluginAuthenticationStartResult.challenge(
-        challenge: PluginAuthenticationChallengeResponse.deviceCode(
-          verificationUrl: "https://auth.example/device",
+      (_) async => PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
           userCode: "ABCD-EFGH",
         ),
       ),
     );
+    when(
+      () => service.submitAuthenticationRedirect(
+        pluginId: any(named: "pluginId"),
+        intent: any(named: "intent"),
+      ),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
     when(
       () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
@@ -134,26 +141,39 @@ void main() {
     expect(cubit.state, const PluginManagementState.loading());
   });
 
-  test("authentication presents challenge, launches explicitly, and settles terminal progress", () async {
+  test("browser authentication retains invalid input and serializes redirect submission", () async {
+    final browserChallenge = PluginAuthenticationBrowserChallenge(
+      authorizationUri: Uri.parse("https://accounts.example/authorize"),
+      expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
+    );
+    when(
+      () => service.startAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: browserChallenge));
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
-    authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
-        verificationUri: Uri.parse("https://auth.example/device"),
-        userCode: "ABCD-EFGH",
-      ),
-    });
+    authenticationChallenges.add({"codex": browserChallenge});
     await _settle();
 
     await cubit.startAuthentication(pluginId: "codex");
-    expect(
-      (cubit.state as PluginManagementReady).authentication,
-      isA<PluginAuthenticationPresentationChallenge>(),
+    const invalidIntent = PluginAuthenticationContinuationIntent.pasted(rawInput: "invalid");
+    when(
+      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: invalidIntent),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.invalidRedirect());
+    await cubit.submitAuthenticationRedirect(intent: invalidIntent);
+    final invalidState = (cubit.state as PluginManagementReady).authentication;
+    expect((invalidState as PluginAuthenticationPresentationChallenge).challenge,
+        isA<PluginAuthenticationInvalidRedirectPresentation>());
+    const intent = PluginAuthenticationContinuationIntent.pasted(
+      rawInput: "http://127.0.0.1/callback?code=opaque",
     );
-    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
-    await cubit.launchAuthenticationBrowser();
-    verify(
-      () => urlLauncher.launch(Uri.parse("https://auth.example/device"), mode: UrlLaunchMode.externalApp),
-    ).called(1);
+    final completion = Completer<PluginAuthenticationContinuationResult>();
+    when(
+      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent),
+    ).thenAnswer((_) => completion.future);
+    final submitting = cubit.submitAuthenticationRedirect(intent: intent);
+    await cubit.submitAuthenticationRedirect(intent: intent);
+    verify(() => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent)).called(1);
+    completion.complete(const PluginAuthenticationContinuationResult.applied());
+    await submitting;
 
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
     await _settle();
@@ -166,7 +186,7 @@ void main() {
   test("authentication maps a thrown browser launch and allows retry", () async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -192,7 +212,7 @@ void main() {
     ).thenAnswer((_) => launch.future);
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -218,7 +238,7 @@ void main() {
     ).thenAnswer((_) => launch.future);
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -263,9 +283,9 @@ void main() {
     await _settle();
     await cubit.startAuthentication(pluginId: "codex");
     first.complete(
-      const PluginAuthenticationStartResult.challenge(
-        challenge: PluginAuthenticationChallengeResponse.deviceCode(
-          verificationUrl: "https://stale.example/device",
+      PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://stale.example/device"),
           userCode: "STALE-CODE",
         ),
       ),
@@ -281,7 +301,7 @@ void main() {
   test("authentication cancellation waits for terminal progress", () async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -310,7 +330,7 @@ void main() {
     ).thenAnswer((_) => cancel.future);
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -338,7 +358,7 @@ void main() {
     ).thenAnswer((_) => cancel.future);
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),

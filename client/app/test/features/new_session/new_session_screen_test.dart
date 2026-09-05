@@ -442,7 +442,6 @@ void main() {
     GetIt.instance.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
@@ -1627,6 +1626,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),
@@ -1677,6 +1677,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),

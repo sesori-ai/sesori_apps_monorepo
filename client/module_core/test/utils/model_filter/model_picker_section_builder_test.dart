@@ -14,6 +14,7 @@ ProviderModel _model({
     providerID: "test-provider",
     name: name ?? id,
     variants: const [],
+    defaultVariant: null,
     family: family,
     isAvailable: isAvailable,
     releaseDate: releaseDate,
@@ -52,8 +53,16 @@ void main() {
     test("sorts providers by name", () {
       final sections = build(
         providers: [
-          _provider(id: "z", name: "Zeta", models: [_model(id: "z-1")]),
-          _provider(id: "a", name: "Alpha", models: [_model(id: "a-1")]),
+          _provider(
+            id: "z",
+            name: "Zeta",
+            models: [_model(id: "z-1")],
+          ),
+          _provider(
+            id: "a",
+            name: "Alpha",
+            models: [_model(id: "a-1")],
+          ),
         ],
       );
       expect(sections.map((s) => s.providerName), ["Alpha", "Zeta"]);
@@ -63,8 +72,14 @@ void main() {
       final sections = build(
         providers: [
           _provider(id: "empty", models: const []),
-          _provider(id: "dead", models: [_model(id: "d-1", isAvailable: false)]),
-          _provider(id: "alive", models: [_model(id: "a-1")]),
+          _provider(
+            id: "dead",
+            models: [_model(id: "d-1", isAvailable: false)],
+          ),
+          _provider(
+            id: "alive",
+            models: [_model(id: "a-1")],
+          ),
         ],
       );
       expect(sections.map((s) => s.providerID), ["alive"]);
@@ -73,40 +88,46 @@ void main() {
     test("excludes unavailable models", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "kept"),
-            _model(id: "dropped", isAvailable: false),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "kept"),
+              _model(id: "dropped", isAvailable: false),
+            ],
+          ),
         ],
       );
       expect(sections.single.models.map((m) => m.modelID), ["kept"]);
     });
 
-    test("sorts models by release date descending, undated last, ties by name", () {
+    test("keeps models in the order the plugin declared them", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "undated-b", name: "B undated"),
-            _model(id: "old", name: "Old", releaseDate: DateTime(2024)),
-            _model(id: "undated-a", name: "A undated"),
-            _model(id: "new", name: "New", releaseDate: DateTime(2026)),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "undated-b", name: "B undated"),
+              _model(id: "old", name: "Old", releaseDate: DateTime(2024)),
+              _model(id: "undated-a", name: "A undated"),
+              _model(id: "new", name: "New", releaseDate: DateTime(2026)),
+            ],
+          ),
         ],
       );
-      expect(
-        sections.single.models.map((m) => m.modelID),
-        ["new", "old", "undated-a", "undated-b"],
-      );
+      expect(sections.single.models.map((m) => m.modelID), ["undated-b", "old", "undated-a", "new"]);
     });
 
     test("marks one representative per family as visible by default", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "sonnet-new", family: "sonnet", releaseDate: DateTime(2026)),
-            _model(id: "sonnet-old", family: "sonnet", releaseDate: DateTime(2024)),
-            _model(id: "haiku-only", family: "haiku", releaseDate: DateTime(2025)),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "sonnet-new", family: "sonnet", releaseDate: DateTime(2026)),
+              _model(id: "sonnet-old", family: "sonnet", releaseDate: DateTime(2024)),
+              _model(id: "haiku-only", family: "haiku", releaseDate: DateTime(2025)),
+            ],
+          ),
         ],
       );
       final visible = sections.single.models.where((m) => m.visibleByDefault).map((m) => m.modelID);
@@ -134,10 +155,13 @@ void main() {
     test("treats models without a family as their own family", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "lone-a", releaseDate: DateTime(2024)),
-            _model(id: "lone-b", releaseDate: DateTime(2026)),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "lone-a", releaseDate: DateTime(2024)),
+              _model(id: "lone-b", releaseDate: DateTime(2026)),
+            ],
+          ),
         ],
       );
       expect(sections.single.models.every((m) => m.visibleByDefault), isTrue);
@@ -145,14 +169,20 @@ void main() {
 
     test("keeps the selected model visible by default in the selected provider only", () {
       final providers = [
-        _provider(id: "p1", models: [
-          _model(id: "shared-new", family: "fam", releaseDate: DateTime(2026)),
-          _model(id: "shared-old", family: "fam", releaseDate: DateTime(2024)),
-        ]),
-        _provider(id: "p2", models: [
-          _model(id: "shared-new", family: "fam", releaseDate: DateTime(2026)),
-          _model(id: "shared-old", family: "fam", releaseDate: DateTime(2024)),
-        ]),
+        _provider(
+          id: "p1",
+          models: [
+            _model(id: "shared-new", family: "fam", releaseDate: DateTime(2026)),
+            _model(id: "shared-old", family: "fam", releaseDate: DateTime(2024)),
+          ],
+        ),
+        _provider(
+          id: "p2",
+          models: [
+            _model(id: "shared-new", family: "fam", releaseDate: DateTime(2026)),
+            _model(id: "shared-old", family: "fam", releaseDate: DateTime(2024)),
+          ],
+        ),
       ];
       final sections = build(
         providers: providers,
@@ -168,9 +198,12 @@ void main() {
     test("strips the (latest) marker from the display name", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "m", name: "Claude Sonnet (latest)"),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "m", name: "Claude Sonnet (latest)"),
+            ],
+          ),
         ],
       );
       expect(sections.single.models.single.displayName, "Claude Sonnet");
@@ -179,9 +212,13 @@ void main() {
     test("builds a lowercase search haystack from name, family, id, and provider name", () {
       final sections = build(
         providers: [
-          _provider(id: "anthropic", name: "Anthropic", models: [
-            _model(id: "claude-4", name: "Claude Sonnet", family: "Sonnet"),
-          ]),
+          _provider(
+            id: "anthropic",
+            name: "Anthropic",
+            models: [
+              _model(id: "claude-4", name: "Claude Sonnet", family: "Sonnet"),
+            ],
+          ),
         ],
       );
       final searchText = sections.single.models.single.searchText;
@@ -195,9 +232,12 @@ void main() {
     test("exposes the family as the entry subtitle", () {
       final sections = build(
         providers: [
-          _provider(id: "p", models: [
-            _model(id: "with", family: "fam"),
-          ]),
+          _provider(
+            id: "p",
+            models: [
+              _model(id: "with", family: "fam"),
+            ],
+          ),
         ],
       );
       expect(sections.single.models.single.family, "fam");

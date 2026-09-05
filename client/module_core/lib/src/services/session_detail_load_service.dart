@@ -95,6 +95,7 @@ class SessionDetailLoadService({
                   agents: <AgentInfo>[],
                   providerData: null,
                   commands: <CommandInfo>[],
+                  areStale: false,
                 ),
               ),
             )
@@ -188,6 +189,7 @@ class SessionDetailLoadService({
           agents: options.agents,
           providerData: options.providerData,
           commands: options.commands,
+          areOptionsStale: options.areStale,
           canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
           promptDefaults: promptDefaults,
           isRootSession: session != null ? session.parentID == null : null,
@@ -211,25 +213,29 @@ class SessionDetailLoadService({
           agents: <AgentInfo>[],
           providerData: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
           commands: <CommandInfo>[],
+          areStale: false,
         ),
       );
     }
 
-    _SessionDetailOptionsResult fromCatalog(SessionOptionsCatalog catalog) => _SessionDetailOptionsAvailable(
-      options: (
-        agents: catalog.agents,
-        providerData: ProviderListResponse(
-          items: catalog.providers,
-          connectedOnly: catalog.providersConnectedOnly,
-        ),
-        commands: catalog.commands,
-      ),
-    );
+    _SessionDetailOptionsResult fromCatalog(SessionOptionsCatalog catalog, {bool areStale = false}) =>
+        _SessionDetailOptionsAvailable(
+          options: (
+            agents: catalog.agents,
+            providerData: ProviderListResponse(
+              items: catalog.providers,
+              connectedOnly: catalog.providersConnectedOnly,
+            ),
+            commands: catalog.commands,
+            areStale: areStale,
+          ),
+        );
     const unavailable = _SessionDetailOptionsAvailable(
       options: (
         agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
+        areStale: false,
       ),
     );
 
@@ -239,8 +245,8 @@ class SessionDetailLoadService({
       mode: SessionOptionsRequestMode.dynamic,
     );
     switch (result) {
-      case SessionOptionsRepositoryAvailable(:final catalog):
-        return fromCatalog(catalog);
+      case SessionOptionsRepositoryAvailable(:final catalog, :final isStale):
+        return fromCatalog(catalog, areStale: isStale);
       case SessionOptionsRepositoryUnsupported():
         // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
         // expose /session/options. Remove this fallback with support for them.
@@ -357,6 +363,11 @@ class const SessionDetailSnapshot({
   required final List<AgentInfo> agents,
   required final ProviderListResponse? providerData,
   required final List<CommandInfo> commands,
+
+  /// Whether the bridge served these options from a snapshot old enough to be
+  /// worth refreshing behind the user. The options stay usable meanwhile; the
+  /// cubit brings them up to date without a loading state.
+  required final bool areOptionsStale,
   required final String? canonicalSessionTitle,
   required final SessionPromptDefaults? promptDefaults,
 
@@ -374,6 +385,7 @@ typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,
   ProviderListResponse? providerData,
   List<CommandInfo> commands,
+  bool areStale,
 });
 
 sealed class const _SessionDetailOptionsResult();

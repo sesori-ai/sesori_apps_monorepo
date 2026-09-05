@@ -6,11 +6,20 @@ import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
+import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
+import "models/codex_thread_record.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
   final List<CodexRolloutLineDto> _lines = List.unmodifiable(lines);
+
+  bool get hasSubtasks => _lines.any(
+    (line) => switch (line) {
+      CodexRolloutResponseItemLineDto(payload: CodexRolloutFunctionCallDto(name: "spawn_agent")) => true,
+      _ => false,
+    },
+  );
 }
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
@@ -22,6 +31,7 @@ class CodexMessageRepository({
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -32,6 +42,7 @@ class CodexMessageRepository({
         sessionId: sessionId,
       ),
       sessionId: sessionId,
+      children: children,
       replayToolDisposition: replayToolDisposition,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: config,
@@ -55,12 +66,60 @@ class CodexMessageRepository({
         stackTrace,
       );
     }
-    return CodexPreparedMessageRead(lines: lines);
+    return CodexPreparedMessageRead(lines: trimForkedParentHistory(lines: lines));
+  }
+
+  /// Drops the parent history a `fork_turns` sub-agent rollout copies ahead of
+  /// its own turns, so a child transcript starts with the child's work.
+  ///
+  /// codex-cli 0.148.0 writes the copy after the child's leading sub-agent
+  /// `session_meta`, beginning with a second `session_meta` for the parent and
+  /// continuing through the spawn point. The parent's in-flight turn therefore
+  /// appears as a `task_started` with no terminal event before the child's own
+  /// first `task_started`; that nested start is where child history begins.
+  /// Root forks and malformed rollouts without that leading child metadata are
+  /// returned unchanged, as is a copy whose boundary cannot be located.
+  static List<CodexRolloutLineDto> trimForkedParentHistory({
+    required List<CodexRolloutLineDto> lines,
+  }) {
+    if (lines.isEmpty ||
+        lines.first is! CodexRolloutSessionMetadataLineDto ||
+        (lines.first as CodexRolloutSessionMetadataLineDto).payload.threadSource != CodexRolloutThreadSource.subagent) {
+      return lines;
+    }
+    var copyStart = -1;
+    for (var index = 1; index < lines.length; index++) {
+      if (lines[index] is CodexRolloutSessionMetadataLineDto) {
+        copyStart = index;
+        break;
+      }
+    }
+    if (copyStart < 0) return lines;
+    var openTurn = false;
+    for (var index = copyStart + 1; index < lines.length; index++) {
+      if (lines[index] case CodexRolloutEventMessageLineDto(:final payload)) {
+        switch (payload) {
+          case CodexRolloutTaskStartedEventDto():
+            if (openTurn) {
+              return [...lines.sublist(0, copyStart), ...lines.sublist(index)];
+            }
+            openTurn = true;
+          case CodexRolloutTaskCompleteEventDto() || CodexRolloutTurnAbortedEventDto():
+            openTurn = false;
+          case CodexRolloutUserMessageEventDto() ||
+              CodexRolloutImageGenerationEndEventDto() ||
+              CodexRolloutUnknownEventDto():
+            break;
+        }
+      }
+    }
+    return lines;
   }
 
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -107,15 +166,24 @@ class CodexMessageRepository({
               time: _messageTimeFrom(timestamp),
             )
           : messages[existingIndex]!.info;
-      final message = _toolMessage(
-        messageId: tool.canonicalId,
-        sessionId: sessionId,
+      final message = PluginMessageWithParts(
         info: info,
-        tool: tool.tool,
-        title: tool.title,
-        status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
-        output: tool.output,
-        attachments: tool.attachments,
+        parts: [
+          const CodexToolPartMapper().map(
+            sessionId: sessionId,
+            children: children,
+            tool: CodexProjectedTool(
+              canonicalId: tool.canonicalId,
+              tool: tool.tool,
+              presentation: tool.presentation,
+              title: tool.title,
+              status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
+              output: tool.output,
+              time: tool.time,
+              attachments: tool.attachments,
+            ),
+          ),
+        ],
       );
       if (existingIndex == null) {
         toolMessageIndexById[tool.canonicalId] = messages.length;

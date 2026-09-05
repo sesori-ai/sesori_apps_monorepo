@@ -39,6 +39,16 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) =>
       _runtime.authenticate(pluginId: pluginId);
 
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required int generation,
+    required Uri redirectUri,
+  }) => _runtime.submitAuthenticationRedirect(
+    pluginId: pluginId,
+    generation: generation,
+    redirectUri: redirectUri,
+  );
+
   Future<PluginRuntimeCommandResult> prepareDisable({
     required String pluginId,
     required PluginStopIntent intent,

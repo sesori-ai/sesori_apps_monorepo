@@ -6,6 +6,7 @@ import "package:path/path.dart" as path;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../foundation/bridge_process_desired_state.dart";
+import "../foundation/desktop_attention_preference.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/window_host.dart";
 
@@ -20,6 +21,7 @@ class DesktopInstanceStorage._create({
   static const String _directoryName = "desktop-instance";
   static const String _desiredStateFileName = "bridge-desired-state";
   static const String _windowBoundsFileName = "window-bounds";
+  static const String _attentionPreferenceFileName = "attention-notifications";
 
   Future<BridgeProcessDesiredState> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
@@ -72,6 +74,28 @@ class DesktopInstanceStorage._create({
       <double>[bounds.left, bounds.top, bounds.width, bounds.height].join("\n"),
       flush: true,
     );
+  }
+
+  Future<DesktopAttentionPreference> readAttentionPreference() async {
+    final File file = await _fileNamed(fileName: _attentionPreferenceFileName);
+    // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
+    if (!await file.exists()) {
+      return DesktopAttentionPreference.enabled;
+    }
+    final value = (await file.readAsString()).trim();
+    for (final preference in DesktopAttentionPreference.values) {
+      if (preference.name == value) {
+        return preference;
+      }
+    }
+    logw("Ignoring an invalid persisted desktop attention preference");
+    return DesktopAttentionPreference.enabled;
+  }
+
+  Future<void> writeAttentionPreference({required DesktopAttentionPreference preference}) async {
+    final File file = await _fileNamed(fileName: _attentionPreferenceFileName);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(preference.name, flush: true);
   }
 
   Future<File> _desiredStateFile() => _fileNamed(fileName: _desiredStateFileName);

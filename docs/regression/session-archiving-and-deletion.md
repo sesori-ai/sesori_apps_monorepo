@@ -63,6 +63,11 @@ entirely along with its transcript and, optionally, its worktree.
 - Archive and delete confirmation sheets identify the action, default worktree
   cleanup on only when a dedicated worktree exists, and keep deletion's confirm
   action visually destructive. Cancelling performs neither operation.
+- After successful deletion, mobile and desktop leave the deleted session's
+  current detail or diffs route for its project list, preserving the project
+  name. Deleting another session, or completing deletion after navigation to
+  another session, does not change the current route. The callback also works
+  from list contexts without a route-local `GoRouterState`.
 
 ## Regression Levels
 
