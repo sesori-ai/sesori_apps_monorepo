@@ -660,7 +660,16 @@ class PluginLifecycleService({
               // A startup upgrade nobody asked for must not spawn a process.
               // Re-inspection is what flips a runtime-missing harness to ready
               // and routable; a running harness keeps its current generation.
-              await _inspectForCommand(pluginId: pluginId, command: command);
+              final setup = await _inspectForCommand(pluginId: pluginId, command: command);
+              // An explicit Install can still join during that inspection — it
+              // owns the same slot until this command releases it — so honour a
+              // promotion that arrived too late for the branch above.
+              if (command.installCompletion == InstallCompletion.enableAndStart && setup is PluginSetupReady) {
+                _handleRuntimeCommandResult(
+                  pluginId: pluginId,
+                  result: await _lifecycleRepository.start(pluginId: pluginId),
+                );
+              }
           }
           // The binary is installed, but setup can still be blocked (most
           // often authentication). Report completed only when the harness

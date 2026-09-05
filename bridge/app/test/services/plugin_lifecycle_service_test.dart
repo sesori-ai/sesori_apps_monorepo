@@ -2181,6 +2181,43 @@ void main() {
     );
   });
 
+  test("an explicit install joining during the post-upgrade inspection still starts the harness", () async {
+    final inspectionGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: inspectionGate,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "This bridge needs a newer One.")},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    // The download is done and the upgrade is inside its re-inspection, past
+    // the point where it already chose reinspect-only.
+    await _waitUntil(() => repository.inspectCalls == 1);
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    inspectionGate.complete();
+    await installSettled(progress: progress);
+
+    expect(repository.installCalls, 1, reason: "the explicit install joined rather than starting a second one");
+    expect(repository.startCalls, 1, reason: "a promotion arriving during the inspection is still honoured");
+  });
+
   test("a startup upgrade alone still does not start the harness", () async {
     final installGate = Completer<void>();
     final repository =
@@ -3114,4 +3151,12 @@ Future<void> _waitFor(bool Function() predicate) async {
     await Future<void>.delayed(Duration.zero);
   }
   throw StateError("condition was not reached");
+}
+
+Future<void> _waitUntil(bool Function() predicate) async {
+  for (var attempt = 0; attempt < 200; attempt++) {
+    if (predicate()) return;
+    await Future<void>.delayed(Duration.zero);
+  }
+  throw StateError("condition did not become true");
 }
