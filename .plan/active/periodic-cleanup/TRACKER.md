@@ -19,8 +19,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Merged | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Merged | [#1318](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1318) |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Merged | [#1320](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1320) |
-| 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | In review | [#1322](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1322) |
-| 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | In progress (local) | — |
+| 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Merged | [#1322](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1322) |
+| 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | In review | [#1323](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1323) |
 | 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Proposed | — |
 | 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Proposed | — |
 | 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Proposed | — |
