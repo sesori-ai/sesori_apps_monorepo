@@ -59,8 +59,10 @@ class const TranscriptSnapshotCalculator() {
     return result;
   }
 
-  /// Where a live message joins [messages]: before the first message created
-  /// after it, or at the end when either side has no creation time.
+  /// Where a live message joins [messages]: before the first timestamped
+  /// message created after it. Existing messages without a creation time are
+  /// skipped, and a message without one is appended at the end. This is the
+  /// ordering live insertion has always used, moved here unchanged.
   int insertionIndex({required List<MessageWithParts> messages, required Message message}) {
     final created = message.time?.created;
     if (created == null) return messages.length;
