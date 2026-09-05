@@ -8,6 +8,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_tool_part_mapper.dart";
 import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -335,16 +336,16 @@ class CodexEventMapper({
   List<BridgeSseEvent> mapProjectedTool({
     required String threadId,
     required CodexProjectedTool tool,
-  }) => _toolItemEvents(
-    threadId: threadId,
-    itemId: tool.canonicalId,
-    tool: tool.tool,
-    title: tool.title,
-    status: tool.status,
-    output: tool.output,
-    time: tool.time,
-    attachments: tool.attachments,
-  );
+    required List<CodexThreadRecord> children,
+  }) => [
+    BridgeSseMessageUpdated(
+      info: _assistantMessage(itemId: tool.canonicalId, threadId: threadId, time: tool.time),
+    ),
+    BridgeSseMessagePartUpdated(
+      part: const CodexToolPartMapper().map(sessionId: threadId, tool: tool, children: children),
+    ),
+  ];
+
 
   /// `item/*/delta` notifications stream text into an already-known part.
   List<BridgeSseEvent> _deltaEvent({

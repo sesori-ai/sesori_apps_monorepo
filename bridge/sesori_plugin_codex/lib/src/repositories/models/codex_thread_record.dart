@@ -12,4 +12,5 @@ class const CodexThreadRecord({
 
   /// Codex's generated nickname for a sub-agent thread; `null` for a root.
   required final String? agentNickname,
+  required final String? agentPath,
 });
