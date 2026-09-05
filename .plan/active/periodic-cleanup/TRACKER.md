@@ -509,3 +509,40 @@ and the owning suites. Disposition per guide:
 - No tombstones were found or added; no absence assertion exists in these guides.
   Link check across `docs/regression/`: no broken relative link. Every source
   path in the twelve guides now resolves.
+
+## Step 23 execution — 2026-09-05
+
+All thirteen guides in this step's ownership were audited against production
+code, the owning suites, and the README's rules. The corpus was in better shape
+than the plan's size-based expectation, and the audit is the deliverable:
+
+- Checks run across all thirteen: L1 rows against the heartbeat rule; every
+  backtick source path resolved; verbatim duplication between Required Behavior
+  and the level table (none anywhere in the regression corpus, checked
+  mechanically); cosmetic minutiae such as pixel values, durations, easing and
+  colour tokens (none); inline completed-plan history (none — the only issue
+  reference is an upstream `github/copilot-cli` limitation); absence assertions
+  and tombstones.
+- `plugin-runtime-installation.md`, `plugin-setup-and-lifecycle.md`: three source
+  references used elided `.../` paths a reader cannot open. Expanded to the real
+  locations of `bridge_plugin_descriptor.dart` and `plugin_management_service.dart`.
+- `bridge-connectivity.md`: dropped the clause asserting that the shared wire
+  union "no longer defines the dropped kinds", which is a tombstone for step 9's
+  removal. The live invariant it sat next to — a client ignores an unknown event
+  type from an older bridge — is kept, because that is the behavior a run can
+  actually observe.
+- `README.md`: the feature index had `provider-route-conformance` before
+  `projects-and-sessions`; the index is alphabetical again, and every guide is
+  indexed with no index entry lacking a file.
+- Reviewed with no change needed: `bridge-installation-and-updates.md`,
+  `desktop-bridge-supervision.md`, `diffs-and-source-control.md`,
+  `provider-route-conformance.md`, `pull-request-monitoring.md`,
+  `questions-and-permissions.md`, `permission-auto-approval.md`,
+  `session-archiving-and-deletion.md`, `session-history-and-recovery.md`,
+  `tools-and-file-changes.md`. `provider-route-conformance.md` keeps its
+  Execution Runbook and Failure Attribution sections: the boundary order is the
+  conformance claim itself, not a prescribed click script, and the attribution
+  table is unique to it.
+- No reduction target was imposed and no limitation was invented. This step is
+  therefore far smaller than its estimate; the estimate assumed defects that the
+  audit did not find.

@@ -129,7 +129,7 @@ download, verification, or placement. Use a disposable data directory.
 
 ## Sources
 
-- `bridge/sesori_plugin_interface/.../bridge_plugin_descriptor.dart`,
+- `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
   `bridge/sesori_plugin_runtime/lib/src/provisioning/`, OpenCode, Codex, Cursor, Pi, and OMP manifests
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/runtime/plugin_registry.dart`,
@@ -137,7 +137,7 @@ download, verification, or placement. Use a disposable data directory.
   `bridge/app/lib/src/runtime/bridge_runtime_runner.dart`,
   `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_runtime_manifest.dart`,
   `bridge/sesori_plugin_copilot/lib/src/runtime/copilot_runtime_manifest.dart`
-- `client/module_core/.../plugin_management_service.dart`,
+- `client/module_core/lib/src/services/plugin_management_service.dart`,
   `client/app/lib/features/settings/harnesses_settings_screen.dart`
 - Tests: `bridge/app/test/services/plugin_lifecycle_service_test.dart`, per-plugin
   descriptor tests, client management and harness suites
