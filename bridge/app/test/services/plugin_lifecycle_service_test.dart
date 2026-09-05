@@ -2176,9 +2176,42 @@ void main() {
     await installSettled(progress: progress);
     expect(
       repository.startCalls,
-      isZero,
-      reason: "the joined command adopts the upgrade's completion, which never starts",
+      1,
+      reason: "the explicit Install carries the user's intent to start, so it promotes the upgrade",
     );
+  });
+
+  test("a startup upgrade alone still does not start the harness", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionReady(binaryPath: "/managed/one")]
+          ..installGate = installGate
+          ..needsUpgrade = true;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    service.upgradeManagedRuntimes();
+    installGate.complete();
+    await installSettled(progress: progress);
+
+    expect(repository.startCalls, isZero);
   });
 
   test("install requires the install capability", () async {

@@ -287,9 +287,14 @@ class PluginLifecycleService({
       if (active.request == request) {
         // A joined install returns the accepted snapshot immediately; the
         // in-flight install keeps streaming progress and owns the slot.
-        return request is PluginLifecycleInstallRequest
-            ? Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation)
-            : active.completer.future;
+        if (request is PluginLifecycleInstallRequest) {
+          // The in-flight install may be a startup upgrade, which deliberately
+          // does not start the harness. An explicit Install carries the user's
+          // intent to enable and start it, so it takes over the completion.
+          active.installCompletion = InstallCompletion.enableAndStart;
+          return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+        }
+        return active.completer.future;
       }
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
@@ -333,9 +338,9 @@ class PluginLifecycleService({
     required PluginLifecycleInstallRequest request,
     required InstallCompletion completion,
   }) {
-    final command = _ActivePluginCommand(request: request);
+    final command = _ActivePluginCommand(request: request, installCompletion: completion);
     _activePluginCommands[pluginId] = command;
-    unawaited(_executeInstall(pluginId: pluginId, command: command, completion: completion));
+    unawaited(_executeInstall(pluginId: pluginId, command: command));
   }
 
   /// Installs the pinned managed runtime for every eligible plugin that still
@@ -608,7 +613,6 @@ class PluginLifecycleService({
   Future<void> _executeInstall({
     required String pluginId,
     required _ActivePluginCommand command,
-    required InstallCompletion completion,
   }) async {
     try {
       RuntimeProvisionProgress? terminal;
@@ -647,7 +651,9 @@ class PluginLifecycleService({
       switch (terminal) {
         case ProvisionReady():
           _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
-          switch (completion) {
+          // Read now, not at admission: an explicit Install may have joined a
+          // startup upgrade while it was downloading.
+          switch (command.installCompletion) {
             case InstallCompletion.enableAndStart:
               await _enable(pluginId: pluginId, command: command);
             case InstallCompletion.reinspectOnly:
@@ -1584,7 +1590,14 @@ enum InstallCompletion() {
   reinspectOnly,
 }
 
-class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
+class _ActivePluginCommand({
+  required final PluginLifecycleCommandRequest request,
+
+  /// Read only when [request] is an install, and read at the terminal event so
+  /// an explicit Install that joins a running startup upgrade can still promote
+  /// it. Defaults to the meaning every user-issued command carries.
+  var InstallCompletion installCompletion = InstallCompletion.enableAndStart,
+}) {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 
