@@ -4,7 +4,6 @@ import "dart:collection";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
@@ -289,7 +288,7 @@ final class ClaudeSessionService({
     state.idleGeneration++;
     if (state.pending == 1) {
       _workState.set(PluginWorkState.busy);
-      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
       _emit(const BridgeSseProjectUpdated());
     }
   }
@@ -826,7 +825,7 @@ final class ClaudeSessionService({
         state.wakeupAt = null;
         state.idleGeneration++;
         _workState.set(PluginWorkState.busy);
-        _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+        _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
         _emit(const BridgeSseProjectUpdated());
       case ClaudeResultMessage():
         if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: sessionId, state: state);
@@ -841,7 +840,7 @@ final class ClaudeSessionService({
   void _settleRetry({required String sessionId, required ClaudeStreamMessage message}) {
     if (message is! ClaudeStreamEventMessage && message is! ClaudeAssistantMessage) return;
     if (_retryStatuses.remove(sessionId) == null) return;
-    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {

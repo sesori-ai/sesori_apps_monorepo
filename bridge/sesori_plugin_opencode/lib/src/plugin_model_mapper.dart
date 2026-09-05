@@ -51,18 +51,10 @@ class const PluginModelMapper({
     );
   }
 
+  /// A catalog read treats a status kind this plugin does not know as idle: a
+  /// listed session must still render with some status.
   PluginSessionStatus mapSessionStatus(SessionStatus status) {
-    return switch (status) {
-      SessionStatusIdle() => const PluginSessionStatus.idle(),
-      SessionStatusBusy() => const PluginSessionStatus.busy(),
-      SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
-        attempt: attempt,
-        message: message,
-        next: next,
-      ),
-      SessionStatusUnknown() => const PluginSessionStatus.idle(),
-      _ => const PluginSessionStatus.idle(),
-    };
+    return knownPluginSessionStatus(status) ?? const PluginSessionStatus.idle();
   }
 
   PluginAgent mapAgent(Agent agent) {
@@ -147,3 +139,18 @@ class const PluginModelMapper({
     return segments.isEmpty ? null : segments.last;
   }
 }
+
+/// The plugin status for an OpenCode status of a known kind, or null for a kind
+/// this plugin does not know. Callers decide what an unknown kind means at
+/// their boundary.
+PluginSessionStatus? knownPluginSessionStatus(SessionStatus status) => switch (status) {
+  SessionStatusIdle() => const PluginSessionStatus.idle(),
+  SessionStatusBusy() => const PluginSessionStatus.busy(),
+  SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
+    attempt: attempt,
+    message: message,
+    next: next,
+  ),
+  SessionStatusUnknown() => null,
+  _ => null,
+};

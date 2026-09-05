@@ -19,6 +19,7 @@ import "../repositories/models/codex_thread_record.dart";
 
 final class const CodexSessionMessageRead._({
   required final CodexPreparedMessageRead _messages,
+  required final List<CodexThreadRecord> _children,
   required final Map<String, PluginToolStatus> _structuredToolStatusByCallId,
   required final CodexConfigDefaults _config,
 });
@@ -134,6 +135,9 @@ class CodexSessionService({
   void _recordPersistedChild({required CodexSessionRecord record}) =>
       _subAgentTracker.record(child: _sessionMapper.mapPersistedThread(record: record));
 
+  List<CodexThreadRecord> knownChildThreads({required String sessionId}) =>
+      _subAgentTracker.childrenOf(parentId: sessionId);
+
   /// Resolves and records a child named by `subAgentActivity started`, then
   /// maps its ordered creation/status events. A repeated activity returns
   /// `null` and never announces the child twice.
@@ -168,6 +172,7 @@ class CodexSessionService({
           modelProvider: null,
           parentId: parentThreadId,
           agentNickname: null,
+          agentPath: agentPath,
         );
     if (trackedChild == null && !_subAgentTracker.record(child: child)) {
       _announcedSubAgentThreadIds.remove(childThreadId);
@@ -204,6 +209,7 @@ class CodexSessionService({
         modelProvider: read.modelProvider,
         parentId: parentThreadId,
         agentNickname: read.agentNickname,
+        agentPath: agentPath ?? trackedChild?.agentPath,
       );
       _subAgentTracker.replaceChild(child: child);
     }
@@ -276,7 +282,7 @@ class CodexSessionService({
       if (sessionClosed && activityChanged && sessionId != null && _subAgentTracker.isChild(sessionId: sessionId))
         BridgeSseSessionStatus(
           sessionID: sessionId,
-          status: const PluginSessionStatus.idle().toJson(),
+          status: const PluginSessionStatus.idle(),
         ),
     ];
     final shouldDeferIdle =
@@ -410,7 +416,7 @@ class CodexSessionService({
   List<BridgeSseEvent> _rootIdleEvents({required String rootId}) => [
     BridgeSseSessionStatus(
       sessionID: rootId,
-      status: const PluginSessionStatus.idle().toJson(),
+      status: const PluginSessionStatus.idle(),
     ),
     BridgeSseSessionIdle(sessionID: rootId),
   ];
@@ -735,6 +741,13 @@ class CodexSessionService({
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return null;
+    final messages = _messageRepository.prepareMessageRead(rolloutPath: path, sessionId: sessionId);
+    final children = messages.hasSubtasks
+        ? [
+            for (final record in await _catalogRepository.listSessionRecordsInIsolate())
+              if (record.parentId == sessionId) _sessionMapper.mapPersistedThread(record: record),
+          ]
+        : const <CodexThreadRecord>[];
     Map<String, PluginToolStatus> structuredToolStatusByCallId;
     try {
       structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
@@ -749,10 +762,8 @@ class CodexSessionService({
       structuredToolStatusByCallId = const {};
     }
     return CodexSessionMessageRead._(
-      messages: _messageRepository.prepareMessageRead(
-        rolloutPath: path,
-        sessionId: sessionId,
-      ),
+      messages: messages,
+      children: children,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );
@@ -766,6 +777,10 @@ class CodexSessionService({
     return _messageRepository.projectMessages(
       read: read._messages,
       sessionId: sessionId,
+      children: [
+        ...knownChildThreads(sessionId: sessionId),
+        ...read._children,
+      ],
       replayToolDisposition: switch (sessionStatus) {
         PluginSessionStatusIdle() => CodexReplayToolDisposition.terminalize,
         PluginSessionStatusBusy() || PluginSessionStatusRetry() => CodexReplayToolDisposition.preserveRunning,

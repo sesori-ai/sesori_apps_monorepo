@@ -3,7 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "pi_catalog_dto.freezed.dart";
 part "pi_catalog_dto.g.dart";
 
-enum PiCatalogCommandSource() { extension, promptTemplate, prompt, skill, unknown }
+enum PiCatalogCommandSource() {
+  extension,
+  promptTemplate,
+  prompt,
+  skill,
+  unknown,
+}
 
 @Freezed(fromJson: true, toJson: false, toStringOverride: false)
 sealed class PiCatalogModelDto with _$PiCatalogModelDto {
@@ -51,6 +57,7 @@ sealed class PiCatalogCommandDto with _$PiCatalogCommandDto {
     @JsonKey(fromJson: _stringOrNull) required String? name,
     @JsonKey(fromJson: _stringOrNull) required String? description,
     @JsonKey(fromJson: _commandSource) required PiCatalogCommandSource source,
+    @JsonKey(name: "sourceInfo", fromJson: _commandSourcePath) required String? sourcePath,
   }) = _PiCatalogCommandDto;
 
   factory fromJson(Map<String, dynamic> json) => _$PiCatalogCommandDtoFromJson(json);
@@ -66,6 +73,8 @@ sealed class PiCommandsDto with _$PiCommandsDto {
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;
+
+String? _commandSourcePath(Object? value) => value is Map ? _stringOrNull(value["path"]) : null;
 
 bool _boolOrFalse(Object? value) => value is bool && value;
 

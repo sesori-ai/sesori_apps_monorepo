@@ -8,6 +8,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_tool_part_mapper.dart";
 import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -194,7 +195,7 @@ class CodexEventMapper({
         return [
           BridgeSseSessionStatus(
             sessionID: threadId,
-            status: _codexStatusToSessionStatus(params["status"]).toJson(),
+            status: _codexStatusToSessionStatus(params["status"]),
           ),
         ];
 
@@ -208,7 +209,7 @@ class CodexEventMapper({
           ),
           BridgeSseSessionStatus(
             sessionID: threadId,
-            status: const shared.SessionStatus.busy().toJson(),
+            status: const PluginSessionStatus.busy(),
           ),
         ];
 
@@ -335,16 +336,19 @@ class CodexEventMapper({
   List<BridgeSseEvent> mapProjectedTool({
     required String threadId,
     required CodexProjectedTool tool,
-  }) => _toolItemEvents(
-    threadId: threadId,
-    itemId: tool.canonicalId,
-    tool: tool.tool,
-    title: tool.title,
-    status: tool.status,
-    output: tool.output,
-    time: _sharedMessageTime(tool.time),
-    attachments: tool.attachments,
-  );
+    required List<CodexThreadRecord> children,
+  }) => [
+    BridgeSseMessageUpdated(
+      info: _assistantMessage(
+        itemId: tool.canonicalId,
+        threadId: threadId,
+        time: _sharedMessageTime(tool.time),
+      ).toJson(),
+    ),
+    BridgeSseMessagePartUpdated(
+      part: const CodexToolPartMapper().map(sessionId: threadId, tool: tool, children: children),
+    ),
+  ];
 
   /// `item/*/delta` notifications stream text into an already-known part.
   List<BridgeSseEvent> _deltaEvent({
@@ -950,10 +954,10 @@ class CodexEventMapper({
   }
 
   /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
-  /// sesori [shared.SessionStatus] union. Anything that is not explicitly
-  /// `idle` is treated as busy.
-  shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
-    return isIdleThreadStatus(raw) ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+  /// [PluginSessionStatus] union. Anything that is not explicitly `idle` is
+  /// treated as busy.
+  PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
+    return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }
 
   /// Parses the direct and nested status shapes emitted by codex.

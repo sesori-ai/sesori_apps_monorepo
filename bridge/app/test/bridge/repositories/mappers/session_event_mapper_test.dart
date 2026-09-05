@@ -62,7 +62,7 @@ void main() {
         ),
         (
           name: "session status",
-          event: const BridgeSseSessionStatus(sessionID: "backend-session", status: {"type": "busy"}),
+          event: const BridgeSseSessionStatus(sessionID: "backend-session", status: PluginSessionStatus.busy()),
           expectedBackendIds: {"backend-session"},
         ),
         (

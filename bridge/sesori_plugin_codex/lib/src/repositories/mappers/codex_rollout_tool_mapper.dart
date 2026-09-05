@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
+import "../models/codex_projected_tool.dart";
 import "codex_image_attachment_mapper.dart";
 
 class const CodexRolloutToolCall({
@@ -12,6 +13,7 @@ class const CodexRolloutToolCall({
   required final String? turnId,
   required final String tool,
   required final String? title,
+  required final CodexToolPresentation presentation,
 });
 
 sealed class const CodexRolloutToolResult({
@@ -327,12 +329,21 @@ class const CodexRolloutToolMapper({
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(name) ?? "tool";
+    final arguments = usefulName == "spawn_agent" ? _tryDecodeToolArguments(raw: input) : null;
     final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
       turnId: _usefulText(turnId),
       tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
       title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
+      presentation: usefulName == "spawn_agent"
+          ? CodexSubtaskPresentation(
+              taskName: _usefulText(arguments?.taskName),
+              prompt: _usefulText(arguments?.message),
+              agent: _usefulText(arguments?.agentType) ?? "codex",
+              childSessionId: null,
+            )
+          : const CodexOrdinaryToolPresentation(),
     );
   }
 

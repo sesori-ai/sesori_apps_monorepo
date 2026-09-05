@@ -1994,6 +1994,7 @@ ProviderListResponse _providerResponse() {
             providerID: "provider",
             name: "Model",
             variants: ["high", "max"],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

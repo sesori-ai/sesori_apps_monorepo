@@ -63,6 +63,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
@@ -199,31 +200,30 @@ typedef OrchestratorComposition = ({
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
 class Orchestrator({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final PluginLifecycleRepository _pluginLifecycleRepository,
-    required final PluginLifecycleService _pluginLifecycleService,
-    required final PluginRuntime _pluginRuntime,
-    required final BridgeSettingsRepository _bridgeSettingsRepository,
-    required final ServerClock _clock,
-    required final AppDatabase _database,
-    required final ChatHistoryDatabase _chatHistoryDatabase,
-    required final AttachmentSpillStorage _attachmentSpillStorage,
-    required final ArchivedSessionStorage _archivedSessionStorage,
-    required final http.Client _httpClient,
-    required final ProcessRunner _processRunner,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final FailureReporter _failureReporter,
-    required final BridgeRestartService _restartService,
-    required final bool _filesystemAccessOk,
-    // Supervised mode only: owns the status-class pushes to the desktop GUI.
-    // Standalone has no control channel, so this is null there.
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
-
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final PluginLifecycleRepository _pluginLifecycleRepository,
+  required final PluginLifecycleService _pluginLifecycleService,
+  required final PluginRuntime _pluginRuntime,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final ServerClock _clock,
+  required final AppDatabase _database,
+  required final ChatHistoryDatabase _chatHistoryDatabase,
+  required final AttachmentSpillStorage _attachmentSpillStorage,
+  required final ArchivedSessionStorage _archivedSessionStorage,
+  required final http.Client _httpClient,
+  required final ProcessRunner _processRunner,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final FailureReporter _failureReporter,
+  required final BridgeRestartService _restartService,
+  required final bool _filesystemAccessOk,
+  // Supervised mode only: owns the status-class pushes to the desktop GUI.
+  // Standalone has no control channel, so this is null there.
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+}) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
     final pluginComposition = _pluginLifecycleService.compositionView;
@@ -778,70 +778,73 @@ bool _gitPathExists({required String gitPath}) {
   return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }
 
-enum OrchestratorSessionStartResult() { ready, cancelled }
+enum OrchestratorSessionStartResult() {
+  ready,
+  cancelled,
+}
 
 /// A running bridge session with immutable runtime state.
 ///
 /// Created by [Orchestrator.create]. Call [start] once, capture
 /// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
 class OrchestratorSession._({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
-    required final PluginEventListener _pluginEventListener,
-    required final SessionBindingCommitListener _sessionBindingCommitListener,
-    required final SessionMutationListener _sessionMutationListener,
-    required final ChatHistoryListener _chatHistoryListener,
-    required final ChatHistoryActivityListener _chatHistoryActivityListener,
-    required final ChatHistoryService _chatHistoryService,
-    required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
-    required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
-    required final SessionOptionsService _sessionOptionsService,
-    required final SessionEventDispatcher _sessionEventDispatcher,
-    required final PluginRuntime _pluginRuntime,
-    required final CompletionPushListener _completionListener,
-    required final MaintenancePushListener _maintenanceListener,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final SessionEncryptor _sessionEncryptor,
-    required final KeyExchangeManager _keyExchangeManager,
-    required final SSEManager _sseManager,
-    required final RoutedRequestDispatcher _routedRequestDispatcher,
-    required final BridgeEventMapper _mapper,
-    required final SessionPromptService _sessionPromptService,
-    required Stream<CatalogImportProgress> catalogImportProgress,
-    required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
-    required Stream<String> pluginManagementSnapshotTokens,
-    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
-    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
-    required final StreamController<int> _bytesSentController,
-    required final StreamController<SesoriSseEvent> _localWireEventsController,
-    required final FailureReporter _failureReporter,
-    required final SessionRepository _sessionRepository,
-    required final PrSyncService _prSyncService,
-    required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
-    required final PluginWarmupSettingListener _pluginWarmupSettingListener,
-    required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
-    required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
-    required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
-    required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
-    required final CurrentProjectService _currentProjectService,
-    required final SessionUnseenService _sessionUnseenService,
-    required final SessionViewTracker _sessionViewTracker,
-    required final ProjectViewTracker _projectViewTracker,
-    required final ProjectActivityService _projectActivityService,
-    required final PermissionAutoApprovalService _permissionAutoApprovalService,
-    required final YoloSettingsService _yoloSettingsService,
-    required final PendingInteractionService _pendingInteractionService,
-    required final SessionAbortService _sessionAbortService,
-    required final SessionOperationDispatcher _sessionOperationDispatcher,
-    required final SessionMutationDispatcher _sessionMutationDispatcher,
-    required final SessionCreationService _sessionCreationService,
-    required final BridgeRestartDispatcher _restartDispatcher,
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
+  required final PluginEventListener _pluginEventListener,
+  required final SessionBindingCommitListener _sessionBindingCommitListener,
+  required final SessionMutationListener _sessionMutationListener,
+  required final ChatHistoryListener _chatHistoryListener,
+  required final ChatHistoryActivityListener _chatHistoryActivityListener,
+  required final ChatHistoryService _chatHistoryService,
+  required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
+  required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+  required final SessionOptionsService _sessionOptionsService,
+  required final SessionEventDispatcher _sessionEventDispatcher,
+  required final PluginRuntime _pluginRuntime,
+  required final CompletionPushListener _completionListener,
+  required final MaintenancePushListener _maintenanceListener,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final SessionEncryptor _sessionEncryptor,
+  required final KeyExchangeManager _keyExchangeManager,
+  required final SSEManager _sseManager,
+  required final RoutedRequestDispatcher _routedRequestDispatcher,
+  required final BridgeEventMapper _mapper,
+  required final SessionPromptService _sessionPromptService,
+  required Stream<CatalogImportProgress> catalogImportProgress,
+  required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
+  required Stream<String> pluginManagementSnapshotTokens,
+  required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+  required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
+  required final StreamController<int> _bytesSentController,
+  required final StreamController<SesoriSseEvent> _localWireEventsController,
+  required final FailureReporter _failureReporter,
+  required final SessionRepository _sessionRepository,
+  required final PrSyncService _prSyncService,
+  required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
+  required final PluginWarmupSettingListener _pluginWarmupSettingListener,
+  required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
+  required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
+  required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
+  required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
+  required final CurrentProjectService _currentProjectService,
+  required final SessionUnseenService _sessionUnseenService,
+  required final SessionViewTracker _sessionViewTracker,
+  required final ProjectViewTracker _projectViewTracker,
+  required final ProjectActivityService _projectActivityService,
+  required final PermissionAutoApprovalService _permissionAutoApprovalService,
+  required final YoloSettingsService _yoloSettingsService,
+  required final PendingInteractionService _pendingInteractionService,
+  required final SessionAbortService _sessionAbortService,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final SessionCreationService _sessionCreationService,
+  required final BridgeRestartDispatcher _restartDispatcher,
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+}) {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
@@ -1489,15 +1492,33 @@ class OrchestratorSession._({
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
     final pluginId = source.pluginId;
     final generation = source.generation;
-    final sourcedEvent = source.event;
     final allowDuringStop = source.allowDuringStop;
-    final terminalHandoff = sourcedEvent is BridgeSseTerminalHandoff;
-    final event = switch (sourcedEvent) {
-      BridgeSseTerminalHandoff(:final event) => event,
-      _ => sourcedEvent,
+    final (payload, terminalHandoff) = switch (source.event) {
+      NormalizedTerminalHandoff(:final payload) => (payload, true),
+      final NormalizedBridgePayload payload => (payload, false),
+    };
+    final eventType = switch (payload) {
+      NormalizedOtherEvent(:final event) => event.runtimeType,
+      NormalizedStatusEvent() => payload.runtimeType,
     };
     try {
-      Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+      Log.v("[sse] plugin event arrived: $eventType");
+      final BridgeSseEvent event;
+      switch (payload) {
+        case NormalizedStatusEvent(:final sessionId, :final status):
+          if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+          await _deliverSseEvent(
+            delivery: SseEventDelivery.uniform(
+              event: _mapper.buildSessionStatusEvent(sessionId: sessionId, status: status),
+            ),
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          );
+          return;
+        case NormalizedOtherEvent(event: final other):
+          event = other;
+      }
 
       if (event is BridgeSsePermissionReplied) {
         final wasAutoApproved = _permissionAutoApprovalService.consumeReply(
@@ -1610,16 +1631,16 @@ class OrchestratorSession._({
         );
       }
     } catch (e, st) {
-      Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
+      Log.e("[sse] error processing event $eventType: $e\n$st");
       unawaited(
         _failureReporter
             .recordFailure(
               error: e,
               stackTrace: st,
-              uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
+              uniqueIdentifier: "sse_event_processing:$eventType",
               fatal: false,
               reason: "Failed to process SSE event",
-              information: [event.runtimeType.toString()],
+              information: [eventType.toString()],
             )
             .catchError((_) {}),
       );
@@ -2552,14 +2573,15 @@ class OrchestratorSession._({
 /// milliseconds-order waits instead of real minutes; production uses
 /// [ReconnectBackoffPolicy.standard].
 class const ReconnectBackoffPolicy({
-    /// Backoff for a plain network drop (network blip, relay restart).
+  /// Backoff for a plain network drop (network blip, relay restart).
   required final Duration ordinaryInitial,
-    required final Duration ordinaryMax,
-    /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
+  required final Duration ordinaryMax,
+
+  /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
   /// kicking each other (ADR A22).
   required final Duration takeoverInitial,
-    required final Duration takeoverMax,
-  }) {
+  required final Duration takeoverMax,
+}) {
   static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy(
     ordinaryInitial: Duration(seconds: 1),
     ordinaryMax: Duration(seconds: 30),

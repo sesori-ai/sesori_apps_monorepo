@@ -1,5 +1,4 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/pi_assistant_delta.dart";
 import "../api/models/pi_event.dart";
@@ -623,16 +622,7 @@ final class PiEventDispatcher({
   List<BridgeSseEvent> _status({required String sessionId, required PiEvent event, required DateTime? now}) {
     final status = sessionStatusFor(event: event, now: now);
     if (status == null) return const [];
-    final sharedStatus = switch (status) {
-      PluginSessionStatusIdle() => const shared.SessionStatus.idle(),
-      PluginSessionStatusBusy() => const shared.SessionStatus.busy(),
-      PluginSessionStatusRetry(:final attempt, :final message, :final next) => shared.SessionStatus.retry(
-        attempt: attempt,
-        message: message,
-        next: next,
-      ),
-    };
-    return [BridgeSseSessionStatus(sessionID: sessionId, status: sharedStatus.toJson())];
+    return [BridgeSseSessionStatus(sessionID: sessionId, status: status)];
   }
 
   List<BridgeSseEvent> _compactionStart({

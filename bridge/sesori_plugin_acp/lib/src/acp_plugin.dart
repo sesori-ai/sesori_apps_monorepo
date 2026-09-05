@@ -4,7 +4,6 @@ import "dart:collection";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_approval_registry.dart";
 import "acp_command_listener.dart";
@@ -1331,7 +1330,7 @@ abstract class AcpPlugin({
       _eventBuffer.add(
         BridgeSseSessionStatus(
           sessionID: sessionId,
-          status: const shared.SessionStatus.busy().toJson(),
+          status: const PluginSessionStatus.busy(),
         ),
       );
       _eventBuffer.add(const BridgeSseProjectUpdated());

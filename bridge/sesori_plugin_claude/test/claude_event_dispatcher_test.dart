@@ -676,7 +676,7 @@ void main() {
                 },
               ).single
               as BridgeSseSessionStatus;
-      final status = shared.SessionStatus.fromJson(retry.status) as shared.SessionStatusRetry;
+      final status = retry.status as PluginSessionStatusRetry;
       expect(status.attempt, 2);
       expect(status.message, "rate_limit");
       expect(status.next, inInclusiveRange(before + 5000, DateTime.now().millisecondsSinceEpoch + 5000));

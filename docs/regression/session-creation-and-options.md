@@ -22,9 +22,17 @@ variant, and worktree mode, and creating the session with its first input.
   selected. Replayed transcripts map the API name through the catalog's
   `resolvedModel`; a name the catalog does not know stays as recorded.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
-  default-first, and a model that offers variants always has one selected: the
-  agent's declared variant when valid, otherwise the first available. Selecting a
-  variant is therefore a switch between named levels, never a reset to unset.
+  in picker order and may name a default; when switching models, an existing
+  compatible variant is kept; otherwise a model that offers variants uses the
+  agent's declared variant when valid, then the model's declared default when
+  offered, then the first listed. Selecting a variant is therefore a switch
+  between named levels, never a reset to unset.
+- Claude and Codex list models and effort variants strongest first (Claude:
+  Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
+  generation first, then Astra, Sol, Terra, Luna, the bare model, and other
+  suffixes such as Mini, with `ultra` down to `low`). OpenCode lists models
+  newest release first, undated last, ties by name. The model picker never
+  reorders models: it shows each plugin's declared order.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a
@@ -128,9 +136,13 @@ variant, and worktree mode, and creating the session with its first input.
   behind it; the surface never names that split, because the user cannot act on
   it and the line above the composer already says what is missing.
 - Concurrent requests coalesce; an incomplete observation never replaces a
-  complete cached one, and a moved project invalidates its entries. Rejected-selection
-  invalidation keeps its epoch checks before serving or committing, so a retained
-  snapshot invalidated during discovery is not served once.
+  complete cached one, and a moved project invalidates its entries. Completeness
+  decides replacement only at capture time; the stored row holds just the
+  catalog payload and its revision, so a payload that no longer decodes is
+  discarded by revision and rediscovered instead of blocking discovery.
+  Rejected-selection invalidation keeps its epoch checks before serving or
+  committing, so a retained snapshot invalidated during discovery is not served
+  once.
 - Backend notifications use scoped event domains: Codex skill changes invalidate
   the options catalog rather than reporting project activity, while MCP startup
   changes remain MCP-tool events. A backend change that names a session refreshes

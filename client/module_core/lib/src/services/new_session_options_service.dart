@@ -34,16 +34,20 @@ sealed class const NewSessionOptionsLoadResult();
 /// background. A silent refresh reaches the bridge as a forced one; the
 /// distinction is that nobody is waiting on it, so it must not overwrite what
 /// the user does while it runs.
-enum NewSessionOptionsLoadMode() { dynamicLoad, forcedRefresh, silentRefresh }
+enum NewSessionOptionsLoadMode() {
+  dynamicLoad,
+  forcedRefresh,
+  silentRefresh,
+}
 
 /// Loaded options, and whether the bridge served them from a snapshot old
 /// enough to be worth refreshing behind the user's back. Only a cache the
 /// bridge chose not to rediscover is stale; anything just discovered is not.
 final class const NewSessionOptionsLoaded({
-    required final NewSessionOptionsData options,
-    required final NewSessionOptionsSource source,
-    required final bool isStale,
-  }) extends NewSessionOptionsLoadResult;
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+  required final bool isStale,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsUnsupported() extends NewSessionOptionsLoadResult;
 
@@ -51,16 +55,22 @@ final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadRe
 
 final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureRetained({required final NewSessionOptionsData options, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsFailureRetained({
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
 
-final class const NewSessionOptionsFailureUnavailable({required final ApiError error, required final NewSessionOptionsSource source}) extends NewSessionOptionsLoadResult;
+final class const NewSessionOptionsFailureUnavailable({
+  required final ApiError error,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
 
 final class const NewSessionOptionsRefreshFailureUnavailable() extends NewSessionOptionsLoadResult;
 
 @lazySingleton
 class NewSessionOptionsService({
-    required final SessionRepository _sessionRepository,
-  }) {
+  required final SessionRepository _sessionRepository,
+}) {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
 
   Future<NewSessionOptionsLoadResult> load({
@@ -127,12 +137,13 @@ class NewSessionOptionsService({
         // A refresh nobody asked for must not take working options away. The
         // bridge served these moments ago, so the honest answer is that the
         // update failed, not that there is nothing left to choose from.
-        NewSessionOptionsLoadMode.silentRefresh => previousOptions == null
-            ? const NewSessionOptionsRefreshFailureUnavailable()
-            : NewSessionOptionsFailureRetained(
-                options: previousOptions,
-                source: NewSessionOptionsSource.aggregate,
-              ),
+        NewSessionOptionsLoadMode.silentRefresh =>
+          previousOptions == null
+              ? const NewSessionOptionsRefreshFailureUnavailable()
+              : NewSessionOptionsFailureRetained(
+                  options: previousOptions,
+                  source: NewSessionOptionsSource.aggregate,
+                ),
       },
       SessionOptionsRepositoryFailure(:final error) => _transientFailure(
         error: error,
@@ -362,7 +373,7 @@ class NewSessionOptionsService({
         ? previousVariant
         : agentVariant != null && variants.any((variant) => variant.id == agentVariant)
         ? agentVariant
-        : variants.firstOrNull?.id;
+        : _selection.defaultVariant(providers: options.providers, model: requested);
     final selectedAgentModel = _applyVariantIntent(
       providers: options.providers,
       model: requested.copyWith(variant: selectedVariant),

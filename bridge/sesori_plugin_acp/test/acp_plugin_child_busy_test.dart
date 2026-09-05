@@ -1,7 +1,6 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 /// A running sub-agent keeps its root busy after the root's own turn settles:
@@ -153,7 +152,7 @@ void main() {
         (event) =>
             event is BridgeSseSessionStatus &&
             event.sessionID == "c2" &&
-            shared.SessionStatus.fromJson(event.status) == const shared.SessionStatus.idle(),
+            event.status == const PluginSessionStatus.idle(),
       );
       final rootIdleIndex = emitted.lastIndexWhere(
         (event) => event is BridgeSseSessionIdle && event.sessionID == sessionId,
@@ -358,7 +357,7 @@ void main() {
       expect(tile.childSessionID, "c1");
       expect(tile.taskState?.status, PluginToolStatus.cancelled);
       final childStatus = emitted.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "c1").last;
-      expect(shared.SessionStatus.fromJson(childStatus.status), const shared.SessionStatus.idle());
+      expect(childStatus.status, const PluginSessionStatus.idle());
       expect(rootIdles(sessionId), hasLength(1));
       expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
       expect(plugin.childSessionTracker.childStatuses, isEmpty);

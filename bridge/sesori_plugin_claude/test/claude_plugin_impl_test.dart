@@ -651,7 +651,7 @@ void main() {
       final retry = (await harness.plugin.getSessionStatuses())[testSessionId]! as PluginSessionStatusRetry;
       expect(retry.attempt, 2);
       expect(retry.next, DateTime.utc(2026, 8, 11, 12).millisecondsSinceEpoch + 1000);
-      expect(events.whereType<BridgeSseSessionStatus>().last.status["next"], retry.next);
+      expect((events.whereType<BridgeSseSessionStatus>().last.status as PluginSessionStatusRetry).next, retry.next);
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isTrue);
 
       // The retried request streaming again is the recovery signal; the turn
@@ -670,8 +670,8 @@ void main() {
 
       expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
       expect(
-        shared.SessionStatus.fromJson(events.whereType<BridgeSseSessionStatus>().last.status),
-        isA<shared.SessionStatusBusy>(),
+        events.whereType<BridgeSseSessionStatus>().last.status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(harness.plugin.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
       await subscription.cancel();

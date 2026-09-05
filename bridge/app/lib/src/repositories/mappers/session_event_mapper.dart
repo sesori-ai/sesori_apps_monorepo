@@ -1,7 +1,28 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../models/normalized_bridge_event.dart";
+import "plugin_session_status_mapper.dart";
+
 class const SessionEventMapper() {
+  /// Converts an id-translated event into the value higher layers consume.
+  ///
+  /// The final step of normalization: payload kinds with a typed shared form
+  /// are mapped here, once, so delivery and storage never re-parse them.
+  NormalizedBridgeEvent normalize({required BridgeSseEvent event}) => switch (event) {
+    BridgeSseTerminalHandoff(:final event) => NormalizedTerminalHandoff(payload: _normalizePayload(event: event)),
+    _ => _normalizePayload(event: event),
+  };
+
+  NormalizedBridgePayload _normalizePayload({required BridgeSseEvent event}) => switch (event) {
+    BridgeSseTerminalHandoff() => throw StateError("terminal handoff must not wrap another terminal handoff"),
+    BridgeSseSessionStatus(:final sessionID, :final status) => NormalizedStatusEvent(
+      sessionId: sessionID,
+      status: status.toSharedSessionStatus(),
+    ),
+    _ => NormalizedOtherEvent(event: event),
+  };
+
   Session? sessionInfo({required BridgeSseEvent event}) {
     return switch (event) {
       BridgeSseTerminalHandoff(:final event) => sessionInfo(event: event),

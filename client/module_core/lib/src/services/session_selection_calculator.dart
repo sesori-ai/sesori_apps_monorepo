@@ -45,7 +45,7 @@ class const SessionSelectionCalculator() {
     return _providerModel(providers: providers, model: model)?.isAvailable ?? false;
   }
 
-  /// The effort/thinking variants [model] offers, default-first as the plugin
+  /// The effort/thinking variants [model] offers, in the order the plugin
   /// declared them. `"none"` is a backend spelling of "no variant", never a
   /// picker entry.
   List<SessionVariant> availableVariants({
@@ -59,6 +59,19 @@ class const SessionSelectionCalculator() {
         .where((variant) => variant != "none")
         .map((variant) => SessionVariant(id: variant))
         .toList(growable: false);
+  }
+
+  /// The variant [model] runs at when none was chosen: the plugin's declared
+  /// default when the model offers it, otherwise the first it offers, or null
+  /// when it offers none.
+  String? defaultVariant({
+    required List<ProviderInfo> providers,
+    required AgentModel? model,
+  }) {
+    if (model == null) return null;
+    final variants = availableVariants(providers: providers, model: model);
+    final declared = _providerModel(providers: providers, model: model)?.defaultVariant;
+    return variants.any((variant) => variant.id == declared) ? declared : variants.firstOrNull?.id;
   }
 
   /// The agent to run, given [candidates] in preference order: the first the
@@ -124,7 +137,7 @@ class const SessionSelectionCalculator() {
     final variants = availableVariants(providers: providers, model: model);
     return ReconciledSelection(
       agentName: agentName,
-      model: _withResolvedVariant(model: model, availableVariants: variants),
+      model: _withResolvedVariant(providers: providers, model: model, availableVariants: variants),
       availableVariants: variants,
     );
   }
@@ -140,15 +153,17 @@ class const SessionSelectionCalculator() {
   }
 
   /// A model that offers variants always runs at a named one, so an unset or
-  /// withdrawn variant resolves to the first available. Plugins declare them
-  /// default-first, making that the plugin's own default.
+  /// withdrawn variant resolves to [defaultVariant].
   AgentModel? _withResolvedVariant({
+    required List<ProviderInfo> providers,
     required AgentModel? model,
     required List<SessionVariant> availableVariants,
   }) {
     if (model == null) return null;
     if (availableVariants.any((variant) => variant.id == model.variant)) return model;
-    return model.copyWith(variant: availableVariants.firstOrNull?.id);
+    return model.copyWith(
+      variant: defaultVariant(providers: providers, model: model),
+    );
   }
 
   AgentModel? _firstAvailable({

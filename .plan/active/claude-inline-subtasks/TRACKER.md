@@ -665,3 +665,13 @@ no links/traversal, and records source `3976bcd` plus consumer `69e9478d6` in bu
 metadata. Target/minimum are now 0.1.3 with verified digests; descriptor tests prove
 0.1.2 explicit rejection and PATH replacement. Analysis and all 81 tests pass.
 No final feature E2E pass is claimed; replay and scoped-stop consumption remain pending.
+
+Slice 4's published pinning head `97adc68c8` measured **+1,446 / -100 = 1,546**
+lines, including tests/docs. The 46-line soft-budget overage accommodates the
+user-requested runtime publication/pinning in this PR instead of a later slice.
+Reproduce against its immutable merge base (later review bookkeeping is additional):
+
+```bash
+git diff --numstat 747fbd3eb9f20f07d0478dc8469dba7140103400 97adc68c8ba19d27085f4cc04b7129afa2d5668a |
+  awk '{ a += $1; d += $2 } END { print a, d, a + d }'
+```

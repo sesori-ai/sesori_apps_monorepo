@@ -16,11 +16,30 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Option pickers
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+The picker shows each plugin's declared order. OpenCode ranks models newest
+release first, which is the best signal its catalog offers. Other plugins
+still declare variants default-first (the client falls back to the first
+listed variant when no default is declared) and models in plugin-defined order.
+
+## Command limitations
+
+Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
+supports only the interactive TUI. Sesori excludes this bundled command source,
+including numbered invocation aliases, while preserving user commands with the
+same name. This command is **not supported** through Pi RPC; ordinary extension,
+prompt, and skill commands remain available.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
@@ -42,7 +61,13 @@ announces itself through the parent's `subAgentActivity started`
 (`agentThreadId`) and `thread/status/changed`, never `thread/started`;
 `receiverThreadIds` stays empty. Sesori exposes the verified child thread and
 persisted rollout under its direct parent and rolls running descendants into
-the root's busy state. `turn/interrupt` works per child thread with its
+the root's busy state. Spawn calls appear as inline subtask tiles both live
+and in saved history, linked to the child thread; the tile follows the child's
+session status instead of treating spawn completion as task completion.
+Raw task-path fallbacks are formatted for display (for example,
+`/root/architecture_review_1271` becomes `Architecture review · 1271`), while
+raw paths remain the identity used to match saved spawn calls to children.
+`turn/interrupt` works per child thread with its
 `turnId`, and interrupting the parent leaves children running, so
 main-agent-only is supportable.
 

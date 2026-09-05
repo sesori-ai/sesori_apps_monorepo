@@ -133,8 +133,8 @@ void main() {
       expect(created["directory"], "/workspace");
       expect(created["title"], "Say hi");
       expect(
-        shared.SessionStatus.fromJson((launched[1] as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (launched[1] as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
@@ -147,15 +147,15 @@ void main() {
       expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       final idle = finished.last as BridgeSseSessionStatus;
       expect(idle.sessionID, _child);
-      expect(shared.SessionStatus.fromJson(idle.status), isA<shared.SessionStatusIdle>());
+      expect(idle.status, isA<PluginSessionStatusIdle>());
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
 
       final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame()));
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
       expect(
-        shared.SessionStatus.fromJson((resumed.first as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (resumed.first as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       final resumedPart = (resumed.last as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
       expect(resumedPart.taskState?.status, PluginToolStatus.running);

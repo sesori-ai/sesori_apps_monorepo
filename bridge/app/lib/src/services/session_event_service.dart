@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/mappers/session_event_mapper.dart";
+import "../repositories/models/normalized_bridge_event.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
@@ -192,6 +193,10 @@ class SessionEventService({
     }
     return output;
   }
+
+  /// The value delivered to consumers for an event that passed identity,
+  /// enrichment, publication and generation checks.
+  NormalizedBridgeEvent toNormalized({required BridgeSseEvent event}) => _eventMapper.normalize(event: event);
 
   Future<bool> canPublish({required BridgeSseEvent event}) async {
     if (event is! BridgeSseSessionCreated && event is! BridgeSseSessionUpdated) return true;

@@ -360,7 +360,7 @@ void main() {
       expect(child["parentID"], "root");
       expect(child["projectID"], "/project");
       expect(child["title"], "Research child");
-      expect((events[2] as BridgeSseSessionStatus).status["type"], "busy");
+      expect((events[2] as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
       final tile = (events[3] as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
       expect(tile.id, "root-subagent-child-subtask");
       expect(tile.messageID, envelope["id"]);
@@ -550,7 +550,7 @@ void main() {
       final tile = (events.first as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
       expect(tile.taskState?.status, PluginToolStatus.error);
       expect(tile.taskState?.error, "DeepSeek sub-agent returned an invalid completion");
-      expect((events.last as BridgeSseSessionStatus).status["type"], "idle");
+      expect((events.last as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
       expect(tracker.hasActiveWorkForRoot(sessionId: "root"), isFalse);
     });
 
@@ -603,7 +603,7 @@ void main() {
         expect(tile.taskState?.status, testCase.status);
         expect(tile.taskState?.output, testCase.status == PluginToolStatus.completed ? testCase.summary : null);
         expect(tile.taskState?.error, testCase.error);
-        expect((events[1] as BridgeSseSessionStatus).status["type"], "idle");
+        expect((events[1] as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
         expect(tracker.hasActiveWorkForRoot(sessionId: "root"), isFalse);
         expect(tracker.hasRootHold(sessionId: "root"), isFalse);
       });

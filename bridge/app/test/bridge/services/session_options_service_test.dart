@@ -432,39 +432,6 @@ void main() {
       expect(repository.captureCalls, isEmpty);
       expect(repository.stored(newKey), fresh);
     });
-
-    test("decode failure without a revision preserves a concurrently replaced row", () async {
-      const key = SessionOptionsCacheKey.project(
-        pluginId: "plugin-1",
-        projectId: "project-1",
-        projectPath: "/projects/one",
-      );
-      final fresh = _entry(
-        key: key,
-        response: _response(marker: "fresh"),
-        capturedAt: now,
-        revision: 2,
-      );
-      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
-      repository.readHandler = (_) async {
-        repository
-          ..put(fresh)
-          ..readHandler = null;
-        throw SessionOptionsCacheDecodingException(
-          cause: ArgumentError("unknown completeness"),
-          causeStackTrace: StackTrace.current,
-          revision: null,
-        );
-      };
-      final service = _service(repository: repository, now: now);
-
-      final outcome = await service.loadCacheOnly(pluginId: "plugin-1", projectId: "project-1");
-
-      expect(outcome, isA<SessionOptionsAvailable>());
-      expect((outcome as SessionOptionsAvailable).response, _response(marker: "fresh"));
-      expect(repository.deletedKeys, isEmpty);
-      expect(repository.stored(key), fresh);
-    });
   });
 
   group("SessionOptionsService dynamic loading", () {
@@ -1181,7 +1148,6 @@ void main() {
       expect(seeded, isA<SessionOptionsAvailable>());
       expect(repository.commitCalls, hasLength(1));
       expect(repository.commitCalls.single.candidate.revision, 1);
-      expect(repository.stored(key)!.completeness, PluginSessionOptionsCompleteness.partial);
 
       for (final completeness in PluginSessionOptionsCompleteness.values) {
         repository
@@ -1191,7 +1157,6 @@ void main() {
               key: key,
               response: _response(marker: "retained-${completeness.name}"),
               capturedAt: now,
-              completeness: completeness,
               revision: 5,
             ),
           )
@@ -1253,39 +1218,35 @@ void main() {
       expect(repository.stored(key)!.response, _response(marker: "partial"));
     });
 
-    test("complete observations replace both partial and complete rows", () async {
-      for (final completeness in PluginSessionOptionsCompleteness.values) {
-        final repository = _FakeSessionOptionsRepository()
-          ..projectPaths["project-1"] = "/projects/one"
-          ..captureResult = _observed(
-            marker: "complete",
-            completeness: PluginSessionOptionsCompleteness.complete,
-            generation: 7,
-          );
-        const key = SessionOptionsCacheKey.project(
-          pluginId: "plugin-1",
-          projectId: "project-1",
-          projectPath: "/projects/one",
+    test("a complete observation replaces the retained row whatever it was captured as", () async {
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = _observed(
+          marker: "complete",
+          completeness: PluginSessionOptionsCompleteness.complete,
+          generation: 7,
         );
-        repository.put(
-          _entry(
-            key: key,
-            response: _response(marker: "old"),
-            capturedAt: now,
-            completeness: completeness,
-            revision: 4,
-          ),
-        );
-        final service = _service(repository: repository, now: now);
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      repository.put(
+        _entry(
+          key: key,
+          response: _response(marker: "old"),
+          capturedAt: now,
+          revision: 4,
+        ),
+      );
+      final service = _service(repository: repository, now: now);
 
-        final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
 
-        expect(outcome, isA<SessionOptionsAvailable>());
-        expect((outcome as SessionOptionsAvailable).response, _response(marker: "complete"));
-        expect(repository.commitCalls.single.expectedRevision, 4);
-        expect(repository.commitCalls.single.candidate.revision, 5);
-        expect(repository.stored(key)!.completeness, PluginSessionOptionsCompleteness.complete);
-      }
+      expect(outcome, isA<SessionOptionsAvailable>());
+      expect((outcome as SessionOptionsAvailable).response, _response(marker: "complete"));
+      expect(repository.commitCalls.single.expectedRevision, 4);
+      expect(repository.commitCalls.single.candidate.revision, 5);
     });
 
     test("explicit and automatic refresh use the required activation and discovery pairs", () async {
@@ -1482,7 +1443,6 @@ void main() {
             key: key,
             response: _response(marker: "concurrent-complete"),
             capturedAt: now,
-            completeness: PluginSessionOptionsCompleteness.complete,
             revision: 2,
           ),
         );
@@ -1756,14 +1716,12 @@ SessionOptionsCacheEntry _entry({
   required SessionOptionsCacheKey key,
   required SessionOptionsResponse response,
   required DateTime capturedAt,
-  PluginSessionOptionsCompleteness completeness = PluginSessionOptionsCompleteness.complete,
   int revision = 1,
 }) {
   return SessionOptionsCacheEntry(
     key: key,
     revision: revision,
     capturedAt: capturedAt,
-    completeness: completeness,
     response: response,
   );
 }
