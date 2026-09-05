@@ -27,6 +27,14 @@ release first, which is the best signal its catalog offers. Other plugins
 still declare variants default-first (the client falls back to the first
 listed variant when no default is declared) and models in plugin-defined order.
 
+## Command limitations
+
+Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
+supports only the interactive TUI. Sesori excludes this bundled command source,
+including numbered invocation aliases, while preserving user commands with the
+same name. This command is **not supported** through Pi RPC; ordinary extension,
+prompt, and skill commands remain available.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
