@@ -93,6 +93,7 @@ void main() {
         agentId: _agentId,
         records: records,
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages.map((message) => message.info.runtimeType.toString()), [
@@ -109,8 +110,12 @@ void main() {
     late ClaudeEventDispatcher dispatcher;
 
     setUp(() {
-      dispatcher = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
-      dispatcher.beginTurn(sessionId: _root, directory: "/workspace");
+      dispatcher = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+      dispatcher.beginTurn(sessionId: _root, directory: "/workspace", model: null, variant: null);
     });
 
     test("announces the child once and follows repeated running and terminal transitions", () {
