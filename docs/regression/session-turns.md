@@ -60,6 +60,16 @@ defaults and queued client sends coherent.
   client user-message id in either case. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
+- Codex spawn calls render as one inline subtask card in the parent chat as
+  well as a child in the tasks widget, on phone and desktop. Cards open the
+  correct child transcript and survive history reload. A linked card follows
+  the child's session status; completing the spawn call or the parent turn
+  must not stop its spinner while the child runs. Readable child nicknames and
+  titles are preserved; raw path fallbacks such as
+  `/root/architecture_review_1271` display as `Architecture review · 1271`.
+  Matching uses the raw task path under the direct parent, not the formatted
+  label. An interrupted launch that never creates a child retains its own
+  terminal tool status.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;
@@ -451,6 +461,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shows a transient idle between the task notification and its wake-up turn; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
+- A Codex spawn is absent from the parent chat, appears twice as both a tool
+  and a subtask, loses its child link after reload, or stops spinning just
+  because the spawn call returned. Machine task paths appear unformatted, or
+  formatting changes which child a card opens.
 - A Codex root reports idle while a child is starting or still runs, never
   releases its deferred idle after the child settles, emits completion more
   than once, omits a busy child id, omits an awaiting-input root after reconnect,
