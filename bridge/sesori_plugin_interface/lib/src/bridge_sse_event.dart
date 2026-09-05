@@ -154,6 +154,10 @@ class const BridgeSseVcsBranchUpdated() extends BridgeSseEvent;
 
 class const BridgeSseFileEdited({final String? file}) extends BridgeSseEvent;
 
+/// OpenCode reports a newer version of itself; the bridge pushes it as an
+/// immediate installation-update notification.
+class const BridgeSseInstallationUpdateAvailable({final String? version}) extends BridgeSseEvent;
+
 /// Transient backend guidance. [sessionID] is the backend session identity
 /// before bridge-core remapping; null means genuinely global or unattributed.
 class const BridgeSseTuiToastShow({

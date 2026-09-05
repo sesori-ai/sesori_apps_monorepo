@@ -149,6 +149,9 @@ class BridgeEventMapper({
         BridgeSseProjectUpdated() => null,
         BridgeSseVcsBranchUpdated() => const SesoriSseEvent.vcsBranchUpdated(),
         BridgeSseFileEdited(:final file) => SesoriSseEvent.fileEdited(file: file),
+        BridgeSseInstallationUpdateAvailable(:final version) => SesoriSseEvent.installationUpdateAvailable(
+          version: version,
+        ),
         BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) =>
           SesoriSseEvent.tuiToastShow(
             sessionID: sessionID,

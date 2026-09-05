@@ -341,37 +341,6 @@ Map<String, dynamic> _$SesoriMessagePartRemovedToJson(
   'type': instance.$type,
 };
 
-SesoriPtyCreated _$SesoriPtyCreatedFromJson(Map json) =>
-    SesoriPtyCreated($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriPtyCreatedToJson(SesoriPtyCreated instance) =>
-    <String, dynamic>{'type': instance.$type};
-
-SesoriPtyUpdated _$SesoriPtyUpdatedFromJson(Map json) =>
-    SesoriPtyUpdated($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriPtyUpdatedToJson(SesoriPtyUpdated instance) =>
-    <String, dynamic>{'type': instance.$type};
-
-SesoriPtyExited _$SesoriPtyExitedFromJson(Map json) => SesoriPtyExited(
-  id: json['id'] as String?,
-  exitCode: (json['exitCode'] as num?)?.toInt(),
-  $type: json['type'] as String?,
-);
-
-Map<String, dynamic> _$SesoriPtyExitedToJson(SesoriPtyExited instance) =>
-    <String, dynamic>{
-      'id': ?instance.id,
-      'exitCode': ?instance.exitCode,
-      'type': instance.$type,
-    };
-
-SesoriPtyDeleted _$SesoriPtyDeletedFromJson(Map json) =>
-    SesoriPtyDeleted(id: json['id'] as String?, $type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriPtyDeletedToJson(SesoriPtyDeleted instance) =>
-    <String, dynamic>{'id': ?instance.id, 'type': instance.$type};
-
 SesoriPermissionAsked _$SesoriPermissionAskedFromJson(Map json) =>
     SesoriPermissionAsked(
       requestID: json['requestID'] as String,
@@ -566,66 +535,6 @@ SesoriFileEdited _$SesoriFileEditedFromJson(Map json) => SesoriFileEdited(
 Map<String, dynamic> _$SesoriFileEditedToJson(SesoriFileEdited instance) =>
     <String, dynamic>{'file': ?instance.file, 'type': instance.$type};
 
-SesoriFileWatcherUpdated _$SesoriFileWatcherUpdatedFromJson(Map json) =>
-    SesoriFileWatcherUpdated(
-      file: json['file'] as String?,
-      event: json['event'] as String?,
-      $type: json['type'] as String?,
-    );
-
-Map<String, dynamic> _$SesoriFileWatcherUpdatedToJson(
-  SesoriFileWatcherUpdated instance,
-) => <String, dynamic>{
-  'file': ?instance.file,
-  'event': ?instance.event,
-  'type': instance.$type,
-};
-
-SesoriLspUpdated _$SesoriLspUpdatedFromJson(Map json) =>
-    SesoriLspUpdated($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriLspUpdatedToJson(SesoriLspUpdated instance) =>
-    <String, dynamic>{'type': instance.$type};
-
-SesoriLspClientDiagnostics _$SesoriLspClientDiagnosticsFromJson(Map json) =>
-    SesoriLspClientDiagnostics(
-      serverID: json['serverID'] as String?,
-      path: json['path'] as String?,
-      $type: json['type'] as String?,
-    );
-
-Map<String, dynamic> _$SesoriLspClientDiagnosticsToJson(
-  SesoriLspClientDiagnostics instance,
-) => <String, dynamic>{
-  'serverID': ?instance.serverID,
-  'path': ?instance.path,
-  'type': instance.$type,
-};
-
-SesoriMcpToolsChanged _$SesoriMcpToolsChangedFromJson(Map json) =>
-    SesoriMcpToolsChanged($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriMcpToolsChangedToJson(
-  SesoriMcpToolsChanged instance,
-) => <String, dynamic>{'type': instance.$type};
-
-SesoriMcpBrowserOpenFailed _$SesoriMcpBrowserOpenFailedFromJson(Map json) =>
-    SesoriMcpBrowserOpenFailed($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriMcpBrowserOpenFailedToJson(
-  SesoriMcpBrowserOpenFailed instance,
-) => <String, dynamic>{'type': instance.$type};
-
-SesoriInstallationUpdated _$SesoriInstallationUpdatedFromJson(Map json) =>
-    SesoriInstallationUpdated(
-      version: json['version'] as String?,
-      $type: json['type'] as String?,
-    );
-
-Map<String, dynamic> _$SesoriInstallationUpdatedToJson(
-  SesoriInstallationUpdated instance,
-) => <String, dynamic>{'version': ?instance.version, 'type': instance.$type};
-
 SesoriInstallationUpdateAvailable _$SesoriInstallationUpdateAvailableFromJson(
   Map json,
 ) => SesoriInstallationUpdateAvailable(
@@ -636,26 +545,6 @@ SesoriInstallationUpdateAvailable _$SesoriInstallationUpdateAvailableFromJson(
 Map<String, dynamic> _$SesoriInstallationUpdateAvailableToJson(
   SesoriInstallationUpdateAvailable instance,
 ) => <String, dynamic>{'version': ?instance.version, 'type': instance.$type};
-
-SesoriWorkspaceReady _$SesoriWorkspaceReadyFromJson(Map json) =>
-    SesoriWorkspaceReady(
-      name: json['name'] as String?,
-      $type: json['type'] as String?,
-    );
-
-Map<String, dynamic> _$SesoriWorkspaceReadyToJson(
-  SesoriWorkspaceReady instance,
-) => <String, dynamic>{'name': ?instance.name, 'type': instance.$type};
-
-SesoriWorkspaceFailed _$SesoriWorkspaceFailedFromJson(Map json) =>
-    SesoriWorkspaceFailed(
-      message: json['message'] as String?,
-      $type: json['type'] as String?,
-    );
-
-Map<String, dynamic> _$SesoriWorkspaceFailedToJson(
-  SesoriWorkspaceFailed instance,
-) => <String, dynamic>{'message': ?instance.message, 'type': instance.$type};
 
 SesoriTuiToastShow _$SesoriTuiToastShowFromJson(Map json) => SesoriTuiToastShow(
   sessionID: json['sessionID'] as String?,
@@ -673,17 +562,3 @@ Map<String, dynamic> _$SesoriTuiToastShowToJson(SesoriTuiToastShow instance) =>
       'variant': ?instance.variant,
       'type': instance.$type,
     };
-
-SesoriWorktreeReady _$SesoriWorktreeReadyFromJson(Map json) =>
-    SesoriWorktreeReady($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriWorktreeReadyToJson(
-  SesoriWorktreeReady instance,
-) => <String, dynamic>{'type': instance.$type};
-
-SesoriWorktreeFailed _$SesoriWorktreeFailedFromJson(Map json) =>
-    SesoriWorktreeFailed($type: json['type'] as String?);
-
-Map<String, dynamic> _$SesoriWorktreeFailedToJson(
-  SesoriWorktreeFailed instance,
-) => <String, dynamic>{'type': instance.$type};

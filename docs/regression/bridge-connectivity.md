@@ -23,11 +23,13 @@ explicit restart, and the connection states the app presents.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
   a longer jittered curve, a revoked bridge re-registers, and a token change re-auths.
 - Ordered mutation and event lanes continue processing later work after one operation fails, and graceful shutdown drains work accepted before shutdown began.
-- The bridge forwards only event kinds a client consumes. OpenCode editor and
-  runtime housekeeping (PTY, file-watcher, LSP, MCP, installation, workspace and
-  worktree notifications) and Codex MCP startup notices stop inside their
-  plugins; toast, VCS, file-edited, command-catalog and lifecycle signals still
-  reach clients.
+- The bridge forwards only event kinds something consumes. OpenCode editor and
+  runtime housekeeping (PTY, file-watcher, LSP, MCP, installation-updated,
+  workspace and worktree notifications) and Codex MCP startup notices stop
+  inside their plugins; toast, VCS, file-edited, installation-update-available
+  (which feeds the immediate push), command-catalog and lifecycle signals still
+  reach clients. The shared wire union no longer defines the dropped kinds; a
+  client ignores an unknown event type from an older bridge.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
   once and can never later authenticate.
 - Client relay disconnect closes active SSE streams and the socket without

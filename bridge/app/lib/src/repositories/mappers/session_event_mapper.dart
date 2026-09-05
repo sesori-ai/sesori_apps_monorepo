@@ -75,6 +75,7 @@ class const SessionEventMapper() {
       BridgeSsePermissionUpdated() ||
       BridgeSseProjectUpdated() ||
       BridgeSseVcsBranchUpdated() ||
+      BridgeSseInstallationUpdateAvailable() ||
       BridgeSseFileEdited() => const <String>{},
       BridgeSseSessionCreated() ||
       BridgeSseSessionUpdated() ||
@@ -322,6 +323,7 @@ class const SessionEventMapper() {
       BridgeSsePermissionUpdated() ||
       BridgeSseProjectUpdated() ||
       BridgeSseVcsBranchUpdated() ||
+      BridgeSseInstallationUpdateAvailable() ||
       BridgeSseFileEdited() => event,
     };
   }

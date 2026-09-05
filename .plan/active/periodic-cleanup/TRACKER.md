@@ -194,8 +194,14 @@ asked to start working the plan; steps execute in order from step 2.
   destructured, case-handled or type-checked any of the fifteen `Sesori*`
   variants; every public release through v1.8.2 routes them to no-op lists.
   Public shared decoders and client ignore lists stay for released bridges.
-- The fifteen `BridgeSseEvent` variants are deleted with their identity and
-  wire mapping arms; the remaining union stays exhaustively handled. OpenCode
-  maps the matching `SseEventData` kinds to null at its boundary; Codex no
-  longer forwards `mcpServer/startupStatus/updated` (mapper test asserts no
-  event). `skills/changed` catalog invalidation is retained.
+- Fourteen `BridgeSseEvent` variants are deleted with their identity and wire
+  mapping arms; the remaining union stays exhaustively handled. OpenCode maps
+  the matching `SseEventData` kinds to null at its boundary; Codex no longer
+  forwards `mcpServer/startupStatus/updated` (mapper test asserts no event).
+  `skills/changed` catalog invalidation is retained.
+- Correction during PR review: `installation.update-available` was listed in
+  audit D3 but the bridge push builder consumes it for the documented
+  immediate installation-update notification, so that bridge and shared
+  variant are retained. Per the user's PR comment the other fourteen shared
+  `SesoriSseEvent` variants are deleted too; a newer client already ignores an
+  unknown event type from an older bridge, so the compatibility rule holds.

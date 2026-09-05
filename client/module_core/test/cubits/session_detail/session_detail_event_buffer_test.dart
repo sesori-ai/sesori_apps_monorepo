@@ -2035,10 +2035,10 @@ void main() {
       final cubit = createCubit(loadService: mockLoadService);
 
       // Emit high-volume irrelevant global events while loading
-      globalEvents.add(SseEvent(data: const SesoriPtyCreated()));
-      globalEvents.add(SseEvent(data: const SesoriPtyUpdated()));
-      globalEvents.add(SseEvent(data: const SesoriFileWatcherUpdated(file: null, event: null)));
-      globalEvents.add(SseEvent(data: const SesoriLspUpdated()));
+      globalEvents.add(SseEvent(data: const SesoriServerHeartbeat()));
+      globalEvents.add(SseEvent(data: const SesoriVcsBranchUpdated()));
+      globalEvents.add(SseEvent(data: const SesoriFileEdited(file: null)));
+      globalEvents.add(SseEvent(data: const SesoriInstallationUpdateAvailable(version: null)));
       await Future<void>.delayed(Duration.zero);
 
       expect(cubit.state, const SessionDetailState.loading());

@@ -175,10 +175,6 @@ class SessionListCubit({
             SesoriMessagePartUpdated() ||
             SesoriMessagePartDelta() ||
             SesoriMessagePartRemoved() ||
-            SesoriPtyCreated() ||
-            SesoriPtyUpdated() ||
-            SesoriPtyExited() ||
-            SesoriPtyDeleted() ||
             SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriPermissionUpdated() ||
@@ -193,18 +189,8 @@ class SessionListCubit({
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||
             SesoriFileEdited() ||
-            SesoriFileWatcherUpdated() ||
-            SesoriLspUpdated() ||
-            SesoriLspClientDiagnostics() ||
-            SesoriMcpToolsChanged() ||
-            SesoriMcpBrowserOpenFailed() ||
-            SesoriInstallationUpdated() ||
             SesoriInstallationUpdateAvailable() ||
-            SesoriWorkspaceReady() ||
-            SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
-            SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
             // Unseen changes are consumed via the SessionUnseenTracker stream.
             SesoriSessionUnseenChanged():
           break;
