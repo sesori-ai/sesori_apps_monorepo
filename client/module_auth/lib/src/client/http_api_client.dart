@@ -172,37 +172,7 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
       final Future<http.StreamedResponse> sendFuture = _client.send(request);
       final streamedResponse = timeout != null ? await sendFuture.timeout(timeout) : await sendFuture;
       final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (response.body.isEmpty) {
-          // ignore: no_slop_linter/prefer_specific_type, json parsing
-          return ApiResponse.success(fromJson(null));
-        }
-        try {
-          // ignore: no_slop_linter/prefer_specific_type, json decoding
-          final json = jsonDecode(response.body);
-          return ApiResponse.success(fromJson(json));
-        } on Object catch (error, stackTrace) {
-          developer.log(
-            "Failed to parse multipart response JSON",
-            name: "sesori_auth",
-            error: _JsonResponseParsingException(
-              message: "Invalid multipart response JSON",
-              innerError: error,
-            ),
-            stackTrace: stackTrace,
-            level: 1000,
-          );
-          return ApiResponse.error(ApiError.jsonParsing(response.body));
-        }
-      } else {
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: response.statusCode,
-            rawErrorString: response.body,
-          ),
-        );
-      }
+      return _toApiResponse(response: response, fromJson: fromJson, operation: "multipart response");
     } on http.ClientException catch (e) {
       return ApiResponse.error(ApiError.dartHttpClient(e));
     }
@@ -251,39 +221,51 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
         case HttpMethod.delete:
           response = await _client.delete(url, headers: allHeaders);
       }
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (response.body.isEmpty) {
-          // ignore: no_slop_linter/prefer_specific_type, json parsing
-          return ApiResponse.success(fromJson(null));
-        }
-        try {
-          // ignore: no_slop_linter/prefer_specific_type, json decoding
-          final json = jsonDecode(response.body);
-          return ApiResponse.success(fromJson(json));
-        } on Object catch (error, stackTrace) {
-          developer.log(
-            "Failed to parse response JSON",
-            name: "sesori_auth",
-            error: _JsonResponseParsingException(
-              message: "Invalid response JSON",
-              innerError: error,
-            ),
-            stackTrace: stackTrace,
-            level: 1000,
-          );
-          return ApiResponse.error(ApiError.jsonParsing(response.body));
-        }
-      } else {
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: response.statusCode,
-            rawErrorString: response.body,
-          ),
-        );
-      }
+      return _toApiResponse(response: response, fromJson: fromJson, operation: "response");
     } on http.ClientException catch (e) {
       return ApiResponse.error(ApiError.dartHttpClient(e));
+    }
+  }
+
+  /// Turns a completed HTTP exchange into an [ApiResponse].
+  ///
+  /// An empty 2xx body is handed to [fromJson] as `null`; a body that fails to
+  /// decode or parse becomes [ApiError.jsonParsing] with the typed cause logged
+  /// under [operation]. Non-2xx responses keep their status and raw body.
+  ApiResponse<T> _toApiResponse<T>({
+    required http.Response response,
+    // ignore: no_slop_linter/prefer_specific_type, json parsing callback
+    required T Function(dynamic json) fromJson,
+    required String operation,
+  }) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return ApiResponse.error(
+        ApiError.nonSuccessCode(
+          errorCode: response.statusCode,
+          rawErrorString: response.body,
+        ),
+      );
+    }
+    if (response.body.isEmpty) {
+      // ignore: no_slop_linter/prefer_specific_type, json parsing
+      return ApiResponse.success(fromJson(null));
+    }
+    try {
+      // ignore: no_slop_linter/prefer_specific_type, json decoding
+      final json = jsonDecode(response.body);
+      return ApiResponse.success(fromJson(json));
+    } on Object catch (error, stackTrace) {
+      developer.log(
+        "Failed to parse $operation JSON",
+        name: "sesori_auth",
+        error: _JsonResponseParsingException(
+          message: "Invalid $operation JSON",
+          innerError: error,
+        ),
+        stackTrace: stackTrace,
+        level: 1000,
+      );
+      return ApiResponse.error(ApiError.jsonParsing(response.body));
     }
   }
 }
