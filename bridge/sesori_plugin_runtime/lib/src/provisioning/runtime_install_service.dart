@@ -32,11 +32,12 @@ class const RuntimeInstallException(final String message) implements Exception {
 /// SHA-256) is written last, so an
 /// interrupted install leaves no sentinel and is cleanly redone next attempt.
 /// No lock is required: single-live-bridge enforcement covers cross-process
-/// overlap, callers gate concurrent same-plugin work (setup-blocked plugins
-/// cannot start, and management commands are serialized per plugin), the
-/// binary lands via atomic rename, and the sentinel is written last — so any
-/// residual race self-heals on the next attempt. Staging paths are fixed and
-/// self-healing.
+/// overlap, callers gate concurrent same-plugin work (management commands are
+/// serialized per plugin), the binary lands via atomic rename, and the sentinel
+/// is written last — so any residual race self-heals on the next attempt.
+/// Staging paths are fixed and self-healing. The plugin may be running from an
+/// older managed version directory throughout; placement only ever touches the
+/// pinned version directory and this runtime's staging paths.
 class RuntimeInstallService({
   required final BinaryDownloadClient _downloadClient,
   required final ChecksumValidator _checksumValidator,

@@ -2,12 +2,65 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("PiPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("pi-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const PiRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const PiRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("0.84.2");
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("0.84.2");
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: "/custom/pi"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("PiPluginDescriptor setup", () {
     test("declares Pi capabilities without registering it", () {
       final descriptor = PiPluginDescriptor.production();

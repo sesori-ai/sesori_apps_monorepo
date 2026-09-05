@@ -1,12 +1,17 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginStartAbortedException, StartAbortSignal;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show PluginStartAbortedException, StartAbortSignal;
 
+import "managed_runtime_inventory.dart";
 import "runtime_manifest.dart";
 import "runtime_version.dart";
 import "runtime_version_validator.dart";
 
-enum ManagedRuntimeSource() { explicit, path, fallback, managed }
-
-enum ManagedRuntimeVersionPolicy() { minimum, exact }
+enum ManagedRuntimeSource() {
+  explicit,
+  path,
+  fallback,
+  managed,
+}
 
 sealed class const ManagedRuntimeRejection();
 
@@ -75,6 +80,7 @@ final class const ManagedRuntimeAutomaticNotSelected({
 class ManagedRuntimeSelectionService({
   required final RuntimeManifest _manifest,
   required final RuntimeVersionValidator _versionValidator,
+  required final ManagedRuntimeInventory _inventory,
 }) {
   Future<ManagedRuntimeSelection> select({
     required String? explicitExecutablePath,
@@ -82,7 +88,6 @@ class ManagedRuntimeSelectionService({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal abortSignal,
-    required ManagedRuntimeVersionPolicy managedVersionPolicy,
   }) async {
     _throwIfAborted(abortSignal);
     if (explicitExecutablePath != null) {
@@ -143,29 +148,65 @@ class ManagedRuntimeSelectionService({
       }
     }
 
-    final managedPath = _manifest.managedBinaryPath(stateDirectory: stateDirectory);
-    final managedProbe = await _probe(
-      executable: managedPath,
+    // The pinned version is preferred, then any older managed version that is
+    // still at or above the minimum — a bridge update that raises the target
+    // leaves the previous install usable until its replacement is downloaded.
+    final pinnedPath = _manifest.managedBinaryPath(
+      stateDirectory: stateDirectory,
+      version: _manifest.bundledVersion,
+    );
+    final pinnedProbe = await _probe(
+      executable: pinnedPath,
       environment: environment,
       abortSignal: abortSignal,
     );
-    if (managedProbe case RuntimeProbeReady(:final version) when _acceptsManagedVersion(
-      version: version,
-      policy: managedVersionPolicy,
-    )) {
+    if (pinnedProbe case RuntimeProbeReady(:final version) when _isSupported(version: version)) {
       return ManagedRuntimeManagedSelected(
-        binaryPath: managedPath,
+        binaryPath: pinnedPath,
         version: version,
         rejectedPathVersion: pathVersion,
       );
+    }
+    final pinnedRejection = _rejectionFor(probe: pinnedProbe);
+
+    ManagedRuntimeRejection? supersededRejection;
+    for (final candidate in _supersededCandidates(stateDirectory: stateDirectory)) {
+      final candidatePath = _manifest.managedBinaryPath(stateDirectory: stateDirectory, version: candidate);
+      final probe = await _probe(
+        executable: candidatePath,
+        environment: environment,
+        abortSignal: abortSignal,
+      );
+      if (probe case RuntimeProbeReady(:final version) when _isSupported(version: version)) {
+        return ManagedRuntimeManagedSelected(
+          binaryPath: candidatePath,
+          version: version,
+          rejectedPathVersion: pathVersion,
+        );
+      }
+      final rejection = _rejectionFor(probe: probe);
+      if (supersededRejection == null && !_isMissingRejection(rejection: rejection)) {
+        supersededRejection = rejection;
+      }
     }
 
     return ManagedRuntimeAutomaticNotSelected(
       primaryRejection: _isMissingRejection(rejection: pathRejection)
           ? fallbackRejection ?? pathRejection
           : pathRejection,
-      managedRejection: _rejectionFor(probe: managedProbe),
+      managedRejection: _isMissingRejection(rejection: pinnedRejection)
+          ? supersededRejection ?? pinnedRejection
+          : pinnedRejection,
     );
+  }
+
+  /// Installed managed versions other than the pinned one that are still
+  /// supported, newest first.
+  Iterable<RuntimeVersion> _supersededCandidates({required String stateDirectory}) {
+    final pinned = _manifest.bundledVersion.raw;
+    return _inventory
+        .installedVersions(stateDirectory: stateDirectory)
+        .where((version) => version.raw != pinned && _isSupported(version: version));
   }
 
   Future<RuntimeProbeOutcome> _probe({
@@ -188,12 +229,7 @@ class ManagedRuntimeSelectionService({
   bool _isMissingRejection({required ManagedRuntimeRejection rejection}) =>
       rejection is ManagedRuntimeProbeRejected && rejection.outcome is RuntimeProbeMissing;
 
-  bool _acceptsManagedVersion({required RuntimeVersion version, required ManagedRuntimeVersionPolicy policy}) {
-    return switch (policy) {
-      ManagedRuntimeVersionPolicy.minimum => version.compareTo(_manifest.minPathVersion) >= 0,
-      ManagedRuntimeVersionPolicy.exact => version.compareTo(_manifest.bundledVersion) == 0,
-    };
-  }
+  bool _isSupported({required RuntimeVersion version}) => version.compareTo(_manifest.minPathVersion) >= 0;
 
   void _throwIfAborted(StartAbortSignal abortSignal) {
     if (abortSignal.isAborted) throw const PluginStartAbortedException();

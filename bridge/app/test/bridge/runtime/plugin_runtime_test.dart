@@ -78,7 +78,7 @@ void main() {
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
       descriptor: _FakeDescriptor(
-        install: (startAborted) async* {
+        install: (startAborted, runtimeInUse) async* {
           yield const ProvisionResolving();
           await installGate.future;
           if (startAborted.isAborted) throw const PluginStartAbortedException();
@@ -96,6 +96,32 @@ void main() {
     runtime.beginShutdown();
     installGate.complete();
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("installRuntime reports a live generation to the descriptor", () async {
+    final installGate = Completer<void>();
+    final inUseReadings = <bool>[];
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        install: (startAborted, runtimeInUse) async* {
+          inUseReadings.add(runtimeInUse.isInUse);
+          await installGate.future;
+          inUseReadings.add(runtimeInUse.isInUse);
+          yield const ProvisionReady(binaryPath: "/managed/one");
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    final done = runtime.installRuntime(pluginId: "one").drain<void>();
+    await _waitUntil(() => inUseReadings.isNotEmpty);
+    await runtime.start(pluginId: "one");
+    installGate.complete();
+    await done;
+
+    expect(inUseReadings, [false, true], reason: "the signal is read live, not captured at install start");
   });
 
   test("installRuntime fails immediately while shutting down", () async {
@@ -1947,7 +1973,8 @@ class _FakeGenerationFactory({
 
 class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
-  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install,
+  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
+  install,
 }) extends BridgePluginDescriptor {
   @override
   String get id => "one";
@@ -1981,6 +2008,7 @@ class const _FakeDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) {
     final handler = install;
     if (handler == null) {
@@ -1990,9 +2018,10 @@ class const _FakeDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     }
-    return handler(startAborted);
+    return handler(startAborted, runtimeInUse);
   }
 
   @override

@@ -28,6 +28,58 @@ OmpRuntimeAssetService _runtimeAssets({
 );
 
 void main() {
+  group("OmpPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("omp-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory("${stateDir.path}/${const OmpRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const OmpRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("17.3.0");
+
+      expect(
+        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"}),
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("17.3.0");
+
+      expect(
+        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "/custom/omp"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   const config = PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"});
 
   group("OmpPluginDescriptor setup", () {

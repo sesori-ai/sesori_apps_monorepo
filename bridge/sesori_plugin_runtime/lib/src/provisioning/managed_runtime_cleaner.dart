@@ -3,18 +3,20 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-/// Removes superseded managed runtime version directories.
+/// Removes managed runtime version directories the caller no longer wants.
 ///
-/// A managed runtime is laid out as `<managedDir>/<version>/<binary>`. After the
-/// pinned version is healthy, older version directories are dead weight from a
-/// previous bridge release's bundled runtime; this sweeps them, keeping only the
-/// version currently in use so a running runtime is never deleted.
+/// A managed runtime is laid out as `<managedDir>/<version>/<binary>`. Older
+/// version directories are dead weight from a previous bridge release's bundled
+/// runtime, but which ones are safe to remove depends on where the install is:
+/// an obsolete version can go before the download starts, while a still-usable
+/// one must survive until its replacement is verified and no generation runs
+/// from it. The caller owns that decision through [keep].
 class ManagedRuntimeCleaner({required final String _runtimeId}) {
-  /// Deletes every immediate subdirectory of [managedDir] except [keepVersion].
+  /// Deletes every immediate subdirectory of [managedDir] that [keep] rejects.
   /// Best-effort: a directory that cannot be removed is logged and skipped.
   Future<void> sweep({
     required String managedDir,
-    required String keepVersion,
+    required bool Function({required String versionName}) keep,
   }) async {
     final Directory dir = Directory(managedDir);
     if (!dir.existsSync()) {
@@ -36,7 +38,7 @@ class ManagedRuntimeCleaner({required final String _runtimeId}) {
         continue;
       }
       final String name = p.basename(entity.path);
-      if (name == keepVersion) {
+      if (keep(versionName: name)) {
         continue;
       }
       try {

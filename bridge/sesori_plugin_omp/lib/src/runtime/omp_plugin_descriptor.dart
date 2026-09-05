@@ -116,6 +116,14 @@ final class const OmpPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: OmpRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     if (_explicitBin(host.config) != null) return;
     const manifest = OmpRuntimeManifest();
@@ -124,6 +132,7 @@ final class const OmpPluginDescriptor({
       selectionService: ManagedRuntimeSelectionService(
         manifest: manifest,
         versionValidator: _versionValidator(processes: host.processes),
+        inventory: const ManagedRuntimeInventory(manifest: manifest),
       ),
       fallbackExecutableCandidates: const [],
     ).provision(host: host, explicitExecutablePath: null);
@@ -136,6 +145,7 @@ final class const OmpPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = OmpRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
@@ -166,6 +176,7 @@ final class const OmpPluginDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -181,17 +192,18 @@ final class const OmpPluginDescriptor({
   }) async {
     const manifest = OmpRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: _versionValidator(processes: processes),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
     if (selection case ManagedRuntimeSelected(:final version)) {
       return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
@@ -210,8 +222,7 @@ final class const OmpPluginDescriptor({
       };
     }
     final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) ||
-        _isUnknownRejection(automatic.managedRejection)) {
+    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );

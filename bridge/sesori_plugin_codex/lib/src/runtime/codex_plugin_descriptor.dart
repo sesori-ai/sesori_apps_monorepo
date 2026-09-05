@@ -230,13 +230,13 @@ class const CodexPluginDescriptor({
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
       ),
+      inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
       explicitExecutablePath: _explicitBin(config),
       fallbackExecutableCandidates: _desktopCandidates(environment: environment),
       environment: environment,
       stateDirectory: stateDirectory,
       abortSignal: abortSignal,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
     );
   }
 
@@ -265,12 +265,21 @@ class const CodexPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: CodexRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> installRuntime({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = CodexRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
@@ -301,6 +310,7 @@ class const CodexPluginDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -432,6 +442,7 @@ class const CodexPluginDescriptor({
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
+        inventory: const ManagedRuntimeInventory(manifest: manifest),
       ),
       fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
     ).provision(host: host, explicitExecutablePath: null);

@@ -82,6 +82,14 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: DeepSeekRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     const manifest = DeepSeekRuntimeManifest();
     yield* ManagedRuntimeProvisionService(
@@ -89,6 +97,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       selectionService: ManagedRuntimeSelectionService(
         manifest: manifest,
         versionValidator: _versionValidator(processes: host.processes),
+        inventory: const ManagedRuntimeInventory(manifest: manifest),
       ),
       fallbackExecutableCandidates: const [],
     ).provision(
@@ -104,6 +113,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = DeepSeekRuntimeManifest();
     final commandExecutor = _executor(processes);
@@ -126,6 +136,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -145,13 +156,13 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         await ManagedRuntimeSelectionService(
           manifest: manifest,
           versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
         ).select(
           explicitExecutablePath: explicit,
           fallbackExecutableCandidates: const [],
           environment: environment,
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
-          managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
         );
     switch (selection) {
       case ManagedRuntimeSelected(:final binaryPath, :final version):

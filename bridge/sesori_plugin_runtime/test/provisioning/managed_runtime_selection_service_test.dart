@@ -75,27 +75,42 @@ class _Validator({
 
 void main() {
   const manifest = _Manifest();
-  const stateDirectory = "/state";
-  final managedPath = p.join(stateDirectory, "runtime", "2.0.0", "runtime");
+  late Directory stateDir;
   RuntimeVersion version(String value) => SemanticRuntimeVersion.parse(value: value);
+
+  setUp(() async {
+    stateDir = await Directory.systemTemp.createTemp("managed-selection");
+  });
+
+  tearDown(() async {
+    if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+  });
+
+  /// Creates the on-disk version directory the inventory reports; the probe
+  /// outcome for its binary still decides whether the candidate is selected.
+  String installed(String value) {
+    Directory(p.join(stateDir.path, "runtime", value)).createSync(recursive: true);
+    return p.join(stateDir.path, "runtime", value, "runtime");
+  }
+
+  String managedPathFor(String value) => p.join(stateDir.path, "runtime", value, "runtime");
 
   Future<ManagedRuntimeSelection> select({
     required _Validator validator,
     String? explicitExecutablePath,
     List<String> fallbackExecutableCandidates = const [],
-    ManagedRuntimeVersionPolicy managedVersionPolicy = ManagedRuntimeVersionPolicy.exact,
     required StartAbortSignal abortSignal,
   }) {
     return ManagedRuntimeSelectionService(
       manifest: manifest,
       versionValidator: validator,
+      inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
       explicitExecutablePath: explicitExecutablePath,
       fallbackExecutableCandidates: fallbackExecutableCandidates,
       environment: const {"PATH": "/bin"},
-      stateDirectory: stateDirectory,
+      stateDirectory: stateDir.path,
       abortSignal: abortSignal,
-      managedVersionPolicy: managedVersionPolicy,
     );
   }
 
@@ -127,7 +142,7 @@ void main() {
         "runtime": RuntimeProbeReady(version: version("0.9.0")),
         "/old/runtime": RuntimeProbeReady(version: version("0.8.0")),
         "/desktop/runtime": RuntimeProbeReady(version: version("1.5.0")),
-        managedPath: RuntimeProbeReady(version: version("2.0.0")),
+        managedPathFor("2.0.0"): RuntimeProbeReady(version: version("2.0.0")),
       },
       onProbe: null,
     );
@@ -146,26 +161,117 @@ void main() {
     expect(validator.probes, ["runtime", "/old/runtime", "/desktop/runtime"]);
   });
 
-  test("applies exact or minimum policy to the managed runtime", () async {
-    _Validator validator() => _Validator(
+  test("accepts any managed version at or above the minimum", () async {
+    final validator = _Validator(
       outcomes: {
-        managedPath: RuntimeProbeReady(version: version("2.1.0")),
+        managedPathFor("2.0.0"): RuntimeProbeReady(version: version("2.1.0")),
       },
       onProbe: null,
     );
 
-    final exact = await select(validator: validator(), abortSignal: StartAbortSignal.never);
-    expect(exact, isA<ManagedRuntimeNotSelected>());
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
 
-    final minimum = await select(
-      validator: validator(),
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.minimum,
+    expect(result, isA<ManagedRuntimeManagedSelected>());
+    expect((result as ManagedRuntimeSelected).version.raw, "2.1.0");
+  });
+
+  test("prefers the pinned managed version over a newer installed one", () async {
+    installed("1.5.0");
+    installed("2.0.0");
+    final validator = _Validator(
+      outcomes: {
+        managedPathFor("2.0.0"): RuntimeProbeReady(version: version("2.0.0")),
+        managedPathFor("1.5.0"): RuntimeProbeReady(version: version("1.5.0")),
+      },
+      onProbe: null,
+    );
+
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
+
+    expect((result as ManagedRuntimeSelected).binaryPath, managedPathFor("2.0.0"));
+    expect(validator.probes, isNot(contains(managedPathFor("1.5.0"))));
+  });
+
+  test("falls back to the highest supported version when the pinned one is absent", () async {
+    installed("1.0.0");
+    installed("1.5.0");
+    final validator = _Validator(
+      outcomes: {
+        managedPathFor("1.5.0"): RuntimeProbeReady(version: version("1.5.0")),
+        managedPathFor("1.0.0"): RuntimeProbeReady(version: version("1.0.0")),
+      },
+      onProbe: null,
+    );
+
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
+
+    final selected = result as ManagedRuntimeManagedSelected;
+    expect(selected.binaryPath, managedPathFor("1.5.0"));
+    expect(selected.version.raw, "1.5.0");
+    expect(validator.probes, isNot(contains(managedPathFor("1.0.0"))));
+  });
+
+  test("accepts an installed version equal to the minimum", () async {
+    installed("1.0.0");
+    final validator = _Validator(
+      outcomes: {
+        managedPathFor("1.0.0"): RuntimeProbeReady(version: version("1.0.0")),
+      },
+      onProbe: null,
+    );
+
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
+
+    expect((result as ManagedRuntimeSelected).version.raw, "1.0.0");
+  });
+
+  test("skips an unrunnable superseded version and takes the next one down", () async {
+    installed("1.9.0");
+    installed("1.5.0");
+    final validator = _Validator(
+      outcomes: {
+        managedPathFor("1.9.0"): const RuntimeProbeNonZeroExit(exitCode: 1),
+        managedPathFor("1.5.0"): RuntimeProbeReady(version: version("1.5.0")),
+      },
+      onProbe: null,
+    );
+
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
+
+    expect((result as ManagedRuntimeSelected).binaryPath, managedPathFor("1.5.0"));
+  });
+
+  test("never probes a below-minimum or unparseable managed directory", () async {
+    installed("0.9.0");
+    installed(".sesori-runtime-staging");
+    final validator = _Validator(
+      outcomes: {
+        managedPathFor("0.9.0"): RuntimeProbeReady(version: version("0.9.0")),
+      },
+      onProbe: null,
+    );
+
+    final result = await select(validator: validator, abortSignal: StartAbortSignal.never);
+
+    expect(result, isA<ManagedRuntimeNotSelected>());
+    expect(validator.probes, ["runtime", managedPathFor("2.0.0")]);
+  });
+
+  test("prefers an informative superseded rejection over a missing pinned one", () async {
+    installed("1.5.0");
+    const supersededFailure = RuntimeProbeUnrecognized();
+    final result = await select(
+      validator: _Validator(
+        outcomes: {
+          managedPathFor("1.5.0"): supersededFailure,
+        },
+        onProbe: null,
+      ),
       abortSignal: StartAbortSignal.never,
     );
-    expect(minimum, isA<ManagedRuntimeSelected>());
-    expect(minimum, isA<ManagedRuntimeManagedSelected>());
-    final selected = minimum as ManagedRuntimeSelected;
-    expect(selected.version.raw, "2.1.0");
+
+    final automatic = result as ManagedRuntimeAutomaticNotSelected;
+    expect((automatic.managedRejection as ManagedRuntimeProbeRejected).outcome, same(supersededFailure));
   });
 
   test("preserves PATH and managed rejection details", () async {
@@ -175,7 +281,7 @@ void main() {
       validator: _Validator(
         outcomes: {
           "runtime": pathFailure,
-          managedPath: managedFailure,
+          managedPathFor("2.0.0"): managedFailure,
         },
         onProbe: null,
       ),

@@ -74,7 +74,10 @@ abstract class const RuntimeManifest() {
   /// version directory (platform-aware, e.g. `opencode` or `bin/codex.exe`).
   String get binaryFileName;
 
-  /// Minimum pre-installed (PATH) version the bridge will use as-is.
+  /// Minimum version the bridge will use as-is, for a pre-installed (PATH)
+  /// runtime and for a managed one alike: a managed version at or above it stays
+  /// usable while a newer [bundledVersion] downloads, and one below it is never
+  /// selected.
   RuntimeVersion get minPathVersion;
 
   /// The exact version the managed runtime installs.
@@ -84,6 +87,14 @@ abstract class const RuntimeManifest() {
   /// scheme. Keeping this with the pins guarantees probes and comparisons use
   /// one scheme per runtime.
   RuntimeVersion? parseVersion({required String value});
+
+  /// Parses a managed version directory name under the runtime's state root.
+  ///
+  /// The installer names those directories with [RuntimeVersion.raw], so the
+  /// default reuses [parseVersion]. Override when [parseVersion] requires a
+  /// publisher-specific `--version` token (a prefix, a label) that an on-disk
+  /// directory name does not carry.
+  RuntimeVersion? parseInstalledVersion({required String value}) => parseVersion(value: value);
 
   /// The pinned asset for [target], or `null` when the platform is unsupported
   /// or requires asynchronous host-specific selection by the installer's
@@ -100,10 +111,10 @@ abstract class const RuntimeManifest() {
   String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
       "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
 
-  /// Expected path of this manifest's pinned managed binary under a plugin
-  /// state root. Computing the path is read-only and does not imply that the
-  /// runtime is installed or valid.
-  String managedBinaryPath({required String stateDirectory}) {
-    return p.join(stateDirectory, runtimeId, bundledVersion.raw, binaryFileName);
+  /// Expected path of this manifest's managed binary for [version] under a
+  /// plugin state root. Computing the path is read-only and does not imply that
+  /// the runtime is installed or valid.
+  String managedBinaryPath({required String stateDirectory, required RuntimeVersion version}) {
+    return p.join(stateDirectory, runtimeId, version.raw, binaryFileName);
   }
 }

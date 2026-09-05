@@ -130,9 +130,18 @@ provider configuration, session history, or a running session's executable.
 - `ManagedRuntimeInventory` gains
   `List<RuntimeVersion> installedVersions({required String stateDirectory})`:
   version directory names under `<stateDirectory>/<runtimeId>/` that parse with
-  `manifest.parseVersion`, sorted descending. `hasSupersededVersion` becomes a
-  one-line derivation. Unparseable names are ignored; read errors log and yield
-  an empty list, as today.
+  `manifest.parseInstalledVersion`, sorted descending. `hasSupersededVersion`
+  becomes a one-line derivation. Unparseable names are ignored; read errors log
+  and yield an empty list, as today.
+- `RuntimeManifest.parseInstalledVersion` is new, defaulting to `parseVersion`.
+  `parseVersion` parses a token of `--version` output, and OMP's requires an
+  `omp/` prefix so an unrelated semver token in that output is not mistaken for
+  the runtime version. Directory names carry the bare version, so OMP overrides
+  the new method. Without the split, OMP silently never finds a superseded
+  managed version — a latent bug this plan would otherwise make load-bearing.
+- `RuntimeManifest.managedBinaryPath` takes a `version` instead of assuming the
+  pinned one, so ordered candidate probing reuses it rather than repeating the
+  `<stateDirectory>/<runtimeId>/<version>/<binaryFileName>` layout.
 - `ManagedRuntimeSelectionService` takes the inventory and drops
   `managedVersionPolicy`. Managed candidates are probed in order: the pinned
   version directory, then every other installed version `>= minPathVersion`
@@ -184,10 +193,13 @@ provider configuration, session history, or a running session's executable.
   `bool needsManagedRuntimeUpgrade({required PluginConfig config, required
   String stateDirectory})`, default `false`, sync and disk-only. The
   descriptor is the single owner of the decision: each managed descriptor
-  returns `_supportsManagedInstall(config) &&
-  inventory.hasSupersededVersion(stateDirectory)`, which already folds in the
-  explicit-binary and platform gates behind its `install` capability. The
-  lifecycle service does not re-check the capability.
+  returns `managementCapabilities(config).contains(install) &&
+  inventory.hasSupersededVersion(stateDirectory)`. The capability is the gate
+  rather than each descriptor's private `_supportsManagedInstall`, because
+  OpenCode additionally drops `install` in attach mode
+  (`--opencode-no-auto-start`) — where Sesori does not own the runtime — and the
+  private helper does not capture that. The lifecycle service does not re-check
+  the capability.
 
 ### 3. Startup trigger (`bridge/app`)
 
@@ -279,7 +291,10 @@ implementation appears to need any of these, stop and ask.
 ## Cleanup Assessment
 
 - `ManagedRuntimeVersionPolicy` and its `select` parameter are removed in
-  Step 2, along with the selection test "applies exact or minimum policy".
+  Step 2, along with the selection test "applies exact or minimum policy". The
+  provision-service test "does not accept a managed runtime with a different
+  version" is replaced by a below-minimum rejection, which is what the single
+  remaining rule asserts.
 - The provision-notice message that names `bundledVersion` for an older
   managed runtime is corrected in Step 2.
 - The "This bridge needs a newer X. Install it from Sesori" hints in OpenCode,

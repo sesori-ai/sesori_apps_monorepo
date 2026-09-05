@@ -25,6 +25,7 @@ export "src/lifecycle/plugin_state_storage.dart";
 export "src/lifecycle/plugin_status.dart";
 export "src/lifecycle/plugin_status_controller.dart";
 export "src/lifecycle/plugin_work_state.dart";
+export "src/lifecycle/runtime_in_use_signal.dart";
 export "src/lifecycle/runtime_provision_progress.dart";
 export "src/lifecycle/start_abort_signal.dart";
 export "src/lifecycle/steady_plugin_lifecycle.dart";

@@ -71,7 +71,7 @@ void main() {
 
   test("managed binaries live under a version-scoped directory", () {
     expect(
-      manifest.managedBinaryPath(stateDirectory: "/state"),
+      manifest.managedBinaryPath(stateDirectory: "/state", version: manifest.bundledVersion),
       "/state/cursor/2026.08.11-e8db854/cursor-agent",
     );
   });
