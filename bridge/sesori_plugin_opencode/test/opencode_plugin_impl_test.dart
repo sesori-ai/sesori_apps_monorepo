@@ -6,7 +6,10 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-enum _OptionDiscoveryRequest() { agents, providers }
+enum _OptionDiscoveryRequest() {
+  agents,
+  providers,
+}
 
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
@@ -501,7 +504,7 @@ void main() {
     for (final testCase in staleSelectionCases) {
       test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         addTearDown(plugin.dispose);
         await server.waitForSseConnection();
         server
@@ -1089,7 +1092,7 @@ void main() {
         }
         if (event is BridgeSseSessionStatus &&
             event.sessionID == "s-root" &&
-            event.status["type"] == "idle" &&
+            event.status is PluginSessionStatusIdle &&
             !idleEvent.isCompleted) {
           idleEvent.complete();
         }
@@ -1288,7 +1291,7 @@ void main() {
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1303,7 +1306,7 @@ void main() {
     group("archiveSession", () {
       test("sends PATCH with time.archived body", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1321,7 +1324,7 @@ void main() {
     group("renameProject", () {
       test("resolves worktree to project UUID then sends PATCH with name", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 

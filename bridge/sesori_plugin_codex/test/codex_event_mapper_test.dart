@@ -71,7 +71,7 @@ void main() {
         BridgeSseSessionStatus(:final sessionID, :final status) => {
           "type": "session.status",
           "sessionID": sessionID,
-          "status": status,
+          "status": status.toJson(),
         },
         BridgeSseMessageUpdated(:final info) => {"type": "message.updated", "info": info},
         _ => throw ArgumentError("parseAsSesori: unhandled ${event.runtimeType}"),
@@ -287,7 +287,7 @@ void main() {
 
       final status = events.whereType<BridgeSseSessionStatus>().single;
       expect(status.sessionID, "t-activity");
-      expect(shared.SessionStatus.fromJson(status.status), isA<shared.SessionStatusBusy>());
+      expect(status.status, isA<PluginSessionStatusBusy>());
       expect(parseAsSesori(status), isA<shared.SesoriSessionStatus>());
     });
 
@@ -356,12 +356,12 @@ void main() {
       );
 
       expect(
-        shared.SessionStatus.fromJson((active.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (active.single as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(
-        shared.SessionStatus.fromJson((idle.single as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusIdle>(),
+        (idle.single as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusIdle>(),
       );
     });
 

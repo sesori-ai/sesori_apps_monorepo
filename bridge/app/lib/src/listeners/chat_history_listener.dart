@@ -4,6 +4,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/normalized_bridge_event.dart";
 import "../services/chat_history_service.dart";
 import "../services/session_event_dispatcher.dart";
 
@@ -43,11 +44,15 @@ class ChatHistoryListener({
     );
   }
 
-  Future<void> _capture({required String pluginId, required BridgeSseEvent event}) {
+  Future<void> _capture({required String pluginId, required NormalizedBridgeEvent event}) {
     return switch (event) {
-      BridgeSseServerConnected() => _chatHistoryService.invalidatePluginHistory(pluginId: pluginId),
-      BridgeSseMessageUpdated(:final info) => _captureMessage(info: info),
-      _ => Future<void>.value(),
+      NormalizedOtherEvent(event: BridgeSseServerConnected()) => _chatHistoryService.invalidatePluginHistory(
+        pluginId: pluginId,
+      ),
+      NormalizedOtherEvent(event: BridgeSseMessageUpdated(:final info)) => _captureMessage(info: info),
+      // A forced-stop handoff carries no finalized message, and a status
+      // change stores nothing.
+      NormalizedOtherEvent() || NormalizedStatusEvent() || NormalizedTerminalHandoff() => Future<void>.value(),
     };
   }
 

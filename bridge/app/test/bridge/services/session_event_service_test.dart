@@ -699,9 +699,9 @@ void main() {
           text: "visible prompt",
         ),
       );
-      final status = BridgeSseSessionStatus(
+      const status = BridgeSseSessionStatus(
         sessionID: "backend-root",
-        status: const SessionStatus.busy().toJson(),
+        status: PluginSessionStatus.busy(),
       );
 
       for (final (index, event) in [created, message, part, status].indexed) {

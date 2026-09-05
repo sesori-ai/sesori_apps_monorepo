@@ -63,6 +63,6 @@ class const CodexSessionMapper() {
         parentSessionId: child.parentId,
       ).toJson(),
     ),
-    BridgeSseSessionStatus(sessionID: child.id, status: status.toJson()),
+    BridgeSseSessionStatus(sessionID: child.id, status: status),
   ];
 }

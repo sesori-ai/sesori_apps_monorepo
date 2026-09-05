@@ -13,7 +13,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Merged | [#1303](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1303) |
 | 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Merged | [#1305](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1305) |
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | In review | [#1308](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1308) |
-| 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Proposed | — |
+| 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | In progress (local, awaiting step 5 merge) | — |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Proposed | — |
 | 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Proposed | — |
@@ -147,3 +147,17 @@ asked to start working the plan; steps execute in order from step 2.
   242+/213-. Self-inclusive: the handwritten figure counts this tracker note as
   it stood at that head; this sentence adds a few lines more. Generators:
   build_runner, drift_dev schema dump/steps/generate.
+
+## Step 6 execution — 2026-09-05
+
+- `BridgeSseSessionStatus.status` is a `PluginSessionStatus`; every producer
+  (ACP shared tracker and plugin, Claude, Codex, OpenCode, Pi) emits the typed
+  value. OpenCode drops a status kind it does not recognise at the plugin
+  boundary instead of relaying an unparseable payload.
+- New `NormalizedBridgeEvent` sealed payload under `repositories/models/`:
+  status, other, and terminal-handoff (payload non-handoff by type).
+  `SessionEventMapper.normalize` is the single conversion, exposed through
+  `SessionEventService.toNormalized` and applied by the dispatcher after the
+  publication/generation checks. Orchestrator delivers status through
+  `BridgeEventMapper.buildSessionStatusEvent`; the history listener ignores
+  status and handoff payloads. The message variant follows in step 7.

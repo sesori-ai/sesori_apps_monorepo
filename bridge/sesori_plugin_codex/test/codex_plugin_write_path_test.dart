@@ -331,8 +331,7 @@ void main() {
         model: null,
       );
       final idle = plugin.events.firstWhere(
-        (event) =>
-            event is BridgeSseSessionStatus && shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
+        (event) => event is BridgeSseSessionStatus && event.status is PluginSessionStatusIdle,
       );
       fake.pushNotification("thread/status/changed", {
         "threadId": "t-compact",
@@ -2728,8 +2727,8 @@ void main() {
       expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
       await Future<void>.delayed(Duration.zero);
       expect(
-        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status["type"],
-        "busy",
+        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status,
+        const PluginSessionStatus.busy(),
         reason: "the started activity supersedes Codex's pre-start idle status",
       );
       var statuses = await plugin.getSessionStatuses();
@@ -2989,7 +2988,9 @@ void main() {
       final childBusy = plugin.events
           .where(
             (event) =>
-                event is BridgeSseSessionStatus && event.sessionID == "child-1" && event.status["type"] == "busy",
+                event is BridgeSseSessionStatus &&
+                event.sessionID == "child-1" &&
+                event.status is PluginSessionStatusBusy,
           )
           .first;
       fake.pushNotification("item/started", {

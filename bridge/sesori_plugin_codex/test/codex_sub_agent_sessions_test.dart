@@ -271,7 +271,7 @@ void main() {
       expect(session.parentID, "root-1");
       expect(session.title, "Raman");
       final announcedStatus = announcement.events.last as BridgeSseSessionStatus;
-      expect(announcedStatus.status["type"], "busy");
+      expect(announcedStatus.status, const PluginSessionStatus.busy());
       expect(
         await service.handleSubAgentStarted(
           childThreadId: "child-1",
@@ -486,9 +486,9 @@ void main() {
         activityChanged: true,
         sessionClosed: false,
         events: [
-          BridgeSseSessionStatus(
+          const BridgeSseSessionStatus(
             sessionID: "root-1",
-            status: const PluginSessionStatus.idle().toJson(),
+            status: PluginSessionStatus.idle(),
           ),
           const BridgeSseSessionIdle(sessionID: "root-1"),
         ],
