@@ -217,9 +217,15 @@ provider configuration, session history, or a running session's executable.
   the upgrade at info level and admit an install with
   `InstallCompletion.reinspectOnly`.
 - A private two-value enum `InstallCompletion { enableAndStart, reinspectOnly }`
-  replaces a boolean. `_executeInstall` takes it; on `ProvisionReady` it calls
-  `_enable` for `enableAndStart` (manual Install, unchanged) and
-  `_inspectForCommand` for `reinspectOnly`. Progress, failure, interruption,
+  replaces a boolean. It lives on `_ActivePluginCommand` and `_executeInstall`
+  reads it at the terminal event, not at admission: an explicit Install that
+  joins a running startup upgrade promotes it back to `enableAndStart`, so the
+  user's intent to start the harness survives the join. On `ProvisionReady` the
+  executor calls `_enable` for `enableAndStart` (manual Install, unchanged) and
+  `_inspectForCommand` for `reinspectOnly`. The reinspect-only branch re-reads
+  the completion after that inspection and starts the harness when a promotion
+  arrived during it, because the joiner owns the same slot until this command's
+  `finally` releases it. Both windows were found by review, not by the plan. Progress, failure, interruption,
   slot release, and management-snapshot publication are unchanged; a failed
   upgrade leaves the previous setup (ready on the older supported runtime, or
   runtime-missing with the descriptor's hint) in place.
@@ -303,6 +309,14 @@ implementation appears to need any of these, stop and ask.
 - `docs/regression/plugin-runtime-installation.md` Known Limitations currently
   states managed runtime refresh is not covered; Step 4 replaces it.
 - No obsolete transport shapes, flags, or database artifacts were found.
+
+Step 4 audit against the delivered implementation: `ManagedRuntimeVersionPolicy`
+and `ManagedRuntimeCleaner.sweep`'s `keepVersion` have no remaining references
+outside this plan document. The provision notice names the selected version. The
+three "needs a newer X" hints are still correct — they describe a below-minimum
+runtime, which is exactly the window before its obsolete directory is swept. No
+further cleanup was discovered; `managedBinaryPath`'s new `version` parameter and
+`parseInstalledVersion` both have live consumers.
 
 ## Delivery Plan
 
