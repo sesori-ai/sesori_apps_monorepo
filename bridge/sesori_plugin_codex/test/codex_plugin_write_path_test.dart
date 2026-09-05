@@ -2398,12 +2398,13 @@ void main() {
       );
       expect(provider.models.first.name, equals("GPT-5.5"));
       expect(provider.defaultModelID, equals("gpt-5.5"));
-      // Reasoning efforts surface as variants, default ("medium") moved first so
-      // the mobile picker's auto-first-on-switch lands on codex's own default.
+      // Reasoning efforts surface as variants strongest first; codex's own
+      // default ("medium") is declared separately so a switch lands on it.
       expect(
         provider.models.first.variants,
-        equals(["medium", "low", "high", "xhigh"]),
+        equals(["xhigh", "high", "medium", "low"]),
       );
+      expect(provider.models.first.defaultVariant, equals("medium"));
       // A model without supportedReasoningEfforts exposes no variants.
       expect(provider.models[1].variants, isEmpty);
       expect(fake.sentMethods, contains("model/list"));
