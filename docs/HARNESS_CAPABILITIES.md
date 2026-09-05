@@ -39,8 +39,8 @@ prompt, and skill commands remain available.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
@@ -94,13 +94,13 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2,
-probed 2026-09-03): the harness emits `subagent/start`/`subagent/end` with
-child session ids and `ctx.subagents.interrupt` stops a continuable child; the
-adapter forwards none of it yet but is ours to extend, and the executing tool
-call is known for every start. Foreground children die with the parent while
-background ones survive, and the adapter can tell them apart, so
-main-agent-only is supportable when every running child is background.
+⁹ DeepSeek's published adapter 0.1.3 over dsh 0.1.1-rc.2 is the managed target
+and minimum accepted runtime. The consumer requires extension protocol v2 and
+implements live correlated tiles and child transcripts/catalogs. Replay tile
+projection and scoped stop remain unimplemented consumer follow-ups, although
+the adapter supplies their contracts. Foreground children die with the parent;
+background children survive, making main-agent-only stop supportable when all
+running children are background. Final feature E2E coverage remains pending.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

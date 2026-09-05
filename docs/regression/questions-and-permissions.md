@@ -41,8 +41,9 @@ reaches the backend so the turn continues.
   option, it cancels rather than escalating or selecting another scope. The
   pinned CLI does not forward `ask_user` over ACP, so Copilot declares no
   question capability and Sesori never invents a custom question channel.
-- DeepSeek standard ACP permissions use the request's explicit session ID when
-  present and retain the ACP active-turn fallback when an agent omits it. They
+- DeepSeek standard ACP permissions use explicit session IDs or exact tracked
+  tool-call attribution, retained across parent turns. Ambiguity cancels; only
+  unattributed requests use the ACP active-turn fallback. These permissions
   preserve the exact tool call ID and expose only the scopes the adapter offers;
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/

@@ -104,7 +104,7 @@ void main() {
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.0.9 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -141,12 +141,12 @@ void main() {
     );
   });
 
-  test("ensureRuntime falls back from an outdated PATH adapter to the exact managed release", () async {
+  test("ensureRuntime replaces a protocol-v1 PATH adapter with the exact managed release", () async {
     final processes = _ProcessService(
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.0.9 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -367,7 +367,7 @@ class _AcpProcess({@override required final int pid, required final bool omitIni
         if (!omitInitializeMetadata)
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",

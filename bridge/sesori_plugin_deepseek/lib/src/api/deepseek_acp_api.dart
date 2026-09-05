@@ -10,7 +10,7 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String sessionStatusMethod = "deepseek/session/status";
   static const String subagentMethod = "deepseek/subagent";
   static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
-  static const int extensionProtocolVersion = 1;
+  static const int extensionProtocolVersion = 2;
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInitializeMetadataDto parseInitializeMetadata(Map<String, dynamic> json) {

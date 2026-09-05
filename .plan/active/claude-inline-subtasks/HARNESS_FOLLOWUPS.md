@@ -474,7 +474,7 @@ confirmation, no child session or partial stop) and gets that subset.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 
-## DeepSeek (`sesori-deepseek-acp` 0.1.3 source over dsh 0.1.1-rc.2; release pending)
+## DeepSeek (`sesori-deepseek-acp` 0.1.3 over dsh 0.1.1-rc.2)
 
 ### Verified facts
 
@@ -527,22 +527,22 @@ confirmation, no child session or partial stop) and gets that subset.
   descendant subtree and leaves process-scoped tombstones against late frames;
   existing disconnect, process-exit, and disposal cleanup owns cancellation and
   releases those tombstones after the old event source drains.
-- Consumer support temporarily accepts protocol versions 1 and 2. Adapter
-  v0.1.3 is not published yet, so managed target 0.1.2 and PATH floor 0.1.0 stay
-  unchanged. After this consumer merges, the adapter release-prep PR records
-  its consumer commit and publishes v0.1.3; the later scoped-stop PR pins target
-  and floor to 0.1.3, narrows initialization to v2, and consumes interrupt.
+- User-directed release change (2026-09-05): publish adapter 0.1.3 before
+  slice 4 merges, using an exact pushed live-consumer commit for conformance.
+  Slice 4 removes v1 compatibility and must pin the managed target and minimum
+  accepted version to 0.1.3 using verified published checksums before it is ready.
+  Replay remains slice 5; scoped interrupt consumption remains a later PR.
 
 ### PRs
 
 | Repo | Emoji | Description | Scope |
 |---|---|---|---|
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | Merged PR #13 (`0a85fb2`): lifecycle, descendant transcripts, bindings, and protocol v2 |
-| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release intentionally pending |
+| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release completed through PR #16 |
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
-| monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; runtime policy unchanged |
-| adapter | 🌱 | `release: publish v0.1.3 for the merged consumer` | Next after the monorepo consumer merges: record its commit, tag, publish, and verify assets |
-| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | Pending: consume interrupt, pin target/PATH floor 0.1.3, narrow initialization to v2, and test mixed modes |
+| monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
+| adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
+| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | Pending: consume interrupt and test mixed modes; runtime pinning moves to slice 4 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
 ### Consumer replacement series
@@ -558,8 +558,9 @@ This replaces only the existing consumer step, not the completed original
 8-step series or its remaining harness follow-ups. The plan already landed;
 record this split with the first slice. The existing release, scoped-stop,
 regression-document reconciliation, and final coverage/retirement gates remain
-required. Adapter release preparation must wait for **all five** consumer
-slices to merge and record the final replay consumer's merge commit.
+required. Per the 2026-09-05 user request, adapter publication now precedes
+slice 4 merge. Its cross-repository conformance uses the pushed live-consumer
+commit; final replay and E2E coverage remain separate, uncompleted gates.
 
 1. `⚙️ [claude-inline-subtasks] acp: child lifecycle and request attribution [step 1/5]`
    - About 650 production/test/doc lines plus this split bookkeeping.

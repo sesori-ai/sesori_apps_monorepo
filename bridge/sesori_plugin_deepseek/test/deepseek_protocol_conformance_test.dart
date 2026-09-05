@@ -97,7 +97,7 @@ void main() {
     expect(() => api.parseQuestionRequest(questions), throwsFormatException);
   });
 
-  test("initialization stays on v1 until the live v2 consumer is installed", () {
+  test("initialization requires protocol v2", () {
     Map<String, dynamic> metadata({required int version}) => {
       "extensionProtocolVersion": version,
       "adapterVersion": "0.1.3",
@@ -105,8 +105,8 @@ void main() {
       "persistenceOwner": "sesori",
     };
 
-    expect(api.parseInitializeMetadata(metadata(version: 1)).extensionProtocolVersion, 1);
-    expect(() => api.parseInitializeMetadata(metadata(version: 2)), throwsFormatException);
+    expect(() => api.parseInitializeMetadata(metadata(version: 1)), throwsFormatException);
+    expect(api.parseInitializeMetadata(metadata(version: 2)).extensionProtocolVersion, 2);
     expect(() => api.parseInitializeMetadata(metadata(version: 3)), throwsFormatException);
   });
 
@@ -271,8 +271,7 @@ void main() {
 }
 
 Set<String> _definitionsFor({required int protocolVersion}) => {
-  // V2 initialization is enabled alongside live lifecycle consumption, not by these DTOs alone.
-  if (protocolVersion == 1) "initializeMetadata",
+  if (protocolVersion == 2) "initializeMetadata",
   "promptMetadata",
   "catalogRequest",
   "catalogResponse",

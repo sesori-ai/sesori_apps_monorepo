@@ -58,6 +58,8 @@ DeepSeekHistoryRepository _repository(DeepSeekAcpApi api) => DeepSeekHistoryRepo
   messageTimeParser: const DeepSeekMessageTimeParser(),
   eventMapper: DeepSeekEventMapper(
     messageTimeParser: const DeepSeekMessageTimeParser(),
+    subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+    delegationTracker: DeepSeekDelegationTracker(),
     launchDirectory: "/project",
     pluginId: DeepSeekIdentity.id,
     configurationTracker: AcpSessionConfigurationTracker(),
