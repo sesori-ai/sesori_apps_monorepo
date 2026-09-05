@@ -1467,6 +1467,24 @@ void main() {
           await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-during-after");
         });
 
+        test("${kind.name}: a snapshot ending with a tail-only buffer retires it and supplies the prefix", () async {
+          // A reconnect outside the replay window delivers deltas from the
+          // middle of a part; only the snapshot knows how it started.
+          final (:cubit, :refresh) = await startStreaming(delta: "-after");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-after")],
+          );
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.streamingText, isEmpty);
+          expect(
+            state.resolvePartContent(partId: _streamedPartId, messageId: _streamedMessageId),
+            (text: "before-after", isStreaming: false),
+          );
+        });
+
         test("${kind.name}: a divergent snapshot part keeps the streamed text", () async {
           final (:cubit, :refresh) = await startStreaming(delta: "before-");
           await completeRefresh(

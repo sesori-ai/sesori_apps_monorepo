@@ -1302,9 +1302,12 @@ class SessionDetailCubit(
   ///
   /// History carries no universal completion signal (several backends load
   /// messages with a null completion time), so coverage is decided by content:
-  /// only a same-ID text/reasoning part that starts with the entire buffered
-  /// value retires it. An absent, shorter or divergent part keeps the buffer,
-  /// which still holds live content the transcript has not shown it can replace.
+  /// only a same-ID text/reasoning part that starts or ends with the entire
+  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// replay window, where the accumulator holds only the tail of a part and
+  /// the snapshot is the sole source of its prefix. An absent, shorter or
+  /// divergent part keeps the buffer, which still holds live content the
+  /// transcript has not shown it can replace.
   void _retireStreamingPartsCoveredBy({required List<MessageWithParts> messages}) {
     final buffered = _streamingBuffer.snapshot();
     if (buffered.isEmpty) return;
@@ -1313,7 +1316,8 @@ class SessionDetailCubit(
         final live = buffered[part.id];
         if (live == null) continue;
         final installed = _streamedText(part);
-        if (installed != null && installed.startsWith(live)) _streamingBuffer.removePart(part.id);
+        if (installed == null) continue;
+        if (installed.startsWith(live) || installed.endsWith(live)) _streamingBuffer.removePart(part.id);
       }
     }
   }

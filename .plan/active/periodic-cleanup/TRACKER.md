@@ -53,7 +53,8 @@ asked to start working the plan; steps execute in order from step 2.
   Diagnostic source files were restored; evidence patches were unchanged at
   consolidation. The later PR-feedback diagnostic revision is recorded below.
 - Implementation tests, live-plugin/platform retirement matrix: not run.
-- Scope decision: pending, including unversioned reconciliation limits in step 3.
+- Scope decision: accepted 2026-09-05 (see authority line), including the
+  unversioned reconciliation limits recorded in step 3.
 - Existing refresh diagnostic plan: linked handoff, not falsely retired.
 - Retirement: not eligible; requires all recorded matrix rows to pass.
 
@@ -116,8 +117,9 @@ asked to start working the plan; steps execute in order from step 2.
 ## Step 2 execution — 2026-09-05
 
 - Refresh retires a streaming accumulator only when the fetched same-ID
-  text/reasoning part starts with the whole buffered value; otherwise the buffer
-  survives. `appendDelta` takes a lazy base-text lookup so a new accumulator
+  text/reasoning part starts or ends with the whole buffered value; otherwise
+  the buffer survives. The suffix case covers a tail-only accumulator after a
+  reconnect outside the replay window (PR review finding). `appendDelta` takes a lazy base-text lookup so a new accumulator
   seeds once from the installed part. `StreamingTextBuffer.clear` had no
   remaining production caller and was removed.
 - Both audit diagnostics are promoted as cubit tests, parameterized over text and

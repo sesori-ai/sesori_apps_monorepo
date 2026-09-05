@@ -79,7 +79,8 @@ reconnect or restart.
   after a longer gap, a refresh reconciles without losing finalized content.
   Text or reasoning still streaming through a client refresh keeps its
   accumulated content: the refreshed transcript replaces it only when the same
-  part's fetched text starts with everything streamed so far, and a later delta
+  part's fetched text starts or ends with everything streamed so far (the
+  latter after a reconnect that missed the part's beginning), and a later delta
   continues from that fetched text. History supplies no completion signal for
   every backend, so this is decided by content, never by timestamps or status.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
