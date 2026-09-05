@@ -25,8 +25,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Merged | [#1326](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1326) |
 | 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Merged | [#1328](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1328) |
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Merged | [#1329](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1329) |
-| 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | In review | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
-| 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Proposed | — |
+| 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Merged | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
+| 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | In review | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Proposed | — |
 | 21/25 | 🌱 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Proposed | — |
 | 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
@@ -312,9 +312,9 @@ asked to start working the plan; steps execute in order from step 2.
 
 ## Step 18 execution — 2026-09-05
 
-- Two bridge fixture clusters consolidated, both test-only and deletion-heavy
-  (129 added, 1,152 removed): `active_session_tracker_test.dart` now builds its
-  75 `Project` and 15 `Session` values through the package's existing
+- Two bridge fixture clusters consolidated, both test-only and deletion-heavy:
+  `active_session_tracker_test.dart` now builds its 75 `Project` and 15
+  `Session` values through the package's existing
   `openCodeProject`/`openCodeSession` fixtures instead of repeating the full
   literals, keeping every id, worktree, sandbox, parent and title the cases
   assert on; `git_remote_api_test.dart` drops its duplicate `FakeProcessRunner`
@@ -322,6 +322,12 @@ asked to start working the plan; steps execute in order from step 2.
   `RecordingProcessRunner`, and folds its thirteen identical `GitCliApi(...)
   .hasGitHubRemote(...)` constructions into one file-local `_hasGitHubRemote`
   builder.
+- Line split, measured at the squashed commit `7a396d1fc8` on `main`
+  (`git diff --numstat 7a396d1fc8~1..7a396d1fc8 -- \
+  bridge/sesori_plugin_opencode/test/active_session_tracker_test.dart \
+  bridge/app/test/bridge/api/git_remote_api_test.dart`): 81+/930- and 48+/222-,
+  so 129+/1,152- across the two suites, excluding the tracker note in the same
+  commit.
 - Retained deliberately: the `Session`/`GlobalSession` literals in
   `opencode_repository_test.dart` and `opencode_service_test.dart` (needs a
   nullable-title fixture and a new global-session fixture), the
@@ -333,3 +339,29 @@ asked to start working the plan; steps execute in order from step 2.
   `_FakeBridgePlugin` fakes. Each is a real cluster, but folding them here would
   have doubled this PR past its size budget without making the two clusters
   above any clearer.
+
+## Step 19 execution — 2026-09-05
+
+- Two client session-detail suites gain a group-local `buildCubit` builder and
+  drop their repeated 14-line `SessionDetailCubit(...)` constructions.
+  `session_detail_cubit_test.dart` folds 47 copies, whose only differences were
+  the session/project viewing services and the lifecycle source, and
+  `session_detail_stale_test.dart` folds 21 copies differing only in the
+  lifecycle source and the refresh cooldown. The stale builder defaults
+  `eventRefreshMinInterval` to the production five seconds, so the twelve cases
+  that omitted it keep their exact behavior, and the nine coalescing cases still
+  name the short test cooldown.
+- Line split, measured at PR head `e6cb5b1132` against merge base `7a396d1fc8`
+  (`git diff --numstat 7a396d1fc8..e6cb5b1132 -- \
+  client/module_core/test/cubits/session_detail/session_detail_cubit_test.dart \
+  client/module_core/test/cubits/session_detail/session_detail_stale_test.dart`):
+  71+/690- and 45+/324-, so 116+/1,014- across the two suites. The path filter
+  makes the figure self-exclusive: it counts neither this tracker note nor the
+  later fix commits on the branch.
+- Retained deliberately: the single case in `session_detail_cubit_test.dart` that
+  passes `notificationCanceller: null` keeps its explicit construction, because
+  that null is the behavior under test rather than shared setup. The auth,
+  new-session and project-tile suites named in the plan were left alone; their
+  repeated setup is smaller and already goes through existing stub helpers, so
+  folding it here would have pushed this PR past its size budget without making
+  those suites clearer.
