@@ -43,7 +43,7 @@ reaches the backend so the turn continues.
   question capability and Sesori never invents a custom question channel.
 - DeepSeek standard ACP permissions use explicit session IDs or exact tracked
   tool-call attribution, retained across parent turns. Ambiguity cancels; only
-  unattributed requests use the ACP active-turn fallback. They
+  unattributed requests use the ACP active-turn fallback. These permissions
   preserve the exact tool call ID and expose only the scopes the adapter offers;
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
