@@ -56,25 +56,17 @@ state.
   dispatch and the first progress event it can name neither a harness nor a
   count and says only that it is starting; from that event on it names the
   harness being read and how many sessions it has seen so far. It offers to
-  cancel while it runs. Starting and running share the same Deep Scan loading-card
-  geometry, so the first progress event does not move the list, and the row
-  scrolls with the list rather than pinning. When a pull first reveals it, the
-  row fades in from a slight blur and 97% scale through one strong ease-out.
-  Later scan updates do not replay that entrance. The outlined AI sparkle and
-  scan beam instead keep replaying Figma's ten-second loop until a terminal
-  outcome replaces them: the sparkle turns continuously once every two seconds,
-  while the beam crosses over the first 2.5 seconds with the designed ease-in-out
-  curve. Their contrast adapts to both color modes; the beam is
-  white in dark mode and Blue/400 in light mode, where it uses 20% less opacity
-  than its dark counterpart. Android Remove Animations and iOS Reduce Motion
-  both hold the intentional first frame without the entrance bounce; the
-  pull-caption invitation keeps only its gentle opacity transition. Finished
-  outcomes use the same 16px-inset, 69px-minimum PREGO result-card geometry with
-  a 24px radius and iOS continuous corners, expanding rather than clipping at
-  accessibility text sizes: a success,
-  warning, or error glow rises from the lower edge, both text lines stay on the
-  text-sm/medium rhythm, and the matching tinted Dismiss action remains
-  available until the result clears.
+  cancel while it runs. Starting and running share the same Deep Scan
+  loading-card geometry, so the first progress event does not move the list, and
+  the row scrolls with the list rather than pinning. The entrance animation plays
+  once when a pull first reveals the row; later updates do not replay it, and the
+  scan indicator keeps animating until a terminal outcome replaces it. Android
+  Remove Animations and iOS Reduce Motion both hold the intentional first frame
+  without the entrance bounce, and the pull-caption invitation keeps only its
+  gentle opacity transition. Finished outcomes use the shared PREGO result-card
+  geometry, expanding rather than clipping at accessibility text sizes: a
+  success, warning, or error glow rises from the lower edge and the matching
+  tinted Dismiss action remains available until the result clears.
 - A scan the pull started is reported by that row alone: the pull raises no
   confirmation of its own, having run no ordinary refresh. A scan started from
   harness settings is the exception, because that surface has no row — it
@@ -446,7 +438,6 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_core/test/cubits/session_list/session_list_cubit_test.dart`,
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
-  `client/app/test/core/extensions/build_context_x_test.dart`,
   `client/module_app_ui/test/widgets/catalog_scan_row_test.dart`,
   `client/app/test/playbook/catalog_scan_row_playbook_test.dart`,
   `client/module_app_ui/test/features/project_list/add_project_dialog_test.dart`,
@@ -461,5 +452,5 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
-  `setup-aware-plugin-management`, `relay-request-concurrency`;
-  `.plan/active/session-user-interaction-order`
+  `setup-aware-plugin-management`, `relay-request-concurrency`,
+  `session-user-interaction-order`

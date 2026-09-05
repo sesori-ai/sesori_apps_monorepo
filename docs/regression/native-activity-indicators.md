@@ -1,5 +1,7 @@
 # Native Activity Indicators
 
+## Capability
+
 `PregoActivityIndicator` renders the shared busy spinner and `PregoAiLoader`
 the twinkling AI-activity sparkle shown on active session and project rows.
 On iOS and macOS both render through `theme_prego` platform views animated by
@@ -23,22 +25,6 @@ The sparkle's native renderer duplicates the Dart painter's geometry,
 keyframes, and 1.4s period, including the per-row phase stagger passed at
 creation.
 
-Material failure signals: a native-platform spinner or sparkle driving
-continuous Flutter frame production again; the stepped spinner registering a
-ticker, scheduling frames between its eight steps per second, or keeping its
-timer alive while the app is paused, hidden, or detached; a native indicator branch
-reappearing on Android and degrading scroll; crashes,
-frozen or corrupted scene rendering, or leaked native views when an indicator
-scrolls out of view, is inserted and removed repeatedly, or composes with
-glass and blur; an indicator ignoring a requested colour or a theme switch — product surfaces
-request no brand tint, so every spinner shows its platform's natural colour
-for the app's resolved brightness (native views receive that brightness and
-surfaces that invert the page ask for the opposite natural grey) while the
-tint capability stays available;
-sparkles in a list twinkling in lockstep despite distinct phases; the native
-sparkle keyframes visibly diverging from the Flutter fallback; reduce motion
-still animating.
-
 ## Regression Levels
 
 | Level | Additional coverage |
@@ -59,7 +45,25 @@ still animating.
   Android precisely because hybrid-composition platform views produced heavy
   frame drops while scrolling there.
 
-## Maintenance Sources
+## Failure Signals
+
+Material failure signals: a native-platform spinner or sparkle driving
+continuous Flutter frame production again; the stepped spinner registering a
+ticker, scheduling frames between its eight steps per second, or keeping its
+timer alive while the app is paused, hidden, or detached; a native indicator branch
+reappearing on Android and degrading scroll; crashes,
+frozen or corrupted scene rendering, or leaked native views when an indicator
+scrolls out of view, is inserted and removed repeatedly, or composes with
+glass and blur; an indicator ignoring a requested colour or a theme switch — product surfaces
+request no brand tint, so every spinner shows its platform's natural colour
+for the app's resolved brightness (native views receive that brightness and
+surfaces that invert the page ask for the opposite natural grey) while the
+tint capability stays available;
+sparkles in a list twinkling in lockstep despite distinct phases; the native
+sparkle keyframes visibly diverging from the Flutter fallback; reduce motion
+still animating.
+
+## Sources
 
 - `client/module_prego/lib/components/loaders/prego_activity_indicator.dart`
 - `client/module_prego/lib/components/loaders/prego_ai_loader.dart`
