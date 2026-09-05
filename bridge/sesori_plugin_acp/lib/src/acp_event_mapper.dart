@@ -27,7 +27,7 @@ final class const AcpToolCallSessionFound({required final String sessionId}) ext
 /// `stopReason: end_turn` — indistinguishable from real assistant prose — so a
 /// backend that knows its own gate wording recognizes it (see
 /// [AcpEventMapper.classifyHaltNotice]) and it is surfaced as a
-/// [shared.Message.error] instead of quiet assistant text, giving the user an
+/// [PluginMessage.error] instead of quiet assistant text, giving the user an
 /// explicit "the turn did not run" signal. Classification carries no replacement
 /// message; the mapper always forwards the original backend text unchanged.
 class const AcpHaltNotice({
@@ -39,9 +39,10 @@ class const AcpHaltNotice({
 /// Translates ACP `session/update` notifications into bridge-neutral
 /// [BridgeSseEvent]s.
 ///
-/// Like the codex mapper, the `info` maps on session/message events MUST be
-/// sesori-schema JSON (parseable by `Message.fromJson` / `Session.fromJson`),
-/// so we build typed `sesori_shared` models and `.toJson()` them.
+/// Message envelopes are typed [PluginMessage] values; bridge core maps them to
+/// the shared model once. Session payloads are still sesori-schema JSON
+/// (parseable by `Session.fromJson`), so those are built as `sesori_shared`
+/// models and `.toJson()`-ed.
 ///
 /// ACP differs from codex's app-server protocol in two ways that shape this
 /// mapper:
