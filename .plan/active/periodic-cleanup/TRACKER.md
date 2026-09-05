@@ -27,7 +27,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Merged | [#1329](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1329) |
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Merged | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
 | 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Merged | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
-| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | In review | PENDING |
+| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | In review | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌱 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Proposed | — |
 | 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
 | 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
