@@ -159,6 +159,7 @@ _createPushSubsystemForTest() {
       completionNotifier: completionNotifier,
       contentBuilder: const PushNotificationContentBuilder(),
       dispatcher: dispatcher,
+      resolveSessionTitle: ({required String sessionId}) async => null,
     ),
     maintenanceListener: MaintenancePushListener(
       tracker: tracker,

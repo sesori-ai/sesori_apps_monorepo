@@ -473,7 +473,7 @@ void main() {
 
         harness.completionListener.reset();
 
-        expect(harness.tracker.getSessionTitle("session-a"), isNull);
+        expect(harness.tracker.getSessionProjectId(sessionId: "session-a"), isNull);
         expect(harness.notifier.completionSentRootCount, equals(0));
         expect(harness.notifier.abortedRootCount, equals(0));
       });
@@ -522,6 +522,7 @@ _newHarness({
     completionNotifier: notifier,
     contentBuilder: contentBuilder,
     dispatcher: dispatcher,
+    resolveSessionTitle: ({required String sessionId}) async => null,
   );
   final maintenanceListener = MaintenancePushListener(
     tracker: resolvedTracker,

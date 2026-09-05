@@ -72,24 +72,6 @@ void main() {
       expect(tracker.resolveRootSessionId("child"), equals("child"));
     });
 
-    test("tracks session titles from session created and updated", () {
-      final tracker = PushSessionStateTracker(now: DateTime.now);
-
-      tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "session-a", title: "Initial title"),
-        ),
-      );
-      expect(tracker.getSessionTitle("session-a"), equals("Initial title"));
-
-      tracker.handleEvent(
-        SesoriSseEvent.sessionUpdated(
-          info: _session(id: "session-a", title: "Updated title"),
-        ),
-      );
-      expect(tracker.getSessionTitle("session-a"), equals("Updated title"));
-    });
-
     test("tracks messageID to role from message updated events", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
@@ -427,20 +409,6 @@ void main() {
       expect(tracker.hasPendingInteraction("root"), isFalse);
     });
 
-    test("getSessionTitle returns cached title or null", () {
-      final tracker = PushSessionStateTracker(now: DateTime.now);
-
-      expect(tracker.getSessionTitle("missing"), isNull);
-
-      tracker.handleEvent(
-        SesoriSseEvent.sessionCreated(
-          info: _session(id: "session-a", title: "A title"),
-        ),
-      );
-
-      expect(tracker.getSessionTitle("session-a"), equals("A title"));
-    });
-
     test("getLatestAssistantText returns cached text or null", () {
       final tracker = PushSessionStateTracker(now: DateTime.now);
 
@@ -554,7 +522,6 @@ void main() {
 
       expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
       expect(tracker.hasPendingInteraction("root"), isFalse);
-      expect(tracker.getSessionTitle("root"), isNull);
       expect(tracker.getLatestAssistantText("root"), isNull);
       expect(tracker.wasPreviouslyBusy("root"), isFalse);
       expect(tracker.resolveRootSessionId("child"), equals("child"));
@@ -582,7 +549,6 @@ void main() {
 
       expect(tracker.isSessionGroupFullyIdle("root"), isFalse);
       expect(tracker.hasPendingInteraction("root"), isTrue);
-      expect(tracker.getSessionTitle("root"), equals("Root title"));
     });
 
     test("cleans up session state on session deleted", () {
@@ -628,7 +594,6 @@ void main() {
 
       expect(tracker.isSessionGroupFullyIdle("root"), isTrue);
       expect(tracker.hasPendingInteraction("root"), isFalse);
-      expect(tracker.getSessionTitle("root"), isNull);
       expect(tracker.wasPreviouslyBusy("root"), isFalse);
       expect(tracker.resolveRootSessionId("child"), equals("child"));
     });

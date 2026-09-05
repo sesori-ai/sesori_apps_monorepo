@@ -497,6 +497,9 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<String?> getSessionTitle({required String sessionId}) async => null;
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
@@ -945,6 +948,12 @@ class FakeSessionRepository({
   @override
   Future<StoredSession?> getStoredSession({required String sessionId}) async {
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
+  }
+
+  @override
+  Future<String?> getSessionTitle({required String sessionId}) async {
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    return row?.title ?? row?.catalogTitle;
   }
 
   @override
