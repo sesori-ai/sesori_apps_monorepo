@@ -288,6 +288,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: messageTimeParser,
+        subagentMapper: subagentMapper,
       ),
       deepSeekSessionService: DeepSeekSessionService(
         repository: const DeepSeekSessionRepository(api: api),
