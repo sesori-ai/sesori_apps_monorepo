@@ -950,8 +950,8 @@ class CodexEventMapper({
   }
 
   /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
-  /// sesori [shared.SessionStatus] union. Anything that is not explicitly
-  /// `idle` is treated as busy.
+  /// [PluginSessionStatus] union. Anything that is not explicitly `idle` is
+  /// treated as busy.
   PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
     return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }

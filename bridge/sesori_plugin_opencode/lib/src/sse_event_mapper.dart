@@ -4,9 +4,9 @@ import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
-import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
+import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
@@ -22,18 +22,6 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// encode to a map; the fallback only covers an unknown variant whose raw
   /// payload is not a map.
   static Map<String, dynamic> _asMap(Object? json) => json is Map<String, dynamic> ? json : const <String, dynamic>{};
-
-  static PluginSessionStatus? _pluginStatus(SessionStatus status) => switch (status) {
-    SessionStatusIdle() => const PluginSessionStatus.idle(),
-    SessionStatusBusy() => const PluginSessionStatus.busy(),
-    SessionStatusRetry(:final attempt, :final message, :final next) => PluginSessionStatus.retry(
-      attempt: attempt,
-      message: message,
-      next: next,
-    ),
-    SessionStatusUnknown() => null,
-    _ => null,
-  };
 
   /// Normalizes a `message.updated` payload into the shared-`Message` JSON
   /// shape the phone parses, mirroring the REST load path
@@ -85,7 +73,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       ),
       SseSessionError(:final sessionID) => BridgeSseSessionError(sessionID: sessionID),
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
-      SseSessionStatus(:final sessionID, :final status) => switch (_pluginStatus(status)) {
+      SseSessionStatus(:final sessionID, :final status) => switch (knownPluginSessionStatus(status)) {
         final pluginStatus? => BridgeSseSessionStatus(sessionID: sessionID, status: pluginStatus),
         // A status kind this plugin does not know carries nothing the bridge
         // can deliver; the event is dropped here instead of at the relay.
