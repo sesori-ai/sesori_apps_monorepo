@@ -209,12 +209,14 @@ final class ClaudePlugin({
       if (_createdSessions.containsKey(sessionId)) return const [];
       throw const PluginOperationException.notFound("getSessionMessages", message: "session not found");
     }
+    final catalog = await _catalogForHistory();
     try {
       return _history.map(
         sessionId: sessionId,
         agentId: ClaudeSubagentSessionId.agentIdOf(sessionId),
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
         residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
+        catalogModelId: catalog?.catalogModelId,
       );
     } on Object catch (error) {
       throw PluginOperationException(
@@ -222,6 +224,17 @@ final class ClaudePlugin({
         message: "Claude history read failed",
         cause: error,
       );
+    }
+  }
+
+  /// The catalog that maps a transcript's API model names to picker ids. A
+  /// failed probe must not withhold history, so it degrades to raw names.
+  Future<ClaudeBackendCatalog?> _catalogForHistory() async {
+    try {
+      return await _catalogService.getCatalog(refresh: false);
+    } on Object catch (error, stack) {
+      Log.w("[claude] history keeps API model names: catalog unavailable", error, stack);
+      return null;
     }
   }
 
@@ -486,7 +499,12 @@ final class ClaudePlugin({
     _validateModel(model, operation: operation, staleOptions: false);
     final effort = _effort(variant, operation: operation, staleOptions: false);
     final permissionMode = _permissionMode(agent, operation: operation, staleOptions: false);
-    _eventDispatcher.beginTurn(sessionId: sessionId, directory: directory);
+    _eventDispatcher.beginTurn(
+      sessionId: sessionId,
+      directory: directory,
+      model: model?.modelID,
+      variant: effort?.wireValue,
+    );
     try {
       await _sessions.enqueueInitialTurn(
         sessionId: sessionId,
@@ -651,7 +669,15 @@ final class ClaudePlugin({
 
   void _handleTurnDispatched(ClaudeTurnDispatched event) {
     _unstartedSessions.remove(event.sessionId);
-    if (!event.isSteering) _eventDispatcher.beginTurn(sessionId: event.sessionId, directory: event.directory);
+    if (!event.isSteering) {
+      final applied = _processes.appliedSelection(sessionId: event.sessionId);
+      _eventDispatcher.beginTurn(
+        sessionId: event.sessionId,
+        directory: event.directory,
+        model: applied?.model,
+        variant: applied?.effort?.wireValue,
+      );
+    }
     final command = event.command;
     if (command == null) return;
     final visible = event.displayText;

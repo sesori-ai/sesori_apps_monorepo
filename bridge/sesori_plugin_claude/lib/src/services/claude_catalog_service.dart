@@ -17,6 +17,9 @@ final class ClaudeCatalogService({
   ClaudeBackendCatalog? _catalog;
   _CatalogFetch? _fetch;
 
+  /// The last discovered catalog, or null before the first probe completes.
+  ClaudeBackendCatalog? get cached => _catalog;
+
   Future<ClaudeBackendCatalog> getCatalog({required bool refresh}) {
     final cached = _catalog;
     if (!refresh && cached != null) {

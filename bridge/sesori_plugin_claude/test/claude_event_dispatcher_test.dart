@@ -8,7 +8,51 @@ void main() {
     late ClaudeEventDispatcher mapper;
 
     setUp(() {
-      mapper = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
+      mapper = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+    });
+
+    test("stamps messages with the turn's picker id and effort, mapping the stream model otherwise", () {
+      mapper = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => apiModel == "claude-opus-5" ? "opus[1m]" : null,
+      );
+      Map<String, Object?> assistantAfterText({required String messageId}) {
+        _map(
+          mapper,
+          _stream(
+            "message_start",
+            event: {
+              "message": {"id": messageId, "model": "claude-opus-5"},
+            },
+          ),
+        );
+        final textStart = _map(
+          mapper,
+          _stream(
+            "content_block_start",
+            event: {
+              "index": 0,
+              "content_block": {"type": "text", "text": ""},
+            },
+          ),
+        );
+        return (textStart.first as BridgeSseMessageUpdated).info;
+      }
+
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: "fable", variant: "high");
+      final selected = assistantAfterText(messageId: "msg-1");
+      expect(selected["modelID"], "fable");
+      expect(selected["variant"], "high");
+
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
+      final mapped = assistantAfterText(messageId: "msg-2");
+      expect(mapped["modelID"], "opus[1m]");
+      expect(mapped["variant"], isNull);
     });
 
     test("creates an assistant when its first visible block starts", () {
@@ -143,7 +187,7 @@ void main() {
       expect(complete.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(stopped.whereType<BridgeSseMessagePartUpdated>().single.part.text, "answer");
 
-      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
       final replayed = _map(
         mapper,
         _assistant(
@@ -748,6 +792,7 @@ void main() {
               ),
             ],
             residentTaskToolUseIds: const {},
+            catalogModelId: null,
           )
           .single;
 
@@ -767,7 +812,7 @@ void main() {
           ],
         ),
       );
-      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project");
+      mapper.beginTurn(sessionId: "session-1", directory: "/tmp/project", model: null, variant: null);
       final staleDelta = _map(
         mapper,
         _stream(
