@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `managed-runtime-auto-upgrade`
-- **Status:** Proposed
+- **Status:** Completed 2026-09-05. L3 Release coverage executed on the
+  release-target host; results in `TRACKER.md`.
 - **Architecture review:** rejected 2026-09-05 on one finding (a bare
   `bool Function()` threaded from `PluginRuntime` through
   `BridgePluginDescriptor.installRuntime` into the runtime package). Applied
@@ -18,6 +19,13 @@
 - **Implementation base:** `main` at `4e1da1828f`
 - **Delivery:** five numbered PRs; Step 1 raises this plan before production
   work
+- **Out-of-series fix:** #1325. The L3 failure run found that a managed runtime
+  install which cannot open its download destination terminated the whole bridge
+  process, because `File.openWrite()` defers the real open and the error escaped
+  as an unhandled asynchronous error. Pre-existing since #1086, but this plan
+  made the install path run unattended at every startup, so the blast radius
+  grew from "a user pressed Install" to "every bridge start". Shipped separately
+  because it belongs to `sesori_bridge_foundation`, not to this series.
 
 This document and `TRACKER.md` are the authority for implementation. The code
 and released product behavior remain authoritative where this document becomes
@@ -399,6 +407,39 @@ harness across production plugins.
 - **Ownership:** a session running on the older supported runtime during the
   upgrade is uninterrupted and its version directory survives until the
   generation stops; the next start resolves the pinned version.
+
+## L3 Execution (2026-09-05)
+
+Run on the release-target host against a natural fixture — the machine already
+carried OMP 17.2.13 (exactly `minPathVersion`), Pi 0.84.2, OpenCode 1.17.18, and
+DeepSeek 0.1.2 (below minimum) from earlier bridge releases, with no managed
+directory for Copilot, Codex, or Cursor.
+
+| Matrix row | Result |
+|---|---|
+| Bridge (a) older supported managed version | Pass — OMP, Pi, and OpenCode stayed selectable and usable throughout their downloads |
+| Bridge (b) below-minimum managed version | Pass — DeepSeek's `0.1.2` was removed before any download began, and it became ready with no restart and no Install press |
+| Bridge (c) pinned version already installed | Pass — the second start produced no upgrade at all |
+| Bridge (d) no managed directory | Pass — Copilot, Codex, and Cursor were never triggered or downloaded |
+| Startup does not block on a download | Pass — the bridge reached `Waiting for relay events...` with installs still running |
+| Client: selectable during (a), selectable without restart after (b), progress reads sensibly | Pass |
+| Failure: forced download failure for case (a) | Pass, after #1325 |
+| Failure: forced download failure for case (b) | **Not executed** — the user declined this row |
+| Ownership: session live on the older runtime during its upgrade | **Not executed** — no generation was held live at sweep time |
+
+Version-equal-to-minimum is covered as a real case rather than a constructed
+one: OMP sat exactly on `minPathVersion` and was correctly accepted.
+
+The two unexecuted rows are accepted. The user explicitly declined the case (b)
+failure row; it would have destroyed the only DeepSeek 0.1.2 fixture on the
+machine to re-prove a fallback that case (a) already demonstrated end to end and
+that `plugin_lifecycle_service_test.dart` covers automatically. The ownership row
+is likewise carried by automated coverage: `managed_runtime_install_service_test`
+proves a supported superseded directory survives while `RuntimeInUseSignal`
+reports in use, on both the fresh-install and already-installed paths, and
+`plugin_runtime_test` proves the slot-backed signal reflects a generation that
+starts mid-install. The residual gap is the live end-to-end pairing of those two
+facts, whose worst outcome is one stale directory reclaimed at the next start.
 
 ## Risks And Accepted Limits
 
