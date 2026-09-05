@@ -313,7 +313,8 @@ asked to start working the plan; steps execute in order from step 2.
 ## Step 18 execution — 2026-09-05
 
 - Two bridge fixture clusters consolidated, both test-only and deletion-heavy
-  (129 added, 1,152 removed): `active_session_tracker_test.dart` now builds its
+  (129 added and 1,152 removed across the two test files, excluding the tracker
+  note in the same commit): `active_session_tracker_test.dart` now builds its
   75 `Project` and 15 `Session` values through the package's existing
   `openCodeProject`/`openCodeSession` fixtures instead of repeating the full
   literals, keeping every id, worktree, sandbox, parent and title the cases
@@ -337,8 +338,8 @@ asked to start working the plan; steps execute in order from step 2.
 ## Step 19 execution — 2026-09-05
 
 - Two client session-detail suites gain a group-local `buildCubit` builder and
-  drop their repeated 14-line `SessionDetailCubit(...)` constructions (116 added,
-  1,014 removed): `session_detail_cubit_test.dart` folds 47 copies, whose only
+  drop their repeated 14-line `SessionDetailCubit(...)` constructions (116 added
+  and 1,014 removed across the two test files, excluding this tracker note): `session_detail_cubit_test.dart` folds 47 copies, whose only
   differences were the session/project viewing services and the lifecycle source,
   and `session_detail_stale_test.dart` folds 21 copies differing only in the
   lifecycle source and the refresh cooldown. The stale builder defaults
