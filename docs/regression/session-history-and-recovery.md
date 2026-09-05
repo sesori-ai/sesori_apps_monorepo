@@ -85,6 +85,13 @@ reconnect or restart.
   every backend, so this is decided by content, never by timestamps or status.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
   incomplete until a full re-sync; later captures do not mark them complete.
+- A client refresh reconciles the fetched page with the message and part events
+  that arrived while the fetch was in flight instead of replacing the transcript
+  wholesale: messages and parts added or changed live survive, removals seen
+  live are honored, and a fetched replacement of an older part still lands. The
+  agent and model shown for the session come from that installed transcript. An
+  older-history page cannot start during a refresh, and one already in flight is
+  dropped rather than spliced onto the refreshed transcript.
 - Binary and attachment payloads are never stored inline in database tables; they
   round-trip through spill storage and still render. A slow or stuck request
   never blocks unrelated requests, other plugins, key exchange, or reconnects.
@@ -163,6 +170,9 @@ rules where supported.
 - A refresh during a streaming answer drops the text streamed before it, so the
   next delta renders alone, or shows a shorter fetched part over longer live
   text.
+- A message or part that arrived while a refresh was fetching disappears when
+  the refresh lands, or the session's agent/model label lags behind an assistant
+  message already on screen.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
 - An id-less ACP reply reuses a pre-restart fallback identity and overwrites an
   earlier answer instead of remaining distinct.

@@ -1366,6 +1366,165 @@ void main() {
       ]);
     });
 
+    group("live changes during a silent refresh", () {
+      Future<
+        ({
+          SessionDetailCubit cubit,
+          MockSessionDetailLoadService loadService,
+          Completer<SessionDetailLoadResult> refresh,
+        })
+      >
+      startRefresh({required SessionDetailSnapshot initial}) async {
+        final mockLoadService = MockSessionDetailLoadService();
+        final refresh = Completer<SessionDetailLoadResult>();
+        when(
+          () => mockLoadService.load(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer((_) async => SessionDetailLoadResult.loaded(snapshot: initial));
+        when(
+          () => mockLoadService.reload(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer((_) => refresh.future);
+        final cubit = createCubit(loadService: mockLoadService);
+        await _awaitLoaded(cubit);
+        mockConnectionService.emitDataMayBeStale();
+        await untilCalled(
+          () => mockLoadService.reload(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        );
+        return (cubit: cubit, loadService: mockLoadService, refresh: refresh);
+      }
+
+      Future<SessionDetailLoaded> completeRefresh({
+        required SessionDetailCubit cubit,
+        required Completer<SessionDetailLoadResult> refresh,
+        required SessionDetailSnapshot snapshot,
+      }) async {
+        refresh.complete(SessionDetailLoadResult.loaded(snapshot: snapshot));
+        await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).isRefreshing);
+        return cubit.state as SessionDetailLoaded;
+      }
+
+      test("a part received during the reload survives the fetched replacement of its sibling", () async {
+        final (:cubit, :refresh, loadService: _) = await startRefresh(
+          initial: _snapshot(
+            messages: [
+              _assistantMessage(parts: [_StreamedPartKind.text.part(content: "stale")]),
+            ],
+          ),
+        );
+
+        const livePart = MessagePart.text(
+          id: "part-during-refresh",
+          sessionID: _sessionId,
+          messageID: _streamedMessageId,
+          text: "live",
+        );
+        sessionEvents.add(const SesoriMessagePartUpdated(part: livePart));
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(
+            messages: [
+              _assistantMessage(parts: [_StreamedPartKind.text.part(content: "fresh snapshot")]),
+            ],
+          ),
+        );
+
+        expect(state.messages.single.parts.whereType<MessagePartText>().map((part) => (part.id, part.text)), [
+          (_streamedPartId, "fresh snapshot"),
+          ("part-during-refresh", "live"),
+        ]);
+      });
+
+      test("an assistant added during the reload sets the agent and model of the installed transcript", () async {
+        final (:cubit, :refresh, loadService: _) = await startRefresh(initial: _snapshot(messages: const []));
+
+        sessionEvents.add(
+          const SesoriMessageUpdated(
+            info: Message.assistant(
+              id: "assistant-live",
+              sessionID: _sessionId,
+              agent: "coder",
+              modelID: "live-model",
+              providerID: "provider",
+              time: MessageTime(created: 200, completed: null),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(messages: const []),
+        );
+
+        expect(state.messages.map((message) => message.info.id), ["assistant-live"]);
+        expect(state.agent, "coder");
+        expect(
+          state.assistantAgentModel,
+          const AgentModel(providerID: "provider", modelID: "live-model", variant: null),
+        );
+      });
+
+      test("an assistant whose model changed during the reload outranks the fetched page", () async {
+        Message assistant({required String modelID}) => Message.assistant(
+          id: _streamedMessageId,
+          sessionID: _sessionId,
+          agent: "build",
+          modelID: modelID,
+          providerID: "provider",
+          time: const MessageTime(created: 100, completed: null),
+        );
+        final stale = _snapshot(
+          messages: [
+            MessageWithParts(
+              info: assistant(modelID: "old"),
+              parts: const [],
+            ),
+          ],
+        );
+        final (:cubit, :refresh, loadService: _) = await startRefresh(initial: stale);
+
+        sessionEvents.add(SesoriMessageUpdated(info: assistant(modelID: "new")));
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(cubit: cubit, refresh: refresh, snapshot: stale);
+
+        expect((state.messages.single.info as MessageAssistant).modelID, "new");
+        expect(state.assistantAgentModel, const AgentModel(providerID: "provider", modelID: "new", variant: null));
+      });
+
+      test("loading older messages is a no-op while a refresh is in flight", () async {
+        final (:cubit, :refresh, :loadService) = await startRefresh(
+          initial: _snapshot(messages: const [], olderMessagesCursor: 50),
+        );
+
+        await cubit.loadOlderMessages();
+
+        verifyNever(
+          () => loadService.loadOlderMessages(
+            sessionId: _sessionId,
+            before: any(named: "before"),
+          ),
+        );
+        await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(messages: const []),
+        );
+      });
+    });
+
     group("streamed text across a silent refresh", () {
       // History from several backends carries no completion time, so every
       // refreshed message below is an assistant message with `completed: null`
@@ -1994,26 +2153,27 @@ MessageWithParts _assistantMessage({required List<MessagePart> parts}) => Messag
   parts: parts,
 );
 
-SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
-  areOptionsStale: false,
-  bridgeQueuedPrompts: const [],
-  projectId: "project-1",
-  pluginId: "opencode",
-  supportsPromptAttachments: false,
-  messages: messages,
-  olderMessagesCursor: null,
-  pendingQuestions: const <PendingQuestion>[],
-  pendingPermissions: const <PendingPermission>[],
-  childSessions: const <Session>[],
-  statuses: const <String, SessionStatus>{},
-  agents: const <AgentInfo>[],
-  providerData: null,
-  commands: const <CommandInfo>[],
-  canonicalSessionTitle: null,
-  promptDefaults: null,
-  isRootSession: true,
-  isArchived: false,
-);
+SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? olderMessagesCursor}) =>
+    SessionDetailSnapshot(
+      areOptionsStale: false,
+      bridgeQueuedPrompts: const [],
+      projectId: "project-1",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
+      messages: messages,
+      olderMessagesCursor: olderMessagesCursor,
+      pendingQuestions: const <PendingQuestion>[],
+      pendingPermissions: const <PendingPermission>[],
+      childSessions: const <Session>[],
+      statuses: const <String, SessionStatus>{},
+      agents: const <AgentInfo>[],
+      providerData: null,
+      commands: const <CommandInfo>[],
+      canonicalSessionTitle: null,
+      promptDefaults: null,
+      isRootSession: true,
+      isArchived: false,
+    );
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {
   await awaitState(
