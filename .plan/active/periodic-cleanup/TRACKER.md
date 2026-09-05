@@ -495,9 +495,9 @@ and the owning suites. Disposition per guide:
   covering acceptance semantics, queue ownership, sub-agent lifecycles and stale
   option handling. No reduction target was imposed on them, and no limitation was
   invented to justify deleting coverage.
-- Line split: `git diff --numstat 1f6abbd8d6..5eeba3ad75 -- 'docs/regression/*.md'`
-  gives the guide-only figure; the pathspec excludes this tracker, so it stays
-  reproducible at any later head.
+- Line split: `git diff --numstat 1f6abbd8d6..6489ffb2ae -- 'docs/regression/*.md'`
+  gives 81+/56-. `6489ffb2ae` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head.
 - Title kept from this tracker; the planned 🌱 became 🌿 because review has to
   confirm the moved attachment coverage is preserved by level cumulativity and
   that the new popup-alerts level table claims only coverage that exists.
