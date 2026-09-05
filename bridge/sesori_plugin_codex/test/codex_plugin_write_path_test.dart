@@ -2727,6 +2727,15 @@ void main() {
       expect(childSession.projectID, "/work/other");
       expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
       await Future<void>.delayed(Duration.zero);
+      final inlineTask = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .single;
+      expect(inlineTask.messageID, "call_spawn");
+      expect(inlineTask.description, "Raman");
+      expect(inlineTask.childSessionID, "child-1");
+      expect(inlineTask.taskState, isNull);
       expect(
         events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status["type"],
         "busy",

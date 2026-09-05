@@ -44,6 +44,7 @@ void main() {
         modelProvider: null,
         model: null,
         agentNickname: agentNickname,
+        agentPath: null,
         parentId: "root-1",
       );
       const mapper = CodexSessionMapper();
@@ -82,6 +83,7 @@ void main() {
       expect(records["01a06259-6e4f-77f2-8bc7-000000000001"]?.parentId, isNull);
       expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.parentId, "01a06259-6e4f-77f2-8bc7-000000000001");
       expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.agentNickname, "Raman");
+      expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.agentPath, "/root/sleep_then_done");
       expect(
         records["01a06259-6e4f-77f2-8bc7-000000000003"]?.parentId,
         isNull,
@@ -242,6 +244,7 @@ void main() {
           modelProvider: "openai",
           parentId: null,
           agentNickname: "Raman",
+          agentPath: null,
         ),
       );
       final service = _newService(
@@ -697,6 +700,7 @@ CodexThreadRecord _liveChild({required String id, required String parentId}) => 
   modelProvider: null,
   parentId: parentId,
   agentNickname: "Hooke",
+  agentPath: null,
 );
 
 CodexSessionRecord _record({required String id, required String? cwd, required String? parentId}) => CodexSessionRecord(
@@ -710,6 +714,7 @@ CodexSessionRecord _record({required String id, required String? cwd, required S
   modelProvider: "openai",
   model: null,
   agentNickname: null,
+  agentPath: null,
   parentId: parentId,
 );
 

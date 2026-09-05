@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, 
 
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
+import "mappers/codex_sub_agent_name_mapper.dart";
 import "models/codex_session_record.dart";
 
 /// Layer-2 aggregation, mapping, selection, and deletion for the rollout catalog.
@@ -54,6 +55,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           modelProvider: metadata?.modelProvider,
           model: metadata?.model,
           agentNickname: metadata?.agentNickname,
+          agentPath: metadata?.agentPath,
           parentId: metadata?.parentId,
         ),
       );
@@ -296,6 +298,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     String? cliVersion;
     String? model;
     String? agentNickname;
+    String? agentPath;
     String? parentId;
     for (final line in lines) {
       switch (line) {
@@ -314,6 +317,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           if (payload.threadSource == CodexRolloutThreadSource.subagent) {
             parentId = payload.parentThreadId;
             agentNickname = payload.agentNickname;
+            agentPath = payload.agentPath;
           }
         case CodexRolloutTurnContextLineDto(:final payload):
           final candidate = payload.model;
@@ -334,6 +338,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       model: model,
       cliVersion: cliVersion,
       agentNickname: agentNickname,
+      agentPath: agentPath,
       parentId: parentId,
     );
   }
@@ -349,7 +354,13 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
       projectID: directory,
       directory: directory,
       parentID: record.parentId,
-      title: _usefulText(record.threadName) ?? _usefulText(record.agentNickname),
+      title: record.parentId == null
+          ? _usefulText(record.threadName)
+          : const CodexSubAgentNameMapper().map(
+              name: record.threadName,
+              nickname: record.agentNickname,
+              agentPath: record.agentPath,
+            ),
       time: created == null || updated == null
           ? null
           : PluginSessionTime(
@@ -388,5 +399,6 @@ class const _CodexSessionMetadata({
   required final String? model,
   required final String? cliVersion,
   required final String? agentNickname,
+  required final String? agentPath,
   required final String? parentId,
 });
