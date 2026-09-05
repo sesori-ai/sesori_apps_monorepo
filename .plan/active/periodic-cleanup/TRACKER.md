@@ -10,8 +10,8 @@ asked to start working the plan; steps execute in order from step 2.
 | --- | --- | --- | --- |
 | 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | Merged | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
 | 2/25 | ⚙️ [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Merged | [#1299](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1299) |
-| 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | In review | [#1303](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1303) |
-| 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | In progress (local, awaiting step 3 merge) | — |
+| 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Merged | [#1303](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1303) |
+| 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | In review | [#1305](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1305) |
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Proposed | — |
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Proposed | — |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Proposed | — |
