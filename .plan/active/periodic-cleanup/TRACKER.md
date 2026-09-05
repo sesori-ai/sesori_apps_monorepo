@@ -333,3 +333,22 @@ asked to start working the plan; steps execute in order from step 2.
   `_FakeBridgePlugin` fakes. Each is a real cluster, but folding them here would
   have doubled this PR past its size budget without making the two clusters
   above any clearer.
+
+## Step 19 execution — 2026-09-05
+
+- Two client session-detail suites gain a group-local `buildCubit` builder and
+  drop their repeated 14-line `SessionDetailCubit(...)` constructions (116 added,
+  1,014 removed): `session_detail_cubit_test.dart` folds 47 copies, whose only
+  differences were the session/project viewing services and the lifecycle source,
+  and `session_detail_stale_test.dart` folds 21 copies differing only in the
+  lifecycle source and the refresh cooldown. The stale builder defaults
+  `eventRefreshMinInterval` to the production five seconds, so the twelve cases
+  that omitted it keep their exact behavior, and the nine coalescing cases still
+  name the short test cooldown.
+- Retained deliberately: the single case in `session_detail_cubit_test.dart` that
+  passes `notificationCanceller: null` keeps its explicit construction, because
+  that null is the behavior under test rather than shared setup. The auth,
+  new-session and project-tile suites named in the plan were left alone; their
+  repeated setup is smaller and already goes through existing stub helpers, so
+  folding it here would have pushed this PR past its size budget without making
+  those suites clearer.
