@@ -2,6 +2,8 @@ import "package:json_annotation/json_annotation.dart";
 
 part "deepseek_protocol_dto.g.dart";
 
+const String deepSeekExtensionMetadataKey = "sesori.ai/deepseek";
+
 // ignore: no_slop_linter/prefer_specific_type, json_serializable converter input is heterogeneous
 int _integer(Object? value) {
   if (value is! int) throw const FormatException("Expected integer");
@@ -10,6 +12,22 @@ int _integer(Object? value) {
 
 // ignore: no_slop_linter/prefer_specific_type, json_serializable converter input is heterogeneous
 int? _nullableInteger(Object? value) => value == null ? null : _integer(value);
+
+enum DeepSeekSubagentMode() {
+  foreground,
+  background,
+  unknown,
+}
+
+enum DeepSeekSubagentStopReason() {
+  completed,
+  aborted,
+  error,
+  @JsonValue("max-tokens")
+  maxTokens,
+  refusal,
+  unknown,
+}
 
 @JsonSerializable()
 class const DeepSeekInitializeMetadataDto({
@@ -139,16 +157,141 @@ class const DeepSeekTerminalHistoryResponseDto({
   Map<String, dynamic> toJson() => _$DeepSeekTerminalHistoryResponseDtoToJson(this);
 }
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class const DeepSeekSessionUpdateEnvelopeDto({
-  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
-  @JsonKey(name: "_meta") required final Map<String, dynamic>? metadata,
+  @JsonKey(name: "_meta") required final DeepSeekEnvelopeMetadataDto? metadata,
   required final String sessionId,
   // ignore: no_slop_linter/prefer_specific_type, standard ACP update values are heterogeneous
   required final Map<String, dynamic> update,
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionUpdateEnvelopeDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekSessionUpdateEnvelopeDtoToJson(this);
+}
+
+/// Typed view of DeepSeek's member inside the open ACP `_meta` container while
+/// retaining every original entry for shared and forward-compatible replay.
+class const DeepSeekEnvelopeMetadataDto({
+  // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+  required final Map<String, dynamic> raw,
+  required final DeepSeekEnvelopeDeepSeekMetadataDto? deepSeek,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    if (!json.containsKey(deepSeekExtensionMetadataKey)) {
+      return DeepSeekEnvelopeMetadataDto(raw: Map.unmodifiable(json), deepSeek: null);
+    }
+    final value = json[deepSeekExtensionMetadataKey];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException("Invalid DeepSeek history metadata");
+    }
+    return DeepSeekEnvelopeMetadataDto(
+      raw: Map.unmodifiable(json),
+      deepSeek: DeepSeekEnvelopeDeepSeekMetadataDto.fromJson(value),
+    );
+  }
+
+  Map<String, dynamic> toJson() => raw;
+}
+
+@JsonSerializable(explicitToJson: true)
+class const DeepSeekEnvelopeDeepSeekMetadataDto({
+  @JsonKey(fromJson: _nullableInteger, includeIfNull: false) required final int? messageCreatedAt,
+  @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayDto? subagent,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("messageCreatedAt") && json["messageCreatedAt"] is! int) {
+      throw const FormatException("Invalid DeepSeek history metadata");
+    }
+    final subagent = json["subagent"];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (json.containsKey("subagent") && subagent is! Map<String, dynamic>) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(json);
+  }
+  Map<String, dynamic> toJson() => _$DeepSeekEnvelopeDeepSeekMetadataDtoToJson(this);
+}
+
+sealed class const DeepSeekSubagentNotificationDto() {
+  factory fromJson(Map<String, dynamic> json) => switch (json["kind"]) {
+    "started" => DeepSeekSubagentStartedDto.fromJson(json),
+    "ended" => DeepSeekSubagentEndedDto.fromJson(json),
+    _ => throw const FormatException("Invalid DeepSeek sub-agent notification"),
+  };
+  String get sessionId;
+  String get childSessionId;
+  Map<String, dynamic> toJson();
+}
+
+@JsonSerializable()
+class const DeepSeekSubagentStartedDto({
+  @override required final String sessionId,
+  @override required final String childSessionId,
+  required final String toolCallId,
+  required final String prompt,
+  required final String label,
+  @JsonKey(unknownEnumValue: DeepSeekSubagentMode.unknown) required final DeepSeekSubagentMode mode,
+}) extends DeepSeekSubagentNotificationDto {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentStartedDtoFromJson(json);
+  @JsonKey(includeFromJson: false, includeToJson: true)
+  String get kind => "started";
+  @override
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentStartedDtoToJson(this);
+}
+
+@JsonSerializable()
+class const DeepSeekSubagentEndedDto({
+  @override required final String sessionId,
+  @override required final String childSessionId,
+  @JsonKey(unknownEnumValue: DeepSeekSubagentStopReason.unknown) required final DeepSeekSubagentStopReason stopReason,
+  @JsonKey(includeIfNull: false) required final String? summary,
+}) extends DeepSeekSubagentNotificationDto {
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("summary") && json["summary"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent notification");
+    }
+    return _$DeepSeekSubagentEndedDtoFromJson(json);
+  }
+  @JsonKey(includeFromJson: false, includeToJson: true)
+  String get kind => "ended";
+  @override
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentEndedDtoToJson(this);
+}
+
+@JsonSerializable(explicitToJson: true)
+class const DeepSeekSubagentReplayDto({
+  required final String prompt,
+  required final String label,
+  @JsonKey(unknownEnumValue: DeepSeekSubagentMode.unknown) required final DeepSeekSubagentMode mode,
+  @JsonKey(includeIfNull: false) required final String? childSessionId,
+  @JsonKey(includeIfNull: false) required final DeepSeekSubagentReplayEndedDto? ended,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("childSessionId") && json["childSessionId"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    final ended = json["ended"];
+    // ignore: no_slop_linter/prefer_specific_type, protocol metadata values are heterogeneous
+    if (json.containsKey("ended") && ended is! Map<String, dynamic>) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekSubagentReplayDtoFromJson(json);
+  }
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayDtoToJson(this);
+}
+
+@JsonSerializable()
+class const DeepSeekSubagentReplayEndedDto({
+  @JsonKey(unknownEnumValue: DeepSeekSubagentStopReason.unknown) required final DeepSeekSubagentStopReason stopReason,
+  @JsonKey(includeIfNull: false) required final String? summary,
+}) {
+  factory fromJson(Map<String, dynamic> json) {
+    if (json.containsKey("summary") && json["summary"] is! String) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+    return _$DeepSeekSubagentReplayEndedDtoFromJson(json);
+  }
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentReplayEndedDtoToJson(this);
 }
 
 @JsonSerializable()

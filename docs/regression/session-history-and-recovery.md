@@ -24,7 +24,10 @@ reconnect or restart.
   process. It pages at complete message boundaries, returns at most 100 messages
   per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; assistant
-  IDs use the deterministic ACP projection.
+  IDs use the deterministic ACP projection. Known DeepSeek history metadata is
+  decoded once into typed fields and validated at the API boundary; malformed
+  timestamps or sub-agent metadata fail the read rather than reaching replay.
+  Unrecognized additive metadata remains intact when envelopes are serialized.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it

@@ -607,8 +607,8 @@ packaging-only change.
 | Slice | Scope | State |
 |---|---|---|
 | 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
-| 2/5 | Verbatim protocol-v2 fixtures and integrity | Prepared on `claude-inline-subtasks-deepseek-fixtures` |
-| 3/5 | Typed protocol boundary and conformance | Pending slice 2 merge |
+| 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
+| 3/5 | Typed protocol boundary and conformance | Prepared on `claude-inline-subtasks-deepseek-protocol` |
 | 4/5 | Live lifecycle, correlation, catalogs | Pending slice 3 merge |
 | 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
 
@@ -642,3 +642,11 @@ three manifest SHA-256 values were independently checked. Protocol-v1 files and
 the runtime manifest are untouched; no v2 consumer or interrupt implementation
 lands here. The 1,596-line fixture/test slice retains the documented soft-cap
 exception for an indivisible verbatim bundle; tracker bookkeeping is additional.
+
+Slice 3 verification: source-generated serializers, DeepSeek analysis, and all
+50 tests passed, including consumed v1/v2 conformance, Unicode bounds, malformed
+optional fields, and additive metadata retention. The terminal-summary shape
+check lives in its DTO factory, consistent with replay metadata; semantic checks
+remain in the API. Architecture implementation review approved with no findings.
+Initialization remains v1-only until slice 4 installs the live consumer. No
+fixture bytes, runtime pins, interrupt consumer, or live/replay projection changed.
