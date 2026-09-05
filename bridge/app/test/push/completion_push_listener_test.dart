@@ -97,8 +97,43 @@ void main() {
         ),
       );
 
-      expect(harness.tracker.getSessionTitle("session-a"), equals("Session A"));
+      expect(harness.tracker.getSessionProjectId(sessionId: "session-a"), equals("project-a"));
       expect(harness.dispatcher.immediateEvents, hasLength(2));
+    });
+
+    test("completion title comes from the stored session, not from tracked events", () {
+      fakeAsync((async) {
+        final harness = _newHarness(storedTitles: {"session-a": "Stored session title"});
+        harness.listener.start();
+
+        // No session created/updated event: the root was pruned for idleness or
+        // predates this bridge run, so only the stored title is left.
+        harness.listener.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.listener.handleSseEvent(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.dispatcher.completionTitles, equals(["Stored session title"]));
+      });
+    });
+
+    test("completion falls back to a generic title for an untitled session", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+        harness.listener.start();
+
+        harness.emitCompletion(rootSessionId: "session-a");
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+
+        expect(harness.dispatcher.completionTitles, equals(["Session completed"]));
+      });
     });
 
     test("markSessionAborted updates abort suppression state", () {
@@ -200,7 +235,7 @@ class _Harness({
   }
 }
 
-_Harness _newHarness() {
+_Harness _newHarness({Map<String, String> storedTitles = const {}}) {
   final tracker = PushSessionStateTracker(now: DateTime.now);
   final notifier = CompletionNotifier(
     tracker: tracker,
@@ -212,6 +247,7 @@ _Harness _newHarness() {
     completionNotifier: notifier,
     contentBuilder: const PushNotificationContentBuilder(),
     dispatcher: dispatcher,
+    resolveSessionTitle: ({required String sessionId}) async => storedTitles[sessionId],
   );
   return _Harness(
     tracker: tracker,

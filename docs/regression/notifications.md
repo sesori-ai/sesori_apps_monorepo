@@ -55,7 +55,9 @@ external.
   cannot fail session work or desktop startup.
 - Mobile payloads carry category, event type, session and project identity, and user-visible event content. Question and
   permission bodies use backend text; update bodies may include the version; completion uses the bounded session title
-  and up to ten whitespace-delimited words of the latest assistant text.
+  and up to ten whitespace-delimited words of the latest assistant text. The completion title is read from the stored
+  session at send time, so a session whose in-memory push state was pruned for idleness or lost to a bridge restart
+  still names itself; only a session with no stored title falls back to generic completion copy.
 
 ## Regression Levels
 

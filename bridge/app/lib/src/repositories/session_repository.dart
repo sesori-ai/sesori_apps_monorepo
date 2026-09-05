@@ -1226,6 +1226,14 @@ class SessionRepository({
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
 
+  /// The catalog title shown for [sessionId]: the bridge-owned copy when
+  /// present, otherwise the backend copy. Null when the session has no title
+  /// yet or is not stored.
+  Future<String?> getSessionTitle({required String sessionId}) async {
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    return row?.title ?? row?.catalogTitle;
+  }
+
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,

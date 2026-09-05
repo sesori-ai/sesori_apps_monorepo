@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "completion_notifier.dart";
@@ -14,6 +15,10 @@ class CompletionPushListener({
   required final CompletionNotifier _completionNotifier,
   required final PushNotificationContentBuilder _contentBuilder,
   required final PushDispatcher _dispatcher,
+  // The stored catalog title, not a tracker-cached one: the tracker forgets a
+  // root after it is pruned for idleness or the bridge restarts, which is
+  // exactly when a returning user prompts a long-idle session.
+  required final Future<String?> Function({required String sessionId}) _resolveSessionTitle,
 }) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   bool _isStarted = false;
@@ -48,12 +53,8 @@ class CompletionPushListener({
     _isStarted = true;
 
     _completionNotifier.completions
-        .listen((rootSessionId) {
-          final sessionTitle = _tracker.getSessionTitle(rootSessionId);
+        .listen((rootSessionId) async {
           final latestAssistantText = _tracker.getLatestAssistantText(rootSessionId);
-          final title = _contentBuilder.truncateTitle(
-            (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
-          );
           final body = _contentBuilder.truncateToWords(
             (latestAssistantText == null || latestAssistantText.trim().isEmpty)
                 ? "Task completed"
@@ -62,9 +63,15 @@ class CompletionPushListener({
           final projectId = _tracker.getSessionProjectId(sessionId: rootSessionId);
 
           _tracker.clearLatestAssistantTextForRootSubtree(rootSessionId: rootSessionId);
+          final sessionTitle = await _resolveSessionTitle(sessionId: rootSessionId).onError((error, stackTrace) {
+            Log.w("[push] failed to resolve title for session $rootSessionId", error, stackTrace);
+            return null;
+          });
           _dispatcher.dispatchCompletion(
             rootSessionId: rootSessionId,
-            title: title,
+            title: _contentBuilder.truncateTitle(
+              (sessionTitle == null || sessionTitle.trim().isEmpty) ? "Session completed" : sessionTitle,
+            ),
             body: body,
             projectId: projectId,
           );

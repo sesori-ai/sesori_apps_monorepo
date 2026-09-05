@@ -342,6 +342,7 @@ class Orchestrator({
       completionNotifier: completionNotifier,
       contentBuilder: pushContentBuilder,
       dispatcher: pushDispatcher,
+      resolveSessionTitle: sessionRepository.getSessionTitle,
     );
     final maintenanceListener = MaintenancePushListener(
       tracker: pushTracker,
