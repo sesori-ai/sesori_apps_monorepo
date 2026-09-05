@@ -873,7 +873,7 @@ class OpenCodePlugin._({
           return;
       }
     } catch (e, st) {
-      Log.e("[opencode] SSE event processing error: $e\n$st");
+      Log.e("[opencode] SSE event processing error", e, st);
     }
   }
 

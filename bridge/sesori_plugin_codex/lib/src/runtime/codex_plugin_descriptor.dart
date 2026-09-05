@@ -663,8 +663,8 @@ class const CodexPluginDescriptor({
     if (host.startAborted.isAborted) {
       try {
         await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[codex] rollback after aborted start failed: $error");
+      } on Object catch (error, stackTrace) {
+        Log.e("[codex] rollback after aborted start failed", error, stackTrace);
       }
       throw const PluginStartAbortedException();
     }

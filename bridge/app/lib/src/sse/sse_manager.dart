@@ -190,7 +190,7 @@ class SSEManager({
         Log.v("[sse] retaining event ${event.runtimeType} for connID=$connID after relay turnover");
         return;
       }
-      Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
+      Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID", error);
       unawaited(
         _failureReporter
             .recordFailure(

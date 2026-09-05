@@ -21,8 +21,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Merged | [#1320](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1320) |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Merged | [#1322](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1322) |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Merged | [#1323](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1323) |
-| 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | In review | [#1324](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1324) |
-| 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Proposed | — |
+| 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Merged | [#1324](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1324) |
+| 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | In review | [#1326](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1326) |
 | 16/25 | ⚙️ [periodic-cleanup] client: share shell cubit composition [step 16/25] | Proposed | — |
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Proposed | — |
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Proposed | — |
@@ -270,3 +270,16 @@ asked to start working the plan; steps execute in order from step 2.
 - Rollout tool mapper: one `_JsLexicalState` owns the string/comment cursor
   advance used by both scanners; quoted escapes and line/block comments are
   handled identically. Owning suites pass unchanged; no new tests were needed.
+
+## Step 15 execution — 2026-09-05
+
+- Recount after steps 7/13/14: 72 log lines interpolate an error or stack.
+  Changed 36 recovered-failure sites across the orchestrator, debug server,
+  SSE manager/mapper, runtime runner, device detection, host process service,
+  worktree repository, push, diagnostics, git CLI, Codex client/descriptor and
+  OpenCode service/tracker/SSE/descriptor to pass the typed error and stack
+  through the logger's arguments, capturing the stack where the catch lacked it.
+- Left as-is: `Log.d`/`Log.v` sites (the logger takes no error there and they
+  are expected, ignored failures), deliberately redacted Claude/Codex frame
+  logs, terminal `Log.e("$error")` exits the GUI reads, and exception messages
+  built from a cause (out of this step's scope). No new logging category.

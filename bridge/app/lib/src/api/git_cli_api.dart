@@ -528,7 +528,7 @@ class GitCliApi({
       final output = result.stdout.toString().trim();
       return output.isNotEmpty && output.toLowerCase().contains("github.com");
     } on Object catch (e) {
-      Log.w("[GitCli] failed to detect remote: $e");
+      Log.w("[GitCli] failed to detect remote", e);
       return false;
     }
   }
@@ -557,7 +557,7 @@ class GitCliApi({
         try {
           worktreeDir.deleteSync(recursive: true);
         } on FileSystemException catch (e) {
-          Log.w("[GitCli] failed to delete worktree directory $worktreePath: $e");
+          Log.w("[GitCli] failed to delete worktree directory $worktreePath", e);
         }
       }
 
@@ -569,7 +569,7 @@ class GitCliApi({
             parentDir.deleteSync();
           }
         } on FileSystemException catch (e) {
-          Log.w("[GitCli] failed to delete empty .worktrees directory ${parentDir.path}: $e");
+          Log.w("[GitCli] failed to delete empty .worktrees directory ${parentDir.path}", e);
         }
       }
     }

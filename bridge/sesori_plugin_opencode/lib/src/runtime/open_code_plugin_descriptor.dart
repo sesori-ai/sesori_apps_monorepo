@@ -664,7 +664,7 @@ class const OpenCodePluginDescriptor({
       reporter.markDegradedNow();
       unawaited(
         api.initialize().catchError((Object error, StackTrace stackTrace) {
-          Log.w("[opencode] background cold-start did not complete cleanly: $error");
+          Log.w("[opencode] background cold-start did not complete cleanly", error, stackTrace);
         }),
       );
     } else {
@@ -690,8 +690,8 @@ class const OpenCodePluginDescriptor({
     if (host.startAborted.isAborted) {
       try {
         await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[opencode] rollback after aborted start failed: $error");
+      } on Object catch (error, stackTrace) {
+        Log.e("[opencode] rollback after aborted start failed", error, stackTrace);
       }
       throw const PluginStartAbortedException();
     }

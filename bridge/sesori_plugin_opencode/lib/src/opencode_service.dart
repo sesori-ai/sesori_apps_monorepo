@@ -293,8 +293,8 @@ class OpenCodeService(
         "for session $sessionId via getSession: ${session.directory}",
       );
       return session.directory;
-    } catch (e) {
-      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId: $e");
+    } catch (e, st) {
+      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId", e, st);
       return null;
     }
   }
@@ -313,7 +313,7 @@ class OpenCodeService(
       if (!_isLikelyDecodeOrSchemaDriftError(error)) {
         rethrow;
       }
-      Log.w("Failed to decode messages for session $sessionId: $error\n$stackTrace");
+      Log.w("Failed to decode messages for session $sessionId", error, stackTrace);
       throw PluginApiException("GET /session/$sessionId/message", 502);
     }
   }
@@ -726,7 +726,7 @@ class OpenCodeService(
       await _hydratePendingInput();
       Log.v("[coldStart] hydratePendingInput finished in ${hydrateSw.elapsedMilliseconds}ms");
     } catch (e, st) {
-      Log.w("coldStart: failed to hydrate pending input: $e\n$st");
+      Log.w("coldStart: failed to hydrate pending input", e, st);
     }
   }
 
@@ -828,7 +828,7 @@ class OpenCodeService(
     required Object error,
     required StackTrace stackTrace,
   }) async {
-    Log.w("createSession: prompt send failed for session ${session.id}: $error\n$stackTrace");
+    Log.w("createSession: prompt send failed for session ${session.id}", error, stackTrace);
     try {
       await repository.deleteSession(
         sessionId: session.id,
