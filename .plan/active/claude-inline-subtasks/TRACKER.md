@@ -610,7 +610,7 @@ packaging-only change.
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
 | 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
 | 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) merged at `400dcbe01a` |
-| 5/5 | Replay callback, history, remaining consumer docs | Implemented on `claude-inline-subtasks-deepseek-replay`; architecture review pending |
+| 5/5 | Replay callback, history, remaining consumer docs | Implemented on `claude-inline-subtasks-deepseek-replay`; architecture approved |
 
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
 42 tests, and Grok analyze + 83 tests passed. The replay callback and its
@@ -691,3 +691,8 @@ Final feature E2E and scoped-stop consumption are still pending.
 
 User priority (2026-09-05): complete remaining DeepSeek follow-ups, then Codex.
 Automatic managed-runtime upgrades are owned by another session, not this series.
+Architecture implementation review approved with no findings. Implementation
+head `fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb` is **+541/-30 = 571 lines**, below
+the planned 800–1,100 range without omitting required callers or replay coverage.
+Reproduce with `git diff --numstat 8bdc2345e301e8bf7da906299df622bb9d650e19 fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb`;
+this review bookkeeping is additional.
