@@ -170,7 +170,10 @@ install with no credentials.
 models` lists the bundled free `opencode/…` models identically with five
 credentials and with zero, so an empty credential store does not mean the
 harness is unusable. Reporting authentication required from the count alone
-would block installs that still work.
+would block installs that still work. This stays ⬜ rather than 🚫 because only
+those two surfaces were probed and neither is equivalent; whether the bundled
+free models actually serve a turn without credentials is unverified, so no
+claim is made that the seam cannot answer the question.
 
 ¹³ Copilot has not been probed for a non-interactive credential check.
 

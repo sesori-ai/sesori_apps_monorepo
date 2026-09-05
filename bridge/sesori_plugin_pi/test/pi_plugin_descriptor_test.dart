@@ -142,6 +142,38 @@ void main() {
       );
     });
 
+    test("inspectSetup cannot determine setup when the model listing exits non-zero", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "unreadable catalog\n", exitCode: 2),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
+    test("inspectSetup trusts the no-models diagnostic over a non-zero listing exit", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n", exitCode: 1),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupAuthenticationRequired>());
+    });
+
     test("inspectSetup cannot determine setup when the model listing fails to run", () async {
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),

@@ -258,6 +258,11 @@ final class const PiPluginDescriptor({
     required Map<String, String> environment,
     required String runtimeVersion,
   }) async {
+    PluginSetupStatus undetermined() => PluginSetupUnknown.versioned(
+      actionHint: "Pi could not list its available models. Verify the local CLI and retry.",
+      runtimeVersion: runtimeVersion,
+    );
+
     final CommandResult result;
     try {
       result = await HostProcessCommandExecutor(
@@ -265,20 +270,27 @@ final class const PiPluginDescriptor({
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: 64 * 1024,
       ).run(binaryPath, const ["--list-models"], environment: environment, timeout: _versionProbeTimeout);
-    } on Object {
-      return PluginSetupUnknown.versioned(
-        actionHint: "Pi could not list its available models. Verify the local CLI and retry.",
-        runtimeVersion: runtimeVersion,
-      );
+    } on Object catch (error, stackTrace) {
+      Log.w("[${PiPluginIdentity.id}] model listing probe failed for '$binaryPath --list-models'", error, stackTrace);
+      return undetermined();
     }
+    // The diagnostic stays authoritative ahead of the exit code, so a release
+    // that reports having no models through a failing exit is still read as
+    // logged out rather than as a broken probe.
     final listedNoModels =
         result.stdout.contains(PiRpcClient.noModelsDiagnosticPrefix) ||
         result.stderr.contains(PiRpcClient.noModelsDiagnosticPrefix);
-    if (!listedNoModels) return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
-    return PluginSetupAuthenticationRequired.versioned(
-      actionHint: "Run `pi` on this machine and use /login to add a provider, then retry setup detection.",
-      runtimeVersion: runtimeVersion,
-    );
+    if (listedNoModels) {
+      return PluginSetupAuthenticationRequired.versioned(
+        actionHint: "Run `pi` on this machine and use /login to add a provider, then retry setup detection.",
+        runtimeVersion: runtimeVersion,
+      );
+    }
+    if (result.exitCode != 0) {
+      Log.d("[${PiPluginIdentity.id}] model listing probe '$binaryPath --list-models' exited ${result.exitCode}");
+      return undetermined();
+    }
+    return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
   }
 
   bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
