@@ -124,6 +124,30 @@ void main() {
     expect(inUseReadings, [false, true], reason: "the signal is read live, not captured at install start");
   });
 
+  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () {
+    final queries = <({PluginConfig config, String stateDirectory})>[];
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        upgradeNeeded: ({required config, required stateDirectory}) {
+          queries.add((config: config, stateDirectory: stateDirectory));
+          return true;
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
+    expect(queries.single.stateDirectory, ".");
+  });
+
+  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
+  });
+
   test("installRuntime fails immediately while shutting down", () async {
     final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
     addTearDown(runtime.dispose);
@@ -1975,6 +1999,7 @@ class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
   install,
+  final bool Function({required PluginConfig config, required String stateDirectory})? upgradeNeeded,
 }) extends BridgePluginDescriptor {
   @override
   String get id => "one";
@@ -2022,6 +2047,15 @@ class const _FakeDescriptor({
       );
     }
     return handler(startAborted, runtimeInUse);
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    final handler = upgradeNeeded;
+    if (handler == null) {
+      return super.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDirectory);
+    }
+    return handler(config: config, stateDirectory: stateDirectory);
   }
 
   @override
