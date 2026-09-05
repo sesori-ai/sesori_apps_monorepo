@@ -27,8 +27,9 @@ class const RuntimeInstallException(final String message) implements Exception {
 /// sentinel.
 ///
 /// Archive executables are located by [ArchiveRuntimeAsset.archiveBinaryName]
-/// and normalized to [binaryFileName]. Direct binaries are placed there without
-/// extraction. The sentinel (the verified SHA-256) is written last, so an
+/// (a name or package-relative path) and normalized to [binaryFileName]. Direct
+/// binaries are placed there without extraction. The sentinel (the verified
+/// SHA-256) is written last, so an
 /// interrupted install leaves no sentinel and is cleanly redone next attempt.
 /// No lock is required: single-live-bridge enforcement covers cross-process
 /// overlap, callers gate concurrent same-plugin work (setup-blocked plugins
@@ -133,7 +134,7 @@ class RuntimeInstallService({
               _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
             case RuntimeArchiveLayout.packageDirectory:
               _placePackage(
-                packageInStaging: binaryInStaging.parent,
+                binaryInStaging: binaryInStaging,
                 versionDir: versionDir,
                 binaryFileName: binaryFileName,
                 archiveBinaryName: asset.archiveBinaryName,
@@ -177,15 +178,37 @@ class RuntimeInstallService({
 
   File? _locateBinary({required String stagingPath, required String archiveBinaryName}) {
     final Directory dir = Directory(stagingPath);
-    if (!dir.existsSync()) {
+    final String normalizedArchivePath = p.normalize(archiveBinaryName);
+    final List<String> expectedSegments = p.split(normalizedArchivePath);
+    if (!dir.existsSync() ||
+        p.isAbsolute(normalizedArchivePath) ||
+        expectedSegments.isEmpty ||
+        expectedSegments.any((segment) => segment == "..")) {
       return null;
     }
     for (final FileSystemEntity entity in dir.listSync(recursive: true, followLinks: false)) {
-      if (entity is File && p.basename(entity.path) == archiveBinaryName) {
+      if (entity is! File) {
+        continue;
+      }
+      final List<String> actualSegments = p.split(p.relative(entity.path, from: stagingPath));
+      if (_pathEndsWith(actual: actualSegments, expected: expectedSegments)) {
         return entity;
       }
     }
     return null;
+  }
+
+  bool _pathEndsWith({required List<String> actual, required List<String> expected}) {
+    if (actual.length < expected.length) {
+      return false;
+    }
+    final int offset = actual.length - expected.length;
+    for (var index = 0; index < expected.length; index++) {
+      if (actual[offset + index] != expected[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _placeBinary({
@@ -201,19 +224,30 @@ class RuntimeInstallService({
     // Same filesystem (both under managedDir), so this rename is atomic. The
     // canonical [binaryFileName] may differ from the archive member name, which
     // normalizes a target-triple-named member to a plain binary.
-    binaryInStaging.renameSync(p.join(versionDir, binaryFileName));
+    final File canonicalBinary = File(p.join(versionDir, binaryFileName));
+    canonicalBinary.parent.createSync(recursive: true);
+    binaryInStaging.renameSync(canonicalBinary.path);
   }
 
   /// Places an entire extracted package tree at [versionDir], keeping the entry
-  /// binary next to the siblings it loads at runtime. When the publisher's
-  /// entry name differs from the canonical [binaryFileName], the entry file is
-  /// renamed inside the placed tree rather than moved out of it.
+  /// binary next to the siblings it loads at runtime. A package-relative
+  /// [archiveBinaryName] identifies how far above the entry the package root
+  /// begins. When that path differs from the canonical [binaryFileName], the
+  /// entry file is renamed inside the placed tree rather than moved out of it.
   void _placePackage({
-    required Directory packageInStaging,
+    required File binaryInStaging,
     required String versionDir,
     required String binaryFileName,
     required String archiveBinaryName,
   }) {
+    final String normalizedArchiveBinaryName = p.normalize(archiveBinaryName);
+    final String normalizedBinaryFileName = p.normalize(binaryFileName);
+    final List<String> archivePathSegments = p.split(normalizedArchiveBinaryName);
+    Directory packageInStaging = binaryInStaging.parent;
+    for (var index = 1; index < archivePathSegments.length; index++) {
+      packageInStaging = packageInStaging.parent;
+    }
+
     final Directory dir = Directory(versionDir);
     if (dir.existsSync()) {
       dir.deleteSync(recursive: true);
@@ -221,8 +255,10 @@ class RuntimeInstallService({
     dir.parent.createSync(recursive: true);
     // Same filesystem (both under managedDir), so this rename is atomic.
     packageInStaging.renameSync(versionDir);
-    if (archiveBinaryName != binaryFileName) {
-      File(p.join(versionDir, archiveBinaryName)).renameSync(p.join(versionDir, binaryFileName));
+    if (normalizedArchiveBinaryName != normalizedBinaryFileName) {
+      final File canonicalBinary = File(p.join(versionDir, normalizedBinaryFileName));
+      canonicalBinary.parent.createSync(recursive: true);
+      File(p.join(versionDir, normalizedArchiveBinaryName)).renameSync(canonicalBinary.path);
     }
   }
 

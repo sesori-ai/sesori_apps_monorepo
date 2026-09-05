@@ -29,8 +29,11 @@ class _FakeChecksumValidator({required final bool valid}) implements ChecksumVal
   Future<String> computeSha256({required String filePath}) async => "deadbeef";
 }
 
-class _FakeArchiveExtractor({required final bool success, required final bool packageDirectory})
-    implements ArchiveExtractor {
+class _FakeArchiveExtractor({
+  required final bool success,
+  required final bool packageDirectory,
+  final bool rootPackage = false,
+}) implements ArchiveExtractor {
   int extractCalls = 0;
 
   @override
@@ -43,7 +46,13 @@ class _FakeArchiveExtractor({required final bool success, required final bool pa
     if (!success) {
       return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
-    if (packageDirectory) {
+    if (rootPackage) {
+      final bin = Directory(p.join(stagingPath, "bin"))..createSync(recursive: true);
+      File(p.join(bin.path, "codex")).writeAsStringSync("BINARY");
+      File(p.join(bin.path, "codex-code-mode-host")).writeAsStringSync("SIDECAR");
+      final resources = Directory(p.join(stagingPath, "codex-resources"))..createSync();
+      File(p.join(resources.path, "resource")).writeAsStringSync("RESOURCE");
+    } else if (packageDirectory) {
       final package = Directory(p.join(stagingPath, "dist-package"))..createSync(recursive: true);
       File(p.join(package.path, "cursor-agent")).writeAsStringSync("BINARY");
       File(p.join(package.path, "node-runtime")).writeAsStringSync("SIBLING");
@@ -89,6 +98,14 @@ const _packageAsset = ArchiveRuntimeAsset(
   layout: RuntimeArchiveLayout.packageDirectory,
 );
 
+const _rootPackageAsset = ArchiveRuntimeAsset(
+  assetName: "codex-package-test.tar.gz",
+  format: ArchiveFormat.tarGz,
+  sha256: "fed321",
+  archiveBinaryName: "bin/codex",
+  layout: RuntimeArchiveLayout.packageDirectory,
+);
+
 const _directAsset = DirectBinaryRuntimeAsset(assetName: "omp-test", sha256: "789abc");
 
 void main() {
@@ -109,13 +126,20 @@ void main() {
     bool checksumValid = true,
     bool extractSuccess = true,
     bool packageDirectory = false,
+    bool rootPackage = false,
     _FakeCommandExecutor? cmd,
     _FakeArchiveExtractor? extractor,
   }) {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
-      archiveExtractor: extractor ?? _FakeArchiveExtractor(success: extractSuccess, packageDirectory: packageDirectory),
+      archiveExtractor:
+          extractor ??
+          _FakeArchiveExtractor(
+            success: extractSuccess,
+            packageDirectory: packageDirectory,
+            rootPackage: rootPackage,
+          ),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
       runtimeId: "opencode",
     );
@@ -180,6 +204,32 @@ void main() {
     expect(
       File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
       "def456",
+    );
+  });
+
+  test("places an archive-root package identified by a nested entry path", () async {
+    final staleFile = File(p.join(versionDir(), "stale"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+
+    await build(rootPackage: true)
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: p.join("bin", "codex"),
+          downloadUrl: "https://example.test/codex-package-test.tar.gz",
+          asset: _rootPackageAsset,
+          startAborted: StartAbortSignal.never,
+        )
+        .drain<void>();
+
+    expect(File(p.join(versionDir(), "bin", "codex")).readAsStringSync(), "BINARY");
+    expect(File(p.join(versionDir(), "bin", "codex-code-mode-host")).readAsStringSync(), "SIDECAR");
+    expect(File(p.join(versionDir(), "codex-resources", "resource")).readAsStringSync(), "RESOURCE");
+    expect(staleFile.existsSync(), isFalse);
+    expect(
+      File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
+      "fed321",
     );
   });
 

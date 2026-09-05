@@ -6,9 +6,12 @@ import "runtime_version.dart";
 /// How a publisher's extracted archive is placed into the version directory.
 ///
 /// Most runtimes ship a single self-contained executable ([singleBinary]).
-/// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
+/// Other runtimes ship a package tree whose entry binary loads sibling files,
 /// so the whole directory must be kept together ([packageDirectory]).
-enum RuntimeArchiveLayout() { singleBinary, packageDirectory }
+enum RuntimeArchiveLayout() {
+  singleBinary,
+  packageDirectory,
+}
 
 /// One platform's pinned release artifact for a managed runtime, identified by
 /// its publisher [assetName] and verified against [sha256] before placement.
@@ -27,8 +30,8 @@ final class const ArchiveRuntimeAsset({
   required super.sha256,
 
   /// The entry executable's name inside the extracted archive. For
-  /// [RuntimeArchiveLayout.packageDirectory] it names the binary within the
-  /// placed tree; its siblings travel with it.
+  /// [RuntimeArchiveLayout.packageDirectory] this may be a relative path from
+  /// the package root; the complete tree rooted above that path travels with it.
   required final String archiveBinaryName,
   required final RuntimeArchiveLayout layout,
 }) extends RuntimeAsset;
@@ -67,8 +70,8 @@ abstract class const RuntimeManifest() {
   /// `"opencode"`, `"codex"`).
   String get pathExecutableName;
 
-  /// The canonical executable file name the managed binary is placed under in
-  /// its version directory (platform-aware, e.g. `codex` / `codex.exe`).
+  /// The canonical executable file name or relative path under the managed
+  /// version directory (platform-aware, e.g. `opencode` or `bin/codex.exe`).
   String get binaryFileName;
 
   /// Minimum pre-installed (PATH) version the bridge will use as-is.
