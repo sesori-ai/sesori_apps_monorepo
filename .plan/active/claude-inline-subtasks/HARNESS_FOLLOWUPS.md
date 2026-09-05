@@ -474,7 +474,7 @@ confirmation, no child session or partial stop) and gets that subset.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 
-## DeepSeek (`sesori-deepseek-acp` 0.1.3 source over dsh 0.1.1-rc.2; release pending)
+## DeepSeek (`sesori-deepseek-acp` 0.1.3 over dsh 0.1.1-rc.2)
 
 ### Verified facts
 
@@ -538,10 +538,10 @@ confirmation, no child session or partial stop) and gets that subset.
 | Repo | Emoji | Description | Scope |
 |---|---|---|---|
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | Merged PR #13 (`0a85fb2`): lifecycle, descendant transcripts, bindings, and protocol v2 |
-| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release intentionally pending |
+| adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release completed through PR #16 |
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
 | monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
-| adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | Before slice 4 merge: record its tested commit, human-merge release metadata, tag, publish, and verify assets |
+| adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
 | monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | Pending: consume interrupt and test mixed modes; runtime pinning moves to slice 4 |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 

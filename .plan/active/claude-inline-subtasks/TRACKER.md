@@ -171,11 +171,11 @@ post-merge E2E gates are unchanged.
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
-| [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; package version staged, release pending |
+| [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [ ] | DeepSeek | Consumer replacement steps 1–5 | PR #1293 superseded; fixed titles and budgets in `HARNESS_FOLLOWUPS.md` |
-| [ ] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | User moved publication before slice 4 merge; release metadata PR then tag/assets pending |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Pending adapter v0.1.3 release |
+| [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Pending consumer replay slice; adapter v0.1.3 available |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -609,7 +609,7 @@ packaging-only change.
 | 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
 | 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
-| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) draft pending release assets |
+| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) includes verified published assets |
 | 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
 
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
@@ -656,6 +656,12 @@ issues. Duplicate call/update deferral is one branch; replay remains separate.
 User-directed sequencing change (2026-09-05): publish adapter 0.1.3 now and pin
 it in this PR instead of retaining v1 compatibility. The consumer now requires
 v2; analysis and 81 tests pass (the obsolete v1 live fallback test is removed).
-Both fixture versions remain untouched. The PR stays draft until release
-metadata is human-merged, v0.1.3 is tagged/published, all six packages are verified,
-and real checksums plus target/minimum 0.1.3 land. No final E2E pass is claimed.
+Both fixture versions remain untouched. Adapter #16 merged at `3976bcd1afbb5072bec3e87cb12e9f603282bcb6`;
+[v0.1.3](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.3)
+is published. [Release run 33960157438](https://github.com/sesori-ai/sesori-deepseek-acp/actions/runs/33960157438)
+passed conformance, all six native package builds/smokes, release-set verification,
+and publication. Every downloaded archive matches its published SHA-256, contains
+no links/traversal, and records source `3976bcd` plus consumer `69e9478d6` in build
+metadata. Target/minimum are now 0.1.3 with verified digests; descriptor tests prove
+0.1.2 explicit rejection and PATH replacement. Analysis and all 81 tests pass.
+No final feature E2E pass is claimed; replay and scoped-stop consumption remain pending.
