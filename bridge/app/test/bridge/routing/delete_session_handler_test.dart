@@ -423,6 +423,32 @@ void main() {
       expect(operationLog, equals(["checkSafety", "removeWorktree", "pluginDelete"]));
     });
 
+    test("backend that answers 503 keeps the session for retry", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s10-unavailable",
+        projectId: "/repo",
+        worktreePath: null,
+        branchName: null,
+      );
+      plugin.throwOnDeleteSessionError = PluginApiException("/session/s10-unavailable", 503);
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: const DeleteSessionRequest(
+            sessionId: "s10-unavailable",
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+          ),
+        ),
+        throwsA(isA<PluginApiException>()),
+      );
+
+      expect(await db.sessionDao.getSession(sessionId: "s10-unavailable"), isNotNull);
+    });
+
     test("11) plugin delete 404: tolerated, DB row still removed", () async {
       await _insertSession(
         db: db,

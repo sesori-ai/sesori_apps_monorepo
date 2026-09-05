@@ -588,11 +588,13 @@ class SessionRepository({
     // uninstalled or unstartable plugin would otherwise leave the user with a
     // row they can never remove. The tombstone below keeps a surviving backend
     // session from being re-imported.
+    var backendDeleteAttempted = false;
     try {
       await _useBoundSessionPlugin(
         binding: binding,
         operation: SessionOperation.deleteSession,
         body: (plugin) async {
+          backendDeleteAttempted = true;
           try {
             await plugin.deleteSession(binding.backendSessionId);
           } on PluginOperationException catch (error) {
@@ -601,7 +603,9 @@ class SessionRepository({
         },
       );
     } on PluginOperationException catch (error, stackTrace) {
-      if (!error.isUnavailable) rethrow;
+      // A backend that answered keeps its existing retry semantics; only never
+      // reaching it clears the way for a local-only delete.
+      if (backendDeleteAttempted || !error.isUnavailable) rethrow;
       Log.w(
         "Backend ${binding.pluginId} was unreachable while deleting session $sessionId; "
         "removing the bridge record anyway",
