@@ -40,51 +40,16 @@ The Makefiles use Dart from the Flutter SDK pinned in the repository's
 `.tool-versions`; install that asdf Flutter version first. Packaged installs
 remain the simplest way to run the bridge headlessly without a source checkout.
 
-## Install
+## Install and uninstall
 
-For packaged installs, use the bridge distribution docs instead of building from source:
+Packaged installs are documented once, in
+[INSTALL.md](INSTALL.md): the shell installers, `npx @sesori/bridge`, the managed
+install locations, update behavior and the update track, and the uninstall steps.
+[RELEASING.md](RELEASING.md) covers release verification and the manual
+test-release flow.
 
-- [INSTALL.md](INSTALL.md) — shell installer, `npx @sesori/bridge`, update behavior, and uninstall steps
-- [RELEASING.md](RELEASING.md) — release verification and manual test-release flow
-
-Quick packaged install options:
-
-```bash
-# npm bootstrap
-npx @sesori/bridge
-
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
-sesori-bridge
-
-# macOS / Linux shell installer
-curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
-```
-
-Both install paths create a managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. On macOS/Linux, a symlink is placed at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately.
-
-The npm bootstrap path uses `npx @sesori/bridge` only as a launcher: it installs or refreshes the managed native runtime under the Sesori install root and then gets out of the way. The steady-state command remains `sesori-bridge`, not a binary inside `node_modules`.
-
-## Uninstall
-
-Delete the managed install directory to fully remove the packaged bridge runtime:
-
-- macOS / Linux: `~/.local/share/sesori/`
-- Windows: `%LOCALAPPDATA%\sesori\`
-
-Also remove the symlink on macOS/Linux:
-
-```bash
-rm -f ~/.local/bin/sesori-bridge
-```
-
-If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
+Building from source, as described above, is for working on the bridge itself; a
+packaged install remains the simplest way to run it headlessly.
 
 ## Development Commands
 
@@ -132,12 +97,11 @@ disables controls routed to that plugin but does not stop the relay, catalog
 browsing, or another plugin.
 
 Normal project, root-session, session-detail, and child reads use the durable
-database catalog only. Import is a non-destructive observation of one plugin:
-connected Sesori apps start it through `POST /plugin/import`, cancel it through
-`DELETE /plugin/import`, and read the latest per-plugin statuses through
-`GET /plugin/import`; progress is also published as plugin-attributed SSE.
-Catalog readers continue to see the last committed snapshot while import
-enumerates or publishes.
+database catalog only; external harness work enters through an explicit,
+non-destructive per-plugin import. Catalog readers continue to see the last
+committed snapshot while an import enumerates or publishes. The ownership model
+behind this, including the import endpoints and the identity rules, is in
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#catalog-ownership-and-the-plugin-boundary).
 
 ## Security
 

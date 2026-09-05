@@ -27,8 +27,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 17/25 | ⚙️ [periodic-cleanup] auth: share response and interactive login completion [step 17/25] | Merged | [#1329](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1329) |
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Merged | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
 | 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Merged | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
-| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | In review | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
-| 21/25 | 🌱 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Proposed | — |
+| 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
+| 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | In review | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
 | 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
 | 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
 | 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
@@ -391,3 +391,60 @@ asked to start working the plan; steps execute in order from step 2.
   4+/137- outside the plan directory, so this step is almost entirely deletion.
 - The narrow repository methods from step 4 remain their own finding; this scan
   did not revisit them.
+
+## Step 21 execution — 2026-09-05
+
+- Completion verified before every deletion. `docs/parallel-plugins/PLAN.md`
+  ("complete", merged through PR #497), `CONSIDERATIONS.md` (historical audit
+  reconciled through Stage 9) and `docs/codex-plugin-stability-report.md`
+  (matrix and F-12 follow-up complete) are removed; git history retains them and
+  no doc outside `.plan/` linked to them. The Stage 1a/9 baseline JSON artifacts
+  go with the plan that was their only consumer.
+- `docs/parallel-plugins/ARCHITECTURE.md` was durable, not historical, so its
+  current content moved into `docs/ARCHITECTURE.md` as "Catalog ownership and
+  the plugin boundary": the ownership decision and boundary lists, update
+  semantics including child ancestry and import-not-sync, identity, and parallel
+  runtime behavior. Stage numbering, the performance gate, the schema-v11
+  migration history and the completion evidence were dropped with the plan.
+- `docs/plans/auth-reconnect-ux-plan.md` was **not** deleted. Its status tracker
+  shows PRs 4-7 and the deferred bridge-offline recovery item not started, so it
+  is a live plan, not a completed report. The plan's candidate list assumed
+  completion; execution disproved it.
+- `docs/cursor-acp-followups/README.md` keeps only its two genuinely open items
+  (D1 plan-mode rejection routing, blocked on a live trace; Theme E typed ACP
+  boundary DTOs, deliberately deferred). The nine resolved themes are removed
+  rather than kept as status tombstones.
+- One authoritative install page: `bridge/INSTALL.md` already documented the
+  installers, npm bootstrap, install locations, update track and uninstall in
+  full, so the duplicate copies in `bridge/README.md` and `bridge/app/README.md`
+  became links to it. `bridge/README.md`'s catalog section now links to the
+  architecture page instead of restating the import endpoints, and keeps the
+  operational CLI detail that is genuinely its own.
+- `docs/cleanup-audit-2026-09-04.md` keeps its findings and its stated baseline
+  commit; a one-line note records that some of its file references no longer
+  resolve because this series has since executed them. The README/GETTING_STARTED
+  overlap was left alone: the README's three-step summary is a landing page that
+  already links to the full walkthrough.
+- Link check across every tracked Markdown file outside `.plan/` and
+  `.opencode/`: no broken relative link remains.
+- Title kept from this tracker; the planned 🌱 became 🌿 because review has to
+  confirm each deleted report was complete and that the architecture
+  consolidation preserved the durable content.
+- Line split. Both commands run as written and are stable across later
+  tracker-only commits, because each pathspec excludes this file:
+  `git diff --numstat b57d30c770..28680774f3 -- '*.md' ':(exclude).plan'` gives
+  125+/3,560- of documentation prose, and
+  `git diff --numstat b57d30c770..28680774f3 -- '*.json'` gives 0+/8,057- of
+  retired baseline artifacts. `28680774f3` is the last commit on this branch that
+  changed either; substituting any later head leaves both figures unchanged. The
+  prose figure is within the step's deletion-heavy allowance, and the JSON is a
+  measurement artifact rather than prose. No self-inclusive total is recorded:
+  writing one changes the head it would have to be measured at.
+- Correction applied during review: the parallel-runtime paragraph carried over
+  from the retired document described a `--plugin <id>` flag and persisted
+  `enabledPlugins` ordering. Neither exists. The section now states the
+  implemented rule — the `plugins.disabled` denylist, case-insensitive
+  display-name ordering tie-broken by id, OpenCode preferred as the default when
+  selectable, and per-plugin `--<pluginId>-<name>` options — matching
+  `plugin_lifecycle_service.dart`, `plugin_registry.dart` and
+  `plugin_cli_options_mapper.dart`.

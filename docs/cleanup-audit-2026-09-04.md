@@ -5,6 +5,10 @@ Baseline: `480d82f090`. Investigation and proposed series:
 [tracker](../.plan/active/periodic-cleanup/TRACKER.md),
 [reproducible evidence](../.plan/active/periodic-cleanup/evidence/README.md).
 
+Every file reference below is as of that baseline. Some no longer resolve,
+because the series has since executed the findings that named them — read this
+document as the investigation record it is, not as a map of current code.
+
 The highest-value work is in state ownership and internal contracts: refreshes
 can overwrite live transcript content, tests keep an obsolete insertion path
 alive, a pending-event index has no production reader, and typed plugin values
