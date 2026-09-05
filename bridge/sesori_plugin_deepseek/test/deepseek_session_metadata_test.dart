@@ -35,6 +35,7 @@ void main() {
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: const DeepSeekMessageTimeParser(),
+        subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
       ),
       deepSeekSessionService: DeepSeekSessionService(
         repository: const DeepSeekSessionRepository(api: api),

@@ -96,9 +96,10 @@ turn.
 
 ⁹ DeepSeek's published adapter 0.1.3 over dsh 0.1.1-rc.2 is the managed target
 and minimum accepted runtime. The consumer requires extension protocol v2 and
-implements live correlated tiles and child transcripts/catalogs. Replay tile
-projection and scoped stop remain unimplemented consumer follow-ups, although
-the adapter supplies their contracts. Foreground children die with the parent;
+implements live/replayed correlated tiles and child transcripts/catalogs.
+Replay retains direct-parent tile identities and ordered ordinary-content runs
+without changing live child state. Scoped stop remains an unimplemented consumer
+follow-up, although the adapter supplies its contract. Foreground children die with the parent;
 background children survive, making main-agent-only stop supportable when all
 running children are background. Final feature E2E coverage remains pending.
 

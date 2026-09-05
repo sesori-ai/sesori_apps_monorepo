@@ -609,8 +609,8 @@ packaging-only change.
 | 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
 | 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
-| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) includes verified published assets |
-| 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
+| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) merged at `400dcbe01a` |
+| 5/5 | Replay callback, history, remaining consumer docs | Implemented on `claude-inline-subtasks-deepseek-replay`; architecture review pending |
 
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
 42 tests, and Grok analyze + 83 tests passed. The replay callback and its
@@ -675,3 +675,19 @@ Reproduce against its immutable merge base (later review bookkeeping is addition
 git diff --numstat 747fbd3eb9f20f07d0478dc8469dba7140103400 97adc68c8ba19d27085f4cc04b7129afa2d5668a |
   awk '{ a += $1; d += $2 } END { print a, d, a + d }'
 ```
+
+Slice 5 verification: ACP analysis and 312 tests, DeepSeek analysis and 88 tests,
+and unchanged Grok analysis and 83 tests pass. The required synchronous replay
+replacement callback lands with all callers; null preserves generic ACP tools.
+History uses chronological typed metadata without reading/mutating live child
+or delegation trackers. Run alignment preserves part order and direct-parent
+child identities; later ordinary runs receive unique message/part IDs, and empty
+source envelopes remain intact. Unlike the archive, terminal mapping stays
+non-nullable and running replay state is explicit at its call site. Tests cover
+multiple interleaved child tiles, reverse pagination, live/replay convergence,
+unbound startup failures, ordinary tool fallback, and replay-state isolation.
+Both protocol fixture versions and runtime 0.1.3 pins/checksums remain unchanged.
+Final feature E2E and scoped-stop consumption are still pending.
+
+User priority (2026-09-05): complete remaining DeepSeek follow-ups, then Codex.
+Automatic managed-runtime upgrades are owned by another session, not this series.

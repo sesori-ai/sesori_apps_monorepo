@@ -47,6 +47,71 @@ class const DeepSeekSubagentMapper({required final String agentId}) {
     };
   }
 
+  PluginMessagePartSubtask mapReplay({
+    required PluginMessagePartTool toolPart,
+    required DeepSeekSubagentReplayDto replay,
+  }) {
+    final childSessionId = replay.childSessionId;
+    final messageId = childSessionId == null ? toolPart.messageID : "${toolPart.sessionID}-subagent-$childSessionId";
+    return PluginMessagePartSubtask(
+      id: childSessionId == null ? toolPart.id : "$messageId-subtask",
+      sessionID: toolPart.sessionID,
+      messageID: messageId,
+      prompt: replay.prompt,
+      description: replay.label,
+      agent: agentId,
+      taskState: switch (replay.ended) {
+        null => const PluginToolState(
+          status: PluginToolStatus.running,
+          title: null,
+          output: null,
+          error: null,
+          attachments: [],
+        ),
+        final ended => mapState(stopReason: ended.stopReason, summary: ended.summary),
+      },
+      childSessionID: childSessionId,
+    );
+  }
+
+  /// Splits contiguous part runs without changing their order. Child-linked
+  /// identities match live tiles; the first ordinary run keeps its source ID,
+  /// and later ordinary runs get deterministic message and part IDs for storage.
+  List<PluginMessageWithParts> alignReplayChildIdentities({required List<PluginMessageWithParts> messages}) {
+    final aligned = <PluginMessageWithParts>[];
+    for (final message in messages) {
+      if (message.parts.isEmpty) {
+        aligned.add(message);
+        continue;
+      }
+      var runStart = 0;
+      var parentRunOrdinal = 0;
+      for (var end = 1; end <= message.parts.length; end++) {
+        final first = message.parts[runStart];
+        if (end < message.parts.length &&
+            message.parts[end].messageID == first.messageID &&
+            message.parts[end].sessionID == first.sessionID) {
+          continue;
+        }
+        final isParentRun = first.messageID == message.info.id && first.sessionID == message.info.sessionID;
+        if (isParentRun) parentRunOrdinal++;
+        final suffix = isParentRun && parentRunOrdinal > 1 ? "-deepseek-replay-run-$parentRunOrdinal" : null;
+        final messageId = suffix == null ? first.messageID : "${first.messageID}$suffix";
+        aligned.add(
+          PluginMessageWithParts(
+            info: message.info.copyWith(id: messageId, sessionID: first.sessionID),
+            parts: [
+              for (final part in message.parts.sublist(runStart, end))
+                suffix == null ? part : part.copyWith(id: "${part.id}$suffix", messageID: messageId),
+            ],
+          ),
+        );
+        runStart = end;
+      }
+    }
+    return aligned;
+  }
+
   String? _bounded({required String? value}) =>
       value == null || value.isEmpty ? null : String.fromCharCodes(value.runes.take(maxToolOutputLength));
 
