@@ -353,8 +353,8 @@ void main() {
 
       expect(events, hasLength(4));
       final envelope = (events[0] as BridgeSseMessageUpdated).info;
-      expect(envelope["id"], "root-subagent-child");
-      expect(envelope["sessionID"], "root");
+      expect(envelope.id, "root-subagent-child");
+      expect(envelope.sessionID, "root");
       final child = (events[1] as BridgeSseSessionCreated).info;
       expect(child["id"], "child");
       expect(child["parentID"], "root");
@@ -363,7 +363,7 @@ void main() {
       expect((events[2] as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
       final tile = (events[3] as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
       expect(tile.id, "root-subagent-child-subtask");
-      expect(tile.messageID, envelope["id"]);
+      expect(tile.messageID, envelope.id);
       expect(tile.prompt, "Inspect the synthetic module");
       expect(tile.description, "Research child");
       expect(tile.agent, DeepSeekIdentity.id);
@@ -417,8 +417,8 @@ void main() {
         "grandchild",
       ]);
       final envelope = nested.whereType<BridgeSseMessageUpdated>().single.info;
-      expect(envelope["id"], "child-subagent-grandchild");
-      expect(envelope["sessionID"], "child");
+      expect(envelope.id, "child-subagent-grandchild");
+      expect(envelope.sessionID, "child");
       final tile = nested.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartSubtask;
       expect(tile.sessionID, "child");
       expect(tile.id, "child-subagent-grandchild-subtask");
@@ -457,10 +457,10 @@ void main() {
         ),
       );
 
-      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
-      expect(message["sessionID"], "child");
-      expect(message["modelID"], "deepseek-chat");
-      expect(message["providerID"], "deepseek");
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
+      expect(message.sessionID, "child");
+      expect(message.modelID, "deepseek-chat");
+      expect(message.providerID, "deepseek");
       final text = events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartText;
       expect(text.sessionID, "child");
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "Child reply");
@@ -483,7 +483,7 @@ void main() {
       );
 
       final message = events.whereType<BridgeSseMessageUpdated>().single.info;
-      expect(message["sessionID"], "child");
+      expect(message.sessionID, "child");
       final text = events.whereType<BridgeSseMessagePartUpdated>().single.part as PluginMessagePartText;
       expect(text.sessionID, "child");
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "Child reply");
