@@ -320,7 +320,7 @@ owned-process exit; and restart.
 - `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_grok/lib/src/grok_plugin_impl.dart` and `grok_plugin_test.dart`
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
-- `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, the
+- `client/module_core/lib/src/services/plugin_management_service.dart`, `PregoBrandLogo`, the
   Grok marks and `client/module_prego/BRAND_ASSETS.md`, and the harness settings
   screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites

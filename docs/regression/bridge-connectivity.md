@@ -28,8 +28,7 @@ explicit restart, and the connection states the app presents.
   workspace and worktree notifications) and Codex MCP startup notices stop
   inside their plugins; toast, VCS, file-edited, installation-update-available
   (which feeds the immediate push), command-catalog and lifecycle signals still
-  reach clients. The shared wire union no longer defines the dropped kinds; a
-  client ignores an unknown event type from an older bridge.
+  reach clients. A client ignores an unknown event type from an older bridge.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
   once and can never later authenticate.
 - Client relay disconnect closes active SSE streams and the socket without

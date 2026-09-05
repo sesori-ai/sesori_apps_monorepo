@@ -29,8 +29,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Merged | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Merged | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
-| 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | In review | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
-| 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
+| 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
+| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | In review | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
 | 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
 | 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
 
@@ -509,3 +509,47 @@ and the owning suites. Disposition per guide:
 - No tombstones were found or added; no absence assertion exists in these guides.
   Link check across `docs/regression/`: no broken relative link. Every source
   path in the twelve guides now resolves.
+
+## Step 23 execution — 2026-09-05
+
+All thirteen guides in this step's ownership were audited against production
+code, the owning suites, and the README's rules. The corpus was in better shape
+than the plan's size-based expectation, and the audit is the deliverable:
+
+- Checks run across all thirteen: L1 rows against the heartbeat rule; every
+  backtick source path resolved; verbatim duplication between Required Behavior
+  and the level table (none anywhere in the regression corpus, checked
+  mechanically); cosmetic minutiae such as pixel values, durations, easing and
+  colour tokens (none); inline completed-plan history (none — the only issue
+  reference is an upstream `github/copilot-cli` limitation); absence assertions
+  and tombstones.
+- `plugin-runtime-installation.md`, `plugin-setup-and-lifecycle.md`: three source
+  references used elided `.../` paths a reader cannot open. Expanded to the real
+  locations of `bridge_plugin_descriptor.dart` and `plugin_management_service.dart`.
+- `bridge-connectivity.md`: dropped the clause asserting that the shared wire
+  union "no longer defines the dropped kinds", which is a tombstone for step 9's
+  removal. The live invariant it sat next to — a client ignores an unknown event
+  type from an older bridge — is kept, because that is the behavior a run can
+  actually observe.
+- `README.md`: the feature index had `provider-route-conformance` before
+  `projects-and-sessions`; the index is alphabetical again, and every guide is
+  indexed with no index entry lacking a file.
+- Reviewed with no change needed: `bridge-installation-and-updates.md`,
+  `desktop-bridge-supervision.md`, `diffs-and-source-control.md`,
+  `provider-route-conformance.md`, `pull-request-monitoring.md`,
+  `questions-and-permissions.md`, `permission-auto-approval.md`,
+  `session-archiving-and-deletion.md`, `session-history-and-recovery.md`,
+  `tools-and-file-changes.md`. `provider-route-conformance.md` keeps its
+  Execution Runbook and Failure Attribution sections: the boundary order is the
+  conformance claim itself, not a prescribed click script, and the attribution
+  table is unique to it.
+- Line split: `git diff --numstat 6292ad83e7..987abe6a83 -- 'docs/regression/*.md'`
+  gives 5+/6-. `987abe6a83` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head.
+- That 11-line total is far below PLAN.md's 500-1,200 estimate for this step.
+  The estimate was scoped from guide size before the audit ran; across thirteen
+  guides the audit found three elided source paths, one tombstone clause and one
+  index ordering slip, and nothing else that the plan's own rules permit
+  removing. No reduction target was imposed and no limitation was invented, so
+  the measured total is the honest result rather than a shortfall to be padded.
+  The audit record above is this step's substantive output.
