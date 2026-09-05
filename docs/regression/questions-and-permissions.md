@@ -55,8 +55,11 @@ reaches the backend so the turn continues.
   phone-mediated unless an existing explicit bridge auto-approval rule applies.
   Abort, process exit, and disposal cancel pending Grok requests rather than
   broadening or silently approving them.
-- A sessionless backend request is attributed to the most recently dispatched
-  active turn, falling back to the last dispatched turn at its settlement
+- A sessionless ACP request first resolves its top-level or nested
+  `toolCall.toolCallId` against tracked calls. An exact match retains its session;
+  an ambiguous match cancels rather than falling back to another active turn.
+  Without tool-call attribution, a sessionless backend request uses the most
+  recently dispatched active turn, or the last dispatched turn at its settlement
   boundary. A backend requiring exact form correlation must serialize prompts
   process-wide so another session cannot become the attribution target. OMP
   supplies explicit session IDs on permissions and forms, so its independent
