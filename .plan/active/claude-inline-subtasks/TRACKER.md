@@ -695,4 +695,5 @@ Architecture implementation review approved with no findings. Implementation
 head `fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb` is **+541/-30 = 571 lines**, below
 the planned 800–1,100 range without omitting required callers or replay coverage.
 Reproduce with `git diff --numstat 8bdc2345e301e8bf7da906299df622bb9d650e19 fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb`;
-this review bookkeeping is additional.
+PR-opening head `f6c319e5c` adds five review-bookkeeping lines: **+546/-30 = 576**.
+These are fixed historical measurements, not totals for subsequent revisions.

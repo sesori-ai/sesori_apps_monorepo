@@ -99,9 +99,10 @@ and minimum accepted runtime. The consumer requires extension protocol v2 and
 implements live/replayed correlated tiles and child transcripts/catalogs.
 Replay retains direct-parent tile identities and ordered ordinary-content runs
 without changing live child state. Scoped stop remains an unimplemented consumer
-follow-up, although the adapter supplies its contract. Foreground children die with the parent;
-background children survive, making main-agent-only stop supportable when all
-running children are background. Final feature E2E coverage remains pending.
+follow-up, although the adapter supplies its contract. Foreground children die
+with the parent; background children survive, making main-agent-only stop
+supportable when all running children are background. Final feature E2E coverage
+remains pending.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as
