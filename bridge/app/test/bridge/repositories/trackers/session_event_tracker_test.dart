@@ -69,12 +69,12 @@ void main() {
       );
 
       expect(
-        tracker.takeChildren(pluginId: "a", backendParentId: "parent").map((entry) => entry.session.id),
+        _drain(tracker, pluginId: "a", backendSessionId: "parent").map((entry) => entry.backendSessionId),
         ["a-1", "a-2"],
       );
       expect(tracker.length, 1);
       expect(
-        tracker.takeChildren(pluginId: "b", backendParentId: "parent").map((entry) => entry.session.id),
+        _drain(tracker, pluginId: "b", backendSessionId: "parent").map((entry) => entry.backendSessionId),
         ["b-1"],
       );
       expect(tracker.length, 0);
@@ -119,10 +119,10 @@ void main() {
         isTrue,
       );
       tracker.takeRoot(pluginId: "a", backendSessionId: "root");
-      final rootReady = tracker.takeReady(pluginId: "a", backendSessionId: "root");
+      final rootReady = _drain(tracker, pluginId: "a", backendSessionId: "root");
       expect(rootReady, [isA<PendingSessionEvent>()]);
 
-      final childReady = tracker.takeReady(pluginId: "a", backendSessionId: "child");
+      final childReady = _drain(tracker, pluginId: "a", backendSessionId: "child");
       expect(childReady, [isA<PendingTranslationEvent>()]);
       expect(tracker.length, 0);
     });
@@ -192,9 +192,9 @@ void main() {
         ),
       );
 
-      final children = tracker.takeChildren(pluginId: "a", backendParentId: "root");
+      final children = _drain(tracker, pluginId: "a", backendSessionId: "root");
       expect(children.map((event) => event.generation), [2]);
-      expect(tracker.takeTranslations(pluginId: "a", backendSessionId: "child"), isEmpty);
+      expect(_drain(tracker, pluginId: "a", backendSessionId: "child"), isEmpty);
       expect(tracker.length, 0);
     });
 
@@ -212,6 +212,24 @@ void main() {
       );
     });
   });
+}
+
+/// Drains everything the production drain API releases once
+/// [backendSessionId] is bound, in source order.
+List<PendingTrackedEvent> _drain(
+  SessionEventTracker tracker, {
+  required String pluginId,
+  required String backendSessionId,
+}) {
+  final readyBindings = {(pluginId: pluginId, backendSessionId: backendSessionId)};
+  return [
+    for (
+      var event = tracker.takeNextReady(readyBindings: readyBindings);
+      event != null;
+      event = tracker.takeNextReady(readyBindings: readyBindings)
+    )
+      event,
+  ];
 }
 
 PendingSessionEvent _pending({

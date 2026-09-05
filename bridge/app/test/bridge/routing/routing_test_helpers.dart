@@ -553,22 +553,6 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) async {}
-
-  @override
   Future<void> updatePromptDefaults({
     required String sessionId,
     required String? agent,
@@ -1046,37 +1030,6 @@ class FakeSessionRepository({
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) {
-    return _sessionDao.insertSession(
-      sessionId: sessionId,
-      backendSessionId: backendSessionId,
-      projectId: projectId,
-      isDedicated: isDedicated,
-      createdAt: createdAt,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-      lastAgent: agent,
-      lastAgentModel: agentModel,
-      pluginId: pluginId,
-    );
-  }
 
   @override
   Future<void> updatePromptDefaults({

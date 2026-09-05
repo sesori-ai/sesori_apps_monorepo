@@ -339,7 +339,8 @@ class _ConcurrencyHarness._({
   }
 
   Future<void> insertSession({required String sessionId}) {
-    return composition.sessionRepository.insertStoredSession(
+    return insertTestSession(
+      db: database,
       sessionId: sessionId,
       backendSessionId: "backend-$sessionId",
       pluginId: plugin.id,
