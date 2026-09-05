@@ -206,11 +206,6 @@ asked to start working the plan; steps execute in order from step 2.
   variant are retained. Per the user's PR comment the other fourteen shared
   `SesoriSseEvent` variants are deleted too; a newer client already ignores an
   unknown event type from an older bridge, so the compatibility rule holds.
-- The fifteen `BridgeSseEvent` variants are deleted with their identity and
-  wire mapping arms; the remaining union stays exhaustively handled. OpenCode
-  maps the matching `SseEventData` kinds to null at its boundary; Codex no
-  longer forwards `mcpServer/startupStatus/updated` (mapper test asserts no
-  event). `skills/changed` catalog invalidation is retained.
 
 ## Step 10 execution — 2026-09-05
 
