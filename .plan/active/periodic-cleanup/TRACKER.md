@@ -543,6 +543,13 @@ than the plan's size-based expectation, and the audit is the deliverable:
   Execution Runbook and Failure Attribution sections: the boundary order is the
   conformance claim itself, not a prescribed click script, and the attribution
   table is unique to it.
-- No reduction target was imposed and no limitation was invented. This step is
-  therefore far smaller than its estimate; the estimate assumed defects that the
-  audit did not find.
+- Line split: `git diff --numstat 7221f21910..e17690a0df -- 'docs/regression/*.md'`
+  gives 5+/6-. `e17690a0df` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head.
+- That 11-line total is far below PLAN.md's 500-1,200 estimate for this step.
+  The estimate was scoped from guide size before the audit ran; across thirteen
+  guides the audit found three elided source paths, one tombstone clause and one
+  index ordering slip, and nothing else that the plan's own rules permit
+  removing. No reduction target was imposed and no limitation was invented, so
+  the measured total is the honest result rather than a shortfall to be padded.
+  The audit record above is this step's substantive output.
