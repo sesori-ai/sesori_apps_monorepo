@@ -1,26 +1,20 @@
 import "dart:async";
 import "dart:io";
 
-import "package:flutter/foundation.dart" show visibleForTesting;
 import "package:injectable/injectable.dart";
-import "package:path_provider/path_provider.dart" as path_provider;
-import "package:sesori_dart_core/logging.dart";
 
-typedef TemporaryDirectoryLoader = Future<Directory> Function();
+import "../../logging/logging.dart";
+import "../platform/temporary_directory_provider.dart";
 
-/// App-wide cached seam around path_provider's temporary-directory lookup.
+/// App-wide cached seam around the platform's temporary-directory lookup.
 ///
-/// Voice starts warming this client when its dependency graph is constructed as
-/// the composer mounts, so the platform call normally finishes before the
-/// user's first recording gesture.
+/// The first lookup is shared by every caller; a failed lookup is forgotten so
+/// the next caller retries. Voice starts warming this client when its
+/// dependency graph is constructed as the composer mounts, so the platform call
+/// normally finishes before the user's first recording gesture.
 @lazySingleton
-class TemporaryDirectoryClient.forTesting({required final TemporaryDirectoryLoader _load}) {
+class TemporaryDirectoryClient({required final TemporaryDirectoryProvider _provider}) {
   Future<Directory>? _directory;
-
-  new() : this.forTesting(load: path_provider.getTemporaryDirectory);
-
-  @visibleForTesting
-  this;
 
   Future<Directory> get directory {
     final cached = _directory;
@@ -29,7 +23,7 @@ class TemporaryDirectoryClient.forTesting({required final TemporaryDirectoryLoad
     final completer = Completer<Directory>();
     final resolution = completer.future;
     _directory = resolution;
-    Future<Directory>.sync(_load).then(
+    Future<Directory>.sync(_provider.temporaryDirectory).then(
       completer.complete,
       onError: (Object error, StackTrace stackTrace) {
         if (identical(_directory, resolution)) _directory = null;
@@ -39,6 +33,7 @@ class TemporaryDirectoryClient.forTesting({required final TemporaryDirectoryLoad
     return resolution;
   }
 
+  /// Best-effort eager lookup; a failure is logged and retried on next use.
   Future<void> warmUp() async {
     try {
       await directory;

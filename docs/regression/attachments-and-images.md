@@ -54,7 +54,11 @@ content the transcript renders live and after reload.
   account and attachment identities; raw account, bridge, session, and
   attachment identifiers never appear in cache paths. Only thumbnails persist,
   each account scope is pruned to 64 MiB after writes by oldest modification
-  time and then key, and reads do not refresh that order. Missing or corrupt
+  time and then key, and reads do not refresh that order. One shared
+  file-backed storage serves phone and desktop over each shell's temporary
+  directory lookup; writes land atomically through a uniquely named temporary
+  file, and a write interrupted by process death may leave that temporary file
+  behind, which metadata listing ignores. Missing or corrupt
   entries refetch, while logout and account switch fence late writes before
   deleting the retired account scope.
 - Live streaming and history replay converge: same image, same message and part

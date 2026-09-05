@@ -49,6 +49,10 @@ import 'package:sesori_dart_core/src/capabilities/server_connection/connection_s
     as _i369;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
+import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
+    as _i898;
+import 'package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart'
+    as _i682;
 import 'package:sesori_dart_core/src/foundation/models/product_analytics/analytics_runtime_capability.dart'
     as _i684;
 import 'package:sesori_dart_core/src/foundation/platform/analytics_client.dart'
@@ -65,6 +69,8 @@ import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.d
     as _i65;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
+import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart'
+    as _i800;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
 import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
     as _i1037;
@@ -216,6 +222,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
+    gh.lazySingleton<_i682.TemporaryDirectoryClient>(
+      () => _i682.TemporaryDirectoryClient(
+        provider: gh<_i800.TemporaryDirectoryProvider>(),
+      ),
+    );
     gh.lazySingleton<_i107.VoiceRepository>(
       () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
     );
@@ -291,6 +302,11 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i894.AttachmentThumbnailStorage>(
+      () => _i898.FileAttachmentThumbnailStorage(
+        temporaryDirectoryClient: gh<_i682.TemporaryDirectoryClient>(),
+      ),
     );
     gh.lazySingleton<_i369.ConnectionService>(
       () => _i369.ConnectionService(

@@ -1,20 +1,26 @@
 import "dart:io";
 import "dart:typed_data";
 
-import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
-import "package:sesori_desktop/core/platform/desktop_attachment_thumbnail_storage.dart";
-import "package:sesori_desktop/core/platform/desktop_temporary_directory_client.dart";
+import "package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart";
+import "package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart";
+import "package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart";
+import "package:test/test.dart";
+
+class _FixedTemporaryDirectoryProvider({required final Directory _directory}) implements TemporaryDirectoryProvider {
+  @override
+  Future<Directory> temporaryDirectory() async => _directory;
+}
 
 void main() {
   late Directory temporaryDirectory;
-  late DesktopAttachmentThumbnailStorage storage;
+  late FileAttachmentThumbnailStorage storage;
 
   setUp(() async {
-    temporaryDirectory = await Directory.systemTemp.createTemp("sesori-desktop-thumbnail-storage-");
-    storage = DesktopAttachmentThumbnailStorage(
-      temporaryDirectoryClient: DesktopTemporaryDirectoryClient.forTesting(
-        load: () async => temporaryDirectory,
+    temporaryDirectory = await Directory.systemTemp.createTemp("sesori-thumbnail-storage-");
+    storage = FileAttachmentThumbnailStorage(
+      temporaryDirectoryClient: TemporaryDirectoryClient(
+        provider: _FixedTemporaryDirectoryProvider(directory: temporaryDirectory),
       ),
     );
   });
@@ -27,13 +33,18 @@ void main() {
     }
   });
 
+  Directory scopeDirectory(String scope) => Directory("${temporaryDirectory.path}/attachment_thumbnails/$scope");
+
+  Future<bool> hasTemporaryFiles(Directory directory) =>
+      directory.list().any((entity) => entity is File && path.basename(entity.path).startsWith(".tmp-"));
+
   test("writes atomically, reads bytes, and lists file metadata", () async {
     final bytes = Uint8List.fromList(const [1, 2, 3]);
 
     await storage.write(scope: "account", key: "thumbnail", bytes: bytes);
 
     expect(await storage.read(scope: "account", key: "thumbnail"), bytes);
-    final file = File("${temporaryDirectory.path}/attachment_thumbnails/account/thumbnail");
+    final file = File("${scopeDirectory("account").path}/thumbnail");
     expect(file.existsSync(), isTrue);
     final metadata = await storage.listMetadata(scope: "account");
     expect(metadata, hasLength(1));
@@ -49,14 +60,14 @@ void main() {
     expect(await storage.listMetadata(scope: "missing"), isEmpty);
   });
 
-  test("metadata listing removes abandoned temporary files", () async {
-    final directory = Directory("${temporaryDirectory.path}/attachment_thumbnails/account");
+  test("metadata listing ignores temporary files and leaves them in place", () async {
+    final directory = scopeDirectory("account");
     await directory.create(recursive: true);
-    final temporaryFile = File(path.join(directory.path, ".tmp-abandoned"));
+    final temporaryFile = File(path.join(directory.path, ".tmp-interrupted"));
     await temporaryFile.writeAsBytes(const [1, 2, 3]);
 
     expect(await storage.listMetadata(scope: "account"), isEmpty);
-    expect(temporaryFile.existsSync(), isFalse);
+    expect(temporaryFile.existsSync(), isTrue);
   });
 
   test("deletes one entry or its complete scope", () async {
@@ -80,7 +91,7 @@ void main() {
     }
   });
 
-  test("concurrent writes use separate temporary files", () async {
+  test("concurrent writes to the same file use separate temporary files", () async {
     final firstBytes = Uint8List.fromList(const [1]);
     final secondBytes = Uint8List.fromList(const [2]);
     await Future.wait([
@@ -89,13 +100,20 @@ void main() {
     ]);
 
     expect(await storage.read(scope: "account", key: "thumbnail"), anyOf(equals(firstBytes), equals(secondBytes)));
-    final directory = Directory("${temporaryDirectory.path}/attachment_thumbnails/account");
-    expect(
-      await directory
-          .list()
-          .where((entity) => entity is File && path.basename(entity.path).startsWith(".tmp-"))
-          .isEmpty,
-      isTrue,
+    expect(await hasTemporaryFiles(scopeDirectory("account")), isFalse);
+  });
+
+  test("replaces an existing file and cleans its temporary file when replacement fails", () async {
+    await storage.write(scope: "account", key: "thumbnail", bytes: Uint8List.fromList(const [1]));
+    await storage.write(scope: "account", key: "thumbnail", bytes: Uint8List.fromList(const [2, 3]));
+    expect(await storage.read(scope: "account", key: "thumbnail"), Uint8List.fromList(const [2, 3]));
+
+    final target = Directory("${scopeDirectory("account").path}/failing");
+    await target.create();
+    await expectLater(
+      storage.write(scope: "account", key: "failing", bytes: Uint8List.fromList(const [1, 2, 3])),
+      throwsA(isA<FileSystemException>()),
     );
+    expect(await hasTemporaryFiles(target.parent), isFalse);
   });
 }
