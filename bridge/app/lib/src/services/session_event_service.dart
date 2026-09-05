@@ -385,7 +385,7 @@ class SessionEventService({
     // delivery: an unbound one is translated to null instead of parking or
     // dropping the event that merely mentions it.
     final optionalBackendSessionIds = _eventMapper.optionalBackendSessionIds(event: source.event);
-    final bindings = await _sessionRepository.getStoredSessionsByBackendIds(
+    final bindings = await _sessionRepository.getSessionIdsByBackendIds(
       pluginId: source.pluginId,
       backendSessionIds: {...backendSessionIds, ...optionalBackendSessionIds}.toList(growable: false),
     );
@@ -419,12 +419,7 @@ class SessionEventService({
       }
       return null;
     }
-    final translated = _eventMapper.map(
-      event: source.event,
-      sessionIdsByBackendId: {
-        for (final entry in bindings.entries) entry.key: entry.value.id,
-      },
-    );
+    final translated = _eventMapper.map(event: source.event, sessionIdsByBackendId: bindings);
     if (!isCurrentEvent(
       pluginId: source.pluginId,
       generation: source.generation,
