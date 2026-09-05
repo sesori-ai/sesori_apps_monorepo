@@ -42,7 +42,7 @@ class const CodexSessionMapper() {
       projectID: directory,
       directory: directory,
       parentID: parentSessionId,
-      title: record.parentId == null
+      title: parentSessionId == null
           ? record.name
           : const CodexSubAgentNameMapper().map(
               name: record.name,
