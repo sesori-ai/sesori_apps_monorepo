@@ -160,13 +160,23 @@ void main() {
       );
     });
     when(
+      () => client.post<SuccessEmptyResponse>(any(), body: any(named: "body"), fromJson: any(named: "fromJson")),
+    ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+    when(
       () => client.delete<SuccessEmptyResponse>(any(), fromJson: any(named: "fromJson")),
     ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
 
     final started = await api.startAuthentication(pluginId: "codex/dev");
+    final redirected = await api.submitAuthenticationRedirect(
+      pluginId: "codex/dev",
+      request: const PluginAuthenticationRedirectRequest(
+        redirectUrl: "http://127.0.0.1/callback?code=opaque",
+      ),
+    );
     final cancelled = await api.cancelAuthentication(pluginId: "codex/dev");
 
     expect(started, isA<SuccessResponse<PluginAuthenticationChallengeResponse>>());
+    expect(redirected, isA<SuccessResponse<SuccessEmptyResponse>>());
     expect(cancelled, isA<SuccessResponse<SuccessEmptyResponse>>());
     final start = verify(
       () => client.post<PluginAuthenticationChallengeResponse>(
@@ -177,6 +187,17 @@ void main() {
     ).captured;
     expect(start[0], "/plugin/codex%2Fdev/authentication");
     expect(start[1], const SuccessEmptyResponse().toJson());
+    final redirect = verify(
+      () => client.post<SuccessEmptyResponse>(
+        captureAny(),
+        body: captureAny(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
+    ).captured;
+    expect(redirect, [
+      "/plugin/codex%2Fdev/authentication/redirect",
+      const PluginAuthenticationRedirectRequest(redirectUrl: "http://127.0.0.1/callback?code=opaque").toJson(),
+    ]);
     verify(
       () => client.delete<SuccessEmptyResponse>(
         "/plugin/codex%2Fdev/authentication",

@@ -541,8 +541,7 @@ class SessionDetailCubit(
           final derived = _deriveSnapshot(snapshot);
           final latestAssistant = derived.latestAssistant;
 
-          final streamingText = _streamingBuffer.snapshot();
-          _streamingBuffer.clear();
+          _retireStreamingPartsCoveredBy(messages: snapshot.messages);
 
           final refreshedChildSessions = derived.children;
 
@@ -582,7 +581,7 @@ class SessionDetailCubit(
               // refreshed page whenever the session moved on meanwhile.
               olderMessagesCursor: snapshot.olderMessagesCursor,
               isLoadingOlderMessages: false,
-              streamingText: streamingText,
+              streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
@@ -740,8 +739,8 @@ class SessionDetailCubit(
           _onMessageUpdated(info);
         case SesoriMessageRemoved(:final messageID):
           _onMessageRemoved(messageID);
-        case SesoriMessagePartDelta(:final partID, :final delta):
-          _onPartDelta(partId: partID, delta: delta);
+        case SesoriMessagePartDelta(:final messageID, :final partID, :final delta):
+          _onPartDelta(messageId: messageID, partId: partID, delta: delta);
         case SesoriMessagePartUpdated(:final part):
           _onPartUpdated(part);
         case SesoriMessagePartRemoved(:final messageID, :final partID):
@@ -1277,9 +1276,67 @@ class SessionDetailCubit(
   // Streaming text
   // ---------------------------------------------------------------------------
 
-  void _onPartDelta({required String partId, required String delta}) {
-    _streamingBuffer.appendDelta(partId: partId, delta: delta);
+  void _onPartDelta({required String messageId, required String partId, required String delta}) {
+    _streamingBuffer.appendDelta(
+      partId: partId,
+      delta: delta,
+      // A part whose earlier content arrived through a refresh snapshot keeps
+      // streaming from that content; the buffer asks only when it has no
+      // accumulator for the part.
+      baseText: () {
+        final current = state;
+        if (current is! SessionDetailLoaded) return null;
+        for (final message in current.messages) {
+          if (message.info.id != messageId) continue;
+          for (final part in message.parts) {
+            if (part.id == partId) return _streamedText(part);
+          }
+        }
+        return null;
+      },
+    );
   }
+
+  /// Drops streaming accumulators whose full text the incoming transcript
+  /// already contains, so the installed part is shown instead.
+  ///
+  /// History carries no universal completion signal (several backends load
+  /// messages with a null completion time), so coverage is decided by content:
+  /// only a same-ID text/reasoning part that starts or ends with the entire
+  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// replay window, where the accumulator holds only the tail of a part and
+  /// the snapshot is the sole source of its prefix. An absent, shorter or
+  /// divergent part keeps the buffer, which still holds live content the
+  /// transcript has not shown it can replace.
+  void _retireStreamingPartsCoveredBy({required List<MessageWithParts> messages}) {
+    final buffered = _streamingBuffer.snapshot();
+    if (buffered.isEmpty) return;
+    for (final message in messages) {
+      for (final part in message.parts) {
+        final live = buffered[part.id];
+        if (live == null) continue;
+        final installed = _streamedText(part);
+        if (installed == null) continue;
+        if (installed.startsWith(live) || installed.endsWith(live)) _streamingBuffer.removePart(part.id);
+      }
+    }
+  }
+
+  /// The content a streaming delta accumulates for [part], or null for part
+  /// kinds that never stream text.
+  static String? _streamedText(MessagePart part) => switch (part) {
+    MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+    MessagePartTool() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartFile() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => null,
+  };
 
   void _onPartUpdated(MessagePart part) {
     final current = state;

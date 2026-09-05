@@ -8,7 +8,24 @@ final class const ClaudeBackendCatalog({
   required final List<PluginAgent> agents,
   required final PluginProvidersResult providers,
   required final List<PluginCommand> commands,
-});
+
+  /// Picker id per catalog `resolvedModel` (`claude-opus-5[1m]` → `opus[1m]`).
+  required final Map<String, String> modelIdsByResolvedModel,
+}) {
+  /// The picker id behind an API model name, or null when the catalog has no
+  /// such model. The stream reports `claude-opus-5` for both `opus` and
+  /// `opus[1m]`, so a bare match takes the first entry sharing the name.
+  String? catalogModelId({required String apiModel}) {
+    if (modelIdsByResolvedModel[apiModel] case final id?) return id;
+    final bare = _bareModel(apiModel);
+    for (final entry in modelIdsByResolvedModel.entries) {
+      if (_bareModel(entry.key) == bare) return entry.value;
+    }
+    return null;
+  }
+
+  static String _bareModel(String model) => model.replaceFirst(RegExp(r"\[[^\]]*\]$"), "");
+}
 
 /// Maps Claude's backend catalog into the backend-neutral plugin contract.
 final class const ClaudeBackendCatalogRepository() {
@@ -74,6 +91,11 @@ final class const ClaudeBackendCatalogRepository() {
       commands: List.unmodifiable([
         for (final command in dto.commands) ?_command(command),
       ]),
+      modelIdsByResolvedModel: Map.unmodifiable({
+        for (final model in dto.models)
+          if (_model(model) case final mapped? when model.resolvedModel?.trim().isNotEmpty ?? false)
+            model.resolvedModel!.trim(): mapped.id,
+      }),
     );
   }
 

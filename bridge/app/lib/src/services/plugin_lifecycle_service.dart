@@ -389,7 +389,8 @@ class PluginLifecycleService({
     _requireBridgeId();
     final authentication = _activePluginAuthentications[pluginId];
     if (authentication == null) {
-      throw const PluginAuthenticationContinuationConflictException(
+      throw _authenticationContinuationConflict(
+        pluginId: pluginId,
         reason: PluginAuthenticationContinuationConflictReason.noActive,
       );
     }
@@ -402,7 +403,8 @@ class PluginLifecycleService({
       case PluginRuntimeAuthenticationContinuationApplied():
         return;
       case PluginRuntimeAuthenticationContinuationConflict(:final reason):
-        throw PluginAuthenticationContinuationConflictException(
+        throw _authenticationContinuationConflict(
+          pluginId: pluginId,
           reason: switch (reason) {
             PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration =>
               PluginAuthenticationContinuationConflictReason.noActive,
@@ -414,6 +416,25 @@ class PluginLifecycleService({
         );
     }
   }
+
+  PluginAuthenticationContinuationConflictException _authenticationContinuationConflict({
+    required String pluginId,
+    required PluginAuthenticationContinuationConflictReason reason,
+  }) => PluginAuthenticationContinuationConflictException(
+    reason: reason,
+    conflict: PluginAuthenticationConflict(
+      pluginId: pluginId,
+      reasons: [
+        switch (reason) {
+          PluginAuthenticationContinuationConflictReason.noActive => PluginAuthenticationConflictReason.noActive,
+          PluginAuthenticationContinuationConflictReason.wrongKind => PluginAuthenticationConflictReason.wrongKind,
+          PluginAuthenticationContinuationConflictReason.alreadySubmitted =>
+            PluginAuthenticationConflictReason.alreadySubmitted,
+        },
+      ],
+      current: _managementRowForPluginId(pluginId),
+    ),
+  );
 
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     if (_setupById == null) {
@@ -464,9 +485,23 @@ class PluginLifecycleService({
             }
             return terminal;
           }(),
-          PluginAuthenticationBrowserChallenge() => throw StateError(
-            "Browser authentication challenge transport is not available.",
-          ),
+          PluginAuthenticationBrowserChallenge(:final authorizationUri, :final expectedCallbackUri) => () {
+            if (authorizationUri.scheme != "https" ||
+                authorizationUri.host.isEmpty ||
+                !expectedCallbackUri.isAbsolute ||
+                expectedCallbackUri.host.isEmpty) {
+              throw StateError("Plugin authentication returned invalid browser challenge URLs.");
+            }
+            if (!authentication.challenge.isCompleted) {
+              authentication.challenge.complete(
+                PluginAuthenticationChallengeResponse.browser(
+                  authorizationUrl: authorizationUri.toString(),
+                  expectedCallbackUrl: expectedCallbackUri.toString(),
+                ),
+              );
+            }
+            return terminal;
+          }(),
           PluginAuthenticationCompleted() => const PluginAuthenticationProgress.completed(),
           PluginAuthenticationFailed(:final message) => () {
             Log.w('Plugin "$pluginId" authentication failed: $message');
@@ -1480,6 +1515,7 @@ enum PluginAuthenticationContinuationConflictReason() {
 
 class const PluginAuthenticationContinuationConflictException({
   required final PluginAuthenticationContinuationConflictReason reason,
+  required final PluginAuthenticationConflict conflict,
 }) implements Exception;
 
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;

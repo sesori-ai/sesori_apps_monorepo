@@ -467,6 +467,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Security notice. Only continue if you started this login. Verify the website address before entering the code.';
 
   @override
+  String get harnessAuthenticationBrowserInstructions =>
+      'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.';
+
+  @override
+  String get harnessAuthenticationRedirectLabel => 'Redirect URL';
+
+  @override
   String get harnessAuthenticationCodeLabel => 'One-time code';
 
   @override
@@ -504,6 +511,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationUnsupported => 'Update the connected bridge to log in from this device.';
 
   @override
+  String get harnessAuthenticationUpdateRequired => 'Update Sesori to continue this harness login.';
+
+  @override
   String get harnessAuthenticationConflict =>
       'The harness is busy with another management action. Refresh before trying again.';
 
@@ -516,8 +526,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The bridge returned an invalid login website. Check the bridge logs for details.';
 
   @override
-  String get harnessAuthenticationBrowserFailed =>
-      'The secure website could not be opened. Copy the code and try again.';
+  String get harnessAuthenticationInvalidRedirect => 'Paste the full redirect URL from the local callback page.';
+
+  @override
+  String get harnessAuthenticationBrowserFailed => 'The secure website could not be opened. Try again.';
 
   @override
   String get harnessAuthenticationRequestFailed => 'Check your connection and try again.';

@@ -43,6 +43,17 @@ class PluginApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<SuccessEmptyResponse>> submitAuthenticationRedirect({
+    required String pluginId,
+    required PluginAuthenticationRedirectRequest request,
+  }) {
+    return _client.post(
+      "/plugin/${Uri.encodeComponent(pluginId)}/authentication/redirect",
+      body: request.toJson(),
+      fromJson: SuccessEmptyResponse.fromJson,
+    );
+  }
+
   Future<ApiResponse<SuccessEmptyResponse>> cancelAuthentication({required String pluginId}) {
     return _client.delete(
       "/plugin/${Uri.encodeComponent(pluginId)}/authentication",

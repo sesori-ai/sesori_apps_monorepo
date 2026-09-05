@@ -18,6 +18,9 @@ management API, when it reports its runtime as missing or too old.
   `ldd` evidence; macOS and Windows use direct target mapping, and Windows arm64 remains unsupported.
   Pi installs its complete official package tree on all six published targets and keeps the
   `pi`/`pi.exe` entry beside its assets, native modules, and package metadata.
+  Codex installs its canonical package tree on all six targets, preserving
+  `bin/codex` (or `bin/codex.exe`), the adjacent `codex-code-mode-host`, and the
+  package's runtime resources as one checksum-verified unit.
   DeepSeek likewise installs its complete adapter package on macOS, Linux, and
   Windows for arm64 and x64. Its launcher remains beside the bundled Node runtime
   and package tree, so installation never depends on system Node or npm.
@@ -39,7 +42,7 @@ management API, when it reports its runtime as missing or too old.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Installation is a deliberate network-bound action, not a heartbeat. |
-| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install, the rest do not. Automated manifest coverage includes Copilot's exact six platform/architecture mappings and digests. Headless bridge; every supporting production harness. |
+| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install, the rest do not. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
 | L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Client end to end; every harness advertising install. |
 | L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. Live plugin for bridge outcome, client end to end for card state. |
 | L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Packaged or external, since real upstream artifacts are part of the claim. |
@@ -59,7 +62,8 @@ download, verification, or placement. Use a disposable data directory.
 - The request blocking on the download, progress stalling or moving backwards, a busy
   state that never clears, or a duplicate request starting a second install.
 - A completed install leaving the harness disabled, not re-inspected, or unselectable
-  while reporting success, or raw paths and command output reaching the client.
+  while reporting success, a Codex install missing `codex-code-mode-host` or package
+  resources, or raw paths and command output reaching the client.
 
 ## Known Limitations
 

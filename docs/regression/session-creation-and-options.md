@@ -16,6 +16,11 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
+- Claude stamps assistant and error messages with the picker id and effort the
+  turn ran with (`fable` / `high`), never the API name the stream reports
+  (`claude-fable-5-1`), so a reopened session keeps its model and variants
+  selected. Replayed transcripts map the API name through the catalog's
+  `resolvedModel`; a name the catalog does not know stays as recorded.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
   in picker order and may name a default; a model that offers variants always
   has one selected: the agent's declared variant when valid, otherwise the

@@ -194,6 +194,10 @@ state.
   explicit `session_info` names, uses file modification time for activity,
   preserves resolvable parent-session lineage, and never decodes transcript
   messages to derive titles.
+- Tracked ACP children retain their direct parent for navigation and inline
+  tiles while activity rolls up to the owning root. Deleting a tracked parent
+  clears its descendant state; process-scoped tombstones reject late lifecycle
+  starts and transcript updates until the old event source is drained.
 - DeepSeek explicit import enumerates only adapter-owned session headers below
   the isolated plugin state. It derives projects from normalized session `cwd`,
   preserves parent/child metadata, and never scans or imports normal

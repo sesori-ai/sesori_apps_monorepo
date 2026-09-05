@@ -924,7 +924,11 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         discoveryDirectory: temporary.path,
       ),
       approvals: approvals,
-      eventDispatcher: ClaudeEventDispatcher(content: content, tools: ClaudeToolTracker()),
+      eventDispatcher: ClaudeEventDispatcher(
+        content: content,
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      ),
       history: const ClaudeHistoryMapper(content: content),
       eventBuffer: eventBuffer,
       clock: const _NeverIdleClock(),
