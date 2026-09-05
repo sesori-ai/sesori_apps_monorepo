@@ -10,6 +10,15 @@ import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 import "../../utils/lerp_utils.dart";
 
+/// How the sparkle's interior is painted.
+enum PregoAiLoaderFillMode() {
+  /// Follow the designed solid → outline → faded-solid twinkle keyframes.
+  keyframed,
+
+  /// Keep the exact Tabler `sparkle-2` path hollow at every frame.
+  outline,
+}
+
 /// A sparkle marking AI activity, twinkling while [animate] is set.
 ///
 /// The loop runs through three designed keyframes — solid brand, hollow
@@ -37,6 +46,20 @@ class const PregoAiLoader({
 
   /// Whether the sparkle twinkles. When false it rests on the solid keyframe.
   final bool animate = true,
+
+  /// Whether the sparkle follows its fill keyframes or stays outlined.
+  ///
+  /// The outline mode is useful when a parent owns the motion, such as a
+  /// spinner that rotates the Figma icon without changing its drawing style.
+  final PregoAiLoaderFillMode fillMode = .keyframed,
+
+  /// Overrides the sparkle colour for every keyframe.
+  ///
+  /// The default follows the designed brand/outline/disabled colour sequence.
+  /// Components that choreograph the sparkle themselves can instead pass one
+  /// semantic colour and set [animate] to false, then transform the static
+  /// mark from their own shared timeline.
+  final Color? color,
 
   /// Fraction of the loop [0, 1) this sparkle starts at.
   ///
@@ -79,6 +102,8 @@ class _PregoAiLoaderState()
     };
   }
 
+  bool get _usesNativeTwinkle => _nativeTwinkleSupported && widget.fillMode == .keyframed && widget.color == null;
+
   /// Constructed unstarted: whether it may run depends on [MediaQuery], which
   /// cannot be read until `didChangeDependencies`.
   late final AnimationController _loop = AnimationController(vsync: this, duration: _period);
@@ -88,7 +113,7 @@ class _PregoAiLoaderState()
   /// painter is only built for static states — a repeating controller there
   /// would schedule the very frames the native view exists to avoid.
   @override
-  bool get motionEnabled => widget.animate && !_nativeTwinkleSupported;
+  bool get motionEnabled => widget.animate && !_usesNativeTwinkle;
 
   @override
   void startMotion() {
@@ -105,7 +130,11 @@ class _PregoAiLoaderState()
   @override
   void didUpdateWidget(PregoAiLoader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.animate != widget.animate) syncMotion();
+    if (oldWidget.animate != widget.animate ||
+        oldWidget.fillMode != widget.fillMode ||
+        oldWidget.color != widget.color) {
+      syncMotion();
+    }
   }
 
   @override
@@ -129,7 +158,7 @@ class _PregoAiLoaderState()
 
   Widget _twinkle({required BuildContext context, required PregoColors colors}) {
     final twinkling = widget.animate && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled;
-    if (twinkling) {
+    if (twinkling && _usesNativeTwinkle) {
       final nativeView = _nativeTwinkle(colors: colors);
       if (nativeView != null) {
         return SizedBox.square(dimension: widget.size, child: nativeView);
@@ -143,9 +172,10 @@ class _PregoAiLoaderState()
         // A resting sparkle always shows the solid keyframe, so the phase
         // offset only applies while the loop runs.
         phase: motionAllowed ? widget.phase : 0,
-        solid: colors.textPrimaryOnBrand,
-        outline: colors.textPrimary,
-        faded: colors.textDisabled,
+        fillMode: widget.fillMode,
+        solid: widget.color ?? colors.textPrimaryOnBrand,
+        outline: widget.color ?? colors.textPrimary,
+        faded: widget.color ?? colors.textDisabled,
       ),
     );
   }
@@ -191,6 +221,7 @@ class _PregoAiLoaderState()
 class _AiLoaderPainter({
   required Animation<double> repaint,
   required final double phase,
+  required final PregoAiLoaderFillMode fillMode,
 
   /// The three designed keyframes: a solid brand sparkle, a hollow outline, and
   /// a faded solid one.
@@ -249,7 +280,8 @@ class _AiLoaderPainter({
   @override
   void paint(Canvas canvas, Size size) {
     final t = (_progress.value + phase) % 1.0;
-    final (color, fillOpacity, scale) = _keyframe(t);
+    final (color, keyframedFillOpacity, scale) = _keyframe(t);
+    final fillOpacity = fillMode == .outline ? 0.0 : keyframedFillOpacity;
 
     canvas.save();
     // Pulse about the sparkle's centre, then map the source box onto the paint
@@ -313,6 +345,7 @@ class _AiLoaderPainter({
   @override
   bool shouldRepaint(_AiLoaderPainter oldDelegate) {
     return oldDelegate.phase != phase ||
+        oldDelegate.fillMode != fillMode ||
         oldDelegate.solid != solid ||
         oldDelegate.outline != outline ||
         oldDelegate.faded != faded;

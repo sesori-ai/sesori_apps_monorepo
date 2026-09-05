@@ -1955,7 +1955,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get catalogScanPartlyFailedTitle => 'Scan finished';
+  String get catalogScanPartlyFailedTitle => 'Scanning finished';
 
   @override
   String catalogScanPartlyFailedDetail(int failed, int total) {
@@ -1966,7 +1966,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanFailedTitle => 'Scan failed';
 
   @override
-  String get catalogScanFailedDetail => 'Check the bridge log for details';
+  String get catalogScanFailedDetail => 'Check bridge logs';
 
   @override
   String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';

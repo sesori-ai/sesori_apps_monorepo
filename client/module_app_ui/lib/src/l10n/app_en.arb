@@ -1199,7 +1199,7 @@
       }
     }
   },
-  "catalogScanPartlyFailedTitle": "Scan finished",
+  "catalogScanPartlyFailedTitle": "Scanning finished",
   "@catalogScanPartlyFailedTitle": {
     "description": "Title of the scan row when some harnesses scanned successfully and others did not."
   },
@@ -1219,7 +1219,7 @@
   "@catalogScanFailedTitle": {
     "description": "Title of the scan row when no harness could be scanned."
   },
-  "catalogScanFailedDetail": "Check the bridge log for details",
+  "catalogScanFailedDetail": "Check bridge logs",
   "@catalogScanFailedDetail": {
     "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
   },

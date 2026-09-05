@@ -25,31 +25,56 @@ void main() {
       deepRefreshes = 0;
     });
 
-    Widget harness({required bool withDeepRefresh}) {
+    Widget harness({required bool withDeepRefresh, bool disableAnimations = false}) {
       return MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         home: Scaffold(
-          body: CustomScrollView(
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            slivers: [
-              PregoSliverRefreshControl(
-                onRefresh: () async => softRefreshes++,
-                decorate: null,
-                onPulledExtentChanged: null,
-                deepRefresh: withDeepRefresh
-                    ? PregoDeepRefresh(
-                        onDeepRefresh: () => deepRefreshes++,
-                        pullCaption: "Keep pulling to scan all harnesses",
-                      )
-                    : null,
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: disableAnimations),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  PregoSliverRefreshControl(
+                    onRefresh: () async => softRefreshes++,
+                    decorate: null,
+                    onPulledExtentChanged: null,
+                    deepRefresh: withDeepRefresh
+                        ? PregoDeepRefresh(
+                            onDeepRefresh: () => deepRefreshes++,
+                            pullCaption: "Keep pulling to scan all harnesses",
+                          )
+                        : null,
+                  ),
+                  SliverList.list(
+                    children: [
+                      for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i")),
+                    ],
+                  ),
+                ],
               ),
-              SliverList.list(
-                children: [for (var i = 0; i < 20; i++) SizedBox(height: 80, child: Text("row $i"))],
-              ),
-            ],
+            ),
           ),
         ),
       );
+    }
+
+    double captionOpacity(WidgetTester tester) =>
+        tester.widget<Opacity>(find.byKey(const ValueKey("prego-deep-refresh-caption-opacity"))).opacity;
+
+    double captionScale(WidgetTester tester) => tester
+        .widget<Transform>(find.byKey(const ValueKey("prego-deep-refresh-caption-scale")))
+        .transform
+        .getMaxScaleOnAxis();
+
+    Future<TestGesture> pullUntilInvited(WidgetTester tester) async {
+      final gesture = await tester.startGesture(const Offset(200, 100));
+      for (var step = 0; step < 12; step++) {
+        await gesture.moveBy(const Offset(0, 40));
+        await tester.pump();
+        if (find.text("Keep pulling to scan all harnesses").evaluate().isNotEmpty) return gesture;
+      }
+      fail("The gradual pull never revealed the deep-refresh invitation");
     }
 
     Future<void> pullBy(WidgetTester tester, double distance) async {
@@ -131,6 +156,60 @@ void main() {
       // Crossing the threshold hands reporting to the host's own row, so the
       // control says nothing more rather than narrating the same run twice.
       expect(find.text("Keep pulling to scan all harnesses"), findsNothing);
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("the invitation retargets smoothly when the pull reverses", (tester) async {
+      await tester.pumpWidget(harness(withDeepRefresh: true));
+      final gesture = await pullUntilInvited(tester);
+      await tester.pump(const Duration(milliseconds: 90));
+      final beforeReverse = captionOpacity(tester);
+
+      for (var step = 0; step < 8; step++) {
+        await gesture.moveBy(const Offset(0, -40));
+        await tester.pump();
+        final semantics = find.byKey(const ValueKey("prego-deep-refresh-caption-semantics"));
+        if (semantics.evaluate().isNotEmpty && tester.widget<ExcludeSemantics>(semantics).excluding) {
+          break;
+        }
+      }
+      final atReverse = captionOpacity(tester);
+      expect(atReverse, closeTo(beforeReverse, 0.001), reason: "reversal must continue from the visible frame");
+
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(captionOpacity(tester), lessThan(atReverse));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("reduced motion keeps the invitation fade but removes its scale", (tester) async {
+      await tester.pumpWidget(harness(withDeepRefresh: true, disableAnimations: true));
+      final gesture = await pullUntilInvited(tester);
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(captionOpacity(tester), allOf(greaterThan(0), lessThan(1)));
+      expect(captionScale(tester), 1);
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(captionOpacity(tester), 1);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets("iOS Reduce Motion also removes the invitation scale", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        reduceMotion: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await tester.pumpWidget(harness(withDeepRefresh: true));
+      final gesture = await pullUntilInvited(tester);
+
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(captionOpacity(tester), allOf(greaterThan(0), lessThan(1)));
+      expect(captionScale(tester), 1);
 
       await gesture.up();
       await tester.pumpAndSettle();
@@ -399,7 +478,6 @@ void main() {
       completer.complete();
       await tester.pumpAndSettle();
     });
-
 
     // The control reserves an indicator's height from the moment it arms its
     // task and gives it back only when that task is done. A fired pull has

@@ -47,6 +47,24 @@ void main() {
     return centre;
   }
 
+  /// Number of painted pixels in the sparkle's isolated layer.
+  Future<int> sparkleVisiblePixels(WidgetTester tester) async {
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.descendant(of: find.byType(PregoAiLoader), matching: find.byType(RepaintBoundary)),
+    );
+    late int visiblePixels;
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 3);
+      final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!.buffer.asUint8List();
+      visiblePixels = 0;
+      for (var alpha = 3; alpha < pixels.length; alpha += 4) {
+        if (pixels[alpha] > 0) visiblePixels++;
+      }
+      image.dispose();
+    });
+    return visiblePixels;
+  }
+
   /// Where in the loop the sparkle is at its hollowest.
   const outlineKeyframe = Duration(milliseconds: 560);
 
@@ -80,6 +98,30 @@ void main() {
     expect(tester.hasRunningAnimations, isFalse);
     expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets("uses an explicit semantic colour for a caller-owned timeline", (tester) async {
+    const override = Color(0xFF19A974);
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false, color: override)));
+    await tester.pump();
+
+    expect(await sparkleCentre(tester), override);
+  });
+
+  testWidgets("keeps the exact sparkle path hollow in outline mode", (tester) async {
+    await tester.pumpWidget(
+      harness(
+        const PregoAiLoader(
+          animate: false,
+          fillMode: .outline,
+          color: Color(0xFF19A974),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect((await sparkleCentre(tester)).a, 0);
+    expect(await sparkleVisiblePixels(tester), greaterThan(0));
+  });
 
   testWidgets("hollows out mid-twinkle", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
