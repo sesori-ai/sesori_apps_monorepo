@@ -1921,12 +1921,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(events, const [BridgeSseCommandCatalogUpdated()]);
     });
 
-    test("MCP startup changes invalidate MCP tools", () {
+    test("MCP startup changes are not forwarded", () {
       final events = mapper.map(
         const CodexServerNotification(method: "mcpServer/startupStatus/updated", params: {}),
       );
 
-      expect(events, const [BridgeSseMcpToolsChanged()]);
+      expect(events, isEmpty);
     });
 
     test("regression: real bug-log payloads parse cleanly", () {

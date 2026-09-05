@@ -107,10 +107,6 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         messageID: messageID,
         partID: partID,
       ),
-      SsePtyCreated() => const BridgeSsePtyCreated(),
-      SsePtyUpdated() => const BridgeSsePtyUpdated(),
-      SsePtyExited(:final id, :final exitCode) => BridgeSsePtyExited(id: id, exitCode: exitCode),
-      SsePtyDeleted(:final id) => BridgeSsePtyDeleted(id: id),
       // OpenCode's permission.asked payload carries `id` (the permission
       // request id), `permission` (the tool/permission identifier) and the
       // requested `patterns`; there is no separate `description` field, so
@@ -150,26 +146,29 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       SseProjectUpdated() => const BridgeSseProjectUpdated(),
       SseVcsBranchUpdated() => const BridgeSseVcsBranchUpdated(),
       SseFileEdited(:final file) => BridgeSseFileEdited(file: file),
-      SseFileWatcherUpdated(:final file, :final event) => BridgeSseFileWatcherUpdated(file: file, event: event),
-      SseLspUpdated() => const BridgeSseLspUpdated(),
-      SseLspClientDiagnostics(:final serverID, :final path) => BridgeSseLspClientDiagnostics(
-        serverID: serverID,
-        path: path,
-      ),
-      SseMcpToolsChanged() => const BridgeSseMcpToolsChanged(),
-      SseMcpBrowserOpenFailed() => const BridgeSseMcpBrowserOpenFailed(),
-      SseInstallationUpdated(:final version) => BridgeSseInstallationUpdated(version: version),
-      SseInstallationUpdateAvailable(:final version) => BridgeSseInstallationUpdateAvailable(version: version),
-      SseWorkspaceReady(:final name) => BridgeSseWorkspaceReady(name: name),
-      SseWorkspaceFailed(:final message) => BridgeSseWorkspaceFailed(message: message),
+      // Editor and runtime housekeeping no client consumes: PTY, file-watcher,
+      // LSP, MCP, installation, workspace and worktree notifications stop here.
+      SsePtyCreated() ||
+      SsePtyUpdated() ||
+      SsePtyExited() ||
+      SsePtyDeleted() ||
+      SseFileWatcherUpdated() ||
+      SseLspUpdated() ||
+      SseLspClientDiagnostics() ||
+      SseMcpToolsChanged() ||
+      SseMcpBrowserOpenFailed() ||
+      SseInstallationUpdated() ||
+      SseInstallationUpdateAvailable() ||
+      SseWorkspaceReady() ||
+      SseWorkspaceFailed() ||
+      SseWorktreeReady() ||
+      SseWorktreeFailed() => null,
       SseTuiToastShow(:final title, :final message, :final variant) => BridgeSseTuiToastShow(
         sessionID: null,
         title: title,
         message: message,
         variant: variant,
       ),
-      SseWorktreeReady() => const BridgeSseWorktreeReady(),
-      SseWorktreeFailed() => const BridgeSseWorktreeFailed(),
     };
   }
 }

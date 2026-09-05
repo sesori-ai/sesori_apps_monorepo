@@ -94,10 +94,6 @@ class BridgeEventMapper({
             messageID: messageID,
             partID: partID,
           ),
-        BridgeSsePtyCreated() => const SesoriSseEvent.ptyCreated(),
-        BridgeSsePtyUpdated() => const SesoriSseEvent.ptyUpdated(),
-        BridgeSsePtyExited(:final id, :final exitCode) => SesoriSseEvent.ptyExited(id: id, exitCode: exitCode),
-        BridgeSsePtyDeleted(:final id) => SesoriSseEvent.ptyDeleted(id: id),
         BridgeSsePermissionAsked(
           :final requestID,
           :final sessionID,
@@ -153,23 +149,6 @@ class BridgeEventMapper({
         BridgeSseProjectUpdated() => null,
         BridgeSseVcsBranchUpdated() => const SesoriSseEvent.vcsBranchUpdated(),
         BridgeSseFileEdited(:final file) => SesoriSseEvent.fileEdited(file: file),
-        BridgeSseFileWatcherUpdated(:final file, :final event) => SesoriSseEvent.fileWatcherUpdated(
-          file: file,
-          event: event,
-        ),
-        BridgeSseLspUpdated() => const SesoriSseEvent.lspUpdated(),
-        BridgeSseLspClientDiagnostics(:final serverID, :final path) => SesoriSseEvent.lspClientDiagnostics(
-          serverID: serverID,
-          path: path,
-        ),
-        BridgeSseMcpToolsChanged() => const SesoriSseEvent.mcpToolsChanged(),
-        BridgeSseMcpBrowserOpenFailed() => const SesoriSseEvent.mcpBrowserOpenFailed(),
-        BridgeSseInstallationUpdated(:final version) => SesoriSseEvent.installationUpdated(version: version),
-        BridgeSseInstallationUpdateAvailable(:final version) => SesoriSseEvent.installationUpdateAvailable(
-          version: version,
-        ),
-        BridgeSseWorkspaceReady(:final name) => SesoriSseEvent.workspaceReady(name: name),
-        BridgeSseWorkspaceFailed(:final message) => SesoriSseEvent.workspaceFailed(message: message),
         BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) =>
           SesoriSseEvent.tuiToastShow(
             sessionID: sessionID,
@@ -177,8 +156,6 @@ class BridgeEventMapper({
             message: message,
             variant: variant,
           ),
-        BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
-        BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
       };
     } catch (e, st) {
       Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");

@@ -16,7 +16,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Merged | [#1309](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1309) |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Merged | [#1311](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1311) |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | In review | [#1313](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1313) |
-| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Proposed | — |
+| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | In progress (local, awaiting step 8 merge) | — |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
@@ -187,3 +187,15 @@ asked to start working the plan; steps execute in order from step 2.
   `getAllProjects()`. Unused `getActivity` deleted. Empty inputs return empty at
   the DAO. Real SQLite tests cover plugin isolation with a shared backend id,
   missing ids, empty input and timestamp values.
+
+## Step 9 execution — 2026-09-05
+
+- Consumer check before deletion: no client revision in Git history ever
+  destructured, case-handled or type-checked any of the fifteen `Sesori*`
+  variants; every public release through v1.8.2 routes them to no-op lists.
+  Public shared decoders and client ignore lists stay for released bridges.
+- The fifteen `BridgeSseEvent` variants are deleted with their identity and
+  wire mapping arms; the remaining union stays exhaustively handled. OpenCode
+  maps the matching `SseEventData` kinds to null at its boundary; Codex no
+  longer forwards `mcpServer/startupStatus/updated` (mapper test asserts no
+  event). `skills/changed` catalog invalidation is retained.
