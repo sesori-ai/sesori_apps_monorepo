@@ -17,8 +17,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Merged | [#1311](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1311) |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Merged | [#1313](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1313) |
 | 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Merged | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
-| 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | In review | [#1318](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1318) |
-| 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
+| 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Merged | [#1318](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1318) |
+| 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | In review | [#1320](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1320) |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Proposed | — |
 | 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Proposed | — |
@@ -221,3 +221,13 @@ asked to start working the plan; steps execute in order from step 2.
   `client/module_core/test/foundation/io/` with a required-provider fake and no
   test-only constructor; the storage suite moved beside it. Shell DI tests
   assert only the adapter binding.
+
+## Step 11 execution — 2026-09-05
+
+- `client/module_core/lib/src/cubits/shared/optimistic_rename_tracker.dart`
+  owns the pending-token/visible/confirmed algorithm; `SessionListCubit` and
+  `ProjectListCubit` instantiate one per entity in place of their private
+  copies and keep entity maps, repository calls, refresh and projection. Unit
+  tests cover newest-success confirmation, fallback after a failed visible
+  rename, newer-confirmation precedence and a null original; both cubit rename
+  suites pass unchanged.
