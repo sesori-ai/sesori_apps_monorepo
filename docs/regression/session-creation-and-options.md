@@ -17,9 +17,13 @@ variant, and worktree mode, and creating the session with its first input.
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
-  default-first, and a model that offers variants always has one selected: the
-  agent's declared variant when valid, otherwise the first available. Selecting a
-  variant is therefore a switch between named levels, never a reset to unset.
+  in picker order and may name a default; a model that offers variants always
+  has one selected: the agent's declared variant when valid, otherwise the
+  model's declared default, otherwise the first listed. Selecting a variant is
+  therefore a switch between named levels, never a reset to unset.
+- Claude lists models and effort variants strongest first (Fable, Opus,
+  Sonnet, Haiku; `max` down to `low`), and the model picker keeps a plugin's
+  declared order for models without a release date.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a

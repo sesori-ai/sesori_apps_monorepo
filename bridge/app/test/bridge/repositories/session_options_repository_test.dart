@@ -415,6 +415,7 @@ SessionOptionsResponse _response({required String marker}) {
               providerID: "provider-1",
               name: "Model $marker",
               variants: const ["high"],
+              defaultVariant: null,
               family: "family-$marker",
               releaseDate: DateTime.utc(2026, 1, 2),
             ),

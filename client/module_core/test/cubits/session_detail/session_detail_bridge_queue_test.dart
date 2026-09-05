@@ -68,6 +68,7 @@ ProviderListResponse _providerDataWithVariants(List<String> variants) => Provide
           providerID: "anthropic",
           name: "Opus",
           variants: variants,
+          defaultVariant: null,
           family: null,
           releaseDate: null,
         ),
@@ -274,7 +275,9 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).selectedAgent, "Default");
 
       globalEvents.add(
-        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+        SseEvent(
+          data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1"),
+        ),
       );
       await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent != "Default");
 
@@ -314,6 +317,7 @@ void main() {
                     providerID: "anthropic",
                     name: "Opus",
                     variants: [],
+                    defaultVariant: null,
                     family: null,
                     releaseDate: null,
                   ),
@@ -322,6 +326,7 @@ void main() {
                     providerID: "anthropic",
                     name: "Haiku",
                     variants: [],
+                    defaultVariant: null,
                     family: null,
                     releaseDate: null,
                   ),
@@ -360,6 +365,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Opus",
                   variants: [],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),
@@ -371,7 +377,9 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).selectedAgentModel?.modelID, "opus");
 
       globalEvents.add(
-        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+        SseEvent(
+          data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1"),
+        ),
       );
       await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent == "Agent");
 
@@ -386,7 +394,9 @@ void main() {
       );
 
       globalEvents.add(
-        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-2")),
+        SseEvent(
+          data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-2"),
+        ),
       );
       await Future<void>.delayed(Duration.zero);
 
@@ -556,7 +566,9 @@ void main() {
       await _awaitCondition(() => sendCount == 1);
       // The commit behind the still-pending forced refresh reaches this client.
       globalEvents.add(
-        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1")),
+        SseEvent(
+          data: const SesoriSessionOptionsUpdated(pluginId: "claude", projectId: "project-1"),
+        ),
       );
       await _awaitCondition(() => (cubit.state as SessionDetailLoaded).selectedAgent == "Agent");
       forcedGate.complete(_freshClaudeOptions());

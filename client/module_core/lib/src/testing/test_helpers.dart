@@ -786,6 +786,7 @@ ProviderListResponse testProviderListResponse() => const ProviderListResponse(
           providerID: "anthropic",
           name: "Claude 3.5 Sonnet",
           variants: ["xhigh"],
+          defaultVariant: null,
           family: null,
           releaseDate: null,
         ),

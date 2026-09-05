@@ -16,6 +16,16 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Option pickers
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+Other plugins still declare variants default-first (the client falls back to
+the first listed variant when no default is declared) and models in catalog
+order, which the picker sorts by release date where one exists.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

@@ -158,16 +158,14 @@ void main() {
         ),
       );
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.legacy,
-                mode: NewSessionOptionsLoadMode.forcedRefresh,
-                restoredSelection: null,
-                previousOptions: previous,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.legacy,
+        mode: NewSessionOptionsLoadMode.forcedRefresh,
+        restoredSelection: null,
+        previousOptions: previous,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.agents.single.name, "new-agent");
       expect(result.options.providers, previousProviders);
@@ -262,20 +260,18 @@ void main() {
         ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.aggregate,
-                mode: NewSessionOptionsLoadMode.dynamicLoad,
-                restoredSelection: const NewSessionSelectionIntent(
-                  agentName: "review",
-                  model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
-                  variant: NewSessionVariantIntent(id: "low"),
-                ),
-                previousOptions: null,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: const NewSessionSelectionIntent(
+          agentName: "review",
+          model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
+          variant: NewSessionVariantIntent(id: "low"),
+        ),
+        previousOptions: null,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.agents.map((agent) => agent.name), ["build", "review"]);
       expect(result.options.selectedAgent, "review");
@@ -287,7 +283,10 @@ void main() {
 
     test("restores last successful creation defaults with deliberate dimensions taking precedence", () async {
       final catalog = SessionOptionsCatalog(
-        agents: [_agent(name: "build"), _agent(name: "review")],
+        agents: [
+          _agent(name: "build"),
+          _agent(name: "review"),
+        ],
         providers: _providers().items,
         providersConnectedOnly: false,
         commands: const [],
@@ -304,20 +303,18 @@ void main() {
         ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.aggregate,
-                mode: NewSessionOptionsLoadMode.dynamicLoad,
-                restoredSelection: const NewSessionSelectionIntent(
-                  agentName: "build",
-                  model: null,
-                  variant: null,
-                ),
-                previousOptions: null,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: const NewSessionSelectionIntent(
+          agentName: "build",
+          model: null,
+          variant: null,
+        ),
+        previousOptions: null,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.selectedAgent, "build");
       expect(result.options.selectedAgentModel?.modelID, "model-a");
@@ -343,16 +340,14 @@ void main() {
         ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.aggregate,
-                mode: NewSessionOptionsLoadMode.dynamicLoad,
-                restoredSelection: null,
-                previousOptions: null,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: null,
+        previousOptions: null,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.selectedAgent, "build");
       expect(result.options.selectedAgentModel?.providerID, "provider-a");
@@ -381,20 +376,18 @@ void main() {
         ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.aggregate,
-                mode: NewSessionOptionsLoadMode.dynamicLoad,
-                restoredSelection: const NewSessionSelectionIntent(
-                  agentName: "missing",
-                  model: NewSessionModelIntent(providerId: "provider-a", modelId: "unavailable"),
-                  variant: NewSessionVariantIntent(id: "stale"),
-                ),
-                previousOptions: null,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: const NewSessionSelectionIntent(
+          agentName: "missing",
+          model: NewSessionModelIntent(providerId: "provider-a", modelId: "unavailable"),
+          variant: NewSessionVariantIntent(id: "stale"),
+        ),
+        previousOptions: null,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.selectedAgent, "build");
       expect(result.options.selectedAgentModel?.providerID, "provider-a");
@@ -428,20 +421,18 @@ void main() {
         ),
       ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
 
-      final result =
-          await service.load(
-                projectId: "project-1",
-                pluginId: "plugin-1",
-                source: NewSessionOptionsSource.aggregate,
-                mode: NewSessionOptionsLoadMode.dynamicLoad,
-                restoredSelection: const NewSessionSelectionIntent(
-                  agentName: "build",
-                  model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
-                  variant: NewSessionVariantIntent(id: "removed"),
-                ),
-                previousOptions: previous,
-              )
-              as NewSessionOptionsLoaded;
+      final result = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.dynamicLoad,
+        restoredSelection: const NewSessionSelectionIntent(
+          agentName: "build",
+          model: NewSessionModelIntent(providerId: "provider-a", modelId: "model-a"),
+          variant: NewSessionVariantIntent(id: "removed"),
+        ),
+        previousOptions: previous,
+      ) as NewSessionOptionsLoaded;
 
       expect(result.options.selectedAgentModel?.variant, "high");
       expect(identical(result.options.stagedCommand, refreshedCommand), isTrue);
@@ -588,6 +579,7 @@ ProviderModel _model({
   providerID: providerId,
   name: id,
   variants: variants,
+  defaultVariant: null,
   family: null,
   isAvailable: isAvailable,
   releaseDate: null,

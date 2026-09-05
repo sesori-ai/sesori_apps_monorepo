@@ -28,8 +28,8 @@ class const ModelPickerSection({
   required final String providerID,
   required final String providerName,
 
-  /// Available models sorted by release date (newest first, undated last),
-  /// ties broken by name.
+  /// Available models sorted by release date (newest first, ties by name),
+  /// followed by undated models in the order the plugin declared them.
   required final List<ModelPickerModelEntry> models,
 });
 
@@ -65,17 +65,21 @@ class const ModelPickerSectionBuilder() {
 
     final sections = <ModelPickerSection>[];
     for (final provider in sortedProviders) {
-      final models = provider.models.values.where((m) => m.isAvailable).toList()
-        ..sort((a, b) {
-          final aDate = a.releaseDate;
-          final bDate = b.releaseDate;
-          if (aDate != bDate) {
-            if (bDate == null) return -1;
-            if (aDate == null) return 1;
-            return bDate.compareTo(aDate);
-          }
-          return a.name.compareTo(b.name);
-        });
+      final available = provider.models.values.where((m) => m.isAvailable).toList();
+      // Undated models keep the plugin's declared order: a plugin without
+      // release dates ranks its catalog itself (Claude lists strongest first).
+      final dated =
+          [
+            for (final m in available)
+              if (m.releaseDate case final date?) (date: date, model: m),
+          ]..sort((a, b) {
+            final byDate = b.date.compareTo(a.date);
+            return byDate != 0 ? byDate : a.model.name.compareTo(b.model.name);
+          });
+      final models = [
+        ...dated.map((entry) => entry.model),
+        ...available.where((m) => m.releaseDate == null),
+      ];
       if (models.isEmpty) continue;
 
       final visibleIds = _defaultVisibleIds(

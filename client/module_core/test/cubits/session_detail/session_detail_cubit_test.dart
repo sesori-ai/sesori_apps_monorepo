@@ -845,6 +845,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: ["fast", "slow"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),

@@ -48,9 +48,11 @@ void main() {
       expect(provider.name, "Anthropic");
       expect(provider.authType, PluginProviderAuthType.oauth);
       expect(provider.defaultModelID, "opus[1m]");
-      expect(provider.models.map((model) => model.id), ["haiku", "opus[1m]"]);
-      expect(provider.models.first.variants, isEmpty);
-      expect(provider.models.last.variants, ["high", "low", "medium", "xhigh", "max"]);
+      expect(provider.models.map((model) => model.id), ["opus[1m]", "haiku"]);
+      expect(provider.models.first.variants, ["max", "xhigh", "high", "medium", "low"]);
+      expect(provider.models.first.defaultVariant, "high");
+      expect(provider.models.last.variants, isEmpty);
+      expect(provider.models.last.defaultVariant, isNull);
       expect(
         catalog.commands,
         const [

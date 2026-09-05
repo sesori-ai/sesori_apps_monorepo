@@ -15,12 +15,14 @@ ProviderModel _model({
   required String id,
   required String providerID,
   List<String> variants = const [],
+  String? defaultVariant,
   bool isAvailable = true,
 }) => ProviderModel(
   id: id,
   providerID: providerID,
   name: id,
   variants: variants,
+  defaultVariant: defaultVariant,
   family: null,
   isAvailable: isAvailable,
   releaseDate: null,
@@ -98,7 +100,10 @@ void main() {
   group("SessionSelectionCalculator staged command", () {
     test("a command the backend stopped offering is dropped", () {
       expect(
-        _calculator.resolveStagedCommand(commands: const [], staged: testCommandInfo(name: "review")),
+        _calculator.resolveStagedCommand(
+          commands: const [],
+          staged: testCommandInfo(name: "review"),
+        ),
         isNull,
       );
     });
@@ -140,7 +145,10 @@ void main() {
         agents: agents,
         providers: providers,
         agentNameCandidates: [null, "plan"],
-        modelCandidates: [null, const AgentModel(providerID: "anthropic", modelID: "opus", variant: "low")],
+        modelCandidates: [
+          null,
+          const AgentModel(providerID: "anthropic", modelID: "opus", variant: "low"),
+        ],
         retainedModel: null,
       );
 
@@ -148,6 +156,34 @@ void main() {
       expect(resolved.model?.modelID, "opus");
       expect(resolved.model?.variant, "low");
       expect(resolved.availableVariants.map((variant) => variant.id), ["high", "low"]);
+    });
+
+    test("an unset variant resolves to the model's declared default, not the first listed", () {
+      final ranked = [
+        _provider(
+          id: "anthropic",
+          models: {
+            "opus": _model(
+              id: "opus",
+              providerID: "anthropic",
+              variants: ["max", "high", "low"],
+              defaultVariant: "high",
+            ),
+          },
+          defaultModelID: "opus",
+        ),
+      ];
+
+      final resolved = _calculator.reconcile(
+        agents: agents,
+        providers: ranked,
+        agentNameCandidates: const [],
+        modelCandidates: const [AgentModel(providerID: "anthropic", modelID: "opus", variant: null)],
+        retainedModel: null,
+      );
+
+      expect(resolved.model?.variant, "high");
+      expect(_calculator.defaultVariant(providers: ranked, model: resolved.model), "high");
     });
 
     test("a withdrawn agent falls back to the first selectable one", () {
