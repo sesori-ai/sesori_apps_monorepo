@@ -1,8 +1,8 @@
 import "dart:async";
 
 import "package:injectable/injectable.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "../../core/platform/temporary_directory_client.dart";
 import "audio_format_config.dart";
 
 @lazySingleton

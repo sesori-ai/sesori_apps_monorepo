@@ -16,8 +16,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Merged | [#1309](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1309) |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Merged | [#1311](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1311) |
 | 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Merged | [#1313](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1313) |
-| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | In review | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
-| 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
+| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Merged | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
+| 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | In review | [#1318](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1318) |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Proposed | — |
@@ -206,3 +206,18 @@ asked to start working the plan; steps execute in order from step 2.
   variant are retained. Per the user's PR comment the other fourteen shared
   `SesoriSseEvent` variants are deleted too; a newer client already ignores an
   unknown event type from an older bridge, so the compatibility rule holds.
+
+## Step 10 execution — 2026-09-05
+
+- Core owns `FileAttachmentThumbnailStorage` and `TemporaryDirectoryClient`
+  under `foundation/io/`, registered once by core DI; the required platform
+  capability `TemporaryDirectoryProvider` lives in `foundation/platform/`. Each
+  shell binds one thin path_provider adapter (`@LazySingleton(as:)` on the
+  adapter class, no RegisterModule getter needed). The mobile recording
+  provider stays lazy and consumes core's client.
+- Deleted both shell storage/client copies, their static active-path
+  registries and opportunistic temp-file sweeping; metadata reads skip
+  temporary files. The client suite moved to
+  `client/module_core/test/foundation/io/` with a required-provider fake and no
+  test-only constructor; the storage suite moved beside it. Shell DI tests
+  assert only the adapter binding.

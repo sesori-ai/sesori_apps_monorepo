@@ -3,21 +3,25 @@ import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
-import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../platform/attachment_thumbnail_storage.dart";
 import "temporary_directory_client.dart";
 
+/// App-private file cache for validated message-image thumbnails.
+///
+/// Lives under the platform's temporary directory, which path_provider maps to
+/// the app's backup-excluded cache location on every shell. Writes are atomic:
+/// bytes land in a uniquely named temporary file that is renamed over the
+/// target. A write interrupted by process death can leave that temporary file
+/// behind; metadata reads ignore it and the OS owns the cache directory, so no
+/// sweep is attempted.
 @LazySingleton(as: AttachmentThumbnailStorage)
-class FlutterAttachmentThumbnailStorage({
-  required final TemporaryDirectoryClient temporaryDirectoryClient,
+class FileAttachmentThumbnailStorage({
+  required final TemporaryDirectoryClient _temporaryDirectoryClient,
 }) implements AttachmentThumbnailStorage {
-  // path_provider maps this temporary root to the platform's app-private,
-  // backup-excluded cache location.
   static const _rootName = "attachment_thumbnails";
+  static const _temporaryPrefix = ".tmp-";
   static var _temporaryFileSequence = 0;
-  static final Set<String> _activeTemporaryPaths = {};
-
-  final TemporaryDirectoryClient _temporaryDirectoryClient = temporaryDirectoryClient;
 
   @override
   Future<Uint8List?> read({required String scope, required String key}) async {
@@ -37,15 +41,11 @@ class FlutterAttachmentThumbnailStorage({
   }) async {
     final file = await _file(scope: scope, key: key);
     await file.parent.create(recursive: true);
-    final temporaryFile = File(
-      path.join(file.parent.path, ".tmp-${_temporaryFileSequence++}"),
-    );
-    _activeTemporaryPaths.add(temporaryFile.path);
+    final temporaryFile = File(path.join(file.parent.path, "$_temporaryPrefix${_temporaryFileSequence++}"));
     try {
       await temporaryFile.writeAsBytes(bytes, flush: true);
       await temporaryFile.rename(file.path);
     } finally {
-      _activeTemporaryPaths.remove(temporaryFile.path);
       try {
         await temporaryFile.delete();
       } on PathNotFoundException {
@@ -60,19 +60,7 @@ class FlutterAttachmentThumbnailStorage({
     try {
       final metadata = <AttachmentThumbnailMetadata>[];
       await for (final entity in directory.list()) {
-        if (entity is! File) continue;
-        if (path.basename(entity.path).startsWith(".tmp-")) {
-          if (!_activeTemporaryPaths.contains(entity.path)) {
-            try {
-              await entity.delete();
-            } on PathNotFoundException {
-              // Another listing or write cleanup already removed it.
-            } on Object catch (cause, stackTrace) {
-              logw("Failed to delete abandoned message thumbnail temporary file", cause, stackTrace);
-            }
-          }
-          continue;
-        }
+        if (entity is! File || path.basename(entity.path).startsWith(_temporaryPrefix)) continue;
         late final FileStat stat;
         try {
           // Keep filesystem work asynchronous on the UI isolate.

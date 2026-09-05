@@ -61,8 +61,6 @@ import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
-import 'package:sesori_mobile/core/platform/flutter_attachment_thumbnail_storage.dart'
-    as _i963;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
     as _i111;
 import 'package:sesori_mobile/core/platform/flutter_image_clipboard.dart'
@@ -86,6 +84,8 @@ import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
 import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
     as _i186;
 import 'package:sesori_mobile/core/platform/pasteboard_client.dart' as _i748;
+import 'package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart'
+    as _i437;
 import 'package:sesori_mobile/core/platform/share_plus_client.dart' as _i1019;
 import 'package:sesori_mobile/core/platform/singular/singular_attribution_client.dart'
     as _i681;
@@ -93,8 +93,6 @@ import 'package:sesori_mobile/core/platform/singular/singular_static_adapter.dar
     as _i776;
 import 'package:sesori_mobile/core/platform/singular_attribution_startup.dart'
     as _i853;
-import 'package:sesori_mobile/core/platform/temporary_directory_client.dart'
-    as _i908;
 import 'package:sesori_mobile/core/routing/deep_link_service.dart' as _i902;
 import 'package:sesori_mobile/core/routing/deep_link_source.dart' as _i919;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -143,15 +141,21 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i776.SingularStaticAdapter>(
       () => _i776.SingularStaticAdapter(),
     );
-    gh.lazySingleton<_i908.TemporaryDirectoryClient>(
-      () => _i908.TemporaryDirectoryClient(),
-    );
     gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
       () => _i363.FlutterOAuthDeviceDescriptorProvider(
         gh<_i833.DeviceInfoPlugin>(),
       ),
     );
+    gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
+      () => _i437.PathProviderTemporaryDirectoryProvider(),
+    );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
+    gh.lazySingleton<_i62.RecordingFileProvider>(
+      () => _i62.RecordingFileProvider(
+        audioFormat: gh<_i430.AudioFormatConfig>(),
+        temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
+      ),
+    );
     gh.singleton<_i948.RouteSource>(() => _i597.MobileGoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i636.FlutterLocalNotificationClient(
@@ -234,9 +238,12 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
-    gh.lazySingleton<_i948.AttachmentThumbnailStorage>(
-      () => _i963.FlutterAttachmentThumbnailStorage(
-        temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
+    gh.lazySingleton<_i948.VoiceCapture>(
+      () => _i698.FlutterVoiceCapture(
+        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
+        fileProvider: gh<_i62.RecordingFileProvider>(),
+        wakeLockService: gh<_i511.WakeLockService>(),
+        audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
     );
     gh.lazySingleton<_i553.FailureReporter>(
@@ -268,12 +275,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
-    gh.lazySingleton<_i62.RecordingFileProvider>(
-      () => _i62.RecordingFileProvider(
-        audioFormat: gh<_i430.AudioFormatConfig>(),
-        temporaryDirectoryClient: gh<_i908.TemporaryDirectoryClient>(),
-      ),
-    );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i274.FlutterImageClipboard(
         pasteboardClient: gh<_i748.PasteboardClient>(),
@@ -302,14 +303,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i681.SingularAttributionClient(
         startup: gh<_i853.SingularAttributionStartup>(),
         singular: gh<_i776.SingularStaticAdapter>(),
-      ),
-    );
-    gh.lazySingleton<_i948.VoiceCapture>(
-      () => _i698.FlutterVoiceCapture(
-        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
-        fileProvider: gh<_i62.RecordingFileProvider>(),
-        wakeLockService: gh<_i511.WakeLockService>(),
-        audioFormat: gh<_i430.AudioFormatConfig>(),
       ),
     );
     return this;

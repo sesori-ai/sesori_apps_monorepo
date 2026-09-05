@@ -14,6 +14,7 @@ import "package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cut
 import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
 import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
+import "package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
 import "package:sesori_mobile/core/platform/singular/singular_static_adapter.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -114,7 +115,8 @@ void main() {
     // Resolved from the settings and profile screens on every platform, which
     // is why PushMessagingSource needs a disabled-environment binding at all.
     expect(getIt<NotificationRegistrationService>(), isA<NotificationRegistrationService>());
-    expect(getIt.isRegistered<AttachmentThumbnailStorage>(), isTrue);
+    expect(getIt<TemporaryDirectoryProvider>(), isA<PathProviderTemporaryDirectoryProvider>());
+    expect(getIt<AttachmentThumbnailStorage>(), isA<FileAttachmentThumbnailStorage>());
     expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
     expect(getIt<AnalyticsRuntimeCapability>().isEnabled, isFalse);
   });
