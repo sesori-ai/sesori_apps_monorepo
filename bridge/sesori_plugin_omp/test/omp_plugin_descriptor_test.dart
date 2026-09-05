@@ -118,10 +118,11 @@ void main() {
       expect(processes.executables, ["omp", contains("/state/omp/17.3.8/omp")]);
     });
 
-    test("reports ready from the runtime probe without an ACP or auth probe", () async {
+    test("reports ready from the runtime and model listing probes without an ACP probe", () async {
       final processes = _Processes(
         outputs: const [
           _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+          _Output(stdout: '{"models":[{"provider":"deepseek","id":"deepseek-v4-flash"}]}', exitCode: 0),
         ],
       );
       final result = await OmpPluginDescriptor.production().inspectSetup(
@@ -134,15 +135,66 @@ void main() {
       expect(result, const PluginSetupReady.versioned(runtimeVersion: "17.3.8"));
       expect(processes.arguments, [
         const ["--version"],
+        const ["models", "--json"],
       ]);
-      expect(processes.environments.single, const {"OMP_PROFILE": "work"});
+      expect(processes.environments, everyElement(const {"OMP_PROFILE": "work"}));
+    });
+
+    test("reports an empty model listing as authentication required", () async {
+      final result = await OmpPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+            _Output(stdout: '{"models":[]}', exitCode: 0),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(
+        result,
+        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "17.3.8"),
+      );
+    });
+
+    test("leaves setup ready when the model listing is unparsable or fails", () async {
+      final unparsable = await OmpPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+            _Output(stdout: "error: unknown flag --json\n", exitCode: 0),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+      final failed = await OmpPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+            _Output(stdout: '{"models":[]}', exitCode: 2),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(unparsable, const PluginSetupReady.versioned(runtimeVersion: "17.3.8"));
+      expect(failed, const PluginSetupReady.versioned(runtimeVersion: "17.3.8"));
     });
 
     test("uses the shared token-based version parsing", () async {
       final result = await OmpPluginDescriptor.production().inspectSetup(
         config: config,
         processes: _Processes(
-          outputs: const [_Output(stdout: "Oh My Pi omp/17.3.8 stable\n", exitCode: 0)],
+          outputs: const [
+            _Output(stdout: "Oh My Pi omp/17.3.8 stable\n", exitCode: 0),
+            _Output(stdout: '{"models":[{"id":"x"}]}', exitCode: 0),
+          ],
         ),
         environment: const {},
         stateDirectory: "/state",

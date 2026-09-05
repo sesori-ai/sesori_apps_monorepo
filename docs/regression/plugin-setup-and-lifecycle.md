@@ -57,8 +57,11 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Grok Build is a direct-CLI ACP v1 harness with no managed install. An explicit
   `--grok-bin` path is authoritative; otherwise setup uses `grok` from PATH and
   requires version `1.0.5` or newer. Setup inspection and pre-start resolution
-  run only a bounded `--version` probe: they never read credentials, invoke
-  login, create a session, or start ACP. Startup launches exactly
+  run bounded `--version` and `models` probes: they never read credentials,
+  invoke login, create a session, or start ACP. A listing that reports not
+  being authenticated is authentication-required carrying the resolved
+  version; any other wording leaves setup ready, and a listing that cannot be
+  run is unknown. Startup launches exactly
   `--no-auto-update agent --no-leader stdio` through the host process seam and
   accepts only advertised headless authentication. Interactive-only
   authentication becomes local-login-required without invoking it. An
@@ -79,6 +82,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   probe never starts a backend, opens an RPC session, or invokes login, so a
   managed install with no provider credentials stops being reported as ready
   and stops offering start.
+- OMP setup inspection follows its version probe with a bounded `models --json`
+  run in the same environment. Only a listing that parses and reports an empty
+  model array is authentication-required; an unparsable or non-zero listing
+  leaves setup ready, because supported releases predate that flag and a
+  working older install must not regress. A listing that cannot be run at all
+  is unknown.
 - Backend `tui.toast.show` SSE events render through the backend-neutral toast
   surface, presented with the design-system popup alert on the root navigator's
   overlay. Session-attributed events appear only while that session's detail or
