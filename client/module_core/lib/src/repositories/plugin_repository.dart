@@ -35,13 +35,100 @@ class PluginRepository({required final PluginApi _api}) {
 
   Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
     return switch (await _api.startAuthentication(pluginId: pluginId)) {
-      SuccessResponse(:final data) => PluginAuthenticationStartResult.challenge(challenge: data),
+      SuccessResponse(:final data) => _mapAuthenticationChallenge(response: data),
       ErrorResponse(:final error) => PluginAuthenticationStartResult.failed(
         failure: _mapAuthenticationFailure(error: error),
       ),
     };
   }
 
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) async {
+    final response = await _api.submitAuthenticationRedirect(
+      pluginId: pluginId,
+      request: PluginAuthenticationRedirectRequest(redirectUrl: redirectUri.toString()),
+    );
+    return switch (response) {
+      SuccessResponse() => const PluginAuthenticationContinuationResult.applied(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 400)) =>
+        const PluginAuthenticationContinuationResult.invalidRedirect(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) =>
+        const PluginAuthenticationContinuationResult.notFound(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final body)) =>
+        _mapAuthenticationContinuationConflict(body: body),
+      ErrorResponse(
+        error: JsonParsingError() ||
+            EmptyResponseError() ||
+            DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()),
+      ) =>
+        const PluginAuthenticationContinuationResult.uncertain(),
+      ErrorResponse(:final error) => PluginAuthenticationContinuationResult.request(error: error),
+    };
+  }
+
+  PluginAuthenticationStartResult _mapAuthenticationChallenge({
+    required PluginAuthenticationChallengeResponse response,
+  }) {
+    final challenge = switch (response) {
+      PluginAuthenticationDeviceCodeChallengeResponse(:final verificationUrl, :final userCode) => switch (Uri.tryParse(
+        verificationUrl,
+      )) {
+        final uri? when uri.isAbsolute && uri.scheme == "https" && uri.host.isNotEmpty =>
+          PluginAuthenticationDeviceCodeChallenge(verificationUri: uri, userCode: userCode),
+        _ => null,
+      },
+      PluginAuthenticationBrowserChallengeResponse(:final authorizationUrl, :final expectedCallbackUrl) => () {
+        final authorizationUri = Uri.tryParse(authorizationUrl);
+        final expectedCallbackUri = Uri.tryParse(expectedCallbackUrl);
+        if (authorizationUri == null ||
+            !authorizationUri.isAbsolute ||
+            authorizationUri.scheme != "https" ||
+            authorizationUri.host.isEmpty ||
+            expectedCallbackUri == null ||
+            !expectedCallbackUri.isAbsolute ||
+            expectedCallbackUri.host.isEmpty) {
+          return null;
+        }
+        return PluginAuthenticationBrowserChallenge(
+          authorizationUri: authorizationUri,
+          expectedCallbackUri: expectedCallbackUri,
+        );
+      }(),
+      PluginAuthenticationUnknownChallengeResponse() => const PluginAuthenticationUnsupportedChallenge(),
+    };
+    return challenge == null
+        ? PluginAuthenticationStartResult.failed(
+            failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+          )
+        : PluginAuthenticationStartResult.challenge(challenge: challenge);
+  }
+
+  PluginAuthenticationContinuationResult _mapAuthenticationContinuationConflict({required String? body}) {
+    final parsed = _parseAuthenticationConflict(body: body);
+    switch (parsed) {
+      case _AuthenticationConflictParseFailure(:final error):
+        return PluginAuthenticationContinuationResult.request(error: error);
+      case _AuthenticationConflictParsed(:final conflict):
+        for (final reason in conflict.reasons) {
+          final rejection = switch (reason) {
+            PluginAuthenticationConflictReason.noActive => PluginAuthenticationContinuationRejection.noActive,
+            PluginAuthenticationConflictReason.wrongKind => PluginAuthenticationContinuationRejection.wrongKind,
+            PluginAuthenticationConflictReason.alreadySubmitted =>
+              PluginAuthenticationContinuationRejection.alreadySubmitted,
+            PluginAuthenticationConflictReason.inFlight ||
+            PluginAuthenticationConflictReason.setupNotRequired ||
+            PluginAuthenticationConflictReason.unsupported ||
+            PluginAuthenticationConflictReason.unknown => null,
+          };
+          if (rejection != null) return PluginAuthenticationContinuationResult.rejected(reason: rejection);
+        }
+        return PluginAuthenticationContinuationResult.request(
+          error: ApiError.nonSuccessCode(errorCode: 409, rawErrorString: body),
+        );
+    }
+  }
   Future<CatalogImportMutationResult> startCatalogImport({required String pluginId}) async {
     return _mapCatalogImportMutation(await _api.startCatalogImport(pluginId: pluginId));
   }
@@ -66,7 +153,8 @@ class PluginRepository({required final PluginApi _api}) {
       // A dispatched request whose outcome cannot be proven may well have
       // landed, so it is never reported as an ordinary failure.
       ErrorResponse(
-        error: final error && (JsonParsingError() ||
+        error: final error &&
+            (JsonParsingError() ||
             EmptyResponseError() ||
             DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException())),
       ) =>
@@ -84,8 +172,8 @@ class PluginRepository({required final PluginApi _api}) {
     };
   }
 
-  /// Start and cancel classify their errors identically, so both route through
-  /// this one mapper.
+  /// Start and cancel share these transport failures. Start may additionally
+  /// return update-required after a successfully decoded future challenge.
   PluginAuthenticationFailure _mapAuthenticationFailure({required ApiError error}) {
     return switch (error) {
       NonSuccessCodeError(errorCode: 404) => const PluginAuthenticationFailure.notFound(),
@@ -95,8 +183,10 @@ class PluginRepository({required final PluginApi _api}) {
       JsonParsingError() || EmptyResponseError() => const PluginAuthenticationFailure.uncertain(),
       DartHttpClientError(innerError: TimeoutException() || RelayResponseLostException()) =>
         const PluginAuthenticationFailure.uncertain(),
-      NonSuccessCodeError() || DartHttpClientError() || GenericError() || NotAuthenticatedError() =>
-        PluginAuthenticationFailure.request(error: error),
+      NonSuccessCodeError() ||
+      DartHttpClientError() ||
+      GenericError() ||
+      NotAuthenticatedError() => PluginAuthenticationFailure.request(error: error),
     };
   }
 

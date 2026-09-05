@@ -145,6 +145,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   challenge data ephemerally, and opens the browser only after an explicit user action.
   Start and cancel response loss remain uncertain; terminal SSE is presented only for an
   operation this client started, then triggers an authoritative management refresh.
+- Browser challenges require a current client, exact loopback callback-shape validation, and one-shot redirect
+  submission; unknown challenges fail closed with update guidance.
 - Authentication ownership and challenge state are fenced to the current connection epoch
   and bridge identity and clear on reconnect, identity change, or disposal. External
   operations still update shared management metadata without claiming local presentation.
@@ -226,8 +228,9 @@ owned-process exit; and restart.
 - A missing authentication state from an older bridge decoding as anything but idle, a
   future state or conflict reason failing open, challenge data entering snapshots/SSE, or
   a failed progress payload without its required sanitized message.
-- A malformed or non-HTTPS verification URL reaching the launcher, a browser opening
-  without explicit user intent, response loss reported as definite failure, a fast terminal
+- A malformed or non-HTTPS verification URL reaching the launcher, a mismatched/non-loopback callback reaching the
+  bridge, duplicate redirect submission, a browser opening without explicit user intent, response loss reported as
+  definite failure, a fast terminal
   event being lost, or stale challenge state surviving reconnect or bridge replacement.
 - Login shown without both capability and authentication-required setup, terminal-only
   guidance shown despite client login support, concurrent harness login rows remaining

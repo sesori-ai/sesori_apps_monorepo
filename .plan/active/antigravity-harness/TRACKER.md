@@ -3,21 +3,22 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-3/12 merged; Step 4/12 open for review; Step 5/12 in progress locally
-- **Base:** Step 3 merge `d85d9fcb1d`
-- **Current branch:** `antigravity-harness-step-4-browser-auth-continuation`
+- **Status:** Steps 1-4/12 merged; Step 5/12 open for review
+- **Base:** Step 4 merge `93c8982601`
+- **Current branch:** `antigravity-harness-step-5-remote-browser-handoff`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
-  [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3)
-- **Open PR:** [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
-- **Next action:** monitor Step 4 through readiness and finish the local Step 5 implementation
+  [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
+  [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
+- **Open PR:** [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
+- **Next action:** monitor Step 5 through readiness and merge
 
 ## Fixed PR Series
 
 - [x] Step 1/12 — `🌱 [antigravity-harness] docs: plan Antigravity ACP support [step 1/12]`
 - [x] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
 - [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
-- [ ] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
+- [x] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [ ] Step 6/12 — `🚧 [antigravity-harness] feat(antigravity): add isolated profile authentication [step 6/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
@@ -70,7 +71,7 @@
 ## Step 4 Checklist
 
 - [x] Inspect descriptor, runtime, lifecycle, Codex authentication, scoped-store composition, and focused tests.
-- [x] Replace the stream-only descriptor return with a typed operation and sealed device-code/browser kinds.
+- [x] Replace the stream-only descriptor return with sealed device-code/browser operation variants.
 - [x] Pass a required per-state-root `HostJsonStore` instance to authentication and every live plugin generation.
 - [x] Add active-generation redirect routing with typed no-active, wrong-kind, and already-submitted conflicts.
 - [x] Preserve Codex device-code behavior while rejecting browser redirect submission.
@@ -79,6 +80,10 @@
 - [x] Complete architecture implementation review and apply valid findings.
 - [x] Run final focused analysis/tests and Git/Markdown validation.
 - [x] After Step 3 merges, sync, commit, push, open the Step 4 PR, and start its monitor.
+
+## Step 5 Checklist
+
+- [x] Complete the remote browser handoff, review, and verification.
 
 ## Architecture Reviews
 
@@ -204,3 +209,5 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-04 — Step 4's self-inclusive cap check used
   `git diff --numstat d85d9fcb1d36 6da24f133c` with an additions/deletions sum: 838 + 158 = 996 changed lines,
   leaving 504 lines below the 1,500-line cap.
+- 2026-09-04 — Step 5 final code cap: `git diff --numstat 93c8982601eb 1b2283a4903b` totals
+  1155 + 334 = 1489; this tracker-only reconciliation leaves the published PR at 1489 changed lines.

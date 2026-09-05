@@ -919,6 +919,18 @@ abstract class AppLocalizations {
   /// **'Security notice. Only continue if you started this login. Verify the website address before entering the code.'**
   String get harnessAuthenticationSecuritySemantics;
 
+  /// No description provided for @harnessAuthenticationBrowserInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.'**
+  String get harnessAuthenticationBrowserInstructions;
+
+  /// No description provided for @harnessAuthenticationRedirectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirect URL'**
+  String get harnessAuthenticationRedirectLabel;
+
   /// No description provided for @harnessAuthenticationCodeLabel.
   ///
   /// In en, this message translates to:
@@ -991,6 +1003,12 @@ abstract class AppLocalizations {
   /// **'Update the connected bridge to log in from this device.'**
   String get harnessAuthenticationUnsupported;
 
+  /// No description provided for @harnessAuthenticationUpdateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori to continue this harness login.'**
+  String get harnessAuthenticationUpdateRequired;
+
   /// No description provided for @harnessAuthenticationConflict.
   ///
   /// In en, this message translates to:
@@ -1009,10 +1027,16 @@ abstract class AppLocalizations {
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
 
+  /// No description provided for @harnessAuthenticationInvalidRedirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the full redirect URL from the local callback page.'**
+  String get harnessAuthenticationInvalidRedirect;
+
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///
   /// In en, this message translates to:
-  /// **'The secure website could not be opened. Copy the code and try again.'**
+  /// **'The secure website could not be opened. Try again.'**
   String get harnessAuthenticationBrowserFailed;
 
   /// No description provided for @harnessAuthenticationRequestFailed.

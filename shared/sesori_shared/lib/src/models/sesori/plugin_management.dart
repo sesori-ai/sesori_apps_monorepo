@@ -55,9 +55,15 @@ enum PluginInstallPhase() { downloading, verifying, extracting, finalizing, comp
 
 enum PluginLifecycleConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEnabled, unsupported, unknown }
 
-enum PluginAuthenticationConflictReason() { inFlight, setupNotRequired, unsupported, unknown }
-
-enum PluginAuthenticationChallengeType() { deviceCode }
+enum PluginAuthenticationConflictReason() {
+  inFlight,
+  setupNotRequired,
+  unsupported,
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+  unknown,
+}
 
 @Freezed(fromJson: true, toJson: true)
 sealed class PluginManagementMetadata with _$PluginManagementMetadata {
@@ -81,23 +87,45 @@ sealed class PluginManagementMetadata with _$PluginManagementMetadata {
   factory fromJson(Map<String, dynamic> json) => _$PluginManagementMetadataFromJson(json);
 }
 
-@Freezed(unionKey: "type", fromJson: true, toJson: true, copyWith: false)
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: true,
+  copyWith: false,
+  equal: false,
+  toStringOverride: false,
+)
 sealed class PluginAuthenticationChallengeResponse with _$PluginAuthenticationChallengeResponse {
   @FreezedUnionValue("deviceCode")
   const factory deviceCode({
-    @Default(PluginAuthenticationChallengeType.deviceCode) PluginAuthenticationChallengeType type,
     required String verificationUrl,
     required String userCode,
   }) = PluginAuthenticationDeviceCodeChallengeResponse;
 
-  factory fromJson(
-    Map<String, dynamic> json,
-  ) {
-    if (json["type"] != "deviceCode") {
-      throw const FormatException("Unsupported plugin authentication challenge type");
+  @FreezedUnionValue("browser")
+  const factory browser({
+    required String authorizationUrl,
+    required String expectedCallbackUrl,
+  }) = PluginAuthenticationBrowserChallengeResponse;
+
+  const factory unknown() = PluginAuthenticationUnknownChallengeResponse;
+
+  factory fromJson(Map<String, dynamic> json) {
+    if (json["type"] is! String) {
+      throw const FormatException("Plugin authentication challenge type is required");
     }
     return _$PluginAuthenticationChallengeResponseFromJson(json);
   }
+}
+
+@Freezed(fromJson: true, toJson: true, copyWith: false, equal: false, toStringOverride: false)
+sealed class PluginAuthenticationRedirectRequest with _$PluginAuthenticationRedirectRequest {
+  static const maxRedirectUrlLength = 4096;
+
+  const factory({required String redirectUrl}) = _PluginAuthenticationRedirectRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$PluginAuthenticationRedirectRequestFromJson(json);
 }
 
 @Freezed(
