@@ -309,3 +309,27 @@ asked to start working the plan; steps execute in order from step 2.
   file-local `_AuthResponseParsingException(innerError:)` whose presentation
   names only the cause type, replacing the string-only wrapping. OAuth polling
   and token refresh are untouched.
+
+## Step 18 execution — 2026-09-05
+
+- Two bridge fixture clusters consolidated, both test-only and deletion-heavy
+  (129 added, 1,152 removed): `active_session_tracker_test.dart` now builds its
+  75 `Project` and 15 `Session` values through the package's existing
+  `openCodeProject`/`openCodeSession` fixtures instead of repeating the full
+  literals, keeping every id, worktree, sandbox, parent and title the cases
+  assert on; `git_remote_api_test.dart` drops its duplicate `FakeProcessRunner`
+  and `Invocation` for the shared `helpers/fake_process_runner.dart`
+  `RecordingProcessRunner`, and folds its thirteen identical `GitCliApi(...)
+  .hasGitHubRemote(...)` constructions into one file-local `_hasGitHubRemote`
+  builder.
+- Retained deliberately: the `Session`/`GlobalSession` literals in
+  `opencode_repository_test.dart` and `opencode_service_test.dart` (needs a
+  nullable-title fixture and a new global-session fixture), the
+  `CreateSessionRequest` literals in the session creation and handler suites,
+  the `createTestDatabase` + `singlePluginSessionRepository` harness in
+  `session_repository_test.dart`, the repeated insert blocks in
+  `session_unseen_service_test.dart` and the `get_session_diffs` handler suites,
+  and the remaining duplicated `ProcessRunner`, `_FakeSessionRepository` and
+  `_FakeBridgePlugin` fakes. Each is a real cluster, but folding them here would
+  have doubled this PR past its size budget without making the two clusters
+  above any clearer.
