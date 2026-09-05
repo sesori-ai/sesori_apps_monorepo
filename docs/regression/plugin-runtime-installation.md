@@ -93,6 +93,9 @@ download, verification, or placement. Use a disposable data directory.
   a harness the user had not enabled.
 - An Install pressed while an upgrade is downloading reporting success but leaving the
   harness stopped.
+- A failed install taking the bridge process down instead of failing that one harness.
+  An unwritable managed runtime directory, a read-only volume, or a disk that fills
+  mid-download must end as a reported failure with every other harness untouched.
 - A superseded but still supported runtime removed before its replacement is verified, or
   removed while a generation is running from it; a below-minimum directory still present
   once a download has begun.
