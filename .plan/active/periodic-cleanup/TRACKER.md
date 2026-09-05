@@ -140,5 +140,10 @@ asked to start working the plan; steps execute in order from step 2.
   the payload-bearing cause off the log as the existing privacy test requires.
 - Migration test upgrades a v14 row whose stored completeness is `unknown`,
   verifies the column is dropped, rows and the project cascade survive.
-- Line split at commit: generated 5224+/100-, handwritten 227+/212- (generators:
-  build_runner, drift_dev schema dump/steps/generate).
+- Line split, measured at PR head `74a8c616d1` against merge base `338c9b8cb9`
+  (`git diff --numstat 338c9b8cb9..74a8c616d1`, classifying paths matching
+  `drift_schemas/`, `.g.dart`, `.steps.dart`, or `test/drift/default/generated/`
+  as generated): total 5466+/313- = generated 5224+/100- + handwritten
+  242+/213-. Self-inclusive: the handwritten figure counts this tracker note as
+  it stood at that head; this sentence adds a few lines more. Generators:
+  build_runner, drift_dev schema dump/steps/generate.
