@@ -9,6 +9,7 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   String get path;
   int get hidden;
   String? get baseBranch;
+  String? get prCacheGithubLogin;
   String? get displayName;
   int get createdAt;
   int get updatedAt;
@@ -21,6 +22,9 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
     map['hidden'] = Variable<int>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
+    }
+    if (!nullToAbsent || prCacheGithubLogin != null) {
+      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin);
     }
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
@@ -71,6 +75,15 @@ class ProjectsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
+  late final GeneratedColumn<String> prCacheGithubLogin =
+      GeneratedColumn<String>(
+        'pr_cache_github_login',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints: 'NULL',
+      );
   late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
     'display_name',
     aliasedName,
@@ -109,6 +122,7 @@ class ProjectsTable extends Table
     path,
     hidden,
     baseBranch,
+    prCacheGithubLogin,
     displayName,
     createdAt,
     updatedAt,
@@ -140,6 +154,10 @@ class ProjectsTable extends Table
       baseBranch: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}base_branch'],
+      ),
+      prCacheGithubLogin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pr_cache_github_login'],
       ),
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -183,6 +201,8 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String? baseBranch;
   @override
+  final String? prCacheGithubLogin;
+  @override
   final String? displayName;
   @override
   final int createdAt;
@@ -195,6 +215,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     required this.path,
     required this.hidden,
     this.baseBranch,
+    this.prCacheGithubLogin,
     this.displayName,
     required this.createdAt,
     required this.updatedAt,
@@ -208,6 +229,9 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       baseBranch: baseBranch == null && nullToAbsent
           ? const Value.absent()
           : Value(baseBranch),
+      prCacheGithubLogin: prCacheGithubLogin == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prCacheGithubLogin),
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
           : Value(displayName),
@@ -227,6 +251,9 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       path: serializer.fromJson<String>(json['path']),
       hidden: serializer.fromJson<int>(json['hidden']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
+      prCacheGithubLogin: serializer.fromJson<String?>(
+        json['prCacheGithubLogin'],
+      ),
       displayName: serializer.fromJson<String?>(json['displayName']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
@@ -243,6 +270,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       'path': serializer.toJson<String>(path),
       'hidden': serializer.toJson<int>(hidden),
       'baseBranch': serializer.toJson<String?>(baseBranch),
+      'prCacheGithubLogin': serializer.toJson<String?>(prCacheGithubLogin),
       'displayName': serializer.toJson<String?>(displayName),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
@@ -255,6 +283,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     String? path,
     int? hidden,
     Value<String?> baseBranch = const Value.absent(),
+    Value<String?> prCacheGithubLogin = const Value.absent(),
     Value<String?> displayName = const Value.absent(),
     int? createdAt,
     int? updatedAt,
@@ -264,6 +293,9 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     path: path ?? this.path,
     hidden: hidden ?? this.hidden,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
+    prCacheGithubLogin: prCacheGithubLogin.present
+        ? prCacheGithubLogin.value
+        : this.prCacheGithubLogin,
     displayName: displayName.present ? displayName.value : this.displayName,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -277,6 +309,9 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       baseBranch: data.baseBranch.present
           ? data.baseBranch.value
           : this.baseBranch,
+      prCacheGithubLogin: data.prCacheGithubLogin.present
+          ? data.prCacheGithubLogin.value
+          : this.prCacheGithubLogin,
       displayName: data.displayName.present
           ? data.displayName.value
           : this.displayName,
@@ -295,6 +330,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
+          ..write('prCacheGithubLogin: $prCacheGithubLogin, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -309,6 +345,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     path,
     hidden,
     baseBranch,
+    prCacheGithubLogin,
     displayName,
     createdAt,
     updatedAt,
@@ -322,6 +359,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
           other.path == this.path &&
           other.hidden == this.hidden &&
           other.baseBranch == this.baseBranch &&
+          other.prCacheGithubLogin == this.prCacheGithubLogin &&
           other.displayName == this.displayName &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -333,6 +371,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   final Value<String> path;
   final Value<int> hidden;
   final Value<String?> baseBranch;
+  final Value<String?> prCacheGithubLogin;
   final Value<String?> displayName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -342,6 +381,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
+    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -352,6 +392,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
+    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     required int createdAt,
     required int updatedAt,
@@ -366,6 +407,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     Expression<String>? path,
     Expression<int>? hidden,
     Expression<String>? baseBranch,
+    Expression<String>? prCacheGithubLogin,
     Expression<String>? displayName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -376,6 +418,8 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
+      if (prCacheGithubLogin != null)
+        'pr_cache_github_login': prCacheGithubLogin,
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -389,6 +433,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     Value<String>? path,
     Value<int>? hidden,
     Value<String?>? baseBranch,
+    Value<String?>? prCacheGithubLogin,
     Value<String?>? displayName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -399,6 +444,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
+      prCacheGithubLogin: prCacheGithubLogin ?? this.prCacheGithubLogin,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -420,6 +466,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     }
     if (baseBranch.present) {
       map['base_branch'] = Variable<String>(baseBranch.value);
+    }
+    if (prCacheGithubLogin.present) {
+      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin.value);
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
@@ -443,6 +492,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
+          ..write('prCacheGithubLogin: $prCacheGithubLogin, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -460,6 +510,8 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String get directory;
   String? get worktreePath;
   String? get branchName;
+  String? get currentBranchName;
+  String? get currentGithubRepositoryIdentity;
   int get isDedicated;
   int? get archivedAt;
   String? get baseBranch;
@@ -490,6 +542,14 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
     }
     if (!nullToAbsent || branchName != null) {
       map['branch_name'] = Variable<String>(branchName);
+    }
+    if (!nullToAbsent || currentBranchName != null) {
+      map['current_branch_name'] = Variable<String>(currentBranchName);
+    }
+    if (!nullToAbsent || currentGithubRepositoryIdentity != null) {
+      map['current_github_repository_identity'] = Variable<String>(
+        currentGithubRepositoryIdentity,
+      );
     }
     map['is_dedicated'] = Variable<int>(isDedicated);
     if (!nullToAbsent || archivedAt != null) {
@@ -594,6 +654,24 @@ class SessionsTable extends Table
     requiredDuringInsert: false,
     $customConstraints: 'NULL',
   );
+  late final GeneratedColumn<String> currentBranchName =
+      GeneratedColumn<String>(
+        'current_branch_name',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints: 'NULL',
+      );
+  late final GeneratedColumn<String> currentGithubRepositoryIdentity =
+      GeneratedColumn<String>(
+        'current_github_repository_identity',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints: 'NULL',
+      );
   late final GeneratedColumn<int> isDedicated = GeneratedColumn<int>(
     'is_dedicated',
     aliasedName,
@@ -723,6 +801,8 @@ class SessionsTable extends Table
     directory,
     worktreePath,
     branchName,
+    currentBranchName,
+    currentGithubRepositoryIdentity,
     isDedicated,
     archivedAt,
     baseBranch,
@@ -777,6 +857,14 @@ class SessionsTable extends Table
       branchName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}branch_name'],
+      ),
+      currentBranchName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_branch_name'],
+      ),
+      currentGithubRepositoryIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}current_github_repository_identity'],
       ),
       isDedicated: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -870,6 +958,10 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   final String? branchName;
   @override
+  final String? currentBranchName;
+  @override
+  final String? currentGithubRepositoryIdentity;
+  @override
   final int isDedicated;
   @override
   final int? archivedAt;
@@ -907,6 +999,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     required this.directory,
     this.worktreePath,
     this.branchName,
+    this.currentBranchName,
+    this.currentGithubRepositoryIdentity,
     required this.isDedicated,
     this.archivedAt,
     this.baseBranch,
@@ -938,6 +1032,13 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       branchName: branchName == null && nullToAbsent
           ? const Value.absent()
           : Value(branchName),
+      currentBranchName: currentBranchName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currentBranchName),
+      currentGithubRepositoryIdentity:
+          currentGithubRepositoryIdentity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currentGithubRepositoryIdentity),
       isDedicated: Value(isDedicated),
       archivedAt: archivedAt == null && nullToAbsent
           ? const Value.absent()
@@ -989,6 +1090,12 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       directory: serializer.fromJson<String>(json['directory']),
       worktreePath: serializer.fromJson<String?>(json['worktreePath']),
       branchName: serializer.fromJson<String?>(json['branchName']),
+      currentBranchName: serializer.fromJson<String?>(
+        json['currentBranchName'],
+      ),
+      currentGithubRepositoryIdentity: serializer.fromJson<String?>(
+        json['currentGithubRepositoryIdentity'],
+      ),
       isDedicated: serializer.fromJson<int>(json['isDedicated']),
       archivedAt: serializer.fromJson<int?>(json['archivedAt']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
@@ -1019,6 +1126,10 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'directory': serializer.toJson<String>(directory),
       'worktreePath': serializer.toJson<String?>(worktreePath),
       'branchName': serializer.toJson<String?>(branchName),
+      'currentBranchName': serializer.toJson<String?>(currentBranchName),
+      'currentGithubRepositoryIdentity': serializer.toJson<String?>(
+        currentGithubRepositoryIdentity,
+      ),
       'isDedicated': serializer.toJson<int>(isDedicated),
       'archivedAt': serializer.toJson<int?>(archivedAt),
       'baseBranch': serializer.toJson<String?>(baseBranch),
@@ -1045,6 +1156,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     String? directory,
     Value<String?> worktreePath = const Value.absent(),
     Value<String?> branchName = const Value.absent(),
+    Value<String?> currentBranchName = const Value.absent(),
+    Value<String?> currentGithubRepositoryIdentity = const Value.absent(),
     int? isDedicated,
     Value<int?> archivedAt = const Value.absent(),
     Value<String?> baseBranch = const Value.absent(),
@@ -1070,6 +1183,12 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     directory: directory ?? this.directory,
     worktreePath: worktreePath.present ? worktreePath.value : this.worktreePath,
     branchName: branchName.present ? branchName.value : this.branchName,
+    currentBranchName: currentBranchName.present
+        ? currentBranchName.value
+        : this.currentBranchName,
+    currentGithubRepositoryIdentity: currentGithubRepositoryIdentity.present
+        ? currentGithubRepositoryIdentity.value
+        : this.currentGithubRepositoryIdentity,
     isDedicated: isDedicated ?? this.isDedicated,
     archivedAt: archivedAt.present ? archivedAt.value : this.archivedAt,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
@@ -1109,6 +1228,13 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       branchName: data.branchName.present
           ? data.branchName.value
           : this.branchName,
+      currentBranchName: data.currentBranchName.present
+          ? data.currentBranchName.value
+          : this.currentBranchName,
+      currentGithubRepositoryIdentity:
+          data.currentGithubRepositoryIdentity.present
+          ? data.currentGithubRepositoryIdentity.value
+          : this.currentGithubRepositoryIdentity,
       isDedicated: data.isDedicated.present
           ? data.isDedicated.value
           : this.isDedicated,
@@ -1157,6 +1283,10 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('directory: $directory, ')
           ..write('worktreePath: $worktreePath, ')
           ..write('branchName: $branchName, ')
+          ..write('currentBranchName: $currentBranchName, ')
+          ..write(
+            'currentGithubRepositoryIdentity: $currentGithubRepositoryIdentity, ',
+          )
           ..write('isDedicated: $isDedicated, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('baseBranch: $baseBranch, ')
@@ -1185,6 +1315,8 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     directory,
     worktreePath,
     branchName,
+    currentBranchName,
+    currentGithubRepositoryIdentity,
     isDedicated,
     archivedAt,
     baseBranch,
@@ -1212,6 +1344,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.directory == this.directory &&
           other.worktreePath == this.worktreePath &&
           other.branchName == this.branchName &&
+          other.currentBranchName == this.currentBranchName &&
+          other.currentGithubRepositoryIdentity ==
+              this.currentGithubRepositoryIdentity &&
           other.isDedicated == this.isDedicated &&
           other.archivedAt == this.archivedAt &&
           other.baseBranch == this.baseBranch &&
@@ -1237,6 +1372,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String> directory;
   final Value<String?> worktreePath;
   final Value<String?> branchName;
+  final Value<String?> currentBranchName;
+  final Value<String?> currentGithubRepositoryIdentity;
   final Value<int> isDedicated;
   final Value<int?> archivedAt;
   final Value<String?> baseBranch;
@@ -1260,6 +1397,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.directory = const Value.absent(),
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.currentBranchName = const Value.absent(),
+    this.currentGithubRepositoryIdentity = const Value.absent(),
     this.isDedicated = const Value.absent(),
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1284,6 +1423,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     required String directory,
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
+    this.currentBranchName = const Value.absent(),
+    this.currentGithubRepositoryIdentity = const Value.absent(),
     required int isDedicated,
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1316,6 +1457,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? directory,
     Expression<String>? worktreePath,
     Expression<String>? branchName,
+    Expression<String>? currentBranchName,
+    Expression<String>? currentGithubRepositoryIdentity,
     Expression<int>? isDedicated,
     Expression<int>? archivedAt,
     Expression<String>? baseBranch,
@@ -1340,6 +1483,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (directory != null) 'directory': directory,
       if (worktreePath != null) 'worktree_path': worktreePath,
       if (branchName != null) 'branch_name': branchName,
+      if (currentBranchName != null) 'current_branch_name': currentBranchName,
+      if (currentGithubRepositoryIdentity != null)
+        'current_github_repository_identity': currentGithubRepositoryIdentity,
       if (isDedicated != null) 'is_dedicated': isDedicated,
       if (archivedAt != null) 'archived_at': archivedAt,
       if (baseBranch != null) 'base_branch': baseBranch,
@@ -1367,6 +1513,8 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String>? directory,
     Value<String?>? worktreePath,
     Value<String?>? branchName,
+    Value<String?>? currentBranchName,
+    Value<String?>? currentGithubRepositoryIdentity,
     Value<int>? isDedicated,
     Value<int?>? archivedAt,
     Value<String?>? baseBranch,
@@ -1391,6 +1539,10 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       directory: directory ?? this.directory,
       worktreePath: worktreePath ?? this.worktreePath,
       branchName: branchName ?? this.branchName,
+      currentBranchName: currentBranchName ?? this.currentBranchName,
+      currentGithubRepositoryIdentity:
+          currentGithubRepositoryIdentity ??
+          this.currentGithubRepositoryIdentity,
       isDedicated: isDedicated ?? this.isDedicated,
       archivedAt: archivedAt ?? this.archivedAt,
       baseBranch: baseBranch ?? this.baseBranch,
@@ -1432,6 +1584,14 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     }
     if (branchName.present) {
       map['branch_name'] = Variable<String>(branchName.value);
+    }
+    if (currentBranchName.present) {
+      map['current_branch_name'] = Variable<String>(currentBranchName.value);
+    }
+    if (currentGithubRepositoryIdentity.present) {
+      map['current_github_repository_identity'] = Variable<String>(
+        currentGithubRepositoryIdentity.value,
+      );
     }
     if (isDedicated.present) {
       map['is_dedicated'] = Variable<int>(isDedicated.value);
@@ -1491,6 +1651,10 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('directory: $directory, ')
           ..write('worktreePath: $worktreePath, ')
           ..write('branchName: $branchName, ')
+          ..write('currentBranchName: $currentBranchName, ')
+          ..write(
+            'currentGithubRepositoryIdentity: $currentGithubRepositoryIdentity, ',
+          )
           ..write('isDedicated: $isDedicated, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('baseBranch: $baseBranch, ')
@@ -1804,6 +1968,8 @@ class DeletedSessionsTableCompanion
 
 mixin PullRequestsTableToColumns implements Insertable<PullRequestsTableData> {
   String get projectId;
+  String get githubRepositoryIdentity;
+  String get githubLogin;
   int get prNumber;
   String get branchName;
   String get url;
@@ -1818,6 +1984,10 @@ mixin PullRequestsTableToColumns implements Insertable<PullRequestsTableData> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
+    map['github_repository_identity'] = Variable<String>(
+      githubRepositoryIdentity,
+    );
+    map['github_login'] = Variable<String>(githubLogin);
     map['pr_number'] = Variable<int>(prNumber);
     map['branch_name'] = Variable<String>(branchName);
     map['url'] = Variable<String>(url);
@@ -1846,6 +2016,23 @@ class PullRequestsTable extends Table
     requiredDuringInsert: true,
     $customConstraints:
         'NOT NULL REFERENCES projects_table(project_id)ON DELETE CASCADE',
+  );
+  late final GeneratedColumn<String> githubRepositoryIdentity =
+      GeneratedColumn<String>(
+        'github_repository_identity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+        $customConstraints: 'NOT NULL',
+      );
+  late final GeneratedColumn<String> githubLogin = GeneratedColumn<String>(
+    'github_login',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
     'pr_number',
@@ -1930,6 +2117,8 @@ class PullRequestsTable extends Table
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
+    githubRepositoryIdentity,
+    githubLogin,
     prNumber,
     branchName,
     url,
@@ -1947,7 +2136,11 @@ class PullRequestsTable extends Table
   String get actualTableName => $name;
   static const String $name = 'pull_requests_table';
   @override
-  Set<GeneratedColumn> get $primaryKey => {projectId, prNumber};
+  Set<GeneratedColumn> get $primaryKey => {
+    projectId,
+    githubRepositoryIdentity,
+    prNumber,
+  };
   @override
   PullRequestsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -1955,6 +2148,14 @@ class PullRequestsTable extends Table
       projectId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
+      )!,
+      githubRepositoryIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}github_repository_identity'],
+      )!,
+      githubLogin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}github_login'],
       )!,
       prNumber: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -2008,7 +2209,7 @@ class PullRequestsTable extends Table
   bool get withoutRowId => true;
   @override
   List<String> get customConstraints => const [
-    'PRIMARY KEY(project_id, pr_number)',
+    'PRIMARY KEY(project_id, github_repository_identity, pr_number)',
   ];
   @override
   bool get dontWriteConstraints => true;
@@ -2017,6 +2218,10 @@ class PullRequestsTable extends Table
 class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   @override
   final String projectId;
+  @override
+  final String githubRepositoryIdentity;
+  @override
+  final String githubLogin;
   @override
   final int prNumber;
   @override
@@ -2039,6 +2244,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   final int createdAt;
   const PullRequestsTableData({
     required this.projectId,
+    required this.githubRepositoryIdentity,
+    required this.githubLogin,
     required this.prNumber,
     required this.branchName,
     required this.url,
@@ -2053,6 +2260,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   PullRequestsTableCompanion toCompanion(bool nullToAbsent) {
     return PullRequestsTableCompanion(
       projectId: Value(projectId),
+      githubRepositoryIdentity: Value(githubRepositoryIdentity),
+      githubLogin: Value(githubLogin),
       prNumber: Value(prNumber),
       branchName: Value(branchName),
       url: Value(url),
@@ -2073,6 +2282,10 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return PullRequestsTableData(
       projectId: serializer.fromJson<String>(json['projectId']),
+      githubRepositoryIdentity: serializer.fromJson<String>(
+        json['githubRepositoryIdentity'],
+      ),
+      githubLogin: serializer.fromJson<String>(json['githubLogin']),
       prNumber: serializer.fromJson<int>(json['prNumber']),
       branchName: serializer.fromJson<String>(json['branchName']),
       url: serializer.fromJson<String>(json['url']),
@@ -2090,6 +2303,10 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'projectId': serializer.toJson<String>(projectId),
+      'githubRepositoryIdentity': serializer.toJson<String>(
+        githubRepositoryIdentity,
+      ),
+      'githubLogin': serializer.toJson<String>(githubLogin),
       'prNumber': serializer.toJson<int>(prNumber),
       'branchName': serializer.toJson<String>(branchName),
       'url': serializer.toJson<String>(url),
@@ -2105,6 +2322,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
 
   PullRequestsTableData copyWith({
     String? projectId,
+    String? githubRepositoryIdentity,
+    String? githubLogin,
     int? prNumber,
     String? branchName,
     String? url,
@@ -2117,6 +2336,9 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
     int? createdAt,
   }) => PullRequestsTableData(
     projectId: projectId ?? this.projectId,
+    githubRepositoryIdentity:
+        githubRepositoryIdentity ?? this.githubRepositoryIdentity,
+    githubLogin: githubLogin ?? this.githubLogin,
     prNumber: prNumber ?? this.prNumber,
     branchName: branchName ?? this.branchName,
     url: url ?? this.url,
@@ -2131,6 +2353,12 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   PullRequestsTableData copyWithCompanion(PullRequestsTableCompanion data) {
     return PullRequestsTableData(
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      githubRepositoryIdentity: data.githubRepositoryIdentity.present
+          ? data.githubRepositoryIdentity.value
+          : this.githubRepositoryIdentity,
+      githubLogin: data.githubLogin.present
+          ? data.githubLogin.value
+          : this.githubLogin,
       prNumber: data.prNumber.present ? data.prNumber.value : this.prNumber,
       branchName: data.branchName.present
           ? data.branchName.value
@@ -2158,6 +2386,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   String toString() {
     return (StringBuffer('PullRequestsTableData(')
           ..write('projectId: $projectId, ')
+          ..write('githubRepositoryIdentity: $githubRepositoryIdentity, ')
+          ..write('githubLogin: $githubLogin, ')
           ..write('prNumber: $prNumber, ')
           ..write('branchName: $branchName, ')
           ..write('url: $url, ')
@@ -2175,6 +2405,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
   @override
   int get hashCode => Object.hash(
     projectId,
+    githubRepositoryIdentity,
+    githubLogin,
     prNumber,
     branchName,
     url,
@@ -2191,6 +2423,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
       identical(this, other) ||
       (other is PullRequestsTableData &&
           other.projectId == this.projectId &&
+          other.githubRepositoryIdentity == this.githubRepositoryIdentity &&
+          other.githubLogin == this.githubLogin &&
           other.prNumber == this.prNumber &&
           other.branchName == this.branchName &&
           other.url == this.url &&
@@ -2206,6 +2440,8 @@ class PullRequestsTableData extends DataClass with PullRequestsTableToColumns {
 class PullRequestsTableCompanion
     extends UpdateCompanion<PullRequestsTableData> {
   final Value<String> projectId;
+  final Value<String> githubRepositoryIdentity;
+  final Value<String> githubLogin;
   final Value<int> prNumber;
   final Value<String> branchName;
   final Value<String> url;
@@ -2218,6 +2454,8 @@ class PullRequestsTableCompanion
   final Value<int> createdAt;
   const PullRequestsTableCompanion({
     this.projectId = const Value.absent(),
+    this.githubRepositoryIdentity = const Value.absent(),
+    this.githubLogin = const Value.absent(),
     this.prNumber = const Value.absent(),
     this.branchName = const Value.absent(),
     this.url = const Value.absent(),
@@ -2231,6 +2469,8 @@ class PullRequestsTableCompanion
   });
   PullRequestsTableCompanion.insert({
     required String projectId,
+    required String githubRepositoryIdentity,
+    required String githubLogin,
     required int prNumber,
     required String branchName,
     required String url,
@@ -2242,6 +2482,8 @@ class PullRequestsTableCompanion
     required int lastCheckedAt,
     required int createdAt,
   }) : projectId = Value(projectId),
+       githubRepositoryIdentity = Value(githubRepositoryIdentity),
+       githubLogin = Value(githubLogin),
        prNumber = Value(prNumber),
        branchName = Value(branchName),
        url = Value(url),
@@ -2254,6 +2496,8 @@ class PullRequestsTableCompanion
        createdAt = Value(createdAt);
   static Insertable<PullRequestsTableData> custom({
     Expression<String>? projectId,
+    Expression<String>? githubRepositoryIdentity,
+    Expression<String>? githubLogin,
     Expression<int>? prNumber,
     Expression<String>? branchName,
     Expression<String>? url,
@@ -2267,6 +2511,9 @@ class PullRequestsTableCompanion
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
+      if (githubRepositoryIdentity != null)
+        'github_repository_identity': githubRepositoryIdentity,
+      if (githubLogin != null) 'github_login': githubLogin,
       if (prNumber != null) 'pr_number': prNumber,
       if (branchName != null) 'branch_name': branchName,
       if (url != null) 'url': url,
@@ -2282,6 +2529,8 @@ class PullRequestsTableCompanion
 
   PullRequestsTableCompanion copyWith({
     Value<String>? projectId,
+    Value<String>? githubRepositoryIdentity,
+    Value<String>? githubLogin,
     Value<int>? prNumber,
     Value<String>? branchName,
     Value<String>? url,
@@ -2295,6 +2544,9 @@ class PullRequestsTableCompanion
   }) {
     return PullRequestsTableCompanion(
       projectId: projectId ?? this.projectId,
+      githubRepositoryIdentity:
+          githubRepositoryIdentity ?? this.githubRepositoryIdentity,
+      githubLogin: githubLogin ?? this.githubLogin,
       prNumber: prNumber ?? this.prNumber,
       branchName: branchName ?? this.branchName,
       url: url ?? this.url,
@@ -2313,6 +2565,14 @@ class PullRequestsTableCompanion
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (githubRepositoryIdentity.present) {
+      map['github_repository_identity'] = Variable<String>(
+        githubRepositoryIdentity.value,
+      );
+    }
+    if (githubLogin.present) {
+      map['github_login'] = Variable<String>(githubLogin.value);
     }
     if (prNumber.present) {
       map['pr_number'] = Variable<int>(prNumber.value);
@@ -2351,6 +2611,8 @@ class PullRequestsTableCompanion
   String toString() {
     return (StringBuffer('PullRequestsTableCompanion(')
           ..write('projectId: $projectId, ')
+          ..write('githubRepositoryIdentity: $githubRepositoryIdentity, ')
+          ..write('githubLogin: $githubLogin, ')
           ..write('prNumber: $prNumber, ')
           ..write('branchName: $branchName, ')
           ..write('url: $url, ')
@@ -2614,8 +2876,804 @@ class CatalogHydrationsTableCompanion
   }
 }
 
-class DatabaseAtV11 extends GeneratedDatabase {
-  DatabaseAtV11(QueryExecutor e) : super(e);
+mixin SessionOptionsCacheTableToColumns
+    implements Insertable<SessionOptionsCacheTableData> {
+  String get pluginId;
+  String get scope;
+  String get ownerId;
+  String? get projectId;
+  String? get capturedProjectPath;
+  int get revision;
+  int get capturedAt;
+  String get agentsJson;
+  String get providersJson;
+  String get commandsJson;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['plugin_id'] = Variable<String>(pluginId);
+    map['scope'] = Variable<String>(scope);
+    map['owner_id'] = Variable<String>(ownerId);
+    if (!nullToAbsent || projectId != null) {
+      map['project_id'] = Variable<String>(projectId);
+    }
+    if (!nullToAbsent || capturedProjectPath != null) {
+      map['captured_project_path'] = Variable<String>(capturedProjectPath);
+    }
+    map['revision'] = Variable<int>(revision);
+    map['captured_at'] = Variable<int>(capturedAt);
+    map['agents_json'] = Variable<String>(agentsJson);
+    map['providers_json'] = Variable<String>(providersJson);
+    map['commands_json'] = Variable<String>(commandsJson);
+    return map;
+  }
+}
+
+class SessionOptionsCacheTable extends Table
+    with TableInfo<SessionOptionsCacheTable, SessionOptionsCacheTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SessionOptionsCacheTable(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> scope = GeneratedColumn<String>(
+    'scope',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+    'owner_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'NULL REFERENCES projects_table(project_id)ON DELETE CASCADE',
+  );
+  late final GeneratedColumn<String> capturedProjectPath =
+      GeneratedColumn<String>(
+        'captured_project_path',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        $customConstraints: 'NULL',
+      );
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<int> capturedAt = GeneratedColumn<int>(
+    'captured_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> agentsJson = GeneratedColumn<String>(
+    'agents_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> providersJson = GeneratedColumn<String>(
+    'providers_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> commandsJson = GeneratedColumn<String>(
+    'commands_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    pluginId,
+    scope,
+    ownerId,
+    projectId,
+    capturedProjectPath,
+    revision,
+    capturedAt,
+    agentsJson,
+    providersJson,
+    commandsJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_options_cache_table';
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pluginId, scope, ownerId};
+  @override
+  SessionOptionsCacheTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionOptionsCacheTableData(
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      scope: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scope'],
+      )!,
+      ownerId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_id'],
+      )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      ),
+      capturedProjectPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}captured_project_path'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      capturedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}captured_at'],
+      )!,
+      agentsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agents_json'],
+      )!,
+      providersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}providers_json'],
+      )!,
+      commandsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}commands_json'],
+      )!,
+    );
+  }
+
+  @override
+  SessionOptionsCacheTable createAlias(String alias) {
+    return SessionOptionsCacheTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(plugin_id, scope, owner_id)',
+    'CHECK(owner_id <> \'\' AND((scope = \'plugin\' AND project_id IS NULL AND captured_project_path IS NULL)OR(scope = \'project\' AND project_id IS NOT NULL AND owner_id = project_id AND captured_project_path IS NOT NULL AND captured_project_path <> \'\')))',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SessionOptionsCacheTableData extends DataClass
+    with SessionOptionsCacheTableToColumns {
+  @override
+  final String pluginId;
+  @override
+  final String scope;
+  @override
+  final String ownerId;
+  @override
+  final String? projectId;
+  @override
+  final String? capturedProjectPath;
+  @override
+  final int revision;
+  @override
+  final int capturedAt;
+  @override
+  final String agentsJson;
+  @override
+  final String providersJson;
+  @override
+  final String commandsJson;
+  const SessionOptionsCacheTableData({
+    required this.pluginId,
+    required this.scope,
+    required this.ownerId,
+    this.projectId,
+    this.capturedProjectPath,
+    required this.revision,
+    required this.capturedAt,
+    required this.agentsJson,
+    required this.providersJson,
+    required this.commandsJson,
+  });
+  SessionOptionsCacheTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionOptionsCacheTableCompanion(
+      pluginId: Value(pluginId),
+      scope: Value(scope),
+      ownerId: Value(ownerId),
+      projectId: projectId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(projectId),
+      capturedProjectPath: capturedProjectPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(capturedProjectPath),
+      revision: Value(revision),
+      capturedAt: Value(capturedAt),
+      agentsJson: Value(agentsJson),
+      providersJson: Value(providersJson),
+      commandsJson: Value(commandsJson),
+    );
+  }
+
+  factory SessionOptionsCacheTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionOptionsCacheTableData(
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      scope: serializer.fromJson<String>(json['scope']),
+      ownerId: serializer.fromJson<String>(json['ownerId']),
+      projectId: serializer.fromJson<String?>(json['projectId']),
+      capturedProjectPath: serializer.fromJson<String?>(
+        json['capturedProjectPath'],
+      ),
+      revision: serializer.fromJson<int>(json['revision']),
+      capturedAt: serializer.fromJson<int>(json['capturedAt']),
+      agentsJson: serializer.fromJson<String>(json['agentsJson']),
+      providersJson: serializer.fromJson<String>(json['providersJson']),
+      commandsJson: serializer.fromJson<String>(json['commandsJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'pluginId': serializer.toJson<String>(pluginId),
+      'scope': serializer.toJson<String>(scope),
+      'ownerId': serializer.toJson<String>(ownerId),
+      'projectId': serializer.toJson<String?>(projectId),
+      'capturedProjectPath': serializer.toJson<String?>(capturedProjectPath),
+      'revision': serializer.toJson<int>(revision),
+      'capturedAt': serializer.toJson<int>(capturedAt),
+      'agentsJson': serializer.toJson<String>(agentsJson),
+      'providersJson': serializer.toJson<String>(providersJson),
+      'commandsJson': serializer.toJson<String>(commandsJson),
+    };
+  }
+
+  SessionOptionsCacheTableData copyWith({
+    String? pluginId,
+    String? scope,
+    String? ownerId,
+    Value<String?> projectId = const Value.absent(),
+    Value<String?> capturedProjectPath = const Value.absent(),
+    int? revision,
+    int? capturedAt,
+    String? agentsJson,
+    String? providersJson,
+    String? commandsJson,
+  }) => SessionOptionsCacheTableData(
+    pluginId: pluginId ?? this.pluginId,
+    scope: scope ?? this.scope,
+    ownerId: ownerId ?? this.ownerId,
+    projectId: projectId.present ? projectId.value : this.projectId,
+    capturedProjectPath: capturedProjectPath.present
+        ? capturedProjectPath.value
+        : this.capturedProjectPath,
+    revision: revision ?? this.revision,
+    capturedAt: capturedAt ?? this.capturedAt,
+    agentsJson: agentsJson ?? this.agentsJson,
+    providersJson: providersJson ?? this.providersJson,
+    commandsJson: commandsJson ?? this.commandsJson,
+  );
+  SessionOptionsCacheTableData copyWithCompanion(
+    SessionOptionsCacheTableCompanion data,
+  ) {
+    return SessionOptionsCacheTableData(
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      scope: data.scope.present ? data.scope.value : this.scope,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      capturedProjectPath: data.capturedProjectPath.present
+          ? data.capturedProjectPath.value
+          : this.capturedProjectPath,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      capturedAt: data.capturedAt.present
+          ? data.capturedAt.value
+          : this.capturedAt,
+      agentsJson: data.agentsJson.present
+          ? data.agentsJson.value
+          : this.agentsJson,
+      providersJson: data.providersJson.present
+          ? data.providersJson.value
+          : this.providersJson,
+      commandsJson: data.commandsJson.present
+          ? data.commandsJson.value
+          : this.commandsJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionOptionsCacheTableData(')
+          ..write('pluginId: $pluginId, ')
+          ..write('scope: $scope, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('projectId: $projectId, ')
+          ..write('capturedProjectPath: $capturedProjectPath, ')
+          ..write('revision: $revision, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('agentsJson: $agentsJson, ')
+          ..write('providersJson: $providersJson, ')
+          ..write('commandsJson: $commandsJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    pluginId,
+    scope,
+    ownerId,
+    projectId,
+    capturedProjectPath,
+    revision,
+    capturedAt,
+    agentsJson,
+    providersJson,
+    commandsJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionOptionsCacheTableData &&
+          other.pluginId == this.pluginId &&
+          other.scope == this.scope &&
+          other.ownerId == this.ownerId &&
+          other.projectId == this.projectId &&
+          other.capturedProjectPath == this.capturedProjectPath &&
+          other.revision == this.revision &&
+          other.capturedAt == this.capturedAt &&
+          other.agentsJson == this.agentsJson &&
+          other.providersJson == this.providersJson &&
+          other.commandsJson == this.commandsJson);
+}
+
+class SessionOptionsCacheTableCompanion
+    extends UpdateCompanion<SessionOptionsCacheTableData> {
+  final Value<String> pluginId;
+  final Value<String> scope;
+  final Value<String> ownerId;
+  final Value<String?> projectId;
+  final Value<String?> capturedProjectPath;
+  final Value<int> revision;
+  final Value<int> capturedAt;
+  final Value<String> agentsJson;
+  final Value<String> providersJson;
+  final Value<String> commandsJson;
+  const SessionOptionsCacheTableCompanion({
+    this.pluginId = const Value.absent(),
+    this.scope = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.capturedProjectPath = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.capturedAt = const Value.absent(),
+    this.agentsJson = const Value.absent(),
+    this.providersJson = const Value.absent(),
+    this.commandsJson = const Value.absent(),
+  });
+  SessionOptionsCacheTableCompanion.insert({
+    required String pluginId,
+    required String scope,
+    required String ownerId,
+    this.projectId = const Value.absent(),
+    this.capturedProjectPath = const Value.absent(),
+    required int revision,
+    required int capturedAt,
+    required String agentsJson,
+    required String providersJson,
+    required String commandsJson,
+  }) : pluginId = Value(pluginId),
+       scope = Value(scope),
+       ownerId = Value(ownerId),
+       revision = Value(revision),
+       capturedAt = Value(capturedAt),
+       agentsJson = Value(agentsJson),
+       providersJson = Value(providersJson),
+       commandsJson = Value(commandsJson);
+  static Insertable<SessionOptionsCacheTableData> custom({
+    Expression<String>? pluginId,
+    Expression<String>? scope,
+    Expression<String>? ownerId,
+    Expression<String>? projectId,
+    Expression<String>? capturedProjectPath,
+    Expression<int>? revision,
+    Expression<int>? capturedAt,
+    Expression<String>? agentsJson,
+    Expression<String>? providersJson,
+    Expression<String>? commandsJson,
+  }) {
+    return RawValuesInsertable({
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (scope != null) 'scope': scope,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (projectId != null) 'project_id': projectId,
+      if (capturedProjectPath != null)
+        'captured_project_path': capturedProjectPath,
+      if (revision != null) 'revision': revision,
+      if (capturedAt != null) 'captured_at': capturedAt,
+      if (agentsJson != null) 'agents_json': agentsJson,
+      if (providersJson != null) 'providers_json': providersJson,
+      if (commandsJson != null) 'commands_json': commandsJson,
+    });
+  }
+
+  SessionOptionsCacheTableCompanion copyWith({
+    Value<String>? pluginId,
+    Value<String>? scope,
+    Value<String>? ownerId,
+    Value<String?>? projectId,
+    Value<String?>? capturedProjectPath,
+    Value<int>? revision,
+    Value<int>? capturedAt,
+    Value<String>? agentsJson,
+    Value<String>? providersJson,
+    Value<String>? commandsJson,
+  }) {
+    return SessionOptionsCacheTableCompanion(
+      pluginId: pluginId ?? this.pluginId,
+      scope: scope ?? this.scope,
+      ownerId: ownerId ?? this.ownerId,
+      projectId: projectId ?? this.projectId,
+      capturedProjectPath: capturedProjectPath ?? this.capturedProjectPath,
+      revision: revision ?? this.revision,
+      capturedAt: capturedAt ?? this.capturedAt,
+      agentsJson: agentsJson ?? this.agentsJson,
+      providersJson: providersJson ?? this.providersJson,
+      commandsJson: commandsJson ?? this.commandsJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (scope.present) {
+      map['scope'] = Variable<String>(scope.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (capturedProjectPath.present) {
+      map['captured_project_path'] = Variable<String>(
+        capturedProjectPath.value,
+      );
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (capturedAt.present) {
+      map['captured_at'] = Variable<int>(capturedAt.value);
+    }
+    if (agentsJson.present) {
+      map['agents_json'] = Variable<String>(agentsJson.value);
+    }
+    if (providersJson.present) {
+      map['providers_json'] = Variable<String>(providersJson.value);
+    }
+    if (commandsJson.present) {
+      map['commands_json'] = Variable<String>(commandsJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionOptionsCacheTableCompanion(')
+          ..write('pluginId: $pluginId, ')
+          ..write('scope: $scope, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('projectId: $projectId, ')
+          ..write('capturedProjectPath: $capturedProjectPath, ')
+          ..write('revision: $revision, ')
+          ..write('capturedAt: $capturedAt, ')
+          ..write('agentsJson: $agentsJson, ')
+          ..write('providersJson: $providersJson, ')
+          ..write('commandsJson: $commandsJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin NewSessionDefaultsTableToColumns
+    implements Insertable<NewSessionDefaultsTableData> {
+  String get pluginId;
+  String? get agent;
+  String? get agentModel;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || agent != null) {
+      map['agent'] = Variable<String>(agent);
+    }
+    if (!nullToAbsent || agentModel != null) {
+      map['agent_model'] = Variable<String>(agentModel);
+    }
+    return map;
+  }
+}
+
+class NewSessionDefaultsTable extends Table
+    with TableInfo<NewSessionDefaultsTable, NewSessionDefaultsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  NewSessionDefaultsTable(this.attachedDatabase, [this._alias]);
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> agent = GeneratedColumn<String>(
+    'agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<String> agentModel = GeneratedColumn<String>(
+    'agent_model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'new_session_defaults_table';
+  @override
+  Set<GeneratedColumn> get $primaryKey => {pluginId};
+  @override
+  NewSessionDefaultsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NewSessionDefaultsTableData(
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
+      agent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent'],
+      ),
+      agentModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}agent_model'],
+      ),
+    );
+  }
+
+  @override
+  NewSessionDefaultsTable createAlias(String alias) {
+    return NewSessionDefaultsTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(plugin_id)',
+    'CHECK(plugin_id <> \'\')',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class NewSessionDefaultsTableData extends DataClass
+    with NewSessionDefaultsTableToColumns {
+  @override
+  final String pluginId;
+  @override
+  final String? agent;
+  @override
+  final String? agentModel;
+  const NewSessionDefaultsTableData({
+    required this.pluginId,
+    this.agent,
+    this.agentModel,
+  });
+  NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
+    return NewSessionDefaultsTableCompanion(
+      pluginId: Value(pluginId),
+      agent: agent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agent),
+      agentModel: agentModel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(agentModel),
+    );
+  }
+
+  factory NewSessionDefaultsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NewSessionDefaultsTableData(
+      pluginId: serializer.fromJson<String>(json['pluginId']),
+      agent: serializer.fromJson<String?>(json['agent']),
+      agentModel: serializer.fromJson<String?>(json['agentModel']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'pluginId': serializer.toJson<String>(pluginId),
+      'agent': serializer.toJson<String?>(agent),
+      'agentModel': serializer.toJson<String?>(agentModel),
+    };
+  }
+
+  NewSessionDefaultsTableData copyWith({
+    String? pluginId,
+    Value<String?> agent = const Value.absent(),
+    Value<String?> agentModel = const Value.absent(),
+  }) => NewSessionDefaultsTableData(
+    pluginId: pluginId ?? this.pluginId,
+    agent: agent.present ? agent.value : this.agent,
+    agentModel: agentModel.present ? agentModel.value : this.agentModel,
+  );
+  NewSessionDefaultsTableData copyWithCompanion(
+    NewSessionDefaultsTableCompanion data,
+  ) {
+    return NewSessionDefaultsTableData(
+      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      agent: data.agent.present ? data.agent.value : this.agent,
+      agentModel: data.agentModel.present
+          ? data.agentModel.value
+          : this.agentModel,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewSessionDefaultsTableData(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(pluginId, agent, agentModel);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NewSessionDefaultsTableData &&
+          other.pluginId == this.pluginId &&
+          other.agent == this.agent &&
+          other.agentModel == this.agentModel);
+}
+
+class NewSessionDefaultsTableCompanion
+    extends UpdateCompanion<NewSessionDefaultsTableData> {
+  final Value<String> pluginId;
+  final Value<String?> agent;
+  final Value<String?> agentModel;
+  const NewSessionDefaultsTableCompanion({
+    this.pluginId = const Value.absent(),
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
+  });
+  NewSessionDefaultsTableCompanion.insert({
+    required String pluginId,
+    this.agent = const Value.absent(),
+    this.agentModel = const Value.absent(),
+  }) : pluginId = Value(pluginId);
+  static Insertable<NewSessionDefaultsTableData> custom({
+    Expression<String>? pluginId,
+    Expression<String>? agent,
+    Expression<String>? agentModel,
+  }) {
+    return RawValuesInsertable({
+      if (pluginId != null) 'plugin_id': pluginId,
+      if (agent != null) 'agent': agent,
+      if (agentModel != null) 'agent_model': agentModel,
+    });
+  }
+
+  NewSessionDefaultsTableCompanion copyWith({
+    Value<String>? pluginId,
+    Value<String?>? agent,
+    Value<String?>? agentModel,
+  }) {
+    return NewSessionDefaultsTableCompanion(
+      pluginId: pluginId ?? this.pluginId,
+      agent: agent ?? this.agent,
+      agentModel: agentModel ?? this.agentModel,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
+    if (agent.present) {
+      map['agent'] = Variable<String>(agent.value);
+    }
+    if (agentModel.present) {
+      map['agent_model'] = Variable<String>(agentModel.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewSessionDefaultsTableCompanion(')
+          ..write('pluginId: $pluginId, ')
+          ..write('agent: $agent, ')
+          ..write('agentModel: $agentModel')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class DatabaseAtV15 extends GeneratedDatabase {
+  DatabaseAtV15(QueryExecutor e) : super(e);
   late final ProjectsTable projectsTable = ProjectsTable(this);
   late final SessionsTable sessionsTable = SessionsTable(this);
   late final DeletedSessionsTable deletedSessionsTable = DeletedSessionsTable(
@@ -2624,6 +3682,10 @@ class DatabaseAtV11 extends GeneratedDatabase {
   late final PullRequestsTable pullRequestsTable = PullRequestsTable(this);
   late final CatalogHydrationsTable catalogHydrationsTable =
       CatalogHydrationsTable(this);
+  late final SessionOptionsCacheTable sessionOptionsCacheTable =
+      SessionOptionsCacheTable(this);
+  late final NewSessionDefaultsTable newSessionDefaultsTable =
+      NewSessionDefaultsTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -2648,6 +3710,10 @@ class DatabaseAtV11 extends GeneratedDatabase {
     'idx_sessions_archive',
     'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
+  late final Index idxPullRequestsScope = Index(
+    'idx_pull_requests_scope',
+    'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2658,12 +3724,15 @@ class DatabaseAtV11 extends GeneratedDatabase {
     deletedSessionsTable,
     pullRequestsTable,
     catalogHydrationsTable,
+    sessionOptionsCacheTable,
+    newSessionDefaultsTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
     idxSessionsArchive,
+    idxPullRequestsScope,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2688,7 +3757,16 @@ class DatabaseAtV11 extends GeneratedDatabase {
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
     ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'projects_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('session_options_cache_table', kind: UpdateKind.delete),
+      ],
+    ),
   ]);
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 15;
 }
