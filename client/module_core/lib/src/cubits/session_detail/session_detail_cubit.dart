@@ -2257,7 +2257,7 @@ class SessionDetailCubit(
     );
     final variant = availableVariants.any((v) => v.id == previousVariant)
         ? previousVariant
-        : availableVariants.firstOrNull?.id;
+        : _selection.defaultVariant(providers: current.availableProviders, model: newModel);
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,

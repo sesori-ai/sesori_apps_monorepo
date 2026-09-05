@@ -22,9 +22,17 @@ variant, and worktree mode, and creating the session with its first input.
   selected. Replayed transcripts map the API name through the catalog's
   `resolvedModel`; a name the catalog does not know stays as recorded.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
-  default-first, and a model that offers variants always has one selected: the
-  agent's declared variant when valid, otherwise the first available. Selecting a
-  variant is therefore a switch between named levels, never a reset to unset.
+  in picker order and may name a default; when switching models, an existing
+  compatible variant is kept; otherwise a model that offers variants uses the
+  agent's declared variant when valid, then the model's declared default when
+  offered, then the first listed. Selecting a variant is therefore a switch
+  between named levels, never a reset to unset.
+- Claude and Codex list models and effort variants strongest first (Claude:
+  Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
+  generation first, then Astra, Sol, Terra, Luna, the bare model, and other
+  suffixes such as Mini, with `ultra` down to `low`). OpenCode lists models
+  newest release first, undated last, ties by name. The model picker never
+  reorders models: it shows each plugin's declared order.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a

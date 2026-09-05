@@ -642,6 +642,7 @@ void main() {
               providerID: "deepseek-official",
               name: "DeepSeek V4 Pro",
               variants: ["high"],
+              defaultVariant: null,
               family: null,
               releaseDate: null,
             ),
