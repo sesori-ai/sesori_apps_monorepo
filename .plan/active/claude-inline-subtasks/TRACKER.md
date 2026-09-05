@@ -606,7 +606,7 @@ packaging-only change.
 
 | Slice | Scope | State |
 |---|---|---|
-| 1/5 | Shared ACP live prerequisites | Prepared for PR; no DeepSeek-v2/replay consumer yet |
+| 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) open |
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | Pending slice 1 merge |
 | 3/5 | Typed protocol boundary and conformance | Pending slice 2 merge |
 | 4/5 | Live lifecycle, correlation, catalogs | Pending slice 3 merge |
@@ -615,5 +615,14 @@ packaging-only change.
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
 42 tests, and Grok analyze + 83 tests passed. The replay callback and its
 consumer changes are deliberately absent until slice 5. `git diff --check`
-passed. The complete first-slice diff, including plan bookkeeping and tests,
-is about 1,020 changed lines, below the 1,500-line soft cap.
+passed. At opening head `f098f78191b84790f23db081115874cb26ae0722`, the complete
+first-slice diff was **1,028 changed lines**, including plan bookkeeping and
+tests, below the 1,500-line soft cap. Reproduce that fixed measurement with:
+
+```bash
+git diff --numstat 4842614608fe05928690b9cfed4758f6e943de5a..f098f78191b84790f23db081115874cb26ae0722 |
+  awk '{ added += $1; removed += $2 } END { print added + removed }'
+```
+
+The first revision is the opening head's merge base with `main`. This is an
+opening measurement, not a self-updating claim about subsequent review fixes.
