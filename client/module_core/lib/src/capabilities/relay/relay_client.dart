@@ -488,14 +488,8 @@ class RelayClient._({
     _disposed = true;
     _connectionState = RelayClientConnectionState.disconnecting;
 
-    final sseController = _sseController;
-    if (_sessionEncryptor != null && sseController != null && !sseController.isClosed) {
-      await _sendSseControlMessage(
-        message: const RelayMessage.sseUnsubscribe(),
-        context: "disconnecting",
-      );
-    }
-
+    // Socket teardown releases the bridge's SSE subscription through
+    // phone_disconnected; encrypted messages are no longer valid after disposal.
     await _teardownChannelOnly();
     await _closeSseController();
     await _closeBridgeStatusController();
