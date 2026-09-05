@@ -1,0 +1,9 @@
+{
+  "repository": "sesori-ai/sesori-deepseek-acp",
+  "commit": "d7a48471bf5339793beb0c9e1c1889e63f76ec92",
+  "files": {
+    "deepseek-acp.schema.json": "0214eee120039d7d573ee6bf4c585f3501570dfc568ce872066b39715992b4dc",
+    "valid.json": "a88483d685dc38766e2be4e0dda9e8a2be374635664074e8f59ea76dc7401f5a",
+    "invalid.json": "bf8a6b368bd2a3aa87c5591fcac83b16d9ed052ff295c0bc04362d01c7de39f2"
+  }
+}

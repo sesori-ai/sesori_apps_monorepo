@@ -606,8 +606,8 @@ packaging-only change.
 
 | Slice | Scope | State |
 |---|---|---|
-| 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) open |
-| 2/5 | Verbatim protocol-v2 fixtures and integrity | Pending slice 1 merge |
+| 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
+| 2/5 | Verbatim protocol-v2 fixtures and integrity | Prepared on `claude-inline-subtasks-deepseek-fixtures` |
 | 3/5 | Typed protocol boundary and conformance | Pending slice 2 merge |
 | 4/5 | Live lifecycle, correlation, catalogs | Pending slice 3 merge |
 | 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
@@ -635,3 +635,10 @@ those requests before forgetting their tracker records; the regression failed
 before the fix and passes afterward. ACP analysis and all 311 tests passed.
 An ancestry-traversal rewrite was declined because it would introduce an
 unnecessary parent-before-child ordering assumption.
+
+Slice 2 verification: both protocol integrity tests passed. The schema and
+valid/invalid fixtures match adapter commit `d7a48471b` byte-for-byte and all
+three manifest SHA-256 values were independently checked. Protocol-v1 files and
+the runtime manifest are untouched; no v2 consumer or interrupt implementation
+lands here. The 1,596-line fixture/test slice retains the documented soft-cap
+exception for an indivisible verbatim bundle; tracker bookkeeping is additional.

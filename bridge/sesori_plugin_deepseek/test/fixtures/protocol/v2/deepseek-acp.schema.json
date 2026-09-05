@@ -1,0 +1,835 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sesori.ai/protocol/v2/deepseek-acp.schema.json",
+  "title": "Sesori DeepSeek ACP extension protocol v2",
+  "$defs": {
+    "nonblank": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "\\S"
+    },
+    "sessionId": {
+      "$ref": "#/$defs/nonblank"
+    },
+    "selectionId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 512,
+      "pattern": "^v1(?:[A-Za-z0-9_-]{2,3}|(?:[A-Za-z0-9_-]{4})+(?:[A-Za-z0-9_-]{2,3})?)$"
+    },
+    "absolutePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "anyOf": [
+        {
+          "pattern": "^/"
+        },
+        {
+          "pattern": "^[A-Za-z]:[\\\\/]"
+        },
+        {
+          "pattern": "^\\\\\\\\"
+        }
+      ]
+    },
+    "initializeMetadata": {
+      "type": "object",
+      "required": [
+        "extensionProtocolVersion",
+        "adapterVersion",
+        "harnessVersion",
+        "persistenceOwner"
+      ],
+      "properties": {
+        "extensionProtocolVersion": {
+          "const": 2
+        },
+        "adapterVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "harnessVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "\\S"
+        },
+        "persistenceOwner": {
+          "const": "sesori"
+        }
+      },
+      "additionalProperties": true
+    },
+    "promptMetadata": {
+      "type": "object",
+      "properties": {
+        "messageId": {
+          "$ref": "#/$defs/nonblank"
+        }
+      },
+      "additionalProperties": true
+    },
+    "catalogRequest": {
+      "type": "object",
+      "required": [
+        "cwd"
+      ],
+      "properties": {
+        "cwd": {
+          "$ref": "#/$defs/absolutePath"
+        }
+      },
+      "additionalProperties": false
+    },
+    "catalogResponse": {
+      "type": "object",
+      "required": [
+        "agent",
+        "providers",
+        "defaultSelectionId",
+        "commands",
+        "failures"
+      ],
+      "properties": {
+        "agent": {
+          "type": "object",
+          "required": [
+            "id",
+            "name",
+            "primary"
+          ],
+          "properties": {
+            "id": {
+              "const": "deepseek"
+            },
+            "name": {
+              "$ref": "#/$defs/nonblank"
+            },
+            "primary": {
+              "const": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "providers": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "models"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/nonblank"
+              },
+              "name": {
+                "$ref": "#/$defs/nonblank"
+              },
+              "models": {
+                "type": "array",
+                "maxItems": 256,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "upstreamModelId",
+                    "name",
+                    "reasoningEfforts",
+                    "defaultReasoningEffort",
+                    "supportsImages"
+                  ],
+                  "properties": {
+                    "id": {
+                      "$ref": "#/$defs/selectionId"
+                    },
+                    "upstreamModelId": {
+                      "$ref": "#/$defs/nonblank"
+                    },
+                    "name": {
+                      "$ref": "#/$defs/nonblank"
+                    },
+                    "reasoningEfforts": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "uniqueItems": true,
+                      "items": {
+                        "$ref": "#/$defs/nonblank"
+                      }
+                    },
+                    "defaultReasoningEffort": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/nonblank"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "supportsImages": {
+                      "type": "boolean"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "defaultSelectionId": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/selectionId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "commands": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "description"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z0-9_-]+$"
+              },
+              "description": {
+                "$ref": "#/$defs/nonblank"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "failures": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": [
+              "providerId",
+              "category",
+              "message"
+            ],
+            "properties": {
+              "providerId": {
+                "$ref": "#/$defs/nonblank"
+              },
+              "category": {
+                "$ref": "#/$defs/nonblank"
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "pattern": "\\S"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "historyRequest": {
+      "type": "object",
+      "required": [
+        "sessionId"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "beforeSeq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxMessages": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionUpdateEnvelope": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "update"
+      ],
+      "properties": {
+        "_meta": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "sesori.ai/deepseek": {
+                  "type": "object",
+                  "properties": {
+                    "messageCreatedAt": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "subagent": {
+                      "$ref": "#/$defs/subagentReplay"
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "update": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "historyResponse": {
+      "type": "object",
+      "required": [
+        "updates",
+        "hasMore"
+      ],
+      "properties": {
+        "updates": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": {
+            "$ref": "#/$defs/sessionUpdateEnvelope"
+          }
+        },
+        "nextBeforeSeq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hasMore": {
+          "type": "boolean"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "nextBeforeSeq"
+          ],
+          "properties": {
+            "nextBeforeSeq": true,
+            "hasMore": {
+              "const": true
+            }
+          }
+        },
+        {
+          "properties": {
+            "nextBeforeSeq": false,
+            "hasMore": {
+              "const": false
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "renameRequest": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "title"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "renameResponse": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "question": {
+      "type": "object",
+      "required": [
+        "id",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/nonblank"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048,
+          "pattern": "\\S"
+        },
+        "header": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "\\S"
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "\\S"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          }
+        },
+        "multiSelect": {
+          "type": "boolean"
+        },
+        "intent": {
+          "const": "plan_review"
+        },
+        "approveLabel": {
+          "$ref": "#/$defs/nonblank"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "intent": {
+              "const": "plan_review"
+            },
+            "approveLabel": {
+              "$ref": "#/$defs/nonblank"
+            },
+            "options": true
+          },
+          "required": [
+            "intent",
+            "approveLabel",
+            "options"
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "intent"
+                ]
+              },
+              {
+                "required": [
+                  "approveLabel"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "askUserQuestionRequest": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "questions"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/question"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "askUserQuestionResponse": {
+      "type": "object",
+      "required": [
+        "answers"
+      ],
+      "properties": {
+        "answers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": [
+              "questionId",
+              "selectedLabels"
+            ],
+            "properties": {
+              "questionId": {
+                "$ref": "#/$defs/nonblank"
+              },
+              "selectedLabels": {
+                "type": "array",
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "#/$defs/nonblank"
+                }
+              },
+              "customAnswer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048,
+                "pattern": "\\S"
+              }
+            },
+            "anyOf": [
+              {
+                "properties": {
+                  "selectedLabels": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "required": [
+                  "customAnswer"
+                ],
+                "properties": {
+                  "customAnswer": true
+                }
+              }
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionStatusRetry": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "kind",
+        "attempt"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "kind": {
+          "const": "retry"
+        },
+        "attempt": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionStatusCompactionStarted": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "kind"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "kind": {
+          "const": "compaction_started"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionStatusCompactionCompleted": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "kind"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "kind": {
+          "const": "compaction_completed"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionStatusWarning": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "kind": {
+          "const": "warning"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "\\S"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sessionStatusNotification": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sessionStatusRetry"
+        },
+        {
+          "$ref": "#/$defs/sessionStatusCompactionStarted"
+        },
+        {
+          "$ref": "#/$defs/sessionStatusCompactionCompleted"
+        },
+        {
+          "$ref": "#/$defs/sessionStatusWarning"
+        }
+      ]
+    },
+    "subagentMode": {
+      "enum": [
+        "foreground",
+        "background"
+      ]
+    },
+    "subagentStopReason": {
+      "enum": [
+        "completed",
+        "aborted",
+        "error",
+        "max-tokens",
+        "refusal"
+      ]
+    },
+    "subagentPrompt": {
+      "description": "Trimmed tile presentation prompt, bounded to 32768 Unicode scalar values.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32768,
+      "pattern": "\\S",
+      "allOf": [
+        {
+          "pattern": "^[^\\uD800-\\uDFFF]*$"
+        }
+      ]
+    },
+    "subagentSummary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "\\S"
+    },
+    "subagentStarted": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sessionId",
+        "childSessionId",
+        "toolCallId",
+        "label",
+        "prompt",
+        "mode"
+      ],
+      "properties": {
+        "kind": {
+          "const": "started"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "childSessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "toolCallId": {
+          "$ref": "#/$defs/nonblank"
+        },
+        "label": {
+          "$ref": "#/$defs/nonblank"
+        },
+        "prompt": {
+          "$ref": "#/$defs/subagentPrompt"
+        },
+        "mode": {
+          "$ref": "#/$defs/subagentMode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "subagentEnded": {
+      "type": "object",
+      "required": [
+        "kind",
+        "sessionId",
+        "childSessionId",
+        "stopReason"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ended"
+        },
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "childSessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "stopReason": {
+          "$ref": "#/$defs/subagentStopReason"
+        },
+        "summary": {
+          "$ref": "#/$defs/subagentSummary"
+        }
+      },
+      "additionalProperties": false
+    },
+    "subagentNotification": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/subagentStarted"
+        },
+        {
+          "$ref": "#/$defs/subagentEnded"
+        }
+      ]
+    },
+    "subagentReplay": {
+      "type": "object",
+      "required": [
+        "label",
+        "prompt",
+        "mode"
+      ],
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/nonblank"
+        },
+        "prompt": {
+          "$ref": "#/$defs/subagentPrompt"
+        },
+        "mode": {
+          "$ref": "#/$defs/subagentMode"
+        },
+        "childSessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "ended": {
+          "type": "object",
+          "required": [
+            "stopReason"
+          ],
+          "properties": {
+            "stopReason": {
+              "$ref": "#/$defs/subagentStopReason"
+            },
+            "summary": {
+              "$ref": "#/$defs/subagentSummary"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "subagentInterruptRequest": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "childSessionId"
+      ],
+      "properties": {
+        "sessionId": {
+          "$ref": "#/$defs/sessionId"
+        },
+        "childSessionId": {
+          "$ref": "#/$defs/sessionId"
+        }
+      },
+      "additionalProperties": false
+    },
+    "subagentInterruptResponse": {
+      "type": "object",
+      "required": [
+        "result"
+      ],
+      "properties": {
+        "result": {
+          "enum": [
+            "interrupted",
+            "not_cancellable",
+            "unknown_child"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
