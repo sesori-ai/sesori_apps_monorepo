@@ -15,6 +15,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
+- Managed selection prefers the pinned target and otherwise takes the newest installed
+  managed version still at or above the harness's minimum, so raising the target leaves
+  the previous install usable rather than reporting the runtime as missing. A managed
+  version below the minimum is never selected.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
@@ -23,7 +27,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
-  release (`>=0.1.3`) and the exact managed `0.1.3` release. An outdated explicit
+  release (`>=0.1.3`) and then a managed release at or above that minimum,
+  preferring the pinned `0.1.3` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -43,7 +48,8 @@ idle suspension, the management snapshot, and lifecycle commands.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
-  the exact managed release. Version output must retain Copilot branding, and
+  a managed release at or above that minimum, preferring the pinned target.
+  Version output must retain Copilot branding, and
   startup uses only the runtime selected during provisioning. Authentication is
   local and out of band; setup never reads credentials or runs `copilot login`.
   An unexpected owned-process exit degrades only Copilot, and demand reconnects

@@ -16,6 +16,24 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Managed runtime
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+
+Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
+user-installed CLI from PATH or an explicit binary option, so there is nothing
+for Sesori to install or upgrade. The upgrade follows the install capability
+exactly — a harness configured with an explicit binary override, running on a
+platform with no pinned asset, or attached to an externally managed server
+(`--opencode-no-auto-start`) advertises neither.
+
+The upgrade only replaces a runtime Sesori already manages. A machine with no
+managed version directory keeps the explicit Install action; it never downloads
+a runtime the user has not asked for.
+
 ## Option pickers
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
