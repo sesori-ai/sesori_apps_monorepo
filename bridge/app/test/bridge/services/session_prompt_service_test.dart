@@ -49,7 +49,8 @@ void main() {
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
       );
-      await sessionRepository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: "fake",
@@ -142,7 +143,8 @@ void main() {
     });
 
     test("updates prompt defaults after the command is dispatched", () async {
-      await sessionRepository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s-defaults-command",
         backendSessionId: "backend-defaults-command",
         pluginId: "fake",
@@ -175,7 +177,8 @@ void main() {
     });
 
     test("emits committed prompt default changes", () async {
-      await sessionRepository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s-defaults-event",
         backendSessionId: "backend-defaults-event",
         pluginId: "fake",

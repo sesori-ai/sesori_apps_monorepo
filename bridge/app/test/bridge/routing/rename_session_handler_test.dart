@@ -41,7 +41,8 @@ void main() {
         worktreeService: _UnusedWorktreeService(),
       );
       handler = RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher);
-      await sessionRepository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: "fake",
@@ -200,7 +201,8 @@ void main() {
     });
 
     test("stores a rename while the owning plugin is unavailable", () async {
-      await sessionRepository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "stale-plugin-session",
         backendSessionId: "backend-stale-plugin-session",
         pluginId: "stopped-plugin",

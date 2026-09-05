@@ -265,7 +265,7 @@ turn-lifecycle rework in `acp_plugin.dart`, covered by
 
 **Resolved at the emitter.** The plugin feeds the mapper a per-session
 title/time snapshot (from every enumeration hit and from `createSession`, so
-the creation race before `insertStoredSession` is covered), and the
+the creation race before the bridge stores the session is covered), and the
 `session_info_update` emission merges against it: the payload keeps the new
 title semantics (explicit null still clears) but now carries the best-known
 `time` — including the notification's own `updatedAt` when the agent sends

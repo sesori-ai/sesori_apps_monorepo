@@ -39,7 +39,7 @@ void main() {
       );
       for (final sessionId in ["s1", "s42", "s7", "s8", "s10", "s-update-fails", "s9"]) {
         await _insertStoredSession(
-          repository: sessionRepository,
+          db: db,
           sessionId: sessionId,
           backendSessionId: "backend-$sessionId",
           pluginId: "fake",
@@ -130,7 +130,7 @@ void main() {
 
     test("successful prompt send updates stored defaults", () async {
       await _insertStoredSession(
-        repository: sessionRepository,
+        db: db,
         sessionId: "s-defaults-prompt",
         backendSessionId: "backend-s-defaults-prompt",
         pluginId: "fake",
@@ -310,7 +310,7 @@ void main() {
 
     test("successful command send updates stored defaults", () async {
       await _insertStoredSession(
-        repository: sessionRepository,
+        db: db,
         sessionId: "s-defaults-command",
         backendSessionId: "backend-s-defaults-command",
         pluginId: "fake",
@@ -347,7 +347,7 @@ void main() {
 
     test("plugin prompt failure leaves stored defaults unchanged", () async {
       await _insertStoredSession(
-        repository: sessionRepository,
+        db: db,
         sessionId: "s-failing-prompt",
         backendSessionId: "backend-s-failing-prompt",
         pluginId: "fake",
@@ -397,7 +397,7 @@ void main() {
 
     test("plugin command failure leaves stored defaults unchanged", () async {
       await _insertStoredSession(
-        repository: sessionRepository,
+        db: db,
         sessionId: "s-failing-command",
         backendSessionId: "backend-s-failing-command",
         pluginId: "fake",
@@ -543,7 +543,7 @@ void main() {
 
     test("stored plugin mismatch returns 503 before plugin I/O", () async {
       await _insertStoredSession(
-        repository: sessionRepository,
+        db: db,
         sessionId: "stale-plugin-session",
         backendSessionId: "backend-stale-plugin-session",
         pluginId: "stopped-plugin",
@@ -618,14 +618,15 @@ SessionPromptService _buildPromptService(SessionRepository repository) {
 }
 
 Future<void> _insertStoredSession({
-  required SessionRepository repository,
+  required AppDatabase db,
   required String sessionId,
   required String backendSessionId,
   required String pluginId,
   required String? agent,
   required AgentModel? agentModel,
 }) {
-  return repository.insertStoredSession(
+  return insertTestSession(
+    db: db,
     sessionId: sessionId,
     backendSessionId: backendSessionId,
     pluginId: pluginId,
