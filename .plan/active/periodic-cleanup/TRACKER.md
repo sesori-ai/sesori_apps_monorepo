@@ -15,8 +15,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Merged | [#1308](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1308) |
 | 6/25 | ⚙️ [periodic-cleanup] plugins: keep session status events typed [step 6/25] | Merged | [#1309](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1309) |
 | 7/25 | 🚧 [periodic-cleanup] plugins: keep message events typed [step 7/25] | Merged | [#1311](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1311) |
-| 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | In review | [#1313](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1313) |
-| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | In progress (local, awaiting step 8 merge) | — |
+| 8/25 | ⚙️ [periodic-cleanup] bridge: narrow session and activity projections [step 8/25] | Merged | [#1313](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1313) |
+| 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | In review | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Proposed | — |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | Proposed | — |
 | 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
