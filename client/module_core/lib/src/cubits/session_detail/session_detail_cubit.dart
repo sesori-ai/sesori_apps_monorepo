@@ -878,28 +878,14 @@ class SessionDetailCubit(
       SesoriMessagePartUpdated() ||
       SesoriMessagePartDelta() ||
       SesoriMessagePartRemoved() ||
-      SesoriPtyCreated() ||
-      SesoriPtyUpdated() ||
-      SesoriPtyExited() ||
-      SesoriPtyDeleted() ||
       SesoriPermissionUpdated() ||
       SesoriTodoUpdated() ||
       SesoriProjectsSummary() ||
       SesoriProjectUpdated() ||
       SesoriVcsBranchUpdated() ||
       SesoriFileEdited() ||
-      SesoriFileWatcherUpdated() ||
-      SesoriLspUpdated() ||
-      SesoriLspClientDiagnostics() ||
-      SesoriMcpToolsChanged() ||
-      SesoriMcpBrowserOpenFailed() ||
-      SesoriInstallationUpdated() ||
       SesoriInstallationUpdateAvailable() ||
-      SesoriWorkspaceReady() ||
-      SesoriWorkspaceFailed() ||
       SesoriTuiToastShow() ||
-      SesoriWorktreeReady() ||
-      SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
       // Queued prompts render only for the session itself; own-session events
       // arrive through the session-scoped stream, not this global path.
@@ -960,10 +946,6 @@ class SessionDetailCubit(
             SesoriMessagePartUpdated() ||
             SesoriMessagePartDelta() ||
             SesoriMessagePartRemoved() ||
-            SesoriPtyCreated() ||
-            SesoriPtyUpdated() ||
-            SesoriPtyExited() ||
-            SesoriPtyDeleted() ||
             SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriPermissionUpdated() ||
@@ -976,18 +958,8 @@ class SessionDetailCubit(
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||
             SesoriFileEdited() ||
-            SesoriFileWatcherUpdated() ||
-            SesoriLspUpdated() ||
-            SesoriLspClientDiagnostics() ||
-            SesoriMcpToolsChanged() ||
-            SesoriMcpBrowserOpenFailed() ||
-            SesoriInstallationUpdated() ||
             SesoriInstallationUpdateAvailable() ||
-            SesoriWorkspaceReady() ||
-            SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
-            SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
             SesoriSessionUnseenChanged() ||
             SesoriSessionQueuedPrompts() ||
             SesoriSessionPromptDefaultsChanged():

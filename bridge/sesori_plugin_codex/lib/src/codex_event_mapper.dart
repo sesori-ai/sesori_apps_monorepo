@@ -271,12 +271,11 @@ class CodexEventMapper({
 
       case "skills/changed":
         return const [BridgeSseCommandCatalogUpdated()];
-
-      case "mcpServer/startupStatus/updated":
-        return const [BridgeSseMcpToolsChanged()];
     }
 
     // Everything else is dropped intentionally:
+    //   - mcpServer/startupStatus/updated — MCP tool availability is read on
+    //     demand; no client reacts to the notice.
     //   - thread/tokenUsage/updated — no Session field for token usage.
     //   - thread/archived | unarchived — the bridge DB is authoritative for
     //     archive state.
@@ -345,7 +344,6 @@ class CodexEventMapper({
       part: const CodexToolPartMapper().map(sessionId: threadId, tool: tool, children: children),
     ),
   ];
-
 
   /// `item/*/delta` notifications stream text into an already-known part.
   List<BridgeSseEvent> _deltaEvent({

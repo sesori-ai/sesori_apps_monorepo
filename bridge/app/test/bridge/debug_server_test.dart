@@ -151,11 +151,11 @@ void main() {
       final client = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(client.close);
 
-      plugin.add(const BridgeSseWorkspaceReady(name: "developer’s workspace"));
+      plugin.add(const BridgeSseFileEdited(file: "developer’s workspace"));
 
       final unicodeEvent = jsonDecodeMap(await client.nextEvent());
-      expect(unicodeEvent["type"], "workspace.ready");
-      expect(unicodeEvent["name"], "developer’s workspace");
+      expect(unicodeEvent["type"], "file.edited");
+      expect(unicodeEvent["file"], "developer’s workspace");
 
       plugin.add(const BridgeSseVcsBranchUpdated());
 

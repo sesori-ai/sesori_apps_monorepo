@@ -97,14 +97,6 @@ class const BridgeSseMessagePartRemoved({
   required final String partID,
 }) extends BridgeSseEvent;
 
-class const BridgeSsePtyCreated() extends BridgeSseEvent;
-
-class const BridgeSsePtyUpdated() extends BridgeSseEvent;
-
-class const BridgeSsePtyExited({final String? id, final int? exitCode}) extends BridgeSseEvent;
-
-class const BridgeSsePtyDeleted({final String? id}) extends BridgeSseEvent;
-
 class const BridgeSsePermissionAsked({
   required final String requestID,
   required final String sessionID,
@@ -162,23 +154,9 @@ class const BridgeSseVcsBranchUpdated() extends BridgeSseEvent;
 
 class const BridgeSseFileEdited({final String? file}) extends BridgeSseEvent;
 
-class const BridgeSseFileWatcherUpdated({final String? file, final String? event}) extends BridgeSseEvent;
-
-class const BridgeSseLspUpdated() extends BridgeSseEvent;
-
-class const BridgeSseLspClientDiagnostics({final String? serverID, final String? path}) extends BridgeSseEvent;
-
-class const BridgeSseMcpToolsChanged() extends BridgeSseEvent;
-
-class const BridgeSseMcpBrowserOpenFailed() extends BridgeSseEvent;
-
-class const BridgeSseInstallationUpdated({final String? version}) extends BridgeSseEvent;
-
+/// OpenCode reports a newer version of itself; the bridge pushes it as an
+/// immediate installation-update notification.
 class const BridgeSseInstallationUpdateAvailable({final String? version}) extends BridgeSseEvent;
-
-class const BridgeSseWorkspaceReady({final String? name}) extends BridgeSseEvent;
-
-class const BridgeSseWorkspaceFailed({final String? message}) extends BridgeSseEvent;
 
 /// Transient backend guidance. [sessionID] is the backend session identity
 /// before bridge-core remapping; null means genuinely global or unattributed.
@@ -188,7 +166,3 @@ class const BridgeSseTuiToastShow({
   required final String? message,
   required final String? variant,
 }) extends BridgeSseEvent;
-
-class const BridgeSseWorktreeReady() extends BridgeSseEvent;
-
-class const BridgeSseWorktreeFailed() extends BridgeSseEvent;

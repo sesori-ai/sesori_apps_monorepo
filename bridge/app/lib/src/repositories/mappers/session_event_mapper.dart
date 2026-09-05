@@ -72,25 +72,11 @@ class const SessionEventMapper() {
       BridgeSseGlobalDisposed() ||
       BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
-      BridgeSsePtyCreated() ||
-      BridgeSsePtyUpdated() ||
-      BridgeSsePtyExited() ||
-      BridgeSsePtyDeleted() ||
       BridgeSsePermissionUpdated() ||
       BridgeSseProjectUpdated() ||
       BridgeSseVcsBranchUpdated() ||
-      BridgeSseFileEdited() ||
-      BridgeSseFileWatcherUpdated() ||
-      BridgeSseLspUpdated() ||
-      BridgeSseLspClientDiagnostics() ||
-      BridgeSseMcpToolsChanged() ||
-      BridgeSseMcpBrowserOpenFailed() ||
-      BridgeSseInstallationUpdated() ||
       BridgeSseInstallationUpdateAvailable() ||
-      BridgeSseWorkspaceReady() ||
-      BridgeSseWorkspaceFailed() ||
-      BridgeSseWorktreeReady() ||
-      BridgeSseWorktreeFailed() => const <String>{},
+      BridgeSseFileEdited() => const <String>{},
       BridgeSseSessionCreated() ||
       BridgeSseSessionUpdated() ||
       BridgeSseSessionDeleted() => throw StateError("session event parsing unexpectedly returned no session"),
@@ -334,25 +320,11 @@ class const SessionEventMapper() {
       BridgeSseGlobalDisposed() ||
       BridgeSseCommandCatalogUpdated() ||
       BridgeSseSessionOptionsChanged() ||
-      BridgeSsePtyCreated() ||
-      BridgeSsePtyUpdated() ||
-      BridgeSsePtyExited() ||
-      BridgeSsePtyDeleted() ||
       BridgeSsePermissionUpdated() ||
       BridgeSseProjectUpdated() ||
       BridgeSseVcsBranchUpdated() ||
-      BridgeSseFileEdited() ||
-      BridgeSseFileWatcherUpdated() ||
-      BridgeSseLspUpdated() ||
-      BridgeSseLspClientDiagnostics() ||
-      BridgeSseMcpToolsChanged() ||
-      BridgeSseMcpBrowserOpenFailed() ||
-      BridgeSseInstallationUpdated() ||
       BridgeSseInstallationUpdateAvailable() ||
-      BridgeSseWorkspaceReady() ||
-      BridgeSseWorkspaceFailed() ||
-      BridgeSseWorktreeReady() ||
-      BridgeSseWorktreeFailed() => event,
+      BridgeSseFileEdited() => event,
     };
   }
 }

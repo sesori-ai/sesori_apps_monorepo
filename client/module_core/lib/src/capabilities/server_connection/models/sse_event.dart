@@ -39,10 +39,6 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriPluginInstallProgress() ||
     SesoriPluginAuthenticationProgress() ||
     SesoriSessionOptionsUpdated() ||
-    SesoriPtyCreated() ||
-    SesoriPtyUpdated() ||
-    SesoriPtyExited() ||
-    SesoriPtyDeleted() ||
     SesoriPermissionUpdated() ||
     SesoriProjectsSummary() ||
     SesoriProjectUpdated() ||
@@ -50,16 +46,6 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriSessionsUpdated() ||
     SesoriSessionUnseenChanged() ||
     SesoriFileEdited() ||
-    SesoriFileWatcherUpdated() ||
-    SesoriLspUpdated() ||
-    SesoriLspClientDiagnostics() ||
-    SesoriMcpToolsChanged() ||
-    SesoriMcpBrowserOpenFailed() ||
-    SesoriInstallationUpdated() ||
-    SesoriInstallationUpdateAvailable() ||
-    SesoriWorkspaceReady() ||
-    SesoriWorkspaceFailed() ||
-    SesoriWorktreeReady() ||
-    SesoriWorktreeFailed() => null,
+    SesoriInstallationUpdateAvailable() => null,
   };
 }
