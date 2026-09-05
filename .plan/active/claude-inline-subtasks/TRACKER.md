@@ -626,3 +626,12 @@ git diff --numstat 4842614608fe05928690b9cfed4758f6e943de5a..f098f78191b84790f23
 
 The first revision is the opening head's merge base with `main`. This is an
 opening measurement, not a self-updating claim about subsequent review fixes.
+
+User-directed quality review: the archived implementation is not frozen.
+Preserve intended behavior and valid fixes while making worthwhile local
+improvements within the line budget. A fresh audit found that descendant
+permissions survived subtree deletion. The existing cleanup loop now cancels
+those requests before forgetting their tracker records; the regression failed
+before the fix and passes afterward. ACP analysis and all 311 tests passed.
+An ancestry-traversal rewrite was declined because it would introduce an
+unnecessary parent-before-child ordering assumption.

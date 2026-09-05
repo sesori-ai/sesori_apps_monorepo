@@ -64,6 +64,9 @@ reaches the backend so the turn continues.
   process-wide so another session cannot become the attribution target. OMP
   supplies explicit session IDs on permissions and forms, so its independent
   session turns remain attributable while running concurrently.
+- Deleting a tracked ACP parent retires pending input for its full descendant
+  subtree, including a running grandchild of a finished child, so removed
+  sessions cannot leave unanswered requests holding the plugin busy.
 - Resolving a request retires it in the pending list, on every open surface, and
   in completion-notification suppression. Raising and resolving a request also
   refreshes the activity summary, so the session's awaiting-input state appears

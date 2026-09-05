@@ -364,6 +364,38 @@ void main() {
       expect(plugin.childSessionTracker.childStatuses, isEmpty);
     });
 
+    test("deleting a finished child cancels its descendant's pending permission", () async {
+      final sessionId = await connectAndCreateSession();
+      spawnChild(root: sessionId, childId: "child");
+      spawnChild(root: "child", childId: "grandchild");
+      await finishChild("child", status: PluginToolStatus.completed);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 501,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "grandchild",
+          "toolCall": {"toolCallId": "call", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(await plugin.getPendingPermissions(sessionId: "grandchild"), hasLength(1));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      await plugin.deleteSession("child");
+      await pump();
+
+      expect(await plugin.getPendingPermissions(sessionId: "grandchild"), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 501);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+      expect(emitted.whereType<BridgeSsePermissionReplied>().single.sessionID, "grandchild");
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
     test("deleting a child drops its descendant subtree from plugin state", () async {
       final sessionId = await connectAndCreateSession();
       spawnChild(root: sessionId, childId: "c1");

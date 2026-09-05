@@ -1804,9 +1804,10 @@ abstract class AcpPlugin({
     // for a deleted session. Provider/model state is cleared from its tracker
     // independently above.
     eventMapper.forgetSession(sessionId);
-    // A root's children streamed under their own ids, so their mapper and
-    // model caches go with the root.
+    // Descendants own their pending input and caches under their own ids;
+    // retire both before dropping their tracker records.
     for (final childId in childSessionTracker.childSessionIds(sessionId: sessionId)) {
+      _approvalRegistry?.cancelForSession(sessionId: childId);
       _sessionOptionsService.forgetSession(sessionId: childId);
       eventMapper.forgetSession(childId);
     }

@@ -592,10 +592,12 @@ slices to merge and record the final replay consumer's merge commit.
    - Expected: live/replayed tile convergence and ordered storage-safe history;
      no schema migration. Verify ACP and DeepSeek replay tests and analysis.
 
-These are delivery boundaries for the reviewed design, not an architectural
-redesign: add no new state, compatibility layer, or abstraction to make a slice
-stand alone. Reuse the approved trackers and mapper ownership; preserve every
-review fix and check the assembled consumer against the archived source.
+These delivery boundaries preserve intended behavior and valid review fixes,
+not the archived implementation verbatim. The user authorizes meaningful
+simplification and correctness improvements within each slice. Keep ownership
+clear and the diff near its budget; do not add state, compatibility layers, or
+abstractions solely to make a slice stand alone. Verify the assembled consumer
+against the required behavior rather than requiring byte-for-byte source parity.
 
 ### Probe results (dsh 0.1.1-rc.2, 2026-09-03, details in `followups/deepseek-probe.md`)
 

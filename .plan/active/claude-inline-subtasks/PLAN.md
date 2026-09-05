@@ -17,8 +17,9 @@
 - **DeepSeek consumer split (2026-09-04):** supersede oversized PR #1293 with
   five sequential, approximately 1,500-line slices. Exact scopes, titles,
   budgets, and the verbatim-fixture exception are in `HARNESS_FOLLOWUPS.md`;
-  progress is in `TRACKER.md`. Preserve the approved design and all review
-  fixes. Release preparation waits for every consumer slice to merge. Existing
+  progress is in `TRACKER.md`. Preserve intended behavior and valid review
+  fixes; improve the implementation where worthwhile within each slice's budget.
+  Release preparation waits for every consumer slice to merge. Existing
   regression reconciliation and final coverage/retirement gates remain intact.
 
 ## Goal
