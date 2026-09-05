@@ -30,7 +30,9 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
   the next refresh, while an unknown, failed, or switched login returns session
   and branch without PR metadata instead of another account's cache. Fetched PR
   data is fenced by the viewer login in the same response. No token is stored
-  and no GitHub login reaches clients. Routine
+  and no GitHub login reaches clients. A host with gh missing or not logged in
+  never runs the identity query, and each failing streak warns once with the
+  command to run rather than once per request. Routine
   logs carry no branch, repo slug, PR title, URL, or path; recovered failures retain
   the original error, stack, and diagnostically useful local context.
 - Presence is connection-scoped and unioned across devices; one timer serves the
@@ -70,6 +72,8 @@ alternate whether list or detail holds the claim.
 - Refresh cycles overlap, run with no viewer, stop after an interval change, make a
   newly viewed project wait a full interval, leak branch names, repo slugs, PR
   titles, URLs, or paths into routine logs, or discard useful failure diagnostics.
+- A bridge without gh installed or logged in repeats an identity warning or stack
+  trace for every sessions request instead of one per failing streak.
 
 ## Known Limitations
 

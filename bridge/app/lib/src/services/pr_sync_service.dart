@@ -54,6 +54,9 @@ class PrSyncService({
   /// reusing a successful result for [_githubCliCacheTtl]. Each call is a
   /// network round trip, and an explicit refresh otherwise pays for several in
   /// series. Failures are never cached so a fixed login is picked up at once.
+  ///
+  /// Returns null when gh is missing or unauthenticated, without running the
+  /// identity query.
   Future<VerifiedGithubLogin?> verifyGithubIdentity() async {
     final inFlight = _identityVerification;
     if (inFlight != null) return await inFlight;
@@ -76,28 +79,41 @@ class PrSyncService({
 
   Future<VerifiedGithubLogin?> _verifyGithubIdentity() async {
     try {
+      // A missing gh install or missing login is already reported once by
+      // GhCliApi with the exact command to run. Checking capability first stops
+      // every request from running `gh api user` only to fail the same way.
+      if (!await _hasGithubCliCapability()) return null;
+
       final identity = await _prSource.getAuthenticatedIdentity();
       if (identity == null) {
-        _reportIdentityVerificationFailure();
+        _reportIdentityVerificationFailure(error: null, stackTrace: null);
         return null;
       }
       _identityVerificationFailureReported = false;
       _verifiedIdentityCache = (login: identity, checkedAt: _clock.now());
       return identity;
     } on Object catch (error, stackTrace) {
-      _reportIdentityVerificationFailure();
+      _reportIdentityVerificationFailure(error: error, stackTrace: stackTrace);
+      return null;
+    }
+  }
+
+  /// Reports one warning per failing streak. Failures are never cached, so a gh
+  /// account that stays unverifiable would otherwise repeat the same message and
+  /// stack trace for every request until it is fixed.
+  void _reportIdentityVerificationFailure({
+    required Object? error,
+    required StackTrace? stackTrace,
+  }) {
+    if (_identityVerificationFailureReported) return;
+    _identityVerificationFailureReported = true;
+    if (error != null) {
       Log.w(
         "[PrSyncService] Failed to verify the active GitHub identity; PR refresh is skipped",
         error,
         stackTrace,
       );
-      return null;
     }
-  }
-
-  void _reportIdentityVerificationFailure() {
-    if (_identityVerificationFailureReported) return;
-    _identityVerificationFailureReported = true;
     Console.warning(
       "GitHub CLI (gh) could not verify the active github.com account. "
       "GitHub pull request and CI status metadata cannot be refreshed until verification succeeds. "
@@ -285,9 +301,6 @@ class PrSyncService({
     }
 
     try {
-      if (!await _hasGithubCliCapability()) {
-        return _finishCycle(outcomes: outcomes);
-      }
       final verifiedGithubLogin = await verifyGithubIdentity();
       if (verifiedGithubLogin == null) {
         return _finishCycle(outcomes: outcomes);
