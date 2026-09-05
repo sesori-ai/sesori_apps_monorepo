@@ -70,6 +70,10 @@ final class ClaudeEventDispatcher({
     _resetTurn(sessionId: sessionId);
   }
 
+  /// The turn's model also goes through the resolver: a resumed session with
+  /// no Sesori selection records the API name the CLI reported as its applied
+  /// model, and a picker id never matches a `resolvedModel`, so the lookup is
+  /// a no-op for one and the fix for the other.
   String? _modelId({required String sessionId}) {
     final model = _turnSelections[sessionId]?.model ?? _models[sessionId];
     if (model == null) return null;
@@ -110,6 +114,7 @@ final class ClaudeEventDispatcher({
     _announcedMessageIds.remove(sessionId);
     _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
+    _turnSelections.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }

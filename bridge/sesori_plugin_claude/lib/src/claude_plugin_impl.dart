@@ -209,13 +209,14 @@ final class ClaudePlugin({
       if (_createdSessions.containsKey(sessionId)) return const [];
       throw const PluginOperationException.notFound("getSessionMessages", message: "session not found");
     }
+    final catalog = await _catalogForHistory();
     try {
       return _history.map(
         sessionId: sessionId,
         agentId: ClaudeSubagentSessionId.agentIdOf(sessionId),
         records: await _transcripts.readTranscriptRecordsInIsolate(sessionId: sessionId),
         residentTaskToolUseIds: _eventDispatcher.residentTaskToolUseIds(sessionId: sessionId),
-        catalogModelId: _catalogService.cached?.catalogModelId,
+        catalogModelId: catalog?.catalogModelId,
       );
     } on Object catch (error) {
       throw PluginOperationException(
@@ -223,6 +224,17 @@ final class ClaudePlugin({
         message: "Claude history read failed",
         cause: error,
       );
+    }
+  }
+
+  /// The catalog that maps a transcript's API model names to picker ids. A
+  /// failed probe must not withhold history, so it degrades to raw names.
+  Future<ClaudeBackendCatalog?> _catalogForHistory() async {
+    try {
+      return await _catalogService.getCatalog(refresh: false);
+    } on Object catch (error, stack) {
+      Log.w("[claude] history keeps API model names: catalog unavailable", error, stack);
+      return null;
     }
   }
 
