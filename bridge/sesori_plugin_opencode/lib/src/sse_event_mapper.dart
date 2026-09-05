@@ -148,7 +148,8 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       SseFileEdited(:final file) => BridgeSseFileEdited(file: file),
       SseInstallationUpdateAvailable(:final version) => BridgeSseInstallationUpdateAvailable(version: version),
       // Editor and runtime housekeeping no client consumes: PTY, file-watcher,
-      // LSP, MCP, installation, workspace and worktree notifications stop here.
+      // LSP, MCP, installation-updated, workspace and worktree notifications
+      // stop here.
       SsePtyCreated() ||
       SsePtyUpdated() ||
       SsePtyExited() ||

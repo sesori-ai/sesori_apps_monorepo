@@ -193,7 +193,8 @@ asked to start working the plan; steps execute in order from step 2.
 - Consumer check before deletion: no client revision in Git history ever
   destructured, case-handled or type-checked any of the fifteen `Sesori*`
   variants; every public release through v1.8.2 routes them to no-op lists.
-  Public shared decoders and client ignore lists stay for released bridges.
+  The shared decoders and client ignore-list entries for the fourteen dropped
+  kinds were removed after the user's PR review (see the correction below).
 - Fourteen `BridgeSseEvent` variants are deleted with their identity and wire
   mapping arms; the remaining union stays exhaustively handled. OpenCode maps
   the matching `SseEventData` kinds to null at its boundary; Codex no longer
