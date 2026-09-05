@@ -102,6 +102,32 @@ void main() {
     );
   }, skip: Platform.isWindows ? "POSIX permission bits do not gate writes on Windows" : null);
 
+  test("a body that will not be read is released rather than left holding its connection", () async {
+    final tempDir = await Directory.systemTemp.createTemp("binary-download-client");
+    addTearDown(() async {
+      if (tempDir.existsSync()) await tempDir.delete(recursive: true);
+    });
+
+    var cancelled = false;
+    final controller = StreamController<List<int>>(onCancel: () => cancelled = true);
+    controller.add(const [1, 2, 3]);
+    final client = MockClient.streaming((_, _) async => http.StreamedResponse(controller.stream, 404));
+
+    await expectLater(
+      BinaryDownloadClient(httpClient: client)
+          .download(
+            url: "https://example.test/asset.tar.gz",
+            destinationPath: p.join(tempDir.path, "asset.tar.gz"),
+          )
+          .toList(),
+      throwsA(isA<DownloadException>()),
+    );
+
+    // The client outlives one download at some call sites, so an unread body
+    // must not keep its connection alive.
+    expect(cancelled, isTrue);
+  });
+
   test("a connection-phase failure is wrapped as a network DownloadException", () async {
     final client = _SendErrorClient(const SocketException("connection refused"));
     await expectLater(

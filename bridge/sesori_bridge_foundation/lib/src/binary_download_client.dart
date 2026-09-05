@@ -94,6 +94,7 @@ class BinaryDownloadClient({
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      await _releaseUnreadBody(response);
       throw DownloadException(
         kind: _isRetryableHttpStatus(response.statusCode) ? DownloadFailureKind.network : DownloadFailureKind.failed,
         message: "Download request to $url failed with status ${response.statusCode}",
@@ -114,6 +115,7 @@ class BinaryDownloadClient({
     try {
       file = File(destinationPath).openSync(mode: FileMode.write);
     } on Object catch (error) {
+      await _releaseUnreadBody(response);
       throw DownloadException(
         kind: DownloadFailureKind.failed,
         message: "Could not open download destination: ${error.toString()}",
@@ -179,6 +181,20 @@ class BinaryDownloadClient({
           Log.w("BinaryDownloadClient: destination close failed during teardown", error, stackTrace);
         }
       }
+    }
+  }
+
+  /// Releases the connection behind a response whose body will not be read.
+  ///
+  /// The client can outlive a single download — the bridge shares one across the
+  /// relay, the GitHub releases API, and the updater until shutdown — so an
+  /// unconsumed body would hold a pooled connection for the process lifetime.
+  /// Cancelling rather than draining avoids pulling down a body being discarded.
+  Future<void> _releaseUnreadBody(http.StreamedResponse response) async {
+    try {
+      await response.stream.listen(null).cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("BinaryDownloadClient: could not release an unread response body", error, stackTrace);
     }
   }
 
