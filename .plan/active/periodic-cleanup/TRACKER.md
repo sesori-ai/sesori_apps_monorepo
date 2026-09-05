@@ -430,7 +430,17 @@ asked to start working the plan; steps execute in order from step 2.
 - Title kept from this tracker; the planned 🌱 became 🌿 because review has to
   confirm each deleted report was complete and that the architecture
   consolidation preserved the durable content.
-- Line split, measured at `git diff --numstat` for this commit: 122+/3,560- in
-  Markdown plus 8,057 deleted lines of baseline JSON. The Markdown figure is
-  within the step's deletion-heavy allowance; the JSON is a retired measurement
+- Line split, measured against merge base `b57d30c770`
+  (`git diff --numstat b57d30c770..<head> -- docs bridge README.md`): 167+/3,562-
+  in Markdown plus 8,057 deleted lines of baseline JSON. The path filter makes
+  the figure self-exclusive of this tracker note. The Markdown figure is within
+  the step's deletion-heavy allowance; the JSON is a retired measurement
   artifact, not prose.
+- Correction applied during review: the parallel-runtime paragraph carried over
+  from the retired document described a `--plugin <id>` flag and persisted
+  `enabledPlugins` ordering. Neither exists. The section now states the
+  implemented rule — the `plugins.disabled` denylist, case-insensitive
+  display-name ordering tie-broken by id, OpenCode preferred as the default when
+  selectable, and per-plugin `--<pluginId>-<name>` options — matching
+  `plugin_lifecycle_service.dart`, `plugin_registry.dart` and
+  `plugin_cli_options_mapper.dart`.

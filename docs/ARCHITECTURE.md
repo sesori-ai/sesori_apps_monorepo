@@ -189,11 +189,14 @@ not replace the separate multi-bridge addressing axis.
 
 ### Parallel runtime
 
-The bridge resolves repeated `--plugin <id>` flags in order, otherwise ordered
-persisted `enabledPlugins`, otherwise the sole OpenCode default. It starts,
-monitors, degrades and stops plugins independently, routes session controls
-through each stored binding, and preserves one shared project space across
-plugins. A plugin outage degrades execution for its bound sessions without
+Every registered plugin is eligible unless its id appears in the
+`plugins.disabled` denylist in bridge settings. Eligible plugins are ordered by
+case-insensitive display name, tie-broken by id, and the current default for new
+clients is OpenCode when it is selectable and otherwise the first selectable
+plugin in that order. Plugin-specific CLI options are namespaced per plugin as
+`--<pluginId>-<name>`. The bridge starts, monitors, degrades and stops plugins
+independently, routes session controls through each stored binding, and
+preserves one shared project space across plugins. A plugin outage degrades execution for its bound sessions without
 removing their durable records. The client discovers the bridge-authored ordered
 plugin list, selects its default when routable, and scopes saved agent, model and
 variant choices by project and plugin.
