@@ -158,9 +158,11 @@ defaults and queued client sends coherent.
   project directories. Command discovery precedes per-model thinking hydration,
   so a later timeout retains the commands already observed in the partial catalog.
   Pi's bundled `llama` extension advertises itself over RPC but refuses non-TUI
-  execution, so the plugin omits it. Because Pi omits its other built-in TUI
-  commands from `get_commands`, the plugin appends one `compact` command and
-  dispatches it through Pi's native `compact` RPC with optional user instructions
+  execution, so the plugin omits commands from that bundled source through an
+  explicit exclusion set. Exclusions apply to numbered invocation aliases too;
+  user extensions and prompts named `llama` remain available. Because Pi omits
+  its other built-in TUI commands from `get_commands`, the plugin appends one
+  `compact` command and dispatches it through Pi's native `compact` RPC with optional user instructions
   rather than sending `/compact` as a prompt. If an upstream command already owns
   that name, it remains an ordinary slash command and the native action is not
   synthesized. Private instructions remain confined to the RPC while the synthetic

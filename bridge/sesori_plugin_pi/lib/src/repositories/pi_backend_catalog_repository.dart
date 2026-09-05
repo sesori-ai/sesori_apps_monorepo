@@ -33,7 +33,13 @@ class PiBackendCatalogRepository({
   required final CommandExecutor _commandExecutor,
   required final Duration _healthTimeout,
 }) {
-  static const String _tuiOnlyLlamaCommandName = "llama";
+  static const _rpcExcludedCommandSourcePaths = <String>{
+    // Pi's bundled llama.cpp extension only exposes /llama, whose handler
+    // requires TUI mode. Match its origin so numbered aliases are excluded
+    // without hiding user commands with the same name. Revisit if Pi adds RPC
+    // support to this extension (verified against Pi 0.84.4).
+    "<inline:llama.cpp>",
+  };
 
   Future<bool> healthCheck() async {
     try {
@@ -271,9 +277,7 @@ class PiBackendCatalogRepository({
   PluginCommand? _command(PiCatalogCommandDto dto) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty) return null;
-    // Pi registers /llama as an extension, so RPC catalogs expose it even
-    // though its handler explicitly accepts only interactive TUI mode.
-    if (name == _tuiOnlyLlamaCommandName) return null;
+    if (_rpcExcludedCommandSourcePaths.contains(dto.sourcePath)) return null;
     final description = dto.description?.trim();
     return PluginCommand(
       name: name,

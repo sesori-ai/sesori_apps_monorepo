@@ -61,21 +61,52 @@ void main() {
     expect(harness.processes.single.killed, isTrue);
   });
 
-  test("filters Pi's TUI-only llama command from the RPC catalog", () async {
+  for (final bundledName in ["llama", "llama:2"]) {
+    test("excludes bundled $bundledName by origin and preserves user commands", () async {
+      final harness = _ProbeHarness(
+        stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+        models: [_model(provider: "openai", id: "gpt", reasoning: false)],
+        commands: [
+          {
+            "name": bundledName,
+            "description": "Manage llama.cpp router models",
+            "source": "extension",
+            "sourceInfo": {"path": "<inline:llama.cpp>"},
+          },
+          {
+            "name": "llama:1",
+            "source": "extension",
+            "sourceInfo": {"path": "/project/.pi/extensions/llama.ts"},
+          },
+          {
+            "name": "llama",
+            "source": "prompt",
+            "sourceInfo": {"path": "/project/.pi/prompts/llama.md"},
+          },
+          {"name": "review", "source": "prompt"},
+        ],
+      );
+
+      final options = await harness.probe();
+
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.commands.map((command) => command.name), ["llama:1", "llama", "review"]);
+    });
+  }
+
+  test("preserves an extension named llama without an excluded origin", () async {
     final harness = _ProbeHarness(
       stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
       models: [_model(provider: "openai", id: "gpt", reasoning: false)],
       commands: const [
-        {"name": "llama", "description": "Manage llama.cpp router models", "source": "extension"},
-        {"name": "llama:2", "description": "User command with a disambiguated name", "source": "extension"},
-        {"name": "review", "description": "Review this project", "source": "prompt"},
+        {"name": "llama", "source": "extension"},
       ],
     );
 
     final options = await harness.probe();
 
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-    expect(options.commands.map((command) => command.name), ["llama:2", "review"]);
+    expect(options.commands.single.name, "llama");
   });
 
   test("cancels every probe dialog and ignores notifications", () async {
