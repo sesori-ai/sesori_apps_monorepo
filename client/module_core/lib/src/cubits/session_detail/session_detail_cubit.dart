@@ -29,6 +29,7 @@ import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
+import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -84,6 +85,7 @@ class SessionDetailCubit(
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
 }) extends Cubit<SessionDetailState> {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
   /// something. Backends that advertise agents always replace it.
@@ -297,7 +299,9 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final cursor = current.olderMessagesCursor;
-    if (cursor == null || current.isLoadingOlderMessages) return;
+    // A refresh replaces the newest page, so a page requested against the
+    // outgoing transcript could only splice unrelated history onto it.
+    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing) return;
 
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -516,10 +520,17 @@ class SessionDetailCubit(
     final connectionGeneration = _connectionGeneration;
     final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
+    // The transcript as the fetch sees it; live changes received while the
+    // fetch is in flight are reconciled against it when the page lands.
+    final before = current.messages;
 
+    // An older page still in flight describes the transcript this refresh is
+    // about to replace, so it must not join the refreshed one.
+    _transcriptGeneration++;
     emit(
       current.copyWith(
         isRefreshing: true,
+        isLoadingOlderMessages: false,
         queuedMessages: _promptQueue.items,
         awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
         sendingSubmission: _promptQueue.active,
@@ -539,14 +550,12 @@ class SessionDetailCubit(
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
           final derived = _deriveSnapshot(snapshot);
-          final latestAssistant = derived.latestAssistant;
-
-          _retireStreamingPartsCoveredBy(messages: snapshot.messages);
-
           final refreshedChildSessions = derived.children;
 
           final latest = state;
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+          final messages = _transcript.reconcile(before: before, live: latest.messages, fetched: snapshot.messages);
+          _retireStreamingPartsCoveredBy(messages: messages);
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
@@ -560,21 +569,21 @@ class SessionDetailCubit(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
+          // Assistant metadata describes the transcript actually installed,
+          // not the raw fetched page a live assistant may have outrun.
+          final assistant = _assistantMetadata(messages: messages, agents: availableAgents);
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
-          // The transcript is being replaced wholesale, so any older-page
-          // request still in flight no longer joins onto it.
           _deferredPartEvents.discardForMessagesThrough(
             messageIds: snapshot.messages.map((message) => message.info.id),
             sequence: deferredPartEventSequence,
           );
-          _transcriptGeneration++;
           emit(
             latest.copyWith(
-              messages: snapshot.messages,
+              messages: messages,
               // A refresh re-reads the newest page, so previously paged-back
               // history is dropped and the cursor returns to that page's edge.
               // Keeping older pages would leave a gap between them and the
@@ -586,8 +595,8 @@ class SessionDetailCubit(
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
-              agent: latestAssistant?.agent,
-              assistantAgentModel: derived.assistantAgentModel,
+              agent: assistant.latestAssistant?.agent,
+              assistantAgentModel: assistant.assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
@@ -1115,8 +1124,7 @@ class SessionDetailCubit(
       messages[index] = messages[index].copyWith(info: message);
     } else {
       final entry = MessageWithParts(info: message, parts: const []);
-      final insertionIndex = _messageInsertionIndex(messages: messages, message: message);
-      messages.insert(insertionIndex, entry);
+      messages.insert(_transcript.insertionIndex(messages: messages, message: message), entry);
     }
 
     if (isClosed) return;
@@ -1239,20 +1247,6 @@ class SessionDetailCubit(
         sendingSubmission: queue.sendingSubmission,
       ),
     );
-  }
-
-  int _messageInsertionIndex({required List<MessageWithParts> messages, required Message message}) {
-    final created = message.time?.created;
-    if (created == null) return messages.length;
-    for (var index = 0; index < messages.length; index++) {
-      final existing = messages[index].info;
-      final existingCreated = existing.time?.created;
-      if (existingCreated == null) continue;
-      if (existingCreated > created) {
-        return index;
-      }
-    }
-    return messages.length;
   }
 
   void _onMessageRemoved(String messageId) {
@@ -2356,11 +2350,21 @@ class SessionDetailCubit(
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
-    final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
     final children = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(children);
     final childIds = children.map((child) => child.id).toSet();
-    final agents = _selection.selectableAgents(agents: snapshot.agents);
+    return (
+      children: children,
+      childStatuses: Map.fromEntries(snapshot.statuses.entries.where((entry) => childIds.contains(entry.key))),
+      agents: _selection.selectableAgents(agents: snapshot.agents),
+      providers: snapshot.providerData?.items ?? <ProviderInfo>[],
+    );
+  }
+
+  /// The latest agent-authored assistant/error message of [messages] and the
+  /// model it ran on, resolved against the [agents] catalog in effect.
+  _AssistantMetadata _assistantMetadata({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
+    final latestAssistant = _latestAssistantOrErrorMessage(messages);
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
       MessageError(
@@ -2369,25 +2373,19 @@ class SessionDetailCubit(
       ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
-    return (
-      latestAssistant: latestAssistant,
-      assistantAgentModel: assistantAgentModel,
-      children: children,
-      childStatuses: Map.fromEntries(snapshot.statuses.entries.where((entry) => childIds.contains(entry.key))),
-      agents: agents,
-      providers: snapshot.providerData?.items ?? <ProviderInfo>[],
-    );
+    return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
   }
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
-    final latestAssistant = derived.latestAssistant;
     final childSessions = derived.children;
     final agents = derived.agents;
     final providers = derived.providers;
 
-    final assistantAgentModel = derived.assistantAgentModel;
+    final assistant = _assistantMetadata(messages: snapshot.messages, agents: agents);
+    final latestAssistant = assistant.latestAssistant;
+    final assistantAgentModel = assistant.assistantAgentModel;
     // The transcript's own model is retained rather than validated: a session
     // imported from a terminal must not silently resume on a different provider
     // because a retained provider cache does not list what it ran on.
@@ -2499,9 +2497,9 @@ typedef _QueueView = ({
   QueuedSessionSubmission? sendingSubmission,
 });
 
+typedef _AssistantMetadata = ({Message? latestAssistant, AgentModel? assistantAgentModel});
+
 typedef _SnapshotDerivation = ({
-  Message? latestAssistant,
-  AgentModel? assistantAgentModel,
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
   List<AgentInfo> agents,
