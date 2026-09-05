@@ -430,12 +430,14 @@ asked to start working the plan; steps execute in order from step 2.
 - Title kept from this tracker; the planned 🌱 became 🌿 because review has to
   confirm each deleted report was complete and that the architecture
   consolidation preserved the durable content.
-- Line split, measured against merge base `b57d30c770`
-  (`git diff --numstat b57d30c770..<head> -- docs bridge README.md`): 167+/3,562-
-  in Markdown plus 8,057 deleted lines of baseline JSON. The path filter makes
-  the figure self-exclusive of this tracker note. The Markdown figure is within
-  the step's deletion-heavy allowance; the JSON is a retired measurement
-  artifact, not prose.
+- Line split, measured against merge base `b57d30c770`. Documentation prose,
+  excluding this tracker:
+  `git diff --numstat b57d30c770..<head> -- '*.md' ':(exclude).plan'` gives
+  125+/3,560-. Retired measurement artifacts:
+  `git diff --numstat b57d30c770..<head> -- '*.json'` gives 0+/8,057-. The
+  Markdown figure is within the step's deletion-heavy allowance; the JSON is a
+  baseline artifact, not prose. Including the tracker note itself, the Markdown
+  total is 180+/3,562- at head `28680774f3`.
 - Correction applied during review: the parallel-runtime paragraph carried over
   from the retired document described a `--plugin <id>` flag and persisted
   `enabledPlugins` ordering. Neither exists. The section now states the
