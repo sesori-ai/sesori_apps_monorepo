@@ -1969,7 +1969,7 @@ class OrchestratorSession._({
     } on ControlTokenUnavailableException catch (e) {
       Log.w("No access token available for reconnect: $e");
       return false;
-    } catch (e) {
+    } catch (e, st) {
       // The refresh failed for some other reason. Only reconnect if a usable
       // cached token actually exists — reading it throws when the cache is empty
       // or sign-out-invalidated, in which case there is nothing safe to reconnect
@@ -1978,14 +1978,14 @@ class OrchestratorSession._({
       try {
         cachedToken = _accessTokenProvider.accessToken;
       } on Object {
-        Log.w("Token refresh failed and no cached token is available; deferring reconnect", e);
+        Log.w("Token refresh failed and no cached token is available; deferring reconnect", e, st);
         return false;
       }
       if (cachedToken.isEmpty) {
-        Log.w("Token refresh failed and the cached token is empty; deferring reconnect", e);
+        Log.w("Token refresh failed and the cached token is empty; deferring reconnect", e, st);
         return false;
       }
-      Log.w("Token refresh failed; reconnecting with the cached token", e);
+      Log.w("Token refresh failed; reconnecting with the cached token", e, st);
       return true;
     }
   }

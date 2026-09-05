@@ -1270,13 +1270,13 @@ class const BridgeRuntimeRunner._() {
         return inspected;
       }
       Log.w("Could not find own process (pid ${io.pid}) in the process table; using fallback identity");
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       if (!isWindows) {
         // A marker-less fallback would corrupt the startup lock on POSIX (see
         // method doc), so surface the failure instead of degrading.
         rethrow;
       }
-      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity", error);
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity", error, stackTrace);
     }
     return _fallbackCurrentBridgeIdentity(
       currentUser: currentUser,

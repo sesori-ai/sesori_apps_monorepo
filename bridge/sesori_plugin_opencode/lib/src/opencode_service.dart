@@ -293,8 +293,8 @@ class OpenCodeService(
         "for session $sessionId via getSession: ${session.directory}",
       );
       return session.directory;
-    } catch (e) {
-      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId", e);
+    } catch (e, st) {
+      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId", e, st);
       return null;
     }
   }

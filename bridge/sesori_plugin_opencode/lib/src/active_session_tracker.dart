@@ -85,9 +85,9 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
       sessionQueryDirectories.map((directory) async {
         try {
           return await _repository.listSessions(directory: directory, roots: false);
-        } catch (e) {
+        } catch (e, st) {
           _workStateBaselineTrusted = false;
-          Log.w("coldStart: failed to list sessions for ${directory ?? "<cwd>"}", e);
+          Log.w("coldStart: failed to list sessions for ${directory ?? "<cwd>"}", e, st);
           return <Session>[];
         }
       }),
@@ -120,9 +120,9 @@ class ActiveSessionTracker(final OpenCodeRepository _repository) {
           allStatuses[entry.key] = entry.value;
           if (worktree != null) _sessionWorktrees[entry.key] = worktree;
         }
-      } catch (e) {
+      } catch (e, st) {
         _workStateBaselineTrusted = false;
-        Log.w("coldStart: failed to fetch session statuses for ${directory ?? "<cwd>"}", e);
+        Log.w("coldStart: failed to fetch session statuses for ${directory ?? "<cwd>"}", e, st);
       }
     });
     await Future.wait(statusFutures);
