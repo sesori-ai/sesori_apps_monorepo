@@ -584,17 +584,31 @@ class SessionRepository({
       rows: [binding],
       verifiedGithubLogin: null,
     )).single;
-    await _useBoundSessionPlugin(
-      binding: binding,
-      operation: SessionOperation.deleteSession,
-      body: (plugin) async {
-        try {
-          await plugin.deleteSession(binding.backendSessionId);
-        } on PluginOperationException catch (error) {
-          if (!error.isNotFound) rethrow;
-        }
-      },
-    );
+    // An unreachable backend must not strand the session in the catalog: an
+    // uninstalled or unstartable plugin would otherwise leave the user with a
+    // row they can never remove. The tombstone below keeps a surviving backend
+    // session from being re-imported.
+    try {
+      await _useBoundSessionPlugin(
+        binding: binding,
+        operation: SessionOperation.deleteSession,
+        body: (plugin) async {
+          try {
+            await plugin.deleteSession(binding.backendSessionId);
+          } on PluginOperationException catch (error) {
+            if (!error.isNotFound) rethrow;
+          }
+        },
+      );
+    } on PluginOperationException catch (error, stackTrace) {
+      if (!error.isUnavailable) rethrow;
+      Log.w(
+        "Backend ${binding.pluginId} was unreachable while deleting session $sessionId; "
+        "removing the bridge record anyway",
+        error,
+        stackTrace,
+      );
+    }
     await _sessionDao.transaction(() async {
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
@@ -1394,6 +1408,15 @@ class SessionRepository({
         return stored;
       }),
     );
+  }
+
+  /// Session identity for bridge-owned work that does not need the backend, so
+  /// it stays available when the plugin cannot start.
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    return (await _requireBinding(sessionId: sessionId, operation: operation)).toStoredSession();
   }
 
   Future<StoredSession> requireRoutableStoredSession({

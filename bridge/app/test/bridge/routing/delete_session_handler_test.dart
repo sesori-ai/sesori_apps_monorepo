@@ -357,14 +357,14 @@ void main() {
       expect(operationLog, equals(["pluginDelete"]));
     });
 
-    test("stored plugin mismatch returns 503 before plugin I/O or cleanup", () async {
+    test("unreachable backend still deletes the session and its worktree", () async {
       await _insertSession(
         db: db,
         sessionId: "s9",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-009",
         branchName: "session-009",
-        pluginId: "stopped-plugin",
+        pluginId: "uninstalled-plugin",
       );
 
       final response = await handler.routeForTest(
@@ -382,12 +382,15 @@ void main() {
         ),
       );
 
-      expect(response.status, 503);
+      expect(response.status, 200);
       expect(plugin.lastDeleteSessionId, isNull);
-      expect(worktreeService.checkCallCount, equals(0));
-      expect(worktreeService.removeCallCount, equals(0));
-      expect(await db.sessionDao.getSession(sessionId: "s9"), isNotNull);
-      expect(operationLog, isEmpty);
+      expect(worktreeService.removeCallCount, equals(1));
+      expect(await db.sessionDao.getSession(sessionId: "s9"), isNull);
+      expect(
+        await db.sessionDao.getTombstonedSessionIds(pluginId: "uninstalled-plugin"),
+        contains("s9"),
+      );
+      expect(operationLog, equals(["checkSafety", "removeWorktree"]));
     });
 
     test("10) plugin delete non-404 failure: cleanup already ran and DB row remains", () async {

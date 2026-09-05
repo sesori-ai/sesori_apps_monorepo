@@ -44,12 +44,16 @@ class SessionLifecycleService({
 
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
+  ///
+  /// Worktree removal is git-only, so this path deliberately skips the
+  /// routability requirement: deleting a session must still work when its
+  /// backend is uninstalled or cannot start.
   Future<CleanupResult> cleanupAlreadyReserved({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
   }) async {
-    final storedSession = await _sessionRepository.requireRoutableStoredSession(
+    final storedSession = await _sessionRepository.requireStoredSession(
       sessionId: sessionId,
       operation: SessionOperation.cleanupSession,
     );
