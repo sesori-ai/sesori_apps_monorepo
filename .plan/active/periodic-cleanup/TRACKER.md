@@ -430,14 +430,16 @@ asked to start working the plan; steps execute in order from step 2.
 - Title kept from this tracker; the planned 🌱 became 🌿 because review has to
   confirm each deleted report was complete and that the architecture
   consolidation preserved the durable content.
-- Line split, measured against merge base `b57d30c770`. Documentation prose,
-  excluding this tracker:
-  `git diff --numstat b57d30c770..<head> -- '*.md' ':(exclude).plan'` gives
-  125+/3,560-. Retired measurement artifacts:
-  `git diff --numstat b57d30c770..<head> -- '*.json'` gives 0+/8,057-. The
-  Markdown figure is within the step's deletion-heavy allowance; the JSON is a
-  baseline artifact, not prose. Including the tracker note itself, the Markdown
-  total is 180+/3,562- at head `28680774f3`.
+- Line split. Both commands run as written and are stable across later
+  tracker-only commits, because each pathspec excludes this file:
+  `git diff --numstat b57d30c770..28680774f3 -- '*.md' ':(exclude).plan'` gives
+  125+/3,560- of documentation prose, and
+  `git diff --numstat b57d30c770..28680774f3 -- '*.json'` gives 0+/8,057- of
+  retired baseline artifacts. `28680774f3` is the last commit on this branch that
+  changed either; substituting any later head leaves both figures unchanged. The
+  prose figure is within the step's deletion-heavy allowance, and the JSON is a
+  measurement artifact rather than prose. No self-inclusive total is recorded:
+  writing one changes the head it would have to be measured at.
 - Correction applied during review: the parallel-runtime paragraph carried over
   from the retired document described a `--plugin <id>` flag and persisted
   `enabledPlugins` ordering. Neither exists. The section now states the
