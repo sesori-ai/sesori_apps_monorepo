@@ -426,7 +426,7 @@ class SessionRepository({
           if (part case MessagePartSubtask(:final childSessionID)) ?childSessionID,
     };
     if (backendSessionIds.isEmpty) return messages;
-    final bindings = await getStoredSessionsByBackendIds(
+    final sessionIds = await getSessionIdsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
@@ -437,7 +437,7 @@ class SessionRepository({
             for (final part in message.parts)
               switch (part) {
                 MessagePartSubtask(childSessionID: final backendSessionId?) => part.copyWith(
-                  childSessionID: bindings[backendSessionId]?.id,
+                  childSessionID: sessionIds[backendSessionId],
                 ),
                 _ => part,
               },
@@ -1236,17 +1236,13 @@ class SessionRepository({
     ))?.toStoredSession();
   }
 
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  /// Stable session ids for [backendSessionIds] of [pluginId], keyed by backend
+  /// id. A backend id the bridge has not bound is absent.
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
-  }) async {
-    final rows = await _sessionDao.getSessionsByBackendIds(
-      pluginId: pluginId,
-      backendSessionIds: backendSessionIds,
-    );
-    return {
-      for (final entry in rows.entries) entry.key: entry.value.toStoredSession(),
-    };
+  }) {
+    return _sessionDao.getSessionIdsByBackendIds(pluginId: pluginId, backendSessionIds: backendSessionIds);
   }
 
   Future<StoredSession?> updateObservedSessionProjection({

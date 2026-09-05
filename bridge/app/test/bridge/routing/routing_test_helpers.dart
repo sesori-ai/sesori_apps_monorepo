@@ -503,7 +503,7 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
@@ -954,7 +954,7 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};

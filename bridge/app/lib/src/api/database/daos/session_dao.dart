@@ -293,6 +293,28 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return {for (final row in rows) row.backendSessionId: row};
   }
 
+  /// Stable ids for [backendSessionIds] of one plugin, keyed by backend id; a
+  /// backend id with no row is absent. Projects to the two id columns because
+  /// event translation and subtask remapping never read the rest of the row.
+  Future<Map<String, String>> getSessionIdsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async {
+    if (backendSessionIds.isEmpty) return const {};
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.backendSessionId, sessionTable.sessionId])
+      ..where(sessionTable.pluginId.equals(pluginId) & sessionTable.backendSessionId.isIn(backendSessionIds));
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        if ((row.read(sessionTable.backendSessionId), row.read(sessionTable.sessionId)) case (
+          final backendSessionId?,
+          final sessionId?,
+        ))
+          backendSessionId: sessionId,
+    };
+  }
+
   Future<Map<String, SessionDto>> getSessionsForPlugin({required String pluginId}) async {
     final rows = await (select(sessionTable)..where((table) => table.pluginId.equals(pluginId))).get();
     return {for (final row in rows) row.backendSessionId: row};
