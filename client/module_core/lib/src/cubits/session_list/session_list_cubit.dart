@@ -26,7 +26,62 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
-enum _SessionFetchOutcome() { applied, failed, superseded }
+enum _SessionFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
+
+/// Tracks every in-flight rename so out-of-order completions preserve the
+/// newest confirmed title and the latest unresolved user intent.
+final class _SessionRenameState({required String? confirmedTitle}) {
+  final Map<int, String> _pendingTitles = {};
+  int _visibleToken = 0;
+  late String _visibleTitle;
+  int _confirmedToken = 0;
+  String? _confirmedTitle = confirmedTitle;
+
+  String get visibleTitle => _visibleTitle;
+  String? get confirmedTitle => _confirmedTitle;
+  bool get isSettled => _pendingTitles.isEmpty;
+
+  void begin({required int token, required String title}) {
+    _pendingTitles[token] = title;
+    _visibleToken = token;
+    _visibleTitle = title;
+  }
+
+  void complete({required int token, required String title, required bool succeeded}) {
+    _pendingTitles.remove(token);
+    if (succeeded && token > _confirmedToken) {
+      _confirmedToken = token;
+      _confirmedTitle = title;
+    }
+    if (!succeeded && token == _visibleToken && _pendingTitles.isNotEmpty) {
+      _selectLatestVisibleTitle();
+    }
+  }
+
+  void _selectLatestVisibleTitle() {
+    final firstPendingRename = _pendingTitles.entries.first;
+    var latestPendingToken = firstPendingRename.key;
+    var latestPendingTitle = firstPendingRename.value;
+    for (final MapEntry(:key, :value) in _pendingTitles.entries.skip(1)) {
+      if (key > latestPendingToken) {
+        latestPendingToken = key;
+        latestPendingTitle = value;
+      }
+    }
+    final confirmedTitle = _confirmedTitle;
+    if (_confirmedToken > latestPendingToken && confirmedTitle != null) {
+      _visibleToken = _confirmedToken;
+      _visibleTitle = confirmedTitle;
+      return;
+    }
+    _visibleToken = latestPendingToken;
+    _visibleTitle = latestPendingTitle;
+  }
+}
 
 class SessionListCubit({
   required final SessionRepository _sessionRepository,
@@ -110,7 +165,7 @@ class SessionListCubit({
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriCommandCatalogUpdated() ||
+            SesoriSessionOptionsUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
@@ -411,19 +466,92 @@ class SessionListCubit({
     };
   }
 
-  /// Renames a session. Returns `true` on success so the screen can show
-  /// a confirmation message.
+  /// Renames a session optimistically. Returns `false` after restoring the
+  /// prior title when the bridge rejects the rename.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
-    if (isClosed) return false;
+    if (state is! SessionListLoaded) return false;
+
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index < 0) return false;
+
+    final token = ++_nextRenameToken;
+    final renameState = _renameStateBySessionId.putIfAbsent(
+      sessionId,
+      () => _SessionRenameState(confirmedTitle: _allSessions[index].title),
+    );
+    renameState.begin(token: token, title: title);
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: _allSessions[index].copyWith(title: title),
+    );
+    _emitFiltered();
+
+    final ApiResponse<Session> response;
+    try {
+      response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+    } on Object {
+      _completeSessionRename(
+        sessionId: sessionId,
+        token: token,
+        title: title,
+        succeeded: false,
+      );
+      return false;
+    }
 
     switch (response) {
       case SuccessResponse():
-        await refreshSessions();
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: true,
+        );
+        if (!isClosed) {
+          unawaited(
+            _refreshSessions(
+              force: true,
+              catalogRefresh: false,
+              waitForPrData: _activeRefreshWaitsForPrData,
+            ),
+          );
+        }
         return true;
       case ErrorResponse():
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: false,
+        );
         return false;
     }
+  }
+
+  void _completeSessionRename({
+    required String sessionId,
+    required int token,
+    required String title,
+    required bool succeeded,
+  }) {
+    final renameState = _renameStateBySessionId[sessionId];
+    if (renameState == null) return;
+    renameState.complete(token: token, title: title, succeeded: succeeded);
+    if (!renameState.isSettled) {
+      if (!isClosed && state is SessionListLoaded) _emitFiltered();
+      return;
+    }
+
+    _renameStateBySessionId.remove(sessionId);
+    if (isClosed || state is! SessionListLoaded) return;
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index >= 0) {
+      _allSessions = _sessionListService.upsertSession(
+        sessions: _allSessions,
+        session: _allSessions[index].copyWith(title: renameState.confirmedTitle),
+      );
+    }
+    _emitFiltered();
   }
 
   /// Deletes a session permanently.
@@ -486,6 +614,11 @@ class SessionListCubit({
   /// Tracks the full unfiltered server response so toggling archived
   /// doesn't require a network round-trip.
   List<Session> _allSessions = [];
+
+  /// Keeps pre-rename list responses from repainting an old title while the
+  /// mutation is still pending.
+  final Map<String, _SessionRenameState> _renameStateBySessionId = {};
+  int _nextRenameToken = 0;
   bool _showArchived = false;
 
   void toggleArchived() {
@@ -495,7 +628,10 @@ class SessionListCubit({
 
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
-      sessions: _allSessions,
+      sessions: _allSessions.map((session) {
+        final renameState = _renameStateBySessionId[session.id];
+        return renameState == null ? session : session.copyWith(title: renameState.visibleTitle);
+      }),
       showArchived: _showArchived,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:

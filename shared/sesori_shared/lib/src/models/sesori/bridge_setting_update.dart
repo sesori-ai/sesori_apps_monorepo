@@ -21,6 +21,9 @@ sealed class BridgeSettingUpdate with _$BridgeSettingUpdate {
   @FreezedUnionValue("yolo")
   const factory yolo({required bool enabled}) = YoloSettingUpdate;
 
+  @FreezedUnionValue("warmUpPluginsOnSessionOpen")
+  const factory warmUpPluginsOnSessionOpen({required bool enabled}) = WarmUpPluginsOnSessionOpenSettingUpdate;
+
   const factory unknown() = UnknownBridgeSettingUpdate;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSettingUpdateFromJson(json);

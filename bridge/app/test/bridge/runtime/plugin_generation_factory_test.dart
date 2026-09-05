@@ -1,9 +1,11 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/host/bridge_host_json_store.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
@@ -26,6 +28,9 @@ void main() {
     late ProcessIdentity currentBridgeIdentity;
     late Directory runtimeDirectory;
     late List<BridgePlugin> startedPlugins;
+    late StreamController<Object?> settingsChanges;
+    late HostJsonStore registrationStore;
+    late int idleTimeoutMins;
 
     setUp(() async {
       startupMutexRepository = _FakeStartupMutexRepository();
@@ -34,12 +39,15 @@ void main() {
       currentBridgeIdentity = _identity(pid: 100, startMarker: "bridge-start");
       runtimeDirectory = await Directory.systemTemp.createTemp("bridge-runtime-server-test");
       startedPlugins = [];
+      settingsChanges = StreamController<Object?>.broadcast(sync: true);
+      idleTimeoutMins = 10;
     });
 
     tearDown(() async {
       for (final plugin in startedPlugins) {
         await plugin.shutdown(budget: const Duration(seconds: 1));
       }
+      await settingsChanges.close();
       if (runtimeDirectory.existsSync()) {
         await runtimeDirectory.delete(recursive: true);
       }
@@ -55,6 +63,14 @@ void main() {
         binaryPath: "$directory/bin/sesori-bridge",
         cacheDirectory: directory,
       );
+      final pluginStateDirectory = pluginStateDirectoryPath(
+        paths: managedRuntimePaths,
+        pluginId: descriptor.id,
+        stateStorage: descriptor.stateStorage,
+      );
+      registrationStore = BridgeHostJsonStore(
+        fileApi: RuntimeFileApi(runtimeDirectory: pluginStateDirectory),
+      );
       final factory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -62,22 +78,19 @@ void main() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        runtimeFileApi: RuntimeFileApi(runtimeDirectory: directory),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
-        resolveIdleTimeoutMins: ({required pluginId}) => 10,
+        resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
+        settingsChanges: settingsChanges.stream,
       );
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
         registration: PluginRuntimeRegistration(
           descriptor: descriptor,
           config: const PluginConfig(values: <String, Object?>{"port": "4096"}),
-          stateDirectory: pluginStateDirectoryPath(
-            paths: managedRuntimePaths,
-            pluginId: descriptor.id,
-            stateStorage: descriptor.stateStorage,
-          ),
+          stateDirectory: pluginStateDirectory,
+          store: registrationStore,
         ),
         startAborted: StartAbortSignal.never,
       )) {
@@ -120,6 +133,9 @@ void main() {
       final host = descriptor.startedHosts.single;
       expect(host.config.value("port"), equals("4096"));
       expect(host.stateDirectory, equals("${runtimeDirectory.path}/plugins/fake"));
+      expect(identical(host.store, registrationStore), isTrue);
+      await host.store.write(name: "shared.json", contents: '{"ready":true}');
+      expect(await registrationStore.read(name: "shared.json"), '{"ready":true}');
       expect(host.environment, containsPair("HOME", "/home/alex"));
       expect(host.bridge.identity.pid, equals(100));
       expect(host.bridge.ownerSessionId, equals("owner-session"));
@@ -128,6 +144,21 @@ void main() {
         equals(<int>[200]),
         reason: "stale cleanup must be authorized to reclaim records of the bridge this one replaced",
       );
+    });
+    test("forwards only changed idle timeout values through the plugin host", () async {
+      await startPlugin();
+      final host = descriptor.startedHosts.single;
+      final changes = <Duration?>[];
+      final subscription = host.pluginIdleTimeoutChanges.listen(changes.add);
+
+      settingsChanges.add(Object());
+      expect(changes, isEmpty);
+
+      idleTimeoutMins = 25;
+      settingsChanges.add(Object());
+
+      expect(changes, [const Duration(minutes: 25)]);
+      await subscription.cancel();
     });
 
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
@@ -142,11 +173,11 @@ void main() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: _FakeProcessRepository(),
-        runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
         clock: const ServerClock(),
         environment: const <String, String>{},
         currentUser: null,
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
+        settingsChanges: settingsChanges.stream,
       );
       await factory.enforceBridgeOwnership();
 
@@ -453,6 +484,9 @@ class _FakeBridgePlugin() implements BridgePlugin {
   PluginDiagnostics describe() {
     return const PluginDiagnostics(pluginId: "fake", endpoint: "http://127.0.0.1:1", details: {});
   }
+
+  @override
+  Future<void> onStarted() async {}
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};

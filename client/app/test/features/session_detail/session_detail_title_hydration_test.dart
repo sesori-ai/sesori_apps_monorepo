@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -47,6 +46,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
 SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -71,6 +71,7 @@ SessionDetailLoadResult _loadedResult() {
 SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: const [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -95,6 +96,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
 SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -192,6 +194,11 @@ void main() {
       ),
     );
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEvents.stream);
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);

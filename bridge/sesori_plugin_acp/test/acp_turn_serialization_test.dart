@@ -13,6 +13,7 @@ class _PromptHookPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -34,6 +35,7 @@ class _GatedSelectionPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -57,10 +59,42 @@ class _TimestampingEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
       PluginMessageTime(created: createdAtMs, completed: null);
+}
+
+class _PromptOrderedChildMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  static const childMethod = "test/subagent";
+
+  @override
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == childMethod || super.shouldBufferDuringPromptWrite(notification: notification);
+
+  @override
+  List<BridgeSseEvent> mapExtension(AcpNotification notification) {
+    if (notification.method != childMethod) return super.mapExtension(notification);
+    final sessionId = notification.params["sessionId"];
+    final childSessionId = notification.params["childSessionId"];
+    if (sessionId is! String || childSessionId is! String) return const [];
+    return mapChildSpawned(
+      sessionId: sessionId,
+      spawn: AcpChildSpawn(
+        childSessionId: childSessionId,
+        description: "Child",
+        agent: pluginId,
+        prompt: "Inspect",
+        isBackground: true,
+      ),
+    );
+  }
 }
 
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
@@ -197,15 +231,18 @@ void main() {
     test("prompt hooks expose live client and preserve prompt identity", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final hookPlugin = _PromptHookPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -441,6 +478,66 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
+      final mapper = _PromptOrderedChildMapper(
+        launchDirectory: cwd,
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
+      );
+      final orderedPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
+        eventMapper: mapper,
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = orderedPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "start a child");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": _PromptOrderedChildMapper.childMethod,
+        "params": {"sessionId": sessionId, "childSessionId": "child"},
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSseSessionCreated>(), isEmpty);
+
+      flush.complete();
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSseSessionCreated>().isEmpty; index++) {
+        await pump();
+      }
+
+      final userIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info["role"] == "user",
+      );
+      final childIndex = emitted.indexWhere(
+        (event) => event is BridgeSseSessionCreated && event.info["id"] == "child",
+      );
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(childIndex, greaterThan(userIndex));
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a buffered sessionless permission keeps its writing-turn attribution", () async {
       await connect();
       final firstSessionId = await createSession(cwd, "s1");
@@ -484,18 +581,113 @@ void main() {
       respondTo(secondPrompt, {"stopReason": "end_turn"});
     });
 
+    test("a nested permission uses its exact tool-call session instead of the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      plugin.handleAgentNotification(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": firstSessionId,
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "shared-shape",
+              "title": "Run command",
+              "kind": "execute",
+            },
+          },
+        ),
+      );
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9001,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "shared-shape", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; index++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(permission.sessionID, firstSessionId);
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: firstSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(activePrompt, {"stopReason": "end_turn"});
+    });
+
+    test("an ambiguous nested permission cannot fall back to the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      for (final sessionId in [firstSessionId, secondSessionId]) {
+        plugin.handleAgentNotification(
+          AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": sessionId,
+              "update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "ambiguous",
+                "title": "Run command",
+                "kind": "execute",
+              },
+            },
+          ),
+        );
+      }
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9002,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "ambiguous", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && !fake.written.any((frame) => frame["id"] == 9002); index++) {
+        await pump();
+      }
+
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 9002);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+      respondTo(activePrompt, {"stopReason": "end_turn"});
+    });
+
     test("a queued prompt message uses its dispatch time", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final timestampingPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: _TimestampingEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -1008,15 +1200,18 @@ void main() {
     test("an abort landing during turn selection still drops the turn", () async {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       final gated = _GatedSelectionPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

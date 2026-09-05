@@ -303,6 +303,7 @@ void main() {
               voiceSupport: ComposerVoiceSupport.supported,
               inputMode: ChatInputMode.voiceFirst,
               isKeyboardVisible: false,
+              sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
@@ -641,6 +642,7 @@ void main() {
               providerID: "deepseek-official",
               name: "DeepSeek V4 Pro",
               variants: ["high"],
+              defaultVariant: null,
               family: null,
               releaseDate: null,
             ),

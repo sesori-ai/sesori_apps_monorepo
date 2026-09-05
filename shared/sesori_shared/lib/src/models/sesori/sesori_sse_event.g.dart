@@ -120,15 +120,20 @@ Map<String, dynamic> _$SesoriPluginAuthenticationProgressToJson(
   'type': instance.$type,
 };
 
-SesoriCommandCatalogUpdated _$SesoriCommandCatalogUpdatedFromJson(Map json) =>
-    SesoriCommandCatalogUpdated(
+SesoriSessionOptionsUpdated _$SesoriSessionOptionsUpdatedFromJson(Map json) =>
+    SesoriSessionOptionsUpdated(
       pluginId: json['pluginId'] as String,
+      projectId: json['projectId'] as String?,
       $type: json['type'] as String?,
     );
 
-Map<String, dynamic> _$SesoriCommandCatalogUpdatedToJson(
-  SesoriCommandCatalogUpdated instance,
-) => <String, dynamic>{'pluginId': instance.pluginId, 'type': instance.$type};
+Map<String, dynamic> _$SesoriSessionOptionsUpdatedToJson(
+  SesoriSessionOptionsUpdated instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'projectId': ?instance.projectId,
+  'type': instance.$type,
+};
 
 SesoriSessionCreated _$SesoriSessionCreatedFromJson(Map json) =>
     SesoriSessionCreated(

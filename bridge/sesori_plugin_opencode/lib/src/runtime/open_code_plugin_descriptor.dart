@@ -649,6 +649,7 @@ class const OpenCodePluginDescriptor({
       displayName: "OpenCode",
       logContext: "opencode",
       interruptOwnedOnly: true,
+      onStartWarmUp: api.warmUpCommandCatalog,
     );
 
     if (handle == null) {

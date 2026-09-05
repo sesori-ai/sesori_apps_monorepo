@@ -59,7 +59,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),
@@ -133,7 +133,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),
@@ -157,6 +157,7 @@ void main() {
     ).thenAnswer(
       (_) async => const SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
+          areOptionsStale: false,
           bridgeQueuedPrompts: [],
           projectId: "project-1",
           pluginId: "opencode",
@@ -227,7 +228,7 @@ void main() {
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
       ),
-    ).thenReturn(null);
+    ).thenAnswer((_) async {});
     when(
       () => mockPermissionRepository.replyToPermission(
         requestId: any(named: "requestId"),
@@ -238,6 +239,7 @@ void main() {
 
     const loadedResult = SessionDetailLoadResult.loaded(
       snapshot: SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",

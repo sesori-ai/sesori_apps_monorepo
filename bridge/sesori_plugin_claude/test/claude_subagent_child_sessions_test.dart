@@ -93,6 +93,7 @@ void main() {
         agentId: _agentId,
         records: records,
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages.map((message) => message.info.runtimeType.toString()), [
@@ -109,11 +110,15 @@ void main() {
     late ClaudeEventDispatcher dispatcher;
 
     setUp(() {
-      dispatcher = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
-      dispatcher.beginTurn(sessionId: _root, directory: "/workspace");
+      dispatcher = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+      dispatcher.beginTurn(sessionId: _root, directory: "/workspace", model: null, variant: null);
     });
 
-    test("announces the child once, busy while running, idle at its terminal update", () {
+    test("announces the child once and follows repeated running and terminal transitions", () {
       dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
       final launched = dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
 
@@ -145,6 +150,21 @@ void main() {
       expect(shared.SessionStatus.fromJson(idle.status), isA<shared.SessionStatusIdle>());
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
+
+      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame()));
+      expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
+      expect(
+        shared.SessionStatus.fromJson((resumed.first as BridgeSseSessionStatus).status),
+        isA<shared.SessionStatusBusy>(),
+      );
+      final resumedPart = (resumed.last as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      expect(resumedPart.taskState?.status, PluginToolStatus.running);
+      expect(resumedPart.taskState?.output, isNull);
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
+
+      final finishedAgain = dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame()));
+      expect(finishedAgain.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
     });
 
     test("routes forwarded sub-agent frames into the child session once its id is known", () {

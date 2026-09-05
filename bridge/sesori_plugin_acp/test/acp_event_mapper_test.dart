@@ -7,6 +7,7 @@ class _EnvelopeTimeEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
@@ -29,6 +30,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
     });
 
@@ -76,6 +78,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       final afterRestart = assistantId(target: replacementMapper, promptId: "prompt-two");
 
@@ -731,6 +734,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
         method: "session/update",
@@ -999,13 +1003,15 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("plan maps to a todo update, commands invalidate the plugin catalog", () {
+    test("plan maps to a todo update, commands invalidate the session's options", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,
         isA<BridgeSseTodoUpdated>(),
       );
+      // The originating session is what resolves the catalog to refresh, so the
+      // options-change event alone carries this; no session-less twin is sent.
       final events = mapper.map(update({"sessionUpdate": "available_commands_update"}));
-      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
+      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), isEmpty);
       expect(
         events.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
@@ -1512,6 +1518,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
     : super(
         launchDirectory: "/repo",
         pluginId: "cursor",
+        childSessions: AcpChildSessionTracker(),
       );
 
   @override

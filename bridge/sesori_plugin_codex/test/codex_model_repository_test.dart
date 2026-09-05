@@ -146,7 +146,7 @@ void main() {
       expect(catalog.defaultModelID, "gpt-visible");
     });
 
-    test("orders the default reasoning effort first and removes duplicates", () async {
+    test("lists reasoning efforts strongest first, declares the default, and removes duplicates", () async {
       final repository = CodexModelRepository(
         appServerApi: _StubAppServerApi(
           response: const CodexModelListResponseDto(
@@ -184,7 +184,58 @@ void main() {
 
       final catalog = await repository.listModels();
 
-      expect(catalog.models.single.variants, ["medium", "low", "high"]);
+      expect(catalog.models.single.variants, ["high", "medium", "low"]);
+      expect(catalog.models.single.defaultVariant, "medium");
+    });
+
+    test("lists models newest generation first, then Astra, Sol, Terra, Luna, bare, other", () async {
+      CodexModelDto model(String id) => CodexModelDto(
+        id: id,
+        displayName: id,
+        hidden: false,
+        supportedReasoningEfforts: const [],
+        defaultReasoningEffort: null,
+        isDefault: false,
+      );
+      final repository = CodexModelRepository(
+        appServerApi: _StubAppServerApi(
+          response: CodexModelListResponseDto(
+            data: [
+              for (final id in [
+                "gpt-5.6-sol",
+                "codex-auto-review",
+                "gpt-5.5-mini",
+                "gpt-6-luna",
+                "gpt-5.5",
+                "gpt-5.6-terra",
+                "gpt-6-astra",
+                "gpt-5.6-luna",
+                "gpt-5.4-mini",
+                "gpt-5.3-codex-spark",
+                "gpt-5.5-codex",
+              ])
+                model(id),
+            ],
+            nextCursor: null,
+          ),
+        ),
+      );
+
+      final catalog = await repository.listModels();
+
+      expect(catalog.models.map((model) => model.id), [
+        "gpt-6-astra",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5",
+        "gpt-5.5-mini",
+        "gpt-5.5-codex",
+        "gpt-5.4-mini",
+        "gpt-5.3-codex-spark",
+        "codex-auto-review",
+      ]);
     });
   });
 }

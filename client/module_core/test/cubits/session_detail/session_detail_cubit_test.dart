@@ -179,6 +179,33 @@ void main() {
       },
     );
 
+    test("does not declare a covered route when its initial load completes", () async {
+      final sessionViewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: sessionViewingService,
+        projectViewingService: stubbedProjectViewingService(),
+        lifecycleSource: MockLifecycleSource(),
+        composerDraftRepository: inMemoryComposerDraftRepository(),
+        productAnalyticsService: mockProductAnalyticsService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: mockFailureReporter,
+      );
+      cubit.setRouteVisible(isVisible: false);
+
+      await _awaitLoaded(cubit);
+      verifyNever(() => sessionViewingService.setViewingSession(any()));
+
+      cubit.setRouteVisible(isVisible: true);
+      verify(() => sessionViewingService.setViewingSession(sessionId)).called(1);
+      await cubit.close();
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load failure emits SessionDetailFailed",
       build: () {
@@ -640,7 +667,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "selectAgent applies a known agent's model preference",
+      "selectAgent applies an agent's declared model when the catalog offers it",
       build: () {
         when(
           () => mockSessionService.listAgents(
@@ -656,8 +683,8 @@ void main() {
                   name: "reviewer",
                   description: "Reviews code",
                   model: const AgentModel(
-                    providerID: "openai",
-                    modelID: "gpt-4.1",
+                    providerID: "anthropic",
+                    modelID: "claude-3-5-sonnet",
                     variant: null,
                   ),
                 ),
@@ -696,11 +723,70 @@ void main() {
             .having(
               (state) => state.selectedAgentModel,
               "selectedAgentModel",
+              // The declared model carries no variant, so the catalog's own
+              // first variant is resolved onto it.
               const AgentModel(
-                providerID: "openai",
-                modelID: "gpt-4.1",
-                variant: null,
+                providerID: "anthropic",
+                modelID: "claude-3-5-sonnet",
+                variant: "xhigh",
               ),
+            ),
+      ],
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
+      "selectAgent keeps the current model when the agent declares one the catalog omits",
+      build: () {
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            Agents(
+              agents: [
+                testAgentInfo(),
+                testAgentInfo().copyWith(
+                  name: "reviewer",
+                  description: "Reviews code",
+                  model: const AgentModel(providerID: "openai", modelID: "gpt-4.1", variant: null),
+                ),
+              ],
+            ),
+          ),
+        );
+        return SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          projectViewingService: stubbedProjectViewingService(),
+          lifecycleSource: MockLifecycleSource(),
+          composerDraftRepository: inMemoryComposerDraftRepository(),
+          productAnalyticsService: mockProductAnalyticsService,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+      },
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        cubit.selectAgent("reviewer");
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.selectedAgent, "selectedAgent", "reviewer")
+            // An agent may name a model from a provider this catalog does not
+            // carry. Selecting it would put an unusable model in the composer,
+            // so the one already on screen stays.
+            .having(
+              (state) => state.selectedAgentModel,
+              "selectedAgentModel",
+              const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh"),
             ),
       ],
     );
@@ -759,6 +845,7 @@ void main() {
                       providerID: "openai",
                       name: "GPT-4",
                       variants: ["fast", "slow"],
+                      defaultVariant: null,
                       family: null,
                       releaseDate: null,
                     ),
@@ -2823,7 +2910,7 @@ void _stubAllDefaults(
     () => notificationCanceller.cancelForSession(
       sessionId: any(named: "sessionId"),
     ),
-  ).thenReturn(null);
+  ).thenAnswer((_) async {});
 
   when(
     () => sessionService.sendMessage(

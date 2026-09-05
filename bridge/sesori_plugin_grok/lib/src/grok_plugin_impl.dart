@@ -2,11 +2,15 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/grok_acp_api.dart";
+import "api/grok_session_store_api.dart";
 import "grok_binary.dart";
+import "grok_event_mapper.dart";
 import "grok_identity.dart";
 import "repositories/grok_catalog_repository.dart";
+import "repositories/grok_session_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
 import "services/grok_session_options_service.dart";
+import "services/grok_session_service.dart";
 import "trackers/grok_catalog_tracker.dart";
 
 /// Grok Build backend over ACP v1 with plugin-local legacy model selection.
@@ -14,10 +18,12 @@ class GrokPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
   required GrokSessionOptionsService grokSessionOptionsService,
+  required final GrokSessionService _sessionService,
 }) extends AcpPlugin {
   factory({
     required String binaryPath,
@@ -27,6 +33,7 @@ class GrokPlugin._({
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final api = GrokAcpApi(
       binaryPath: binaryPath,
       processFactory: processFactory,
@@ -43,6 +50,12 @@ class GrokPlugin._({
       displayName: GrokPluginIdentity.displayName,
       discoveryTimeout: const Duration(seconds: 15),
     );
+    final sessionCatalogRepository = GrokSessionCatalogRepository(
+      api: GrokSessionStoreApi.forHome(
+        environment: environment,
+        pluginId: GrokPluginIdentity.id,
+      ),
+    );
     return GrokPlugin._(
       launchSpec: GrokBinary.launchSpec(
         binary: binaryPath,
@@ -50,10 +63,12 @@ class GrokPlugin._({
         environment: environment,
       ),
       launchDirectory: launchDirectory,
-      eventMapper: AcpEventMapper(
+      childSessionTracker: childSessionTracker,
+      eventMapper: GrokEventMapper(
         launchDirectory: launchDirectory,
         pluginId: GrokPluginIdentity.id,
         configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(
@@ -64,6 +79,10 @@ class GrokPlugin._({
       ),
       processFactory: processFactory,
       grokSessionOptionsService: grokSessionOptionsService,
+      sessionService: GrokSessionService(
+        catalogRepository: sessionCatalogRepository,
+        liveTracker: childSessionTracker,
+      ),
     );
   }
 
@@ -151,4 +170,42 @@ class GrokPlugin._({
 
   @override
   void onConnectionReset() => _grokSessionOptionsService.resetConnection();
+
+  @override
+  bool isResumeReplayNotification(AcpNotification notification) =>
+      super.isResumeReplayNotification(notification) || notification.method == GrokEventMapper.sessionUpdateMethod;
+
+  // Grok's `session/list` is verified to return roots only. Child parentage is
+  // added by [_sessionService] after the root list is mapped, avoiding a
+  // persisted-tree scan for every root through the generic parent hook.
+  @override
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final listedSessions = await super.listAllSessions(knownDirectories: knownDirectories);
+    final listedById = {for (final session in listedSessions) session.id: session};
+    final sessions = _sessionService.includeChildrenInAllSessions(sessions: listedSessions);
+    for (final session in sessions) {
+      final listed = listedById[session.id];
+      if (listed == null || listed.directory != session.directory) {
+        attributeSessionDirectory(sessionId: session.id, directory: session.directory);
+      }
+    }
+    return sessions;
+  }
+
+  @override
+  Future<List<PluginSession>> getChildSessions(String sessionId) async => _sessionService.childSessions(
+    rootSessionId: sessionId,
+    fallbackDirectory: directoryForSession(sessionId: sessionId),
+  );
+
+  @override
+  Future<void> deleteSession(String sessionId) async {
+    if (childSessionTracker.hasActiveWorkForSession(sessionId: sessionId)) {
+      throw const PluginOperationException(
+        "deleteSession",
+        message: "A Grok session with active sub-agent work must finish or be stopped before deletion",
+      );
+    }
+    await super.deleteSession(sessionId);
+  }
 }

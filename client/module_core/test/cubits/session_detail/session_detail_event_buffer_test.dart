@@ -8,9 +8,12 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_detail_resolvers.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -67,7 +70,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockPermissionRepository.replyToPermission(
           requestId: any(named: "requestId"),
@@ -130,6 +133,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -189,6 +193,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -275,6 +280,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -303,7 +309,7 @@ void main() {
       expect(state.children.first.id, "child-1");
     });
 
-    test("refreshes only commands when a catalog update arrives during loading", () async {
+    test("re-reads the options cache when an options update arrives during loading", () async {
       final mockLoadService = MockSessionDetailLoadService();
       final loadCompleter = Completer<SessionDetailLoadResult>();
 
@@ -314,30 +320,37 @@ void main() {
         ),
       ).thenAnswer((_) => loadCompleter.future);
       when(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "compact", template: "/compact")],
+        (_) async => SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const <AgentInfo>[],
+            providers: const <ProviderInfo>[],
+            providersConnectedOnly: true,
+            commands: [testCommandInfo(name: "compact", template: "/compact")],
+            lastUsedPromptDefaults: null,
           ),
+          isStale: false,
         ),
       );
 
       final cubit = createCubit(loadService: mockLoadService);
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "cursor")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "cursor", projectId: null)),
       );
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await Future<void>.delayed(Duration.zero);
 
       loadCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -361,15 +374,17 @@ void main() {
 
       await _awaitLoadedWithCommand(cubit, command: "compact");
       verify(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).called(1);
       verifyNever(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "cursor",
+          mode: any(named: "mode"),
         ),
       );
       verifyNever(
@@ -380,7 +395,7 @@ void main() {
       );
     });
 
-    test("keeps the newest command catalog when refreshes finish out of order", () async {
+    test("keeps the newest options catalog when re-reads finish out of order", () async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
@@ -390,6 +405,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -410,45 +426,47 @@ void main() {
           ),
         ),
       );
-      final responses = <Completer<ApiResponse<CommandListResponse>>>[];
+      final responses = <Completer<SessionOptionsRepositoryResult>>[];
       when(
-        () => mockSessionRepository.listCommands(
+        () => mockSessionRepository.loadSessionOptions(
           projectId: "project-1",
           pluginId: "opencode",
+          mode: SessionOptionsRequestMode.cacheOnly,
         ),
       ).thenAnswer((_) {
-        final response = Completer<ApiResponse<CommandListResponse>>();
+        final response = Completer<SessionOptionsRepositoryResult>();
         responses.add(response);
         return response.future;
       });
+
+      SessionOptionsRepositoryResult catalogWith({required String command}) {
+        return SessionOptionsRepositoryAvailable(
+          catalog: SessionOptionsCatalog(
+            agents: const <AgentInfo>[],
+            providers: const <ProviderInfo>[],
+            providersConnectedOnly: true,
+            commands: [testCommandInfo(name: command, template: "/$command")],
+            lastUsedPromptDefaults: null,
+          ),
+          isStale: false,
+        );
+      }
 
       final cubit = createCubit(loadService: mockLoadService);
       await _awaitLoaded(cubit);
 
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await _awaitCondition(() => responses.length == 1);
       globalEvents.add(
-        SseEvent(data: const SesoriCommandCatalogUpdated(pluginId: "opencode")),
+        SseEvent(data: const SesoriSessionOptionsUpdated(pluginId: "opencode", projectId: null)),
       );
       await _awaitCondition(() => responses.length == 2);
 
-      responses[1].complete(
-        ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "newest", template: "/newest")],
-          ),
-        ),
-      );
+      responses[1].complete(catalogWith(command: "newest"));
       await _awaitLoadedWithCommand(cubit, command: "newest");
-      responses[0].complete(
-        ApiResponse.success(
-          CommandListResponse(
-            items: [testCommandInfo(name: "stale", template: "/stale")],
-          ),
-        ),
-      );
+      responses[0].complete(catalogWith(command: "stale"));
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
@@ -459,6 +477,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       SessionDetailSnapshot snapshot({required bool? supportsPromptAttachments}) {
         return SessionDetailSnapshot(
+          areOptionsStale: false,
           bridgeQueuedPrompts: const [],
           projectId: "project-1",
           pluginId: "codex",
@@ -526,6 +545,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final refreshes = <Completer<SessionDetailLoadResult>>[];
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -641,6 +661,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -704,6 +725,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       final firstAttempt = Completer<ApiResponse<void>>();
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "opencode",
@@ -790,6 +812,7 @@ void main() {
     test("stale pre-disconnect refresh cannot authorize a queued attachment", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const supportedSnapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -809,6 +832,7 @@ void main() {
         isArchived: false,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -932,6 +956,7 @@ void main() {
     test("stale pre-disconnect failure cannot overwrite the reconnect load", () async {
       final mockLoadService = MockSessionDetailLoadService();
       const snapshot = SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: [],
         projectId: "project-1",
         pluginId: "codex",
@@ -1058,6 +1083,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1136,6 +1162,7 @@ void main() {
       reloadedCompleter.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1174,6 +1201,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1245,6 +1273,7 @@ void main() {
       );
 
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
+        areOptionsStale: false,
         bridgeQueuedPrompts: const [],
         projectId: "project-1",
         pluginId: "opencode",
@@ -1337,6 +1366,306 @@ void main() {
       ]);
     });
 
+    group("live changes during a silent refresh", () {
+      Future<
+        ({
+          SessionDetailCubit cubit,
+          MockSessionDetailLoadService loadService,
+          Completer<SessionDetailLoadResult> refresh,
+        })
+      >
+      startRefresh({required SessionDetailSnapshot initial}) async {
+        final mockLoadService = MockSessionDetailLoadService();
+        final refresh = Completer<SessionDetailLoadResult>();
+        when(
+          () => mockLoadService.load(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer((_) async => SessionDetailLoadResult.loaded(snapshot: initial));
+        when(
+          () => mockLoadService.reload(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        ).thenAnswer((_) => refresh.future);
+        final cubit = createCubit(loadService: mockLoadService);
+        await _awaitLoaded(cubit);
+        mockConnectionService.emitDataMayBeStale();
+        await untilCalled(
+          () => mockLoadService.reload(
+            sessionId: _sessionId,
+            projectId: any(named: "projectId"),
+          ),
+        );
+        return (cubit: cubit, loadService: mockLoadService, refresh: refresh);
+      }
+
+      Future<SessionDetailLoaded> completeRefresh({
+        required SessionDetailCubit cubit,
+        required Completer<SessionDetailLoadResult> refresh,
+        required SessionDetailSnapshot snapshot,
+      }) async {
+        refresh.complete(SessionDetailLoadResult.loaded(snapshot: snapshot));
+        await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).isRefreshing);
+        return cubit.state as SessionDetailLoaded;
+      }
+
+      test("a part received during the reload survives the fetched replacement of its sibling", () async {
+        final (:cubit, :refresh, loadService: _) = await startRefresh(
+          initial: _snapshot(
+            messages: [
+              _assistantMessage(parts: [_StreamedPartKind.text.part(content: "stale")]),
+            ],
+          ),
+        );
+
+        const livePart = MessagePart.text(
+          id: "part-during-refresh",
+          sessionID: _sessionId,
+          messageID: _streamedMessageId,
+          text: "live",
+        );
+        sessionEvents.add(const SesoriMessagePartUpdated(part: livePart));
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(
+            messages: [
+              _assistantMessage(parts: [_StreamedPartKind.text.part(content: "fresh snapshot")]),
+            ],
+          ),
+        );
+
+        expect(state.messages.single.parts.whereType<MessagePartText>().map((part) => (part.id, part.text)), [
+          (_streamedPartId, "fresh snapshot"),
+          ("part-during-refresh", "live"),
+        ]);
+      });
+
+      test("an assistant added during the reload sets the agent and model of the installed transcript", () async {
+        final (:cubit, :refresh, loadService: _) = await startRefresh(initial: _snapshot(messages: const []));
+
+        sessionEvents.add(
+          const SesoriMessageUpdated(
+            info: Message.assistant(
+              id: "assistant-live",
+              sessionID: _sessionId,
+              agent: "coder",
+              modelID: "live-model",
+              providerID: "provider",
+              time: MessageTime(created: 200, completed: null),
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(messages: const []),
+        );
+
+        expect(state.messages.map((message) => message.info.id), ["assistant-live"]);
+        expect(state.agent, "coder");
+        expect(
+          state.assistantAgentModel,
+          const AgentModel(providerID: "provider", modelID: "live-model", variant: null),
+        );
+      });
+
+      test("an assistant whose model changed during the reload outranks the fetched page", () async {
+        Message assistant({required String modelID}) => Message.assistant(
+          id: _streamedMessageId,
+          sessionID: _sessionId,
+          agent: "build",
+          modelID: modelID,
+          providerID: "provider",
+          time: const MessageTime(created: 100, completed: null),
+        );
+        final stale = _snapshot(
+          messages: [
+            MessageWithParts(
+              info: assistant(modelID: "old"),
+              parts: const [],
+            ),
+          ],
+        );
+        final (:cubit, :refresh, loadService: _) = await startRefresh(initial: stale);
+
+        sessionEvents.add(SesoriMessageUpdated(info: assistant(modelID: "new")));
+        await Future<void>.delayed(Duration.zero);
+
+        final state = await completeRefresh(cubit: cubit, refresh: refresh, snapshot: stale);
+
+        expect((state.messages.single.info as MessageAssistant).modelID, "new");
+        expect(state.assistantAgentModel, const AgentModel(providerID: "provider", modelID: "new", variant: null));
+      });
+
+      test("loading older messages is a no-op while a refresh is in flight", () async {
+        final (:cubit, :refresh, :loadService) = await startRefresh(
+          initial: _snapshot(messages: const [], olderMessagesCursor: 50),
+        );
+
+        await cubit.loadOlderMessages();
+
+        verifyNever(
+          () => loadService.loadOlderMessages(
+            sessionId: _sessionId,
+            before: any(named: "before"),
+          ),
+        );
+        await completeRefresh(
+          cubit: cubit,
+          refresh: refresh,
+          snapshot: _snapshot(messages: const []),
+        );
+      });
+    });
+
+    group("streamed text across a silent refresh", () {
+      // History from several backends carries no completion time, so every
+      // refreshed message below is an assistant message with `completed: null`
+      // and the outcome must follow from part content alone.
+      for (final kind in _StreamedPartKind.values) {
+        Future<
+          ({
+            SessionDetailCubit cubit,
+            Completer<SessionDetailLoadResult> refresh,
+          })
+        >
+        startStreaming({required String delta}) async {
+          final mockLoadService = MockSessionDetailLoadService();
+          final refresh = Completer<SessionDetailLoadResult>();
+          when(
+            () => mockLoadService.load(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          ).thenAnswer(
+            (_) async => SessionDetailLoadResult.loaded(
+              snapshot: _snapshot(messages: [_assistantMessage(parts: const [])]),
+            ),
+          );
+          when(
+            () => mockLoadService.reload(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          ).thenAnswer((_) => refresh.future);
+          final cubit = createCubit(loadService: mockLoadService);
+          await _awaitLoaded(cubit);
+          sessionEvents.add(kind.delta(delta: delta));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: delta);
+          mockConnectionService.emitDataMayBeStale();
+          await untilCalled(
+            () => mockLoadService.reload(
+              sessionId: _sessionId,
+              projectId: any(named: "projectId"),
+            ),
+          );
+          return (cubit: cubit, refresh: refresh);
+        }
+
+        Future<void> completeRefresh({
+          required SessionDetailCubit cubit,
+          required Completer<SessionDetailLoadResult> refresh,
+          required List<MessagePart> parts,
+        }) async {
+          refresh.complete(
+            SessionDetailLoadResult.loaded(
+              snapshot: _snapshot(messages: [_assistantMessage(parts: parts)]),
+            ),
+          );
+          await _awaitCondition(() => !(cubit.state as SessionDetailLoaded).isRefreshing);
+        }
+
+        test("${kind.name}: a snapshot covering the streamed text retires the buffer", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-after")],
+          );
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.streamingText, isEmpty);
+          expect(
+            state.resolvePartContent(partId: _streamedPartId, messageId: _streamedMessageId),
+            (text: "before-after", isStreaming: false),
+          );
+        });
+
+        test("${kind.name}: a delta after retirement continues from the installed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-middle")],
+          );
+
+          sessionEvents.add(kind.delta(delta: "after"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-middleafter");
+        });
+
+        test("${kind.name}: a shorter or absent snapshot part keeps the streamed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          sessionEvents.add(kind.delta(delta: "during-"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-during-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-")],
+          );
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, {_streamedPartId: "before-during-"});
+
+          sessionEvents.add(kind.delta(delta: "after"));
+          await _awaitStreamingText(cubit, partId: _streamedPartId, text: "before-during-after");
+        });
+
+        test("${kind.name}: a snapshot ending with a tail-only buffer retires it and supplies the prefix", () async {
+          // A reconnect outside the replay window delivers deltas from the
+          // middle of a part; only the snapshot knows how it started.
+          final (:cubit, :refresh) = await startStreaming(delta: "-after");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "before-after")],
+          );
+
+          final state = cubit.state as SessionDetailLoaded;
+          expect(state.streamingText, isEmpty);
+          expect(
+            state.resolvePartContent(partId: _streamedPartId, messageId: _streamedMessageId),
+            (text: "before-after", isStreaming: false),
+          );
+        });
+
+        test("${kind.name}: a divergent snapshot part keeps the streamed text", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          await completeRefresh(
+            cubit: cubit,
+            refresh: refresh,
+            parts: [kind.part(content: "rewritten")],
+          );
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, {_streamedPartId: "before-"});
+        });
+
+        test("${kind.name}: a final part event during the reload still retires the buffer", () async {
+          final (:cubit, :refresh) = await startStreaming(delta: "before-");
+          sessionEvents.add(SesoriMessagePartUpdated(part: kind.part(content: "before-final")));
+          await _awaitCondition(() => (cubit.state as SessionDetailLoaded).streamingText.isEmpty);
+          await completeRefresh(cubit: cubit, refresh: refresh, parts: const []);
+
+          expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
+        });
+      }
+    });
+
     test("keeps a finalized part that arrives before its message envelope", () async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -1347,6 +1676,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1409,6 +1739,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1495,6 +1826,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1570,6 +1902,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1645,6 +1978,7 @@ void main() {
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1713,6 +2047,7 @@ void main() {
       completer.complete(
         const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
             bridgeQueuedPrompts: [],
             projectId: "project-1",
             pluginId: "opencode",
@@ -1772,4 +2107,78 @@ Future<void> _awaitCondition(bool Function() condition) async {
     await Future<void>.delayed(Duration.zero);
   }
   fail("Timed out waiting for condition");
+}
+
+const _streamedMessageId = "message-1";
+const _streamedPartId = "stream-part";
+
+/// Text and reasoning parts stream through the same buffer; each case runs for both.
+enum _StreamedPartKind() {
+  text,
+  reasoning;
+
+  MessagePart part({required String content}) => switch (this) {
+    _StreamedPartKind.text => MessagePart.text(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      text: content,
+    ),
+    _StreamedPartKind.reasoning => MessagePart.reasoning(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      text: content,
+    ),
+  };
+
+  SesoriMessagePartDelta delta({required String delta}) => SesoriMessagePartDelta(
+    sessionID: _sessionId,
+    messageID: _streamedMessageId,
+    partID: _streamedPartId,
+    field: name,
+    delta: delta,
+  );
+}
+
+MessageWithParts _assistantMessage({required List<MessagePart> parts}) => MessageWithParts(
+  info: const Message.assistant(
+    id: _streamedMessageId,
+    sessionID: _sessionId,
+    agent: "build",
+    modelID: null,
+    providerID: null,
+    time: MessageTime(created: 100, completed: null),
+  ),
+  parts: parts,
+);
+
+SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? olderMessagesCursor}) =>
+    SessionDetailSnapshot(
+      areOptionsStale: false,
+      bridgeQueuedPrompts: const [],
+      projectId: "project-1",
+      pluginId: "opencode",
+      supportsPromptAttachments: false,
+      messages: messages,
+      olderMessagesCursor: olderMessagesCursor,
+      pendingQuestions: const <PendingQuestion>[],
+      pendingPermissions: const <PendingPermission>[],
+      childSessions: const <Session>[],
+      statuses: const <String, SessionStatus>{},
+      agents: const <AgentInfo>[],
+      providerData: null,
+      commands: const <CommandInfo>[],
+      canonicalSessionTitle: null,
+      promptDefaults: null,
+      isRootSession: true,
+      isArchived: false,
+    );
+
+Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {
+  await awaitState(
+    cubit: cubit,
+    predicate: (state) => state is SessionDetailLoaded && state.streamingText[partId] == text,
+    description: "streaming text '$text' for $partId",
+  );
 }

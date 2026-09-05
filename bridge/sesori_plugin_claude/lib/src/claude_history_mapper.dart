@@ -12,19 +12,25 @@ final class const ClaudeHistoryMapper({
   required final ClaudeContentMapper _content,
 }) {
   /// [residentTaskToolUseIds] names the sub-agent tasks the session's current
-  /// resident process is still running. Any other replayed task that never
-  /// reached a terminal record is dead — sub-agents die with their process —
-  /// and renders as cancelled.
+  /// resident process is still running. It reopens a task whose transcript has
+  /// an earlier terminal notification when Claude resumed the same agent. Any
+  /// other replayed task that never reached a terminal record is dead —
+  /// sub-agents die with their process — and renders as cancelled.
   ///
   /// [agentId] selects child mode: a sub-agent transcript's records are
   /// sidechain records stamped with the **parent's** session id, so they are
   /// attributed by agent id instead of the root's session-id cross-check.
+  ///
+  /// [catalogModelId] translates a transcript's API model name into the
+  /// catalog's picker id; null keeps names as recorded.
   List<PluginMessageWithParts> map({
     required String sessionId,
     required String? agentId,
     required List<ClaudeTranscriptRecord> records,
     required Set<String> residentTaskToolUseIds,
+    required String? Function({required String apiModel})? catalogModelId,
   }) {
+    String? modelId(String? model) => model == null ? null : catalogModelId?.call(apiModel: model) ?? model;
     bool skip(ClaudeTranscriptAttributedRecord record) => switch (agentId) {
       null => (record.isSidechain ?? false) || (record.sessionId != null && record.sessionId != sessionId),
       final agentId => record.agentId != agentId,
@@ -161,6 +167,9 @@ final class const ClaudeHistoryMapper({
       }
     }
 
+    for (final toolUseId in residentTaskToolUseIds) {
+      tasks.markTaskRunning(toolUseId: toolUseId);
+    }
     for (final toolUseId in tasks.runningTaskToolUseIds(sessionId: sessionId).difference(residentTaskToolUseIds)) {
       tasks.cancelTask(toolUseId: toolUseId);
     }
@@ -171,9 +180,9 @@ final class const ClaudeHistoryMapper({
         case _UserHistoryMessage(:final message):
           messages.add(message);
         case _ApiErrorHistoryMessage():
-          messages.add(_buildApiError(entry: entry, sessionId: sessionId));
+          messages.add(_buildApiError(entry: entry, sessionId: sessionId, modelId: modelId));
         case _AssistantHistoryMessage():
-          final message = _buildAssistant(entry: entry, sessionId: sessionId, tasks: tasks);
+          final message = _buildAssistant(entry: entry, sessionId: sessionId, tasks: tasks, modelId: modelId);
           if (message != null) messages.add(message);
       }
     }
@@ -183,6 +192,7 @@ final class const ClaudeHistoryMapper({
   PluginMessageWithParts _buildApiError({
     required _ApiErrorHistoryMessage entry,
     required String sessionId,
+    required String? Function(String? model) modelId,
   }) {
     final error = mapClaudeApiError(
       blocks: _content.map(content: entry.content),
@@ -193,7 +203,7 @@ final class const ClaudeHistoryMapper({
         id: entry.id,
         sessionID: sessionId,
         agent: "claude",
-        modelID: entry.model,
+        modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: null,
         errorName: error.name,
@@ -208,6 +218,7 @@ final class const ClaudeHistoryMapper({
     required _AssistantHistoryMessage entry,
     required String sessionId,
     required ClaudeToolTracker tasks,
+    required String? Function(String? model) modelId,
   }) {
     final mapped = _content.mapParts(
       content: entry.content,
@@ -244,7 +255,7 @@ final class const ClaudeHistoryMapper({
         id: entry.id,
         sessionID: sessionId,
         agent: "claude",
-        modelID: entry.model,
+        modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: entry.variant,
         sender: PluginMessageSender.agent,

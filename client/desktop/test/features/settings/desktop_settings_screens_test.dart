@@ -40,6 +40,8 @@ class _MockPluginManagementService() extends Mock implements PluginManagementSer
 
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 
+class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
+
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 const AuthUser _user = AuthUser(
@@ -88,6 +90,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
+    registerFallbackValue(DesktopAttentionPreference.enabled);
   });
 
   late _MockAuthGateCubit authGateCubit;
@@ -97,6 +100,8 @@ void main() {
   late AppearanceCubit appearanceCubit;
   late ChatInputModeCubit chatInputModeCubit;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
+  late BehaviorSubject<DesktopAttentionPreference> attentionPreferences;
+  late _MockDesktopAttentionService desktopAttentionService;
   late BehaviorSubject<ProductAnalyticsState> analyticsStates;
   late BehaviorSubject<PluginManagementLoadResult> pluginSnapshots;
   late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
@@ -132,6 +137,20 @@ void main() {
     );
 
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
+    attentionPreferences = BehaviorSubject<DesktopAttentionPreference>.seeded(
+      DesktopAttentionPreference.enabled,
+    );
+    desktopAttentionService = _MockDesktopAttentionService();
+    when(() => desktopAttentionService.currentPreference).thenAnswer((_) => attentionPreferences.value);
+    when(() => desktopAttentionService.preference).thenAnswer((_) => attentionPreferences.stream);
+    when(
+      () => desktopAttentionService.setPreference(preference: any(named: "preference")),
+    ).thenAnswer((invocation) async {
+      attentionPreferences.add(
+        invocation.namedArguments[#preference]! as DesktopAttentionPreference,
+      );
+    });
+    getIt.registerSingleton<DesktopAttentionService>(desktopAttentionService);
     analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(
       const ProductAnalyticsState(
         preference: ProductAnalyticsPreferenceKnown(
@@ -154,6 +173,7 @@ void main() {
     await getIt.reset();
     await connectionOverlayCubit.close();
     await appearanceCubit.close();
+    await attentionPreferences.close();
     await chatInputModeCubit.close();
     await connectionStatuses.close();
     await analyticsStates.close();
@@ -187,7 +207,7 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  testWidgets("desktop settings injects shared preferences without mobile notifications", (tester) async {
+  testWidgets("desktop settings injects local attention without mobile notification routes", (tester) async {
     useTallSurface(tester: tester);
     final repository = _MockBridgeSettingsRepository();
     final connectionService = _MockConnectionService();
@@ -198,6 +218,7 @@ void main() {
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
           yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: true,
         ),
       ),
     );
@@ -219,8 +240,12 @@ void main() {
 
     expect(tester.widget<PregoGlassScaffold>(find.byType(PregoGlassScaffold)).banner, isNull);
     expect(find.text("alex"), findsOneWidget);
-    expect(find.text("Notifications"), findsNothing);
+    expect(find.text("Notifications"), findsOneWidget);
+    expect(find.text("AI Interactions"), findsOneWidget);
+    expect(find.text("Session Messages"), findsNothing);
+    expect(find.text("Connection Status"), findsNothing);
     expect(find.text("Harnesses"), findsOneWidget);
+    expect(find.text("Warm harness on session open"), findsOneWidget);
     expect(find.text("30 seconds"), findsOneWidget);
     expect(find.text("v0.1.0 (1)"), findsOneWidget);
 

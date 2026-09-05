@@ -442,7 +442,6 @@ void main() {
     GetIt.instance.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
@@ -1085,13 +1084,19 @@ void main() {
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
-    // The refresh action floats above the composer rather than riding the
-    // options it reloads, so scrolling must not carry it away.
+    // The refresh action shares the options scroll so it cannot cover a row.
+    // When the content fits, its fill-remaining sliver still rests it above the
+    // pinned composer and there is nothing for this drag to move.
     final refresh = find.byKey(const Key("new_session_options_refresh"));
-    expect(find.descendant(of: optionsScroll, matching: refresh), findsNothing);
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
 
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
     final refreshRect = tester.getRect(refresh);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(refreshRect.top));
     expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
 
     await tester.drag(optionsScroll, const Offset(0, -250));
@@ -1102,10 +1107,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("scrolls the last option clear of the refresh at a large text scale", (tester) async {
-    // The refresh pill is padding around its label, not a fixed box, so it
-    // grows with the text scale. The band reserved beneath the options has to
-    // grow with it or the last row stays stranded underneath.
+  testWidgets("lays out the last option before the refresh at a large text scale", (tester) async {
+    // The refresh pill grows with the text scale. Keeping it in the scroll's
+    // normal sliver flow makes that measured height part of layout rather than
+    // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.binding.setSurfaceSize(const Size(700, 400));
@@ -1116,15 +1121,50 @@ void main() {
 
     final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
     final refresh = find.byKey(const Key("new_session_options_refresh"));
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
 
     final scrollRect = tester.getRect(optionsScroll);
     await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
     await tester.pumpAndSettle();
 
-    // Scrolled to the end, the reserved band must still span everything the
-    // pill covers — measured, so it holds however tall the pill has grown.
-    final reserved = tester.widget<SingleChildScrollView>(optionsScroll).padding! as EdgeInsetsDirectional;
-    expect(reserved.bottom, greaterThanOrEqualTo(scrollRect.bottom - tester.getRect(refresh).top));
+    expect(refresh.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("keeps the refresh from covering workspace options with a multiline draft", (tester) async {
+    tester.view.physicalSize = const Size(420, 912);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 59, bottom: 34);
+    tester.view.viewPadding = const FakeViewPadding(top: 59, bottom: 34);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 344);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(EditableText),
+      "one line of a long prompt\ntwo lines\nthree lines\nfour lines\nfive lines\nsix lines",
+    );
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"), skipOffstage: false);
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh, skipOffstage: false), findsOneWidget);
+    expect(workspace.hitTestable(), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
     expect(tester.takeException(), isNull);
   });
 
@@ -1586,6 +1626,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),
@@ -1636,6 +1677,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),

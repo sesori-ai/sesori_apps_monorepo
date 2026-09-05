@@ -104,7 +104,7 @@ class SseEventTracker(
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriCommandCatalogUpdated() ||
+            SesoriSessionOptionsUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||

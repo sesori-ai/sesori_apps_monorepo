@@ -181,6 +181,27 @@ void main() {
       expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
     });
 
+    test("rejects Claude's synthetic model before enqueueing", () async {
+      await harness.createSession();
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          promptId: "prompt-1",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "hello")],
+          variant: null,
+          agent: "Agent",
+          model: (providerID: "anthropic", modelID: "<synthetic>"),
+        ),
+        throwsA(
+          isA<PluginStaleOptionsException>()
+              .having((error) => error.statusCode, "status", 409)
+              .having((error) => error.message, "message", "unsupported Claude model"),
+        ),
+      );
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+    });
+
     test("rejects unsupported selections on session creation", () async {
       await expectLater(
         harness.plugin.createSession(
@@ -884,6 +905,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
       approvals: approvals,
       clock: const _NeverIdleClock(),
       resolveIdleTimeout: () => const Duration(minutes: 5),
+      idleTimeoutChanges: const Stream<Duration?>.empty(),
     );
     const content = ClaudeContentMapper();
     final transcripts = ClaudeTranscriptCatalogRepository(
@@ -902,7 +924,11 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
         discoveryDirectory: temporary.path,
       ),
       approvals: approvals,
-      eventDispatcher: ClaudeEventDispatcher(content: content, tools: ClaudeToolTracker()),
+      eventDispatcher: ClaudeEventDispatcher(
+        content: content,
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      ),
       history: const ClaudeHistoryMapper(content: content),
       eventBuffer: eventBuffer,
       clock: const _NeverIdleClock(),

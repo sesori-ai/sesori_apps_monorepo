@@ -61,6 +61,7 @@ DeepSeekHistoryRepository _repository(DeepSeekAcpApi api) => DeepSeekHistoryRepo
     launchDirectory: "/project",
     pluginId: DeepSeekIdentity.id,
     configurationTracker: AcpSessionConfigurationTracker(),
+    childSessions: AcpChildSessionTracker(),
     api: api,
   ),
   pluginId: DeepSeekIdentity.id,

@@ -290,6 +290,7 @@ class _ConcurrencyHarness._({
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -338,7 +339,8 @@ class _ConcurrencyHarness._({
   }
 
   Future<void> insertSession({required String sessionId}) {
-    return composition.sessionRepository.insertStoredSession(
+    return insertTestSession(
+      db: database,
       sessionId: sessionId,
       backendSessionId: "backend-$sessionId",
       pluginId: plugin.id,

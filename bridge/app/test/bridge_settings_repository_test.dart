@@ -17,6 +17,7 @@ void main() {
 
       expect(settings.plugins.disabledPluginIds, isEmpty);
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+      expect(settings.warmUpPluginsOnSessionOpen, isTrue);
       expect(repository.currentSettings, same(settings));
       expect(api.lastWrittenConfig, _defaultJson);
     });
@@ -24,7 +25,8 @@ void main() {
     test('loads valid plugin settings without rewriting', () async {
       final api = FakeBridgeSettingsApi(
         readResult:
-            '{"sleepPrevention":"off","pullRequestRefreshIntervalSeconds":30,"plugins":{"disabled":["cursor"]}}',
+            '{"sleepPrevention":"off","pullRequestRefreshIntervalSeconds":30,'
+            '"warmUpPluginsOnSessionOpen":true,"plugins":{"disabled":["cursor"]}}',
       );
       final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
 
@@ -43,6 +45,21 @@ void main() {
 
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
       expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['pullRequestRefreshIntervalSeconds'], 30);
+    });
+
+    test('repairs a missing or malformed session-open warm-up setting', () async {
+      for (final config in [
+        '{"pullRequestRefreshIntervalSeconds":30}',
+        '{"pullRequestRefreshIntervalSeconds":30,"warmUpPluginsOnSessionOpen":"true"}',
+      ]) {
+        final api = FakeBridgeSettingsApi(readResult: config);
+        final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
+
+        final settings = await repository.loadSettings();
+
+        expect(settings.warmUpPluginsOnSessionOpen, isTrue);
+        expect((jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>)['warmUpPluginsOnSessionOpen'], isTrue);
+      }
     });
 
     test('repairs malformed and out-of-range PR refresh intervals', () async {
@@ -187,7 +204,9 @@ void main() {
     });
 
     test('rejects an invalid interval mutation before commit and keeps the tail usable', () async {
-      final api = FakeBridgeSettingsApi(readResult: '{"pullRequestRefreshIntervalSeconds":30}');
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"pullRequestRefreshIntervalSeconds":30,"warmUpPluginsOnSessionOpen":true}',
+      );
       final repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();
       final changes = <BridgeSettingsChange>[];
@@ -244,7 +263,7 @@ void main() {
       expect((written['plugins'] as Map)['future-plugin'], {'futureOption': 'kept'});
     });
 
-    test('release track and yolo updates preserve plugin policy', () async {
+    test('release track, yolo, and warm-up updates preserve plugin policy', () async {
       final api = FakeBridgeSettingsApi(
         readResult: '{"plugins":{"disabled":["cursor"]}}',
       );
@@ -259,6 +278,11 @@ void main() {
       final afterYolo = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
       expect(afterYolo['yolo'], isTrue);
       expect((afterYolo['plugins'] as Map)['disabled'], ['cursor']);
+
+      await repository.updateWarmUpPluginsOnSessionOpen(enabled: false);
+      final afterWarmup = jsonDecode(api.lastWrittenConfig!) as Map<String, dynamic>;
+      expect(afterWarmup['warmUpPluginsOnSessionOpen'], isFalse);
+      expect((afterWarmup['plugins'] as Map)['disabled'], ['cursor']);
     });
 
     test('reports unavailable default editor explicitly', () async {
@@ -282,7 +306,7 @@ void main() {
 }
 
 const _defaultJson =
-    '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30\n}';
+    '{\n  "sleepPrevention": "always",\n  "yolo": false,\n  "releaseTrack": "stable",\n  "pullRequestRefreshIntervalSeconds": 30,\n  "warmUpPluginsOnSessionOpen": true\n}';
 
 class FakeBridgeSettingsApi({
   required var String? readResult,

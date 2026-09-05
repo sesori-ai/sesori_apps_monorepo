@@ -48,9 +48,11 @@ void main() {
       expect(provider.name, "Anthropic");
       expect(provider.authType, PluginProviderAuthType.oauth);
       expect(provider.defaultModelID, "opus[1m]");
-      expect(provider.models.map((model) => model.id), ["haiku", "opus[1m]"]);
-      expect(provider.models.first.variants, isEmpty);
-      expect(provider.models.last.variants, ["high", "low", "medium", "xhigh", "max"]);
+      expect(provider.models.map((model) => model.id), ["opus[1m]", "haiku"]);
+      expect(provider.models.first.variants, ["max", "xhigh", "high", "medium", "low"]);
+      expect(provider.models.first.defaultVariant, "high");
+      expect(provider.models.last.variants, isEmpty);
+      expect(provider.models.last.defaultVariant, isNull);
       expect(
         catalog.commands,
         const [
@@ -63,6 +65,43 @@ void main() {
           ),
         ],
       );
+    });
+
+    test("declares no default effort when effort support is off, even with levels listed", () {
+      final catalog = repository.map(
+        handshake: {
+          "models": [
+            {
+              "value": "haiku",
+              "supportsEffort": false,
+              "supportedEffortLevels": ["low", "high"],
+            },
+          ],
+        },
+      );
+
+      final model = catalog.providers.providers.single.models.single;
+      expect(model.variants, isEmpty);
+      expect(model.defaultVariant, isNull);
+    });
+
+    test("maps API model names back to picker ids, exactly or by bare name", () {
+      final catalog = repository.map(
+        handshake: {
+          "models": [
+            {"value": "default", "resolvedModel": "claude-opus-5[1m]"},
+            {"value": "opus[1m]", "resolvedModel": "claude-opus-5[1m]"},
+            {"value": "fable", "resolvedModel": "claude-fable-5-1"},
+            {"value": "haiku"},
+          ],
+        },
+      );
+
+      expect(catalog.catalogModelId(apiModel: "claude-fable-5-1"), "fable");
+      expect(catalog.catalogModelId(apiModel: "claude-opus-5[1m]"), "opus[1m]");
+      expect(catalog.catalogModelId(apiModel: "claude-opus-5"), "opus[1m]");
+      expect(catalog.catalogModelId(apiModel: "claude-haiku-5"), isNull);
+      expect(catalog.catalogModelId(apiModel: "opus[1m]"), isNull);
     });
 
     test("filters malformed entries and falls back to the first model", () {

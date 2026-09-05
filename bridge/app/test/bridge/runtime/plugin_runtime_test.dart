@@ -7,6 +7,8 @@ import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+const _testHostJsonStore = _UnusedHostJsonStore();
+
 void main() {
   test("snapshot emissions cannot be mutated by subscribers", () async {
     final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
@@ -36,6 +38,39 @@ void main() {
 
     expect((await first)["one"], isA<PluginSetupReady>());
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
+  });
+
+  test("a started generation runs its warm-up exactly once", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(factory.plugins.single.onStartedCount, 1);
+  });
+
+  test("a warm-up that fails or hangs neither fails nor delays the start", () async {
+    final warmUpGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi())
+        ..onStartedHandler = () async {
+          await warmUpGate.future;
+          throw StateError("warm-up failed");
+        },
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    warmUpGate.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
   });
 
   test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
@@ -75,16 +110,21 @@ void main() {
 
   test("authenticate forwards safe events and aborts on shutdown", () async {
     final authenticationGate = Completer<void>();
+    final authenticationStores = <HostJsonStore>[];
+    Stream<PluginAuthenticationDeviceCodeEvent> authenticationEvents({required StartAbortSignal aborted}) async* {
+      yield PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      );
+      await authenticationGate.future;
+      if (aborted.isAborted) throw const PluginStartAbortedException();
+      yield const PluginAuthenticationCompleted();
+    }
+
     final descriptor = _AuthenticationDescriptor(
-      authenticate: (aborted) async* {
-        yield PluginAuthenticationDeviceCodeChallenge(
-          verificationUri: Uri.parse("https://auth.example/device"),
-          userCode: "ABCD-EFGH",
-        );
-        await authenticationGate.future;
-        if (aborted.isAborted) throw const PluginStartAbortedException();
-        yield const PluginAuthenticationCompleted();
-      },
+      authenticate: ({required aborted}) =>
+          PluginAuthenticationOperation.deviceCode(events: authenticationEvents(aborted: aborted)),
+      recordStore: ({required store}) => authenticationStores.add(store),
     );
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
@@ -97,9 +137,163 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(events.single, isA<PluginAuthenticationDeviceCodeChallenge>());
+    expect(identical(authenticationStores.single, _testHostJsonStore), isTrue);
+    final wrongKind = await runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: operation.generation,
+      redirectUri: Uri.parse("http://127.0.0.1/callback?code=code"),
+    );
+    expect(
+      wrongKind,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
+      ),
+    );
+
     runtime.beginShutdown();
+    final shutdownSubmission = await runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: operation.generation,
+      redirectUri: Uri.parse("http://127.0.0.1/callback?code=code"),
+    );
+    expect(
+      shutdownSubmission,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      ),
+    );
     authenticationGate.complete();
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("browser redirects are one-shot and fenced to the active generation", () async {
+    final streams = [
+      StreamController<PluginAuthenticationBrowserEvent>(),
+      StreamController<PluginAuthenticationBrowserEvent>(),
+      StreamController<PluginAuthenticationBrowserEvent>(),
+    ];
+    var streamIndex = 0;
+    var settleOnSubmit = false;
+    final submitted = <Uri>[];
+    Completer<void>? redirectGate;
+    final descriptor = _AuthenticationDescriptor(
+      authenticate: ({required aborted}) => PluginAuthenticationOperation.browser(
+        events: streams[streamIndex++].stream,
+        submitRedirect: ({required redirectUri}) async {
+          submitted.add(redirectUri);
+          if (settleOnSubmit) await streams[streamIndex - 1].close();
+          await redirectGate?.future;
+        },
+      ),
+      recordStore: ({required store}) {},
+    );
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: descriptor,
+    );
+    addTearDown(runtime.dispose);
+
+    final first = runtime.authenticate(pluginId: "one");
+    expect(() => runtime.authenticate(pluginId: "one"), throwsStateError);
+    final firstDone = first.events.drain<void>();
+    streams.first.add(
+      PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    final firstRedirect = Uri.parse("http://127.0.0.1/callback?code=first");
+    expect(
+      await runtime.submitAuthenticationRedirect(
+        pluginId: "one",
+        generation: first.generation,
+        redirectUri: firstRedirect,
+      ),
+      isA<PluginRuntimeAuthenticationContinuationApplied>(),
+    );
+    final duplicate = await runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: first.generation,
+      redirectUri: firstRedirect,
+    );
+    expect(
+      duplicate,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
+      ),
+    );
+    await streams.first.close();
+    await firstDone;
+
+    final second = runtime.authenticate(pluginId: "one");
+    final secondDone = second.events.drain<void>();
+    final secondRedirect = Uri.parse("http://127.0.0.1/callback?code=second");
+    final stale = await runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: first.generation,
+      redirectUri: firstRedirect,
+    );
+    expect(
+      stale,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      ),
+    );
+    redirectGate = Completer<void>();
+    final cancelledSubmission = runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: second.generation,
+      redirectUri: secondRedirect,
+    );
+    expect(submitted, [firstRedirect, secondRedirect]);
+
+    second.abort();
+    redirectGate.complete();
+    expect(
+      await cancelledSubmission,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      ),
+    );
+    final afterCancel = await runtime.submitAuthenticationRedirect(
+      pluginId: "one",
+      generation: second.generation,
+      redirectUri: secondRedirect,
+    );
+    expect(
+      afterCancel,
+      isA<PluginRuntimeAuthenticationContinuationConflict>().having(
+        (result) => result.reason,
+        "reason",
+        PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      ),
+    );
+    await streams[1].close();
+    await secondDone;
+
+    settleOnSubmit = true;
+    final third = runtime.authenticate(pluginId: "one");
+    final thirdDone = third.events.drain<void>();
+    expect(
+      await runtime.submitAuthenticationRedirect(
+        pluginId: "one",
+        generation: third.generation,
+        redirectUri: Uri.parse("http://127.0.0.1/callback?code=third"),
+      ),
+      isA<PluginRuntimeAuthenticationContinuationApplied>(),
+    );
+    await thirdDone;
   });
 
   test("authenticate rejects descriptors without the optional capability", () {
@@ -1693,6 +1887,7 @@ PluginRuntime _runtime({
         descriptor: descriptor,
         config: const PluginConfig(values: {}),
         stateDirectory: ".",
+        store: _testHostJsonStore,
       ),
     ],
     generationFactory: factory,
@@ -1722,11 +1917,11 @@ Future<void> _waitUntil(bool Function() predicate) async {
 }
 
 class _FakeGenerationFactory({
-    required final Future<void> startGate,
-    final _FakePlugin Function(int generation)? pluginFactory,
-    final Object? startError,
-    final bool honorAbort = true,
-  }) implements PluginGenerationFactory {
+  required final Future<void> startGate,
+  final _FakePlugin Function(int generation)? pluginFactory,
+  final Object? startError,
+  final bool honorAbort = true,
+}) implements PluginGenerationFactory {
   final List<_FakePlugin> plugins = <_FakePlugin>[];
   int startCount = 0;
 
@@ -1750,7 +1945,10 @@ class _FakeGenerationFactory({
   }
 }
 
-class const _FakeDescriptor({final Future<PluginSetupStatus> Function()? inspect, final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install}) extends BridgePluginDescriptor {
+class const _FakeDescriptor({
+  final Future<PluginSetupStatus> Function()? inspect,
+  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install,
+}) extends BridgePluginDescriptor {
   @override
   String get id => "one";
 
@@ -1802,21 +2000,48 @@ class const _FakeDescriptor({final Future<PluginSetupStatus> Function()? inspect
 }
 
 class const _AuthenticationDescriptor({
-    required final Stream<PluginAuthenticationEvent> Function(StartAbortSignal aborted) _authenticate,
-  }) extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
+  required final PluginAuthenticationOperation Function({required StartAbortSignal aborted}) _authenticate,
+  required final void Function({required HostJsonStore store}) _recordStore,
+}) extends _FakeDescriptor implements InteractivePluginAuthenticationDescriptor {
   @override
-  Stream<PluginAuthenticationEvent> authenticate({
+  PluginAuthenticationOperation authenticate({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
     required String stateDirectory,
+    required HostJsonStore store,
     required StartAbortSignal aborted,
-  }) => _authenticate(aborted);
+  }) {
+    _recordStore(store: store);
+    return _authenticate(aborted: aborted);
+  }
+}
+
+class const _UnusedHostJsonStore() implements HostJsonStore {
+  @override
+  Future<void> delete({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> read({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String name, required String contents}) => throw UnsupportedError("unused");
 }
 
 class _FakePlugin({
-  @override
-  required final _FakeApi api, final Future<void>? shutdownGate, final Object? shutdownError}) implements BridgePlugin {
+  @override required final _FakeApi api,
+  final Future<void>? shutdownGate,
+  final Object? shutdownError,
+}) implements BridgePlugin {
   final BehaviorSubject<PluginStatus> statuses = BehaviorSubject.seeded(const PluginReady());
   final BehaviorSubject<PluginWorkState> workStates = BehaviorSubject.seeded(PluginWorkState.idle);
   Future<void>? _shutdownFuture;
@@ -1824,6 +2049,14 @@ class _FakePlugin({
   int shutdownCount = 0;
   int interruptActiveWorkCount = 0;
   Future<Set<String>> Function(Duration budget)? interruptActiveWorkHandler;
+  int onStartedCount = 0;
+  Future<void> Function()? onStartedHandler;
+
+  @override
+  Future<void> onStarted() async {
+    onStartedCount++;
+    await onStartedHandler?.call();
+  }
 
   @override
   PluginStatus get currentStatus => statuses.value;
@@ -1864,11 +2097,10 @@ class _FakePlugin({
 }
 
 class _FakeApi({
-    @override
-  final String id = "one",
-    final bool closeEventsOnDispose = false,
-    final List<PluginProjectActivitySummary> activeSessionsSummary = const [],
-  }) extends NativeProjectsPluginApi {
+  @override final String id = "one",
+  final bool closeEventsOnDispose = false,
+  final List<PluginProjectActivitySummary> activeSessionsSummary = const [],
+}) extends NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> eventsController = StreamController.broadcast();
   int disposeCount = 0;
   int getActiveSessionsSummaryCount = 0;

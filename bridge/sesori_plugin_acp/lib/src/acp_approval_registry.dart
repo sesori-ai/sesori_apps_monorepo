@@ -149,6 +149,23 @@ class AcpApprovalRegistry({
   /// Routes one server request received by the owning plugin.
   void handleServerRequest({required AcpServerRequest request}) => handleRequest(request);
 
+  /// Rejects a request whose tool-call id matches more than one live session.
+  /// No active-turn fallback is safe because it could present and approve the
+  /// request under the wrong source context.
+  void rejectAmbiguousServerRequest({required AcpServerRequest request}) {
+    Log.w("[acp] server request has ambiguous tool-call session attribution; cancelling");
+    switch (request.method) {
+      case AcpMethods.sessionRequestPermission:
+        _respond(request.id, const {
+          "outcome": {"outcome": "cancelled"},
+        });
+      case AcpMethods.elicitationCreate:
+        _respond(request.id, const {"action": "cancel"});
+      default:
+        _respondError(request.id, -32602, "ambiguous tool-call session attribution");
+    }
+  }
+
   /// Responds to a server request with a result payload.
   void respond(Object acpId, Object? result) => _respond(acpId, result);
 

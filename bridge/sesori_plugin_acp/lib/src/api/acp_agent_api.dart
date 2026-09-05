@@ -28,15 +28,13 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   /// with a remaining budget (the scratch catalog/cleanup leases) cannot
   /// overrun it by a second full timeout on the auth round trip.
   ///
-  /// [authMethodId] names the method to authenticate with. When it is `null`,
-  /// the first advertised non-terminal method allowed by [authMethodAllowlist]
-  /// is selected. A `null` allowlist preserves the unrestricted stock behavior.
+  /// Existing callers use this combined operation. Runtime probes that must
+  /// inspect an unauthenticated agent use [initializeOnly] instead.
   ///
-  /// Throws [StateError] when the agent negotiates a protocol version other
-  /// than v1 (it could not understand our v1-shaped `session/*` calls),
-  /// [PluginAuthenticationRequiredException] when no usable auth method exists
-  /// or the agent rejects authentication, and [TimeoutException] when the
-  /// deadline passes.
+  /// Throws [StateError] for an unsupported protocol version,
+  /// [PluginAuthenticationRequiredException] when no usable method exists or
+  /// authentication fails, and [TimeoutException] when the shared deadline
+  /// passes.
   Future<AcpInitializeResult> initialize({
     required bool formElicitation,
     required Map<String, dynamic>? capabilityMeta,
@@ -45,6 +43,38 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     required Duration timeout,
   }) async {
     final deadline = Stopwatch()..start();
+    final init = await initializeOnly(
+      formElicitation: formElicitation,
+      capabilityMeta: capabilityMeta,
+      timeout: timeout,
+    );
+    _validateProtocolVersion(init);
+    if (!init.requiresAuth) return init;
+
+    final remaining = timeout - deadline.elapsed;
+    if (remaining <= Duration.zero) {
+      throw TimeoutException("${client.logTag} initialize handshake exceeded its deadline before authenticate");
+    }
+    await authenticate(
+      initializeResult: init,
+      authMethodId: authMethodId,
+      authMethodAllowlist: authMethodAllowlist,
+      timeout: remaining,
+    );
+    return init;
+  }
+
+  /// Sends and parses only the standard ACP `initialize` request.
+  ///
+  /// This deliberately returns the negotiated version and advertised auth
+  /// methods without validating policy or invoking authentication. It is for
+  /// runtime probes that must inspect an unauthenticated agent. The combined
+  /// [initialize] operation still rejects unsupported protocol versions.
+  Future<AcpInitializeResult> initializeOnly({
+    required bool formElicitation,
+    required Map<String, dynamic>? capabilityMeta,
+    required Duration timeout,
+  }) async {
     final raw = await client.request(
       method: AcpMethods.initialize,
       params: buildInitializeParams(
@@ -53,17 +83,25 @@ class AcpAgentApi({required final AcpStdioClient client}) {
       ),
       timeout: timeout,
     );
-    final init = AcpInitializeResult.fromJson(_asJson(raw));
-    // A missing version parses as v1, so agents that omit the field (some
-    // cursor-agent builds) still connect.
-    if (init.protocolVersion != acpProtocolVersion) {
-      throw StateError(
-        "ACP agent negotiated protocol version ${init.protocolVersion}, "
-        "but this client only speaks v$acpProtocolVersion",
-      );
-    }
-    if (!init.requiresAuth) return init;
-    final methodId = authMethodId ?? _firstNonTerminalAuthMethod(init: init, allowlist: authMethodAllowlist);
+    return AcpInitializeResult.fromJson(_asJson(raw));
+  }
+
+  /// Authenticates using a method advertised by [initializeResult].
+  ///
+  /// [authMethodId] names the method explicitly. When it is `null`, the first
+  /// advertised non-terminal method allowed by [authMethodAllowlist] is used.
+  /// A `null` allowlist preserves the unrestricted stock behavior. Throws
+  /// [PluginAuthenticationRequiredException] when no usable method exists or
+  /// authentication fails, and [TimeoutException] for an elapsed deadline.
+  Future<void> authenticate({
+    required AcpInitializeResult initializeResult,
+    required String? authMethodId,
+    required Set<String>? authMethodAllowlist,
+    required Duration timeout,
+  }) async {
+    if (!initializeResult.requiresAuth) return;
+    final methodId =
+        authMethodId ?? _firstNonTerminalAuthMethod(init: initializeResult, allowlist: authMethodAllowlist);
     if (methodId == null) {
       throw PluginAuthenticationRequiredException(
         AcpMethods.authenticate,
@@ -71,15 +109,14 @@ class AcpAgentApi({required final AcpStdioClient client}) {
         message: "${client.logTag} requires an authentication method the bridge cannot complete",
       );
     }
-    final remaining = timeout - deadline.elapsed;
-    if (remaining <= Duration.zero) {
-      throw TimeoutException("${client.logTag} initialize handshake exceeded its deadline before authenticate");
+    if (timeout <= Duration.zero) {
+      throw TimeoutException("${client.logTag} authentication deadline has elapsed");
     }
     try {
       await client.request(
         method: AcpMethods.authenticate,
         params: {"methodId": methodId},
-        timeout: remaining,
+        timeout: timeout,
       );
     } on AcpRpcException catch (error) {
       if (error.method != "<response>") rethrow;
@@ -90,7 +127,6 @@ class AcpAgentApi({required final AcpStdioClient client}) {
         cause: error,
       );
     }
-    return init;
   }
 
   /// `session/new` in [cwd]. Throws [StateError] when the agent answers
@@ -195,6 +231,17 @@ class AcpAgentApi({required final AcpStdioClient client}) {
 
   static Map<String, dynamic> _asJson(Object? raw) =>
       raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
+
+  static void _validateProtocolVersion(AcpInitializeResult init) {
+    // A missing version parses as v1, so agents that omit the field (some
+    // cursor-agent builds) still connect.
+    if (init.protocolVersion != acpProtocolVersion) {
+      throw StateError(
+        "ACP agent negotiated protocol version ${init.protocolVersion}, "
+        "but this client only speaks v$acpProtocolVersion",
+      );
+    }
+  }
 
   static String? _firstNonTerminalAuthMethod({
     required AcpInitializeResult init,

@@ -21,7 +21,9 @@ class BridgeEventMapper({
         BridgeSseServerHeartbeat() => null,
         BridgeSseServerInstanceDisposed() => null,
         BridgeSseGlobalDisposed() => null,
-        BridgeSseCommandCatalogUpdated() => SesoriSseEvent.commandCatalogUpdated(pluginId: pluginId),
+        // Refreshes the options cache through SessionOptionsChangedRefreshListener;
+        // clients hear about it as `session.options_updated` once that commits.
+        BridgeSseCommandCatalogUpdated() => null,
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionOptionsChanged() => null,
