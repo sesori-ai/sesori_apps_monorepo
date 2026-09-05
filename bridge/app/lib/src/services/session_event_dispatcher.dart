@@ -3,13 +3,14 @@ import "dart:async";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../repositories/models/normalized_bridge_event.dart";
 import "../repositories/session_repository.dart";
 import "session_event_service.dart";
 
 typedef NormalizedSourcedBridgeEvent = ({
   String pluginId,
   int? generation,
-  BridgeSseEvent event,
+  NormalizedBridgeEvent event,
   bool allowDuringStop,
   Completer<void>? terminalHandoffConsumed,
 });
@@ -131,7 +132,7 @@ class SessionEventDispatcher({required final SessionEventService _sessionEventSe
               _eventsController.add((
                 pluginId: pluginId,
                 generation: generation,
-                event: event,
+                event: _sessionEventService.toNormalized(event: event),
                 allowDuringStop: output.allowDuringStop,
                 terminalHandoffConsumed: output.terminalHandoffConsumed,
               ));

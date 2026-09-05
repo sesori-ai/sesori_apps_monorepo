@@ -1,5 +1,4 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "api/models/claude_stream_message.dart";
 import "models/claude_task_notification.dart";
@@ -549,11 +548,11 @@ final class ClaudeEventDispatcher({
     return [
       BridgeSseSessionStatus(
         sessionID: sessionId,
-        status: shared.SessionStatus.retry(
+        status: PluginSessionStatus.retry(
           attempt: attempt,
           message: _retryMessage(message),
           next: now.millisecondsSinceEpoch + delay,
-        ).toJson(),
+        ),
       ),
     ];
   }
@@ -684,7 +683,7 @@ PluginMessagePart _textPart({
 
 BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
   sessionID: childId,
-  status: (busy ? const shared.SessionStatus.busy() : const shared.SessionStatus.idle()).toJson(),
+  status: busy ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle(),
 );
 
 Map<String, Object?>? _mapOrNull(Object? value) => value is Map ? value.cast<String, Object?>() : null;

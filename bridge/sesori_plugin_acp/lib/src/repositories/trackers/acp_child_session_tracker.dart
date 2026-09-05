@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 /// A harness-reported sub-agent start. A [prompt] the harness does not carry
 /// is null and is filled from the child's own first user message; a harness
@@ -423,7 +422,7 @@ final class AcpChildSessionTracker() {
 
   BridgeSseSessionStatus _childStatus({required String childId, required bool busy}) => BridgeSseSessionStatus(
     sessionID: childId,
-    status: (busy ? const shared.SessionStatus.busy() : const shared.SessionStatus.idle()).toJson(),
+    status: busy ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle(),
   );
 }
 

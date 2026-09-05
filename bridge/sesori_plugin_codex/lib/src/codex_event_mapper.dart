@@ -194,7 +194,7 @@ class CodexEventMapper({
         return [
           BridgeSseSessionStatus(
             sessionID: threadId,
-            status: _codexStatusToSessionStatus(params["status"]).toJson(),
+            status: _codexStatusToSessionStatus(params["status"]),
           ),
         ];
 
@@ -208,7 +208,7 @@ class CodexEventMapper({
           ),
           BridgeSseSessionStatus(
             sessionID: threadId,
-            status: const shared.SessionStatus.busy().toJson(),
+            status: const PluginSessionStatus.busy(),
           ),
         ];
 
@@ -950,10 +950,10 @@ class CodexEventMapper({
   }
 
   /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
-  /// sesori [shared.SessionStatus] union. Anything that is not explicitly
-  /// `idle` is treated as busy.
-  shared.SessionStatus _codexStatusToSessionStatus(Object? raw) {
-    return isIdleThreadStatus(raw) ? const shared.SessionStatus.idle() : const shared.SessionStatus.busy();
+  /// [PluginSessionStatus] union. Anything that is not explicitly `idle` is
+  /// treated as busy.
+  PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
+    return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }
 
   /// Parses the direct and nested status shapes emitted by codex.

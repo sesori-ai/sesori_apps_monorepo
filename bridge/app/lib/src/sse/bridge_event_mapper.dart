@@ -50,11 +50,7 @@ class BridgeEventMapper({
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
         BridgeSseSessionCompacted(:final sessionID) => SesoriSseEvent.sessionCompacted(sessionID: sessionID),
-        BridgeSseSessionStatus(:final sessionID, :final status) => _tryParseSseEvent({
-          "type": "session.status",
-          "sessionID": sessionID,
-          "status": status,
-        }),
+        BridgeSseSessionStatus() => throw StateError("session status is normalized before it reaches the mapper"),
         BridgeSseSessionIdle(:final sessionID) => SesoriSseEvent.sessionStatus(
           sessionID: sessionID,
           status: const SessionStatus.idle(),
@@ -215,6 +211,11 @@ class BridgeEventMapper({
 
   SesoriSseEvent buildMessagePartEvent({required MessagePart part}) {
     return SesoriSseEvent.messagePartUpdated(part: part);
+  }
+
+  /// Builds the public status event from the already-normalized shared status.
+  SesoriSseEvent buildSessionStatusEvent({required String sessionId, required SessionStatus status}) {
+    return SesoriSseEvent.sessionStatus(sessionID: sessionId, status: status);
   }
 
   /// Builds a projects summary event from already-remapped summary data

@@ -95,25 +95,13 @@ void main() {
       expect((event.info as MessageAssistant).sender, MessageSender.system);
     });
 
-    test("maps serialized plugin retry status through the shared SSE union", () {
-      final result = mapEvent(
-        BridgeSseSessionStatus(
-          sessionID: "s1",
-          status: const PluginSessionStatus.retry(
-            attempt: 1,
-            message: "provider overloaded",
-            next: 2000,
-          ).toJson(),
-        ),
-      );
+    test("builds the public status event from the normalized shared status", () {
+      const status = SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000);
 
-      expect(result, isA<SesoriSessionStatus>());
-      final event = result! as SesoriSessionStatus;
+      final event = mapper.buildSessionStatusEvent(sessionId: "s1", status: status) as SesoriSessionStatus;
+
       expect(event.sessionID, "s1");
-      expect(
-        event.status,
-        const SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000),
-      );
+      expect(event.status, status);
     });
 
     test("sends no wire event for a command catalog change", () {

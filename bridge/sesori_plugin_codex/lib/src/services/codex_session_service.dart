@@ -276,7 +276,7 @@ class CodexSessionService({
       if (sessionClosed && activityChanged && sessionId != null && _subAgentTracker.isChild(sessionId: sessionId))
         BridgeSseSessionStatus(
           sessionID: sessionId,
-          status: const PluginSessionStatus.idle().toJson(),
+          status: const PluginSessionStatus.idle(),
         ),
     ];
     final shouldDeferIdle =
@@ -410,7 +410,7 @@ class CodexSessionService({
   List<BridgeSseEvent> _rootIdleEvents({required String rootId}) => [
     BridgeSseSessionStatus(
       sessionID: rootId,
-      status: const PluginSessionStatus.idle().toJson(),
+      status: const PluginSessionStatus.idle(),
     ),
     BridgeSseSessionIdle(sessionID: rootId),
   ];

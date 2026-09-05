@@ -684,8 +684,8 @@ void main() {
       (event) => event.info["promptId"] == "prompt-5",
     );
     final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
-    expect(statuses.first.status["type"], "busy");
-    expect(statuses.last.status["type"], "idle");
+    expect(statuses.first.status, const PluginSessionStatus.busy());
+    expect(statuses.last.status, const PluginSessionStatus.idle());
     expect(userMessage.info["role"], "user");
     expect(events.indexOf(userMessage), lessThan(events.indexOf(emptyQueue)));
     expect(events.indexOf(statuses.last), lessThan(idleIndex));
@@ -1037,7 +1037,7 @@ void main() {
     process.emit(frame: {"type": "agent_settled"});
     final nextModel = await _waitForNthCommand(process: process, type: "set_model", count: 2);
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
-    expect(events.whereType<BridgeSseSessionStatus>().last.status["type"], "busy");
+    expect(events.whereType<BridgeSseSessionStatus>().last.status, const PluginSessionStatus.busy());
 
     process.emitResponse(id: nextModel["id"]! as String, command: "set_model");
     final nextPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
@@ -1862,8 +1862,8 @@ void main() {
       containsAllInOrder(["[PR Monitor] report", "Handled report"]),
     );
     expect(
-      events.whereType<BridgeSseSessionStatus>().map((event) => event.status["type"]),
-      ["busy", "idle"],
+      events.whereType<BridgeSseSessionStatus>().map((event) => event.status),
+      [const PluginSessionStatus.busy(), const PluginSessionStatus.idle()],
     );
     expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
     expect(service.currentWorkState, PluginWorkState.idle);

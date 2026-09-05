@@ -19,8 +19,7 @@ AcpChildSpawn _spawn({
 PluginMessagePartSubtask _subtaskPart(BridgeSseEvent event) =>
     (event as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
 
-shared.SessionStatus _status(BridgeSseEvent event) =>
-    shared.SessionStatus.fromJson((event as BridgeSseSessionStatus).status);
+PluginSessionStatus _status(BridgeSseEvent event) => (event as BridgeSseSessionStatus).status;
 
 void main() {
   group("AcpChildSessionTracker", () {
@@ -44,7 +43,7 @@ void main() {
       expect(created.parentID, "root");
       expect(created.directory, "/repo");
       expect(created.title, "Thing");
-      expect(_status(result.events[1]), const shared.SessionStatus.busy());
+      expect(_status(result.events[1]), const PluginSessionStatus.busy());
       expect(tracker.isChild(sessionId: "child"), isTrue);
       expect(tracker.childStatuses, {"child": const PluginSessionStatus.busy()});
       expect(tracker.busyChildIds(sessionId: "root"), {"child"});
@@ -99,7 +98,7 @@ void main() {
       expect(part.taskState?.status, PluginToolStatus.completed);
       expect(part.taskState?.output, hasLength(maxToolOutputLength));
       expect(part.taskState?.error, isNull);
-      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(_status(events[1]), const PluginSessionStatus.idle());
       expect(tracker.childStatuses, {"child": const PluginSessionStatus.idle()});
       expect(tracker.busyChildIds(sessionId: "root"), isEmpty);
 
@@ -222,7 +221,7 @@ void main() {
         error: null,
       );
       expect(events, hasLength(1));
-      expect(_status(events.single), const shared.SessionStatus.idle());
+      expect(_status(events.single), const PluginSessionStatus.idle());
     });
 
     test("cancelled and failed finishes keep only the failure text", () {
@@ -423,7 +422,7 @@ void main() {
       final events = tracker.cancelAll();
       await pumpEventQueue();
       expect(_subtaskPart(events[0]).taskState?.status, PluginToolStatus.cancelled);
-      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(_status(events[1]), const PluginSessionStatus.idle());
       expect(events, hasLength(2), reason: "the finished sibling is untouched");
       expect(tracker.hasBusyChildren, isFalse);
       expect(changes, 1);

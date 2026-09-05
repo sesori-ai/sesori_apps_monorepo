@@ -72,7 +72,7 @@ void main() {
       expect(created.directory, "/project");
       expect(created.projectID, "/project");
       expect(created.title, "Synthetic child task");
-      expect(shared.SessionStatus.fromJson((spawned[1] as BridgeSseSessionStatus).status), const shared.SessionStatus.busy());
+      expect((spawned[1] as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
       expect(tracker.busyChildIds(sessionId: _root), {_child});
       expect(tracker.runningChildren(sessionId: _root).single.isBackground, isFalse);
 
@@ -185,7 +185,7 @@ void main() {
       expect(tile.messageID, _tileMessageId);
       expect(tile.taskState?.status, PluginToolStatus.completed);
       expect(tile.taskState?.output, "synthetic final text");
-      expect(shared.SessionStatus.fromJson((events[1] as BridgeSseSessionStatus).status), const shared.SessionStatus.idle());
+      expect((events[1] as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
       expect(tracker.childStatuses, {_child: const PluginSessionStatus.idle()});
       expect(tracker.hasRootHold(sessionId: _root), isTrue);
 

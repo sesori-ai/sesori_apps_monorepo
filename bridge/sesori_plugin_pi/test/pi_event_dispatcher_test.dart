@@ -712,16 +712,14 @@ void main() {
     );
     final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"));
 
-    expect((retry.single as BridgeSseSessionStatus).status, {
-      "attempt": 2,
-      "message": "provider overloaded",
-      "next": 1500,
-      "type": "retry",
-    });
+    expect(
+      (retry.single as BridgeSseSessionStatus).status,
+      const PluginSessionStatus.retry(attempt: 2, message: "provider overloaded", next: 1500),
+    );
     expect(agentEnd, isEmpty);
-    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
-    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
-    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"type": "busy"});
+    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
+    expect((summarizationResumed.single as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
+    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, const PluginSessionStatus.busy());
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
     expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
