@@ -67,6 +67,24 @@ void main() {
       );
     });
 
+    test("declares no default effort when effort support is off, even with levels listed", () {
+      final catalog = repository.map(
+        handshake: {
+          "models": [
+            {
+              "value": "haiku",
+              "supportsEffort": false,
+              "supportedEffortLevels": ["low", "high"],
+            },
+          ],
+        },
+      );
+
+      final model = catalog.providers.providers.single.models.single;
+      expect(model.variants, isEmpty);
+      expect(model.defaultVariant, isNull);
+    });
+
     test("maps API model names back to picker ids, exactly or by bare name", () {
       final catalog = repository.map(
         handshake: {

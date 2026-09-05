@@ -25,7 +25,7 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 The picker shows each plugin's declared order. OpenCode ranks models newest
 release first, which is the best signal its catalog offers. Other plugins
 still declare variants default-first (the client falls back to the first
-listed variant when no default is declared) and models in backend order.
+listed variant when no default is declared) and models in plugin-defined order.
 
 ## Sub-agents
 

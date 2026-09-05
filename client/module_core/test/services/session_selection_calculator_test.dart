@@ -186,6 +186,25 @@ void main() {
       expect(_calculator.defaultVariant(providers: ranked, model: resolved.model), "high");
     });
 
+    test("a declared default the model does not offer falls back to the first listed", () {
+      final stale = [
+        _provider(
+          id: "anthropic",
+          models: {
+            "opus": _model(id: "opus", providerID: "anthropic", variants: ["max", "low"], defaultVariant: "high"),
+          },
+        ),
+      ];
+
+      expect(
+        _calculator.defaultVariant(
+          providers: stale,
+          model: const AgentModel(providerID: "anthropic", modelID: "opus", variant: null),
+        ),
+        "max",
+      );
+    });
+
     test("a withdrawn agent falls back to the first selectable one", () {
       final resolved = _calculator.reconcile(
         agents: agents,

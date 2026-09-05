@@ -122,7 +122,7 @@ final class const ClaudeBackendCatalogRepository() {
           ? resolvedModel!
           : id,
       variants: variants,
-      defaultVariant: supported.contains(_defaultEffort) ? _defaultEffort.wireValue : null,
+      defaultVariant: variants.contains(_defaultEffort.wireValue) ? _defaultEffort.wireValue : null,
       family: null,
       isAvailable: true,
       releaseDate: null,

@@ -62,14 +62,16 @@ class const SessionSelectionCalculator() {
   }
 
   /// The variant [model] runs at when none was chosen: the plugin's declared
-  /// default, otherwise the first it offers, or null when it offers none.
+  /// default when the model offers it, otherwise the first it offers, or null
+  /// when it offers none.
   String? defaultVariant({
     required List<ProviderInfo> providers,
     required AgentModel? model,
   }) {
     if (model == null) return null;
-    return _providerModel(providers: providers, model: model)?.defaultVariant ??
-        availableVariants(providers: providers, model: model).firstOrNull?.id;
+    final variants = availableVariants(providers: providers, model: model);
+    final declared = _providerModel(providers: providers, model: model)?.defaultVariant;
+    return variants.any((variant) => variant.id == declared) ? declared : variants.firstOrNull?.id;
   }
 
   /// The agent to run, given [candidates] in preference order: the first the
