@@ -49,7 +49,7 @@ listed variant when no default is declared) and models in plugin-defined order.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Logged-out backend reported as `authenticationRequired` | ✅ | ⬜¹² | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ⬜¹⁴ | ⬜¹⁵ | ⬜¹⁶ |
+| Logged-out backend reported as `authenticationRequired` | ✅ | 🚫¹² | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ✅¹⁴ | ⬜¹⁵ | ✅¹⁶ |
 
 `inspectSetup` owns this state. Where a plugin does not probe credentials it
 returns `PluginSetupReady` as soon as it resolves a runtime, so a harness that
@@ -165,28 +165,31 @@ unusable here because it requires an explicit `--provider` or `--model` and Pi
 exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
 install with no credentials.
 
-¹² OpenCode (1.18.25, probed 2026-09-05) exposes credential counts through
-`opencode auth list`, but that count does not answer this question: `opencode
-models` lists the bundled free `opencode/…` models identically with five
-credentials and with zero, so an empty credential store does not mean the
-harness is unusable. Reporting authentication required from the count alone
-would block installs that still work. This stays ⬜ rather than 🚫 because only
-those two surfaces were probed and neither is equivalent; whether the bundled
-free models actually serve a turn without credentials is unverified, so no
-claim is made that the seam cannot answer the question.
+¹² OpenCode (1.18.25, probed 2026-09-05) has no logged-out state to report.
+`opencode models` lists the bundled free `opencode/…` models identically with
+five credentials and with zero, so an install with an empty credential store
+is usable and ready is the correct state for it. `opencode auth list` counts
+credentials, but that count is not this capability: reporting authentication
+required from it would block working installs. Ready remains correct for
+OpenCode regardless of stored credentials.
 
 ¹³ Copilot has not been probed for a non-interactive credential check.
 
-¹⁴ Oh My Pi (18.1.10, probed 2026-09-05) can report this and does not yet.
-`omp models --json` returns `{"models":[]}` with no credentials and a populated
-list otherwise, which is the same signal Pi exposes in a structured form.
+¹⁴ Oh My Pi (18.1.10, probed 2026-09-05) reports it from `omp models --json`,
+which returns `{"models":[]}` with no credentials and a populated list
+otherwise — the same signal Pi exposes, in a structured form. Only a listing
+that parses and reports no models downgrades setup: supported releases reach
+back to 17.3.8 and `models --json` is not guaranteed across that range, so an
+unparsable or failing listing leaves setup ready instead of regressing a
+working older install.
 
 ¹⁵ DeepSeek already probes readiness in `inspectSetup` but maps a negative
 result to `PluginSetupUnknown`, so a logged-out install is reported as
 undetermined rather than as authentication required.
 
-¹⁶ Grok Build (1.0.5, probed 2026-09-05) can report this and does not yet.
-`grok models` prints `You are logged in with <account>.` or
-`You are not authenticated.` ahead of a model list that is identical either
-way, so the authentication line is the only signal; the listing itself is not
-one.
+¹⁶ Grok Build (1.0.5, probed 2026-09-05) reports it from `grok models`, which
+prints `You are logged in with <account>.` or `You are not authenticated.`
+ahead of a model list that is identical either way, so the authentication line
+is the signal and the listing itself is not one. Only that line downgrades
+setup; unrecognized wording leaves setup ready rather than blocking a working
+install on a phrase a later release may change.

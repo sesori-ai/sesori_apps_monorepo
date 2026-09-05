@@ -109,22 +109,66 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
       environment: environment,
     );
 
-    return switch (runtime) {
-      _GrokRuntimeReady(:final version) => PluginSetupReady.versioned(runtimeVersion: version),
-      _GrokRuntimeMissing() => PluginSetupRuntimeMissing(
-        actionHint: explicitBin == null
-            ? "Install Grok Build with xAI's official installer, then restart the bridge."
-            : "Fix the configured Grok Build binary path, then restart the bridge.",
-      ),
-      _GrokRuntimeOutdated() => PluginSetupUnavailable(
-        actionHint: explicitBin == null
-            ? "Update Grok Build with xAI's official installer, then restart the bridge."
-            : "Update the configured Grok Build binary or fix `--grok-bin`, then restart the bridge.",
-      ),
-      _GrokRuntimeUnknown() || _GrokRuntimeUnrecognized() => const PluginSetupUnknown(
-        actionHint: "Grok Build setup could not be verified. Run `grok --version` locally, then retry.",
-      ),
-    };
+    switch (runtime) {
+      case _GrokRuntimeReady(:final version):
+        return await _inspectAuthentication(
+          executablePath: explicitBin ?? GrokBinary.defaultBinary,
+          processes: processes,
+          environment: environment,
+          runtimeVersion: version,
+        );
+      case _GrokRuntimeMissing():
+        return PluginSetupRuntimeMissing(
+          actionHint: explicitBin == null
+              ? "Install Grok Build with xAI's official installer, then restart the bridge."
+              : "Fix the configured Grok Build binary path, then restart the bridge.",
+        );
+      case _GrokRuntimeOutdated():
+        return PluginSetupUnavailable(
+          actionHint: explicitBin == null
+              ? "Update Grok Build with xAI's official installer, then restart the bridge."
+              : "Update the configured Grok Build binary or fix `--grok-bin`, then restart the bridge.",
+        );
+      case _GrokRuntimeUnknown() || _GrokRuntimeUnrecognized():
+        return const PluginSetupUnknown(
+          actionHint: "Grok Build setup could not be verified. Run `grok --version` locally, then retry.",
+        );
+    }
+  }
+
+  /// Asks Grok Build whether it is signed in.
+  ///
+  /// `grok models` reports the account state ahead of a model list that is
+  /// identical whether or not credentials exist, so the authentication line is
+  /// the signal. Only that line downgrades setup: listing neither creates a
+  /// session, starts ACP, nor invokes login, and unrecognized wording leaves
+  /// setup ready rather than blocking a working install.
+  Future<PluginSetupStatus> _inspectAuthentication({
+    required String executablePath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String runtimeVersion,
+  }) async {
+    final CommandResult result;
+    try {
+      result = await HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ).run(executablePath, const ["models"], environment: environment, timeout: _versionProbeTimeout);
+    } on Object catch (error, stackTrace) {
+      Log.w("[grok] model listing probe failed for '$executablePath models'", error, stackTrace);
+      return PluginSetupUnknown.versioned(
+        actionHint: "Grok Build authentication could not be determined. Run `grok models` locally, then retry.",
+        runtimeVersion: runtimeVersion,
+      );
+    }
+    final listing = "${result.stdout}\n${result.stderr}".toLowerCase();
+    if (!listing.contains("not authenticated")) return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
+    return PluginSetupAuthenticationRequired.versioned(
+      actionHint: "Run `grok login` on this machine, then retry setup detection.",
+      runtimeVersion: runtimeVersion,
+    );
   }
 
   Future<_GrokRuntimeProbe> _probeRuntime({

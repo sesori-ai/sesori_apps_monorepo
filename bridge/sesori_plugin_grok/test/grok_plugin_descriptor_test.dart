@@ -44,6 +44,12 @@ void main() {
             stderrBytes: const [],
             resultCode: 0,
           ),
+          _ProbeProcess.completed(
+            pid: 2,
+            stdoutBytes: utf8.encode("You are logged in with grok.com.\n\nAvailable models:\n  * grok-4.6\n"),
+            stderrBytes: const [],
+            resultCode: 0,
+          ),
         ],
         servesHeadlessAcp: false,
       );
@@ -56,10 +62,70 @@ void main() {
       );
 
       expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.5"));
-      expect(processes.spawnedExecutables, ["grok"]);
+      expect(processes.spawnedExecutables, ["grok", "grok"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
+        const ["models"],
       ]);
+    });
+
+    test("reports an unauthenticated runtime as authentication required", () async {
+      final result = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 1,
+              stdoutBytes: utf8.encode("grok 1.0.5\n"),
+              stderrBytes: const [],
+              resultCode: 0,
+            ),
+            _ProbeProcess.completed(
+              pid: 2,
+              stdoutBytes: utf8.encode("You are not authenticated.\n\nAvailable models:\n  * grok-4.6\n"),
+              stderrBytes: const [],
+              resultCode: 0,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: const {},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(
+        result,
+        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "1.0.5"),
+      );
+    });
+
+    test("leaves setup ready when the listing does not report being unauthenticated", () async {
+      final result = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 1,
+              stdoutBytes: utf8.encode("grok 1.0.5\n"),
+              stderrBytes: const [],
+              resultCode: 0,
+            ),
+            _ProbeProcess.completed(
+              pid: 2,
+              stdoutBytes: utf8.encode("wording this build does not use\n"),
+              stderrBytes: const [],
+              resultCode: 0,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: const {},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.5"));
     });
 
     test("bounds noisy version output instead of parsing a version beyond the capture limit", () async {
