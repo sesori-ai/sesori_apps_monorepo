@@ -45,6 +45,29 @@ release first, which is the best signal its catalog offers. Other plugins
 still declare variants default-first (the client falls back to the first
 listed variant when no default is declared) and models in plugin-defined order.
 
+## Setup detection
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Logged-out backend reported as `authenticationRequired` | ✅ | ⬜¹² | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ⬜¹⁴ | ⬜¹⁵ | ⬜¹⁶ |
+
+`inspectSetup` owns this state. Where a plugin does not probe credentials it
+returns `PluginSetupReady` as soon as it resolves a runtime, so a harness that
+is installed but logged into nothing is shown as ready and fails at session
+start instead. Sesori-managed installs make this visible: installing the
+runtime never authenticates it.
+
+A probe belongs here only when it answers "can this harness serve a turn right
+now" without starting a backend or initiating authentication. Counting stored
+credentials is not equivalent: a harness with bundled free models or an
+environment-supplied key is usable with an empty credential store, and blocking
+those installs is worse than the stale ready state this capability replaces.
+
+The marks above cover setup inspection only. A plugin that raises
+`PluginAuthenticationRequiredException` while running still moves the slot to
+`authenticationRequired` and blocks further starts; the ⬜ plugins do not do
+that either.
+
 ## Command limitations
 
 Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
@@ -128,3 +151,42 @@ remains pending.
 under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
 `session/cancel` cancels background children too, so main-agent-only is not
 supported.
+
+¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
+prints one row per usable model and otherwise prints the
+"No models available. Use /login…" text that
+`PiRpcClient.noModelsDiagnosticPrefix` already matches on the session path, so
+an empty listing is the logged-out signal. Listing resolves every credential
+source Pi accepts — `~/.pi/agent/auth.json`, inline provider keys in
+`~/.pi/agent/models.json`, and environment API keys — which reading the auth
+file alone would not: a user carrying only an environment key or a local
+provider has no `auth.json` entry and a working install. `pi auth check` is
+unusable here because it requires an explicit `--provider` or `--model` and Pi
+exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
+install with no credentials.
+
+¹² OpenCode (1.18.25, probed 2026-09-05) exposes credential counts through
+`opencode auth list`, but that count does not answer this question: `opencode
+models` lists the bundled free `opencode/…` models identically with five
+credentials and with zero, so an empty credential store does not mean the
+harness is unusable. Reporting authentication required from the count alone
+would block installs that still work. This stays ⬜ rather than 🚫 because only
+those two surfaces were probed and neither is equivalent; whether the bundled
+free models actually serve a turn without credentials is unverified, so no
+claim is made that the seam cannot answer the question.
+
+¹³ Copilot has not been probed for a non-interactive credential check.
+
+¹⁴ Oh My Pi (18.1.10, probed 2026-09-05) can report this and does not yet.
+`omp models --json` returns `{"models":[]}` with no credentials and a populated
+list otherwise, which is the same signal Pi exposes in a structured form.
+
+¹⁵ DeepSeek already probes readiness in `inspectSetup` but maps a negative
+result to `PluginSetupUnknown`, so a logged-out install is reported as
+undetermined rather than as authentication required.
+
+¹⁶ Grok Build (1.0.5, probed 2026-09-05) can report this and does not yet.
+`grok models` prints `You are logged in with <account>.` or
+`You are not authenticated.` ahead of a model list that is identical either
+way, so the authentication line is the only signal; the listing itself is not
+one.

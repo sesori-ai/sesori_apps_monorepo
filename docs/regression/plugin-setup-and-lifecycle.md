@@ -72,6 +72,13 @@ idle suspension, the management snapshot, and lifecycle commands.
   skills, and prompt templates are trusted without prompts); OMP launches `omp acp`
   without an approval-mode override, leaving approval behavior to OMP. Provider login
   for both happens locally, never from the phone.
+- Pi setup inspection follows its version probe with a bounded `--list-models`
+  run in the same environment. A listing that reports no available models is
+  authentication-required carrying the resolved version, any other listing is
+  ready, and a listing that cannot be run is unknown rather than ready. The
+  probe never starts a backend, opens an RPC session, or invokes login, so a
+  managed install with no provider credentials stops being reported as ready
+  and stops offering start.
 - Backend `tui.toast.show` SSE events render through the backend-neutral toast
   surface, presented with the design-system popup alert on the root navigator's
   overlay. Session-attributed events appear only while that session's detail or

@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/pi_process_factory.dart";
+import "../api/pi_rpc_client.dart";
 import "../pi_identity.dart";
 import "../pi_plugin_impl.dart";
 import "pi_bridge_plugin.dart";
@@ -209,7 +210,14 @@ final class const PiPluginDescriptor({
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
         );
-    if (selection is ManagedRuntimeSelected) return const PluginSetupReady();
+    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
+      return await _inspectAuthentication(
+        binaryPath: binaryPath,
+        processes: processes,
+        environment: environment,
+        runtimeVersion: version.raw,
+      );
+    }
     final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
@@ -235,6 +243,54 @@ final class const PiPluginDescriptor({
           ? "Install Pi from Sesori, or install it locally and retry setup detection."
           : "Install Pi locally, then retry setup detection.",
     );
+  }
+
+  /// Asks Pi which models it can actually use.
+  ///
+  /// Pi accepts credentials from its auth file, from inline provider entries in
+  /// its models file, and from the environment, so only Pi itself can answer
+  /// whether any provider is usable. Listing models neither starts a backend
+  /// nor initiates authentication, and an empty listing carries the same
+  /// diagnostic the session path already recognizes.
+  Future<PluginSetupStatus> _inspectAuthentication({
+    required String binaryPath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String runtimeVersion,
+  }) async {
+    PluginSetupStatus undetermined() => PluginSetupUnknown.versioned(
+      actionHint: "Pi could not list its available models. Verify the local CLI and retry.",
+      runtimeVersion: runtimeVersion,
+    );
+
+    final CommandResult result;
+    try {
+      result = await HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: 64 * 1024,
+      ).run(binaryPath, const ["--list-models"], environment: environment, timeout: _versionProbeTimeout);
+    } on Object catch (error, stackTrace) {
+      Log.w("[${PiPluginIdentity.id}] model listing probe failed for '$binaryPath --list-models'", error, stackTrace);
+      return undetermined();
+    }
+    // The diagnostic stays authoritative ahead of the exit code, so a release
+    // that reports having no models through a failing exit is still read as
+    // logged out rather than as a broken probe.
+    final listedNoModels =
+        result.stdout.contains(PiRpcClient.noModelsDiagnosticPrefix) ||
+        result.stderr.contains(PiRpcClient.noModelsDiagnosticPrefix);
+    if (listedNoModels) {
+      return PluginSetupAuthenticationRequired.versioned(
+        actionHint: "Run `pi` on this machine and use /login to add a provider, then retry setup detection.",
+        runtimeVersion: runtimeVersion,
+      );
+    }
+    if (result.exitCode != 0) {
+      Log.d("[${PiPluginIdentity.id}] model listing probe '$binaryPath --list-models' exited ${result.exitCode}");
+      return undetermined();
+    }
+    return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
   }
 
   bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
