@@ -25,6 +25,9 @@ explicit restart, and the connection states the app presents.
 - Ordered mutation and event lanes continue processing later work after one operation fails, and graceful shutdown drains work accepted before shutdown began.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
   once and can never later authenticate.
+- Client relay disconnect closes active SSE streams and the socket without
+  attempting encrypted sends after disposal. The bridge releases the connection's
+  SSE subscription when it receives the phone-disconnected notification.
 - One live bridge per account holds the slot; a second start resolves ownership
   explicitly, and an explicit restart hands off to its successor cleanly.
 - Bridge registration uses a stable machine name. On macOS, transient
