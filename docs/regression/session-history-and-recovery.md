@@ -77,6 +77,11 @@ reconnect or restart.
   the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;
   after a longer gap, a refresh reconciles without losing finalized content.
+  Text or reasoning still streaming through a client refresh keeps its
+  accumulated content: the refreshed transcript replaces it only when the same
+  part's fetched text starts with everything streamed so far, and a later delta
+  continues from that fetched text. History supplies no completion signal for
+  every backend, so this is decided by content, never by timestamps or status.
   After a backend event-stream gap, that plugin's stored transcripts stay marked
   incomplete until a full re-sync; later captures do not mark them complete.
 - Binary and attachment payloads are never stored inline in database tables; they
@@ -154,6 +159,9 @@ rules where supported.
   disappears after a refresh or reopen.
 - Reasoning still says `Thinking...` after answer or tool output has started, or
   disappears after reopening because only its empty start snapshot was retained.
+- A refresh during a streaming answer drops the text streamed before it, so the
+  next delta renders alone, or shows a shorter fetched part over longer live
+  text.
 - A page boundary duplicates, drops, or reorders messages, or history ends early.
 - An id-less ACP reply reuses a pre-restart fallback identity and overwrites an
   earlier answer instead of remaining distinct.

@@ -2,13 +2,14 @@
 
 Authority: [PLAN.md](PLAN.md). Fixed proposed series: **25 steps**.
 The user authorized consolidating #1296, closing it, and broad documentation
-simplification. Refactor execution scope remains pending.
+simplification. Refactor execution was accepted on 2026-09-05 when the user
+asked to start working the plan; steps execute in order from step 2.
 [Source-step dispositions](CONSOLIDATION.md).
 
 | Step | Exact PR title | Status | PR |
 | --- | --- | --- | --- |
-| 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | In review | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
-| 2/25 | ⚙️ [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | Proposed | — |
+| 1/25 | 🌱 [periodic-cleanup] docs: consolidate the repository cleanup plan [step 1/25] | Merged | [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295) |
+| 2/25 | ⚙️ [periodic-cleanup] client: preserve streamed text across refresh [step 2/25] | In review | PR_PLACEHOLDER |
 | 3/25 | ⚙️ [periodic-cleanup] client: preserve live transcript during refresh [step 3/25] | Proposed | — |
 | 4/25 | ⚙️ [periodic-cleanup] bridge: remove unused session paths and tracker state [step 4/25] | Proposed | — |
 | 5/25 | 🚧 [periodic-cleanup] bridge: remove unused options cache metadata [step 5/25] | Proposed | — |
@@ -111,3 +112,17 @@ simplification. Refactor execution scope remains pending.
   approval or newly executed product tests. Prior diagnostic evidence is unchanged.
 - Validation: all 63 relative links, 25 exact titles, the contiguous 13-row
   verification matrix and Git whitespace checks pass.
+
+## Step 2 execution — 2026-09-05
+
+- Refresh retires a streaming accumulator only when the fetched same-ID
+  text/reasoning part starts with the whole buffered value; otherwise the buffer
+  survives. `appendDelta` takes a lazy base-text lookup so a new accumulator
+  seeds once from the installed part. `StreamingTextBuffer.clear` had no
+  remaining production caller and was removed.
+- Both audit diagnostics are promoted as cubit tests, parameterized over text and
+  reasoning with `completed: null` assistant messages: covering, extending,
+  shorter/absent, divergent, and final-part-during-reload cases.
+- Not added: per-harness Codex/Pi/Claude history fixtures in the client suite.
+  The cubit reads no harness-specific field; the null-completion assistant
+  fixture is the whole boundary it observes. Recorded here for step 25's matrix.

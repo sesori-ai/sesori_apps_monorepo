@@ -1,7 +1,7 @@
 # Periodic cleanup
 
-Status: proposed scope; investigation/planning requested, implementation scope
-acceptance pending. Plan PR: [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295).
+Status: executing; implementation scope accepted by the user on 2026-09-05
+(step 1 merged as #1295). Plan PR: [#1295](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1295).
 Baseline: `480d82f090`. Date: 2026-09-04. Slug: `periodic-cleanup`.
 
 ## Goal, evidence, and scope
@@ -722,7 +722,8 @@ no packaging or shipped runtime artifact changes.
 - Repository-wide documentation maintenance and simplification of all regression
   guides, including removing pointless content: explicitly requested during
   consolidation. Steps 21–24 own it; no narrow historical-report-only scope.
-- Refactor implementation scope acceptance: pending; no production edits in step 1.
+- Refactor implementation scope: accepted 2026-09-05 when the user asked to
+  start working the plan; no production edits were made in step 1.
 - #1294 merged and owns selection reconciliation; source diff inspected, no
   additional variant cleanup scheduled. Revalidate the original diagnostics
   against rebased code when steps 2–3 begin.
