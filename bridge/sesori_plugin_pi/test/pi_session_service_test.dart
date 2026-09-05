@@ -681,12 +681,15 @@ void main() {
     final statuses = events.whereType<BridgeSseSessionStatus>().toList();
     final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
     final userMessage = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-      (event) => event.info["promptId"] == "prompt-5",
+      (event) => switch (event.info) {
+        PluginMessageUser(promptId: final id) => id == "prompt-5",
+        _ => false,
+      },
     );
     final emptyQueue = events.whereType<BridgeSseQueuedPromptsUpdated>().last;
     expect(statuses.first.status, const PluginSessionStatus.busy());
     expect(statuses.last.status, const PluginSessionStatus.idle());
-    expect(userMessage.info["role"], "user");
+    expect(userMessage.info, isA<PluginMessageUser>());
     expect(events.indexOf(userMessage), lessThan(events.indexOf(emptyQueue)));
     expect(events.indexOf(statuses.last), lessThan(idleIndex));
   });
@@ -838,7 +841,7 @@ void main() {
     expect(
       events
           .whereType<BridgeSseMessageUpdated>()
-          .map((event) => event.info["promptId"])
+          .map((event) => (event.info as PluginMessageUser).promptId)
           .where((promptId) => promptId == "prompt-8" || promptId == "prompt-9"),
       ["prompt-8", "prompt-9"],
     );
@@ -1239,10 +1242,10 @@ void main() {
 
     final userMessages = events
         .whereType<BridgeSseMessageUpdated>()
-        .where((event) => event.info["role"] == "user")
+        .where((event) => event.info is PluginMessageUser)
         .toList();
     expect(userMessages, hasLength(1));
-    expect(userMessages.single.info["promptId"], "image-only");
+    expect((userMessages.single.info as PluginMessageUser).promptId, "image-only");
   });
 
   test("command rejects busy, accepts dialog-first, and uses no-run state barrier", () async {
@@ -1435,7 +1438,7 @@ void main() {
     await waitForCommand(process: process, type: "prompt");
     process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
-    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final messageId = events.whereType<BridgeSseMessageUpdated>().single.info.id;
 
     process.exit(code: 9);
 
@@ -1473,14 +1476,14 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
     final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
     final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
-    expect(runningPart.messageID, runningMessage.info["id"]);
+    expect(runningPart.messageID, runningMessage.info.id);
     expect(runningPart.state.status, PluginToolStatus.running);
     expect(runningPart.state.title, "Compacting context");
 
     process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
     await pump();
 
-    expect(events.whereType<BridgeSseMessageUpdated>().last.info["id"], runningMessage.info["id"]);
+    expect(events.whereType<BridgeSseMessageUpdated>().last.info.id, runningMessage.info.id);
     final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
@@ -1695,7 +1698,7 @@ void main() {
     process.emit(frame: {"type": "agent_start"});
     process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 1);
-    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final compactionMessageId = events.whereType<BridgeSseMessageUpdated>().single.info.id;
     final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
     expect(steeringPrompt["message"], "queued");
     expect(steeringPrompt["streamingBehavior"], "steer");
@@ -1855,8 +1858,11 @@ void main() {
     await _waitForEventCount<BridgeSseMessageUpdated>(events: events, count: 2);
 
     final messageInfos = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
-    expect(messageInfos.map((info) => info["role"]), ["assistant", "assistant"]);
-    expect(messageInfos.map((info) => info["sender"]), ["system", "agent"]);
+    expect(messageInfos.map((info) => info.runtimeType), [PluginMessageAssistant, PluginMessageAssistant]);
+    expect(
+      messageInfos.map((info) => (info as PluginMessageAssistant).sender),
+      [PluginMessageSender.system, PluginMessageSender.agent],
+    );
     expect(
       events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
       containsAllInOrder(["[PR Monitor] report", "Handled report"]),

@@ -201,7 +201,9 @@ class SSEManager({
               reason: "Failed to send SSE event to phone",
               information: [event.runtimeType.toString(), "connID=$connID"],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse] failed to report send failure", reportError, reportStackTrace);
+            }),
       );
     };
   }

@@ -1499,18 +1499,23 @@ class OrchestratorSession._({
     };
     final eventType = switch (payload) {
       NormalizedOtherEvent(:final event) => event.runtimeType,
-      NormalizedStatusEvent() => payload.runtimeType,
+      NormalizedStatusEvent() || NormalizedMessageEvent() => payload.runtimeType,
     };
     try {
       Log.v("[sse] plugin event arrived: $eventType");
       final BridgeSseEvent event;
       switch (payload) {
         case NormalizedStatusEvent(:final sessionId, :final status):
-          if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
-          await _deliverSseEvent(
-            delivery: SseEventDelivery.uniform(
-              event: _mapper.buildSessionStatusEvent(sessionId: sessionId, status: status),
-            ),
+          await _deliverNormalized(
+            event: _mapper.buildSessionStatusEvent(sessionId: sessionId, status: status),
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          );
+          return;
+        case NormalizedMessageEvent(:final message):
+          await _deliverNormalized(
+            event: _mapper.buildMessageUpdatedEvent(message: message),
             pluginId: pluginId,
             generation: generation,
             allowDuringStop: allowDuringStop,
@@ -1642,9 +1647,28 @@ class OrchestratorSession._({
               reason: "Failed to process SSE event",
               information: [eventType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse] failed to report processing failure", reportError, reportStackTrace);
+            }),
       );
     }
+  }
+
+  /// Delivers a public event built from an already-normalized shared value,
+  /// after the same current-source check the plugin-shaped path applies.
+  Future<void> _deliverNormalized({
+    required SesoriSseEvent event,
+    required String pluginId,
+    required int? generation,
+    required bool allowDuringStop,
+  }) async {
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+    await _deliverSseEvent(
+      delivery: SseEventDelivery.uniform(event: event),
+      pluginId: pluginId,
+      generation: generation,
+      allowDuringStop: allowDuringStop,
+    );
   }
 
   /// Finalizes tool parts stranded by the ended turn and delivers each

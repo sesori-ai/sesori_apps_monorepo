@@ -19,6 +19,9 @@ final class const NormalizedStatusEvent({
   required final SessionStatus status,
 }) extends NormalizedBridgePayload;
 
+/// A finalized message envelope, already carrying its bridge session id.
+final class const NormalizedMessageEvent({required final Message message}) extends NormalizedBridgePayload;
+
 /// An already id-normalized plugin event whose payload keeps its plugin shape.
 final class const NormalizedOtherEvent({required final BridgeSseEvent event}) extends NormalizedBridgePayload;
 

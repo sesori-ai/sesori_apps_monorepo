@@ -62,7 +62,7 @@ class BridgeEventMapper({
             arguments: arguments,
             messageID: messageID,
           ),
-        BridgeSseMessageUpdated(:final info) => _tryParseSseEvent({"type": "message.updated", "info": info}),
+        BridgeSseMessageUpdated() => throw StateError("message updates are normalized before they reach the mapper"),
         BridgeSseMessageRemoved(:final sessionID, :final messageID) => SesoriSseEvent.messageRemoved(
           sessionID: sessionID,
           messageID: messageID,
@@ -192,7 +192,9 @@ class BridgeEventMapper({
               reason: "Failed to map SSE event",
               information: [event.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse-mapper] failed to report mapping failure", reportError, reportStackTrace);
+            }),
       );
       return null;
     }
@@ -218,18 +220,26 @@ class BridgeEventMapper({
     return SesoriSseEvent.sessionStatus(sessionID: sessionId, status: status);
   }
 
+  /// Builds the public message event from the already-normalized shared message.
+  SesoriSseEvent buildMessageUpdatedEvent({required Message message}) {
+    return SesoriSseEvent.messageUpdated(info: message);
+  }
+
   /// Builds a projects summary event from already-remapped summary data
   /// (see `SessionRepository.getProjectActivitySummaries`).
   SesoriSseEvent buildProjectsSummaryEvent({required List<ProjectActivitySummary> projects}) {
     return SesoriSseEvent.projectsSummary(projects: projects);
   }
 
-  /// Attempts to parse an SSE event from a JSON payload.
+  /// Attempts to parse a session SSE event from its JSON payload.
+  ///
+  /// The payload carries the session's title and directory, so only the event
+  /// type is logged alongside the error.
   SesoriSseEvent? _tryParseSseEvent(Map<String, dynamic> payload) {
     try {
       return SesoriSseEvent.fromJson(payload);
-    } catch (e) {
-      Log.w("failed to parse SSE event from payload: $payload, error: $e");
+    } catch (e, st) {
+      Log.w("failed to parse SSE event ${payload["type"]}", e, st);
       return null;
     }
   }

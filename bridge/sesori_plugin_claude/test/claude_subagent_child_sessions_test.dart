@@ -4,7 +4,6 @@ import "dart:io";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 const _root = "11111111-2222-4333-8444-555555555555";
@@ -177,7 +176,7 @@ void main() {
 
       expect(early, isEmpty, reason: "no child session exists before the sub-agent id is known");
       expect(routed.map((event) => event.runtimeType), [BridgeSseMessageUpdated, BridgeSseMessagePartUpdated]);
-      expect(shared.Message.fromJson((routed[0] as BridgeSseMessageUpdated).info).sessionID, _child);
+      expect((routed[0] as BridgeSseMessageUpdated).info.sessionID, _child);
       final part = (routed[1] as BridgeSseMessagePartUpdated).part;
       expect(part.sessionID, _child);
       expect(part.text, "hi");

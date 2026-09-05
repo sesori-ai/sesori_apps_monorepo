@@ -353,9 +353,9 @@ void main() {
 
       final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
       expect(stamped, hasLength(3));
-      expect(stamped[0].info["promptId"], equals("prm_1"));
-      expect(stamped[1].info["promptId"], equals("prm_1"));
-      expect(stamped[2].info.containsKey("promptId"), isFalse);
+      expect((stamped[0].info as PluginMessageUser).promptId, equals("prm_1"));
+      expect((stamped[1].info as PluginMessageUser).promptId, equals("prm_1"));
+      expect((stamped[2].info as PluginMessageUser).promptId, isNull);
     });
 
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
@@ -662,7 +662,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 2);
 
       expect(
-        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info["promptId"]),
+        events.whereType<BridgeSseMessageUpdated>().map((event) => (event.info as PluginMessageUser).promptId),
         equals(["prompt-1", "prompt-1"]),
       );
       server.holdCommand!.complete();
@@ -713,7 +713,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final echoed = events.whereType<BridgeSseMessageUpdated>().single;
-      expect(echoed.info.containsKey("promptId"), isFalse);
+      expect((echoed.info as PluginMessageUser).promptId, isNull);
     });
 
     test("bare compact reuses a correlated server message and native compaction part", () async {
@@ -785,7 +785,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final compactEcho = events.whereType<BridgeSseMessageUpdated>().single;
-      expect(compactEcho.info["promptId"], equals("prompt-compact"));
+      expect((compactEcho.info as PluginMessageUser).promptId, equals("prompt-compact"));
     });
 
     test("compact guidance is persisted before reserving the marker", () async {

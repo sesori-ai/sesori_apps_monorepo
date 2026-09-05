@@ -682,14 +682,14 @@ void main() {
           directory: "/repo",
         ),
       );
-      final message = BridgeSseMessageUpdated(
-        info: const Message.user(
+      const message = BridgeSseMessageUpdated(
+        info: PluginMessage.user(
           promptId: null,
           id: "backend-message",
           sessionID: "backend-root",
           agent: null,
           time: null,
-        ).toJson(),
+        ),
       );
       const part = BridgeSseMessagePartUpdated(
         part: PluginMessagePart.text(
@@ -739,7 +739,7 @@ void main() {
       expect(output, hasLength(5));
       expect(output.map((item) => item.generation), everyElement(1));
       expect(Session.fromJson((output[0].event as BridgeSseSessionCreated).info).id, "stable-root");
-      expect(Message.fromJson((output[1].event as BridgeSseMessageUpdated).info).sessionID, "stable-root");
+      expect((output[1].event as BridgeSseMessageUpdated).info.sessionID, "stable-root");
       expect((output[2].event as BridgeSseMessagePartUpdated).part.sessionID, "stable-root");
       expect((output[3].event as BridgeSseSessionStatus).sessionID, "stable-root");
       expect(output[4].event, isA<BridgeSseProjectUpdated>());

@@ -708,7 +708,7 @@ final class ClaudePlugin({
           agent: null,
           time: PluginMessageTime(created: now, completed: now),
           promptId: promptId,
-        ).toJson(),
+        ),
       ),
     );
     _eventBuffer.add(

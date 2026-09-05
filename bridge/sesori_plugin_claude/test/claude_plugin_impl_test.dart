@@ -136,9 +136,9 @@ void main() {
       expect(visibleParts.single.part.text, "visible prompt");
       expect(visibleParts.single.part.messageID, "replay-user-1");
       final user = events.whereType<BridgeSseMessageUpdated>().where(
-        (event) => event.info["role"] == "user",
+        (event) => event.info is PluginMessageUser,
       );
-      expect(user.single.info["id"], "replay-user-1");
+      expect(user.single.info.id, "replay-user-1");
       await subscription.cancel();
     });
 
@@ -316,7 +316,7 @@ void main() {
       );
       expect(visible.single.part.messageID, "replay-user-2");
       final message = events.whereType<BridgeSseMessageUpdated>().where(
-        (event) => event.info["id"] == "replay-user-2" && event.info["role"] == "user",
+        (event) => event.info.id == "replay-user-2" && event.info is PluginMessageUser,
       );
       expect(message, hasLength(1));
       await subscription.cancel();
@@ -350,9 +350,9 @@ void main() {
       await pump();
 
       final user = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["id"] == "echo-image",
+        (event) => event.info.id == "echo-image",
       );
-      expect(user.info["promptId"], "prm_image");
+      expect((user.info as PluginMessageUser).promptId, "prm_image");
       expect(
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type),
         containsAll([
@@ -399,10 +399,10 @@ void main() {
       await pump();
 
       final messageIndex = events.indexWhere(
-        (event) => event is BridgeSseMessageUpdated && event.info["id"] == "replay-steer",
+        (event) => event is BridgeSseMessageUpdated && event.info.id == "replay-steer",
       );
       final message = events[messageIndex] as BridgeSseMessageUpdated;
-      expect(message.info["promptId"], "prm_steer");
+      expect((message.info as PluginMessageUser).promptId, "prm_steer");
       final emptyQueueIndex = events.indexWhere(
         (event) => event is BridgeSseQueuedPromptsUpdated && event.prompts.isEmpty,
       );
@@ -443,7 +443,12 @@ void main() {
 
       final messageIndex = events.indexWhere(
         (event) =>
-            event is BridgeSseMessageUpdated && event.info["role"] == "user" && event.info["promptId"] == "prm_cmd",
+            event is BridgeSseMessageUpdated &&
+            event.info is PluginMessageUser &&
+            switch (event.info) {
+              PluginMessageUser(promptId: final id) => id == "prm_cmd",
+              _ => false,
+            },
       );
       expect(messageIndex, greaterThanOrEqualTo(0));
       final emptyQueueIndex = events.indexWhere(
@@ -483,7 +488,12 @@ void main() {
       await pump();
 
       expect(
-        events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == "prm_unmappable"),
+        events.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == "prm_unmappable",
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       final queued = await harness.plugin.getQueuedPrompts(sessionId: testSessionId);
@@ -520,9 +530,9 @@ void main() {
 
       // A buffered frame delivered while abort clears the queue must not
       // inherit the aborted turn's identity.
-      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info["id"] == "late-echo");
+      final lateEchoes = events.whereType<BridgeSseMessageUpdated>().where((event) => event.info.id == "late-echo");
       expect(lateEchoes, hasLength(1));
-      expect(lateEchoes.single.info["promptId"], isNull);
+      expect((lateEchoes.single.info as PluginMessageUser).promptId, isNull);
       await subscription.cancel();
     });
 
@@ -721,7 +731,7 @@ void main() {
       await pump();
 
       final errorEvent = events.whereType<BridgeSseMessageUpdated>().last;
-      final error = shared.Message.fromJson(errorEvent.info) as shared.MessageError;
+      final error = errorEvent.info as PluginMessageError;
       expect(error.errorName, "api_error");
       expect(error.errorMessage, "Claude Code could not complete the API request (HTTP 500).");
       expect(
@@ -809,7 +819,7 @@ void main() {
 
       final errors = events
           .whereType<BridgeSseMessageUpdated>()
-          .map((event) => shared.Message.fromJson(event.info))
+          .map((event) => event.info)
           .whereType<shared.MessageError>();
       expect(errors, isEmpty);
       await subscription.cancel();

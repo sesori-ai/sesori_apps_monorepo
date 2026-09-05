@@ -5,7 +5,6 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 void main() {
@@ -326,12 +325,10 @@ void main() {
           },
         ),
       );
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
-      expect(message, isA<shared.MessageError>());
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(message, isA<PluginMessageError>());
       expect(
-        (message as shared.MessageError).errorMessage,
+        (message as PluginMessageError).errorMessage,
         "\n\nCheck your settings to continue",
       );
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);

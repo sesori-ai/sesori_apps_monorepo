@@ -76,8 +76,7 @@ class const BridgeSseQueuedPromptsUpdated({
   required final List<PluginQueuedPrompt> prompts,
 }) extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
-class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
+class const BridgeSseMessageUpdated({required final PluginMessage info}) extends BridgeSseEvent;
 
 class const BridgeSseMessageRemoved({required final String sessionID, required final String messageID})
     extends BridgeSseEvent;

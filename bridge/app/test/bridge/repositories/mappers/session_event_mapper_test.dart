@@ -16,13 +16,13 @@ void main() {
         sessionId: "backend-session",
         parentId: "backend-parent",
       );
-      final messageInfo = const Message.user(
+      const messageInfo = PluginMessage.user(
         promptId: null,
         id: "message",
         sessionID: "backend-session",
         agent: null,
         time: null,
-      ).toJson();
+      );
       const part = PluginMessagePart.text(
         id: "part",
         sessionID: "backend-session",
@@ -82,7 +82,7 @@ void main() {
         ),
         (
           name: "message updated",
-          event: BridgeSseMessageUpdated(info: messageInfo),
+          event: const BridgeSseMessageUpdated(info: messageInfo),
           expectedBackendIds: {"backend-session"},
         ),
         (

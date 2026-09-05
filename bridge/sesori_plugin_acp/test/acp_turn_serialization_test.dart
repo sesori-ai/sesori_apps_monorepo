@@ -274,9 +274,15 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .where((event) => event.info["promptId"] == firstId)
+            .where(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == firstId,
+                _ => false,
+              },
+            )
             .single
-            .info["id"],
+            .info
+            .id,
         "$firstId-user",
       );
       respondTo(first, {"stopReason": "end_turn"});
@@ -291,8 +297,8 @@ void main() {
       final prompt = await waitForFrame("session/prompt");
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
-      expect(message.info["promptId"], promptId);
+      expect(message.info, isA<PluginMessageUser>());
+      expect((message.info as PluginMessageUser).promptId, promptId);
       expect(
         emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
         "visible on dispatch",
@@ -317,7 +323,12 @@ void main() {
 
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(
@@ -335,9 +346,14 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == promptId)
-            .info["promptId"],
-        promptId,
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == promptId,
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>().having((info) => info.promptId, "promptId", promptId),
       );
       respondTo(prompt, {"stopReason": "end_turn"});
     });
@@ -371,9 +387,9 @@ void main() {
       }
 
       final messages = emitted.whereType<BridgeSseMessageUpdated>().toList();
-      expect(messages.map((event) => event.info["role"]), ["user", "assistant"]);
-      expect(messages.first.info["promptId"], promptId);
-      expect(messages.last.info["id"], "$promptId-user-assistant-a0");
+      expect(messages.map((event) => event.info.runtimeType), [PluginMessageUser, PluginMessageAssistant]);
+      expect((messages.first.info as PluginMessageUser).promptId, promptId);
+      expect(messages.last.info.id, "$promptId-user-assistant-a0");
 
       respondTo(prompt, {"stopReason": "end_turn"});
     });
@@ -423,7 +439,7 @@ void main() {
         await pump();
       }
 
-      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info["role"] == "user");
+      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info is PluginMessageUser);
       final tool = emitted.whereType<BridgeSseMessagePartUpdated>().singleWhere(
         (event) => event.part.type == PluginMessagePartType.tool,
       );
@@ -528,7 +544,7 @@ void main() {
       }
 
       final userIndex = emitted.indexWhere(
-        (event) => event is BridgeSseMessageUpdated && event.info["role"] == "user",
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageUser,
       );
       final childIndex = emitted.indexWhere(
         (event) => event is BridgeSseSessionCreated && event.info["id"] == "child",
@@ -717,9 +733,12 @@ void main() {
       await pump();
 
       final secondMessage = emitted.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["promptId"] == secondPromptId,
+        (event) => switch (event.info) {
+          PluginMessageUser(promptId: final id) => id == secondPromptId,
+          _ => false,
+        },
       );
-      expect((secondMessage.info["time"] as Map)["created"], greaterThan(queuedAt));
+      expect(secondMessage.info.time?.created, greaterThan(queuedAt));
 
       expect(firstPromptId, isNot(secondPromptId));
       respondTo(second, {"stopReason": "end_turn"});
@@ -740,7 +759,12 @@ void main() {
 
       expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
@@ -771,7 +795,7 @@ void main() {
       final created = emitted.whereType<BridgeSseSessionCreated>().single;
       expect(created.info["id"], "s1");
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
+      expect(message.info, isA<PluginMessageUser>());
       final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.text, "visible prompt");
       expect(part.text, isNot(contains("SYSTEM CONTEXT")));
@@ -859,7 +883,7 @@ void main() {
       await pump();
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
+      expect(message.info, isA<PluginMessageUser>());
       final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.text, "/review user arguments");
       expect(part.text, isNot(contains("SYSTEM CONTEXT")));
@@ -972,7 +996,12 @@ void main() {
       );
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == secondPromptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == secondPromptId,
+            _ => false,
+          },
+        ),
         isEmpty,
         reason: "an adapter-owned prompt must remain queued, not sent",
       );
@@ -987,9 +1016,14 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == secondPromptId)
-            .info["promptId"],
-        secondPromptId,
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == secondPromptId,
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>().having((info) => info.promptId, "promptId", secondPromptId),
       );
       expect(
         idleCount(),
@@ -1030,7 +1064,12 @@ void main() {
       }
       expect(frames("session/prompt"), hasLength(1));
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == queuedPromptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == queuedPromptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
     });
@@ -1297,7 +1336,12 @@ void main() {
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));

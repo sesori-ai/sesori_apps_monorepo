@@ -727,8 +727,10 @@ final class PiSessionService({
               (mapped is BridgeSseSessionStatus || mapped is BridgeSseSessionIdle);
           if (!serviceOwnsLifecycle) _emit(mapped);
           if (mapped is! BridgeSseMessageUpdated) continue;
-          final promptId = mapped.info["promptId"];
-          if (promptId is! String) continue;
+          final info = mapped.info;
+          if (info is! PluginMessageUser) continue;
+          final promptId = info.promptId;
+          if (promptId == null) continue;
           final correlated = _turnForPrompt(state: state, promptId: promptId);
           if (correlated == null) continue;
           correlated.userMessageEmitted = true;
@@ -989,7 +991,10 @@ final class PiSessionService({
     );
     mappedEvents.forEach(_emit);
     turn.userMessageEmitted = mappedEvents.any(
-      (mapped) => mapped is BridgeSseMessageUpdated && mapped.info["promptId"] == turn.promptId,
+      (mapped) => switch (mapped) {
+        BridgeSseMessageUpdated(info: PluginMessageUser(:final promptId)) => promptId == turn.promptId,
+        _ => false,
+      },
     );
   }
 
