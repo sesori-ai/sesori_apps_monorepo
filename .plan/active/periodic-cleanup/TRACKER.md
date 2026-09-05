@@ -30,7 +30,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Merged | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
 | 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
-| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | In review | PENDING |
+| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | In review | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
 | 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
 | 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
 
