@@ -57,7 +57,7 @@ signal that a tool changed files.
   events retain the direct parent's transcript and keep root activity busy.
   Launch prompts remain authoritative without child prompt echoes; malformed
   ends finalize known children as error. Startup failures retain one generic
-  terminal card. Protocol v1 keeps generic cards; v2 replay projection is pending.
+  terminal card. Initialization requires protocol v2; replay projection is pending.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.

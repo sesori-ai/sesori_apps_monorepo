@@ -134,7 +134,7 @@ void main() {
           "authMethods": <Object?>[],
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",

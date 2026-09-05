@@ -37,22 +37,16 @@ class DeepSeekPlugin({
   );
 
   @override
-  void validateInitializeResult(AcpInitializeResult result) {
-    _extensionProtocolVersion(result: result);
-  }
+  void captureLiveInitializeResult(AcpInitializeResult result) => mapper.resetLiveState();
 
   @override
-  void captureLiveInitializeResult(AcpInitializeResult result) {
-    mapper.setExtensionProtocolVersion(extensionProtocolVersion: _extensionProtocolVersion(result: result));
-  }
-
-  int _extensionProtocolVersion({required AcpInitializeResult result}) {
+  void validateInitializeResult(AcpInitializeResult result) {
     final metadata = result.raw["_meta"];
     final deepSeekMetadata = metadata is Map ? metadata[DeepSeekAcpApi.initializeMetadataKey] : null;
     // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
     if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
     // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
-    return api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>()).extensionProtocolVersion;
+    api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
   }
 
   @override

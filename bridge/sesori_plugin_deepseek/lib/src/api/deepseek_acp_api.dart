@@ -11,15 +11,11 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String subagentMethod = "deepseek/subagent";
   static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
   static const int extensionProtocolVersion = 2;
-  // COMPATIBILITY 2026-09-05 (v1.8.3): Consumer slices must merge before adapter 0.1.3 records its consumer
-  // commit and publishes; managed installs still use protocol-v1 adapter 0.1.2. Remove v1 when the DeepSeek
-  // runtime target and PATH floor both require 0.1.3.
-  static const Set<int> supportedExtensionProtocolVersions = {1, extensionProtocolVersion};
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInitializeMetadataDto parseInitializeMetadata(Map<String, dynamic> json) {
     final metadata = DeepSeekInitializeMetadataDto.fromJson(json);
-    if (!supportedExtensionProtocolVersions.contains(metadata.extensionProtocolVersion) ||
+    if (metadata.extensionProtocolVersion != extensionProtocolVersion ||
         metadata.persistenceOwner != "sesori" ||
         !_nonblank(metadata.adapterVersion, maxLength: 64) ||
         !_nonblank(metadata.harnessVersion, maxLength: 64)) {

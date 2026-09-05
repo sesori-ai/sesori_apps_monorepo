@@ -367,7 +367,7 @@ class _AcpProcess({@override required final int pid, required final bool omitIni
         if (!omitInitializeMetadata)
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",

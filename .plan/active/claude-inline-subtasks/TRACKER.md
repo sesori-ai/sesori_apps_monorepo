@@ -174,7 +174,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; package version staged, release pending |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [ ] | DeepSeek | Consumer replacement steps 1–5 | PR #1293 superseded; fixed titles and budgets in `HARNESS_FOLLOWUPS.md` |
-| [ ] | DeepSeek (adapter) | `🌱 release: publish v0.1.3 for the merged consumer` | Wait for all five consumer slices |
+| [ ] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | User moved publication before slice 4 merge; release metadata PR then tag/assets pending |
 | [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Pending adapter v0.1.3 release |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
@@ -609,7 +609,7 @@ packaging-only change.
 | 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
 | 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
 | 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
-| 4/5 | Live lifecycle, correlation, catalogs | Prepared on `claude-inline-subtasks-deepseek-live` |
+| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) draft pending release assets |
 | 5/5 | Replay callback, history, remaining consumer docs | Pending slice 4 merge |
 
 Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
@@ -651,9 +651,11 @@ remain in the API. Architecture implementation review approved with no findings.
 Initialization remains v1-only until slice 4 installs the live consumer. No
 fixture bytes, runtime pins, interrupt consumer, or live/replay projection changed.
 
-Slice 4 verification: DeepSeek analysis and all 82 tests passed. Live lifecycle,
-correlation, and child catalog composition now accept protocol v2 alongside v1.
-Duplicate call/update deferral was consolidated into one branch; replay methods
-and future-only nullable terminal mapping remain out of this slice. Runtime
-pins and both fixture versions remain untouched; release still waits for slice 5.
-Architecture implementation and focused correctness reviews found no issues.
+Slice 4 verification: architecture and focused correctness reviews found no
+issues. Duplicate call/update deferral is one branch; replay remains separate.
+User-directed sequencing change (2026-09-05): publish adapter 0.1.3 now and pin
+it in this PR instead of retaining v1 compatibility. The consumer now requires
+v2; analysis and 81 tests pass (the obsolete v1 live fallback test is removed).
+Both fixture versions remain untouched. The PR stays draft until release
+metadata is human-merged, v0.1.3 is tagged/published, all six packages are verified,
+and real checksums plus target/minimum 0.1.3 land. No final E2E pass is claimed.

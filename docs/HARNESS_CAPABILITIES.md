@@ -74,9 +74,9 @@ adapter 0.1.3 source supplies correlated protocol-v2 lifecycle, child transcript
 replay metadata, and scoped interruption. The plugin now consumes live lifecycle
 for tiles and child catalogs; replay projection and scoped stop remain separate
 follow-ups. Cells stay open until adapter 0.1.3 is released and reachable.
-Protocol v1 retains generic delegation cards. Foreground children die with the
-parent; background children survive, making main-agent-only stop supportable
-when every running child is background. Runtime target/floor remain 0.1.2/0.1.0.
+The consumer requires v2; runtime 0.1.3 publication/pinning is pending in the
+same draft PR. Foreground children die with the parent; background children
+survive, making main-agent-only stop supportable when all children are background.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

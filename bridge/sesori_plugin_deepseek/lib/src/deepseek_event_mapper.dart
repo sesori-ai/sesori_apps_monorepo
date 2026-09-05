@@ -25,11 +25,9 @@ class DeepSeekEventMapper({
   PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
       PluginMessageTime(created: createdAtMs, completed: null);
 
-  var _extensionProtocolVersion = 1;
   final Map<String, Map<String, _DeferredDeepSeekDelegation>> _deferredDelegations = {};
 
-  void setExtensionProtocolVersion({required int extensionProtocolVersion}) {
-    _extensionProtocolVersion = extensionProtocolVersion;
+  void resetLiveState() {
     _deferredDelegations.clear();
     delegationTracker.clear();
   }
@@ -86,8 +84,7 @@ class DeepSeekEventMapper({
   /// and invisible failures.
   @override
   List<BridgeSseEvent> map(AcpNotification notification) {
-    if (_extensionProtocolVersion != DeepSeekAcpApi.extensionProtocolVersion ||
-        notification.method != AcpMethods.sessionUpdate) {
+    if (notification.method != AcpMethods.sessionUpdate) {
       return super.map(notification);
     }
     final sessionId = notification.params["sessionId"];
@@ -140,8 +137,7 @@ class DeepSeekEventMapper({
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
-    if (_extensionProtocolVersion == DeepSeekAcpApi.extensionProtocolVersion &&
-        notification.method == DeepSeekAcpApi.subagentMethod) {
+    if (notification.method == DeepSeekAcpApi.subagentMethod) {
       return _mapSubagent(notification: notification);
     }
     if (notification.method != DeepSeekAcpApi.sessionStatusMethod) {

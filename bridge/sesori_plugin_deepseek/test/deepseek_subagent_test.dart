@@ -23,21 +23,10 @@ void main() {
         subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
         delegationTracker: DeepSeekDelegationTracker(),
       )..setSessionProject("root", "/project");
-      mapper.setExtensionProtocolVersion(extensionProtocolVersion: DeepSeekAcpApi.extensionProtocolVersion);
       mapper.beginTurn(sessionId: "root", messageId: null);
     });
 
     tearDown(() => tracker.dispose());
-
-    test("protocol v1 retains generic delegation cards and ignores v2 lifecycle", () {
-      mapper.setExtensionProtocolVersion(extensionProtocolVersion: 1);
-
-      final events = mapper.map(_toolCall(toolCallId: "legacy-call", title: "subagent"));
-
-      expect(events.whereType<BridgeSseMessagePartUpdated>().single.part, isA<PluginMessagePartTool>());
-      expect(mapper.map(_started(mode: "foreground")), isEmpty);
-      expect(tracker.isChild(sessionId: "child"), isFalse);
-    });
 
     test("sub-agent lifecycle frames opt into accepted-prompt write ordering", () {
       expect(mapper.shouldBufferDuringPromptWrite(notification: _started(mode: "foreground")), isTrue);
@@ -144,7 +133,7 @@ void main() {
       );
     });
 
-    test("session and protocol resets clear started delegation correlation", () {
+    test("session and live connection resets clear started delegation correlation", () {
       mapper.map(_toolCall(toolCallId: "call", title: "subagent"));
       mapper.map(_started(mode: "background"));
       mapper.forgetSession("root");
@@ -159,7 +148,7 @@ void main() {
           toolCallId: "call-2",
         ),
       );
-      mapper.setExtensionProtocolVersion(extensionProtocolVersion: 1);
+      mapper.resetLiveState();
       expect(mapper.sessionIdForToolCallId(toolCallId: "call-2"), isNull);
     });
 
