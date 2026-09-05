@@ -499,7 +499,7 @@ and the owning suites. Disposition per guide:
   gives 81+/56-. `6489ffb2ae` is the last commit that changed a guide, and the
   pathspec excludes this tracker, so the figure holds at any later head. That
   137-line total is well under PLAN.md's 500-1,200 estimate for this step. The
-  estimate was scoped from guide size before the audit; the audit found six
+  estimate was scoped from guide size before the audit; the audit found seven
   guides needing changes and five needing none, and the plan forbids imposing a
   line target or inventing a limitation to close the gap, so the measured total
   is the honest result rather than a shortfall to be padded.
