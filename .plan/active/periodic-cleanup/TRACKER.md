@@ -28,8 +28,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 18/25 | 🌿 [periodic-cleanup] tests: consolidate substantial bridge fixtures [step 18/25] | Merged | [#1330](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1330) |
 | 19/25 | 🌿 [periodic-cleanup] tests: consolidate substantial client fixtures [step 19/25] | Merged | [#1331](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1331) |
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
-| 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | In review | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
-| 22/25 | 🌱 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Proposed | — |
+| 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Merged | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
+| 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | In review | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
 | 23/25 | 🌱 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Proposed | — |
 | 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
 | 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
@@ -448,3 +448,64 @@ asked to start working the plan; steps execute in order from step 2.
   selectable, and per-plugin `--<pluginId>-<name>` options — matching
   `plugin_lifecycle_service.dart`, `plugin_registry.dart` and
   `plugin_cli_options_mapper.dart`.
+
+## Step 22 execution — 2026-09-05
+
+All twelve guides in this step's ownership were reviewed against production code
+and the owning suites. Disposition per guide:
+
+- `attachments-and-images.md`: the L1 row mixed smoke checks with a routine and
+  adverse-state inventory in one fifteen-clause sentence. L1 now names the
+  heartbeats (decode, size bound, unknown-variant rejection, shared composer and
+  clipboard validation, a thumbnail rendering with its aspect ratio). The stored-
+  rendition, coalescing, wire-byte, collection-layout, viewer-morph and desktop
+  adapter checks moved to L2, and redaction, cache corruption recovery, pruning,
+  auth cleanup, viewer retry and eviction to L4. Levels are cumulative, so no
+  assertion was lost.
+- `navigation-transitions.md`: the L2 row described legacy `MaterialApp`
+  detection mechanics. It now states the invariant — every route supplies a
+  standalone page and each custom page type is preserved.
+- `projects-and-sessions.md`: the Deep Scan row's animation minutiae (Figma's
+  ten-second loop, per-element durations and easing curves, opacity percentages,
+  inset/radius pixel values, per-mode beam colours) were compressed to the
+  material behavior: one row per scan, shared starting/running geometry so the
+  list does not move, the row scrolling with the list, the entrance playing once,
+  reduced-motion holding the first frame, and result cards expanding at
+  accessibility text sizes while staying dismissible. Two stale sources removed
+  or corrected: a deleted `build_context_x_test.dart` and a plan that is
+  completed, not active.
+- `popup-alerts.md`: the only guide with no capability statement, no level table
+  and no sources, so a level run could not tell what to execute. Restructured to
+  the standard shape; the level table records what its owning widget suite
+  actually proves and what still needs a client end-to-end run.
+- `design-catalog.md`, `native-activity-indicators.md`: `Maintenance Sources`
+  renamed to `Sources` and a `Capability` heading added, so all 25 guides share
+  one section vocabulary. The indicators guide's failure-signal paragraph became
+  its own section in the standard position.
+- `session-turns.md`: source path corrected — the abort scope dialog lives in
+  `module_app_ui`, not the app shell.
+- `account-and-onboarding.md`, `analytics.md`, `notifications.md`,
+  `voice-input.md`, `session-creation-and-options.md`: reviewed, no change. Their
+  level rows state added coverage without repeating README rules or lower-level
+  requirements, and their remaining pixel values (the 320 px collection cap, the
+  popup card's 16/343 px geometry) are checkable acceptance criteria rather than
+  cosmetic detail.
+- `session-turns.md` and `session-creation-and-options.md` were read in full for
+  the same reason the plan named them: size. Their bulk is harness contract
+  covering acceptance semantics, queue ownership, sub-agent lifecycles and stale
+  option handling. No reduction target was imposed on them, and no limitation was
+  invented to justify deleting coverage.
+- Line split: `git diff --numstat 1f6abbd8d6..6489ffb2ae -- 'docs/regression/*.md'`
+  gives 81+/56-. `6489ffb2ae` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head. That
+  137-line total is well under PLAN.md's 500-1,200 estimate for this step. The
+  estimate was scoped from guide size before the audit; the audit found seven
+  guides needing changes and five needing none, and the plan forbids imposing a
+  line target or inventing a limitation to close the gap, so the measured total
+  is the honest result rather than a shortfall to be padded.
+- Title kept from this tracker; the planned 🌱 became 🌿 because review has to
+  confirm the moved attachment coverage is preserved by level cumulativity and
+  that the new popup-alerts level table claims only coverage that exists.
+- No tombstones were found or added; no absence assertion exists in these guides.
+  Link check across `docs/regression/`: no broken relative link. Every source
+  path in the twelve guides now resolves.

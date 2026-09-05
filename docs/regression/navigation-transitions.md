@@ -27,7 +27,7 @@ the intentional login, settings-modal, and split-view transitions distinct.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page instead of relying on legacy `MaterialApp` detection, and preserves each custom page type. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, and the settings modal. |
 | L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise split-view pane fading where the viewport supports it. |
 | L5 Full | No additional coverage. |
