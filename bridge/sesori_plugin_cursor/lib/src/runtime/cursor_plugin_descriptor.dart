@@ -3,14 +3,7 @@ import "dart:io" as io;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show
-        ArchiveExtractor,
-        BinaryDownloadClient,
-        ChecksumValidator,
-        CommandResult,
-        HostProcessCommandExecutor,
-        PlatformTarget,
-        stripAnsi;
+    show BinaryDownloadClient, CommandResult, HostProcessCommandExecutor, PlatformTarget, stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -214,20 +207,14 @@ class const CursorPluginDescriptor({
     );
     final httpClient = http.Client();
     try {
-      final installService = ManagedRuntimeInstallService(
+      final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: _versionValidatorFor(
           processes: processes,
           maxCapturedOutputCharactersPerStream: null,
         ),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installService.install(

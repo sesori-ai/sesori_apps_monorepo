@@ -19,7 +19,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 9/25 | ⚙️ [periodic-cleanup] plugins: stop forwarding unused backend events [step 9/25] | Merged | [#1314](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1314) |
 | 10/25 | ⚙️ [periodic-cleanup] client: share native thumbnail storage [step 10/25] | Merged | [#1318](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1318) |
 | 11/25 | ⚙️ [periodic-cleanup] client: share optimistic rename bookkeeping [step 11/25] | In review | [#1320](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1320) |
-| 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | Proposed | — |
+| 12/25 | ⚙️ [periodic-cleanup] runtime: share managed installer composition [step 12/25] | In progress (local, awaiting step 11 merge) | — |
 | 13/25 | ⚙️ [periodic-cleanup] runtime: share provisioning and bounded cold-start waiting [step 13/25] | Proposed | — |
 | 14/25 | 🌿 [periodic-cleanup] bridge: fold repeated worktree and Codex algorithms [step 14/25] | Proposed | — |
 | 15/25 | 🌿 [periodic-cleanup] bridge: preserve caught errors and stacks in logs [step 15/25] | Proposed | — |
@@ -231,3 +231,15 @@ asked to start working the plan; steps execute in order from step 2.
   tests cover newest-success confirmation, fallback after a failed visible
   rename, newer-confirmation precedence and a null original; both cubit rename
   suites pass unchanged.
+
+## Step 12 execution — 2026-09-05
+
+- Stateless `ManagedRuntimeComposition.createInstaller` in
+  `sesori_plugin_runtime/lib/src/composition/` builds the checksum, extractor,
+  installer and cleaner graph from a descriptor's manifest, executor, download
+  client, version validator and asset resolver, returning
+  `ManagedRuntimeInstallService` through its unchanged constructor. Codex,
+  OpenCode, Copilot, Cursor, Pi, OMP and DeepSeek call it; each keeps its
+  operation-local HTTP client and finally-close, executor limits and Windows
+  shell policy, probe timeout, validator and asset resolver (OMP's dynamic
+  Linux resolution included). Existing runtime and descriptor suites pass.

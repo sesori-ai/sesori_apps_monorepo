@@ -1,3 +1,4 @@
+export "src/composition/managed_runtime_composition.dart";
 export "src/draining_spawned_process.dart";
 export "src/dynamic_port_candidates.dart";
 export "src/host_json_runtime_ownership_repository.dart";
