@@ -777,9 +777,6 @@
       }
     }
   },
-  "sessionListStaleProjectTitle": "Project directory not found",
-  "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
-  "sessionListStaleProjectBack": "Go back",
   "voiceRecord": "Record voice",
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
@@ -805,7 +802,6 @@
   "voiceErrorRecording": "Recording failed. Please try again.",
   "voiceErrorTranscription": "Transcription failed. Record again or type instead.",
   "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
-  "voiceErrorNetwork": "Could not reach the server. Check your connection.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
   "addProject": "Add Project",

@@ -1335,16 +1335,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionListStaleProjectTitle => 'Project directory not found';
-
-  @override
-  String get sessionListStaleProjectMessage =>
-      'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.';
-
-  @override
-  String get sessionListStaleProjectBack => 'Go back';
-
-  @override
   String get voiceRecord => 'Record voice';
 
   @override
@@ -1383,9 +1373,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceErrorSavedRecordingMissing =>
       'The saved recording is no longer available. Record again or type instead.';
-
-  @override
-  String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';
 
   @override
   String get voiceErrorNotAuthenticated => 'Sign in to use voice input';

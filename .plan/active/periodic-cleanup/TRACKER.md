@@ -365,3 +365,26 @@ asked to start working the plan; steps execute in order from step 2.
   repeated setup is smaller and already goes through existing stub helpers, so
   folding it here would have pushed this PR past its size budget without making
   those suites clearer.
+
+## Step 20 execution — 2026-09-05
+
+- Every candidate re-verified against implementation main before deletion; each
+  named symbol and key appeared only in its own defining file (plus generated
+  localization) with no consumer in production, test, generated or tool code.
+- Dependencies removed: `re_highlight`, `fake_async` and `json_annotation` from
+  `client/app` (the highlighter is used only by `module_app_ui`, which keeps its
+  own declaration); `cupertino_icons` from `client/design_catalog`;
+  `_fe_analyzer_shared` from `shared/no_slop_linter`; and the annotation and
+  generator set (`freezed_annotation`, `json_annotation`, `freezed`,
+  `json_serializable`, `build_runner`) plus the now-inert `build.yaml` from
+  `bridge/sesori_plugin_runtime`, which contains no annotated source and no
+  generated file. `sesori_plugin_antigravity` was left to its active series.
+- Symbols and keys removed: `currentProjectName` (its whole file), `kStatusGreen`
+  and `kStatusPurple` (`kStatusAmber` stays; the session tile uses it), `logwf`,
+  `testMultiSseQuestionAsked`, `lerpTextStyleNonNull` and the four localization
+  keys `sessionListStaleProjectTitle`, `sessionListStaleProjectMessage`,
+  `sessionListStaleProjectBack`, `voiceErrorNetwork`, with localizations
+  regenerated from the ARB. Dropping the text-style helper made
+  `package:flutter/painting.dart` unnecessary in `lerp_utils.dart`.
+- The narrow repository methods from step 4 remain their own finding; this scan
+  did not revisit them.
