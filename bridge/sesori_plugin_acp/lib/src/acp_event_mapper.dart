@@ -10,6 +10,14 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+sealed class const AcpToolCallSessionLookup();
+
+final class const AcpToolCallSessionNotFound() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionAmbiguous() extends AcpToolCallSessionLookup;
+
+final class const AcpToolCallSessionFound({required final String sessionId}) extends AcpToolCallSessionLookup;
+
 /// A backend "halt notice": the agent ended a turn without doing the requested
 /// work and instead streamed a terminal notice telling the user to change
 /// something (account, plan, model, or settings). Cursor's account/plan gate
@@ -190,17 +198,28 @@ class AcpEventMapper({
   final Map<String, Map<String, _LiveTool>> _liveTools = {};
 
   /// Resolves the live session that owns [toolCallId], when a harness extension
-  /// omits `sessionId` but carries the originating tool call id.
-  String? sessionIdForToolCallId({required String? toolCallId}) {
-    if (toolCallId == null || toolCallId.isEmpty) return null;
-    for (final entry in _liveTools.entries) {
-      if (entry.value.containsKey(toolCallId)) return entry.key;
-    }
-    for (final entry in _spawnToolCalls.entries) {
-      if (entry.value.contains(toolCallId)) return entry.key;
-    }
-    return null;
+  /// omits `sessionId` but carries the originating tool call id. Duplicate ids
+  /// across concurrent sessions are ambiguous rather than insertion-ordered.
+  AcpToolCallSessionLookup lookupSessionForToolCallId({required String? toolCallId}) {
+    if (toolCallId == null || toolCallId.isEmpty) return const AcpToolCallSessionNotFound();
+    final sessionIds = <String>{
+      for (final entry in _liveTools.entries)
+        if (entry.value.containsKey(toolCallId)) entry.key,
+      for (final entry in _spawnToolCalls.entries)
+        if (entry.value.contains(toolCallId)) entry.key,
+    };
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
+      [] => const AcpToolCallSessionNotFound(),
+      _ => const AcpToolCallSessionAmbiguous(),
+    };
   }
+
+  String? sessionIdForToolCallId({required String? toolCallId}) =>
+      switch (lookupSessionForToolCallId(toolCallId: toolCallId)) {
+        AcpToolCallSessionFound(:final sessionId) => sessionId,
+        AcpToolCallSessionNotFound() || AcpToolCallSessionAmbiguous() => null,
+      };
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
@@ -299,8 +318,7 @@ class AcpEventMapper({
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
 
-  String _fallbackTurnMessageId(String sessionId) =>
-      _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
+  String _fallbackTurnMessageId(String sessionId) => _turnMessageIds[sessionId] ?? "$sessionId-t${_turn(sessionId)}";
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
@@ -449,8 +467,9 @@ class AcpEventMapper({
           time: messageTime,
         );
       case "user_message_chunk":
-        // A child session's first user message is the prompt its parent gave
-        // it, which no client sent: it is the one source of the tile's prompt.
+        // When lifecycle omitted the launch prompt, a child session's first
+        // user message supplies it. Trackers whose start already carried the
+        // prompt ignore this echo and every later direct child prompt.
         if (childSessions.isChild(sessionId: sessionId)) {
           return _childPromptChunk(childSessionId: sessionId, update: update);
         }
@@ -568,6 +587,12 @@ class AcpEventMapper({
     );
   }
 
+  /// Whether [notification] must remain behind an accepted prompt whose frame
+  /// is still being written. Standard updates always do; a harness lifecycle
+  /// extension that can synchronously follow prompt receipt overrides this.
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == AcpMethods.sessionUpdate;
+
   /// Hook for non-`session/update` notifications (harness extensions such as
   /// Cursor's `cursor/update_todos`). Base implementation drops them.
   List<BridgeSseEvent> mapExtension(AcpNotification notification) => const [];
@@ -585,13 +610,15 @@ class AcpEventMapper({
   List<BridgeSseEvent> mapChildSpawned({required String sessionId, required AcpChildSpawn spawn}) {
     // Same boundary rule as [map]: an id-less session event is undeliverable.
     if (sessionId.isEmpty || spawn.childSessionId.isEmpty) return const [];
-    return _childTileEvents(
-      childSessions.spawn(
-        sessionId: sessionId,
-        spawn: spawn,
-        directory: projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId)),
-      ),
+    final directory = projectForSession(sessionId: childSessions.rootOf(sessionId: sessionId));
+    final result = childSessions.spawn(
+      sessionId: sessionId,
+      spawn: spawn,
+      directory: directory,
     );
+    if (result == null) return const [];
+    setSessionProject(spawn.childSessionId, directory);
+    return _childTileEvents(result);
   }
 
   /// Records the model a harness reports for a spawned child, so the child's
@@ -613,7 +640,7 @@ class AcpEventMapper({
 
   /// A tile's first render needs the assistant envelope it hangs from.
   List<BridgeSseEvent> _childTileEvents(AcpChildTileResult result) => [
-    if (result.opensMessage) _toolEnvelope(sessionId: result.rootSessionId, messageId: result.messageId, time: null),
+    if (result.opensMessage) _toolEnvelope(sessionId: result.renderSessionId, messageId: result.messageId, time: null),
     ...result.events,
   ];
 
@@ -699,9 +726,7 @@ class AcpEventMapper({
   }) {
     final identity = _chunkIdentity(
       sessionId: sessionId,
-      update: messageId == null
-          ? const <String, dynamic>{}
-          : <String, dynamic>{"messageId": messageId},
+      update: messageId == null ? const <String, dynamic>{} : <String, dynamic>{"messageId": messageId},
       role: _ChunkRole.assistant,
     );
     final tracker = (_contentTrackers[sessionId] ??= {}).putIfAbsent(
@@ -1215,7 +1240,7 @@ class AcpEventMapper({
       pluginId: pluginId,
       projectID: project,
       directory: project,
-      parentID: null,
+      parentID: childSessions.parentOf(sessionId: id),
       title: snapshot?.title,
       time: created == null && updated == null
           ? null
@@ -1329,7 +1354,10 @@ class AcpEventMapper({
   }
 }
 
-enum _ChunkRole() { user, assistant }
+enum _ChunkRole() {
+  user,
+  assistant,
+}
 
 /// Last-known metadata for one session, merged into the `session.updated`
 /// payload a `session_info_update` emits.
@@ -1340,10 +1368,10 @@ class _SessionSnapshot() {
 }
 
 class _TextPartAccumulator({
-    required final String partId,
-    required final String messageId,
-    required final PluginMessagePartType type,
-  }) {
+  required final String partId,
+  required final String messageId,
+  required final PluginMessagePartType type,
+}) {
   final StringBuffer text = StringBuffer();
   bool isStreaming = false;
 }
@@ -1351,13 +1379,13 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
-    required final String tool,
-    required final String? title,
-    required final PluginToolStatus status,
-    required final AcpToolContentTracker contentTracker,
-    required final bool isFileMutation,
-    required var bool diffEmitted,
-    required final bool hasExplicitKind,
-    required final bool hasExplicitStatus,
-    required final PluginMessageTime? time,
-  });
+  required final String tool,
+  required final String? title,
+  required final PluginToolStatus status,
+  required final AcpToolContentTracker contentTracker,
+  required final bool isFileMutation,
+  required var bool diffEmitted,
+  required final bool hasExplicitKind,
+  required final bool hasExplicitStatus,
+  required final PluginMessageTime? time,
+});

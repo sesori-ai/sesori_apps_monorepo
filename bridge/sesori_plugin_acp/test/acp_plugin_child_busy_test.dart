@@ -93,7 +93,7 @@ void main() {
         ),
         directory: cwd,
       );
-      result.events.forEach(plugin.emitEvent);
+      result?.events.forEach(plugin.emitEvent);
     }
 
     /// The harness mapper's push: a child finished. Tracker-driven events reach
@@ -362,6 +362,71 @@ void main() {
       expect(rootIdles(sessionId), hasLength(1));
       expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
       expect(plugin.childSessionTracker.childStatuses, isEmpty);
+    });
+
+    test("deleting a finished child cancels its descendant's pending permission", () async {
+      final sessionId = await connectAndCreateSession();
+      spawnChild(root: sessionId, childId: "child");
+      spawnChild(root: "child", childId: "grandchild");
+      await finishChild("child", status: PluginToolStatus.completed);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 501,
+        "method": "session/request_permission",
+        "params": {
+          "sessionId": "grandchild",
+          "toolCall": {"toolCallId": "call", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      });
+      await pump();
+      expect(await plugin.getPendingPermissions(sessionId: "grandchild"), hasLength(1));
+      expect(plugin.currentWorkState, PluginWorkState.busy);
+
+      await plugin.deleteSession("child");
+      await pump();
+
+      expect(await plugin.getPendingPermissions(sessionId: "grandchild"), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 501);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+      expect(emitted.whereType<BridgeSsePermissionReplied>().single.sessionID, "grandchild");
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+    });
+
+    test("deleting a child drops its descendant subtree from plugin state", () async {
+      final sessionId = await connectAndCreateSession();
+      spawnChild(root: sessionId, childId: "c1");
+      spawnChild(root: "c1", childId: "c2");
+      expect((await plugin.getSessionStatuses()).keys, containsAll([sessionId, "c1", "c2"]));
+
+      await plugin.deleteSession("c1");
+      await pump();
+
+      expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
+
+      emitted.clear();
+      plugin.handleAgentNotification(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "c1",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "late"},
+            },
+          },
+        ),
+      );
+      spawnChild(root: "c1", childId: "late-grandchild");
+      spawnChild(root: sessionId, childId: "c1");
+      await pump();
+      expect(plugin.childSessionTracker.childStatuses, isEmpty);
+      expect(emitted, isEmpty);
     });
 
     test("deleting the root drops its children from the statuses", () async {
