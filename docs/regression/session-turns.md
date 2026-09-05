@@ -569,7 +569,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`;
   `shared/sesori_shared/lib/src/models/sesori/abort_session_request.dart`
 - Claude: `bridge/sesori_plugin_claude/lib/src/services/claude_session_service.dart`
-  (running tasks, scoped abort) and `test/claude_session_service_test.dart`;
+  (running tasks, scoped abort) and
+  `bridge/sesori_plugin_claude/test/claude_session_service_test.dart`;
   `client/module_app_ui/lib/src/features/session_detail/widgets/session_abort_scope_dialog.dart`
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - DeepSeek: `bridge/sesori_plugin_deepseek/` and the shared ACP plugin implementation

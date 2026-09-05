@@ -154,6 +154,6 @@ one permission-gated mutation and one repeated terminal update.
   `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
 - Claude sub-agents: `bridge/sesori_plugin_claude/lib/src/repositories/trackers/claude_tool_tracker.dart`,
   `claude_event_dispatcher.dart`, `claude_history_mapper.dart`, and
-  `test/claude_subtask_lifecycle_test.dart`
+  `bridge/sesori_plugin_claude/test/claude_subtask_lifecycle_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`
