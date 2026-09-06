@@ -10,10 +10,10 @@ below. Each row of the plan's verification matrix is reported as `Pass`,
 | --- | --- |
 | Commit | `2a20330dd9` (branch `periodic-cleanup-step-25`, on top of merged steps 1-24) |
 | Host | macOS on Apple Silicon (single machine) |
-| Bridge host | Same machine, headless bridge not started for this run |
-| Client platforms | None exercised: no simulator, device, or desktop app run |
-| Plugins | None started: no live backend, no network install |
-| Accounts | None used; no account, relay, or provider credential was exercised |
+| Bridge host | Same machine. A source bridge ran headlessly on dev slot 1 (debug port 9971, isolated data directory) |
+| Client platforms | iOS 26.5 simulator (`sesori-dev-1`, iPhone 17), debug build installed and driven. macOS desktop app built and launched but not observable |
+| Plugins | OpenCode 1.18.29 and Codex 0.153.4 started and ran real turns. All ten registered harnesses inspected. No runtime installed |
+| Accounts | Dev account `1@sesori.com` only, through the production relay. No user data touched |
 
 ## What was executed
 
@@ -34,41 +34,62 @@ Everything in this section ran to completion on the commit above.
 | Analyzer, Flutter: `app`, `desktop`, `module_app_ui`, `module_prego`, `design_catalog` | No issues |
 | Documentation link and source-reference validation | No broken relative link; every source path in all 25 regression guides resolves |
 
-## What was not executed
+## Live coverage executed
 
-No live plugin, relay, packaged artifact, simulator, device, or provider account
-was exercised in this run. Every matrix row whose complete boundary requires one
-is therefore reported below as `Partial` — its automated portion passed and its
-live portion is `Not run`, never silently converted to a pass.
+A second pass added live evidence on top of the automated suites:
+
+| Evidence | Result |
+| --- | --- |
+| Headless bridge start on dev slot 1 | Authenticated, debug server listening, relay connected |
+| Harness inspection, all ten registered harnesses | 8 `ready`, `copilot` `runtimeMissing`, `grok` `authenticationRequired`; nothing installed, no backend started by inspection |
+| OpenCode provisioning and bounded cold start | Path runtime selected, server started on a dynamic port, cold start completed inside its budget (no degraded or timeout line) |
+| Codex provisioning and bounded cold start | App server started on a dynamic websocket port, cold start completed inside its budget |
+| Live turn, OpenCode | Session created with a first prompt; user and assistant messages present in durable history; session returned to idle |
+| Live turn, Codex | Session created with a first prompt; user and assistant messages present in durable history |
+| iOS simulator, signed-in launch | App restored its session and reached Projects with the bridge shown online |
+| iOS simulator, navigation | Projects to session list to session detail, showing both live sessions and the full transcript with timestamps, agent/model/variant selector, composer and voice control |
+| iOS simulator, live turn from the client | Follow-up prompt typed and sent from the app streamed through relay to bridge to OpenCode, and its reply rendered in the transcript |
+| Bridge ownership | Launching a second bridge for the same account produced the documented takeover: `closeCode=4007 closeReason=replaced` and a long-backoff retry on the displaced bridge |
+
+## What was still not executed
+
+macOS desktop client end to end: the app builds and launches, but this host has
+no observable display for the run, so its navigation and rendering could not be
+verified and are `Not run`. Android, packaged artifacts, push providers, real
+provider accounts, and managed runtime installation were not exercised.
 
 ## Per-row results
 
 | Matrix row | Result | Evidence and gap |
 | --- | --- | --- |
-| Steps 2-3 — history/turns/connectivity | Partial | Automated cubit, buffer and history-mapper coverage passed inside the client and bridge suites above. Client end to end on macOS desktop and a mobile platform through a streaming backend: not run. |
+| Steps 2-3 — history/turns/connectivity | Partial | Automated cubit, buffer and history-mapper coverage passed. Client end to end on the iOS simulator now also passed: a prompt sent from the app streamed through relay, bridge and OpenCode, and the transcript rendered and persisted. The macOS desktop half is `Not run` (no observable display). |
 | Steps 4/8 — projects/archiving | Pass | Real-SQLite repository, service, identity, ordering and route suites passed in the bridge suite. The row's boundary is a representative faithful plugin, which the suite provides. |
 | Step 5 — creation and options | Pass | Real database fresh-install and schema-14 upgrade, discovery, malformed-JSON, invalidation, generation and path tests passed on a macOS SQLite host. The row declares fake plugin plus real DAO/repository/service as the full cache-policy boundary. |
-| Steps 6-7 — turns/history/questions | Partial | Translator, status-variant, message, stable-id, terminal-handoff, child-routing and wire round-trip suites passed for every producing plugin. The headless-bridge smoke through a representative live backend: not run. |
+| Steps 6-7 — turns/history/questions | Pass | Translator, status-variant, message, stable-id, terminal-handoff, child-routing and wire round-trip suites passed for every producing plugin, and the row's headless-bridge transcript/status smoke ran against two representative live backends (OpenCode and Codex), each finalizing its turn into durable history and returning to idle. |
 | Step 9 — tools/connectivity | Pass | Dropped-category OpenCode mapping fixtures, Codex MCP suppression, both mapper suites and the client decoder regressions passed. The row's boundary is automated plus consumer inspection. |
 | Step 10 — attachments/voice | Partial | Shared storage, temporary-directory cache/failure/retry, image-repository, retirement, atomic-replacement, concurrency, corruption and recording suites passed on macOS. Native directory binding smoke on macOS desktop, iOS and Android: not run, and the row states mock-only wiring cannot substitute. |
 | Step 11 — rename | Pass | Both cubit rename suites and the shared RenameSheet behavior and widget tests passed; the shared module and both shells analyze clean. The row needs no live rename claim. |
 | Step 12 — runtime installation | Partial | Runtime and all seven descriptor install/setup suites, manifest target mapping, checksum, failure, cancellation and client-closure coverage passed. Headless live installation on macOS arm64 for every managed-install consumer: not run. |
-| Step 13 — installation/setup lifecycle | Partial | Provisioning and descriptor suites for all seven managed plugins passed, including both Codex/OpenCode cold-start success, failure, timeout, late-failure and abort paths and OpenCode's skipped wait. Headless inspection/provisioning for all seven and the live bounded cold-start smoke: not run. |
+| Step 13 — installation/setup lifecycle | Pass | Provisioning and descriptor suites for all seven managed plugins passed, including both Codex/OpenCode cold-start success, failure, timeout, late-failure and abort paths. Headless inspection ran for all ten registered harnesses, and the live bounded cold-start smoke ran for both Codex and OpenCode on macOS arm64, each completing inside its budget. |
 | Step 14 — worktree/Codex folds | Pass | Worktree collision, failure and fallback tests plus the Codex command, turn-retry and scanner suites passed, with the real Git fixture proving repository creation. The row states no live backend is needed. |
-| Step 16 — shell composition | Partial | Both shell provider and screen tests and the fresh-cubit lifecycle assertions passed. Real navigation on macOS desktop and a mobile platform: not run. |
+| Step 16 — shell composition | Partial | Both shell provider and screen tests and the fresh-cubit lifecycle assertions passed. Real navigation through project, session list and session detail passed on the iOS simulator. The macOS desktop half is `Not run` (no observable display). |
 | Step 17 — account and onboarding | Partial | Real auth-owner tests with fake HTTP and secure storage passed, covering email and Apple completion, parse, non-2xx and empty failures, supersession, logout and persistence failure. Email client end to end on a mobile platform: not run. |
 | Steps 15/18-24 — tests, tooling, docs | Pass | Changed fixture suites and every owning analyzer passed; dependency resolution succeeded for the client, bridge and linter workspaces; documentation link and source-reference validation is clean across all 25 guides. |
 
 ## Cleanup
 
-This run created no session, project, worktree, account, or installed runtime,
-and mutated no user data. Test suites own and remove their temporary directories.
-No diagnostic residue was retained.
+The live pass used dev slot 1 with its own data directory and debug port. Its
+scratch project under `/tmp` and both smoke sessions were deleted through the
+product delete route, the project was hidden, the scratch directory removed, the
+bridge stopped and its port released, and the slot's simulator shut down without
+touching any other device. The desktop app instance launched for the attempt was
+quit. No user data, no other slot, and no other session's simulator was touched.
+No runtime was installed.
 
 ## Retirement status
 
-Six rows pass. Seven are `Partial`: their automated coverage passed and their
-live, device, or packaged portion was not run. Under the plan's own rule, missing
+Eight rows pass. Five are `Partial`: their automated coverage passed and a
+live, desktop, device or packaged portion remains unexecuted. Under the plan's own rule, missing
 required coverage keeps the plan active, and reducing the matrix requires
 explicit user acceptance recorded in `PLAN.md`. The plan therefore stays in
 `.plan/active/` on the strength of this run alone.

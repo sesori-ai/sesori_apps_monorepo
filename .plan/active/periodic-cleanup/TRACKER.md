@@ -614,12 +614,21 @@ Step 25 executes the recorded matrix against this reconciled state.
   module_prego 275, desktop 112, module_auth 109; analyzers clean for every
   pure-Dart and Flutter package; documentation links and every regression-guide
   source path resolve.
-- Six matrix rows reach Pass: steps 4/8, 5, 9, 11, 14 and the 15/18-24 tooling
-  row, whose declared boundaries are automated or fixture-based.
-- Seven rows are Partial. Their automated coverage passed; their live-plugin,
-  client end-to-end, device or packaged portions were not run, because this run
-  started no backend, simulator, device, relay connection, or account. Those
-  portions are recorded as Not run rather than converted into passes.
+- After the live pass the user authorized, eight matrix rows reach Pass: steps
+  4/8, 5, 6-7, 9, 11, 13, 14 and the 15/18-24 tooling row. Steps 6-7 and 13
+  moved from Partial once their live-backend smokes ran.
+- Live pass on dev slot 1: headless bridge authenticated and connected; all ten
+  registered harnesses inspected without installing anything; OpenCode and Codex
+  each provisioned, cold-started inside their budget and completed a real turn
+  into durable history; an iOS 26.5 simulator ran the app signed in, navigated
+  project to session list to detail, and sent a follow-up prompt that streamed
+  back through relay, bridge and OpenCode. Launching a second bridge for the
+  account reproduced the documented `4007 replaced` takeover.
+- Five rows remain Partial. Their automated coverage passed; the outstanding
+  portions are the macOS desktop client runs (this host has no observable
+  display), Android, native directory binding on devices, managed runtime
+  installation, and packaged or provider-account coverage. Those are recorded as
+  Not run rather than converted into passes.
 - Title changed from the planned "run coverage and retire the plan": the
   coverage ran, but retirement did not happen, and a title claiming it would
   misreport this step.
