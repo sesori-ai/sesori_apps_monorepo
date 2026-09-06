@@ -67,7 +67,7 @@ No diagnostic residue was retained.
 
 ## Retirement status
 
-Five rows pass. Eight are `Partial`: their automated coverage passed and their
+Six rows pass. Seven are `Partial`: their automated coverage passed and their
 live, device, or packaged portion was not run. Under the plan's own rule, missing
 required coverage keeps the plan active, and reducing the matrix requires
 explicit user acceptance recorded in `PLAN.md`. The plan therefore stays in
