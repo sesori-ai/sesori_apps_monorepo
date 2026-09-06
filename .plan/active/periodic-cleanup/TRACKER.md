@@ -32,7 +32,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
 | 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Merged | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
 | 24/25 | 🌿 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | In review | [#1341](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1341) |
-| 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
+| 25/25 | 🌿 [periodic-cleanup] verify: record the executed matrix results [step 25/25] | In review | PENDING |
 
 ## Evidence and execution
 
@@ -602,3 +602,28 @@ Corpus-wide checks, all clean at this commit:
   confirm the added cold-start behaviour matches the implementation.
 
 Step 25 executes the recorded matrix against this reconciled state.
+
+## Step 25 execution — 2026-09-05
+
+- Results recorded in [verification/RESULTS.md](verification/RESULTS.md) per
+  matrix row, with the execution context, the evidence that ran, and what did
+  not.
+- Executed at `2a20330dd9`: bridge `make test` 5,489 passed / 3 skipped across
+  all 16 modules and `make analyze` clean across all 16; client suites
+  module_core 1,565, app 682, module_desktop_core 261, module_app_ui 302,
+  module_prego 275, desktop 112, module_auth 109; analyzers clean for every
+  pure-Dart and Flutter package; documentation links and every regression-guide
+  source path resolve.
+- Five matrix rows reach Pass: steps 4/8, 5, 9, 11, 14 and the 15/18-24 tooling
+  row, whose declared boundaries are automated or fixture-based.
+- Eight rows are Partial. Their automated coverage passed; their live-plugin,
+  client end-to-end, device or packaged portions were not run, because this run
+  started no backend, simulator, device, relay connection, or account. Those
+  portions are recorded as Not run rather than converted into passes.
+- Title changed from the planned "run coverage and retire the plan": the
+  coverage ran, but retirement did not happen, and a title claiming it would
+  misreport this step.
+- Retirement is therefore not executed by this step. The plan's own rule keeps
+  it active while required coverage is missing, and reducing the matrix needs
+  explicit user acceptance recorded in PLAN.md. The plan directory stays under
+  `.plan/active/`.
