@@ -32,7 +32,7 @@ asked to start working the plan; steps execute in order from step 2.
 | 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
 | 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Merged | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
 | 24/25 | 🌿 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | In review | [#1341](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1341) |
-| 25/25 | 🌿 [periodic-cleanup] verify: record the executed matrix results [step 25/25] | In review | [#1342](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1342) |
+| 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | In review | [#1342](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1342) |
 
 ## Evidence and execution
 
@@ -629,10 +629,21 @@ Step 25 executes the recorded matrix against this reconciled state.
   display), Android, native directory binding on devices, managed runtime
   installation, and packaged or provider-account coverage. Those are recorded as
   Not run rather than converted into passes.
-- Title changed from the planned "run coverage and retire the plan": the
-  coverage ran, but retirement did not happen, and a title claiming it would
-  misreport this step.
+- Title restored to the planned "run coverage and retire the plan" once the
+  user accepted the reduced matrix: the coverage ran and retirement followed.
 - Retirement is therefore not executed by this step. The plan's own rule keeps
   it active while required coverage is missing, and reducing the matrix needs
   explicit user acceptance recorded in PLAN.md. The plan directory stays under
   `.plan/active/`.
+
+## Retirement — 2026-09-06
+
+- The user accepted the reduced matrix and directed retirement after reviewing
+  the step 25 results: eight rows Pass, five Partial. The acceptance is recorded
+  in PLAN.md next to the retirement rule that requires it, naming exactly which
+  coverage is retired unexecuted rather than passed.
+- Plan directory moved from `.plan/active/periodic-cleanup/` to
+  `.plan/completed/periodic-cleanup/`. The only inbound references, from
+  `docs/cleanup-audit-2026-09-04.md`, were repointed.
+- All 25 steps merged or in review; no step was skipped, and no matrix row was
+  reported as passing on coverage that did not run.
