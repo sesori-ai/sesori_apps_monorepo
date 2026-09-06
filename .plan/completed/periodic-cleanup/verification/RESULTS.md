@@ -55,8 +55,11 @@ A second pass added live evidence on top of the automated suites:
 
 macOS desktop client end to end: the app builds and launches, but this host has
 no observable display for the run, so its navigation and rendering could not be
-verified and are `Not run`. Android, packaged artifacts, push providers, real
-provider accounts, and managed runtime installation were not exercised.
+verified and are `Not run`. The step 17 email client end to end was also not
+exercised: the simulator restored an existing session rather than signing in
+with email. Android and any second mobile platform, on-device native directory
+binding, managed runtime installation, packaged artifacts, push providers, and
+real provider accounts were not exercised either.
 
 ## Per-row results
 

@@ -626,15 +626,17 @@ Step 25 executes the recorded matrix against this reconciled state.
   account reproduced the documented `4007 replaced` takeover.
 - Five rows remain Partial. Their automated coverage passed; the outstanding
   portions are the macOS desktop client runs (this host has no observable
-  display), Android, native directory binding on devices, managed runtime
+  display), Android and any second mobile platform, native directory binding on
+  devices, the step 17 email client end to end on a mobile platform (the
+  simulator restored an existing session instead of signing in), managed runtime
   installation, and packaged or provider-account coverage. Those are recorded as
   Not run rather than converted into passes.
 - Title restored to the planned "run coverage and retire the plan" once the
   user accepted the reduced matrix: the coverage ran and retirement followed.
-- Retirement is therefore not executed by this step. The plan's own rule keeps
-  it active while required coverage is missing, and reducing the matrix needs
-  explicit user acceptance recorded in PLAN.md. The plan directory stays under
-  `.plan/active/`.
+- Retirement was blocked at the moment this run finished, because the plan's own
+  rule keeps it active while required coverage is missing. The user then
+  accepted the reduced matrix, which the same rule allows, and the retirement
+  below records what followed.
 
 ## Retirement — 2026-09-06
 
