@@ -59,11 +59,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   within it reports connected, failing within it reports degraded, and exceeding
   it starts the harness degraded while the cold start keeps running in the
   background, where a later failure is logged rather than surfacing as an
-  unhandled error. OpenCode skips the bounded wait only when its attach probe
-  found no reachable server: it reports degraded immediately and runs the cold
-  start in the background, because an unreachable server's cold start has no
-  bound of its own. An abort observed after the cold start still rolls back
-  everything the start acquired.
+  unhandled error. OpenCode skips the bounded wait whenever it holds no server
+  handle — its attach probe found nothing reachable, or managed provisioning
+  produced no runnable binary — and instead reports degraded immediately and
+  retries the cold start in the background, because a cold start against a
+  server that is not there has no bound of its own. An abort observed after the
+  cold start still rolls back everything the start acquired.
 - Grok Build is a direct-CLI ACP v1 harness with no managed install. An explicit
   `--grok-bin` path is authoritative; otherwise setup uses `grok` from PATH and
   requires version `1.0.5` or newer. Setup inspection and pre-start resolution
