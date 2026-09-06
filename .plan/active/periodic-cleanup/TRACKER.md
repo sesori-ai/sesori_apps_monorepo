@@ -30,8 +30,8 @@ asked to start working the plan; steps execute in order from step 2.
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Merged | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
 | 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
-| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | In review | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
-| 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
+| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Merged | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
+| 24/25 | 🌿 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | In review | PENDING |
 | 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
 
 ## Evidence and execution
@@ -591,5 +591,14 @@ Corpus-wide checks, all clean at this commit:
   and no file without an entry.
 - No verbatim duplication between any guide's Required Behavior and its level
   table.
+
+- Line split: `git diff --numstat ca1bc7deaa..7770e4e5af -- 'docs/regression/*.md'`
+  gives 22+/9-. `7770e4e5af` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head. That is
+  below PLAN.md's 150-300 estimate for this step, because the behaviour-changing
+  PRs updated their own guides as the plan required; the reconciliation found one
+  undocumented behaviour rather than a backlog.
+- Title kept from this tracker; the planned 🌱 became 🌿 because review has to
+  confirm the added cold-start behaviour matches the implementation.
 
 Step 25 executes the recorded matrix against this reconciled state.
