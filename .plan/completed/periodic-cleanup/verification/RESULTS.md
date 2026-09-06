@@ -89,7 +89,11 @@ No runtime was installed.
 ## Retirement status
 
 Eight rows pass. Five are `Partial`: their automated coverage passed and a
-live, desktop, device or packaged portion remains unexecuted. Under the plan's own rule, missing
-required coverage keeps the plan active, and reducing the matrix requires
-explicit user acceptance recorded in `PLAN.md`. The plan therefore stays in
-`.plan/active/` on the strength of this run alone.
+live, desktop, device or packaged portion remains unexecuted.
+
+The plan's rule keeps it active while required coverage is missing unless the
+user explicitly accepts a reduced matrix. That acceptance was given on
+2026-09-06 and is recorded in [PLAN.md](../PLAN.md), which enumerates the
+coverage retired unexecuted. The plan was therefore moved to
+`.plan/completed/periodic-cleanup/` on the strength of this record plus that
+acceptance, not on this run alone.

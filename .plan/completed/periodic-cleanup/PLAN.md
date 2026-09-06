@@ -731,6 +731,9 @@ retired **unexecuted**, not passed:
   execution host had no observable display.
 - Android and any second mobile platform.
 - On-device native directory binding for attachments and voice (step 10).
+- Email client end to end on a mobile platform (step 17). The simulator run
+  restored an existing session rather than exercising an email sign-in, so this
+  row's client boundary was never executed.
 - Managed runtime installation on macOS arm64 for every managed-install consumer
   (step 12).
 - Packaged, store, push-provider and real provider-account coverage.
