@@ -324,12 +324,13 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   `bridge/app/lib/src/services/` (session creation, mutation, events,
   options, worktree), the create-session and options handlers, and their tests
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
-- DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/`,
-  `lib/src/services/`, and package tests
-- Copilot: `bridge/sesori_plugin_copilot/lib/src/services/`,
-  `lib/src/repositories/`, and package tests
+- DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/` and
+  `bridge/sesori_plugin_deepseek/lib/src/services/`, and package tests
+- Copilot: `bridge/sesori_plugin_copilot/lib/src/services/` and
+  `bridge/sesori_plugin_copilot/lib/src/repositories/`, and package tests
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
-  `lib/src/repositories/`, `lib/src/trackers/`, and package tests
+  `bridge/sesori_plugin_grok/lib/src/repositories/`,
+  `bridge/sesori_plugin_grok/lib/src/trackers/`, and package tests
 - Contract:
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`

@@ -716,7 +716,29 @@ failure signals, removing obsolete references without tombstones. Step 25
 records Pass/Partial/Fail/Blocked/Not run per matrix row with commit/build,
 platform/plugin, evidence and cleanup. Move to `.plan/completed/periodic-cleanup/`
 only after required coverage passes. Reducing this matrix requires explicit
-user acceptance recorded here. No production release/signing test is implied:
+user acceptance recorded here.
+
+**Matrix reduction accepted by the user on 2026-09-06.** Step 25 executed the
+automated suites for every row and a live pass covering the headless bridge,
+harness inspection for all ten registered harnesses, OpenCode and Codex
+provisioning, bounded cold start and real turns, and an iOS simulator run
+through project, session list, session detail and a client-sent streaming turn.
+That left eight rows at Pass and five at Partial. The user accepted the five
+Partial rows as sufficient and directed retirement, so the following coverage is
+retired **unexecuted**, not passed:
+
+- macOS desktop client end to end (steps 2-3 and 16 desktop halves) — the
+  execution host had no observable display.
+- Android and any second mobile platform.
+- On-device native directory binding for attachments and voice (step 10).
+- Email client end to end on a mobile platform (step 17). The simulator run
+  restored an existing session rather than exercising an email sign-in, so this
+  row's client boundary was never executed.
+- Managed runtime installation on macOS arm64 for every managed-install consumer
+  (step 12).
+- Packaged, store, push-provider and real provider-account coverage.
+
+[verification/RESULTS.md](verification/RESULTS.md) holds the per-row record. No production release/signing test is implied:
 no packaging or shipped runtime artifact changes.
 
 ## Decisions, overlap, and review

@@ -30,9 +30,9 @@ asked to start working the plan; steps execute in order from step 2.
 | 20/25 | 🌿 [periodic-cleanup] tooling: remove verified unused dependencies and symbols [step 20/25] | Merged | [#1333](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1333) |
 | 21/25 | 🌿 [periodic-cleanup] docs: simplify repository documentation [step 21/25] | Merged | [#1335](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1335) |
 | 22/25 | 🌿 [periodic-cleanup] docs: simplify client regression guides [step 22/25] | Merged | [#1339](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1339) |
-| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | In review | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
-| 24/25 | 🌱 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | Proposed | — |
-| 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | Proposed | — |
+| 23/25 | 🌿 [periodic-cleanup] docs: simplify bridge regression guides [step 23/25] | Merged | [#1340](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1340) |
+| 24/25 | 🌿 [periodic-cleanup] docs: reconcile cleanup regression coverage [step 24/25] | In review | [#1341](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1341) |
+| 25/25 | 🌿 [periodic-cleanup] verify: run coverage and retire the plan [step 25/25] | In review | [#1342](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1342) |
 
 ## Evidence and execution
 
@@ -553,3 +553,99 @@ than the plan's size-based expectation, and the audit is the deliverable:
   removing. No reduction target was imposed and no limitation was invented, so
   the measured total is the honest result rather than a shortfall to be padded.
   The audit record above is this step's substantive output.
+
+## Step 24 execution — 2026-09-05
+
+Reconciliation of all 25 regression guides against the series' final
+implementation, plus the README and index.
+
+Crosswalk — every implementation step checked against the feature documents the
+plan's verification matrix assigns to it:
+
+| Steps | Documents | Result |
+| --- | --- | --- |
+| 2-3 | session-history-and-recovery, session-turns, bridge-connectivity | Already current: the refresh/catch-up invariants (streaming text keeps its accumulated content; a message or part arriving during a refresh is not lost) are stated as required behavior and as failure signals. |
+| 4, 8 | projects-and-sessions, session-archiving-and-deletion | No doc change owed; both steps changed test setup and query scoping without altering observable behavior. |
+| 5 | session-creation-and-options | Already current: the guide describes the cache's read intents and freshness window and never mentions the persisted completeness column removed in that step. |
+| 6-7 | session-turns, session-history-and-recovery, questions-and-permissions | No doc change owed; typed status and message values replaced serialize/reparse internals behind unchanged wire output. |
+| 9 | tools-and-file-changes, bridge-connectivity | Current after step 23 removed the wire-union tombstone; the forwarded and suppressed event kinds are listed and the older-bridge behavior is stated. |
+| 10 | attachments-and-images, voice-input | Already current: shared file-backed storage over each shell's temporary-directory lookup, atomic writes, and the accepted temp-file residue are stated. |
+| 11 | projects-and-sessions | Already current: rename waits for the bridge response, restores on failure, and reads back authoritatively. |
+| 12-13 | plugin-runtime-installation, plugin-setup-and-lifecycle | **Gap found and closed.** The bounded cold start introduced in step 13 was undocumented. Added the behavior (Codex and OpenCode wait 15 seconds; success reports connected, failure degraded, budget exhaustion starts degraded while the cold start continues and logs any late failure; OpenCode skips the bounded wait whenever it holds no server handle, from a failed attach probe or from provisioning with no runnable binary; an abort after the cold start still rolls back the start), its L2 automated coverage, and the matching failure signal. Verified against `managed_runtime_cold_start_service.dart` and both descriptors rather than written from the plan. |
+| 14 | projects-and-sessions, session-turns, tools-and-file-changes | Already current: dedicated-worktree fallback persists as in-place with the resolved HEAD base commit. |
+| 16 | projects-and-sessions, session-creation-and-options, session-history-and-recovery | No doc change owed; cubit composition moved without changing route ids, ownership or presentation. |
+| 17 | account-and-onboarding | Current: the malformed/non-2xx login failure signal landed with step 17 itself. |
+| 15, 18-20 | none | No product behavior; step 20's removed localization keys and symbols are referenced by no guide, checked by search. |
+
+Corpus-wide checks, all clean at this commit:
+
+- Every backtick source path in all 25 guides resolves. Seven references were
+  relative continuations or elisions a reader could not open; they now carry
+  their full path.
+- No broken relative link in `docs/regression/`.
+- Every Sesori class and file identifier named in a guide still exists in the
+  codebase, checked mechanically. The only non-resolving identifiers are
+  `DSH_HOME`, DeepSeek's own environment variable, which is correct as external
+  documentation.
+- Feature index: 25 guides, 25 entries, alphabetical, no entry without a file
+  and no file without an entry.
+- No verbatim duplication between any guide's Required Behavior and its level
+  table.
+
+- Line split: `git diff --numstat ca1bc7deaa..7770e4e5af -- 'docs/regression/*.md'`
+  gives 22+/9-. `7770e4e5af` is the last commit that changed a guide, and the
+  pathspec excludes this tracker, so the figure holds at any later head. That is
+  below PLAN.md's 150-300 estimate for this step, because the behaviour-changing
+  PRs updated their own guides as the plan required; the reconciliation found one
+  undocumented behaviour rather than a backlog.
+- Title kept from this tracker; the planned 🌱 became 🌿 because review has to
+  confirm the added cold-start behaviour matches the implementation.
+
+Step 25 executes the recorded matrix against this reconciled state.
+
+## Step 25 execution — 2026-09-05
+
+- Results recorded in [verification/RESULTS.md](verification/RESULTS.md) per
+  matrix row, with the execution context, the evidence that ran, and what did
+  not.
+- Executed at `2a20330dd9`: bridge `make test` 5,489 passed / 3 skipped across
+  all 16 modules and `make analyze` clean across all 16; client suites
+  module_core 1,565, app 682, module_desktop_core 261, module_app_ui 302,
+  module_prego 275, desktop 112, module_auth 109; analyzers clean for every
+  pure-Dart and Flutter package; documentation links and every regression-guide
+  source path resolve.
+- After the live pass the user authorized, eight matrix rows reach Pass: steps
+  4/8, 5, 6-7, 9, 11, 13, 14 and the 15/18-24 tooling row. Steps 6-7 and 13
+  moved from Partial once their live-backend smokes ran.
+- Live pass on dev slot 1: headless bridge authenticated and connected; all ten
+  registered harnesses inspected without installing anything; OpenCode and Codex
+  each provisioned, cold-started inside their budget and completed a real turn
+  into durable history; an iOS 26.5 simulator ran the app signed in, navigated
+  project to session list to detail, and sent a follow-up prompt that streamed
+  back through relay, bridge and OpenCode. Launching a second bridge for the
+  account reproduced the documented `4007 replaced` takeover.
+- Five rows remain Partial. Their automated coverage passed; the outstanding
+  portions are the macOS desktop client runs (this host has no observable
+  display), Android and any second mobile platform, native directory binding on
+  devices, the step 17 email client end to end on a mobile platform (the
+  simulator restored an existing session instead of signing in), managed runtime
+  installation, and packaged or provider-account coverage. Those are recorded as
+  Not run rather than converted into passes.
+- Title restored to the planned "run coverage and retire the plan" once the
+  user accepted the reduced matrix: the coverage ran and retirement followed.
+- Retirement was blocked at the moment this run finished, because the plan's own
+  rule keeps it active while required coverage is missing. The user then
+  accepted the reduced matrix, which the same rule allows, and the retirement
+  below records what followed.
+
+## Retirement — 2026-09-06
+
+- The user accepted the reduced matrix and directed retirement after reviewing
+  the step 25 results: eight rows Pass, five Partial. The acceptance is recorded
+  in PLAN.md next to the retirement rule that requires it, naming exactly which
+  coverage is retired unexecuted rather than passed.
+- Plan directory moved from `.plan/active/periodic-cleanup/` to
+  `.plan/completed/periodic-cleanup/`. The only inbound references, from
+  `docs/cleanup-audit-2026-09-04.md`, were repointed.
+- All 25 steps merged or in review; no step was skipped, and no matrix row was
+  reported as passing on coverage that did not run.

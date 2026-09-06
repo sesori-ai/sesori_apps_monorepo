@@ -74,7 +74,7 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Sources
 
-- `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `app/npm/`
+- `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)

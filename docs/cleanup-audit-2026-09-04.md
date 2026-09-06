@@ -1,9 +1,9 @@
 # Periodic cleanup investigation — 2026-09-04
 
 Baseline: `480d82f090`. Investigation and proposed series:
-[PLAN.md](../.plan/active/periodic-cleanup/PLAN.md),
-[tracker](../.plan/active/periodic-cleanup/TRACKER.md),
-[reproducible evidence](../.plan/active/periodic-cleanup/evidence/README.md).
+[PLAN.md](../.plan/completed/periodic-cleanup/PLAN.md),
+[tracker](../.plan/completed/periodic-cleanup/TRACKER.md),
+[reproducible evidence](../.plan/completed/periodic-cleanup/evidence/README.md).
 
 Every file reference below is as of that baseline. Some no longer resolve,
 because the series has since executed the findings that named them — read this
@@ -394,7 +394,7 @@ externally installed harnesses alone.
 
 ## Disposition and deliberately retained complexity
 
-The [plan](../.plan/active/periodic-cleanup/PLAN.md) prioritizes A, B, C and D1/D3/D4,
+The [plan](../.plan/completed/periodic-cleanup/PLAN.md) prioritizes A, B, C and D1/D3/D4,
 then E1/E3/E5. E2 remains a measurable cost hypothesis; E4 is valid duplication
 but a correct ordering boundary is not worth churn solely to save a few queue
 fields. D2 needs separate architecture scope. These are explicit deferrals,
@@ -412,8 +412,8 @@ not justify splitting the orchestrator, session cubit, or ACP implementation.
 
 At the user's request, useful findings from
 [PR #1296](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1296) are now
-included in the [single cleanup plan](../.plan/active/periodic-cleanup/PLAN.md).
-The [source-step ledger](../.plan/active/periodic-cleanup/CONSOLIDATION.md) retains
+included in the [single cleanup plan](../.plan/completed/periodic-cleanup/PLAN.md).
+The [source-step ledger](../.plan/completed/periodic-cleanup/CONSOLIDATION.md) retains
 every disposition, including deferred architecture/compatibility decisions.
 
 Added executable work covers provisioning composition, bounded cold-start
