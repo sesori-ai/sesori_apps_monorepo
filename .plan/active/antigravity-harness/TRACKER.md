@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-7 merged; Step 8.a reviewed and synchronized for publication
+- **Status:** Steps 1-7 merged; Step 8.a open for review
 - **Base:** synced with main `dfe7913e67` after Step 7.c merge
 - **Current branch:** `antigravity-harness-step-8a-recovery-and-acp-seams`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -18,8 +18,8 @@
   [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a),
   [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c)
-- **Open PR:** Step 8.a publication prepared
-- **Next action:** publish and monitor Step 8.a; begin only Step 8.b locally
+- **Open PR:** [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a)
+- **Next action:** monitor Step 8.a; begin only Step 8.b locally
 
 ## Fixed PR Series
 
@@ -246,7 +246,7 @@
 - [x] Integrated predecessor output fixes through `2b6342653e`; owning Antigravity analysis remains clean.
 - [x] PR #1357 merged with 16/16 CI. Synced with main `dfe7913e67`; only documentation conflicted and relevant
   package source/tests plus lockfile remain unchanged by this synchronization. No unchanged passing suites rerun.
-- [ ] Parent-owned Step 8.a publication.
+- [x] Parent published Step 8.a as PR #1359 and started its monitor.
 - Concrete plugin/descriptor composition and lifecycle integration remain 8.b; activation remains Step 9.
 
 ## Architecture Reviews
