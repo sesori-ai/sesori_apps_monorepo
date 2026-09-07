@@ -8,11 +8,11 @@ No database/wire migration, analytics event, managed installation, OAuth attempt
 
 - One existing ACP lifecycle owns live processes, turn lanes, pending input and replay clients. Composition injects
   required peers; options use the actual connection's configuration repository per call. No scratch session is used.
-- Fresh options expose one primary agent and no models. Real new sessions establish the account default; load/resume
-  do not redefine it. Explicit models use advertised IDs; every applied turn uses mode `default`. Reset clears catalog
-  and default together. Commands use the existing notification snapshot.
-- Metadata recovery runs on import/cold attribution, not ordinary DB catalog reads. DB/live bindings override recovery
-  regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
+- Fresh options expose one primary agent and no models. Real new sessions establish the picker default; load/resume
+  do not redefine it. Explicit models are validated before queue admission and at dispatch; every turn uses mode
+  `default`. Reset clears picker state. Message model/provider stamping follows in 8.c before activation.
+- Metadata recovery runs once per new live connection before it is advertised, not during ordinary enumeration or DB
+  catalog reads. Imports consume those warmed hints. DB/live bindings override recovery regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
 - Cancellation/deletion settle the target's pending input without altering other sessions. Local deletion never removes
   Google metadata/history. Existing bridge tombstones, not plugin-side history deletion, own reimport exclusion.
 - Live/replay receive fresh pre-decoding policies and the same normalizer. The authorization classifier holds only the
@@ -29,11 +29,12 @@ No database/wire migration, analytics event, managed installation, OAuth attempt
 
 ## Failure signals and coverage
 
-Wrong cwd, replay leaking into live state, lost models/defaults, invented approvals, lost original failure stacks,
+Wrong cwd, repeated metadata scans during enumeration, replay leaking into live state, stale model admission,
+invented approvals, lost original failure stacks,
 secret log output, auth gates accumulating image lines, or deletion touching Google files are regressions.
 
-- **L1/L2:** `antigravity_plugin_test.dart`: inert options; personal handshake/new/default-mode/model writes;
-  both residency paths; cold metadata and DB precedence; 121-message replay/two sessions; native output parity.
+- **L1/L2:** `antigravity_plugin_test.dart`: inert options; pre-queue model rejection; personal handshake/new/mode/model
+  writes; once-per-connection recovery and DB precedence; both residency paths; 121-message replay/two sessions.
 - **L3/L4:** same composed tests cover exact questions, active cancellation/delete isolation, crash/reset/reconnect,
   global interruption, idempotent dispose, late-spawn reaping, enterprise rejection and live/replay stale-auth privacy.
   `antigravity_output_composer_test.dart` covers all auth-line splits and large valid image-bearing JSON;

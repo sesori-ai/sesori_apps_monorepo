@@ -265,10 +265,9 @@
   views, typed initialization mapping, original reset/error source stacks, and no new cleanup owner.
 - [x] Fake composed lifecycle, long history/two sessions, active cancel/delete/questions, crash/reset/reconnect,
   interruption, late spawn, privacy and image-bearing JSON evidence; indexed regression documentation.
-- [x] 34 Antigravity + 35 ACP + 14 transport tests pass (83 total); Antigravity, ACP, Runtime and Codex analyzers
-  clean with fatal infos. Logs: `/tmp/step8b-{antigravity,acp,runtime}-tests.log` and corresponding analysis logs;
-  Final changed plugin/options tests: `/tmp/step8b-final-options-plugin-tests.log` (24; supersedes 22 of the earlier
-  32 Antigravity cases). Codex: `/tmp/step8b-codex-analysis.log`. No generation/dependency changes were needed.
+- [x] Final source-named evidence: 11 `antigravity_plugin` + 13 `antigravity_session_options_service` (24 changed),
+  plus 10 unchanged `antigravity_output_composer` tests = 34 distinct Antigravity; ACP/transport remain 35 + 14.
+  Review fixes reran the 24 changed cases and both owning analyzers; no generation/dependency changes.
 - Full local net cap against `14169bd6e3`: 1,284 additions + 81 deletions = 1,365 lines across 23 files,
   including tests/docs/planning. Parent must remeasure after main synchronization/publication edits.
 - [x] First actual architecture review approved all 23 files at `4394b735a6` against `14169bd6e3` (1,365 lines),
@@ -276,6 +275,10 @@
 - [x] Synced with main `6959375add`; only documentation conflicted. Source/tests are unchanged from the reviewed
   checkpoint, so unchanged passing suites were not rerun.
 - [x] Parent published Step 8.b as PR #1360 and started its monitor; only Step 8.c may proceed locally.
+- Review fixes validate model IDs before prompt/command queue admission and recover metadata once per cold live
+  connection rather than ordinary enumeration. Message model/provider stamping moved to 8.c to preserve the full
+  1,500-line cap; it remains required before activation. Corrected publication scope is 1,442 lines before final
+  checkpoint metadata.
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
   Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
   No Google history mutation, ambient credentials or active harness inventory were introduced.
