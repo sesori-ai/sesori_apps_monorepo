@@ -554,8 +554,9 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Scoped-stop replacement
 
+The [replacement design](followups/deepseek-stop-replacement.md) fixes both slices' ownership and compatibility flow.
 PR #1356 closed without merge; its former step 4/4 is superseded. Step 4/5
-installs only the verified native contract/input consumer and keeps current scoped
+lands only the verified native contract/input consumer and keeps current scoped
 stop behavior. Step 5/5 will use one ACP-owned operation, native atomic authority,
 and no residual-ID handshake or new long-lived state. Final phone/desktop E2E
 remains user-owned; finish DeepSeek before Codex. Automatic managed-runtime upgrade
