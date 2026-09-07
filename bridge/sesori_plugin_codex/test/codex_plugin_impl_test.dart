@@ -380,6 +380,31 @@ void main() {
       );
       await secondAsk.timeout(const Duration(seconds: 2));
 
+      final asyncAsk = plugin.events.where((event) => event is BridgeSseQuestionAsked).first;
+      socket.add(
+        jsonEncode({
+          "jsonrpc": "2.0",
+          "method": "item/completed",
+          "params": {
+            "threadId": "t-running",
+            "item": {
+              "type": "agentMessage",
+              "id": "async-question",
+              "text": "Which interface?",
+              "delivery": "async",
+              "questions": [
+                {
+                  "title": "Which interface?",
+                  "options": ["CLI", "Desktop"],
+                },
+              ],
+            },
+          },
+        }),
+      );
+      await asyncAsk.timeout(const Duration(seconds: 2));
+      expect(await plugin.getPendingQuestions(sessionId: "t-running"), hasLength(1));
+
       final disconnectWorkStates = <PluginWorkState>[];
       final workStateSubscription = plugin.workState.listen(disconnectWorkStates.add);
       addTearDown(workStateSubscription.cancel);
@@ -397,6 +422,7 @@ void main() {
         "t-running",
       );
       expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(await plugin.getPendingQuestions(sessionId: "t-running"), isEmpty);
       expect(
         await plugin.getPendingPermissions(sessionId: "t-running"),
         isEmpty,

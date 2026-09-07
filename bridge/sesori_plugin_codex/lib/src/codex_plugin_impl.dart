@@ -267,6 +267,12 @@ class CodexPlugin._({
     _eventMapper.resetLiveItemTimes();
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
+    unawaited(
+      _serverRequestSubscription?.cancel().catchError((Object error, StackTrace stackTrace) {
+        Log.w("[codex] failed to cancel server-request subscription after disconnect", error, stackTrace);
+      }),
+    );
+    _serverRequestSubscription = null;
     _approvalRegistry = null;
     unawaited(registry?.dispose());
     _sessionStatuses.clear();
