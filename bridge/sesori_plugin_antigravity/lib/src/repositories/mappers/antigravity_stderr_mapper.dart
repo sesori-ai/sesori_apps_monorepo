@@ -4,8 +4,8 @@ import "dart:convert";
 /// ACP supplies bounded, complete lines before any diagnostic logger sees them.
 class const AntigravityStderrMapper() {
   static final _oauthUrl = RegExp(
-    r"accounts\.google\.com|oauth2\.googleapis\.com|"
-    r"https?://(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?/\S*\?",
+    r"https?://(?:accounts\.google\.com|oauth2\.googleapis\.com|127\.0\.0\.1|localhost|\[::1\])"
+    r"(?::\d+)?/\S*\?",
     caseSensitive: false,
   );
   static final _credentialField = RegExp(

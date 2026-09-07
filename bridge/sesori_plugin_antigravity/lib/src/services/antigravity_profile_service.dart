@@ -52,14 +52,12 @@ class AntigravityProfileService({
       "BROWSER": command,
       "PYTHONUNBUFFERED": "1",
     };
-    if (!await _repository.verifyBrowserCommand(
+    await _repository.verifyBrowserCommand(
       budget: budget,
       executable: _browserExecutable,
       arguments: [..._browserPrefixArguments, BrowserNoop.argument, browserPreflightUrl],
       environment: environment,
-    )) {
-      throw const AntigravityProfileException(message: "Browser suppression could not be verified", cause: null);
-    }
+    );
     budget.remaining;
     await _repository.preparePersonalOauth(budget: budget);
     budget.remaining;

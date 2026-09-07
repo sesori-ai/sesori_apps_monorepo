@@ -341,14 +341,20 @@ void main() {
 
   test("exit failure or any output blocks preparation", () async {
     for (final result in [
-      const CommandResult(exitCode: 1, stdout: "", stderr: ""),
+      const CommandResult(exitCode: 1, stdout: "", stderr: "synthetic loader failure"),
       const CommandResult(exitCode: 0, stdout: "unexpected", stderr: ""),
       const CommandResult(exitCode: 0, stdout: "", stderr: "unexpected"),
     ]) {
       commands.preflight = result;
       await expectLater(
         service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
-        throwsA(isA<AntigravityProfileException>()),
+        throwsA(
+          isA<AntigravityProfileException>()
+              .having((error) => error.cause, "original command result", same(result))
+              .having((error) => error.message, "operation", contains("/bridge (exit code ${result.exitCode})"))
+              .having((error) => error.toString(), "safe presentation", isNot(contains("synthetic loader failure")))
+              .having((error) => error.toString(), "safe output presentation", isNot(contains("unexpected"))),
+        ),
       );
     }
     expect(events, everyElement("preflight"));

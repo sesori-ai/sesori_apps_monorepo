@@ -27,7 +27,8 @@ void main() {
       "authorization_response=https://example.invalid",
       "state%3Dsynthetic",
       "Open the following link to authenticate the ACP server: malformed",
-      "token endpoint https://oauth2.googleapis.com/token",
+      "token endpoint https://oauth2.googleapis.com/token?client_id=synthetic",
+      "refresh-token: synthetic-secret",
     ]) {
       expect(mapper.consumeLine(line: utf8.encode(line)), isTrue, reason: line);
     }
@@ -46,6 +47,11 @@ void main() {
       "process exited with code 1",
       "process exit code: 23",
       "connection state: failed",
+      "DNS lookup failed for accounts.google.com",
+      "TLS certificate error connecting to https://oauth2.googleapis.com/token",
+      "Proxy connection refused for accounts.google.com",
+      "HTTP 503 from https://oauth2.googleapis.com/token",
+      "token endpoint https://oauth2.googleapis.com/token",
       "state changed",
     ]) {
       expect(mapper.consumeLine(line: utf8.encode(line)), isFalse, reason: line);

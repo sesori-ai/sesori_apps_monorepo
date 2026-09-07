@@ -4,7 +4,7 @@
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
 - **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review; Step 6.c architecture-approved locally
-- **Base:** Step 6.b review-fix head `7351ed64f1`, merged into Step 6.c
+- **Base:** Step 6.b review-fix head `db35b016b4`, merged into Step 6.c
 - **Current branch:** `antigravity-harness-step-6c-personal-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
