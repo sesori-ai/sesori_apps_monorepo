@@ -47,13 +47,11 @@ class AntigravityProfileService({
       "BROWSER": command,
       "PYTHONUNBUFFERED": "1",
     };
-    if (!await _repository.verifyBrowserCommand(
+    await _repository.verifyBrowserCommand(
       executable: _browserExecutable,
       arguments: [..._browserPrefixArguments, BrowserNoop.argument, browserPreflightUrl],
       environment: environment,
-    )) {
-      throw const AntigravityProfileException(message: "Browser suppression could not be verified", cause: null);
-    }
+    );
     await _repository.preparePersonalOauth();
     return AntigravityPreparedProfile(geminiHome: _repository.geminiHome, environment: environment);
   }

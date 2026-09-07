@@ -26,9 +26,12 @@ Personal OAuth operations, HTTP continuation, registration, and managed activati
   open, fetch, or print its URL argument. It exits successfully with empty stdout/stderr, including after cancellation.
   The plugin requires an exact injected native or source invocation, quotes it for Python shlex (not a shell),
   rejects path-separator/control/placeholder ambiguity and preflights exit/output before preparing the profile.
+  Rejected preflights retain the original command result as the exception cause, while the safe presentation
+  identifies the executable and exit code without echoing captured output.
 - Every composed Antigravity stderr interceptor uses the plugin mapper before logging: OAuth authorization/token
-  endpoint URLs, callback query URLs, state/code/token/PKCE/secret assignments and bearer values are consumed.
-  Other errors, paths, stack frames, permission failures and non-secret auth lifecycle messages remain useful.
+  endpoint URLs with queries, callback query URLs, state/code/token/PKCE/secret assignments and bearer values are consumed.
+  Bare endpoint mentions and DNS/TLS/proxy/HTTP errors without payloads remain visible, alongside paths, stack frames,
+  permission failures and non-secret auth lifecycle messages.
   Shared ACP bounds complete/partial lines; consumed bytes and over-limit payloads never enter logs.
 
 ## Failure signals
