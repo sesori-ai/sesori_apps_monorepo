@@ -714,5 +714,7 @@ regenerated and v2 conformance consumes the frozen interrupt fixtures. Both fixt
 versions and published runtime 0.1.3 pins are untouched. Architecture review found
 an API-to-domain mapping bypass; `99949afd2` routes cancellation through the existing
 session repository/service, and the final architecture pass approved. DeepSeek
-analysis and 103 tests pass after that correction. Final feature E2E remains pending;
-managed runtime upgrades remain separately owned.
+analysis and 103 tests pass after that correction. Review follow-up permits additive
+interrupt response fields while retaining required/known-result checks; analysis
+and 104 tests pass. Final feature E2E remains pending; managed runtime upgrades
+remain separately owned.

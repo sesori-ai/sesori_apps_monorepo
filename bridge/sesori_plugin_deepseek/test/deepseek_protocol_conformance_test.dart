@@ -97,6 +97,19 @@ void main() {
     expect(() => api.parseQuestionRequest(questions), throwsFormatException);
   });
 
+  test("interrupt responses allow additive fields but require a known result", () {
+    final response = api.parseSubagentInterruptResponse({"result": "interrupted", "futureField": true});
+    expect(response.result, DeepSeekSubagentInterruptResult.interrupted);
+    for (final invalid in <Map<String, dynamic>>[
+      {"futureField": true},
+      {"result": null},
+      {"result": 1},
+      {"result": "unknown"},
+    ]) {
+      expect(() => api.parseSubagentInterruptResponse(invalid), throwsA(anything));
+    }
+  });
+
   test("initialization requires protocol v2", () {
     Map<String, dynamic> metadata({required int version}) => {
       "extensionProtocolVersion": version,

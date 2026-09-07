@@ -47,7 +47,7 @@ class const DeepSeekSubagentInterruptRequestDto({
   Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptRequestDtoToJson(this);
 }
 
-@JsonSerializable(disallowUnrecognizedKeys: true)
+@JsonSerializable()
 class const DeepSeekSubagentInterruptResponseDto({
   @JsonKey(unknownEnumValue: DeepSeekSubagentInterruptResult.unknown)
   required final DeepSeekSubagentInterruptResult result,

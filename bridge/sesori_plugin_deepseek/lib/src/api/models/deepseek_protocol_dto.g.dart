@@ -23,16 +23,14 @@ Map<String, dynamic> _$DeepSeekSubagentInterruptRequestDtoToJson(
 };
 
 DeepSeekSubagentInterruptResponseDto
-_$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) {
-  $checkKeys(json, allowedKeys: const ['result']);
-  return DeepSeekSubagentInterruptResponseDto(
-    result: $enumDecode(
-      _$DeepSeekSubagentInterruptResultEnumMap,
-      json['result'],
-      unknownValue: DeepSeekSubagentInterruptResult.unknown,
-    ),
-  );
-}
+_$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) =>
+    DeepSeekSubagentInterruptResponseDto(
+      result: $enumDecode(
+        _$DeepSeekSubagentInterruptResultEnumMap,
+        json['result'],
+        unknownValue: DeepSeekSubagentInterruptResult.unknown,
+      ),
+    );
 
 Map<String, dynamic> _$DeepSeekSubagentInterruptResponseDtoToJson(
   DeepSeekSubagentInterruptResponseDto instance,
