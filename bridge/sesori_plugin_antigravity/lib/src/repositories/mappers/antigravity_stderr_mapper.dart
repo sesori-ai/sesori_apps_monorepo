@@ -9,7 +9,7 @@ class const AntigravityStderrMapper() {
     caseSensitive: false,
   );
   static final _credentialField = RegExp(
-    r'''\b(?:access_token|refresh_token|id_token|code_verifier|code_challenge|client_secret|authorization_response)'''
+    r'''\b(?:token|access_token|refresh_token|id_token|code_verifier|code_challenge|client_secret|authorization_response)'''
     r'''\b["'\s]*(?:=|:|%3d)|\b(?:state|code)\b["'\s]*(?:=|%3d)|["'](?:state|code)["']\s*:|'''
     r'''\bauthorization\s*["']?\s*[:=]|\bbearer\s+\S+''',
     caseSensitive: false,

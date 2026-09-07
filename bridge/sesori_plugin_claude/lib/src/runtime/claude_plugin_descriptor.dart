@@ -111,6 +111,7 @@ final class const ClaudePluginDescriptor({
   }) async {
     final executable = _binary(config);
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

@@ -16,6 +16,7 @@ import "command_executor.dart";
 class HostProcessCommandExecutor({
   required final HostProcessService _processes,
   required final bool _runInShell,
+  required final bool _includeParentEnvironment,
   required final int? _maxCapturedOutputCharactersPerStream,
   final Duration _defaultTimeout = const Duration(seconds: 30),
 }) implements CommandExecutor {
@@ -34,7 +35,7 @@ class HostProcessCommandExecutor({
     Duration? timeout,
   }) async {
     final SpawnedProcess process = await _processes.spawn(
-      includeParentEnvironment: true,
+      includeParentEnvironment: _includeParentEnvironment,
       executable: executable,
       arguments: arguments,
       environment: environment,

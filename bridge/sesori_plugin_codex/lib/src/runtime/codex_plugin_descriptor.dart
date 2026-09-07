@@ -223,6 +223,7 @@ class const CodexPluginDescriptor({
       manifest: manifest,
       versionValidator: RuntimeVersionValidator(
         commandExecutor: HostProcessCommandExecutor(
+          includeParentEnvironment: true,
           processes: processes,
           runInShell: io.Platform.isWindows,
           maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
@@ -283,6 +284,7 @@ class const CodexPluginDescriptor({
   }) async* {
     const manifest = CodexRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
@@ -369,6 +371,7 @@ class const CodexPluginDescriptor({
     final executable = selectedRuntime.binaryPath;
     final runtimeVersion = selectedRuntime.version.raw;
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -428,6 +431,7 @@ class const CodexPluginDescriptor({
           manifest: manifest,
           versionValidator: RuntimeVersionValidator(
             commandExecutor: HostProcessCommandExecutor(
+              includeParentEnvironment: true,
               processes: host.processes,
               runInShell: io.Platform.isWindows,
               maxCapturedOutputCharactersPerStream: null,

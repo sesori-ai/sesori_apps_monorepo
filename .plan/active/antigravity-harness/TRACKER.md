@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review; Step 6.c implemented locally
-- **Base:** Step 6.b head `4a8e14a1d5e71ea24cc5cc27726d284008c3e041`
+- **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review; Step 6.c architecture-approved locally
+- **Base:** Step 6.b review-fix head `7351ed64f1`, merged into Step 6.c
 - **Current branch:** `antigravity-harness-step-6c-personal-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -13,7 +13,7 @@
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
 - **Open PR:** [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
-- **Next action:** parent monitors Step 6.b; independently review Step 6.c, retaining it locally until 6.b merges
+- **Next action:** parent monitors Step 6.b; retain approved Step 6.c locally until 6.b merges
 
 ## Fixed PR Series
 
@@ -113,6 +113,8 @@
 - [x] Run focused tests and owning-package analyzers; update regression contracts.
 - [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
 - [x] Step 6.a merged; synchronize before Step 6.b publication.
+- Publication cap: `git diff --numstat 0723491330 4a8e14a1d5` totals 845 + 12 = 857 changed lines.
+  The estimated range was a scoping guide, not a minimum; implementation and meaningful coverage fit below it.
 - Validation: 45 Antigravity tests and 15 focused app/no-op/scoped-store tests pass; final selective stderr
   refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
   bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.
@@ -128,7 +130,8 @@
 - [x] Thread one monotonic budget/abort signal through profile layers, preserving executor timeouts and waiting for
   non-cancellable filesystem/store work before rejecting late success. Browser preflight retains its five-second cap.
 - [x] Verify 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis; update regression contracts.
-- [ ] Independent architecture implementation review; parent-owned publication waits for Step 6.b merge.
+- [x] Independent architecture review approved all 19 files at immutable checkpoint `afda6be61c48`.
+- [ ] Parent-owned publication waits for Step 6.b merge.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
   access in this slice. Step 6.d is not started while Step 6.b remains open.
 
