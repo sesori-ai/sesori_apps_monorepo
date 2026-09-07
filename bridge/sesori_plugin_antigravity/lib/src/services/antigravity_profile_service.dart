@@ -47,11 +47,17 @@ class AntigravityProfileService({
       "BROWSER": command,
       "PYTHONUNBUFFERED": "1",
     };
-    await _repository.verifyBrowserCommand(
+    final preflight = await _repository.inspectBrowserCommand(
       executable: _browserExecutable,
       arguments: [..._browserPrefixArguments, BrowserNoop.argument, browserPreflightUrl],
       environment: environment,
     );
+    if (preflight.exitCode != 0 || preflight.hasOutput) {
+      throw AntigravityProfileException(
+        message: "Browser suppression preflight failed for $_browserExecutable (exit code ${preflight.exitCode})",
+        cause: preflight.diagnostics,
+      );
+    }
     await _repository.preparePersonalOauth(environment: environment);
     return AntigravityPreparedProfile(geminiHome: _repository.geminiHome, environment: environment);
   }

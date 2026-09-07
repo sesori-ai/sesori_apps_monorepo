@@ -278,6 +278,23 @@ void main() {
     expect(events, isEmpty);
   });
 
+  test("repository maps unsuccessful preflight facts without deciding preparation policy", () async {
+    commands.preflight = const CommandResult(exitCode: 23, stdout: "unexpected", stderr: "synthetic loader failure");
+    final repository = AntigravityProfileRepository(
+      storage: AntigravityProfileStorage(geminiHome: home, settingsStore: store, commands: commands, target: mac),
+    );
+    final result = await repository.inspectBrowserCommand(
+      executable: "/bridge",
+      arguments: [BrowserNoop.argument, AntigravityProfileService.browserPreflightUrl],
+      environment: {},
+    );
+    expect(result.exitCode, 23);
+    expect(result.hasOutput, isTrue);
+    expect(result.diagnostics, same(commands.preflight));
+    expect(result.toString(), isNot(contains("synthetic loader failure")));
+    expect(events, ["preflight"]);
+  });
+
   test("exit failure or any output blocks preparation", () async {
     for (final result in [
       const CommandResult(exitCode: 1, stdout: "", stderr: "synthetic loader failure"),

@@ -27,6 +27,7 @@ Personal OAuth operations, HTTP continuation, registration, and managed activati
   open, fetch, or print its URL argument. It exits successfully with empty stdout/stderr, including after cancellation.
   The plugin requires an exact injected native or source invocation, quotes it for Python shlex (not a shell),
   rejects path-separator/control/placeholder ambiguity and preflights exit/output before preparing the profile.
+  The repository maps exit/output facts; the service alone decides that success requires zero exit and no output.
   Rejected preflights retain the original command result as the exception cause, while the safe presentation
   identifies the executable and exit code without echoing captured output.
 - Every composed Antigravity stderr interceptor uses the plugin mapper before logging: OAuth authorization/token
