@@ -1,6 +1,12 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/codex_pending_input.dart";
+import "api/models/codex_user_input_dto.dart";
+import "api/parsers/codex_question_parser.dart";
 import "codex_app_server_client.dart";
+import "repositories/mappers/codex_question_mapper.dart";
 
 /// Codex methods that always surface as permission asks.
 ///
@@ -49,43 +55,97 @@ enum _ElicitationApprovalKind() {
   toolSuggestion,
 }
 
-class _PendingApproval({
+sealed class _PendingCodexInput();
+
+final class _PendingApproval({
   required final Object codexId,
   required final String method,
   required final Map<String, dynamic> params,
   required final ApprovalResponder respond,
   required final ApprovalErrorResponder respondError,
-});
+}) extends _PendingCodexInput;
+
+final class _PendingAsyncQuestion({
+  required final String sessionId,
+  required final List<PluginQuestionInfo> questions,
+  required final AsyncQuestionResponder respond,
+  required final CodexQuestionMapper mapper,
+}) extends _PendingCodexInput {
+  Future<void> answer({required List<List<String>> answers}) => respond(
+    sessionId: sessionId,
+    text: mapper.asyncAnswerText(questions: questions, answers: answers),
+  );
+}
+
+final class _PendingUserInput({
+  required final Object codexId,
+  required final CodexUserInputParamsDto input,
+  required final ApprovalResponder respond,
+  required final ApprovalErrorResponder respondError,
+}) extends _PendingCodexInput;
 
 /// Per-request reply functions injected at construction time so the
 /// registry stays decoupled from [CodexAppServerClient].
 typedef ApprovalResponder = void Function(Object id, Object? result);
 typedef ApprovalErrorResponder = void Function(Object id, int code, String message);
+typedef AsyncQuestionResponder = Future<void> Function({required String sessionId, required String text});
 typedef PendingInputScopeResolver = ({String displaySessionId, List<String> sourceSessionIds}) Function({
   required String sessionId,
 });
 
-void _resolveCodexPermission({required _PendingApproval payload, required PluginPermissionReply reply}) {
-  payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, reply));
+void _resolveCodexPermission({required _PendingCodexInput payload, required PluginPermissionReply reply}) {
+  final approval = payload as _PendingApproval;
+  approval.respond(approval.codexId, ApprovalRegistry._permissionResponse(approval, reply));
 }
 
-PendingQuestionReplyOutcome _resolveCodexQuestion({
-  required _PendingApproval payload,
+FutureOr<PendingQuestionReplyOutcome> _resolveCodexQuestion({
+  required _PendingCodexInput payload,
   required List<List<String>> answers,
 }) {
-  payload.respond(payload.codexId, ApprovalRegistry._questionResponse(payload, answers));
-  return PendingQuestionReplyOutcome.replied;
+  switch (payload) {
+    case _PendingApproval():
+      payload.respond(payload.codexId, ApprovalRegistry._questionResponse(payload, answers));
+      return PendingQuestionReplyOutcome.replied;
+    case _PendingAsyncQuestion():
+      return payload.answer(answers: answers).then((_) => PendingQuestionReplyOutcome.replied);
+    case _PendingUserInput():
+      final questions = payload.input.questions;
+      payload.respond(payload.codexId, {
+        "answers": {
+          for (var i = 0; i < questions.length; i++)
+            questions[i].id: {"answers": i < answers.length ? answers[i] : const <String>[]},
+        },
+      });
+      return PendingQuestionReplyOutcome.replied;
+  }
 }
 
-void _rejectCodexQuestion({required _PendingApproval payload}) {
-  if (payload.method == _elicitationMethod) {
-    payload.respond(payload.codexId, const {"action": "decline"});
+FutureOr<void> _rejectCodexQuestion({
+  required _PendingCodexInput payload,
+}) {
+  switch (payload) {
+    case _PendingAsyncQuestion():
+      return payload.answer(answers: const []);
+    case _PendingUserInput():
+      payload.respondError(payload.codexId, -32603, "user rejected");
+    case _PendingApproval():
+      if (payload.method == _elicitationMethod) {
+        payload.respond(payload.codexId, const {"action": "decline"});
+      } else {
+        payload.respondError(payload.codexId, -32603, "user rejected");
+      }
+  }
+}
+
+void _cancelCodexPending({required _PendingCodexInput payload, required PendingCancellationReason reason}) {
+  // Async questions have no suspended server request. Teardown only retires
+  // their local card; it must not start a new turn to send a cancellation.
+  if (payload is _PendingAsyncQuestion) return;
+  if (payload is _PendingUserInput) {
+    payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
     return;
   }
-  payload.respondError(payload.codexId, -32603, "user rejected");
-}
-
-void _cancelCodexPending({required _PendingApproval payload, required PendingCancellationReason reason}) {
+  payload as _PendingApproval;
   if (_permissionMethods.contains(payload.method) ||
       payload.method == _elicitationMethod && ApprovalRegistry._isMcpToolApproval(payload.params)) {
     payload.respond(payload.codexId, ApprovalRegistry._permissionResponse(payload, PluginPermissionReply.reject));
@@ -95,13 +155,15 @@ void _cancelCodexPending({required _PendingApproval payload, required PendingCan
     payload.respondError(
       payload.codexId,
       -32000,
-      switch (reason) {
-        PendingCancellationReason.sessionCancelled => "thread closed",
-        PendingCancellationReason.disposed => "bridge dispose",
-      },
+      _cancellationMessage(reason: reason),
     );
   }
 }
+
+String _cancellationMessage({required PendingCancellationReason reason}) => switch (reason) {
+  PendingCancellationReason.sessionCancelled => "thread closed",
+  PendingCancellationReason.disposed => "bridge dispose",
+};
 
 /// Routes codex server-originated approval requests to the bridge SSE
 /// stream and answers them when the bridge consumer replies.
@@ -112,8 +174,11 @@ class ApprovalRegistry({
   required final ApprovalResponder _respond,
   required final ApprovalErrorResponder _respondError,
   required final PendingInputScopeResolver _resolvePendingInputScope,
+  required final AsyncQuestionResponder _sendAsyncAnswer,
+  required final CodexQuestionParser _questionParser,
+  required final CodexQuestionMapper _questionMapper,
   super.idGenerator,
-}) extends PendingPermissionRegistry<CodexServerRequest, _PendingApproval> {
+}) extends PendingPermissionRegistry<CodexPendingInput, _PendingCodexInput> {
   this
     : super(
         logContext: "[codex]",
@@ -124,7 +189,16 @@ class ApprovalRegistry({
       );
 
   @override
-  void handleRequest(CodexServerRequest request) {
+  void handleRequest(CodexPendingInput input) {
+    switch (input) {
+      case CodexPendingRequest(:final request):
+        _handleServerRequest(request: request);
+      case CodexPendingNotification(:final notification):
+        _handleNotification(notification: notification);
+    }
+  }
+
+  void _handleServerRequest({required CodexServerRequest request}) {
     final method = request.method;
     final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
     final isPermission = _permissionMethods.contains(method) || isMcpToolApproval;
@@ -156,12 +230,44 @@ class ApprovalRegistry({
         description: _permissionDescriptionFor(entry),
         allowAlways: allowAlways,
       );
+    } else if (method == _userInputMethod) {
+      final input = _questionParser.parseUserInput(params: request.params);
+      if (input.questions.any((question) => question.isSecret)) {
+        _respondError(request.id, -32602, "Secret question input is not supported by Sesori.");
+        return;
+      }
+      registerPendingQuestion(
+        payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
+        sessionId: resolvedSessionId,
+        displaySessionId: displaySessionId,
+        questions: _questionMapper.mapUserInput(request: input),
+      );
     } else {
       registerPendingQuestion(
         payload: entry,
         sessionId: resolvedSessionId,
         displaySessionId: displaySessionId,
-        questions: [_questionInfoFor(entry)],
+        questions: _questionInfoFor(entry),
+      );
+    }
+  }
+
+  /// `request_user_input_async` is delivered as an assistant message, not a
+  /// server request. Both forms share the existing pending-question surface.
+  void _handleNotification({required CodexServerNotification notification}) {
+    final request = _questionParser.parseAsyncQuestion(notification: notification);
+    if (request != null) {
+      final questions = _questionMapper.mapAsyncQuestions(questions: request.questions);
+      registerPendingQuestion(
+        payload: _PendingAsyncQuestion(
+          sessionId: request.threadId,
+          questions: questions,
+          respond: _sendAsyncAnswer,
+          mapper: _questionMapper,
+        ),
+        sessionId: request.threadId,
+        displaySessionId: _resolvePendingInputScope(sessionId: request.threadId).displaySessionId,
+        questions: questions,
       );
     }
   }
@@ -190,21 +296,20 @@ class ApprovalRegistry({
     return persist is List && persist.contains("always");
   }
 
-  /// Builds the single free-form question payload for a codex elicitation /
-  /// user-input request: codex supplies no structured option set, so it is
-  /// always a [PluginQuestionInfo.custom] question headed by the wire method.
-  PluginQuestionInfo _questionInfoFor(_PendingApproval entry) {
+  List<PluginQuestionInfo> _questionInfoFor(_PendingApproval entry) {
     final reason =
         (entry.params["message"] as String?) ??
         (entry.params["reason"] as String?) ??
         _descriptionFallback(entry.method, entry.params);
-    return PluginQuestionInfo(
-      question: reason,
-      header: entry.method,
-      options: const [],
-      multiple: false,
-      custom: true,
-    );
+    return [
+      PluginQuestionInfo(
+        question: reason,
+        header: entry.method,
+        options: const [],
+        multiple: false,
+        custom: true,
+      ),
+    ];
   }
 
   /// Human-readable description for a permission ask, shared by the
@@ -278,25 +383,11 @@ class ApprovalRegistry({
   }
 
   /// Builds the JSON-RPC result for a question reply, keyed by wire method:
-  ///   - `item/tool/requestUserInput` → `{answers: {<qid>: {answers: [..]}}}`
   ///   - `mcpServer/elicitation/request` → `{action: accept, content}`
   static Map<String, dynamic> _questionResponse(
     _PendingApproval entry,
     List<List<String>> answers,
   ) {
-    if (entry.method == _userInputMethod) {
-      // Map answers to codex's question-id-keyed shape, pairing each answer row
-      // with its question by order (the mobile prompt preserves question order).
-      final questions = (entry.params["questions"] as List?) ?? const [];
-      final out = <String, dynamic>{};
-      for (var i = 0; i < questions.length; i++) {
-        final qid = _asMap(questions[i])?["id"] as String?;
-        if (qid == null) continue;
-        out[qid] = {"answers": i < answers.length ? answers[i] : const <String>[]};
-      }
-      return {"answers": out};
-    }
-
     if (entry.method == _elicitationMethod) {
       // Accept the elicitation. `content` mirrors the server-defined form
       // schema, which the bridge cannot model generically; pass the flattened

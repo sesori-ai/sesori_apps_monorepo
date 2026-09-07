@@ -12,6 +12,28 @@ reaches the backend so the turn continues.
   root session, and whether an "always" answer is offered. A pending question
   carries its header, prompt, options, and whether multiple or custom answers
   are allowed.
+- Codex synchronous `request_user_input` requests preserve every question,
+  header, ordered option and description. Replies preserve the original
+  question IDs and answer ordering, including custom answers and declined rows.
+- Codex `request_user_input_async` assistant messages create the same pending
+  questions on mobile and desktop. Their options remain selectable and custom
+  answers remain available. The tool's immediate `accepted` acknowledgement
+  is not shown as a completed question/answer tool card and never counts as
+  user input or permission approval.
+- An async Codex question remains pending after its originating turn completes.
+  Reply and reject send contextual user input to the owning conversation through
+  normal turn submission, steering a running turn or starting a turn while idle
+  without overriding its model or collaboration mode. A child question appears
+  under its display root but the answer goes to that child.
+- A question settles only after its backend submission succeeds; a failed async
+  submission remains pending for retry. Competing replies or rejections submit
+  only once while backend acceptance is pending. Explicit rejection tells Codex
+  which questions were declined. Abort, thread close, disconnect and disposal retire
+  connection-local async cards without starting new work to report cleanup.
+  Historical transcript reads do not recreate already-finished question cards.
+- Codex requests containing a secret-input question fail explicitly before any
+  card is presented. Masked secret entry is not yet supported; these requests
+  must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
@@ -105,7 +127,7 @@ reaches the backend so the turn continues.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |

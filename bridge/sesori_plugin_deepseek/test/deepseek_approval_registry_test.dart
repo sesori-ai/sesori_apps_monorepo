@@ -93,7 +93,7 @@ void main() {
     await built.dispose();
     await plugin.dispose();
   });
-  test("option, custom, and free-form answers preserve ordered question IDs", () {
+  test("option, custom, and free-form answers preserve ordered question IDs", () async {
     registry.handleExtensionRequest(
       questionRequest(7, const {
         "sessionId": "session-1",
@@ -112,7 +112,7 @@ void main() {
     expect(questions.first.custom, isTrue);
     expect(questions.last.question, "Why?\n\nExplain the tradeoff.");
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes", "With safeguards"],
@@ -154,7 +154,7 @@ void main() {
       "outcome": {"outcome": "selected", "optionId": "allow-once"},
     });
   });
-  test("two sessions retain exact question and request correlation", () {
+  test("two sessions retain exact question and request correlation", () async {
     for (final entry in [(11, "session-1", "q1"), (12, "session-2", "q2")]) {
       registry.handleExtensionRequest(
         questionRequest(entry.$1, {
@@ -172,7 +172,7 @@ void main() {
 
     expect(events.whereType<BridgeSseQuestionAsked>().map((event) => event.sessionID), ["session-1", "session-2"]);
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-2",
         answers: const [
           ["No"],
@@ -181,7 +181,7 @@ void main() {
       isTrue,
     );
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes"],
@@ -216,7 +216,7 @@ void main() {
     registry.cancelForSession(sessionId: "session-1");
     await Future<void>.delayed(Duration.zero);
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes"],
@@ -248,7 +248,7 @@ void main() {
 
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: "request-1",
           answers: const [
             ["Change it"],
@@ -261,7 +261,7 @@ void main() {
     expect(logs, contains("DeepSeek plan-review questions do not accept custom answers"));
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Approve"],
@@ -286,7 +286,7 @@ void main() {
     );
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: "request-1",
           answers: const [
             ["A", "A"],
@@ -313,7 +313,7 @@ void main() {
         ],
       }),
     );
-    expect(registry.replyQuestion(requestId: "request-1", answers: const [<String>[]]), isTrue);
+    expect(await registry.replyQuestion(requestId: "request-1", answers: const [<String>[]]), isTrue);
     await Future<void>.delayed(Duration.zero);
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(registry.hasAnyPendingInput, isFalse);
@@ -328,7 +328,7 @@ void main() {
       }),
     );
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: [
           ["x".padRight(2049, "x")],

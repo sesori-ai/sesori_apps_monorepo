@@ -87,7 +87,7 @@ void main() {
       expect(asked.questions[2].options.single.description.length, lessThan(suggested.length));
 
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: asked.id,
           answers: [
             ["fast"],
@@ -126,7 +126,7 @@ void main() {
 
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.options.map((option) => option.label), ["Approve", "Approve (2)"]);
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           ["Approve (2)"],
@@ -151,7 +151,7 @@ void main() {
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
 
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           ["value"],
@@ -178,7 +178,7 @@ void main() {
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
 
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           const <String>[],
@@ -205,7 +205,7 @@ void main() {
       final label = asked.questions.single.options.single.label;
       expect(label, isNotEmpty);
 
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           [label],
@@ -330,13 +330,13 @@ void main() {
       }
 
       final rejected = await ask(id: 1);
-      registry.rejectQuestion(requestId: rejected);
+      await registry.rejectQuestion(requestId: rejected);
       expect(responses.last.$2, const {"action": "decline"});
 
       final aborted = await ask(id: 2);
       registry.cancelForSession(sessionId: "session-1");
       expect(responses.last.$2, const {"action": "cancel"});
-      expect(registry.replyQuestion(requestId: aborted, answers: const []), isFalse);
+      expect(await registry.replyQuestion(requestId: aborted, answers: const []), isFalse);
 
       await ask(id: 3);
       await registry.dispose();

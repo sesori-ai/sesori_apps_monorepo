@@ -45,6 +45,19 @@ release first, which is the best signal its catalog offers. Other plugins
 still declare variants default-first (the client falls back to the first
 listed variant when no default is declared) and models in plugin-defined order.
 
+## Codex question input
+
+**Implemented:** Codex synchronous user-input requests and asynchronous
+assistant-message questions use the existing Sesori question UI and reply API.
+Both preserve multiple questions and ordered choices. Async answers steer a
+running conversation or resume it while idle; the immediate tool acknowledgement
+does not answer the question. Async message metadata was verified against Codex
+0.153.4. Older runtimes continue to use their synchronous request path.
+
+**Not implemented:** Masked secret-question entry. Codex requests containing an
+`isSecret` question receive an explicit unsupported-input error before any
+question card is shown; secret prompts are never downgraded to plain text.
+
 ## Setup detection
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
