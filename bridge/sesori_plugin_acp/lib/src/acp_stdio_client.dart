@@ -71,12 +71,25 @@ class AcpStdioClient({
       token: token,
       process: _AcpProcessHandle(
         process: process,
-        stdoutInterceptor: _stdoutInterceptor,
-        stderrInterceptor: _stderrInterceptor,
+        stdout: () => _intercept(bytes: process.stdout, interceptor: _stdoutInterceptor),
+        stderr: () => _intercept(bytes: process.stderr, interceptor: _stderrInterceptor),
       ),
     );
     await _frames?.cancel();
     _frames = _transport.notifications.listen(_handleFrame);
+  }
+
+  Stream<List<int>> _intercept({required Stream<List<int>> bytes, required AcpOutputInterceptor? interceptor}) {
+    if (interceptor == null) return bytes;
+    return interceptor.intercept(bytes: bytes).handleError((Object error, StackTrace stackTrace) {
+      if (error is AcpOutputInterceptionException) {
+        // A failed filter cannot safely deliver further output. Detach now so
+        // future dispatch fails immediately, and use the existing teardown owner.
+        Log.w("[$_logTag] output interception failed; disconnecting", error, stackTrace);
+        unawaited(_transport.reset(reason: error, gracefulTimeout: Duration.zero));
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    });
   }
 
   Future<dynamic> request({
@@ -225,19 +238,15 @@ class AcpStdioClient({
 
 final class _AcpProcessHandle({
   required final AcpProcessHandle process,
-  required final AcpOutputInterceptor? stdoutInterceptor,
-  required final AcpOutputInterceptor? stderrInterceptor,
+  required final Stream<List<int>> Function() stdout,
+  required final Stream<List<int>> Function() stderr,
 }) implements NdjsonProcessHandle {
   @override
   io.IOSink get stdin => process.stdin;
   @override
-  Stream<String> get stdoutLines => (stdoutInterceptor?.intercept(bytes: process.stdout) ?? process.stdout)
-      .transform(utf8.decoder)
-      .transform(const LineSplitter());
+  Stream<String> get stdoutLines => stdout().transform(utf8.decoder).transform(const LineSplitter());
   @override
-  Stream<String> get stderrLines => (stderrInterceptor?.intercept(bytes: process.stderr) ?? process.stderr)
-      .transform(utf8.decoder)
-      .transform(const LineSplitter());
+  Stream<String> get stderrLines => stderr().transform(utf8.decoder).transform(const LineSplitter());
   @override
   Future<int> get done => process.exitCode;
   @override

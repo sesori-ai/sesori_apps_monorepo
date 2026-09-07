@@ -126,6 +126,46 @@ void main() {
     expect(logs.text, isNot(contains("stream error")));
   });
 
+  test("AcpStdioClient detaches after interception fails before a request and can reconnect", () async {
+    for (final stderr in [false, true]) {
+      for (final callbackFails in [false, true]) {
+        final failed = _RawProcess();
+        final replacement = _RawProcess();
+        final processes = [failed, replacement];
+        final interceptor = AcpOutputInterceptor(
+          maxLineBytes: 64,
+          consumeLine: ({required line}) {
+            if (utf8.decode(line).startsWith("private")) throw const FormatException("private secret");
+            return false;
+          },
+        );
+        final client = AcpStdioClient(
+          launchSpec: const AcpLaunchSpec(command: "agent", args: [], includeParentEnvironment: true),
+          processFactory: (_) async => processes.removeAt(0),
+          stdoutInterceptor: stderr ? null : interceptor,
+          stderrInterceptor: stderr ? interceptor : null,
+        );
+        await client.connect();
+        final exit = client.processExit;
+        (stderr ? failed.err : failed.out).add(callbackFails ? utf8.encode("private secret\n") : List.filled(65, 112));
+        await exit;
+        expect(client.isConnected, isFalse);
+        await expectLater(client.request(method: "initialize"), throwsStateError);
+        await client.reset(gracefulTimeout: Duration.zero);
+        await client.connect();
+        final response = client.request(method: "initialize");
+        replacement.out.add(utf8.encode('{"jsonrpc":"2.0","id":2,"result":true}\n'));
+        expect(await response, isTrue);
+        expect(client.isConnected, isTrue);
+        await client.dispose();
+        await failed.out.close();
+        await failed.err.close();
+        await replacement.out.close();
+        await replacement.err.close();
+      }
+    }
+  });
+
   test("AcpStdioClient output overflow fails pending request with safe error and still disposes", () async {
     final process = _RawProcess();
     final client = AcpStdioClient(

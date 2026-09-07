@@ -197,7 +197,7 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 
 - 2026-09-04 — Step 6.a architecture plan review approved the user-authorized shared prerequisite slice;
   provider-specific profile, browser suppression, stderr matching, and authentication remain in 6.b/c.
-- 2026-09-04 — Step 6.a focused validation: 126 distinct tests pass (ACP interception/factories 10,
+- 2026-09-04 — Step 6.a focused validation: 106 distinct tests pass (ACP interception/factories 10,
   ACP stdio/agent API 22, host stores/processes 29, Antigravity 30, host command executor 1, interface lifecycle 14).
   App, ACP, interface, foundation, and Antigravity packages analyze cleanly; 38 mechanically updated consumer files
   also analyze cleanly. A parallel analyzer-plugin snapshot race was retried serially successfully.
@@ -263,5 +263,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 - 2026-09-05 — Step 5 merged as `0e8f9e6fb9`; Step 6.a synced to main `c8150a8025c2`.
   Post-sync validation: ACP 65, host stores/processes 29, Antigravity 30, foundation 1, interface 15 tests pass.
   All five owning packages analyze cleanly. One newly merged ACP launch fixture received the required flag.
-  Pre-publication code-head cap: `git diff --numstat c8150a8025c2 ffced6ea6a65` totals 734 + 69 = 803;
-  final publication measurement includes subsequent tracker reconciliation.
+  Initial publication cap: `git diff --numstat c8150a8025c2 4d8e7f8025` totals 733 + 69 = 802.
+  This net diff includes tracker changes: removing six conflict-marker lines and adding five evidence lines
+  reduced the earlier code-head diff of 803 by one. Commit churn is not added to base-to-head measurements.

@@ -23,6 +23,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   or logging. Consumed stdout/stderr never reaches logs; other bytes and useful diagnostics
   remain intact, including fragmented UTF-8, CRLF and EOF partial lines. Failures never echo
   payload text, and idle-stream interception must not delay cancellation or process cleanup.
+  A failed interceptor detaches and tears down its process generation, including failures before
+  any request; later requests fail immediately until a fresh connection is established.
   Without interception the existing ACP transport behavior is unchanged.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
