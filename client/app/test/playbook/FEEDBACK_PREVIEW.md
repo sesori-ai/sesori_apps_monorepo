@@ -43,7 +43,8 @@ or feedback backend is needed. A real software keyboard is used for typing.
 | Tap Not now, Cancel, the scrim, or swipe the sheet down | Dismiss without submission; reopening starts a fresh draft. |
 | Select one or several issues | Toggle selection; category-only feedback can be submitted. |
 | Switch to keyboard | Edit multiline text; show the annotated blue focus ring. |
-| Hold the voice area, then release | Show the existing Prego waveform, simulated transcription, then editable sample text. |
+| Hold the voice area, then release | Show the existing Prego waveform, simulated transcription, then sample text. Send replaces the keyboard button inside the voice pill. Tap the transcript to edit it. |
+| Hold to talk more | Preserve the current transcript while recording/transcribing, then append the next sample. Send remains the single trailing action. |
 | Tap the voice area twice | Accessible preview shortcut: start, then finish the simulated recording. |
 | Submit feedback | Show loading, close the sheet, and show the Figma confirmation toast. No content leaves the preview. |
 | Select Submission fails once | First submission preserves the draft and shows Retry; retry succeeds. |
@@ -81,6 +82,13 @@ The private-feedback success toast remains simulated.
 - Prego supplies the themes, icons, solid/glass buttons, composer decoration,
   waveform, scaffold, and success toast. The grabber-only sheet, issue pills,
   and stars are private prototype widgets.
+- The input follows Figma `5035:11030`: voice is the initial mode; a transcript
+  reveals an editor with 20px top and 34px bottom corners, a 6px inset, an 8px
+  text/footer gap, and a separate 56px-tall voice pill with one 44px Send action.
+  Text uses 4px horizontal and 8px vertical padding, plus the design's 27px
+  trailing clearance. Borders do not add to these content insets. Tapping text
+  enters the keyboard variant (`5037:13617`), with 26px bottom corners,
+  microphone/Send controls, and the annotated focus ring outside the border.
 - The 44 × 44 star artwork comes from Figma component `5488:1669` (default
   `5488:1668`, selected `5488:1670`). Its exported SVG paths use Prego's
   `bgSurface1`, `borderSecondary`, and `fgWarningSecondary` tokens so the
@@ -169,6 +177,9 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   action movement and reversal, stationary typing, voice transitions, and
   reduced-motion behavior including preservation of an open draft and immediate
   dismissal, microphone denial, and transcription retry.
+  Input checks also cover the voice-first state, keyboard-to-Send replacement,
+  measured Figma insets/radii, tap-to-edit, and appending a second transcription
+  without losing the existing draft or submitting automatically.
 - Shared Prego button checks pass: seven native widget tests, two Chrome tests,
   and the owning module analyzer. See `docs/regression/prego-button-interactions.md`.
 - The app analyzer passes. Formatting and the final playbook analyzer pass.

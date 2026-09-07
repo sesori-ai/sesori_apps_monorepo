@@ -169,28 +169,63 @@ void main() {
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    "hold-to-talk produces an editable sample without submitting it",
+    "voice-first transcription replaces keyboard with Send inside the Figma voice pill",
     (tester) async {
-      await _launch(tester: tester);
+      await _launch(tester: tester, size: const Size(402, 874));
       await _open(tester: tester);
       await _rate(tester: tester, rating: 2);
       final voice = find.byKey(const ValueKey("feedback-voice"));
+      final pill = find.byKey(const ValueKey("feedback-voice-pill"));
+      final composer = find.byKey(const ValueKey("feedback-composer"));
+      expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
+      expect(_control(label: "Use keyboard"), findsOneWidget);
+      expect(_control(label: "Send feedback"), findsNothing);
+      expect(tester.getSize(pill), const Size(370, 56));
       await tester.ensureVisible(voice);
       final hold = await tester.startGesture(tester.getCenter(voice));
       await tester.pump(const Duration(milliseconds: 600));
       await hold.up();
       await tester.pump();
       expect(find.text("Transcribing…"), findsOneWidget);
+      expect(_control(label: "Send feedback"), findsNothing);
       await tester.pump(const Duration(milliseconds: 950));
       await tester.pumpAndSettle();
 
       expect(_textField(tester: tester).controller?.text, contains("The design is clean"));
+      expect(_control(label: "Use keyboard"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      expect(find.text("Hold to talk more"), findsOneWidget);
+      expect(_textField(tester: tester).readOnly, isTrue);
+      final composerRect = tester.getRect(composer);
+      final pillRect = tester.getRect(pill);
+      expect(pillRect.size, const Size(358, 56));
+      expect(pillRect.left - composerRect.left, 6);
+      expect(composerRect.right - pillRect.right, 6);
+      expect(composerRect.bottom - pillRect.bottom, 6);
+      final editorRect = tester.getRect(find.byType(EditableText));
+      expect(editorRect.left - composerRect.left, 10);
+      expect(editorRect.top - composerRect.top, 14);
+      expect(composerRect.right - editorRect.right, 37);
+      final decoration = tester.widget<TweenAnimationBuilder<Decoration>>(composer).tween.end! as BoxDecoration;
+      expect(
+        decoration.borderRadius,
+        const BorderRadius.vertical(top: Radius.circular(20), bottom: Radius.circular(34)),
+      );
       expect(find.text("What should we improve?"), findsOneWidget);
       expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(nativeRequests, isEmpty);
 
       await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-text")));
       expect(_textField(tester: tester).readOnly, isFalse);
+      expect(_control(label: "Use voice input"), findsOneWidget);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      expect(pill, findsNothing);
+      final focusedDecoration = tester.widget<TweenAnimationBuilder<Decoration>>(composer).tween.end! as BoxDecoration;
+      expect(
+        focusedDecoration.borderRadius,
+        const BorderRadius.vertical(top: Radius.circular(20), bottom: Radius.circular(26)),
+      );
+      expect(focusedDecoration.boxShadow?.map((shadow) => shadow.spreadRadius), [4, 2]);
       await tester.enterText(find.byKey(const ValueKey("feedback-text")), "My edited feedback.");
       expect(_textField(tester: tester).controller?.text, "My edited feedback.");
       expect(find.text("Feedback sent. Thank you!"), findsNothing);

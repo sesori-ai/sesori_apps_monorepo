@@ -113,6 +113,24 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(PregoVoiceWaveform), findsNothing);
       expect(find.byKey(const ValueKey("feedback-text")), findsOneWidget);
+      expect(_control(label: "Use keyboard"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      final field = find.byKey(const ValueKey("feedback-text"));
+      final transcript = tester.widget<TextField>(field).controller!.text;
+      final more = await tester.startGesture(tester.getCenter(voice));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+      expect(tester.widget<TextField>(field).controller!.text, transcript);
+      await more.up();
+      await tester.pump();
+      expect(find.text("Transcribing…"), findsOneWidget);
+      expect(tester.widget<TextField>(field).controller!.text, transcript);
+      await tester.pump(const Duration(milliseconds: 950));
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(field).controller!.text, "$transcript $transcript");
+      expect(_control(label: "Use keyboard"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );

@@ -799,133 +799,196 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
     final keyboardMode = _mode == _InputMode.keyboard;
     final busy = _submission == _SubmissionStage.submitting;
     final expanded = hasText || keyboardMode;
-    return AnimatedContainer(
+    final controls = _buildComposerControls(context: context);
+    final radius = BorderRadius.vertical(
+      top: const Radius.circular(PregoRadius.x3l),
+      bottom: Radius.circular(keyboardMode ? PregoRadius.x5l : PregoRadius.x6l),
+    );
+
+    // Figma 5035:11030: the voice pill sits 6px inside the expanded editor.
+    // DecoratedBox keeps the border out of that measured content inset.
+    return TweenAnimationBuilder<Decoration>(
+      key: const ValueKey("feedback-composer"),
       duration: prefersReducedMotion(context) ? Duration.zero : _feedbackControlDuration,
       curve: _feedbackEaseOut,
-      padding: const EdgeInsets.all(6),
-      decoration:
-          pregoComposerSurfaceDecoration(
-            prego: prego,
-            style: PregoComposerSurfaceStyle.subtle,
-            borderRadius: BorderRadius.circular(expanded ? PregoRadius.x3l : PregoRadius.full),
-          ).copyWith(
-            border: Border.all(
-              color: _focus.hasFocus ? prego.colors.focusRing : prego.colors.borderSecondary,
-              width: _focus.hasFocus ? 2 : 1,
+      tween: DecorationTween(
+        end: expanded
+            ? pregoComposerSurfaceDecoration(
+                prego: prego,
+                style: _focus.hasFocus ? PregoComposerSurfaceStyle.emphasized : PregoComposerSurfaceStyle.subtle,
+                borderRadius: radius,
+              ).copyWith(
+                boxShadow: _focus.hasFocus
+                    ? [
+                        BoxShadow(color: prego.colors.focusRing, spreadRadius: 4),
+                        BoxShadow(color: prego.colors.bgSurface1, spreadRadius: 2),
+                      ]
+                    : const [],
+              )
+            : const BoxDecoration(),
+      ),
+      builder: (context, decoration, child) => DecoratedBox(decoration: decoration, child: child),
+      child: Padding(
+        padding: EdgeInsets.all(expanded ? PregoSpacing.sm : 0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _FeedbackContentTransition(
+              child: expanded
+                  ? TextField(
+                      key: const ValueKey("feedback-text"),
+                      controller: _text,
+                      focusNode: _focus,
+                      readOnly: !keyboardMode || busy,
+                      onTap: busy ? null : _typeFeedback,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      // Reserve the editing area before typing; longer drafts scroll.
+                      minLines: 3,
+                      maxLines: 3,
+                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                      cursorColor: prego.colors.borderBrand,
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        hintText: "Example: Hard to navigate",
+                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                          PregoSpacing.xs,
+                          PregoSpacing.md,
+                          PregoSpacing.xs + 27,
+                          PregoSpacing.md,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
-          ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _FeedbackContentTransition(
-            child: expanded
-                ? TextField(
-                    key: const ValueKey("feedback-text"),
-                    controller: _text,
-                    focusNode: _focus,
-                    readOnly: !keyboardMode || busy,
-                    onTap: busy ? null : _typeFeedback,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    // Reserve the editing area before typing; longer drafts scroll.
-                    minLines: 3,
-                    maxLines: 3,
-                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
-                    cursorColor: prego.colors.borderBrand,
-                    decoration: InputDecoration(
-                      hintText: "Example: Hard to navigate",
-                      hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.all(6),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          if (expanded) const SizedBox(height: 8),
-          Row(
-            children: [
-              if (!keyboardMode)
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    label: _voice == _VoiceStage.recording ? "Finish recording" : "Hold to talk to give feedback",
-                    excludeSemantics: true,
-                    onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
-                    child: GestureDetector(
-                      key: const ValueKey("feedback-voice"),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
-                      onLongPressStart: busy ? null : (_) => _startRecording(),
-                      onLongPressEnd: busy ? null : (_) => _transcribe(),
-                      child: _FeedbackPress(
-                        enabled: !busy && _voice != _VoiceStage.transcribing,
-                        child: SizedBox(
-                          height: 44,
-                          child: Center(
-                            child: _FeedbackContentTransition(
-                              child: KeyedSubtree(
-                                key: ValueKey((_voice, hasText)),
-                                child: switch (_voice) {
-                                  _VoiceStage.recording => const _RecordingPreview(),
-                                  _VoiceStage.transcribing => Text(
-                                    "Transcribing…",
-                                    style: prego.textTheme.textSm.regular,
-                                  ),
-                                  _ => Text(
-                                    hasText ? "Hold to talk more" : "Hold to talk to give feedback",
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                                  ),
-                                },
+            if (expanded) const SizedBox(height: PregoSpacing.md),
+            if (keyboardMode)
+              controls
+            else
+              DecoratedBox(
+                key: const ValueKey("feedback-voice-pill"),
+                decoration: pregoComposerSurfaceDecoration(
+                  prego: prego,
+                  style: PregoComposerSurfaceStyle.subtle,
+                  borderRadius: BorderRadius.circular(PregoRadius.full),
+                ).copyWith(boxShadow: const []),
+                child: Padding(padding: const EdgeInsets.all(PregoSpacing.sm), child: controls),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComposerControls({required BuildContext context}) {
+    final prego = context.prego;
+    final hasText = _text.text.isNotEmpty;
+    final keyboardMode = _mode == _InputMode.keyboard;
+    final busy = _submission == _SubmissionStage.submitting;
+    final voiceBusy = _voice == _VoiceStage.recording || _voice == _VoiceStage.transcribing;
+    final transcriptReady = hasText && !keyboardMode;
+    return Row(
+      children: [
+        if (!keyboardMode)
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: _voice == _VoiceStage.recording
+                  ? "Finish recording"
+                  : hasText
+                  ? "Hold to talk more"
+                  : "Hold to talk to give feedback",
+              excludeSemantics: true,
+              onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
+              child: GestureDetector(
+                key: const ValueKey("feedback-voice"),
+                behavior: HitTestBehavior.opaque,
+                onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
+                onLongPressStart: busy ? null : (_) => _startRecording(),
+                onLongPressEnd: busy ? null : (_) => _transcribe(),
+                child: _FeedbackPress(
+                  enabled: !busy && _voice != _VoiceStage.transcribing,
+                  child: SizedBox(
+                    height: 44,
+                    child: Center(
+                      child: _FeedbackContentTransition(
+                        child: KeyedSubtree(
+                          key: ValueKey((_voice, hasText)),
+                          child: switch (_voice) {
+                            _VoiceStage.recording => const _RecordingPreview(),
+                            _VoiceStage.transcribing => Text("Transcribing…", style: prego.textTheme.textSm.regular),
+                            _ => Padding(
+                              // Balance the trailing 44px Send action, as in Figma.
+                              padding: EdgeInsetsDirectional.only(start: transcriptReady ? 44 : 0),
+                              child: Text(
+                                hasText ? "Hold to talk more" : "Hold to talk to give feedback",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
                               ),
                             ),
-                          ),
+                          },
                         ),
                       ),
                     ),
                   ),
+                ),
+              ),
+            ),
+          )
+        else
+          const Spacer(),
+        _FeedbackActionTransition(
+          child: transcriptReady
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                  child: _ComposerButton(
+                    label: "Send feedback",
+                    icon: TablerRegular.arrow_up,
+                    primary: true,
+                    loading: busy,
+                    onPressed: _canSend ? _submit : null,
+                  ),
                 )
-              else
-                const Spacer(),
-              _FeedbackActionTransition(
-                child: _voice != _VoiceStage.recording && _voice != _VoiceStage.transcribing
-                    ? _ComposerButton(
-                        label: keyboardMode ? "Use voice input" : "Use keyboard",
-                        icon: keyboardMode ? TablerRegular.microphone : TablerRegular.keyboard,
-                        primary: false,
-                        loading: false,
-                        onPressed: busy
-                            ? null
-                            : keyboardMode
-                            ? () {
-                                _focus.unfocus();
-                                setState(() => _mode = _InputMode.voice);
-                              }
-                            : _typeFeedback,
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              _FeedbackActionTransition(
-                child: hasText || _issues.isNotEmpty || keyboardMode
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: _ComposerButton(
-                          label: "Send feedback",
-                          icon: TablerRegular.arrow_up,
-                          primary: true,
-                          loading: busy,
-                          onPressed: _canSend ? _submit : null,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ],
-      ),
+              : !voiceBusy
+              ? Padding(
+                  padding: EdgeInsetsDirectional.only(start: keyboardMode ? 0 : PregoSpacing.md),
+                  child: _ComposerButton(
+                    label: keyboardMode ? "Use voice input" : "Use keyboard",
+                    icon: keyboardMode ? TablerRegular.microphone : TablerRegular.keyboard,
+                    primary: false,
+                    loading: false,
+                    onPressed: busy
+                        ? null
+                        : keyboardMode
+                        ? () {
+                            _focus.unfocus();
+                            setState(() => _mode = _InputMode.voice);
+                          }
+                        : _typeFeedback,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        _FeedbackActionTransition(
+          child: !transcriptReady && (_issues.isNotEmpty || keyboardMode)
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
+                  child: _ComposerButton(
+                    label: "Send feedback",
+                    icon: TablerRegular.arrow_up,
+                    primary: true,
+                    loading: busy,
+                    onPressed: _canSend ? _submit : null,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
     );
   }
 }
