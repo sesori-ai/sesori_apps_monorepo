@@ -1,9 +1,30 @@
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 
 import "feedback_flow_playbook.dart";
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+  const nativeReviewChannel = MethodChannel("com.sesori.app/feedback_preview");
+  final nativeRequests = <MethodCall>[];
+  final sheetsPresentDuringNativeRequest = <bool>[];
+  Exception? nativeFailure;
+
+  setUp(() {
+    nativeRequests.clear();
+    sheetsPresentDuringNativeRequest.clear();
+    nativeFailure = null;
+    binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeReviewChannel, (call) async {
+      nativeRequests.add(call);
+      sheetsPresentDuringNativeRequest.add(find.byType(BottomSheet, skipOffstage: false).evaluate().isNotEmpty);
+      if (nativeFailure case final failure?) throw failure;
+      return null;
+    });
+  });
+
+  tearDown(() => binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeReviewChannel, null));
+
   for (final rating in [1, 2, 3]) {
     testWidgets("$rating stars stays private through category-only submission", (tester) async {
       await _launch(tester: tester);
@@ -11,7 +32,7 @@ void main() {
       await _rate(tester: tester, rating: rating);
 
       expect(find.text("What should we improve?"), findsOneWidget);
-      expect(find.text("Preview · no store request"), findsNothing);
+      expect(nativeRequests, isEmpty);
       expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
       expect(_control(label: "Send feedback"), findsNothing);
 
@@ -25,25 +46,50 @@ void main() {
 
       expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
       expect(find.text("What should we improve?"), findsNothing);
-      expect(find.text("Preview · no store request"), findsNothing);
+      expect(nativeRequests, isEmpty);
       expect(tester.takeException(), isNull);
     });
   }
 
   for (final rating in [4, 5]) {
-    testWidgets("$rating stars opens a labeled store-review simulation", (tester) async {
+    testWidgets("$rating stars requests native review once after the feedback sheet is removed", (tester) async {
       await _launch(tester: tester);
       await _open(tester: tester);
+      expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
       await _rate(tester: tester, rating: rating);
 
-      expect(find.text("Preview · no store request"), findsOneWidget);
-      expect(find.text("Enjoying Sesori?"), findsOneWidget);
+      expect(nativeRequests, hasLength(1));
+      expect(nativeRequests.single.method, "requestReview");
+      expect(nativeRequests.single.arguments, isNull);
+      expect(sheetsPresentDuringNativeRequest, [false]);
+      expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
+      expect(find.byType(Dialog), findsNothing);
       expect(find.text("What should we improve?"), findsNothing);
+      expect(find.text("Feedback sent. Thank you!"), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
-      await _tap(tester: tester, finder: find.byKey(ValueKey("native-$rating")));
-      await _tap(tester: tester, finder: find.text("Done"));
+  for (final failure in <({Exception error, String notice})>[
+    (error: MissingPluginException(), notice: "Native rating is available in the iOS debug preview."),
+    (
+      error: PlatformException(code: "native_review_unavailable"),
+      notice: "Couldn’t open native rating. Please try again.",
+    ),
+  ]) {
+    testWidgets("native ${failure.error.runtimeType} displays an explicit notice without a fake dialog", (
+      tester,
+    ) async {
+      nativeFailure = failure.error;
+      await _launch(tester: tester);
+      await _open(tester: tester);
+      await _rate(tester: tester, rating: 5);
 
-      expect(find.text("Preview · no store request"), findsNothing);
+      expect(nativeRequests, hasLength(1));
+      expect(nativeRequests.single.method, "requestReview");
+      expect(sheetsPresentDuringNativeRequest, [false]);
+      expect(find.text(failure.notice), findsOneWidget);
+      expect(find.byType(Dialog), findsNothing);
       expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -66,6 +112,7 @@ void main() {
     await _rate(tester: tester, rating: 1);
     expect(_control(label: "Send feedback"), findsNothing);
     expect(find.text("Feedback sent. Thank you!"), findsNothing);
+    expect(nativeRequests, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -96,7 +143,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
-    expect(find.text("Preview · no store request"), findsNothing);
+    expect(nativeRequests, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -117,13 +164,14 @@ void main() {
     expect(_textField(tester: tester).controller?.text, contains("The design is clean"));
     expect(find.text("What should we improve?"), findsOneWidget);
     expect(find.text("Feedback sent. Thank you!"), findsNothing);
-    expect(find.text("Preview · no store request"), findsNothing);
+    expect(nativeRequests, isEmpty);
 
     await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-text")));
     expect(_textField(tester: tester).readOnly, isFalse);
     await tester.enterText(find.byKey(const ValueKey("feedback-text")), "My edited feedback.");
     expect(_textField(tester: tester).controller?.text, "My edited feedback.");
     expect(find.text("Feedback sent. Thank you!"), findsNothing);
+    expect(nativeRequests, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -153,6 +201,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 900));
     await tester.pumpAndSettle();
     expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+    expect(nativeRequests, isEmpty);
     expect(tester.takeException(), isNull);
   });
 }

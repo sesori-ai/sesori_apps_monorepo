@@ -1,11 +1,11 @@
-// UI-only feedback prototype approved for local design review. All service
-// outcomes are simulated; this entry point never initializes the product app.
+// Local feedback prototype. Voice and submission are simulated; 4–5 stars
+// requests Apple's native rating UI through an iOS debug-only channel.
 import "dart:async";
 import "dart:math" as math;
 
+import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_mobile/core/widgets/sesori_logo.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -16,7 +16,6 @@ enum FeedbackPreviewScenario({required final String label}) {
   submissionRetry(label: "Submission fails once"),
   microphoneDenied(label: "Microphone permission denied"),
   transcriptionRetry(label: "Transcription fails once"),
-  nativeUnavailable(label: "Native review unavailable"),
 }
 
 enum _PreviewOutcome() {
@@ -46,6 +45,8 @@ enum _SubmissionStage() {
 const _sampleTranscript =
     "The design is clean, but I kept getting lost in the navigation. "
     "It would help to make it easier to find my recent tasks.";
+
+const _ratingBounceDuration = Duration(milliseconds: 280);
 
 /// Run with `flutter run -t test/playbook/feedback_flow_playbook.dart`.
 /// The launcher labels the simulation; the sheets preserve the product copy.
@@ -103,25 +104,31 @@ class _PreviewLauncherState() extends State<_PreviewLauncher> {
       _notice = null;
     });
     final scenario = _scenario;
+    ModalRoute<_PreviewOutcome>? sheetRoute;
     final result = await showModalBottomSheet<_PreviewOutcome>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.62),
-      builder: (context) => _FeedbackSheet(scenario: scenario),
+      builder: (context) {
+        sheetRoute = ModalRoute.of<_PreviewOutcome>(context);
+        return _FeedbackSheet(scenario: scenario);
+      },
     );
+    // A popped sheet's result completes before its closing animation does.
+    await sheetRoute?.completed;
     if (!mounted) return;
     switch (result) {
       case _PreviewOutcome.privateFeedback:
         setState(() => _notice = "Feedback sent. Thank you!");
       case _PreviewOutcome.nativeReview:
-        // The launcher survives sheet disposal. This is a Figma mock, never
-        // StoreKit, Play Review, a store link, or a network request.
-        if (scenario == FeedbackPreviewScenario.nativeUnavailable) {
-          setState(() => _notice = "Native review unavailable · preview");
-        } else {
-          await showDialog<void>(context: context, builder: (_) => const _NativeReviewPreview());
+        try {
+          await const MethodChannel("com.sesori.app/feedback_preview").invokeMethod<void>("requestReview");
+        } on MissingPluginException {
+          if (mounted) setState(() => _notice = "Native rating is available in the iOS debug preview.");
+        } on PlatformException {
+          if (mounted) setState(() => _notice = "Couldn’t open native rating. Please try again.");
         }
       case null:
         break;
@@ -163,7 +170,7 @@ class _PreviewLauncherState() extends State<_PreviewLauncher> {
                     Text("Feedback preview", style: prego.textTheme.textXl.medium),
                     const SizedBox(height: 8),
                     Text(
-                      "UI only. Voice, submission, and store review are simulated. Nothing is recorded or sent.",
+                      "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
                       style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                     ),
                     const SizedBox(height: 24),
@@ -189,7 +196,7 @@ class _PreviewLauncherState() extends State<_PreviewLauncher> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      "Try 1–3 stars for private feedback, or 4–5 stars for the store-review preview. "
+                      "Try 1–3 stars for private feedback, or 4–5 stars for Apple’s native rating prompt. "
                       "Dismiss to change the scenario or theme.",
                       style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
                     ),
@@ -253,7 +260,9 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> {
       _rating = rating;
       _choosingRating = true;
     });
-    await Future<void>.delayed(const Duration(milliseconds: 180));
+    await Future<void>.delayed(
+      prefersReducedMotion(context) ? const Duration(milliseconds: 100) : _ratingBounceDuration,
+    );
     if (!mounted) return;
     if (rating >= 4) {
       Navigator.of(context).pop(_PreviewOutcome.nativeReview);
@@ -266,7 +275,10 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> {
   Widget build(BuildContext context) {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final ratingStep = _rating == null || _choosingRating;
-    final reducedMotion = MediaQuery.disableAnimationsOf(context);
+    final reducedMotion = prefersReducedMotion(context);
+    final step = ratingStep
+        ? _RatingStep(selected: _rating, onChoose: _chooseRating)
+        : _PrivateFeedbackStep(scenario: widget.scenario);
     return AnimatedPadding(
       duration: reducedMotion ? Duration.zero : const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
@@ -295,14 +307,14 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: AnimatedSize(
-                  duration: reducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  child: ratingStep
-                      ? _RatingStep(selected: _rating, onChoose: _chooseRating)
-                      : _PrivateFeedbackStep(scenario: widget.scenario),
-                ),
+                child: reducedMotion
+                    ? step
+                    : AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: step,
+                      ),
               ),
               SizedBox(height: keyboard > 0 ? 12 : math.max(32, MediaQuery.paddingOf(context).bottom + 16)),
             ],
@@ -336,7 +348,7 @@ class const _RatingStep({
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
         const SizedBox(height: 36),
-        _Stars(selected: selected, onChoose: onChoose, nativePreview: false),
+        _Stars(selected: selected, onChoose: onChoose),
         const SizedBox(height: 22),
         _DismissButton(
           label: "Not now",
@@ -350,8 +362,27 @@ class const _RatingStep({
 class const _Stars({
   required final int? selected,
   required final void Function({required int rating}) onChoose,
-  required final bool nativePreview,
 }) extends StatelessWidget {
+  // A rating is accepted once before advancing: dip, pop, then softly settle.
+  static final _tapScale = TweenSequence<double>([
+    TweenSequenceItem(
+      tween: Tween(begin: 1.0, end: 0.88).chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 16,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: 0.88, end: 1.18).chain(CurveTween(curve: Curves.easeInOutCubic)),
+      weight: 34,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: 1.18, end: 0.98).chain(CurveTween(curve: Curves.easeInOutCubic)),
+      weight: 32,
+    ),
+    TweenSequenceItem(
+      tween: Tween(begin: 0.98, end: 1.0).chain(CurveTween(curve: Curves.easeOutCubic)),
+      weight: 18,
+    ),
+  ]);
+
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
@@ -359,7 +390,7 @@ class const _Stars({
       for (var rating = 1; rating <= 5; rating++) ...[
         if (rating > 1) const SizedBox(width: 8),
         Semantics(
-          label: "${nativePreview ? 'Preview ' : ''}$rating ${rating == 1 ? 'star' : 'stars'}",
+          label: "$rating ${rating == 1 ? 'star' : 'stars'}",
           button: true,
           selected: selected == rating,
           excludeSemantics: true,
@@ -367,17 +398,29 @@ class const _Stars({
           child: SizedBox.square(
             dimension: 44,
             child: IconButton(
-              key: ValueKey("${nativePreview ? 'native' : 'rating'}-$rating"),
+              key: ValueKey("rating-$rating"),
               padding: EdgeInsets.zero,
+              style: ButtonStyle(
+                splashFactory: NoSplash.splashFactory,
+                overlayColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.pressed) ? Colors.transparent : null,
+                ),
+              ),
               onPressed: () => onChoose(rating: rating),
-              icon: Icon(
-                selected != null && rating <= selected! ? TablerSolid.star : TablerRegular.star,
-                size: nativePreview ? 26 : 40,
-                color: nativePreview
-                    ? context.prego.colors.textBrandSecondary
-                    : selected != null && rating <= selected!
-                    ? context.prego.colors.textPrimary
-                    : context.prego.colors.textTertiary,
+              icon: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: selected == rating ? 1 : 0),
+                duration: prefersReducedMotion(context) ? Duration.zero : _ratingBounceDuration,
+                builder: (context, progress, child) => Transform.scale(
+                  scale: prefersReducedMotion(context) ? 1 : _tapScale.transform(progress),
+                  child: child,
+                ),
+                child: Icon(
+                  selected != null && rating <= selected! ? TablerSolid.star : TablerRegular.star,
+                  size: 40,
+                  color: selected != null && rating <= selected!
+                      ? context.prego.colors.textPrimary
+                      : context.prego.colors.textTertiary,
+                ),
               ),
             ),
           ),
@@ -805,64 +848,4 @@ class _RecordingPreviewState() extends State<_RecordingPreview> {
       dotColor: context.prego.colors.textQuaternary,
     ),
   );
-}
-
-class const _NativeReviewPreview() extends StatefulWidget {
-  @override
-  State<_NativeReviewPreview> createState() => _NativeReviewPreviewState();
-}
-
-class _NativeReviewPreviewState() extends State<_NativeReviewPreview> {
-  int? _rating;
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    return Dialog(
-      backgroundColor: prego.colors.bgSurface3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.x5l)),
-      insetPadding: const EdgeInsets.all(28),
-      child: SizedBox(
-        width: 304,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 64, child: SesoriLogo(squareSize: 54)),
-              const SizedBox(height: 8),
-              Text("Enjoying Sesori?", style: prego.textTheme.textLg.bold),
-              Text("Tap a star to rate it on the App Store.", style: prego.textTheme.textMd.medium),
-              const SizedBox(height: 12),
-              Divider(color: prego.colors.borderPrimary, height: 1),
-              const SizedBox(height: 8),
-              Center(
-                child: _Stars(
-                  selected: _rating,
-                  onChoose: ({required rating}) => setState(() => _rating = rating),
-                  nativePreview: true,
-                ),
-              ),
-              const SizedBox(height: 8),
-              PregoButtonsSolid(
-                label: _rating == null ? "Not Now" : "Done",
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.xl,
-                fullWidth: true,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(height: 12),
-              Center(
-                child: Text(
-                  "Preview · no store request",
-                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

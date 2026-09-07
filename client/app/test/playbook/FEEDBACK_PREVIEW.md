@@ -1,15 +1,16 @@
 # Feedback UI preview
 
 An interactive Flutter prototype of the [Figma feedback flow](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=4616-40748).
-This is a design and engineering handoff, not a connected product feature.
+This is a design and engineering handoff. Voice and private submission are
+simulated; 4–5 stars requests Apple's actual native rating UI in iOS debug builds.
 
 ## Simulator screenshots
 
 Captured from the preview on an iPhone 17 Pro simulator running iOS 26.5:
 
-| Rating · dark | Keyboard · dark | Native mock · light |
+| Rating · dark | Keyboard · dark | Apple native rating |
 | --- | --- | --- |
-| ![Rating sheet](feedback_preview/rating-dark.png) | ![Private feedback with the iOS keyboard](feedback_preview/keyboard-dark.png) | ![Labeled native-review mock](feedback_preview/native-mock-light.png) |
+| ![Rating sheet](feedback_preview/rating-dark.png) | ![Private feedback with the iOS keyboard](feedback_preview/keyboard-dark.png) | ![Apple StoreKit rating prompt](feedback_preview/native-ios.png) |
 
 ## Run locally
 
@@ -31,7 +32,8 @@ or feedback backend is needed. A real software keyboard is used for typing.
 | Action | Expected preview behavior |
 | --- | --- |
 | Select 1, 2, or 3 stars | Open private feedback with issue choices and voice/keyboard input. |
-| Select 4 or 5 stars | Close the rating sheet, then open the labeled Figma store-review mock. |
+| Select 4 or 5 stars | Wait for the rating sheet to close completely, then request Apple's native rating prompt through StoreKit. |
+| Tap any star | Bounce only the tapped star without a circular press highlight, then advance after it settles. Reduced motion keeps the selection feedback without movement. |
 | Tap Not now, Cancel, the scrim, or swipe the sheet down | Dismiss without submission; reopening starts a fresh draft. |
 | Select one or several issues | Toggle selection; category-only feedback can be submitted. |
 | Switch to keyboard | Edit multiline text; show the annotated blue focus ring. |
@@ -41,24 +43,35 @@ or feedback backend is needed. A real software keyboard is used for typing.
 | Select Submission fails once | First submission preserves the draft and shows Retry; retry succeeds. |
 | Select Microphone permission denied | Show the permission error with a working keyboard alternative. No OS permission dialog is requested. |
 | Select Transcription fails once | First transcription fails; Retry transcription inserts sample text. |
-| Select Native review unavailable | Selecting 4–5 stars returns to the launcher with an explicit preview notice. |
+| Open the preview outside an iOS debug build | The native-rating request reports that it is available in the iOS debug preview; no custom review dialog is substituted. |
 
 Check dark/light themes, larger text, a narrow phone, keyboard appearance and
 dismissal, category wrapping, long feedback, cancellation during a simulated
 operation, and repeating the flow. Private-feedback success must never open the
-store-review mock.
+native-rating prompt.
 
-The native-review card is deliberately labeled **Preview · no store request**.
-Selecting its stars only changes its local presentation; Done/Not Now closes it.
-Neither this card nor the simulated confirmation proves real delivery.
+Apple owns the native prompt's copy, appearance, star selection, and dismissal.
+StoreKit does not report whether a rating was submitted. Its development-mode
+prompt lets us verify the native UI; this is not proof of a published review.
+[Apple documents development and TestFlight behavior here](https://developer.apple.com/documentation/storekit/appstore/requestreview%28in%3A%29-1q8qs).
+The private-feedback success toast remains simulated.
 
 ## Implementation boundaries
 
 - The alternative entry point is `feedback_flow_playbook.dart`; production
   `lib/main.dart`, routes, settings, DI, and services are unchanged.
 - All prototype state, fake delays, scenarios, and copy live under
-  `test/playbook/`. There are no API calls, real recording/transcription,
-  analytics events, storage, automatic prompting, or new dependencies.
+  `test/playbook/`. Private feedback has no backend calls, real recording or
+  transcription, analytics events, storage, or automatic prompting.
+- A small `#if DEBUG` hook in `ios/Runner/AppDelegate.swift` registers
+  `com.sesori.app/feedback_preview`. Its `requestReview` method calls StoreKit
+  using the foreground `UIWindowScene`, after the Dart sheet's `completed`
+  future resolves. It uses `AppStore.requestReview(in:)` on iOS 16+ and
+  `SKStoreReviewController.requestReview(in:)` on the app's supported iOS 15.
+  There are no new dependencies. Release builds exclude this hook, and the
+  normal product entry point does not call it.
+  The Runner Debug build configuration explicitly enables Swift's `DEBUG`
+  compilation condition so the preview hook is available in simulator builds.
 - Prego supplies the themes, icons, solid/glass buttons, composer decoration,
   waveform, scaffold, and success toast. The grabber-only sheet, issue pills,
   and stars are private prototype widgets.
@@ -70,15 +83,15 @@ Neither this card nor the simulated confirmation proves real delivery.
   Confirm the correction to `Notifications don’t arrive` before production.
 - Figma comment #151 asks for voice and quick issue choices; both are included.
   Comment #150 questions the intermediate state: no extra thank-you sheet is
-  inserted before the store-review mock. The annotated blue focus ring is
+  inserted before native rating. The annotated blue focus ring is
   retained on the feedback editor.
 
 ## Engineering follow-up
 
 After reviewing the experience, extract the agreed presentation into shared
 `module_app_ui` widgets and put business state in `module_core` with shell-owned
-composition. Do not copy prototype delays, scenario switches, or the mock native
-dialog into the production flow.
+composition. Do not copy prototype delays or scenario switches into the
+production flow.
 
 Production work still needs:
 
@@ -88,8 +101,9 @@ Production work still needs:
    recording cleanup, editable transcription, and real-device validation.
 3. The agreed prompting rule (proposed: two minutes of foreground use, then a
    quiet return to the task list), cooldown persistence, and manual entry.
-4. Real native review adapters and platform testing. Their owner must survive
-   dismissal of Sesori's rating sheet; OS suppression is not a failed review.
+4. A production native-review adapter and platform testing. The current iOS
+   hook is debug-only; Android is not implemented or exercised. Keep Apple’s
+   actual UI and wait for sheet dismissal. OS suppression is not a failed review.
 5. Store-policy resolution for the requested positive-rating-only native
    prompt. The UI prototype preserves the user's selected 1–3/private and
    4–5/native split; this is not an assertion of store compliance. See
@@ -102,26 +116,30 @@ Production work still needs:
 
 ```sh
 # From client/app
-flutter test test/playbook/feedback_flow_playbook_test.dart
+flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart
 dart analyze
 ```
 
 Verified locally on 2026-09-07 with Flutter 3.47.2 / Dart 3.13.2:
 
-- Nine focused widget tests pass: all five rating branches, category-only
+- Fourteen focused widget tests pass: all five rating branches, category-only
   private submission, dismiss/reopen, draft-preserving retry, editable simulated
   transcription without automatic submission, and a 320 × 568 viewport with
-  1.5× text and keyboard insets.
+  1.5× text and keyboard insets. Native-channel tests verify exactly one request
+  for 4/5 stars after full sheet removal, none for 1–3, and explicit handling
+  of missing-plugin/platform failures.
+  Three animation checks cover the tapped-star bounce, a second tap during the
+  transition, and both reduced-motion accessibility settings.
 - The app analyzer passes. Formatting and the final playbook analyzer pass.
-- The iOS simulator build passes. The final color adjustment was hot-reloaded
-  and visually inspected in the running simulator.
+- The iOS simulator build passes, including the Swift StoreKit hook.
 - Manual simulator coverage: dark/light rating sheets, private issue selection,
   typing with the software keyboard, focus ring and keyboard avoidance,
   simulated recording/transcription, private success toast, category-preserving
-  submission failure and retry, and selecting/dismissing the five-star mock.
+  submission failure and retry, and Apple's actual native rating prompt.
 - Star, issue, and composer actions expose single labeled accessibility
   controls. Full VoiceOver navigation remains a team review item.
 
 The current request intentionally limits verification to the local UI and iOS
-simulator. No real StoreKit, Play Review, Android, microphone, backend delivery,
-or production prompt/cooldown behavior is claimed by this handoff.
+simulator. StoreKit presentation is exercised in a debug build. Play Review,
+Android, microphone, backend delivery, and production prompt/cooldown behavior
+are not exercised by this handoff.
