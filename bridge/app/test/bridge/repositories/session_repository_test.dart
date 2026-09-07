@@ -80,9 +80,10 @@ void main() {
       );
       plugin.abortResult = const PluginAbortAccepted(
         workKept: true,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: ["backend-child"],
-        unhandledSubAgentSessionIds: ["backend-grandchild", "unbound-child"],
+        subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
+          handledSessionIds: ["backend-child"],
+          unhandledSessionIds: ["backend-grandchild", "unbound-child"],
+        ),
       );
       final repository = singlePluginSessionRepository(
         plugin: plugin,
@@ -110,9 +111,7 @@ void main() {
 
       plugin.abortResult = const PluginAbortAccepted(
         workKept: false,
-        subAgentsHandled: true,
-        handledSubAgentSessionIds: ["backend-child"],
-        unhandledSubAgentSessionIds: ["backend-grandchild"],
+        subAgentCoverage: PluginAbortSubAgentsHandled(),
       );
       final fullyHandled = await repository.abortSession(
         sessionId: "root",
@@ -2702,9 +2701,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Map<String, PluginSessionStatus> sessionStatusesResult = const {};
   PluginAbortResult abortResult = const PluginAbortAccepted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
   );
   PluginSession createSessionResult = const PluginSession(
     id: "created-session",

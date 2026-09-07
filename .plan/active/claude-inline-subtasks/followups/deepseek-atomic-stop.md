@@ -122,9 +122,11 @@ child with its own accepted bridge prompt is independently resident: an ancestor
 stop excludes that child branch from request-time cleanup and reports it as
 retained. The bridge passes every persisted descendant backend id into the plugin,
 including nested descendants and ids absent after tracker reset. The atomic result
-returns exact handled and unhandled ids for public-id mapping: current clients
-fanout directly to known independent work, while full native coverage suppresses
-second stops for children whose lifecycle announcement lands during STOP.
+returns a sealed full/partial/legacy coverage variant; partial carries exact handled
+and unhandled ids for public-id mapping. The surface-neutral client abort service
+fanouts directly to known independent work regardless of screen loading state,
+while full native coverage suppresses second stops for children whose lifecycle
+announcement lands during STOP.
 Whole-plugin stop uses the same tree path and existing authoritative-idle budget.
 Replace only the opted-in stop snapshot fanout/coverage reconstruction. Keep
 snapshots required by confirm/keep; no compatibility shims for internal callers.
@@ -214,8 +216,8 @@ notification backlog and prompt-write buffering; response delivered before reque
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
 queued prompt versus resident child authority; independently resumed child plus a
 covered delegated sibling and partial client fanout; cleared process-local ancestry;
-client-less retained work; fully handled bridge lookup avoidance; nested exact
-unhandled fanout; lifecycle announcement during STOP; OpenCode legacy fanout when
+client-less retained work; fully handled bridge lookup avoidance; nested exact unhandled fanout outside loaded-state gating; sealed internal coverage
+variants; lifecycle announcement during STOP; OpenCode legacy fanout when
 child-stop outcomes are not authoritative; keep behavior; foreground retention; RPC
 failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests
 and frozen corpora. Run owning analyzers/tests; CI owns the full matrix.

@@ -13,20 +13,30 @@ enum PluginAbortSubAgentPolicy() {
 
 sealed class const PluginAbortResult();
 
+/// Whether the plugin completed the requested descendant-stop policy.
+sealed class const PluginAbortSubAgentCoverage();
+
+/// Native/plugin authority covered every descendant in the request scope.
+final class const PluginAbortSubAgentsHandled() extends PluginAbortSubAgentCoverage;
+
+/// Some known descendants remain outside plugin/native stop authority.
+final class const PluginAbortSubAgentsPartiallyHandled({
+  required final List<String> handledSessionIds,
+  required final List<String> unhandledSessionIds,
+}) extends PluginAbortSubAgentCoverage;
+
+/// The plugin cannot authoritatively classify descendant coverage.
+///
+/// The client retains its legacy visible-child fanout for this result.
+final class const PluginAbortSubAgentsLegacyFanout() extends PluginAbortSubAgentCoverage;
+
 /// The stop was performed. [workKept] is true only when resident work (running
 /// sub-agents) was deliberately left alive, so the caller knows the session
-/// will still finish something later. [subAgentsHandled] is true when the
-/// plugin already applied the requested descendant policy and the client must
-/// not issue a second per-child fanout. When only part of that policy was
-/// handled, [handledSubAgentSessionIds] identifies backend sessions to exclude
-/// from remaining fanout and [unhandledSubAgentSessionIds] identifies exact
-/// backend sessions that still require it. Both lists are empty for legacy
-/// snapshot-fanout results.
+/// will still finish something later. [subAgentCoverage] makes full, partial,
+/// and legacy coverage mutually exclusive.
 final class const PluginAbortAccepted({
   required final bool workKept,
-  required final bool subAgentsHandled,
-  required final List<String> handledSubAgentSessionIds,
-  required final List<String> unhandledSubAgentSessionIds,
+  required final PluginAbortSubAgentCoverage subAgentCoverage,
 }) extends PluginAbortResult;
 
 /// A `confirm` stop refused because sub-agents are running.

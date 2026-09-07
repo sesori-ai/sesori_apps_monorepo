@@ -30,10 +30,11 @@ void main() {
 
       expect(
         result,
-        isA<PluginAbortAccepted>()
-            .having((accepted) => accepted.subAgentsHandled, "all handled", false)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
-            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
+        isA<PluginAbortAccepted>().having(
+          (accepted) => accepted.subAgentCoverage,
+          "coverage",
+          isA<PluginAbortSubAgentsLegacyFanout>(),
+        ),
       );
     });
   });

@@ -843,6 +843,18 @@ production files. The pinned implementation head
 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...afd3695acdedc99a6d1790c5377bcb8c2be0f123`
 reproduces it. This range includes every earlier measurement record in its docs/
 plan subtotal and excludes subsequent non-implementation evidence/wrapping commits
-beginning with `d298a41507`, which records the 3,263 figure. The 556-line increase from `2dd4fb076e` is 18 generated, 371 tests/
-fixtures, 41 docs/plans, and 126 production lines. Incremental architecture review
-of `52761ce4de..afd3695acd` approved with no findings.
+beginning with `d298a41507`, which records the 3,263 figure. The 556-line increase
+from `2dd4fb076e` is 18 generated, 371 tests/fixtures, 41 docs/plans, and 126
+production lines. Incremental architecture review of
+`52761ce4de..afd3695acd` approved with no findings.
+
+The next Codex pass found that exact targets were still gated on loaded UI state,
+abort policy remained in the Cubit, and the internal Boolean/two-list result allowed
+contradictory coverage. `SessionAbortService` now owns root/descendant coordination
+and processes exact remaining ids without reading screen state; it reads direct
+child statuses only for legacy fallback. Plugin coverage is a sealed full, partial,
+or legacy variant, with lists only on partial. Shared wire defaults remain additive
+at the repository boundary. ACP 325, DeepSeek 122, OpenCode 432, selected bridge
+75, and selected client/service 108 tests pass; affected fatal-info analysis is
+clean and LSP reports zero diagnostics across ten changed production files.
+Incremental architecture review remains required.

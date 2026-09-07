@@ -958,9 +958,7 @@ class CodexPlugin._({
     await _abortSession(sessionId: sessionId);
     return const PluginAbortAccepted(
       workKept: false,
-      subAgentsHandled: false,
-      handledSubAgentSessionIds: [],
-      unhandledSubAgentSessionIds: [],
+      subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
     );
   }
 

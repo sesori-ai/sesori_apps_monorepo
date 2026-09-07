@@ -1723,9 +1723,7 @@ abstract class AcpPlugin({
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
       return const PluginAbortAccepted(
         workKept: false,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: [],
-        unhandledSubAgentSessionIds: [],
+        subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
       );
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
@@ -1760,9 +1758,7 @@ abstract class AcpPlugin({
     if (subAgents == PluginAbortSubAgentPolicy.keep && activeSubAgentSessionIds.isNotEmpty && !mainRunning) {
       return const PluginAbortAccepted(
         workKept: true,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: [],
-        unhandledSubAgentSessionIds: [],
+        subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
       );
     }
     if (subAgents != PluginAbortSubAgentPolicy.keep && supportsAtomicScopedStop) {
@@ -1789,9 +1785,10 @@ abstract class AcpPlugin({
               children.isNotEmpty ||
               independentDescendantSessionIds.isNotEmpty ||
               namedChild != null && !hasResidentPrompt,
-          subAgentsHandled: false,
-          handledSubAgentSessionIds: const [],
-          unhandledSubAgentSessionIds: List.unmodifiable(activeSubAgentSessionIds),
+          subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
+            handledSessionIds: const [],
+            unhandledSessionIds: List.unmodifiable(activeSubAgentSessionIds),
+          ),
         );
       }
       final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
@@ -1807,12 +1804,15 @@ abstract class AcpPlugin({
         // The bridge's catalog snapshot makes process-restart gaps explicit,
         // while native authority covers children admitted before or during STOP
         // even when their lifecycle frame has not reached the bridge yet.
-        subAgentsHandled: independentDescendantSessionIds.isEmpty,
-        handledSubAgentSessionIds: List.unmodifiable({
-          ...knownSubAgentSessionIds.difference(independentDescendantSessionIds),
-          ...atomicChildren.map((child) => child.childSessionId),
-        }),
-        unhandledSubAgentSessionIds: List.unmodifiable(independentDescendantSessionIds),
+        subAgentCoverage: independentDescendantSessionIds.isEmpty
+            ? const PluginAbortSubAgentsHandled()
+            : PluginAbortSubAgentsPartiallyHandled(
+                handledSessionIds: List.unmodifiable({
+                  ...knownSubAgentSessionIds.difference(independentDescendantSessionIds),
+                  ...atomicChildren.map((child) => child.childSessionId),
+                }),
+                unhandledSessionIds: List.unmodifiable(independentDescendantSessionIds),
+              ),
       );
     }
     final mainResult = await _cancelScopedSession(
@@ -1822,9 +1822,7 @@ abstract class AcpPlugin({
     if (subAgents != PluginAbortSubAgentPolicy.stop) {
       return PluginAbortAccepted(
         workKept: activeSubAgentSessionIds.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: const [],
-        unhandledSubAgentSessionIds: const [],
+        subAgentCoverage: const PluginAbortSubAgentsLegacyFanout(),
       );
     }
     final results = await Future.wait([
@@ -1854,9 +1852,7 @@ abstract class AcpPlugin({
       workKept:
           mainResult == AcpChildCancelResult.notCancellable ||
           children.any((child) => !cancelled.contains(child.childSessionId) && !coveredByParent(child: child)),
-      subAgentsHandled: true,
-      handledSubAgentSessionIds: List.unmodifiable(children.map((child) => child.childSessionId)),
-      unhandledSubAgentSessionIds: const [],
+      subAgentCoverage: const PluginAbortSubAgentsHandled(),
     );
   }
 

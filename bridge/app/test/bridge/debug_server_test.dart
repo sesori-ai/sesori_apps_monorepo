@@ -1184,9 +1184,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required Set<String> knownSubAgentSessionIds,
   }) async => const PluginAbortAccepted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
   );
 
   @override
@@ -1327,9 +1325,7 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
     await _abortRelease.future;
     return const PluginAbortAccepted(
       workKept: false,
-      subAgentsHandled: false,
-      handledSubAgentSessionIds: [],
-      unhandledSubAgentSessionIds: [],
+      subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
     );
   }
 }
@@ -1452,9 +1448,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
     required Set<String> knownSubAgentSessionIds,
   }) async => const PluginAbortAccepted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
   );
 
   @override

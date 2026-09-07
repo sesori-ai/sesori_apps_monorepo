@@ -1101,18 +1101,26 @@ class FakeSessionRepository({
       subAgents: subAgents.toPlugin(),
       knownSubAgentSessionIds: const {},
     )) {
-      PluginAbortAccepted(
-        :final workKept,
-        :final subAgentsHandled,
-        :final handledSubAgentSessionIds,
-        :final unhandledSubAgentSessionIds,
-      ) =>
-        SessionAborted(
+      PluginAbortAccepted(:final workKept, :final subAgentCoverage) => switch (subAgentCoverage) {
+        PluginAbortSubAgentsHandled() => SessionAborted(
           workKept: workKept,
-          subAgentsHandled: subAgentsHandled,
-          handledSubAgentSessionIds: handledSubAgentSessionIds,
-          unhandledSubAgentSessionIds: unhandledSubAgentSessionIds,
+          subAgentsHandled: true,
+          handledSubAgentSessionIds: const [],
+          unhandledSubAgentSessionIds: const [],
         ),
+        PluginAbortSubAgentsLegacyFanout() => SessionAborted(
+          workKept: workKept,
+          subAgentsHandled: false,
+          handledSubAgentSessionIds: const [],
+          unhandledSubAgentSessionIds: const [],
+        ),
+        PluginAbortSubAgentsPartiallyHandled(:final handledSessionIds, :final unhandledSessionIds) => SessionAborted(
+          workKept: workKept,
+          subAgentsHandled: false,
+          handledSubAgentSessionIds: handledSessionIds,
+          unhandledSubAgentSessionIds: unhandledSessionIds,
+        ),
+      },
       final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
     };
   }

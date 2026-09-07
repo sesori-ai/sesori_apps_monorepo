@@ -26,6 +26,7 @@ import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
+import "../../services/session_abort_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
@@ -96,6 +97,7 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
+  final SessionAbortService _sessionAbortService = SessionAbortService(repository: promptDispatcher);
   final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
@@ -2304,35 +2306,17 @@ class SessionDetailCubit(
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
-      final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      final (:subAgentsHandled, :handledSubAgentSessionIds, :unhandledSubAgentSessionIds) = switch (root) {
-        SuccessResponse(:final data) => (
-          subAgentsHandled: data.subAgentsHandled,
-          handledSubAgentSessionIds: data.handledSubAgentSessionIds.toSet(),
-          unhandledSubAgentSessionIds: data.unhandledSubAgentSessionIds.toSet(),
-        ),
-        ErrorResponse(:final error) => throw error,
-      };
+      await _sessionAbortService.abort(
+        sessionId: _sessionId,
+        subAgents: subAgents,
+        // Exact bridge-provided targets do not depend on this state. The service
+        // reads it only for compatibility with older visible-child fanout.
+        readLegacyChildStatuses: () => switch (state) {
+          SessionDetailLoaded(:final childStatuses) => childStatuses,
+          SessionDetailLoading() || SessionDetailFailed() => const {},
+        },
+      );
       _clearLocalPromptQueue();
-
-      // Read state after the await: an abort-driven status or transcript event
-      // may have landed meanwhile and must not be overwritten by a stale copy.
-      final current = state;
-      if (!subAgentsHandled && subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
-        final results = await Future.wait([
-          if (unhandledSubAgentSessionIds.isNotEmpty)
-            for (final childId in unhandledSubAgentSessionIds)
-              _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop)
-          else
-            for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
-              if ((status is SessionStatusBusy || status is SessionStatusRetry) &&
-                  !handledSubAgentSessionIds.contains(childId))
-                _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
-        ]);
-        for (final result in results) {
-          if (result case ErrorResponse(:final error)) throw error;
-        }
-      }
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();
     } on SessionAbortRejectedException catch (e) {

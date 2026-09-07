@@ -46,9 +46,10 @@ void main() {
     test("returns whether the plugin handled descendant stops", () async {
       plugin.abortResult = const PluginAbortAccepted(
         workKept: true,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: ["handled-child"],
-        unhandledSubAgentSessionIds: ["remaining-grandchild"],
+        subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
+          handledSessionIds: ["handled-child"],
+          unhandledSessionIds: ["remaining-grandchild"],
+        ),
       );
 
       final response = await handler.handle(

@@ -491,9 +491,7 @@ final class ClaudeSessionService({
     if (state == null) {
       return const PluginAbortAccepted(
         workKept: false,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: [],
-        unhandledSubAgentSessionIds: [],
+        subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
       );
     }
     final activeAbort = state.aborting;
@@ -515,9 +513,7 @@ final class ClaudeSessionService({
       _approvals.cancelForSession(sessionId: sessionId);
       return const PluginAbortAccepted(
         workKept: false,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: [],
-        unhandledSubAgentSessionIds: [],
+        subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
       );
     }
     // The CLI's only stop primitive, `interrupt`, also stops background agents
@@ -548,9 +544,7 @@ final class ClaudeSessionService({
         // keeps the session busy until the tasks report and wake the main agent.
         return const PluginAbortAccepted(
           workKept: true,
-          subAgentsHandled: false,
-          handledSubAgentSessionIds: [],
-          unhandledSubAgentSessionIds: [],
+          subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
         );
       }
       _approvals.cancelForSession(sessionId: sessionId);
@@ -575,9 +569,7 @@ final class ClaudeSessionService({
       }
       return const PluginAbortAccepted(
         workKept: false,
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: [],
-        unhandledSubAgentSessionIds: [],
+        subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
       );
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;

@@ -10,6 +10,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PersistedSessionCleanupApi,
         PluginAbortAccepted,
         PluginAbortRejectedSubAgentsRunning,
+        PluginAbortSubAgentsHandled,
+        PluginAbortSubAgentsLegacyFanout,
+        PluginAbortSubAgentsPartiallyHandled,
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
@@ -1003,31 +1006,44 @@ class SessionRepository({
         knownSubAgentSessionIds: knownSubAgentSessionIds,
       );
       switch (result) {
-        case PluginAbortAccepted(
-          :final workKept,
-          :final subAgentsHandled,
-          :final handledSubAgentSessionIds,
-          :final unhandledSubAgentSessionIds,
-        ):
-          final sessionIdsByBackendId = subAgentsHandled
-              ? const <String, String>{}
-              : await getSessionIdsByBackendIds(
-                  pluginId: binding.pluginId,
-                  backendSessionIds: {
-                    ...handledSubAgentSessionIds,
-                    ...unhandledSubAgentSessionIds,
-                  }.toList(growable: false),
-                );
-          return SessionAborted(
-            workKept: workKept,
-            subAgentsHandled: subAgentsHandled,
-            handledSubAgentSessionIds: [
-              for (final backendSessionId in handledSubAgentSessionIds) ?sessionIdsByBackendId[backendSessionId],
-            ],
-            unhandledSubAgentSessionIds: [
-              for (final backendSessionId in unhandledSubAgentSessionIds) ?sessionIdsByBackendId[backendSessionId],
-            ],
-          );
+        case PluginAbortAccepted(:final workKept, :final subAgentCoverage):
+          switch (subAgentCoverage) {
+            case PluginAbortSubAgentsHandled():
+              return SessionAborted(
+                workKept: workKept,
+                subAgentsHandled: true,
+                handledSubAgentSessionIds: const [],
+                unhandledSubAgentSessionIds: const [],
+              );
+            case PluginAbortSubAgentsLegacyFanout():
+              return SessionAborted(
+                workKept: workKept,
+                subAgentsHandled: false,
+                handledSubAgentSessionIds: const [],
+                unhandledSubAgentSessionIds: const [],
+              );
+            case PluginAbortSubAgentsPartiallyHandled(
+              :final handledSessionIds,
+              :final unhandledSessionIds,
+            ):
+              final sessionIdsByBackendId = await getSessionIdsByBackendIds(
+                pluginId: binding.pluginId,
+                backendSessionIds: {
+                  ...handledSessionIds,
+                  ...unhandledSessionIds,
+                }.toList(growable: false),
+              );
+              return SessionAborted(
+                workKept: workKept,
+                subAgentsHandled: false,
+                handledSubAgentSessionIds: [
+                  for (final backendSessionId in handledSessionIds) ?sessionIdsByBackendId[backendSessionId],
+                ],
+                unhandledSubAgentSessionIds: [
+                  for (final backendSessionId in unhandledSessionIds) ?sessionIdsByBackendId[backendSessionId],
+                ],
+              );
+          }
         case final PluginAbortRejectedSubAgentsRunning rejected:
           return SessionAbortRejected(rejection: rejected.toShared());
       }

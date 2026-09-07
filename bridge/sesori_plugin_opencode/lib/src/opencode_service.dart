@@ -9,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAbortRejectedSubAgentsRunning,
         PluginAbortResult,
         PluginAbortSubAgentPolicy,
+        PluginAbortSubAgentsLegacyFanout,
         PluginAgent,
         PluginApiException,
         PluginCommand,
@@ -255,9 +256,7 @@ class OpenCodeService(
         case PluginAbortSubAgentPolicy.keep:
           return const PluginAbortAccepted(
             workKept: true,
-            subAgentsHandled: false,
-            handledSubAgentSessionIds: [],
-            unhandledSubAgentSessionIds: [],
+            subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
           );
         case PluginAbortSubAgentPolicy.stop:
           break;
@@ -273,9 +272,7 @@ class OpenCodeService(
     // could suppress an exact stop after a child independently resumes.
     return const PluginAbortAccepted(
       workKept: false,
-      subAgentsHandled: false,
-      handledSubAgentSessionIds: [],
-      unhandledSubAgentSessionIds: [],
+      subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
     );
   }
 

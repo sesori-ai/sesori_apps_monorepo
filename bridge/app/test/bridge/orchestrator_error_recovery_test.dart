@@ -509,9 +509,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required Set<String> knownSubAgentSessionIds,
   }) async => const PluginAbortAccepted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
   );
 
   @override

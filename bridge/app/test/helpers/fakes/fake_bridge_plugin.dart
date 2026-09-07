@@ -30,9 +30,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   PluginSession? createSessionResult;
   PluginAbortResult abortResult = const PluginAbortAccepted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
   );
   PluginSession? renameSessionResult;
   PluginProject? renameProjectResult;

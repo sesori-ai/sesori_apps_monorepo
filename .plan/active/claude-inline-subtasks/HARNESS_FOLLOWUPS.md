@@ -129,11 +129,12 @@ confirmation, no child session or partial stop) and gets that subset.
      before dispatch and does not replace retained exact-parent child authority.
      An independently resumed terminal child is outside its former ancestor's
      native subtree. The bridge passes its persisted descendant backend-id
-     snapshot into the plugin. Atomic results report retained work plus exact
-     handled and unhandled ids, which the bridge maps back to public sessions:
-     nested independently resident work receives exact client fanout even after
-     tracker reset, while full native coverage suppresses duplicate stops for
-     child announcements arriving during STOP. No response-time cleanup is allowed. Other ACP harnesses retain the default
+     snapshot into the plugin. A sealed full/partial/legacy result makes coverage
+     combinations valid by construction; partial results carry exact handled and
+     unhandled ids for bridge public-session mapping. The surface-neutral client
+     abort service exact-fanouts nested independent work even across a screen reload,
+     while full native coverage suppresses duplicate stops for child announcements
+     arriving during STOP. No response-time cleanup is allowed. Other ACP harnesses retain the default
      snapshot fanout until their transport
      seam lands.
   5. A narrow backend-neutral replay replacement hook on

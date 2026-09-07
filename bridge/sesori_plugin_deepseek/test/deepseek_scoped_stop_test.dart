@@ -82,9 +82,11 @@ void main() {
         await stopping,
         isA<PluginAbortAccepted>()
             .having((accepted) => accepted.workKept, "work kept", false)
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
-            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
+            .having(
+              (accepted) => accepted.subAgentCoverage,
+              "coverage",
+              isA<PluginAbortSubAgentsHandled>(),
+            ),
       );
     });
 
@@ -100,10 +102,11 @@ void main() {
       harness.reply(frame: stop, result: const {"workKept": false});
       expect(
         await stopping,
-        isA<PluginAbortAccepted>()
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
-            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
+        isA<PluginAbortAccepted>().having(
+          (accepted) => accepted.subAgentCoverage,
+          "coverage",
+          isA<PluginAbortSubAgentsHandled>(),
+        ),
       );
       await harness.end(child: "delayed", parent: "root");
     });
@@ -279,16 +282,12 @@ void main() {
         await stopping,
         isA<PluginAbortAccepted>()
             .having((accepted) => accepted.workKept, "work kept", true)
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
             .having(
-              (accepted) => accepted.handledSubAgentSessionIds,
-              "handled ids",
-              ["delegated"],
-            )
-            .having(
-              (accepted) => accepted.unhandledSubAgentSessionIds,
-              "unhandled ids",
-              ["independent"],
+              (accepted) => accepted.subAgentCoverage,
+              "coverage",
+              isA<PluginAbortSubAgentsPartiallyHandled>()
+                  .having((coverage) => coverage.handledSessionIds, "handled ids", ["delegated"])
+                  .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["independent"]),
             ),
       );
       await harness.end(child: "delegated", parent: "root");
@@ -324,14 +323,13 @@ void main() {
       harness.reply(frame: stop, result: const {"workKept": false});
       expect(
         await stopping,
-        isA<PluginAbortAccepted>()
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
-            .having(
-              (accepted) => accepted.unhandledSubAgentSessionIds,
-              "unhandled ids",
-              ["persisted-child"],
-            ),
+        isA<PluginAbortAccepted>().having(
+          (accepted) => accepted.subAgentCoverage,
+          "coverage",
+          isA<PluginAbortSubAgentsPartiallyHandled>()
+              .having((coverage) => coverage.handledSessionIds, "handled ids", isEmpty)
+              .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["persisted-child"]),
+        ),
       );
       harness.reply(frame: childPrompt, result: const {"stopReason": "end_turn"});
     });
@@ -353,10 +351,13 @@ void main() {
       harness.reply(frame: stop, result: const {"workKept": false});
       expect(
         await stopping,
-        isA<PluginAbortAccepted>()
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", ["parent"])
-            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", ["nested"]),
+        isA<PluginAbortAccepted>().having(
+          (accepted) => accepted.subAgentCoverage,
+          "coverage",
+          isA<PluginAbortSubAgentsPartiallyHandled>()
+              .having((coverage) => coverage.handledSessionIds, "handled ids", ["parent"])
+              .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["nested"]),
+        ),
       );
       await harness.end(child: "parent", parent: "root");
       harness.reply(frame: nestedPrompt, result: const {"stopReason": "end_turn"});

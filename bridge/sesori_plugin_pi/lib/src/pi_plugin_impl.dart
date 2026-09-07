@@ -418,9 +418,7 @@ final class PiPlugin._({
     await _sessionService.abort(sessionId: sessionId);
     return const PluginAbortAccepted(
       workKept: false,
-      subAgentsHandled: false,
-      handledSubAgentSessionIds: [],
-      unhandledSubAgentSessionIds: [],
+      subAgentCoverage: PluginAbortSubAgentsLegacyFanout(),
     );
   }
 
