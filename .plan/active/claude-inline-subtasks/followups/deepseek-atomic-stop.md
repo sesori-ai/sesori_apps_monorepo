@@ -124,9 +124,11 @@ retained. The bridge passes every persisted descendant backend id into the plugi
 including nested descendants and ids absent after tracker reset. The atomic result
 returns a sealed full/partial/legacy coverage variant; partial carries only exact
 unhandled ids, and the bridge derives the disjoint handled set from its request
-snapshot before public-id mapping. The surface-neutral client abort service
-fanouts directly to known independent work regardless of screen loading state,
-while full native coverage suppresses second stops for children whose lifecycle
+snapshot before public-id mapping. Bridge coverage stays sealed until the route
+handler builds the compatibility DTO; the client repository immediately maps that
+DTO into sealed domain coverage. The core-registered, composition-injected abort
+service fanouts directly to known independent work regardless of screen loading
+state, while full native coverage suppresses second stops for children whose lifecycle
 announcement lands during STOP.
 Whole-plugin stop uses the same tree path and existing authoritative-idle budget.
 Replace only the opted-in stop snapshot fanout/coverage reconstruction. Keep
@@ -230,8 +232,9 @@ notification backlog and prompt-write buffering; response delivered before reque
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
 queued prompt versus resident child authority; independently resumed child plus a
 covered delegated sibling and partial client fanout; cleared process-local ancestry;
-client-less retained work; fully handled bridge lookup avoidance; nested exact unhandled fanout outside loaded-state gating; sealed internal coverage
-variants; lifecycle announcement during STOP; OpenCode legacy fanout when
+client-less retained work; fully handled bridge lookup avoidance; nested exact unhandled fanout outside loaded-state gating; repository-boundary
+sealed coverage and service DI composition; lifecycle announcement during STOP;
+OpenCode legacy fanout when
 child-stop outcomes are not authoritative; keep behavior; foreground retention; RPC
 failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests
 and frozen corpora. Run owning analyzers/tests; CI owns the full matrix.

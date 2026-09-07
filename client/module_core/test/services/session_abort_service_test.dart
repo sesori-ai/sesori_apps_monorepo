@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -26,10 +27,10 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionAbortResponse(
-            subAgentsHandled: false,
-            handledSubAgentSessionIds: ["direct-child"],
-            unhandledSubAgentSessionIds: ["nested-child"],
+          const SessionAbortResult(
+            coverage: SessionAbortCoveragePartial(
+              unhandledSessionIds: ["nested-child"],
+            ),
           ),
         ),
       );
@@ -39,7 +40,9 @@ void main() {
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const SessionAbortResponse(subAgentsHandled: true)),
+        (_) async => ApiResponse.success(
+          const SessionAbortResult(coverage: SessionAbortCoverageHandled()),
+        ),
       );
       var legacyStateRead = false;
 
@@ -69,9 +72,10 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionAbortResponse(
-            subAgentsHandled: false,
-            handledSubAgentSessionIds: ["covered-child"],
+          const SessionAbortResult(
+            coverage: SessionAbortCoverageLegacy(
+              handledSessionIds: ["covered-child"],
+            ),
           ),
         ),
       );
@@ -81,7 +85,9 @@ void main() {
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const SessionAbortResponse(subAgentsHandled: true)),
+        (_) async => ApiResponse.success(
+          const SessionAbortResult(coverage: SessionAbortCoverageHandled()),
+        ),
       );
 
       await service.abort(

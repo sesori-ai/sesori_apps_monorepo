@@ -157,6 +157,7 @@ export "src/repositories/models/installed_app_build.dart";
 export "src/repositories/models/plugin_management_result.dart";
 export "src/repositories/models/repo_provider.dart";
 export "src/repositories/models/session_abort_rejected_exception.dart";
+export "src/repositories/models/session_abort_result.dart";
 export "src/repositories/models/session_cleanup_rejection.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";

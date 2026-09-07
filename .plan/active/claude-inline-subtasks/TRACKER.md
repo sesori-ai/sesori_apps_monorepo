@@ -870,3 +870,15 @@ docs/plans, and 641 production. The range includes every earlier measurement
 record and excludes subsequent non-implementation evidence commits beginning with
 the commit that records this figure. Its eight-line increase from `af533ee7df` is
 four tests/fixtures and seven docs/plans offset by three fewer production lines.
+
+The next Codex pass found three remaining composition/domain-boundary leaks. The
+client now registers `SessionAbortService` in core DI and injects it through shared
+phone/desktop Cubit composition. `SessionRepository` maps the compatibility wire
+Boolean/lists into sealed handled/partial/legacy domain coverage before the service;
+exact ids take safety precedence over a contradictory handled Boolean. The bridge
+now retains sealed coverage through `SessionAbortResult`, derives handled ids from a
+known-set/remaining-set variant, and serializes compatibility fields only in
+`AbortSessionHandler`. Bridge app and client core fatal-info analysis pass; selected
+bridge coverage has 76 tests, selected client repository/service/session-detail
+coverage has 214 tests, and LSP reports zero diagnostics across eight changed
+production files. Incremental architecture review remains required.

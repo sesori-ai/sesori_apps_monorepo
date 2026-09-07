@@ -113,9 +113,7 @@ class _FakeSessionRepository() implements SessionRepository {
     await onAbort?.call(sessionId: sessionId);
     return const SessionAborted(
       workKept: false,
-      subAgentsHandled: false,
-      handledSubAgentSessionIds: [],
-      unhandledSubAgentSessionIds: [],
+      subAgentCoverage: SessionAbortSubAgentsLegacyFanout(handledSessionIds: []),
     );
   }
 

@@ -1011,16 +1011,14 @@ class SessionRepository({
             case PluginAbortSubAgentsHandled():
               return SessionAborted(
                 workKept: workKept,
-                subAgentsHandled: true,
-                handledSubAgentSessionIds: const [],
-                unhandledSubAgentSessionIds: const [],
+                subAgentCoverage: const SessionAbortSubAgentsHandled(),
               );
             case PluginAbortSubAgentsLegacyFanout():
               return SessionAborted(
                 workKept: workKept,
-                subAgentsHandled: false,
-                handledSubAgentSessionIds: const [],
-                unhandledSubAgentSessionIds: const [],
+                subAgentCoverage: const SessionAbortSubAgentsLegacyFanout(
+                  handledSessionIds: [],
+                ),
               );
             case PluginAbortSubAgentsPartiallyHandled(:final unhandledSessionIds):
               final handledSessionIds = knownSubAgentSessionIds.difference(unhandledSessionIds.toSet());
@@ -1033,13 +1031,15 @@ class SessionRepository({
               );
               return SessionAborted(
                 workKept: workKept,
-                subAgentsHandled: false,
-                handledSubAgentSessionIds: [
-                  for (final backendSessionId in handledSessionIds) ?sessionIdsByBackendId[backendSessionId],
-                ],
-                unhandledSubAgentSessionIds: [
-                  for (final backendSessionId in unhandledSessionIds) ?sessionIdsByBackendId[backendSessionId],
-                ],
+                subAgentCoverage: SessionAbortSubAgentsPartiallyHandled(
+                  knownSessionIds: [
+                    for (final backendSessionId in {...handledSessionIds, ...unhandledSessionIds})
+                      ?sessionIdsByBackendId[backendSessionId],
+                  ],
+                  unhandledSessionIds: [
+                    for (final backendSessionId in unhandledSessionIds) ?sessionIdsByBackendId[backendSessionId],
+                  ],
+                ),
               );
           }
         case final PluginAbortRejectedSubAgentsRunning rejected:

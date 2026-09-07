@@ -590,9 +590,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required SessionAbortSubAgentPolicy subAgents,
   }) async => const SessionAborted(
     workKept: false,
-    subAgentsHandled: false,
-    handledSubAgentSessionIds: [],
-    unhandledSubAgentSessionIds: [],
+    subAgentCoverage: SessionAbortSubAgentsLegacyFanout(handledSessionIds: []),
   );
 
   @override
@@ -1104,21 +1102,18 @@ class FakeSessionRepository({
       PluginAbortAccepted(:final workKept, :final subAgentCoverage) => switch (subAgentCoverage) {
         PluginAbortSubAgentsHandled() => SessionAborted(
           workKept: workKept,
-          subAgentsHandled: true,
-          handledSubAgentSessionIds: const [],
-          unhandledSubAgentSessionIds: const [],
+          subAgentCoverage: const SessionAbortSubAgentsHandled(),
         ),
         PluginAbortSubAgentsLegacyFanout() => SessionAborted(
           workKept: workKept,
-          subAgentsHandled: false,
-          handledSubAgentSessionIds: const [],
-          unhandledSubAgentSessionIds: const [],
+          subAgentCoverage: const SessionAbortSubAgentsLegacyFanout(handledSessionIds: []),
         ),
         PluginAbortSubAgentsPartiallyHandled(:final unhandledSessionIds) => SessionAborted(
           workKept: workKept,
-          subAgentsHandled: false,
-          handledSubAgentSessionIds: const [],
-          unhandledSubAgentSessionIds: unhandledSessionIds,
+          subAgentCoverage: SessionAbortSubAgentsPartiallyHandled(
+            knownSessionIds: unhandledSessionIds,
+            unhandledSessionIds: unhandledSessionIds,
+          ),
         ),
       },
       final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),

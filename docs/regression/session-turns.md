@@ -127,10 +127,13 @@ defaults and queued client sends coherent.
   unhandled ids: current clients exact-fanout independently resumed descendants,
   including nested descendants absent from direct-child screen state, while full
   native coverage suppresses duplicate fanout for children announced during STOP.
-  The surface-neutral client abort service applies exact targets even if the screen
-  enters loading while the root request is pending; loaded direct-child statuses
-  are consulted only for legacy fallback. An older bridge's empty response defaults
-  to full legacy fanout. Native authority
+  The bridge keeps coverage sealed through its repository and maps it to the
+  compatibility DTO only in the route handler. The client repository maps that DTO
+  back to sealed full/partial/legacy domain coverage. The core-registered,
+  composition-injected abort service applies exact targets even if the screen enters
+  loading while the root request is pending; loaded direct-child statuses are
+  consulted only for legacy fallback. An older bridge's empty response defaults to
+  full legacy fanout. Native authority
   covers children admitted before or during stop even when the bridge has not
   received their lifecycle frames.
   A named child request carries its exact direct parent and never widens to a

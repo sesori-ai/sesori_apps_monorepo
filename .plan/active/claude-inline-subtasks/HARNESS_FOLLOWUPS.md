@@ -132,7 +132,9 @@ confirmation, no child session or partial stop) and gets that subset.
      snapshot into the plugin. A sealed full/partial/legacy result makes coverage
      combinations valid by construction; partial results carry only exact
      unhandled ids, and the bridge derives the disjoint handled set from its
-     request snapshot before public-session mapping. The surface-neutral client
+     request snapshot before public-session mapping. Bridge coverage remains sealed
+     until route serialization, then the client repository restores sealed domain
+     coverage from the compatibility DTO. The core-registered, composition-injected
      abort service exact-fanouts nested independent work even across a screen reload,
      while full native coverage suppresses duplicate stops for child announcements
      arriving during STOP. No response-time cleanup is allowed. Other ACP harnesses retain the default

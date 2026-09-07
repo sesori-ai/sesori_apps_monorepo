@@ -15,7 +15,9 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -214,6 +216,7 @@ void main() {
         mockConnectionService,
         loadService: mockLoadService,
         promptDispatcher: mockSessionRepository,
+        sessionAbortService: SessionAbortService(repository: mockSessionRepository),
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
         projectViewingService: stubbedProjectViewingService(),
@@ -1451,7 +1454,8 @@ void main() {
           subAgents: any(named: "subAgents"),
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const SessionAbortResponse()),
+        (_) async =>
+            ApiResponse.success(const SessionAbortResult(coverage: SessionAbortCoverageLegacy(handledSessionIds: []))),
       );
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
@@ -1760,7 +1764,8 @@ void main() {
           subAgents: any(named: "subAgents"),
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const SessionAbortResponse()),
+        (_) async =>
+            ApiResponse.success(const SessionAbortResult(coverage: SessionAbortCoverageLegacy(handledSessionIds: []))),
       );
       final sendCompleter = Completer<ApiResponse<void>>();
       when(

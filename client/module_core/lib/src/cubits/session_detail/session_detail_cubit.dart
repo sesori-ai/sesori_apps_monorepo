@@ -70,6 +70,7 @@ class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
   required SessionRepository promptDispatcher,
+  required final SessionAbortService _sessionAbortService,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
   required final ProjectViewingService _projectViewingService,
@@ -97,7 +98,6 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final SessionAbortService _sessionAbortService = SessionAbortService(repository: promptDispatcher);
   final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();

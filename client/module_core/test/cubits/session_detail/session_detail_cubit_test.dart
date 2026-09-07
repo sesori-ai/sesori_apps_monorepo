@@ -16,11 +16,13 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -137,6 +139,7 @@ void main() {
       mockConnectionService,
       loadService: loadService,
       promptDispatcher: promptDispatcher,
+      sessionAbortService: SessionAbortService(repository: promptDispatcher),
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
       projectViewingService: projectViewingService ?? stubbedProjectViewingService(),
@@ -749,7 +752,7 @@ void main() {
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(const SessionAbortResponse(subAgentsHandled: true)),
+        (_) async => ApiResponse.success(const SessionAbortResult(coverage: SessionAbortCoverageHandled())),
       );
       final cubit = buildCubit();
       await _awaitLoaded(cubit);
@@ -806,10 +809,10 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionAbortResponse(
-            subAgentsHandled: false,
-            handledSubAgentSessionIds: [delegatedChildId],
-            unhandledSubAgentSessionIds: [independentChildId],
+          const SessionAbortResult(
+            coverage: SessionAbortCoveragePartial(
+              unhandledSessionIds: [independentChildId],
+            ),
           ),
         ),
       );
@@ -860,10 +863,10 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionAbortResponse(
-            subAgentsHandled: false,
-            handledSubAgentSessionIds: [directChildId],
-            unhandledSubAgentSessionIds: [nestedChildId],
+          const SessionAbortResult(
+            coverage: SessionAbortCoveragePartial(
+              unhandledSessionIds: [nestedChildId],
+            ),
           ),
         ),
       );
@@ -974,6 +977,7 @@ void main() {
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
+        sessionAbortService: SessionAbortService(repository: promptDispatcher),
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
         projectViewingService: stubbedProjectViewingService(),
@@ -2474,7 +2478,10 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       subAgents: any(named: "subAgents"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
+  ).thenAnswer(
+    (_) async =>
+        ApiResponse.success(const SessionAbortResult(coverage: SessionAbortCoverageLegacy(handledSessionIds: []))),
+  );
   when(
     () => service.replyToQuestion(
       requestId: any(named: "requestId"),

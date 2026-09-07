@@ -28,16 +28,24 @@ class AbortSessionHandler({
         status: 409,
         body: rejection.toJson(),
       ),
-      SessionAborted(
-        :final subAgentsHandled,
-        :final handledSubAgentSessionIds,
-        :final unhandledSubAgentSessionIds,
-      ) =>
-        SessionAbortResponse(
-          subAgentsHandled: subAgentsHandled,
-          handledSubAgentSessionIds: handledSubAgentSessionIds,
-          unhandledSubAgentSessionIds: unhandledSubAgentSessionIds,
+      SessionAborted(:final subAgentCoverage) => switch (subAgentCoverage) {
+        SessionAbortSubAgentsHandled() => const SessionAbortResponse(
+          subAgentsHandled: true,
         ),
+        SessionAbortSubAgentsPartiallyHandled(
+          :final handledSessionIds,
+          :final unhandledSessionIds,
+        ) =>
+          SessionAbortResponse(
+            subAgentsHandled: false,
+            handledSubAgentSessionIds: handledSessionIds,
+            unhandledSubAgentSessionIds: unhandledSessionIds,
+          ),
+        SessionAbortSubAgentsLegacyFanout(:final handledSessionIds) => SessionAbortResponse(
+          subAgentsHandled: false,
+          handledSubAgentSessionIds: handledSessionIds,
+        ),
+      },
     };
   }
 }

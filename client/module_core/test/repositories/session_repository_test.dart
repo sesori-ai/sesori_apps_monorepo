@@ -3,6 +3,7 @@ import "dart:convert";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -37,6 +38,62 @@ void main() {
     final error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "unsupported agent");
 
     expect(SessionRepository.isStalePromptOptionsError(error: error), isFalse);
+  });
+
+  test("maps exact abort targets to a safe partial domain result", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    when(
+      () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
+    ).thenAnswer(
+      (_) async => ApiResponse.success(
+        const SessionAbortResponse(
+          subAgentsHandled: true,
+          handledSubAgentSessionIds: ["descendant"],
+          unhandledSubAgentSessionIds: ["descendant"],
+        ),
+      ),
+    );
+
+    final response = await repository.abortSession(
+      sessionId: "session-1",
+      subAgents: SessionAbortSubAgentPolicy.stop,
+    );
+
+    expect(
+      response,
+      isA<SuccessResponse<SessionAbortResult>>().having(
+        (success) => success.data.coverage,
+        "coverage",
+        isA<SessionAbortCoveragePartial>().having(
+          (coverage) => coverage.unhandledSessionIds,
+          "unhandled ids",
+          ["descendant"],
+        ),
+      ),
+    );
+  });
+
+  test("maps an empty compatibility response to legacy coverage", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    when(
+      () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
+
+    final response = await repository.abortSession(
+      sessionId: "session-1",
+      subAgents: SessionAbortSubAgentPolicy.stop,
+    );
+
+    expect(
+      response,
+      isA<SuccessResponse<SessionAbortResult>>().having(
+        (success) => success.data.coverage,
+        "coverage",
+        isA<SessionAbortCoverageLegacy>(),
+      ),
+    );
   });
 
   test("session detail flows route through session api and repository", () async {

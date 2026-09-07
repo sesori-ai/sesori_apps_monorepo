@@ -10,9 +10,11 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_result.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -427,7 +429,10 @@ void main() {
           sessionId: any(named: "sessionId"),
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
+      ).thenAnswer(
+        (_) async =>
+            ApiResponse.success(const SessionAbortResult(coverage: SessionAbortCoverageLegacy(handledSessionIds: []))),
+      );
       final analyticsService = stubbedProductAnalyticsService();
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -792,6 +797,7 @@ SessionDetailCubit _buildCubit({
     connectionService,
     loadService: loadService,
     promptDispatcher: promptDispatcher,
+    sessionAbortService: SessionAbortService(repository: promptDispatcher),
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
     projectViewingService: stubbedProjectViewingService(),

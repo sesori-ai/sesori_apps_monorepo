@@ -28,6 +28,16 @@ void main() {
   group("SessionRepository", () {
     late _FakeBridgePlugin plugin;
 
+    test("partial abort coverage derives a disjoint handled set", () {
+      const coverage = SessionAbortSubAgentsPartiallyHandled(
+        knownSessionIds: ["handled", "remaining"],
+        unhandledSessionIds: ["remaining"],
+      );
+
+      expect(coverage.handledSessionIds, ["handled"]);
+      expect(coverage.unhandledSessionIds, ["remaining"]);
+    });
+
     setUp(() {
       plugin = _FakeBridgePlugin();
     });
@@ -101,9 +111,13 @@ void main() {
         result,
         isA<SessionAborted>()
             .having((aborted) => aborted.workKept, "work kept", true)
-            .having((aborted) => aborted.subAgentsHandled, "sub-agents handled", false)
-            .having((aborted) => aborted.handledSubAgentSessionIds, "handled ids", ["child"])
-            .having((aborted) => aborted.unhandledSubAgentSessionIds, "unhandled ids", ["grandchild"]),
+            .having(
+              (aborted) => aborted.subAgentCoverage,
+              "sub-agent coverage",
+              isA<SessionAbortSubAgentsPartiallyHandled>()
+                  .having((coverage) => coverage.handledSessionIds, "handled ids", ["child"])
+                  .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["grandchild"]),
+            ),
       );
       expect(plugin.lastAbortSessionId, "backend-root");
       expect(plugin.lastKnownSubAgentSessionIds, {"backend-child", "backend-grandchild"});
@@ -118,17 +132,11 @@ void main() {
       );
       expect(
         fullyHandled,
-        isA<SessionAborted>()
-            .having(
-              (aborted) => aborted.handledSubAgentSessionIds,
-              "redundant handled ids",
-              isEmpty,
-            )
-            .having(
-              (aborted) => aborted.unhandledSubAgentSessionIds,
-              "redundant unhandled ids",
-              isEmpty,
-            ),
+        isA<SessionAborted>().having(
+          (aborted) => aborted.subAgentCoverage,
+          "sub-agent coverage",
+          isA<SessionAbortSubAgentsHandled>(),
+        ),
       );
     });
 

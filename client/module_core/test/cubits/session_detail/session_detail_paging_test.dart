@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -76,6 +77,7 @@ void main() {
       connectionService,
       loadService: loadService,
       promptDispatcher: sessionRepository,
+      sessionAbortService: SessionAbortService(repository: sessionRepository),
       permissionRepository: MockPermissionRepository(),
       sessionViewingService: stubbedSessionViewingService(),
       projectViewingService: stubbedProjectViewingService(),
