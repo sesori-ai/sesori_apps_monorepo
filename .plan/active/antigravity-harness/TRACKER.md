@@ -4,7 +4,7 @@
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
 - **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review; Step 6.c architecture-approved locally
-- **Base:** Step 6.b review-fix head `285d6234d5`, merged into Step 6.c
+- **Base:** Step 6.b review-fix head `d3dff16adb`, merged into Step 6.c
 - **Current branch:** `antigravity-harness-step-6c-personal-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -112,6 +112,8 @@
 - [x] Build the actual native bridge; verify native/source helpers and pinned Python browser semantics synthetically.
 - [x] Run focused tests and owning-package analyzers; update regression contracts.
 - [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
+- Second/final review approved `7351ed64f1`; user authorized the later service-owned preflight-policy correction
+  with focused tests and no third architecture review.
 - [x] Step 6.a merged; synchronize before Step 6.b publication.
 - Publication cap: `git diff --numstat 0723491330 4a8e14a1d5` totals 845 + 12 = 857 changed lines.
   The estimated range was a scoping guide, not a minimum; implementation and meaningful coverage fit below it.

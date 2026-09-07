@@ -37,7 +37,7 @@ class AntigravityProfileRepository({required final AntigravityProfileStorage _st
     }
   }
 
-  Future<void> verifyBrowserCommand({
+  Future<AntigravityBrowserPreflightResult> inspectBrowserCommand({
     required AntigravityAuthenticationBudget budget,
     required String executable,
     required List<String> arguments,
@@ -51,17 +51,14 @@ class AntigravityProfileRepository({required final AntigravityProfileStorage _st
         environment: environment,
       );
       budget.remaining;
-      if (result.exitCode != 0 || result.stdout.isNotEmpty || result.stderr.isNotEmpty) {
-        throw AntigravityProfileException(
-          message: "Browser suppression preflight failed for $executable (exit code ${result.exitCode})",
-          cause: result,
-        );
-      }
+      return AntigravityBrowserPreflightResult(
+        exitCode: result.exitCode,
+        hasOutput: result.stdout.isNotEmpty || result.stderr.isNotEmpty,
+        diagnostics: result,
+      );
     } on TimeoutException {
       rethrow;
     } on PluginStartAbortedException {
-      rethrow;
-    } on AntigravityProfileException {
       rethrow;
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(
