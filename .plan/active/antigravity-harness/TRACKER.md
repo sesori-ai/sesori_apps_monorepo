@@ -151,10 +151,12 @@
 - [x] Preserve the existing bridge lifecycle service as terminal setup-reinspection owner; test closure ordering.
 - [x] Approved narrow boundary fixes await pending probe/auth spawn reaping and callback transport settlement after
   forced closure, preserving the controlling failure. No new shared transport machinery or descriptor registration.
-- [x] Verify all 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and the changed
-  bridge test's analysis. Canonical-path fixture correction was verified before the final complete package run.
+- [x] Initial checkpoint: 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and
+  changed bridge-test analysis passed. Canonical-path fixture correction was verified before the complete run.
 - [x] Independent architecture review approved all 14 files at immutable checkpoint `5f33ba6390`.
 - [x] Step 6.c merged; synchronize before Step 6.d publication.
+- Post-sync verification: 78 Antigravity tests, 8 focused lifecycle tests, and both relevant analyses pass.
+- Post-sync code-head cap: `git diff --numstat f1403fbb35 d5812b3550` totals 997 + 35 = 1,032 changed lines.
 - No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
 
 ## Architecture Reviews
