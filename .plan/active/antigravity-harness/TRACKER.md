@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.a merged; Step 8.b architecture-approved and synchronized for publication
+- **Status:** Steps 1–8.a merged; Step 8.b open for review
 - **Base:** synced with main `6959375addc700c00b0206204bbfc00ea6b3ca88` after Step 8.a merge
 - **Current branch:** `antigravity-harness-step-8b-persistent-composition`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -19,8 +19,8 @@
   [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a)
-- **Open PR:** none; #1359 merged with 16/16 CI.
-- **Next action:** publish and monitor Step 8.b; only then begin Step 8.c locally.
+- **Open PR:** [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b).
+- **Next action:** monitor Step 8.b; begin only Step 8.c locally.
 
 ## Fixed PR Series
 
@@ -275,7 +275,7 @@
   reviewer `b65aeff7`, no findings. Earlier incomplete-input reviews are not counted.
 - [x] Synced with main `6959375add`; only documentation conflicted. Source/tests are unchanged from the reviewed
   checkpoint, so unchanged passing suites were not rerun.
-- [ ] Parent publication of 8.b; do not start 8.c before publication.
+- [x] Parent published Step 8.b as PR #1360 and started its monitor; only Step 8.c may proceed locally.
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
   Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
   No Google history mutation, ambient credentials or active harness inventory were introduced.
