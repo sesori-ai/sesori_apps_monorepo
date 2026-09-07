@@ -1,6 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_event_mapper.dart" show AcpHaltNotice;
+import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer;
 import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
@@ -23,6 +23,9 @@ class AcpReplayCollector({
   required final String sessionId,
   required final String agentId,
   required final String? initialUserMessageId,
+
+  /// The live mapper's pure hook. Null retains standard ACP envelopes unchanged.
+  required final AcpSessionUpdateNormalizer? sessionUpdateNormalizer,
 
   /// Overrides a replayed user's ACP message id with backend authority.
   required final AcpReplayUserMessageIdOverride? messageIdOverride,
@@ -48,7 +51,8 @@ class AcpReplayCollector({
   bool _hasUserDraft = false;
   _PendingAssistantContent? _pendingAssistantContent;
 
-  void consume(Map<String, dynamic> params) {
+  void consume(Map<String, dynamic> rawParams) {
+    final params = sessionUpdateNormalizer?.call(params: rawParams) ?? rawParams;
     final update = _asMap(params["update"]);
     if (update == null) return;
     final rawSessionUpdate = update["sessionUpdate"];
