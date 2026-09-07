@@ -711,5 +711,8 @@ analysis + 85 tests pass. Twelve scoped-stop tests cover confirmation, keep,
 nested ownership, parent-covered cancellation, reopened children, unknown-child,
 RPC failure context, and whole-plugin settlement. Interrupt DTO serializers were
 regenerated and v2 conformance consumes the frozen interrupt fixtures. Both fixture
-versions and published runtime 0.1.3 pins are untouched. Architecture review and
-final feature E2E remain pending; managed runtime upgrades remain separately owned.
+versions and published runtime 0.1.3 pins are untouched. Architecture review found
+an API-to-domain mapping bypass; `99949afd2` routes cancellation through the existing
+session repository/service, and the final architecture pass approved. DeepSeek
+analysis and 103 tests pass after that correction. Final feature E2E remains pending;
+managed runtime upgrades remain separately owned.
