@@ -86,6 +86,29 @@ The private-feedback success toast remains simulated.
   inserted before native rating. The annotated blue focus ring is
   retained on the feedback editor.
 
+## Motion behavior
+
+The selected-star-only 280 ms bounce and its no-splash treatment are preserved.
+The remaining flow now uses coordinated motion:
+
+- Sheet: 250 ms entrance with `Cubic(0.32, 0.72, 0, 1)`, and a 200 ms
+  fast-start exit using the flipped `Cubic(0.23, 1, 0.32, 1)`.
+- Content: 220 ms fade with a small vertical offset; outgoing content loses
+  pointer access and semantics. The rating handoff resizes the existing sheet
+  during that same transition. Voice, failures, and the bottom confirmation
+  share this treatment.
+- Chips: pointer-down feedback, synchronized 160 ms border/checkbox/text
+  selection, and 100 ms press release. Composer actions reveal over 160 ms,
+  with neighboring content adjusting alongside them.
+- Typing: the editor reserves three visible lines and scrolls longer drafts.
+  Keyboard insets follow the platform directly, with no extra padding tween.
+- Reduced motion: sheet travel is removed, including when the preference
+  changes while it is open; content retains fades, press scaling is suppressed,
+  and changing the preference preserves the private draft. Shared Prego iOS
+  buttons also stop ongoing press motion.
+- Loading: shared iOS buttons retain their press wrapper while disabled, so
+  release finishes smoothly. Existing iOS timing and haptics are preserved.
+
 ## Engineering follow-up
 
 After reviewing the experience, extract the agreed presentation into shared
@@ -116,13 +139,13 @@ Production work still needs:
 
 ```sh
 # From client/app
-flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart
+flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart test/playbook/feedback_motion_test.dart
 dart analyze
 ```
 
-Verified locally on 2026-09-07 with Flutter 3.47.2 / Dart 3.13.2:
+Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- Fourteen focused widget tests pass: all five rating branches, category-only
+- Twenty-three focused widget tests pass: all five rating branches, category-only
   private submission, dismiss/reopen, draft-preserving retry, editable simulated
   transcription without automatic submission, and a 320 × 568 viewport with
   1.5× text and keyboard insets. Native-channel tests verify exactly one request
@@ -130,6 +153,12 @@ Verified locally on 2026-09-07 with Flutter 3.47.2 / Dart 3.13.2:
   of missing-plugin/platform failures.
   Three animation checks cover the tapped-star bounce, a second tap during the
   transition, and both reduced-motion accessibility settings.
+  Nine additional motion checks cover the sheet handoff, chip press feedback,
+  action movement and reversal, stationary typing, voice transitions, and
+  reduced-motion behavior including preservation of an open draft and immediate
+  dismissal, microphone denial, and transcription retry.
+- Shared Prego button checks pass: seven native widget tests, two Chrome tests,
+  and the owning module analyzer. See `docs/regression/prego-button-interactions.md`.
 - The app analyzer passes. Formatting and the final playbook analyzer pass.
 - The iOS simulator build passes, including the Swift StoreKit hook.
 - Manual simulator coverage: dark/light rating sheets, private issue selection,
