@@ -26,6 +26,16 @@ void main() {
       },
     });
 
+    expect(
+      () => plugin.validateInitializeResult(result("not-semver")),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          "message",
+          "DeepSeek adapter reported an invalid adapter version",
+        ),
+      ),
+    );
     expect(() => plugin.validateInitializeResult(result("0.1.3")), throwsFormatException);
     expect(() => plugin.validateInitializeResult(result("0.1.4")), returnsNormally);
     expect(() => plugin.validateInitializeResult(result("0.1.5")), returnsNormally);

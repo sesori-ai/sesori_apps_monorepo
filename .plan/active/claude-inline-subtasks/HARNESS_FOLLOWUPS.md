@@ -543,7 +543,7 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | Merged PR #13 (`0a85fb2`): lifecycle, descendant transcripts, bindings, and protocol v2 |
 | adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release completed through PR #16 |
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
-| monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
+| monorepo | ⚙️ | Completed live/replay consumer steps 1–5 below | Merged #1298/#1301/#1304/#1306/#1317; distinct from the native-stop series |
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
 | monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | #1346 merged at `2cc1485d7c`; historical title retained |
 | adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | #17 merged at `5eecdf68a3`; historical title retained |
@@ -562,14 +562,13 @@ and no residual-ID handshake or new long-lived state. Final phone/desktop E2E
 remains user-owned; finish DeepSeek before Codex. Automatic managed-runtime upgrade
 machinery remains outside this series.
 
-### Consumer replacement series
+### Completed live/replay consumer series (historical)
 
-PR #1293 reached 5,431 changed lines and is superseded at the user's request.
-Preserve its complete implementation at `948de715804c7120623f7ff379112f4d65c6adde`
-on `claude-inline-subtasks-deepseek-tiles`; extract the following five slices in
-order, with one open PR at a time. Do not rewrite or force-push the archived
-branch. Count additions plus deletions, including tests, fixtures, codegen, and
-plan updates, before publishing each slice. Target about 1,500 lines per PR.
+PR #1293 was replaced by merged PRs #1298, #1301, #1304, #1306, and #1317.
+The original slice boundaries below use their historical 1/5–5/5 numbering;
+these are not the current native-stop steps 4/5 (#1363) and 5/5.
+The complete source remains at `948de715804c7120623f7ff379112f4d65c6adde`
+on `claude-inline-subtasks-deepseek-tiles`; do not rewrite or force-push it.
 
 This replaces only the existing consumer step, not the completed original
 8-step series or its remaining harness follow-ups. The plan already landed;

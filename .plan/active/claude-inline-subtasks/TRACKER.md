@@ -178,8 +178,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346) merged at `2cc1485d7c`; title retained historically |
 | [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Adapter #17 merged at `5eecdf68a3` |
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | In progress; replaces the contract/pin portion of closed PR #1356 |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Pending step 4/5; replaces former step 4/4 and completes native authority consumption |
+| [ ] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) in review; replaces the contract/pin portion of closed #1356 |
+| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Pending #1363; completes native authority consumption |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -600,7 +600,10 @@ completed; `dart analyze --fatal-infos` and 87 tests passed in
 `sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.
 
-### PR #1293 replacement delivery
+### Completed live/replay consumer delivery (PR #1293 replacement)
+
+The historical 1/5–5/5 slices here all merged; they are separate from the current
+native-stop steps 4/5 (#1363) and 5/5 above. Published historical titles stay unchanged.
 
 User correction: the 5,431-line consumer PR exceeded the approximately
 1,500-line review target. Its branch and review fixes remain preserved; the
