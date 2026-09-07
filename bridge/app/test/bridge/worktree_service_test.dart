@@ -60,6 +60,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // git fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -103,6 +105,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // git fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -166,6 +170,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // git fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -235,6 +241,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -285,6 +293,7 @@ void main() {
         ..generatedPathsToOccupy = 1
         ..enqueue(result: _ok())
         ..enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"))
+        ..enqueue(result: _ok(stdout: "origin\n"))
         ..enqueue(result: _fail(exitCode: 1))
         ..enqueue(result: _ok(stdout: "abc123def456\n"))
         ..enqueue(result: _fail(exitCode: 128))
@@ -318,6 +327,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -369,6 +380,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // branch --list develop → non-empty (exists)
       processRunner.enqueue(result: _ok(stdout: "  develop\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/develop → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse develop → base commit SHA
@@ -418,6 +431,8 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: ""));
       // symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -451,6 +466,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // git rev-parse main → base commit SHA
@@ -504,6 +521,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → refreshes the stale remote-tracking ref
       processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
@@ -528,7 +547,7 @@ void main() {
       expect(success.baseCommit, equals("origin222"));
 
       expect(
-        processRunner.invocations[2].arguments,
+        processRunner.invocations[3].arguments,
         equals([
           "fetch",
           "--no-write-fetch-head",
@@ -549,6 +568,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → success
       processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
@@ -582,6 +603,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → success
       processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
@@ -612,6 +635,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → success
       processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
@@ -643,6 +668,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → unavailable; continue with existing refs
       processRunner.enqueue(result: _fail(exitCode: 1));
       // rev-parse main → local commit
@@ -667,9 +694,35 @@ void main() {
       expect(worktreeAddArgs.last, equals("main"));
     });
 
+    test("local-only repository creates a worktree without fetching", () async {
+      await projectsDao.setBaseBranch(projectId: _projectId, baseBranch: "main");
+      processRunner.enqueue(result: _ok()); // rev-parse HEAD
+      processRunner.enqueue(result: _ok(stdout: "  main\n")); // branch --list main
+      processRunner.enqueue(result: _ok()); // remote: none configured
+      processRunner.enqueue(result: _ok(stdout: "local111\n")); // rev-parse main
+      processRunner.enqueue(result: _fail(exitCode: 128)); // no origin/main ref
+      processRunner.enqueue(result: _ok()); // generated branch is available
+      processRunner.enqueue(result: _ok()); // worktree add
+
+      final result = await service.prepareWorktreeForSession(
+        projectId: _projectId,
+        parentSessionId: null,
+      );
+
+      expect(result, isA<WorktreeSuccess>());
+      final success = result as WorktreeSuccess;
+      expect(success.baseBranch, "main");
+      expect(success.baseCommit, "local111");
+      expect(processRunner.invocations[2].arguments, ["remote"]);
+      expect(processRunner.invocations.any((invocation) => invocation.arguments.first == "fetch"), isFalse);
+      expect(processRunner.invocations.last.arguments.take(2), ["worktree", "add"]);
+      expect(processRunner.invocations.last.arguments.last, "main");
+    });
+
     test("unexpected fetch error aborts worktree creation", () async {
       processRunner.enqueue(result: _ok()); // rev-parse HEAD
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n")); // symbolic-ref
+      processRunner.enqueue(result: _ok(stdout: "origin\n")); // remote
       processRunner.enqueueError(error: StateError("broken process runner")); // fetch
       // These would let creation succeed if the unexpected error were swallowed.
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
@@ -684,7 +737,7 @@ void main() {
 
       expect(result, isA<WorktreeFallback>());
       expect((result as WorktreeFallback).reason, equals("failed to resolve base branch/commit"));
-      expect(processRunner.invocations, hasLength(3));
+      expect(processRunner.invocations, hasLength(4));
     });
 
     test("merge-base fails: worktree starts from origin ref", () async {
@@ -692,6 +745,8 @@ void main() {
       processRunner.enqueue(result: _ok());
       // symbolic-ref → main
       processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
+      // git remote → origin is configured
+      processRunner.enqueue(result: _ok(stdout: "origin\n"));
       // fetch origin/main → success
       processRunner.enqueue(result: _ok());
       // rev-parse main → local commit
