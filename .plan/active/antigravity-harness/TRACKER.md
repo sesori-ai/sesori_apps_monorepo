@@ -3,15 +3,15 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-4/12 merged; Step 5/12 open for review
-- **Base:** Step 4 merge `93c8982601`
-- **Current branch:** `antigravity-harness-step-5-remote-browser-handoff`
+- **Status:** Steps 1-4/12 merged; Step 5/12 open and ready; Step 6.a verified and architecture-approved locally
+- **Base:** Step 5 head `6d8e062ef7` for local Step 6.a
+- **Current branch:** `antigravity-harness-step-6-isolated-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
 - **Open PR:** [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
-- **Next action:** monitor Step 5 through readiness and merge
+- **Next action:** publish local Step 6.a after Step 5 merges; retain automatic monitoring
 
 ## Fixed PR Series
 
@@ -20,7 +20,9 @@
 - [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [x] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
-- [ ] Step 6/12 — `🚧 [antigravity-harness] feat(antigravity): add isolated profile authentication [step 6/12]`
+- [ ] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
+- [ ] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
+- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
@@ -84,6 +86,19 @@
 ## Step 5 Checklist
 
 - [x] Complete the remote browser handoff, review, and verification.
+
+## Step 6.a Checklist
+
+- [x] Obtain approval for scoped stores, privacy prerequisites, and lettered Step 6 slices.
+- [x] Review the new partition/shared architecture against the plan-review skill; no violations.
+- [x] Add required environment-inheritance selection across host spawn and every ACP caller.
+- [x] Add inert child JSON scopes retaining the same per-directory update-lock owner.
+- [x] Add bounded raw stdout/stderr interception before decode/log with cancellation-safe buffers.
+- [x] Cover inheritance, atomic child updates, path restrictions, byte preservation, privacy, and cleanup.
+- [x] Run focused validation and update regression invariants without claiming active Antigravity support.
+- [x] Independent architecture implementation review approved; no issues found.
+- [ ] Publish only after Step 5 merges.
+- Step 6.b/c profile/browser suppression/personal OAuth remain unimplemented; package remains unregistered.
 
 ## Architecture Reviews
 
@@ -160,6 +175,17 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
 
 ## Evidence Log
 
+- 2026-09-04 — Step 6.a architecture plan review approved the user-authorized shared prerequisite slice;
+  provider-specific profile, browser suppression, stderr matching, and authentication remain in 6.b/c.
+- 2026-09-04 — Step 6.a focused validation: 126 distinct tests pass (ACP interception/factories 10,
+  ACP stdio/agent API 22, host stores/processes 29, Antigravity 30, host command executor 1, interface lifecycle 14).
+  App, ACP, interface, foundation, and Antigravity packages analyze cleanly; 38 mechanically updated consumer files
+  also analyze cleanly. A parallel analyzer-plugin snapshot race was retried serially successfully.
+- 2026-09-04 — An initial interception test caught idle-stream teardown hanging in an async generator. The final
+  subscription-owned EventSink transformer forwards cancellation immediately, including an unfinished partial line.
+  No OAuth, credentials, token reads, or official runtime downloads/execution occurred; process tests used only
+  synthetic Dart output and the existing local stdio fixture.
+
 - 2026-09-03 — Official registry manifest pinned at
   `agentclientprotocol/registry@536e378b70a7a6d5f078a9160180e3569a23253c`.
 - 2026-09-03 — T3 Code PR #9348 / commit `fff33f9e851912363c5b1f3ac65598be35eb5f0d` reviewed for
@@ -211,3 +237,6 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   leaving 504 lines below the 1,500-line cap.
 - 2026-09-04 — Step 5 final code cap: `git diff --numstat 93c8982601eb 1b2283a4903b` totals
   1155 + 334 = 1489; this tracker-only reconciliation leaves the published PR at 1489 changed lines.
+
+- 2026-09-04 — Step 6.a architecture review approved the full tracked/untracked diff against `6d8e062ef7`.
+  Reviewed implementation: 722 additions + 65 deletions = 787 changed lines; review-status bookkeeping adds one line.

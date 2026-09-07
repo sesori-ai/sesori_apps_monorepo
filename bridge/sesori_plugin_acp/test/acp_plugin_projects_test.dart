@@ -26,7 +26,7 @@ void main() {
       plugin = _RegistryCapturingAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(

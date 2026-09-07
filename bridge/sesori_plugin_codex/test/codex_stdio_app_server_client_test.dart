@@ -279,6 +279,7 @@ class _FakeHostProcessService(
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     this.executable = executable;
     this.arguments = arguments;

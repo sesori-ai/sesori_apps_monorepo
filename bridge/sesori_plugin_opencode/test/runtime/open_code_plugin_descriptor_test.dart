@@ -1089,6 +1089,7 @@ class _FakeHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnEnvironments.add(environment);
     final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
@@ -1164,6 +1165,9 @@ class _FakeSpawnedProcess({@override required final int pid, required final Stri
 }
 
 class _MemoryJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
   final Map<String, String> files = <String, String>{};
 
   @override

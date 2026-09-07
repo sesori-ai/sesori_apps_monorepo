@@ -16,6 +16,7 @@ abstract final class GrokBinary() {
     required Map<String, String> environment,
   }) {
     return AcpLaunchSpec(
+      includeParentEnvironment: true,
       command: binary,
       args: const [
         "--no-auto-update",

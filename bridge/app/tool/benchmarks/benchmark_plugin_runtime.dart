@@ -177,5 +177,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) => throw UnsupportedError("unused");
 }

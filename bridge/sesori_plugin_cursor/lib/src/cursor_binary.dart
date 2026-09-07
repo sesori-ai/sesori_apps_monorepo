@@ -26,6 +26,7 @@ abstract final class CursorBinary() {
     Map<String, String> environment = const {},
   }) {
     return AcpLaunchSpec(
+      includeParentEnvironment: true,
       command: binary,
       args: [
         if (apiEndpoint != null) ...["-e", apiEndpoint],

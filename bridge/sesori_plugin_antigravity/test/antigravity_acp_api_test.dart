@@ -44,7 +44,11 @@ void main() {
 
   Future<AntigravityInitializeDto> probe({required Duration timeout, required StartAbortSignal abortSignal}) =>
       api.initializeOnly(
-        launchSpec: const AcpLaunchSpec(command: "/runtime/agy_acp_server.par", args: []),
+        launchSpec: const AcpLaunchSpec(
+          includeParentEnvironment: true,
+          command: "/runtime/agy_acp_server.par",
+          args: [],
+        ),
         timeout: timeout,
         abortSignal: abortSignal,
       );

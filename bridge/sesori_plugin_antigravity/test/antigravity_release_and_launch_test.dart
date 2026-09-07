@@ -83,6 +83,7 @@ void main() {
     );
     expect((linux.command, linux.cwd), (linuxPair.serverPath, "/workspace"));
     expect(linux.args, ["--uid="]);
+    expect(linux.includeParentEnvironment, isFalse);
     expect(linux.environment, {
       "GEMINI_HOME": "/profile",
       "ANTIGRAVITY_HARNESS_PATH": linuxPair.harnessPath,
@@ -101,6 +102,7 @@ void main() {
     );
     expect(windows.command, windowsPair.serverPath);
     expect(windows.args, isEmpty);
+    expect(windows.includeParentEnvironment, isFalse);
     expect(windows.environment[AntigravityRelease.harnessPathEnvironmentKey], windowsPair.harnessPath);
   });
 }

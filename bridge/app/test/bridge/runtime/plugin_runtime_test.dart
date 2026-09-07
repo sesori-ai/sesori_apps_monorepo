@@ -1986,6 +1986,9 @@ class const _AuthenticationDescriptor({
 
 class const _UnusedHostJsonStore() implements HostJsonStore {
   @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
+  @override
   Future<void> delete({required String name}) => throw UnsupportedError("unused");
 
   @override
@@ -2105,5 +2108,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) => throw UnsupportedError("unused");
 }

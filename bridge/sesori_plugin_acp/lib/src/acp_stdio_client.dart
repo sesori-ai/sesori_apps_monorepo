@@ -5,6 +5,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
+import "acp_output_interceptor.dart";
 import "acp_process_factory.dart";
 
 class AcpRpcException({
@@ -32,6 +33,8 @@ class AcpStdioClient({
   required final AcpLaunchSpec _launchSpec,
   required final AcpProcessFactory _processFactory,
   final String _logTag = "acp",
+  final AcpOutputInterceptor? _stdoutInterceptor,
+  final AcpOutputInterceptor? _stderrInterceptor,
 }) {
   late final NdjsonProcessClient _transport = NdjsonProcessClient(
     responseCorrelationId: (frame) => frame["method"] == null ? frame["id"] : null,
@@ -64,7 +67,14 @@ class AcpStdioClient({
     if (_disposed) throw StateError("AcpStdioClient is disposed");
     final token = _transport.beginAttach();
     final process = await _processFactory(_launchSpec);
-    await _transport.attach(token: token, process: _AcpProcessHandle(process));
+    await _transport.attach(
+      token: token,
+      process: _AcpProcessHandle(
+        process: process,
+        stdoutInterceptor: _stdoutInterceptor,
+        stderrInterceptor: _stderrInterceptor,
+      ),
+    );
     await _frames?.cancel();
     _frames = _transport.notifications.listen(_handleFrame);
   }
@@ -213,13 +223,21 @@ class AcpStdioClient({
   }
 }
 
-final class _AcpProcessHandle(final AcpProcessHandle process) implements NdjsonProcessHandle {
+final class _AcpProcessHandle({
+  required final AcpProcessHandle process,
+  required final AcpOutputInterceptor? stdoutInterceptor,
+  required final AcpOutputInterceptor? stderrInterceptor,
+}) implements NdjsonProcessHandle {
   @override
   io.IOSink get stdin => process.stdin;
   @override
-  Stream<String> get stdoutLines => process.stdout.transform(utf8.decoder).transform(const LineSplitter());
+  Stream<String> get stdoutLines => (stdoutInterceptor?.intercept(bytes: process.stdout) ?? process.stdout)
+      .transform(utf8.decoder)
+      .transform(const LineSplitter());
   @override
-  Stream<String> get stderrLines => process.stderr.transform(utf8.decoder).transform(const LineSplitter());
+  Stream<String> get stderrLines => (stderrInterceptor?.intercept(bytes: process.stderr) ?? process.stderr)
+      .transform(utf8.decoder)
+      .transform(const LineSplitter());
   @override
   Future<int> get done => process.exitCode;
   @override

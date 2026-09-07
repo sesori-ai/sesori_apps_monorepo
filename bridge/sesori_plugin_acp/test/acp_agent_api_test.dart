@@ -14,7 +14,7 @@ void main() {
     setUp(() async {
       fake = FakeAcpProcess();
       client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => fake,
         logTag: "acp-test",
       );

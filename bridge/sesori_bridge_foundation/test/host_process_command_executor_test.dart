@@ -34,6 +34,7 @@ class const _FakeHostProcessService({required final SpawnedProcess process}) imp
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async => process;
 
   @override

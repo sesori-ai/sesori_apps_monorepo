@@ -8,7 +8,10 @@ import "../process/signal_result.dart";
 /// Backed by the bridge's platform-aware process layer: identity capture
 /// uses the POSIX `ps` start-time marker where available, with documented
 /// Windows fallbacks (no start marker, image-name-only command lines).
-enum ProcessSpawnOutcome() { succeeded, failed }
+enum ProcessSpawnOutcome() {
+  succeeded,
+  failed,
+}
 
 abstract class HostProcessService() {
   /// Spawns a child process and captures its identity.
@@ -18,12 +21,16 @@ abstract class HostProcessService() {
   /// plugin owns the child: it must consume (or explicitly drain) stdout and
   /// stderr so the child cannot block on a full pipe, and it must stop the
   /// child during its own `shutdown()`.
+  ///
+  /// [includeParentEnvironment] explicitly chooses whether [environment] is
+  /// merged over the OS parent environment or is the child's entire environment.
   Future<SpawnedProcess> spawn({
     required String executable,
     required List<String> arguments,
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   });
 
   /// Captures the identity of the process [pid], or `null` when no such

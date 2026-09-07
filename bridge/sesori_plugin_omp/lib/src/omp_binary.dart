@@ -13,6 +13,7 @@ abstract final class OmpBinary() {
     required String cwd,
     required String? sessionDirectory,
   }) => AcpLaunchSpec(
+    includeParentEnvironment: true,
     command: binary,
     args: [
       "acp",

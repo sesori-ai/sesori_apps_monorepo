@@ -13,7 +13,7 @@ void main() {
     setUp(() async {
       fake = FakeAcpProcess();
       client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -183,7 +183,7 @@ void main() {
       final processes = <FakeAcpProcess>[first, replacement];
       var spawnIndex = 0;
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => processes[spawnIndex++],
       );
       addTearDown(() async {
@@ -237,7 +237,7 @@ void main() {
       final replacement = FakeAcpProcess();
       var spawnIndex = 0;
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => spawnIndex++ == 0 ? old : replacement,
       );
       addTearDown(() async {
@@ -279,7 +279,7 @@ void main() {
       final fake = FakeAcpProcess();
       final spawn = Completer<AcpProcessHandle>();
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) => spawn.future,
       );
 

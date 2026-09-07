@@ -490,7 +490,7 @@ void main() {
       capture(catalogResult(), fromNewSession: true);
 
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -539,7 +539,7 @@ void main() {
     test("applyTurnSelection resolves mode from display name agent", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -573,7 +573,7 @@ void main() {
     test("applyTurnSelection re-applies the same effort after a model switch", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -621,7 +621,7 @@ void main() {
     test("applyTurnSelection uses per-model thought_level config ids", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -707,7 +707,7 @@ void main() {
     test("applyTurnSelection does not reuse another model's thought config id", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -739,7 +739,7 @@ void main() {
     test("applyTurnSelection restores the selected model's default effort", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -801,7 +801,7 @@ void main() {
     test("applyTurnSelection never pushes an unknown model", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -847,7 +847,7 @@ void main() {
         fromNewSession: true,
       );
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
 
@@ -867,7 +867,7 @@ void main() {
     test("applyTurnSelection does not push unknown effort", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -898,7 +898,7 @@ void main() {
     test("a default (null) model is re-applied when another model is active", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -946,7 +946,7 @@ void main() {
     test("a session's null-model turn re-applies its own model, not the global default", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -1008,7 +1008,7 @@ void main() {
     test("a rejected model switch stamps the model actually in effect", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -1039,7 +1039,7 @@ void main() {
     test("a rejected switch does not inherit another session's model", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -1083,7 +1083,7 @@ void main() {
     test("onConnectionReset re-applies model+mode+effort after an agent respawn", () async {
       capture(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();

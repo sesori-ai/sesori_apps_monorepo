@@ -33,6 +33,7 @@ export "src/acp_command_listener.dart";
 export "src/acp_command_tracker.dart";
 export "src/acp_config_option_parser.dart";
 export "src/acp_event_mapper.dart";
+export "src/acp_output_interceptor.dart";
 export "src/acp_plugin.dart";
 export "src/acp_process_factory.dart";
 export "src/acp_protocol.dart";

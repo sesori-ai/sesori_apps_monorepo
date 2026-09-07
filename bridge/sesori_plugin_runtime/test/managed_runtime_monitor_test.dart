@@ -480,7 +480,11 @@ class _BindablePlan() {
   }
 }
 
-enum _TestStatus() { starting, ready, stopping }
+enum _TestStatus() {
+  starting,
+  ready,
+  stopping,
+}
 
 class const _TestRecord({
     required final String ownerSessionId,
@@ -606,6 +610,7 @@ class _FakeHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     throw UnimplementedError();
   }
