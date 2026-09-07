@@ -191,6 +191,11 @@
   only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
 - [x] First actual independent implementation review approved all 17 changed files at `97eda29b57`, with no findings.
 - Reviewed immutable scope: `54f0dbf51d` → `97eda29b57`; 1,146 additions + 9 deletions = 1,155 changed lines.
+- Publication checkpoint: `git diff --numstat daa782057c 164a7112ab` totals 1,154 + 12 = 1,166 lines, including
+  the tracker's own diff. The +11 net scope difference is tracker synchronization/review-status documentation;
+  `git diff 97eda29b57 164a7112ab -- bridge/sesori_plugin_antigravity` is empty.
+- Later CI fix `cbc72324a7` fences late callback connection completion after an early timer; all four loopback tests
+  and owning analysis pass. Review fixes add useful decoder evidence and honest permission tool-kind display.
 - [x] Predecessor #1353 merged; synchronized with main `daa782057c`. Conflict resolution retained the reviewed 7.b
   additions. Antigravity/ACP/interface production and tests plus the lockfile are unchanged from the reviewed inputs;
   no unchanged passing suite was rerun. Parent owns publication.

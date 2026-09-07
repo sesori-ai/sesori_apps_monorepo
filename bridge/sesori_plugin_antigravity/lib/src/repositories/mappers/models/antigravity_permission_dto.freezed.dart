@@ -31,8 +31,8 @@ mixin _$AntigravityPermissionRequestDto {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true, createToJson: false)
 class _AntigravityPermissionRequestDto implements AntigravityPermissionRequestDto {
   const _AntigravityPermissionRequestDto({required this.sessionId, required this.toolCall, @JsonKey(fromJson: _optionsFromJson) required  List<AntigravityPermissionOptionDto> options}): _options = options;
   factory _AntigravityPermissionRequestDto.fromJson(Map<String, dynamic> json) => _$AntigravityPermissionRequestDtoFromJson(json);
@@ -63,7 +63,7 @@ class _AntigravityPermissionRequestDto implements AntigravityPermissionRequestDt
 /// @nodoc
 mixin _$AntigravityPermissionToolDto {
 
- String get toolCallId; String get title;
+ String get toolCallId; String get title;@JsonKey(unknownEnumValue: AntigravityPermissionToolKind.unknown) AntigravityPermissionToolKind? get kind;
 
 
 
@@ -78,14 +78,15 @@ mixin _$AntigravityPermissionToolDto {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true, createToJson: false)
 class _AntigravityPermissionToolDto implements AntigravityPermissionToolDto {
-  const _AntigravityPermissionToolDto({required this.toolCallId, required this.title});
+  const _AntigravityPermissionToolDto({required this.toolCallId, required this.title, @JsonKey(unknownEnumValue: AntigravityPermissionToolKind.unknown) required this.kind});
   factory _AntigravityPermissionToolDto.fromJson(Map<String, dynamic> json) => _$AntigravityPermissionToolDtoFromJson(json);
 
 @override final  String toolCallId;
 @override final  String title;
+@override@JsonKey(unknownEnumValue: AntigravityPermissionToolKind.unknown) final  AntigravityPermissionToolKind? kind;
 
 
 
@@ -118,8 +119,8 @@ mixin _$AntigravityPermissionOptionDto {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true, createToJson: false)
 class _AntigravityPermissionOptionDto implements AntigravityPermissionOptionDto {
   const _AntigravityPermissionOptionDto({required this.optionId, required this.name, @JsonKey(unknownEnumValue: AntigravityPermissionKind.unknown) required this.kind, @JsonKey(name: "_meta") required this.metadata});
   factory _AntigravityPermissionOptionDto.fromJson(Map<String, dynamic> json) => _$AntigravityPermissionOptionDtoFromJson(json);
@@ -160,8 +161,8 @@ mixin _$AntigravityPermissionMetadataDto {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
 
+@JsonSerializable(checked: true, createToJson: false)
 class _AntigravityPermissionMetadataDto implements AntigravityPermissionMetadataDto {
   const _AntigravityPermissionMetadataDto({@JsonKey(name: "agy.security.warning", fromJson: _warningPresent) this.hasWarning = false});
   factory _AntigravityPermissionMetadataDto.fromJson(Map<String, dynamic> json) => _$AntigravityPermissionMetadataDtoFromJson(json);

@@ -1,5 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:json_annotation/json_annotation.dart";
 
+import "../../models/antigravity_interaction.dart";
 import "../../models/antigravity_model_catalog.dart";
 import "models/antigravity_model_config_dto.dart";
 import "models/antigravity_permission_dto.dart";
@@ -8,10 +10,22 @@ import "models/antigravity_permission_dto.dart";
 class const AntigravityProtocolMapper() {
   static const modelConfigId = "model";
 
-  AntigravityPermissionRequestDto? mapPermissionRequest({required AcpServerRequest request}) =>
-      request.method == AcpMethods.sessionRequestPermission
-      ? AntigravityPermissionRequestDto.fromJson(request.params)
-      : null;
+  AntigravityPermissionRequestDto? mapPermissionRequest({required AcpServerRequest request}) {
+    if (request.method != AcpMethods.sessionRequestPermission) return null;
+    try {
+      return AntigravityPermissionRequestDto.fromJson(request.params);
+    } on CheckedFromJsonException catch (error, stackTrace) {
+      // Generated field/class names diagnose shape changes without rendering the
+      // offending value or the decoder's potentially payload-bearing message.
+      Error.throwWithStackTrace(
+        AntigravityInteractionException(
+          message: "Invalid ${error.className}.${error.key}: ${error.innerError.runtimeType.toString()}",
+          cause: error,
+        ),
+        error.innerStack ?? stackTrace,
+      );
+    }
+  }
 
   AntigravityModelCatalog? mapModelCatalog({required AcpNewSessionResult result}) {
     final selectors = result.configOptions.where((option) => option["id"] == modelConfigId).toList();

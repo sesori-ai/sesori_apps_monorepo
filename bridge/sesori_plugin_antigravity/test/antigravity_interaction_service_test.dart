@@ -3,6 +3,7 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:json_annotation/json_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -22,6 +23,7 @@ AcpServerRequest request({
   Object id = 91,
   String session = "session",
   String tool = "command-1",
+  String? kind = "execute",
   String title = "Synthetic question?",
   List<Map<String, dynamic>>? options,
 }) => AcpServerRequest(
@@ -29,7 +31,7 @@ AcpServerRequest request({
   method: AcpMethods.sessionRequestPermission,
   params: {
     "sessionId": session,
-    "toolCall": {"toolCallId": tool, "title": title},
+    "toolCall": {"toolCallId": tool, "title": title, "kind": ?kind},
     "options": options ?? [_allow, _always, _reject],
   },
 );
@@ -78,6 +80,7 @@ void main() {
     harness.receive(incoming: request(id: "rpc-text"));
     final pending = harness.registry.pendingPermissionsForSession(sessionId: "session").single;
     expect(pending.allowAlways, isFalse);
+    expect(pending.tool, "execute");
     expect(harness.process.written, isEmpty);
     expect(harness.registry.replyPermission(requestId: pending.id, reply: PluginPermissionReply.once), isTrue);
     expect(harness.registry.replyPermission(requestId: pending.id, reply: PluginPermissionReply.once), isFalse);
@@ -89,6 +92,39 @@ void main() {
       },
     });
     expect(harness.events.last, isA<BridgeSsePermissionReplied>());
+  });
+
+  test("missing or unknown tool kind displays an honest fallback rather than a correlation ID", () {
+    for (final kind in [null, "future-kind"]) {
+      harness.receive(incoming: request(kind: kind));
+      final pending = harness.registry.pendingPermissionsForSession(sessionId: "session").single;
+      expect(pending.tool, "tool");
+      harness.registry.replyPermission(requestId: pending.id, reply: PluginPermissionReply.reject);
+    }
+  });
+
+  test("decoder failures retain field and cause without rendering malformed values", () {
+    const secret = "synthetic-prompt-do-not-log";
+    final incoming = request();
+    incoming.params["toolCall"] = {
+      "toolCallId": "opaque",
+      "title": [secret],
+    };
+    expect(
+      () => const AntigravityProtocolMapper().mapPermissionRequest(request: incoming),
+      throwsA(
+        isA<AntigravityInteractionException>()
+            .having((error) => error.toString(), "field", contains("AntigravityPermissionToolDto.title"))
+            .having((error) => error.toString(), "decoder kind", contains("TypeError"))
+            .having((error) => error.toString(), "privacy", isNot(contains(secret)))
+            .having((error) => error.cause, "original decoder cause", isA<CheckedFromJsonException>()),
+      ),
+    );
+    harness.receive(incoming: incoming);
+    expect(harness.registry.hasAnyPendingInput, isFalse);
+    expect(harness.process.written.single["result"], {
+      "outcome": {"outcome": "cancelled"},
+    });
   });
 
   test("reject chooses only advertised reject-once; absent rejection and always replies cancel", () {

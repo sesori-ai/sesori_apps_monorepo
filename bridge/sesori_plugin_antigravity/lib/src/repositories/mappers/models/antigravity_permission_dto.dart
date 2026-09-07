@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_annotation_target, Freezed forwards factory JSON configuration to generated classes
+
 import "package:freezed_annotation/freezed_annotation.dart";
 
 part "antigravity_permission_dto.freezed.dart";
@@ -14,8 +16,23 @@ enum AntigravityPermissionKind() {
   unknown,
 }
 
+/// Standard ACP tool categories; absent or future values retain an honest display fallback.
+enum AntigravityPermissionToolKind() {
+  read,
+  edit,
+  delete,
+  move,
+  search,
+  execute,
+  think,
+  fetch,
+  other,
+  unknown,
+}
+
 @_input
 sealed class AntigravityPermissionRequestDto with _$AntigravityPermissionRequestDto {
+  @JsonSerializable(checked: true, createToJson: false)
   const factory({
     required String sessionId,
     required AntigravityPermissionToolDto toolCall,
@@ -26,12 +43,18 @@ sealed class AntigravityPermissionRequestDto with _$AntigravityPermissionRequest
 
 @_input
 sealed class AntigravityPermissionToolDto with _$AntigravityPermissionToolDto {
-  const factory({required String toolCallId, required String title}) = _AntigravityPermissionToolDto;
+  @JsonSerializable(checked: true, createToJson: false)
+  const factory({
+    required String toolCallId,
+    required String title,
+    @JsonKey(unknownEnumValue: AntigravityPermissionToolKind.unknown) required AntigravityPermissionToolKind? kind,
+  }) = _AntigravityPermissionToolDto;
   factory fromJson(Map<String, dynamic> json) => _$AntigravityPermissionToolDtoFromJson(json);
 }
 
 @_input
 sealed class AntigravityPermissionOptionDto with _$AntigravityPermissionOptionDto {
+  @JsonSerializable(checked: true, createToJson: false)
   const factory({
     required String optionId,
     required String name,
@@ -43,6 +66,7 @@ sealed class AntigravityPermissionOptionDto with _$AntigravityPermissionOptionDt
 
 @_input
 sealed class AntigravityPermissionMetadataDto with _$AntigravityPermissionMetadataDto {
+  @JsonSerializable(checked: true, createToJson: false)
   const factory({
     @JsonKey(name: "agy.security.warning", fromJson: _warningPresent) @Default(false) bool hasWarning,
   }) = _AntigravityPermissionMetadataDto;
