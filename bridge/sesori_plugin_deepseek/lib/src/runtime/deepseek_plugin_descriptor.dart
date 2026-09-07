@@ -222,6 +222,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }
 
   HostProcessCommandExecutor _executor(HostProcessService processes) => HostProcessCommandExecutor(
+    includeParentEnvironment: true,
     processes: processes,
     runInShell: io.Platform.isWindows,
     maxCapturedOutputCharactersPerStream: _probeOutputLimit,

@@ -811,6 +811,9 @@ class UpdateCommand() extends cli.Command<void> {
 }
 
 Future<void> main(List<String> args) async {
+  // A browser command must succeed silently, even after its parent cancels.
+  if (BrowserNoop.matches(arguments: args)) return;
+
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e('Unsupported platform ${Platform.operatingSystem}');
     exit(1);

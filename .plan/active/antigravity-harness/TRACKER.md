@@ -3,16 +3,17 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5/12 merged; Step 6.a open for review
-- **Base:** Step 5 merge `0e8f9e6fb9`; synced with current `origin/main`
-- **Current branch:** `antigravity-harness-step-6-isolated-authentication`
+- **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review
+- **Base:** synced with main `0723491330` after Step 6.a merge
+- **Current branch:** `antigravity-harness-step-6b-isolated-profile`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
-  [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
-- **Open PR:** [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
-- **Next action:** monitor Step 6.a through merge; begin Step 6.b locally
+  [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
+  [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
+- **Open PR:** [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
+- **Next action:** monitor Step 6.b through merge; begin Step 6.c locally
 
 ## Fixed PR Series
 
@@ -21,7 +22,7 @@
 - [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [x] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
-- [ ] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
+- [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [ ] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
@@ -99,9 +100,34 @@
 - [x] Run focused validation and update regression invariants without claiming active Antigravity support.
 - [x] Independent architecture implementation review approved; no issues found.
 - [x] Step 5 merged; sync Step 6.a with main before publication.
-- Step 6.b/c profile/browser suppression/personal OAuth remain unimplemented; package remains unregistered.
+- Package remains unregistered; Step 6.c personal OAuth is not implemented.
+
+## Step 6.b Checklist
+
+- [x] Obtain approval for the backend-neutral early browser-noop CLI mode; update and review its architecture plan.
+- [x] Add layered profile preparation, generated personal-auth settings, injected scoped store, and token presence only.
+- [x] Verify private directory ordering/mode, environment filtering, and preparation failures.
+- [x] Add selective plugin-owned OAuth stderr interception while retaining other diagnostics.
+- [x] Build the actual native bridge; verify native/source helpers and pinned Python browser semantics synthetically.
+- [x] Run focused tests and owning-package analyzers; update regression contracts.
+- [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
+- Second/final review approved `7351ed64f1`; user authorized the later service-owned preflight-policy correction
+  with focused tests and no third architecture review.
+- [x] Step 6.a merged; synchronize before Step 6.b publication.
+- Publication cap: `git diff --numstat 0723491330 4a8e14a1d5` totals 845 + 12 = 857 changed lines.
+  The estimated range was a scoping guide, not a minimum; implementation and meaningful coverage fit below it.
+- Validation: 45 Antigravity tests and 15 focused app/no-op/scoped-store tests pass; final selective stderr
+  refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
+  bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.
+  See `docs/regression/antigravity-isolated-profiles.md` for reproducible evidence and platform limits.
+- No OAuth execution, token-content access, registration, managed activation, or Step 6.c operation/HTTP work.
+
 
 ## Architecture Reviews
+
+- **Step 6.b plan review (2026-09-05): APPROVED.** Applied `.agents/skills/architecture-plan-review/SKILL.md`
+  to the profile layers and approved native browser-noop addendum before implementation. Bridge-only dependency
+  direction, neutral entrypoint contract, injected invocation ownership, class cohesion, and bounded state passed.
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
   separation of concerns, composition, suffix naming, bridge layers, client DTO mapping, and presentation ownership.

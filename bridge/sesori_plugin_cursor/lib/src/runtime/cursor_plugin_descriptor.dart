@@ -197,6 +197,7 @@ class const CursorPluginDescriptor({
   }) async* {
     const manifest = CursorRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
@@ -232,6 +233,7 @@ class const CursorPluginDescriptor({
   }) {
     return RuntimeVersionValidator(
       commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
         processes: processes,
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
@@ -308,6 +310,7 @@ class const CursorPluginDescriptor({
       return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
     }
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

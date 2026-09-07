@@ -25,6 +25,10 @@ void main() {
     process = FakeAcpProcess();
     launchSpecs = [];
     api = AntigravityAcpApi(
+      stderrInterceptor: AcpOutputInterceptor(
+        maxLineBytes: 65536,
+        consumeLine: const AntigravityStderrMapper().consumeLine,
+      ),
       processFactory: (spec) async {
         launchSpecs.add(spec);
         return process;

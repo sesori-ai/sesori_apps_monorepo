@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–5 merged, Step 6.a in review
+- **Status:** active; Steps 1–5 and 6.a merged, Step 6.b preparing publication
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c PRs as approved by the user
@@ -709,7 +709,7 @@ documented invariant, they update that document immediately. Step 11 is final re
 - **6.a — shared prerequisites only (estimate 850–1,200 lines):** add required `includeParentEnvironment` through
   launch specs, host-process interfaces, native implementations, and every caller/fake. Existing callers choose `true`.
   When `false`, the host ACP factory must neither merge ambient host environment nor request OS parent inheritance.
-  Add `HostJsonStore.child(required name)` for one validated directory segment; file operations remain bare-name-only.
+  Add `HostJsonStore.scope(directoryName:)` for one validated directory segment; file operations remain bare-name-only.
   `BridgeHostJsonStore` delegates child scope to its file API. Repeated child scope selection shares existing per-file
   update coordination for the same directory; never create independent locks for identical files. Scope selection
   itself performs no filesystem I/O. Authentication and live composition derive scopes from the same injected root.
@@ -738,6 +738,32 @@ documented invariant, they update that document immediately. Step 11 is final re
   cancellation and deadline owners. Keep provider decisions out of shared transport. No unrelated cleanup or wire shim.
 - Architecture plan review must cover these new shared boundaries before 6.a implementation. Keep only one series PR
   open and at most its immediate successor local: 6.a waits for Step 5 merge, 6.b for 6.a, and 6.c for 6.b.
+
+#### Step 6.b native browser suppression (approved 2026-09-05)
+
+- Bridge-only change: `sesori_bridge_foundation` owns the backend-neutral `BrowserNoop` argument contract;
+  `bridge/app/bin/bridge.dart` returns immediately for that internal mode before CLI/config/DI/logging. It does not
+  parse, print, fetch, or open the supplied argument. No extra packaged executable or Node dependency is introduced.
+- Plugin `AntigravityProfileService` owns BROWSER quoting, path-separator/control/placeholder rejection and preflight
+  success policy. Its required invocation inputs are the executable and prefix arguments supplied by composition:
+  native bridge executable plus no prefix; source mode Dart executable plus VM/package arguments and absolute bridge
+  entry script. Never infer a native invocation from `Platform.resolvedExecutable` alone in source mode. Actual
+  descriptor composition remains Step 9; this unregistered slice tests both exact invocation forms.
+- Service -> ProfileRepository -> ProfileStorage runs the harmless no-op preflight via injected `CommandExecutor`
+  before preparing profile directories/settings. Storage also owns directory permissions and token existence only;
+  repository maps preflight output and token presence; service owns readiness and sanitized launch environment.
+  Compose its `HostProcessCommandExecutor` with required `includeParentEnvironment: false`; other existing plugin
+  composers explicitly retain `true`. This is executor-instance policy, not a change to `CommandExecutor.run`.
+  The injected settings store is `host.store.scope(directoryName: "profile").scope(directoryName: "antigravity-acp")`.
+- Plugin Layer-2 `AntigravityStderrMapper` classifies bounded OAuth-bearing lines for the injected shared ACP
+  interceptor; it retains non-sensitive diagnostics. The scratch ACP API receives the composed interceptor. Future
+  auth/live/replay composers reuse that policy. No service receives raw stderr or authorization lines.
+- Pinned native archive inspection confirms Python `webbrowser` uses `shlex.split`, direct `Popen`, and exit-zero
+  short-circuiting before OS-browser fallback; credential-manager bytecode calls it before printing the challenge.
+  Synthetic native/source no-op tests and extracted-module verification use only `example.invalid`, with fallback
+  replaced by a failing test sentinel. No OAuth code or credential files are executed/read.
+- No new mutable production state, background work, process owner, persisted coordination, or dependency defaults.
+  Only the existing bounded interceptor buffers and scoped host-store locks retain mutable state.
 
 #### Authentication contracts across 6.a–6.c
 

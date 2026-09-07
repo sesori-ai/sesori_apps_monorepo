@@ -150,6 +150,7 @@ final class const OmpPluginDescriptor({
   }) async* {
     const manifest = OmpRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
@@ -249,6 +250,7 @@ final class const OmpPluginDescriptor({
     final CommandResult result;
     try {
       result = await HostProcessCommandExecutor(
+        includeParentEnvironment: true,
         processes: processes,
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -310,6 +312,7 @@ final class const OmpPluginDescriptor({
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,

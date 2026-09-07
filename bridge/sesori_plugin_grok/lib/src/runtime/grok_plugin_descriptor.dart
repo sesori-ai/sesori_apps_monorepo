@@ -152,6 +152,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     final CommandResult result;
     try {
       result = await HostProcessCommandExecutor(
+        includeParentEnvironment: true,
         processes: processes,
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -177,6 +178,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
