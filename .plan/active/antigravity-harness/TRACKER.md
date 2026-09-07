@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review
-- **Base:** synced with main `f1403fbb35` after Step 6.c merge
-- **Current branch:** `antigravity-harness-step-6d-authentication-operation`
+- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review; Step 7.a implemented locally
+- **Base:** Step 6.d review-fix head `4816d967ab1b2d0df41d2495bdec1e49ada75caa`
+- **Current branch:** `antigravity-harness-step-7a-model-options`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -15,7 +15,7 @@
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
 - **Open PR:** [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
-- **Next action:** monitor Step 6.d through merge; begin Step 7 locally
+- **Next action:** monitor Step 6.d; review and retain Step 7.a locally until predecessor merge
 
 ## Fixed PR Series
 
@@ -28,7 +28,9 @@
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [ ] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
-- [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
+- [ ] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+- [ ] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+- [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
@@ -158,6 +160,16 @@
 - Post-sync verification: 78 Antigravity tests, 8 focused lifecycle tests, and both relevant analyses pass.
 - Post-sync code-head cap: `git diff --numstat f1403fbb35 d5812b3550` totals 997 + 35 = 1,032 changed lines.
 - No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
+
+## Step 7.a Checklist
+
+- [x] Obtain explicit user approval for 7.a/7.b/7.c partition, retaining twelve top-level steps and per-PR line caps.
+- [x] Map grouped model config through generated DTOs to immutable catalog values; validate before tracker mutation.
+- [x] Expose honest partial/no-model options before a real session catalog; never create scratch persistent sessions.
+- [x] Add standard typed ACP set_mode through API/repository; select exact validated model then default mode.
+- [x] Focused validation: 10 catalog/options tests and 11 ACP config/API tests pass; both owning analyses are clean.
+- [ ] Independent implementation review before parent-owned publication.
+- Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
 
 ## Architecture Reviews
 

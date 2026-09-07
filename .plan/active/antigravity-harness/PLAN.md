@@ -6,7 +6,7 @@
 - **Status:** active; Steps 1–5 and 6.a–6.c merged, Step 6.d in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c/6.d PRs as approved by the user
+- **Delivery:** twelve ordered top-level steps; approved ordered slices are 6.a/6.b/6.c/6.d and 7.a/7.b/7.c
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -595,7 +595,10 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
    - `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
    - The slices below preserve layered ownership, personal OAuth, callback safety, cancellation, and deterministic tests.
-7. `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
+7. Ordered slices:
+   - `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
    - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
      persistent-approval filtering, bounded tool normalization, and live/replay hooks with direct collaborator tests.
 8. `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
@@ -812,6 +815,13 @@ documented invariant, they update that document immediately. Step 11 is final re
 
 ### Step 7/12: Options, questions, permissions, and updates
 
+The user approved three ordered slices after the complete scope was estimated at 2,010–2,900 net lines. Each PR
+remains capped at 1,500 lines including tests/generated/docs; twelve top-level steps are unchanged. Only the immediate
+successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b questions/permissions/reply ownership, and
+7.c shared live/replay hooks and provider update normalization. No slice registers an active Antigravity plugin.
+
+#### Step 7.a: Model catalogs and session options
+
 - Extend Layer-2 `AntigravityProtocolMapper` to map raw grouped `configOptions` into a typed catalog with exact
   IDs/names/current value. `AntigravitySessionOptionsService` validates the mapped catalog before replacing the
   tracker's last-good snapshot; neither the plugin hook nor tracker reads raw ACP maps. Before new/load/resume returns
@@ -822,19 +832,23 @@ documented invariant, they update that document immediately. Step 11 is final re
   it captures only mapped catalogs, validates the model, performs exact selection, then sends `default` as one
   operation. Test it directly with fakes in this step; defer plugin/descriptor wiring to Step 8. Any write failure
   prevents later dispatch.
-- Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
-  existing plugin gets identity behavior. The Layer-2 mapper converts Antigravity command/output/image keys into bounded
-  normalized fields, strips duplicate inline image bytes after retaining supported metadata, and preserves nonzero exit
-  separately from protocol/tool failure.
+#### Step 7.b: Questions and permission replies
+
 - Map raw permission requests into typed options before policy. A connection-scoped
   `AntigravityInteractionRepository` wraps the live ACP reply boundary. `AntigravityInteractionService` classifies valid
   `interaction_` questions, owns unique label-to-ID mapping, malformed-answer rejection, safe option filtering, and
   typed reply dispatch through that repository without inventing absent choices.
 - Keep `AntigravityApprovalRegistry` focused on pending lifecycle and delegation to the interaction service; it neither
   parses provider maps, decides permission policy, nor sends directly through the ACP client.
-- Cover raw-to-typed catalog/permission mapping, fresh/restarted partial discovery, first-session account default,
-  post-new/load/resume visibility, grouped/empty/stale models, failed selection/mode, duplicate labels/IDs, reject-kind
-  choices, prompt-injection warning filtering, malformed requests, bounded payloads, and live/replay equality.
+#### Step 7.c: Live and replay updates
+
+- Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
+  existing plugin gets identity behavior. The Layer-2 mapper converts Antigravity command/output/image keys into bounded
+  normalized fields, strips duplicate inline image bytes after retaining supported metadata, and preserves nonzero exit
+  separately from protocol/tool failure.
+- Across the slices, cover catalog validation/last-good retention, grouped/empty/stale models, failed selection/mode,
+  duplicate labels/IDs, safe reject-kind choices, prompt-injection warning filtering, malformed requests, bounded
+  payloads, and live/replay equality. Plugin/descriptor integration remains Step 8.
 
 ### Step 8/12: Persistent ACP plugin composition
 
