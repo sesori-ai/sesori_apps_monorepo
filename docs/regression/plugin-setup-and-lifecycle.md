@@ -27,6 +27,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
+- Managed selection prefers the pinned target and otherwise takes the newest installed
+  managed version still at or above the harness's minimum, so raising the target leaves
+  the previous install usable rather than reporting the runtime as missing. A managed
+  version below the minimum is never selected.
 - Hermes is a direct-CLI harness with no managed install. Setup distinguishes a missing or
   pre-ACP binary, a Hermes Agent release below `0.20.0`, and missing model/provider
   configuration; startup revalidates the effective PATH or explicit `--hermes-bin` executable
@@ -35,35 +39,52 @@ idle suspension, the management snapshot, and lifecycle commands.
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
-  release (`>=0.1.0`) and the exact managed `0.1.1` release. An old or malformed
-  PATH candidate falls through to managed selection. It performs bounded parseable-version and
+  release (`>=0.1.3`) and then a managed release at or above that minimum,
+  preferring the pinned `0.1.3` target. An outdated explicit
+  binary is rejected; an old or malformed PATH candidate falls through to managed
+  selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
   supported platform without an explicit path, and gives local DeepSeek
   provider/setup guidance. Managed installation verifies the immutable archive
   digest and preserves the packaged launcher with its bundled Node runtime. Startup
-  validates ACP v1 plus required DeepSeek extension metadata, owns one stdio
+  validates standard ACP v1 plus DeepSeek extension protocol v2, owns one stdio
   child through the host process seam, degrades on an unexpected exit, lazily
   reconnects on demand, and shuts down idempotently without treating its own
   termination as a crash.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
-  `deepseek/*` is limited to catalog, detached history, rename, questions, and
-  bounded statuses on that same connection. Normal `DSH_HOME` remains the source
+  `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
+  and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
   of settings, credentials, providers, and skills but its session root is never
   scanned. Session, attachment, query, and spill mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
-  the exact managed release. Version output must retain Copilot branding, and
+  a managed release at or above that minimum, preferring the pinned target.
+  Version output must retain Copilot branding, and
   startup uses only the runtime selected during provisioning. Authentication is
   local and out of band; setup never reads credentials or runs `copilot login`.
   An unexpected owned-process exit degrades only Copilot, and demand reconnects
   it without affecting another harness.
+- A managed harness whose first handshake stalls does not hang bridge startup.
+  Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
+  within it reports connected, failing within it reports degraded, and exceeding
+  it starts the harness degraded while the cold start keeps running in the
+  background, where a later failure is logged rather than surfacing as an
+  unhandled error. OpenCode skips the bounded wait whenever it holds no server
+  handle — its attach probe found nothing reachable, or managed provisioning
+  produced no runnable binary — and instead reports degraded immediately and
+  retries the cold start in the background, because a cold start against a
+  server that is not there has no bound of its own. An abort observed after the
+  cold start still rolls back everything the start acquired.
 - Grok Build is a direct-CLI ACP v1 harness with no managed install. An explicit
   `--grok-bin` path is authoritative; otherwise setup uses `grok` from PATH and
   requires version `1.0.5` or newer. Setup inspection and pre-start resolution
-  run only a bounded `--version` probe: they never read credentials, invoke
-  login, create a session, or start ACP. Startup launches exactly
+  run bounded `--version` and `models` probes: they never read credentials,
+  invoke login, create a session, or start ACP. A listing that reports not
+  being authenticated is authentication-required carrying the resolved
+  version; any other wording leaves setup ready, and a listing that cannot be
+  run is unknown. Startup launches exactly
   `--no-auto-update agent --no-leader stdio` through the host process seam and
   accepts only advertised headless authentication. Interactive-only
   authentication becomes local-login-required without invoking it. An
@@ -77,6 +98,19 @@ idle suspension, the management snapshot, and lifecycle commands.
   skills, and prompt templates are trusted without prompts); OMP launches `omp acp`
   without an approval-mode override, leaving approval behavior to OMP. Provider login
   for both happens locally, never from the phone.
+- Pi setup inspection follows its version probe with a bounded `--list-models`
+  run in the same environment. A listing that reports no available models is
+  authentication-required carrying the resolved version, any other listing is
+  ready, and a listing that cannot be run is unknown rather than ready. The
+  probe never starts a backend, opens an RPC session, or invokes login, so a
+  managed install with no provider credentials stops being reported as ready
+  and stops offering start.
+- OMP setup inspection follows its version probe with a bounded `models --json`
+  run in the same environment. Only a listing that parses and reports an empty
+  model array is authentication-required; an unparsable or non-zero listing
+  leaves setup ready, because supported releases predate that flag and a
+  working older install must not regress. A listing that cannot be run at all
+  is unknown.
 - Backend `tui.toast.show` SSE events render through the backend-neutral toast
   surface, presented with the design-system popup alert on the root navigator's
   overlay. Session-attributed events appear only while that session's detail or
@@ -193,7 +227,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
+| L2 Routine | Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
 | L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
@@ -219,6 +253,9 @@ owned-process exit; and restart.
   in diagnostics, or interception preventing idle-process shutdown.
 - Setup inspection installing, logging in, starting a backend, or leaking secrets or raw
   output; resolution mutating runtime files; a disabled harness probed or started.
+- A stalled first handshake holds bridge startup past the cold-start budget, a
+  budget-exceeded harness reports connected instead of degraded, or its late
+  cold-start failure surfaces as an unhandled error rather than a log line.
 - An eligible harness dropped from listings, a drifting or unselectable default, or
   snapshot tokens that miss real changes.
 - A harness card showing raw version-probe output, a rejected runtime's version, or a version
@@ -316,7 +353,7 @@ owned-process exit; and restart.
 - `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_grok/lib/src/grok_plugin_impl.dart` and `grok_plugin_test.dart`
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
-- `client/module_core/.../plugin_management_service.dart`, `PregoBrandLogo`, the
+- `client/module_core/lib/src/services/plugin_management_service.dart`, `PregoBrandLogo`, the
   Grok marks and `client/module_prego/BRAND_ASSETS.md`, and the harness settings
   screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites

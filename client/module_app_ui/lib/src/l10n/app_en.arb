@@ -670,10 +670,13 @@
   "sessionDetailSubtaskUnnamed": "Background task",
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
+  "sessionDetailUnavailableCommand": "Command unavailable",
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
+  "sessionDetailCommandUnavailable": "That command is no longer available. Remove it from the queue to continue.",
   "sessionDetailCancelQueued": "Cancel",
+  "sessionDetailRemoveQueued": "Remove",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerVariant": "Variant",
   "sessionDetailSelectModel": "Select Model",
@@ -774,9 +777,6 @@
       }
     }
   },
-  "sessionListStaleProjectTitle": "Project directory not found",
-  "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
-  "sessionListStaleProjectBack": "Go back",
   "voiceRecord": "Record voice",
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
@@ -802,7 +802,6 @@
   "voiceErrorRecording": "Recording failed. Please try again.",
   "voiceErrorTranscription": "Transcription failed. Record again or type instead.",
   "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
-  "voiceErrorNetwork": "Could not reach the server. Check your connection.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
   "addProject": "Add Project",
@@ -1196,7 +1195,7 @@
       }
     }
   },
-  "catalogScanPartlyFailedTitle": "Scan finished",
+  "catalogScanPartlyFailedTitle": "Scanning finished",
   "@catalogScanPartlyFailedTitle": {
     "description": "Title of the scan row when some harnesses scanned successfully and others did not."
   },
@@ -1216,7 +1215,7 @@
   "@catalogScanFailedTitle": {
     "description": "Title of the scan row when no harness could be scanned."
   },
-  "catalogScanFailedDetail": "Check the bridge log for details",
+  "catalogScanFailedDetail": "Check bridge logs",
   "@catalogScanFailedDetail": {
     "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
   },

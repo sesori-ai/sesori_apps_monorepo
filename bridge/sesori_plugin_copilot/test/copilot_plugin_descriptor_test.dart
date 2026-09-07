@@ -6,6 +6,59 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("CopilotPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    final descriptor = CopilotPluginDescriptor.production();
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("copilot-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory("${stateDir.path}/${const CopilotRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const CopilotRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("1.0.79");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("1.0.79");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   const defaultConfig = PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"});
 
   test("offers managed install only for automatic runtime selection", () {
@@ -60,6 +113,7 @@ void main() {
             environment: const {},
             stateDirectory: "/state",
             startAborted: controller.signal,
+            runtimeInUse: RuntimeInUseSignal.never,
           )
           .toList(),
       throwsA(isA<PluginStartAbortedException>()),

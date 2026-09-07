@@ -16,12 +16,72 @@ Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registr
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Managed runtime
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+
+Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
+user-installed CLI from PATH or an explicit binary option, so there is nothing
+for Sesori to install or upgrade. The upgrade follows the install capability
+exactly — a harness configured with an explicit binary override, running on a
+platform with no pinned asset, or attached to an externally managed server
+(`--opencode-no-auto-start`) advertises neither.
+
+The upgrade only replaces a runtime Sesori already manages. A machine with no
+managed version directory keeps the explicit Install action; it never downloads
+a runtime the user has not asked for.
+
+## Option pickers
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+The picker shows each plugin's declared order. OpenCode ranks models newest
+release first, which is the best signal its catalog offers. Other plugins
+still declare variants default-first (the client falls back to the first
+listed variant when no default is declared) and models in plugin-defined order.
+
+## Setup detection
+
+| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Logged-out backend reported as `authenticationRequired` | ✅ | 🚫¹² | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ✅¹⁴ | ⬜¹⁵ | ✅¹⁶ |
+
+`inspectSetup` owns this state. Where a plugin does not probe credentials it
+returns `PluginSetupReady` as soon as it resolves a runtime, so a harness that
+is installed but logged into nothing is shown as ready and fails at session
+start instead. Sesori-managed installs make this visible: installing the
+runtime never authenticates it.
+
+A probe belongs here only when it answers "can this harness serve a turn right
+now" without starting a backend or initiating authentication. Counting stored
+credentials is not equivalent: a harness with bundled free models or an
+environment-supplied key is usable with an empty credential store, and blocking
+those installs is worse than the stale ready state this capability replaces.
+
+The marks above cover setup inspection only. A plugin that raises
+`PluginAuthenticationRequiredException` while running still moves the slot to
+`authenticationRequired` and blocks further starts; the ⬜ plugins do not do
+that either.
+
+## Command limitations
+
+Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
+supports only the interactive TUI. Sesori excludes this bundled command source,
+including numbered invocation aliases, while preserving user commands with the
+same name. This command is **not supported** through Pi RPC; ordinary extension,
+prompt, and skill commands remain available.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
@@ -42,7 +102,13 @@ announces itself through the parent's `subAgentActivity started`
 (`agentThreadId`) and `thread/status/changed`, never `thread/started`;
 `receiverThreadIds` stays empty. Sesori exposes the verified child thread and
 persisted rollout under its direct parent and rolls running descendants into
-the root's busy state. `turn/interrupt` works per child thread with its
+the root's busy state. Spawn calls appear as inline subtask tiles both live
+and in saved history, linked to the child thread; the tile follows the child's
+session status instead of treating spawn completion as task completion.
+Raw task-path fallbacks are formatted for display (for example,
+`/root/architecture_review_1271` becomes `Architecture review · 1271`), while
+raw paths remain the identity used to match saved spawn calls to children.
+`turn/interrupt` works per child thread with its
 `turnId`, and interrupting the parent leaves children running, so
 main-agent-only is supportable.
 
@@ -69,13 +135,15 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek (Sesori's own `sesori-deepseek-acp` 0.1.2 over dsh 0.1.1-rc.2,
-probed 2026-09-03): the harness emits `subagent/start`/`subagent/end` with
-child session ids and `ctx.subagents.interrupt` stops a continuable child; the
-adapter forwards none of it yet but is ours to extend, and the executing tool
-call is known for every start. Foreground children die with the parent while
-background ones survive, and the adapter can tell them apart, so
-main-agent-only is supportable when every running child is background.
+⁹ DeepSeek's published adapter 0.1.3 over dsh 0.1.1-rc.2 is the managed target
+and minimum accepted runtime. The consumer requires extension protocol v2 and
+implements live/replayed correlated tiles and child transcripts/catalogs.
+Replay retains direct-parent tile identities and ordered ordinary-content runs
+without changing live child state. Scoped stop remains an unimplemented consumer
+follow-up, although the adapter supplies its contract. Foreground children die
+with the parent; background children survive, making main-agent-only stop
+supportable when all running children are background. Final feature E2E coverage
+remains pending.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as
@@ -83,3 +151,45 @@ main-agent-only is supportable when every running child is background.
 under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
 `session/cancel` cancels background children too, so main-agent-only is not
 supported.
+
+¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
+prints one row per usable model and otherwise prints the
+"No models available. Use /login…" text that
+`PiRpcClient.noModelsDiagnosticPrefix` already matches on the session path, so
+an empty listing is the logged-out signal. Listing resolves every credential
+source Pi accepts — `~/.pi/agent/auth.json`, inline provider keys in
+`~/.pi/agent/models.json`, and environment API keys — which reading the auth
+file alone would not: a user carrying only an environment key or a local
+provider has no `auth.json` entry and a working install. `pi auth check` is
+unusable here because it requires an explicit `--provider` or `--model` and Pi
+exposes no global variant. Verified against a fresh Sesori-managed 0.84.2
+install with no credentials.
+
+¹² OpenCode (1.18.25, probed 2026-09-05) has no logged-out state to report.
+`opencode models` lists the bundled free `opencode/…` models identically with
+five credentials and with zero, so an install with an empty credential store
+is usable and ready is the correct state for it. `opencode auth list` counts
+credentials, but that count is not this capability: reporting authentication
+required from it would block working installs. Ready remains correct for
+OpenCode regardless of stored credentials.
+
+¹³ Copilot has not been probed for a non-interactive credential check.
+
+¹⁴ Oh My Pi (18.1.10, probed 2026-09-05) reports it from `omp models --json`,
+which returns `{"models":[]}` with no credentials and a populated list
+otherwise — the same signal Pi exposes, in a structured form. Only a listing
+that parses and reports no models downgrades setup: supported releases reach
+back to 17.3.8 and `models --json` is not guaranteed across that range, so an
+unparsable or failing listing leaves setup ready instead of regressing a
+working older install.
+
+¹⁵ DeepSeek already probes readiness in `inspectSetup` but maps a negative
+result to `PluginSetupUnknown`, so a logged-out install is reported as
+undetermined rather than as authentication required.
+
+¹⁶ Grok Build (1.0.5, probed 2026-09-05) reports it from `grok models`, which
+prints `You are logged in with <account>.` or `You are not authenticated.`
+ahead of a model list that is identical either way, so the authentication line
+is the signal and the listing itself is not one. Only that line downgrades
+setup; unrecognized wording leaves setup ready rather than blocking a working
+install on a phrase a later release may change.

@@ -229,6 +229,10 @@ class PluginRuntime({
   /// state — the caller re-inspects setup after a terminal [ProvisionReady].
   /// A shutdown aborts the install cooperatively via the returned stream's
   /// abort signal.
+  ///
+  /// An install may overlap a generation running from an older managed runtime
+  /// version, so the descriptor also receives the slot's live in-use fact to
+  /// gate its cleanup.
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
     final slot = _requireSlot(pluginId);
     if (_shuttingDown) {
@@ -244,10 +248,24 @@ class PluginRuntime({
         environment: _environment,
         stateDirectory: slot.registration.stateDirectory,
         startAborted: abortController.signal,
+        runtimeInUse: _SlotRuntimeInUseSignal(slot: slot),
       );
     } finally {
       _installAbortControllers.remove(abortController);
     }
+  }
+
+  /// Whether a bridge start should install this plugin's pinned managed runtime
+  /// in the background because Sesori already manages an older one.
+  ///
+  /// The descriptor owns the decision and answers from configuration and its
+  /// state directory alone — no probing, no process spawning, no network.
+  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+    final slot = _requireSlot(pluginId);
+    return slot.registration.descriptor.needsManagedRuntimeUpgrade(
+      config: slot.registration.config,
+      stateDirectory: slot.registration.stateDirectory,
+    );
   }
 
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
@@ -1477,6 +1495,7 @@ class PluginRuntime({
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
       Log.d('Plugin "$pluginId" generation $generation started (${slot.state.name})');
+      _runStartWarmUp(pluginId: pluginId, plugin: started);
       return started;
     } on PluginStartAbortedException {
       slot.state = PluginRuntimeState.failed;
@@ -1500,6 +1519,17 @@ class PluginRuntime({
       await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
       return null;
     }
+  }
+
+  /// Starts the plugin's own warm-up without joining it to the start: nothing
+  /// waits on it, so a slow or failing warm-up must not delay the request that
+  /// triggered the start or retire a healthy generation.
+  void _runStartWarmUp({required String pluginId, required BridgePlugin plugin}) {
+    unawaited(
+      Future<void>.sync(plugin.onStarted).catchError((Object error, StackTrace stackTrace) {
+        Log.w('Plugin "$pluginId" start warm-up failed', error, stackTrace);
+      }),
+    );
   }
 
   Future<void> _discardStartedPlugin({
@@ -1838,6 +1868,17 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   StreamSubscription<BridgeSseEvent>? eventSubscription;
   bool allowPendingInputResolutionsDuringStop = false;
   final Set<Future<void> Function()> operationStreamCancellations = <Future<void> Function()>{};
+}
+
+/// Reports a slot's live generation to an in-flight managed-runtime install.
+///
+/// Read on each access rather than captured: a generation can start or stop
+/// while a download runs, and the installer only cares about the moment it
+/// decides whether to sweep. A starting generation counts — it has already
+/// resolved the binary path it will launch.
+class const _SlotRuntimeInUseSignal({required final _PluginRuntimeSlot _slot}) implements RuntimeInUseSignal {
+  @override
+  bool get isInUse => _slot.plugin != null || _slot.startFuture != null;
 }
 
 class _PluginRuntimeAuthentication({

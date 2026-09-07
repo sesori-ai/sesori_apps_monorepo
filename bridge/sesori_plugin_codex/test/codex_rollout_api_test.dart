@@ -967,6 +967,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1053,6 +1054,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1109,6 +1111,7 @@ authored arguments
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1158,6 +1161,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1204,6 +1208,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1241,6 +1246,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: sessionId,
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1373,6 +1379,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1449,6 +1456,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1489,6 +1497,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1537,12 +1546,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final firstRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
       final secondRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1600,12 +1611,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final busyMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
       final idleMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1657,6 +1670,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1703,6 +1717,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1743,6 +1758,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1759,6 +1775,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         () => messageRepository.readMessages(
           rolloutPath: path,
           sessionId: sessionId,
+          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         ),
@@ -1827,6 +1844,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {
           "c2": PluginToolStatus.error,
@@ -2059,12 +2077,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
       final idleMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -2174,6 +2194,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         messages = messageRepository.readMessages(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         );
@@ -2234,6 +2255,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           .readMessages(
             rolloutPath: path,
             sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+            children: const [],
             replayToolDisposition: CodexReplayToolDisposition.terminalize,
             structuredToolStatusByCallId: const {},
           )
@@ -2494,6 +2516,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -2540,6 +2563,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
         config: const CodexConfigDefaults(

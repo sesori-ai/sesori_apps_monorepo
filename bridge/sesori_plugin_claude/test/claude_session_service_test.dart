@@ -942,6 +942,7 @@ final class _ControlledClock() extends ServerClock {
     }
     _delays.clear();
   }
+
   void elapseAt({required int index}) {
     final delay = _delays[index];
     if (!delay.isCompleted) delay.complete();

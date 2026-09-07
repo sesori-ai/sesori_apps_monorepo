@@ -3,7 +3,25 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../repositories/deepseek_session_repository.dart";
 
-class const DeepSeekSessionService({required final DeepSeekSessionRepository repository}) {
+class const DeepSeekSessionService({
+  required final DeepSeekSessionRepository repository,
+  required final AcpChildSessionTracker childSessions,
+}) {
+  List<PluginSession> getChildSessions({
+    required String sessionId,
+    required String directory,
+    required List<PluginSession> persistedSessions,
+  }) {
+    final childrenById = <String, PluginSession>{
+      for (final session in persistedSessions)
+        if (session.parentID == sessionId) session.id: session,
+    };
+    for (final session in childSessions.childSessions(sessionId: sessionId, directory: directory)) {
+      childrenById.putIfAbsent(session.id, () => session);
+    }
+    return childrenById.values.toList(growable: false);
+  }
+
   Future<PluginSession> rename({
     required AcpStdioClient client,
     required String sessionId,

@@ -21,7 +21,9 @@ class BridgeEventMapper({
         BridgeSseServerHeartbeat() => null,
         BridgeSseServerInstanceDisposed() => null,
         BridgeSseGlobalDisposed() => null,
-        BridgeSseCommandCatalogUpdated() => SesoriSseEvent.commandCatalogUpdated(pluginId: pluginId),
+        // Refreshes the options cache through SessionOptionsChangedRefreshListener;
+        // clients hear about it as `session.options_updated` once that commits.
+        BridgeSseCommandCatalogUpdated() => null,
         BridgeSseSessionCreated(:final info) => _tryParseSseEvent({"type": "session.created", "info": info}),
         BridgeSseSessionUpdated(:final info) => _tryParseSseEvent({"type": "session.updated", "info": info}),
         BridgeSseSessionOptionsChanged() => null,
@@ -48,11 +50,7 @@ class BridgeEventMapper({
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
         BridgeSseSessionCompacted(:final sessionID) => SesoriSseEvent.sessionCompacted(sessionID: sessionID),
-        BridgeSseSessionStatus(:final sessionID, :final status) => _tryParseSseEvent({
-          "type": "session.status",
-          "sessionID": sessionID,
-          "status": status,
-        }),
+        BridgeSseSessionStatus() => throw StateError("session status is normalized before it reaches the mapper"),
         BridgeSseSessionIdle(:final sessionID) => SesoriSseEvent.sessionStatus(
           sessionID: sessionID,
           status: const SessionStatus.idle(),
@@ -64,7 +62,7 @@ class BridgeEventMapper({
             arguments: arguments,
             messageID: messageID,
           ),
-        BridgeSseMessageUpdated(:final info) => _tryParseSseEvent({"type": "message.updated", "info": info}),
+        BridgeSseMessageUpdated() => throw StateError("message updates are normalized before they reach the mapper"),
         BridgeSseMessageRemoved(:final sessionID, :final messageID) => SesoriSseEvent.messageRemoved(
           sessionID: sessionID,
           messageID: messageID,
@@ -96,10 +94,6 @@ class BridgeEventMapper({
             messageID: messageID,
             partID: partID,
           ),
-        BridgeSsePtyCreated() => const SesoriSseEvent.ptyCreated(),
-        BridgeSsePtyUpdated() => const SesoriSseEvent.ptyUpdated(),
-        BridgeSsePtyExited(:final id, :final exitCode) => SesoriSseEvent.ptyExited(id: id, exitCode: exitCode),
-        BridgeSsePtyDeleted(:final id) => SesoriSseEvent.ptyDeleted(id: id),
         BridgeSsePermissionAsked(
           :final requestID,
           :final sessionID,
@@ -155,23 +149,9 @@ class BridgeEventMapper({
         BridgeSseProjectUpdated() => null,
         BridgeSseVcsBranchUpdated() => const SesoriSseEvent.vcsBranchUpdated(),
         BridgeSseFileEdited(:final file) => SesoriSseEvent.fileEdited(file: file),
-        BridgeSseFileWatcherUpdated(:final file, :final event) => SesoriSseEvent.fileWatcherUpdated(
-          file: file,
-          event: event,
-        ),
-        BridgeSseLspUpdated() => const SesoriSseEvent.lspUpdated(),
-        BridgeSseLspClientDiagnostics(:final serverID, :final path) => SesoriSseEvent.lspClientDiagnostics(
-          serverID: serverID,
-          path: path,
-        ),
-        BridgeSseMcpToolsChanged() => const SesoriSseEvent.mcpToolsChanged(),
-        BridgeSseMcpBrowserOpenFailed() => const SesoriSseEvent.mcpBrowserOpenFailed(),
-        BridgeSseInstallationUpdated(:final version) => SesoriSseEvent.installationUpdated(version: version),
         BridgeSseInstallationUpdateAvailable(:final version) => SesoriSseEvent.installationUpdateAvailable(
           version: version,
         ),
-        BridgeSseWorkspaceReady(:final name) => SesoriSseEvent.workspaceReady(name: name),
-        BridgeSseWorkspaceFailed(:final message) => SesoriSseEvent.workspaceFailed(message: message),
         BridgeSseTuiToastShow(:final sessionID, :final title, :final message, :final variant) =>
           SesoriSseEvent.tuiToastShow(
             sessionID: sessionID,
@@ -179,11 +159,9 @@ class BridgeEventMapper({
             message: message,
             variant: variant,
           ),
-        BridgeSseWorktreeReady() => const SesoriSseEvent.worktreeReady(),
-        BridgeSseWorktreeFailed() => const SesoriSseEvent.worktreeFailed(),
       };
     } catch (e, st) {
-      Log.e("[sse-mapper] error mapping event ${event.runtimeType}: $e\n$st");
+      Log.e("[sse-mapper] error mapping event ${event.runtimeType}", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
@@ -194,7 +172,9 @@ class BridgeEventMapper({
               reason: "Failed to map SSE event",
               information: [event.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse-mapper] failed to report mapping failure", reportError, reportStackTrace);
+            }),
       );
       return null;
     }
@@ -215,18 +195,31 @@ class BridgeEventMapper({
     return SesoriSseEvent.messagePartUpdated(part: part);
   }
 
+  /// Builds the public status event from the already-normalized shared status.
+  SesoriSseEvent buildSessionStatusEvent({required String sessionId, required SessionStatus status}) {
+    return SesoriSseEvent.sessionStatus(sessionID: sessionId, status: status);
+  }
+
+  /// Builds the public message event from the already-normalized shared message.
+  SesoriSseEvent buildMessageUpdatedEvent({required Message message}) {
+    return SesoriSseEvent.messageUpdated(info: message);
+  }
+
   /// Builds a projects summary event from already-remapped summary data
   /// (see `SessionRepository.getProjectActivitySummaries`).
   SesoriSseEvent buildProjectsSummaryEvent({required List<ProjectActivitySummary> projects}) {
     return SesoriSseEvent.projectsSummary(projects: projects);
   }
 
-  /// Attempts to parse an SSE event from a JSON payload.
+  /// Attempts to parse a session SSE event from its JSON payload.
+  ///
+  /// The payload carries the session's title and directory, so only the event
+  /// type is logged alongside the error.
   SesoriSseEvent? _tryParseSseEvent(Map<String, dynamic> payload) {
     try {
       return SesoriSseEvent.fromJson(payload);
-    } catch (e) {
-      Log.w("failed to parse SSE event from payload: $payload, error: $e");
+    } catch (e, st) {
+      Log.w("failed to parse SSE event ${payload["type"]}", e, st);
       return null;
     }
   }

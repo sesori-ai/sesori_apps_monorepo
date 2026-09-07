@@ -13,8 +13,23 @@ class StreamingTextBuffer({
   Timer? _timer;
 
   /// Append a text delta for [partId], scheduling a throttled flush.
-  void appendDelta({required String partId, required String delta}) {
-    _buffers.putIfAbsent(partId, StringBuffer.new).write(delta);
+  ///
+  /// A new accumulator is seeded from [baseText] before the delta is written,
+  /// so a part whose earlier content arrived through a snapshot continues
+  /// from that content rather than from the delta alone. [baseText] is only
+  /// consulted when no accumulator exists for [partId]; an existing
+  /// accumulator already holds everything shown for the part.
+  void appendDelta({
+    required String partId,
+    required String delta,
+    required String? Function() baseText,
+  }) {
+    final existing = _buffers[partId];
+    if (existing != null) {
+      existing.write(delta);
+    } else {
+      _buffers[partId] = StringBuffer(baseText() ?? "")..write(delta);
+    }
     _scheduleFlush();
   }
 
@@ -35,14 +50,6 @@ class StreamingTextBuffer({
 
   /// Returns the current accumulated text as an immutable snapshot.
   Map<String, String> snapshot() => _buffers.map((key, value) => MapEntry(key, value.toString()));
-
-  /// Clear all buffered parts and cancel any pending flush timer.
-  /// Unlike [dispose], the buffer remains usable for future [appendDelta] calls.
-  void clear() {
-    _timer?.cancel();
-    _timer = null;
-    _buffers.clear();
-  }
 
   /// Cancel any pending flush timer.
   void dispose() {

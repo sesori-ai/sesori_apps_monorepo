@@ -157,6 +157,7 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       modelProvider: _usefulText(thread.modelProvider) ?? _usefulText(dto.modelProvider),
       parentId: _subAgentParentId(thread: thread),
       agentNickname: _usefulText(thread.agentNickname),
+      agentPath: null,
     );
   }
 

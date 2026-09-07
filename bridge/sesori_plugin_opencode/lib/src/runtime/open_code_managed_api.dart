@@ -16,4 +16,8 @@ abstract interface class OpenCodeManagedApi() implements NativeProjectsPluginApi
   /// cold-start failure (after the SSE stream has been started so it can still
   /// recover) so the descriptor can map it to a degraded status.
   Future<void> initialize();
+
+  /// Forces OpenCode to build its command catalog so a later options discovery
+  /// does not pay for MCP server initialization. Nothing waits on the result.
+  Future<void> warmUpCommandCatalog();
 }

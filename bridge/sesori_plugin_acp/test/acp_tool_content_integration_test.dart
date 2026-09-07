@@ -617,6 +617,7 @@ AcpReplayCollector _collector() => AcpReplayCollector(
   messageIdOverride: null,
   messageTimeResolver: null,
   haltClassifier: null,
+  toolPartReplacement: null,
 );
 
 PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state;

@@ -16,6 +16,7 @@ extension PluginProviderMapper on PluginProvider {
             providerID: id,
             name: m.name,
             variants: m.variants,
+            defaultVariant: m.defaultVariant,
             family: m.family,
             isAvailable: m.isAvailable,
             releaseDate: m.releaseDate,

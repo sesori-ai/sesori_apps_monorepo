@@ -4,7 +4,6 @@ import "dart:io";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 const _root = "11111111-2222-4333-8444-555555555555";
@@ -93,6 +92,7 @@ void main() {
         agentId: _agentId,
         records: records,
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages.map((message) => message.info.runtimeType.toString()), [
@@ -109,8 +109,12 @@ void main() {
     late ClaudeEventDispatcher dispatcher;
 
     setUp(() {
-      dispatcher = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker());
-      dispatcher.beginTurn(sessionId: _root, directory: "/workspace");
+      dispatcher = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+      dispatcher.beginTurn(sessionId: _root, directory: "/workspace", model: null, variant: null);
     });
 
     test("announces the child once and follows repeated running and terminal transitions", () {
@@ -128,8 +132,8 @@ void main() {
       expect(created["directory"], "/workspace");
       expect(created["title"], "Say hi");
       expect(
-        shared.SessionStatus.fromJson((launched[1] as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (launched[1] as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
@@ -142,15 +146,15 @@ void main() {
       expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       final idle = finished.last as BridgeSseSessionStatus;
       expect(idle.sessionID, _child);
-      expect(shared.SessionStatus.fromJson(idle.status), isA<shared.SessionStatusIdle>());
+      expect(idle.status, isA<PluginSessionStatusIdle>());
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
 
       final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame()));
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
       expect(
-        shared.SessionStatus.fromJson((resumed.first as BridgeSseSessionStatus).status),
-        isA<shared.SessionStatusBusy>(),
+        (resumed.first as BridgeSseSessionStatus).status,
+        isA<PluginSessionStatusBusy>(),
       );
       final resumedPart = (resumed.last as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
       expect(resumedPart.taskState?.status, PluginToolStatus.running);
@@ -172,7 +176,7 @@ void main() {
 
       expect(early, isEmpty, reason: "no child session exists before the sub-agent id is known");
       expect(routed.map((event) => event.runtimeType), [BridgeSseMessageUpdated, BridgeSseMessagePartUpdated]);
-      expect(shared.Message.fromJson((routed[0] as BridgeSseMessageUpdated).info).sessionID, _child);
+      expect((routed[0] as BridgeSseMessageUpdated).info.sessionID, _child);
       final part = (routed[1] as BridgeSseMessagePartUpdated).part;
       expect(part.sessionID, _child);
       expect(part.text, "hi");

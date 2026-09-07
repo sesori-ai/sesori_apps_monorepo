@@ -331,8 +331,7 @@ void main() {
         model: null,
       );
       final idle = plugin.events.firstWhere(
-        (event) =>
-            event is BridgeSseSessionStatus && shared.SessionStatus.fromJson(event.status) is shared.SessionStatusIdle,
+        (event) => event is BridgeSseSessionStatus && event.status is PluginSessionStatusIdle,
       );
       fake.pushNotification("thread/status/changed", {
         "threadId": "t-compact",
@@ -830,7 +829,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final messageEvent = events.whereType<BridgeSseMessageUpdated>().single;
-      final message = shared.Message.fromJson(messageEvent.info) as shared.MessageAssistant;
+      final message = messageEvent.info as PluginMessageAssistant;
       expect(message.modelID, "gpt-session");
     });
 
@@ -1126,9 +1125,9 @@ void main() {
       final visibleError = plugin.events
           .where((event) => event is BridgeSseMessageUpdated)
           .cast<BridgeSseMessageUpdated>()
-          .map((event) => shared.Message.fromJson(event.info))
-          .where((message) => message is shared.MessageError)
-          .cast<shared.MessageError>()
+          .map((event) => event.info)
+          .where((message) => message is PluginMessageError)
+          .cast<PluginMessageError>()
           .first;
       fake.pushNotification("error", {
         "threadId": "t-terminal",
@@ -1731,19 +1730,19 @@ void main() {
       final errorIndex = emittedEvents.indexWhere(
         (event) =>
             event is BridgeSseMessageUpdated &&
-            switch (shared.Message.fromJson(event.info)) {
-              shared.MessageError(errorMessage: "You've hit your usage limit.") => true,
+            switch (event.info) {
+              PluginMessageError(errorMessage: "You've hit your usage limit.") => true,
               _ => false,
             },
       );
       final idleIndex = emittedEvents.indexWhere((event) => event is BridgeSseSessionIdle);
       expect(errorIndex, greaterThanOrEqualTo(0));
       expect(idleIndex, greaterThan(errorIndex));
-      final error = shared.Message.fromJson((emittedEvents[errorIndex] as BridgeSseMessageUpdated).info);
+      final error = (emittedEvents[errorIndex] as BridgeSseMessageUpdated).info;
       expect(error.id, "u-failed");
       expect(
         error.time,
-        shared.MessageTime(
+        PluginMessageTime(
           created: DateTime.utc(2026, 8, 20, 8, 0, 5).millisecondsSinceEpoch,
           completed: null,
         ),
@@ -2398,12 +2397,13 @@ void main() {
       );
       expect(provider.models.first.name, equals("GPT-5.5"));
       expect(provider.defaultModelID, equals("gpt-5.5"));
-      // Reasoning efforts surface as variants, default ("medium") moved first so
-      // the mobile picker's auto-first-on-switch lands on codex's own default.
+      // Reasoning efforts surface as variants strongest first; codex's own
+      // default ("medium") is declared separately so a switch lands on it.
       expect(
         provider.models.first.variants,
-        equals(["medium", "low", "high", "xhigh"]),
+        equals(["xhigh", "high", "medium", "low"]),
       );
+      expect(provider.models.first.defaultVariant, equals("medium"));
       // A model without supportedReasoningEfforts exposes no variants.
       expect(provider.models[1].variants, isEmpty);
       expect(fake.sentMethods, contains("model/list"));
@@ -2726,9 +2726,18 @@ void main() {
       expect(childSession.projectID, "/work/other");
       expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
       await Future<void>.delayed(Duration.zero);
+      final inlineTask = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .single;
+      expect(inlineTask.messageID, "call_spawn");
+      expect(inlineTask.description, "Raman");
+      expect(inlineTask.childSessionID, "child-1");
+      expect(inlineTask.taskState, isNull);
       expect(
-        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status["type"],
-        "busy",
+        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status,
+        const PluginSessionStatus.busy(),
         reason: "the started activity supersedes Codex's pre-start idle status",
       );
       var statuses = await plugin.getSessionStatuses();
@@ -2988,7 +2997,9 @@ void main() {
       final childBusy = plugin.events
           .where(
             (event) =>
-                event is BridgeSseSessionStatus && event.sessionID == "child-1" && event.status["type"] == "busy",
+                event is BridgeSseSessionStatus &&
+                event.sessionID == "child-1" &&
+                event.status is PluginSessionStatusBusy,
           )
           .first;
       fake.pushNotification("item/started", {

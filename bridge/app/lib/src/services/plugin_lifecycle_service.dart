@@ -287,9 +287,14 @@ class PluginLifecycleService({
       if (active.request == request) {
         // A joined install returns the accepted snapshot immediately; the
         // in-flight install keeps streaming progress and owns the slot.
-        return request is PluginLifecycleInstallRequest
-            ? Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation)
-            : active.completer.future;
+        if (request is PluginLifecycleInstallRequest) {
+          // The in-flight install may be a startup upgrade, which deliberately
+          // does not start the harness. An explicit Install carries the user's
+          // intent to enable and start it, so it takes over the completion.
+          active.installCompletion = InstallCompletion.enableAndStart;
+          return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+        }
+        return active.completer.future;
       }
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
@@ -309,18 +314,55 @@ class PluginLifecycleService({
       );
     }
 
-    final command = _ActivePluginCommand(request: request);
-    _activePluginCommands[pluginId] = command;
     if (request is PluginLifecycleInstallRequest) {
       // Accepted-immediately: a download can run for minutes, far beyond any
       // relay request budget. The HTTP response is the current snapshot;
       // progress streams via SSE and the terminal outcome invalidates the
       // management snapshot. The slot stays occupied until the install ends.
-      unawaited(_executeInstall(pluginId: pluginId, command: command));
+      _admitInstall(pluginId: pluginId, request: request, completion: InstallCompletion.enableAndStart);
       return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
     }
+    final command = _ActivePluginCommand(request: request);
+    _activePluginCommands[pluginId] = command;
     unawaited(_executeCommand(pluginId: pluginId, command: command));
     return command.completer.future;
+  }
+
+  /// Occupies [pluginId]'s command slot with an install and starts it.
+  ///
+  /// Shared by the explicit Install command and the startup upgrade so both
+  /// join, conflict, and release the slot identically. Returns as soon as the
+  /// install is admitted; the download runs on its own.
+  void _admitInstall({
+    required String pluginId,
+    required PluginLifecycleInstallRequest request,
+    required InstallCompletion completion,
+  }) {
+    final command = _ActivePluginCommand(request: request, installCompletion: completion);
+    _activePluginCommands[pluginId] = command;
+    unawaited(_executeInstall(pluginId: pluginId, command: command));
+  }
+
+  /// Installs the pinned managed runtime for every eligible plugin that still
+  /// has an older Sesori-managed one on disk.
+  ///
+  /// Called once per bridge start, after single-live-bridge ownership is settled
+  /// so no other bridge is using this machine's managed runtime directories.
+  /// Returns immediately: startup never waits on a download, and a harness
+  /// already running an older supported version keeps serving until its next
+  /// generation. A plugin with a command already in flight is skipped; that
+  /// command owns the slot.
+  void upgradeManagedRuntimes() {
+    for (final pluginId in _requireEligiblePluginIds()) {
+      if (_activePluginCommands.containsKey(pluginId)) continue;
+      if (!_lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId)) continue;
+      Log.i('Plugin "$pluginId" has a superseded managed runtime; installing the current one in the background.');
+      _admitInstall(
+        pluginId: pluginId,
+        request: const PluginLifecycleInstallRequest(),
+        completion: InstallCompletion.reinspectOnly,
+      );
+    }
   }
 
   Stream<PluginInstallProgressUpdate> get installProgress => _installProgressController.stream;
@@ -609,7 +651,26 @@ class PluginLifecycleService({
       switch (terminal) {
         case ProvisionReady():
           _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
-          await _enable(pluginId: pluginId, command: command);
+          // Read now, not at admission: an explicit Install may have joined a
+          // startup upgrade while it was downloading.
+          switch (command.installCompletion) {
+            case InstallCompletion.enableAndStart:
+              await _enable(pluginId: pluginId, command: command);
+            case InstallCompletion.reinspectOnly:
+              // A startup upgrade nobody asked for must not spawn a process.
+              // Re-inspection is what flips a runtime-missing harness to ready
+              // and routable; a running harness keeps its current generation.
+              final setup = await _inspectForCommand(pluginId: pluginId, command: command);
+              // An explicit Install can still join during that inspection — it
+              // owns the same slot until this command releases it — so honour a
+              // promotion that arrived too late for the branch above.
+              if (command.installCompletion == InstallCompletion.enableAndStart && setup is PluginSetupReady) {
+                _handleRuntimeCommandResult(
+                  pluginId: pluginId,
+                  result: await _lifecycleRepository.start(pluginId: pluginId),
+                );
+              }
+          }
           // The binary is installed, but setup can still be blocked (most
           // often authentication). Report completed only when the harness
           // actually became usable; otherwise the phone would show success
@@ -1527,7 +1588,25 @@ class const PluginManagementCommandFailedException(final String message) impleme
 
 class const PluginManagementMutationOutcomeUncertainException() implements Exception;
 
-class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
+/// What a finished install does with the plugin it just provisioned.
+enum InstallCompletion() {
+  /// An explicit Install: the user asked for this harness, so enable it,
+  /// re-inspect, and start it.
+  enableAndStart,
+
+  /// A startup upgrade: re-inspect so a harness blocked on an old runtime
+  /// becomes routable, but never spawn a process nobody asked for.
+  reinspectOnly,
+}
+
+class _ActivePluginCommand({
+  required final PluginLifecycleCommandRequest request,
+
+  /// Read only when [request] is an install, and read at the terminal event so
+  /// an explicit Install that joins a running startup upgrade can still promote
+  /// it. Defaults to the meaning every user-issued command carries.
+  var InstallCompletion installCompletion = InstallCompletion.enableAndStart,
+}) {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 

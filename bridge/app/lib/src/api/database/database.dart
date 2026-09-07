@@ -42,7 +42,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -285,6 +285,14 @@ class AppDatabase(super.e) extends _$AppDatabase {
       },
       from13To14: (m, schema) async {
         await m.createTable(schema.newSessionDefaultsTable);
+      },
+      from14To15: (m, schema) async {
+        // The options cache stored the capture's completeness, which nothing
+        // read back; a row whose stored value no longer named a known variant
+        // could not be decoded and blocked discovery. Rebuild the table
+        // without that column, copying every remaining column by name in SQL
+        // so the migration never deserializes the removed value.
+        await m.alterTable(TableMigration(schema.sessionOptionsCacheTable));
       },
     ),
     beforeOpen: (details) async {

@@ -6,9 +6,12 @@ import "runtime_version.dart";
 /// How a publisher's extracted archive is placed into the version directory.
 ///
 /// Most runtimes ship a single self-contained executable ([singleBinary]).
-/// Cursor ships a `dist-package/` tree whose entry binary loads sibling files,
+/// Other runtimes ship a package tree whose entry binary loads sibling files,
 /// so the whole directory must be kept together ([packageDirectory]).
-enum RuntimeArchiveLayout() { singleBinary, packageDirectory }
+enum RuntimeArchiveLayout() {
+  singleBinary,
+  packageDirectory,
+}
 
 /// One platform's pinned release artifact for a managed runtime, identified by
 /// its publisher [assetName] and verified against [sha256] before placement.
@@ -27,8 +30,8 @@ final class const ArchiveRuntimeAsset({
   required super.sha256,
 
   /// The entry executable's name inside the extracted archive. For
-  /// [RuntimeArchiveLayout.packageDirectory] it names the binary within the
-  /// placed tree; its siblings travel with it.
+  /// [RuntimeArchiveLayout.packageDirectory] this may be a relative path from
+  /// the package root; the complete tree rooted above that path travels with it.
   required final String archiveBinaryName,
   required final RuntimeArchiveLayout layout,
 }) extends RuntimeAsset;
@@ -67,11 +70,14 @@ abstract class const RuntimeManifest() {
   /// `"opencode"`, `"codex"`).
   String get pathExecutableName;
 
-  /// The canonical executable file name the managed binary is placed under in
-  /// its version directory (platform-aware, e.g. `codex` / `codex.exe`).
+  /// The canonical executable file name or relative path under the managed
+  /// version directory (platform-aware, e.g. `opencode` or `bin/codex.exe`).
   String get binaryFileName;
 
-  /// Minimum pre-installed (PATH) version the bridge will use as-is.
+  /// Minimum version the bridge will use as-is, for a pre-installed (PATH)
+  /// runtime and for a managed one alike: a managed version at or above it stays
+  /// usable while a newer [bundledVersion] downloads, and one below it is never
+  /// selected.
   RuntimeVersion get minPathVersion;
 
   /// The exact version the managed runtime installs.
@@ -81,6 +87,14 @@ abstract class const RuntimeManifest() {
   /// scheme. Keeping this with the pins guarantees probes and comparisons use
   /// one scheme per runtime.
   RuntimeVersion? parseVersion({required String value});
+
+  /// Parses a managed version directory name under the runtime's state root.
+  ///
+  /// The installer names those directories with [RuntimeVersion.raw], so the
+  /// default reuses [parseVersion]. Override when [parseVersion] requires a
+  /// publisher-specific `--version` token (a prefix, a label) that an on-disk
+  /// directory name does not carry.
+  RuntimeVersion? parseInstalledVersion({required String value}) => parseVersion(value: value);
 
   /// The pinned asset for [target], or `null` when the platform is unsupported
   /// or requires asynchronous host-specific selection by the installer's
@@ -97,10 +111,10 @@ abstract class const RuntimeManifest() {
   String githubReleaseAssetUrl({required String repository, required String tag, required RuntimeAsset asset}) =>
       "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
 
-  /// Expected path of this manifest's pinned managed binary under a plugin
-  /// state root. Computing the path is read-only and does not imply that the
-  /// runtime is installed or valid.
-  String managedBinaryPath({required String stateDirectory}) {
-    return p.join(stateDirectory, runtimeId, bundledVersion.raw, binaryFileName);
+  /// Expected path of this manifest's managed binary for [version] under a
+  /// plugin state root. Computing the path is read-only and does not imply that
+  /// the runtime is installed or valid.
+  String managedBinaryPath({required String stateDirectory, required RuntimeVersion version}) {
+    return p.join(stateDirectory, runtimeId, version.raw, binaryFileName);
   }
 }

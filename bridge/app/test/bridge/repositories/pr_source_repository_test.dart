@@ -567,7 +567,9 @@ void main() {
 
       expect((outcome as PullRequestSelectionCompleted).selections, hasLength(21));
       expect(ghCli.initialCalls.map((call) => call.length), [20, 1]);
-      expect(ghCli.identityCalls, 1);
+      // The viewer login inside each query response is the fence; no separate
+      // identity round trip is spent on selection.
+      expect(ghCli.identityCalls, 0);
 
       final changedCli = _FakeGhCliApi(
         initialResponses: [_emptyInitialResponse(targetCount: 1, viewerLogin: "hubot")],
@@ -578,17 +580,6 @@ void main() {
       );
       expect(changedOutcome, isA<PullRequestSelectionIdentityChanged>());
       expect(changedCli.identityCalls, 0);
-
-      final finalChangedCli = _FakeGhCliApi(
-        initialResponses: [_emptyInitialResponse(targetCount: 1)],
-        finalIdentityLogin: "hubot",
-      );
-      final finalChangedOutcome = await _selectionRepository(ghCli: finalChangedCli).selectPullRequests(
-        targets: const [_selectionTarget],
-        expectedGithubLogin: _verifiedGithubLogin,
-      );
-      expect(finalChangedOutcome, isA<PullRequestSelectionIdentityChanged>());
-      expect(finalChangedCli.identityCalls, 1);
     });
   });
 }
@@ -702,7 +693,6 @@ ProcessResult _result({required String stdout}) {
 final class _FakeGhCliApi({
   required List<GhPullRequestBatchResponse> initialResponses,
   List<GhPullRequestBatchResponse> cursorResponses = const [],
-  var String finalIdentityLogin = "octocat",
 }) implements GhCliApi {
   final Queue<GhPullRequestBatchResponse> _initialResponses = Queue<GhPullRequestBatchResponse>.from(initialResponses);
   final Queue<GhPullRequestBatchResponse> _cursorResponses = Queue<GhPullRequestBatchResponse>.from(cursorResponses);
@@ -713,7 +703,7 @@ final class _FakeGhCliApi({
   @override
   Future<GhAuthenticatedIdentity> getAuthenticatedIdentity() async {
     identityCalls++;
-    return GhAuthenticatedIdentity(rawLogin: finalIdentityLogin);
+    return const GhAuthenticatedIdentity(rawLogin: "octocat");
   }
 
   @override

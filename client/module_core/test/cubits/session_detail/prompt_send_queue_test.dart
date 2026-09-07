@@ -91,6 +91,13 @@ const _msg2 = QueuedSessionSubmission.text(
   agent: "coder",
   agentModel: null,
 );
+const _command = QueuedSessionSubmission.command(
+  promptId: "command-1",
+  text: "src",
+  command: "review",
+  agent: "coder",
+  agentModel: null,
+);
 
 void main() {
   group("PromptSendQueue", () {
@@ -176,6 +183,19 @@ void main() {
 
       expect(queue.items.map((item) => item.displayText), ["a", "b"]);
       expect(queue.items.map((item) => item.agent), everyElement("agent"));
+    });
+
+    test("an unavailable command stays at the head without being sent", () {
+      queue.enqueue(_command);
+      queue.enqueue(_a);
+
+      queue.markCommandUnavailable(promptId: _command.promptId);
+
+      expect(queue.items.first, isA<UnavailableQueuedCommandSubmission>());
+      expect(queue.items.map((item) => item.displayText), ["/review src", "a"]);
+      expect(queue.beginSend(), isNull);
+      expect(queue.cancel(0), isA<UnavailableQueuedCommandSubmission>());
+      expect(queue.beginSend(), same(_a));
     });
 
     test("cancel removes by index and returns the message", () {

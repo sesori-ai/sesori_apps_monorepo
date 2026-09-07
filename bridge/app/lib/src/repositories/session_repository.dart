@@ -426,7 +426,7 @@ class SessionRepository({
           if (part case MessagePartSubtask(:final childSessionID)) ?childSessionID,
     };
     if (backendSessionIds.isEmpty) return messages;
-    final bindings = await getStoredSessionsByBackendIds(
+    final sessionIds = await getSessionIdsByBackendIds(
       pluginId: pluginId,
       backendSessionIds: backendSessionIds.toList(growable: false),
     );
@@ -437,7 +437,7 @@ class SessionRepository({
             for (final part in message.parts)
               switch (part) {
                 MessagePartSubtask(childSessionID: final backendSessionId?) => part.copyWith(
-                  childSessionID: bindings[backendSessionId]?.id,
+                  childSessionID: sessionIds[backendSessionId],
                 ),
                 _ => part,
               },
@@ -584,17 +584,35 @@ class SessionRepository({
       rows: [binding],
       verifiedGithubLogin: null,
     )).single;
-    await _useBoundSessionPlugin(
-      binding: binding,
-      operation: SessionOperation.deleteSession,
-      body: (plugin) async {
-        try {
-          await plugin.deleteSession(binding.backendSessionId);
-        } on PluginOperationException catch (error) {
-          if (!error.isNotFound) rethrow;
-        }
-      },
-    );
+    // An unreachable backend must not strand the session in the catalog: an
+    // uninstalled or unstartable plugin would otherwise leave the user with a
+    // row they can never remove. The tombstone below keeps a surviving backend
+    // session from being re-imported.
+    var backendDeleteAttempted = false;
+    try {
+      await _useBoundSessionPlugin(
+        binding: binding,
+        operation: SessionOperation.deleteSession,
+        body: (plugin) async {
+          backendDeleteAttempted = true;
+          try {
+            await plugin.deleteSession(binding.backendSessionId);
+          } on PluginOperationException catch (error) {
+            if (!error.isNotFound) rethrow;
+          }
+        },
+      );
+    } on PluginOperationException catch (error, stackTrace) {
+      // A backend that answered keeps its existing retry semantics; only never
+      // reaching it clears the way for a local-only delete.
+      if (backendDeleteAttempted || !error.isUnavailable) rethrow;
+      Log.w(
+        "Backend ${binding.pluginId} was unreachable while deleting session $sessionId; "
+        "removing the bridge record anyway",
+        error,
+        stackTrace,
+      );
+    }
     await _sessionDao.transaction(() async {
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
@@ -1226,6 +1244,14 @@ class SessionRepository({
     return (await _sessionDao.getSession(sessionId: sessionId))?.toStoredSession();
   }
 
+  /// The catalog title shown for [sessionId]: the bridge-owned copy when
+  /// present, otherwise the backend copy. Null when the session has no title
+  /// yet or is not stored.
+  Future<String?> getSessionTitle({required String sessionId}) async {
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    return row?.title ?? row?.catalogTitle;
+  }
+
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
@@ -1236,17 +1262,13 @@ class SessionRepository({
     ))?.toStoredSession();
   }
 
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  /// Stable session ids for [backendSessionIds] of [pluginId], keyed by backend
+  /// id. A backend id the bridge has not bound is absent.
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
-  }) async {
-    final rows = await _sessionDao.getSessionsByBackendIds(
-      pluginId: pluginId,
-      backendSessionIds: backendSessionIds,
-    );
-    return {
-      for (final entry in rows.entries) entry.key: entry.value.toStoredSession(),
-    };
+  }) {
+    return _sessionDao.getSessionIdsByBackendIds(pluginId: pluginId, backendSessionIds: backendSessionIds);
   }
 
   Future<StoredSession?> updateObservedSessionProjection({
@@ -1392,6 +1414,15 @@ class SessionRepository({
     );
   }
 
+  /// Session identity for bridge-owned work that does not need the backend, so
+  /// it stays available when the plugin cannot start.
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    return (await _requireBinding(sessionId: sessionId, operation: operation)).toStoredSession();
+  }
+
   Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
@@ -1423,70 +1454,6 @@ class SessionRepository({
       updatedAt: archivedAt,
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
-  }
-
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) async {
-    final db = _sessionDao.attachedDatabase;
-    await db.transaction(() async {
-      final placeholder = await _sessionDao.getSession(sessionId: sessionId);
-      if (placeholder != null &&
-          (placeholder.pluginId != pluginId || placeholder.backendSessionId != backendSessionId)) {
-        throw PluginOperationException(
-          SessionOperation.createSession.name,
-          statusCode: 409,
-          message: "session id $sessionId is already bound to another plugin session",
-        );
-      }
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
-      await _sessionDao.insertSession(
-        sessionId: sessionId,
-        backendSessionId: backendSessionId,
-        projectId: projectId,
-        isDedicated: isDedicated,
-        createdAt: createdAt,
-        worktreePath: worktreePath,
-        branchName: branchName,
-        baseBranch: baseBranch,
-        baseCommit: baseCommit,
-        lastAgent: agent,
-        lastAgentModel: agentModel,
-        pluginId: pluginId,
-        preservePullRequestScope: placeholder?.projectId == projectId && placeholder?.branchName == branchName,
-      );
-      // A live `session.created` can race ahead of this create flow and insert
-      // a placeholder keyed to the plugin-reported cwd — for a dedicated
-      // worktree session that's the throwaway worktree path, along with a
-      // project row for it. The upsert above re-attributed the session to the
-      // canonical project; drop the now-orphaned placeholder project row so it
-      // can't surface as an empty derived project card. Guarded twice: only
-      // when nothing else references the row, and only when the row carries no
-      // user-set state (hidden/rename/base-branch) — a row
-      // the user touched is a real project, not placeholder junk.
-      final placeholderProjectId = placeholder?.projectId;
-      if (placeholderProjectId != null && placeholderProjectId != projectId) {
-        final (row, remaining) = await (
-          db.projectsDao.getProject(projectId: placeholderProjectId),
-          _sessionDao.getSessionsByProject(projectId: placeholderProjectId),
-        ).wait;
-        final untouched = row != null && !row.hidden && row.displayName == null && row.baseBranch == null;
-        if (untouched && remaining.isEmpty) {
-          await db.projectsDao.deleteProject(projectId: placeholderProjectId);
-        }
-      }
-    });
   }
 
   Future<void> updatePromptDefaults({

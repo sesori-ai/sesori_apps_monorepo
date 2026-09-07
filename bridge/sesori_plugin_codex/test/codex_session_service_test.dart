@@ -468,6 +468,7 @@ class _RecordingMessageRepository() extends CodexMessageRepository {
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -570,6 +571,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
       modelProvider: null,
       parentId: null,
       agentNickname: null,
+      agentPath: null,
     );
   }
 

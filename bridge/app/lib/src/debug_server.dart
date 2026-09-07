@@ -216,7 +216,7 @@ class DebugServer({
           .listen(
             (_) {},
             onError: (Object e, StackTrace st) {
-              Log.w("debug SSE stream error: $e");
+              Log.w("debug SSE stream error", e, st);
               unawaited(
                 _failureReporter.recordFailure(
                   error: e,

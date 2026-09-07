@@ -48,7 +48,10 @@ class const SessionListScreen({
 /// Leaves a deleted session's detail/diffs route when that session is still
 /// the current mobile location. In a narrow list route this is a no-op.
 void closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
-  final routeState = GoRouterState.of(context);
+  // Deletion can finish outside a route-local context. Inspect the current
+  // router location, including any navigation while the request was in flight.
+  // ignore: no_slop_linter/avoid_raw_go_router, reads current route state; navigation below uses the typed extension
+  final routeState = GoRouter.of(context).state;
   if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
 
   final projectId = routeState.pathParameters[projectIdPathParam];

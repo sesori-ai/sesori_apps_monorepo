@@ -6,313 +6,139 @@ import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_process_runner.dart";
+
 void main() {
   group("hasGitHubRemote", () {
     test("returns true for GitHub HTTPS URL", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "https://github.com/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "https://github.com/org/repo.git");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isTrue);
     });
 
     test("returns true for GitHub SSH URL", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "git@github.com:org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "git@github.com:org/repo.git");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isTrue);
     });
 
     test("returns true for github.com with uppercase", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "https://GitHub.COM/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "https://GitHub.COM/org/repo.git");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isTrue);
     });
 
     test("returns false for GitLab URL", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "https://gitlab.com/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "https://gitlab.com/org/repo.git");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("returns false for local path", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "/path/to/local/repo",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "/path/to/local/repo");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("returns false for empty output", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("returns false for whitespace-only output", () async {
-      final mockRunner = FakeProcessRunner.result(
+      final mockRunner = RecordingProcessRunner(
         exitCode: 0,
         stdout: "   \n  \t  ",
       );
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("returns false on non-zero exit code", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 1,
-        stdout: "https://github.com/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 1, stdout: "https://github.com/org/repo.git");
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("returns false on timeout", () async {
-      final mockRunner = FakeProcessRunner((
-        String executable,
-        List<String> arguments, {
-        Map<String, String>? environment,
-        String? workingDirectory,
-        Duration timeout = const Duration(seconds: 15),
-      }) async {
-        throw TimeoutException("timed out", timeout);
-      });
+      final mockRunner = RecordingProcessRunner(
+        responder: (_, _, {environment, workingDirectory, timeout = const Duration(seconds: 15)}) {
+          throw TimeoutException("timed out", timeout);
+        },
+      );
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("passes correct working directory to process runner", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "https://github.com/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "https://github.com/org/repo.git");
 
-      await GitCliApi(
-        streamingProcessRunner: const StreamingProcessRunner(),
-        processRunner: mockRunner,
-        gitPathExists: ({required String gitPath}) => true,
-      ).hasGitHubRemote(
-        projectPath: "/my/project/path",
-      );
+      await _hasGitHubRemote(runner: mockRunner, projectPath: "/my/project/path");
 
       expect(mockRunner.invocations.single.workingDirectory, equals("/my/project/path"));
     });
 
     test("passes correct git command to process runner", () async {
-      final mockRunner = FakeProcessRunner.result(
-        exitCode: 0,
-        stdout: "https://github.com/org/repo.git",
-      );
+      final mockRunner = RecordingProcessRunner(exitCode: 0, stdout: "https://github.com/org/repo.git");
 
-      await GitCliApi(
-        streamingProcessRunner: const StreamingProcessRunner(),
-        processRunner: mockRunner,
-        gitPathExists: ({required String gitPath}) => true,
-      ).hasGitHubRemote(
-        projectPath: "/path/to/project",
-      );
+      await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(mockRunner.invocations.single.executable, equals("git"));
       expect(mockRunner.invocations.single.arguments, equals(["config", "--get", "remote.origin.url"]));
     });
 
     test("handles exception from process runner", () async {
-      final mockRunner = FakeProcessRunner((
-        String executable,
-        List<String> arguments, {
-        Map<String, String>? environment,
-        String? workingDirectory,
-        Duration timeout = const Duration(seconds: 15),
-      }) async {
-        return ProcessResult(0, 127, "", "command not found");
-      });
+      final mockRunner = RecordingProcessRunner(
+        responder: (_, _, {environment, workingDirectory, timeout = const Duration(seconds: 15)}) {
+          return ProcessResult(0, 127, "", "command not found");
+        },
+      );
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isFalse);
     });
 
     test("trims whitespace from output", () async {
-      final mockRunner = FakeProcessRunner.result(
+      final mockRunner = RecordingProcessRunner(
         exitCode: 0,
         stdout: "  \n  https://github.com/org/repo.git  \n  ",
       );
 
-      final result =
-          await GitCliApi(
-            streamingProcessRunner: const StreamingProcessRunner(),
-            processRunner: mockRunner,
-            gitPathExists: ({required String gitPath}) => true,
-          ).hasGitHubRemote(
-            projectPath: "/path/to/project",
-          );
+      final result = await _hasGitHubRemote(runner: mockRunner, projectPath: "/path/to/project");
 
       expect(result, isTrue);
     });
   });
 }
 
-class const Invocation({
-  required final String executable,
-  required final List<String> arguments,
-  required final String? workingDirectory,
-});
-
-class FakeProcessRunner(
-  final Future<ProcessResult> Function(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout,
-  })
-  _runImpl,
-) implements ProcessRunner {
-  @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
-    Map<String, String>? environment,
-  }) async {
-    throw UnimplementedError();
-  }
-
-  final List<Invocation> invocations = <Invocation>[];
-
-  factory result({required int exitCode, required String stdout}) {
-    return FakeProcessRunner((
-      String executable,
-      List<String> arguments, {
-      Map<String, String>? environment,
-      String? workingDirectory,
-      Duration timeout = const Duration(seconds: 15),
-    }) async {
-      return ProcessResult(0, exitCode, stdout, "");
-    });
-  }
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    invocations.add(
-      Invocation(
-        executable: executable,
-        arguments: List<String>.from(arguments),
-        workingDirectory: workingDirectory,
-      ),
-    );
-    return await _runImpl(
-      executable,
-      arguments,
-      environment: environment,
-      workingDirectory: workingDirectory,
-      timeout: timeout,
-    );
-  }
+/// Runs the remote check through a real [GitCliApi] backed by [runner].
+///
+/// Every case in this suite exercises the same wiring; only the process
+/// responses and the project path differ.
+Future<bool> _hasGitHubRemote({required ProcessRunner runner, required String projectPath}) {
+  return GitCliApi(
+    streamingProcessRunner: const StreamingProcessRunner(),
+    processRunner: runner,
+    gitPathExists: ({required String gitPath}) => true,
+  ).hasGitHubRemote(projectPath: projectPath);
 }

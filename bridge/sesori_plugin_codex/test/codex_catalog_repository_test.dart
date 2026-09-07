@@ -288,6 +288,7 @@ CodexSessionRecord _record({
   modelProvider: "openai",
   model: "gpt-5.4-codex",
   agentNickname: null,
+  agentPath: null,
 );
 
 class _StubCodexCatalogRepository(final List<CodexSessionRecord> records) extends CodexCatalogRepository {

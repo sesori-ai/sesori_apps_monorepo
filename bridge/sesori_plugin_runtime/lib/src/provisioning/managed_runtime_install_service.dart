@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ProvisionFailed,
         ProvisionReady,
         ProvisionResolving,
+        RuntimeInUseSignal,
         RuntimeProvisionProgress,
         StartAbortSignal;
 
@@ -23,8 +24,14 @@ import "runtime_version_validator.dart";
 /// (which only resolves already-present runtimes): it selects the platform
 /// asset, reuses a healthy existing install, otherwise downloads, verifies,
 /// extracts, and places the binary via [RuntimeInstallService], probes the
-/// result actually runs, and sweeps superseded managed versions before
-/// reporting the terminal event (a consumer may unsubscribe on that event).
+/// result actually runs, and sweeps managed versions before reporting the
+/// terminal event (a consumer may unsubscribe on that event).
+///
+/// The sweep runs in two stages because the plugin may be running from an older
+/// managed version while this install downloads its replacement. Versions below
+/// [RuntimeManifest.minPathVersion] can never be selected, so they go before the
+/// download starts; the rest go once the pinned version is verified, minus any
+/// still-supported version that a live generation could be running from.
 ///
 /// Terminal events are [ProvisionReady] (the installed binary path) or
 /// [ProvisionFailed] with a sanitized user-facing message. An abort surfaces
@@ -40,6 +47,7 @@ class ManagedRuntimeInstallService({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     _throwIfAborted(startAborted: startAborted);
     yield const ProvisionResolving();
@@ -47,6 +55,28 @@ class ManagedRuntimeInstallService({
     final String id = _manifest.runtimeId;
     final String name = _manifest.displayName;
     final RuntimeVersion bundled = _manifest.bundledVersion;
+    final String managedDir = p.join(stateDirectory, id);
+
+    bool keepUntilInstalled({required String versionName}) {
+      final RuntimeVersion? version = _manifest.parseInstalledVersion(value: versionName);
+      // Not a managed version directory (installer staging, stray names): the
+      // post-install sweep owns those.
+      if (version == null) return true;
+      return version.compareTo(_manifest.minPathVersion) >= 0;
+    }
+
+    bool keepAfterInstall({required String versionName}) {
+      if (versionName == bundled.raw) return true;
+      // A generation started before this install may still be running from a
+      // supported older version; leave its directory for a later install to
+      // reclaim rather than deleting the executable out from under it.
+      if (!runtimeInUse.isInUse) return false;
+      return keepUntilInstalled(versionName: versionName);
+    }
+
+    // Obsolete versions are unselectable whether or not this install succeeds,
+    // so they go before any bandwidth is spent.
+    await _cleaner.sweep(managedDir: managedDir, keep: keepUntilInstalled);
 
     final PlatformTarget target;
     try {
@@ -79,7 +109,6 @@ class ManagedRuntimeInstallService({
       return;
     }
 
-    final String managedDir = p.join(stateDirectory, id);
     final String versionDir = p.join(managedDir, bundled.raw);
     final String binaryPath = p.join(versionDir, _manifest.binaryFileName);
 
@@ -100,7 +129,7 @@ class ManagedRuntimeInstallService({
         // Sweep before the terminal event: consumers may stop listening as
         // soon as ProvisionReady arrives, which would cancel this stream and
         // leave superseded version directories behind.
-        await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.raw);
+        await _cleaner.sweep(managedDir: managedDir, keep: keepAfterInstall);
         yield ProvisionReady(binaryPath: binaryPath);
         return;
       }
@@ -155,7 +184,7 @@ class ManagedRuntimeInstallService({
     Log.i("[$id] installed managed $name ${bundled.toString()}");
     // Sweep before the terminal event: consumers may stop listening as soon as
     // ProvisionReady arrives, which would cancel this stream mid-sweep.
-    await _cleaner.sweep(managedDir: managedDir, keepVersion: bundled.raw);
+    await _cleaner.sweep(managedDir: managedDir, keep: keepAfterInstall);
     yield ProvisionReady(binaryPath: binaryPath);
   }
 

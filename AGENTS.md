@@ -149,6 +149,27 @@ eagerly "just in case."
   wrapper's presentation privacy-safe when the original may contain sensitive
   payload data.
 
+## Code Quality And Change Risk
+
+- Leave touched code cleaner and simpler than you found it when the
+  improvement is small and local: a clearer name, a short extraction of
+  duplicated logic, a removed dead branch, less mutable state. Do it inside
+  the change you are already making.
+- Every change is a regression risk. Weigh a quality improvement against the
+  chance of introducing a bug and the review cost, not only against the
+  theoretical gain. Prefer no change over a marginal cleanup of working code.
+- Never let "improve quality" widen a task into a tangent refactor. If a
+  worthwhile improvement is more than a few localized edits, finish the
+  requested work first and propose the refactor separately with its
+  approximate size, as the refactor rule under Verification And Review
+  requires.
+- Low risk means small diffs, reusable code, and classes with few mutable
+  fields and one clear owner of each piece of state. Prefer composing small
+  immutable values and sealed types over adding coordination fields to an
+  existing class.
+- Write for the maintainer years from now: obvious control flow, no clever
+  tricks, and no machinery whose purpose is not visible from its call sites.
+
 ## Analytics
 
 - When adding a user-facing feature or action, consider whether analytics would

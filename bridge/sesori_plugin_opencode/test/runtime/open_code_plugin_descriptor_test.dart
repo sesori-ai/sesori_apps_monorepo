@@ -8,10 +8,66 @@ import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_managed_api.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
+import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("OpenCodePluginDescriptor.needsManagedRuntimeUpgrade", () {
+    const descriptor = OpenCodePluginDescriptor();
+    const config = PluginConfig(values: {"no-auto-start": false, "bin": null});
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("opencode-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const OpenCodeRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("1.17.9");
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("1.17.9");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("declines in attach mode, where Sesori does not own the runtime", () {
+      installedVersion("1.17.9");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"no-auto-start": true, "bin": null}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("OpenCodePluginDescriptor static surface", () {
     const descriptor = OpenCodePluginDescriptor();
 

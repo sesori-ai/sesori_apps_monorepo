@@ -19,6 +19,7 @@ import "../repositories/models/codex_thread_record.dart";
 
 final class const CodexSessionMessageRead._({
   required final CodexPreparedMessageRead _messages,
+  required final List<CodexThreadRecord> _children,
   required final Map<String, PluginToolStatus> _structuredToolStatusByCallId,
   required final CodexConfigDefaults _config,
 });
@@ -134,6 +135,9 @@ class CodexSessionService({
   void _recordPersistedChild({required CodexSessionRecord record}) =>
       _subAgentTracker.record(child: _sessionMapper.mapPersistedThread(record: record));
 
+  List<CodexThreadRecord> knownChildThreads({required String sessionId}) =>
+      _subAgentTracker.childrenOf(parentId: sessionId);
+
   /// Resolves and records a child named by `subAgentActivity started`, then
   /// maps its ordered creation/status events. A repeated activity returns
   /// `null` and never announces the child twice.
@@ -168,6 +172,7 @@ class CodexSessionService({
           modelProvider: null,
           parentId: parentThreadId,
           agentNickname: null,
+          agentPath: agentPath,
         );
     if (trackedChild == null && !_subAgentTracker.record(child: child)) {
       _announcedSubAgentThreadIds.remove(childThreadId);
@@ -204,6 +209,7 @@ class CodexSessionService({
         modelProvider: read.modelProvider,
         parentId: parentThreadId,
         agentNickname: read.agentNickname,
+        agentPath: agentPath ?? trackedChild?.agentPath,
       );
       _subAgentTracker.replaceChild(child: child);
     }
@@ -276,7 +282,7 @@ class CodexSessionService({
       if (sessionClosed && activityChanged && sessionId != null && _subAgentTracker.isChild(sessionId: sessionId))
         BridgeSseSessionStatus(
           sessionID: sessionId,
-          status: const PluginSessionStatus.idle().toJson(),
+          status: const PluginSessionStatus.idle(),
         ),
     ];
     final shouldDeferIdle =
@@ -410,7 +416,7 @@ class CodexSessionService({
   List<BridgeSseEvent> _rootIdleEvents({required String rootId}) => [
     BridgeSseSessionStatus(
       sessionID: rootId,
-      status: const PluginSessionStatus.idle().toJson(),
+      status: const PluginSessionStatus.idle(),
     ),
     BridgeSseSessionIdle(sessionID: rootId),
   ];
@@ -505,63 +511,48 @@ class CodexSessionService({
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
   }) async {
-    var resumed = await resumeThreadIfNeeded(threadId: threadId, force: false);
-    var turnModel = _resolveTurnModel(
+    Future<({CodexThreadRecord? resumedThread, String? resolvedModel, String? turnId, bool started})> start(
+      _PreparedTurn prepared,
+    ) async {
+      final turnId = await _connectedThreadRepository.startTurn(
+        threadId: threadId,
+        parts: parts,
+        clientUserMessageId: clientUserMessageId,
+        model: prepared.model,
+        effort: prepared.effort,
+        collaborationMode: prepared.mode,
+      );
+      if (turnId != null) {
+        _rememberThreadModel(threadId: threadId, model: prepared.model);
+      }
+      return (
+        resumedThread: prepared.resumedThread,
+        resolvedModel: prepared.model,
+        turnId: turnId,
+        started: turnId != null,
+      );
+    }
+
+    final prepared = await _prepareTurn(
       threadId: threadId,
-      requestedModel: model,
+      forceResume: false,
+      model: model,
+      effort: effort,
       collaborationMode: collaborationMode,
     );
-    var turnMode = _resolveCollaborationMode(
-      model: turnModel,
-      collaborationMode: collaborationMode,
-    );
-    var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
     try {
-      final turnId = await _connectedThreadRepository.startTurn(
-        threadId: threadId,
-        parts: parts,
-        clientUserMessageId: clientUserMessageId,
-        model: turnModel,
-        effort: turnEffort,
-        collaborationMode: turnMode,
-      );
-      if (turnId != null) {
-        _rememberThreadModel(threadId: threadId, model: turnModel);
-      }
-      return (
-        resumedThread: resumed,
-        resolvedModel: turnModel,
-        turnId: turnId,
-        started: turnId != null,
-      );
+      return await start(prepared);
     } on CodexThreadNotFoundException {
-      resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
-      turnModel = _resolveTurnModel(
-        threadId: threadId,
-        requestedModel: model,
-        collaborationMode: collaborationMode,
-      );
-      turnMode = _resolveCollaborationMode(
-        model: turnModel,
-        collaborationMode: collaborationMode,
-      );
-      turnEffort = effort ?? turnMode?.defaultReasoningEffort;
-      final turnId = await _connectedThreadRepository.startTurn(
-        threadId: threadId,
-        parts: parts,
-        clientUserMessageId: clientUserMessageId,
-        model: turnModel,
-        effort: turnEffort,
-        collaborationMode: turnMode,
-      );
-      if (turnId != null) {
-        _rememberThreadModel(threadId: threadId, model: turnModel);
-      }
-      return (
-        resumedThread: resumed,
-        resolvedModel: turnModel,
-        turnId: turnId,
-        started: turnId != null,
+      // Exactly one forced-resume retry; the resume may change the thread's
+      // model, so everything derived from it is recomputed.
+      return await start(
+        await _prepareTurn(
+          threadId: threadId,
+          forceResume: true,
+          model: model,
+          effort: effort,
+          collaborationMode: collaborationMode,
+        ),
       );
     }
   }
@@ -575,57 +566,69 @@ class CodexSessionService({
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
   }) async {
-    var resumed = await resumeThreadIfNeeded(threadId: threadId, force: false);
-    var turnModel = _resolveTurnModel(
+    Future<String?> dispatch(_PreparedTurn prepared) => _dispatchCommand(
+      threadId: threadId,
+      command: command,
+      arguments: arguments,
+      clientUserMessageId: clientUserMessageId,
+      model: prepared.model,
+      effort: prepared.effort,
+      collaborationMode: prepared.mode,
+    );
+
+    var prepared = await _prepareTurn(
+      threadId: threadId,
+      forceResume: false,
+      model: model,
+      effort: effort,
+      collaborationMode: collaborationMode,
+    );
+    String? turnId;
+    try {
+      turnId = await dispatch(prepared);
+    } on CodexThreadNotFoundException {
+      // Exactly one forced-resume retry; the resume may change the thread's
+      // model, so everything derived from it is recomputed.
+      prepared = await _prepareTurn(
+        threadId: threadId,
+        forceResume: true,
+        model: model,
+        effort: effort,
+        collaborationMode: collaborationMode,
+      );
+      turnId = await dispatch(prepared);
+    }
+    if (command != compactionCommandName) {
+      _rememberThreadModel(threadId: threadId, model: prepared.model);
+    }
+    return (
+      resumedThread: prepared.resumedThread,
+      resolvedModel: command == compactionCommandName ? null : prepared.model,
+      turnId: turnId,
+    );
+  }
+
+  /// Resumes the thread when needed and derives the model, collaboration mode
+  /// and effort a turn or command runs with.
+  Future<_PreparedTurn> _prepareTurn({
+    required String threadId,
+    required bool forceResume,
+    required String? model,
+    required String? effort,
+    required CodexCollaborationMode? collaborationMode,
+  }) async {
+    final resumedThread = await resumeThreadIfNeeded(threadId: threadId, force: forceResume);
+    final turnModel = _resolveTurnModel(
       threadId: threadId,
       requestedModel: model,
       collaborationMode: collaborationMode,
     );
-    var turnMode = _resolveCollaborationMode(
-      model: turnModel,
-      collaborationMode: collaborationMode,
-    );
-    var turnEffort = effort ?? turnMode?.defaultReasoningEffort;
-    String? turnId;
-    try {
-      turnId = await _dispatchCommand(
-        threadId: threadId,
-        command: command,
-        arguments: arguments,
-        clientUserMessageId: clientUserMessageId,
-        model: turnModel,
-        effort: turnEffort,
-        collaborationMode: turnMode,
-      );
-    } on CodexThreadNotFoundException {
-      resumed = await resumeThreadIfNeeded(threadId: threadId, force: true);
-      turnModel = _resolveTurnModel(
-        threadId: threadId,
-        requestedModel: model,
-        collaborationMode: collaborationMode,
-      );
-      turnMode = _resolveCollaborationMode(
-        model: turnModel,
-        collaborationMode: collaborationMode,
-      );
-      turnEffort = effort ?? turnMode?.defaultReasoningEffort;
-      turnId = await _dispatchCommand(
-        threadId: threadId,
-        command: command,
-        arguments: arguments,
-        clientUserMessageId: clientUserMessageId,
-        model: turnModel,
-        effort: turnEffort,
-        collaborationMode: turnMode,
-      );
-    }
-    if (command != compactionCommandName) {
-      _rememberThreadModel(threadId: threadId, model: turnModel);
-    }
+    final turnMode = _resolveCollaborationMode(model: turnModel, collaborationMode: collaborationMode);
     return (
-      resumedThread: resumed,
-      resolvedModel: command == compactionCommandName ? null : turnModel,
-      turnId: turnId,
+      resumedThread: resumedThread,
+      model: turnModel,
+      mode: turnMode,
+      effort: effort ?? turnMode?.defaultReasoningEffort,
     );
   }
 
@@ -735,6 +738,13 @@ class CodexSessionService({
   }) async {
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return null;
+    final messages = _messageRepository.prepareMessageRead(rolloutPath: path, sessionId: sessionId);
+    final children = messages.hasSubtasks
+        ? [
+            for (final record in await _catalogRepository.listSessionRecordsInIsolate())
+              if (record.parentId == sessionId) _sessionMapper.mapPersistedThread(record: record),
+          ]
+        : const <CodexThreadRecord>[];
     Map<String, PluginToolStatus> structuredToolStatusByCallId;
     try {
       structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
@@ -749,10 +759,8 @@ class CodexSessionService({
       structuredToolStatusByCallId = const {};
     }
     return CodexSessionMessageRead._(
-      messages: _messageRepository.prepareMessageRead(
-        rolloutPath: path,
-        sessionId: sessionId,
-      ),
+      messages: messages,
+      children: children,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );
@@ -766,6 +774,10 @@ class CodexSessionService({
     return _messageRepository.projectMessages(
       read: read._messages,
       sessionId: sessionId,
+      children: [
+        ...knownChildThreads(sessionId: sessionId),
+        ...read._children,
+      ],
       replayToolDisposition: switch (sessionStatus) {
         PluginSessionStatusIdle() => CodexReplayToolDisposition.terminalize,
         PluginSessionStatusBusy() || PluginSessionStatusRetry() => CodexReplayToolDisposition.preserveRunning,
@@ -931,3 +943,10 @@ class CodexSessionService({
     return repository;
   }
 }
+
+typedef _PreparedTurn = ({
+  CodexThreadRecord? resumedThread,
+  String? model,
+  CodexCollaborationMode? mode,
+  String? effort,
+});

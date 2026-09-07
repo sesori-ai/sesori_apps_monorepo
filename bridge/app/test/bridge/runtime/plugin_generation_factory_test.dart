@@ -486,6 +486,9 @@ class _FakeBridgePlugin() implements BridgePlugin {
   }
 
   @override
+  Future<void> onStarted() async {}
+
+  @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};
 
   @override

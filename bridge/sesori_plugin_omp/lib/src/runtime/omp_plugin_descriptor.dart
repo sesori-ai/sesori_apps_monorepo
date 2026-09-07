@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -14,6 +15,8 @@ import "../omp_plugin_impl.dart";
 import "../repositories/omp_runtime_asset_repository.dart";
 import "../services/omp_runtime_asset_service.dart";
 import "omp_runtime_manifest.dart";
+
+const int _setupProbeOutputLimit = 64 * 1024;
 
 typedef OmpPluginFactory = OmpPlugin Function({
   required String binaryPath,
@@ -116,17 +119,24 @@ final class const OmpPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: OmpRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     if (_explicitBin(host.config) != null) return;
     const manifest = OmpRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(host: host, explicitExecutablePath: null);
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(host: host, explicitExecutablePath: null);
   }
 
   @override
@@ -136,6 +146,7 @@ final class const OmpPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = OmpRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
@@ -149,23 +160,18 @@ final class const OmpPluginDescriptor({
     );
     final httpClient = http.Client();
     try {
-      final service = ManagedRuntimeInstallService(
+      final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: _versionValidator(processes: processes),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: runtimeAssetService.resolve,
       );
       yield* service.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -181,19 +187,25 @@ final class const OmpPluginDescriptor({
   }) async {
     const manifest = OmpRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: _versionValidator(processes: processes),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
-    if (selection case ManagedRuntimeSelected(:final version)) {
-      return PluginSetupReady.versioned(runtimeVersion: version.raw);
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
+    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
+      return await _inspectAuthentication(
+        binaryPath: binaryPath,
+        processes: processes,
+        environment: environment,
+        runtimeVersion: version.raw,
+      );
     }
     final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
@@ -210,8 +222,7 @@ final class const OmpPluginDescriptor({
       };
     }
     final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) ||
-        _isUnknownRejection(automatic.managedRejection)) {
+    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Oh My Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -221,6 +232,64 @@ final class const OmpPluginDescriptor({
           ? "Install Oh My Pi from Sesori, or install it locally and retry setup detection."
           : "Install Oh My Pi locally, then retry setup detection.",
     );
+  }
+
+  /// Asks Oh My Pi which models it can actually use.
+  ///
+  /// OMP resolves credentials from its auth broker, its profile settings, and
+  /// the environment, so only OMP itself can answer whether any provider is
+  /// usable. Listing models neither starts a backend nor initiates
+  /// authentication.
+  Future<PluginSetupStatus> _inspectAuthentication({
+    required String binaryPath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String runtimeVersion,
+  }) async {
+    final CommandResult result;
+    try {
+      result = await HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ).run(binaryPath, const ["models", "--json"], environment: environment, timeout: _versionProbeTimeout);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "[${OmpPluginIdentity.id}] model listing probe failed for '$binaryPath models --json'",
+        error,
+        stackTrace,
+      );
+      return PluginSetupUnknown.versioned(
+        actionHint: "Oh My Pi could not list its available models. Verify the local CLI and retry.",
+        runtimeVersion: runtimeVersion,
+      );
+    }
+    if (!_listedNoModels(result)) return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
+    return PluginSetupAuthenticationRequired.versioned(
+      actionHint: "Run `omp` on this machine and log into a provider, then retry setup detection.",
+      runtimeVersion: runtimeVersion,
+    );
+  }
+
+  /// Whether the listing positively reported an empty catalog.
+  ///
+  /// Only a listing that parses and reports no models counts as logged out.
+  /// Supported releases predate the pinned target and `models --json` is not
+  /// guaranteed across that range, so an unrecognized listing leaves setup
+  /// ready rather than downgrading a working install on evidence that is not
+  /// there.
+  bool _listedNoModels(CommandResult result) {
+    if (result.exitCode != 0) return false;
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(result.stdout);
+    } on FormatException {
+      return false;
+    }
+    return switch (decoded) {
+      {"models": final List<Object?> models} => models.isEmpty,
+      _ => false,
+    };
   }
 
   bool _isUnknownRejection(ManagedRuntimeRejection rejection) {

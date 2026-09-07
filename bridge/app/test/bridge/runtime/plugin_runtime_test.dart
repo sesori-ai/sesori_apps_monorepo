@@ -40,12 +40,45 @@ void main() {
     expect(runtime.snapshot.single.setup, isA<PluginSetupReady>());
   });
 
+  test("a started generation runs its warm-up exactly once", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(factory.plugins.single.onStartedCount, 1);
+  });
+
+  test("a warm-up that fails or hangs neither fails nor delays the start", () async {
+    final warmUpGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi())
+        ..onStartedHandler = () async {
+          await warmUpGate.future;
+          throw StateError("warm-up failed");
+        },
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.startEager(pluginIds: const ["one"]);
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+    warmUpGate.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.active);
+  });
+
   test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
     final installGate = Completer<void>();
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
       descriptor: _FakeDescriptor(
-        install: (startAborted) async* {
+        install: (startAborted, runtimeInUse) async* {
           yield const ProvisionResolving();
           await installGate.future;
           if (startAborted.isAborted) throw const PluginStartAbortedException();
@@ -63,6 +96,56 @@ void main() {
     runtime.beginShutdown();
     installGate.complete();
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+  });
+
+  test("installRuntime reports a live generation to the descriptor", () async {
+    final installGate = Completer<void>();
+    final inUseReadings = <bool>[];
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        install: (startAborted, runtimeInUse) async* {
+          inUseReadings.add(runtimeInUse.isInUse);
+          await installGate.future;
+          inUseReadings.add(runtimeInUse.isInUse);
+          yield const ProvisionReady(binaryPath: "/managed/one");
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    final done = runtime.installRuntime(pluginId: "one").drain<void>();
+    await _waitUntil(() => inUseReadings.isNotEmpty);
+    await runtime.start(pluginId: "one");
+    installGate.complete();
+    await done;
+
+    expect(inUseReadings, [false, true], reason: "the signal is read live, not captured at install start");
+  });
+
+  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () {
+    final queries = <({PluginConfig config, String stateDirectory})>[];
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: _FakeDescriptor(
+        upgradeNeeded: ({required config, required stateDirectory}) {
+          queries.add((config: config, stateDirectory: stateDirectory));
+          return true;
+        },
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
+    expect(queries.single.stateDirectory, ".");
+  });
+
+  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () {
+    final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
+    addTearDown(runtime.dispose);
+
+    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
   });
 
   test("installRuntime fails immediately while shutting down", () async {
@@ -1914,7 +1997,9 @@ class _FakeGenerationFactory({
 
 class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
-  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted)? install,
+  final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
+  install,
+  final bool Function({required PluginConfig config, required String stateDirectory})? upgradeNeeded,
 }) extends BridgePluginDescriptor {
   @override
   String get id => "one";
@@ -1948,6 +2033,7 @@ class const _FakeDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) {
     final handler = install;
     if (handler == null) {
@@ -1957,9 +2043,19 @@ class const _FakeDescriptor({
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     }
-    return handler(startAborted);
+    return handler(startAborted, runtimeInUse);
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    final handler = upgradeNeeded;
+    if (handler == null) {
+      return super.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDirectory);
+    }
+    return handler(config: config, stateDirectory: stateDirectory);
   }
 
   @override
@@ -2019,6 +2115,14 @@ class _FakePlugin({
   int shutdownCount = 0;
   int interruptActiveWorkCount = 0;
   Future<Set<String>> Function(Duration budget)? interruptActiveWorkHandler;
+  int onStartedCount = 0;
+  Future<void> Function()? onStartedHandler;
+
+  @override
+  Future<void> onStarted() async {
+    onStartedCount++;
+    await onStartedHandler?.call();
+  }
 
   @override
   PluginStatus get currentStatus => statuses.value;

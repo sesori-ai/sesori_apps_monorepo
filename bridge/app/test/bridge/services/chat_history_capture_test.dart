@@ -5,6 +5,7 @@ import "dart:typed_data";
 
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
+import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_reconcile_service.dart";
@@ -225,7 +226,7 @@ void main() {
       source.add((
         pluginId: "opencode",
         generation: 1,
-        event: const BridgeSseServerConnected(),
+        event: const NormalizedOtherEvent(event: BridgeSseServerConnected()),
         allowDuringStop: false,
         terminalHandoffConsumed: null,
       ));
@@ -246,12 +247,14 @@ void main() {
       source.add((
         pluginId: "opencode",
         generation: 1,
-        event: const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart.text(
-            id: "p1",
-            sessionID: "ses_a",
-            messageID: "m1",
-            text: "one",
+        event: const NormalizedOtherEvent(
+          event: BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.text(
+              id: "p1",
+              sessionID: "ses_a",
+              messageID: "m1",
+              text: "one",
+            ),
           ),
         ),
         allowDuringStop: false,
@@ -282,7 +285,7 @@ void main() {
       source.add((
         pluginId: "opencode",
         generation: 1,
-        event: const BridgeSseServerConnected(),
+        event: const NormalizedOtherEvent(event: BridgeSseServerConnected()),
         allowDuringStop: false,
         terminalHandoffConsumed: null,
       ));

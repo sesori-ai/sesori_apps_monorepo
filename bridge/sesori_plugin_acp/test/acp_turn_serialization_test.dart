@@ -66,6 +66,37 @@ class _TimestampingEventMapper({
       PluginMessageTime(created: createdAtMs, completed: null);
 }
 
+class _PromptOrderedChildMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  static const childMethod = "test/subagent";
+
+  @override
+  bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
+      notification.method == childMethod || super.shouldBufferDuringPromptWrite(notification: notification);
+
+  @override
+  List<BridgeSseEvent> mapExtension(AcpNotification notification) {
+    if (notification.method != childMethod) return super.mapExtension(notification);
+    final sessionId = notification.params["sessionId"];
+    final childSessionId = notification.params["childSessionId"];
+    if (sessionId is! String || childSessionId is! String) return const [];
+    return mapChildSpawned(
+      sessionId: sessionId,
+      spawn: AcpChildSpawn(
+        childSessionId: childSessionId,
+        description: "Child",
+        agent: pluginId,
+        prompt: "Inspect",
+        isBackground: true,
+      ),
+    );
+  }
+}
+
 class _FlushControlledAcpProcess() extends FakeAcpProcess {
   final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
 
@@ -243,9 +274,15 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .where((event) => event.info["promptId"] == firstId)
+            .where(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == firstId,
+                _ => false,
+              },
+            )
             .single
-            .info["id"],
+            .info
+            .id,
         "$firstId-user",
       );
       respondTo(first, {"stopReason": "end_turn"});
@@ -260,8 +297,8 @@ void main() {
       final prompt = await waitForFrame("session/prompt");
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
-      expect(message.info["promptId"], promptId);
+      expect(message.info, isA<PluginMessageUser>());
+      expect((message.info as PluginMessageUser).promptId, promptId);
       expect(
         emitted.whereType<BridgeSseMessagePartUpdated>().single.part.text,
         "visible on dispatch",
@@ -286,7 +323,12 @@ void main() {
 
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(
@@ -304,9 +346,14 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == promptId)
-            .info["promptId"],
-        promptId,
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == promptId,
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>().having((info) => info.promptId, "promptId", promptId),
       );
       respondTo(prompt, {"stopReason": "end_turn"});
     });
@@ -340,9 +387,9 @@ void main() {
       }
 
       final messages = emitted.whereType<BridgeSseMessageUpdated>().toList();
-      expect(messages.map((event) => event.info["role"]), ["user", "assistant"]);
-      expect(messages.first.info["promptId"], promptId);
-      expect(messages.last.info["id"], "$promptId-user-assistant-a0");
+      expect(messages.map((event) => event.info.runtimeType), [PluginMessageUser, PluginMessageAssistant]);
+      expect((messages.first.info as PluginMessageUser).promptId, promptId);
+      expect(messages.last.info.id, "$promptId-user-assistant-a0");
 
       respondTo(prompt, {"stopReason": "end_turn"});
     });
@@ -392,7 +439,7 @@ void main() {
         await pump();
       }
 
-      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info["role"] == "user");
+      final user = emitted.whereType<BridgeSseMessageUpdated>().singleWhere((event) => event.info is PluginMessageUser);
       final tool = emitted.whereType<BridgeSseMessagePartUpdated>().singleWhere(
         (event) => event.part.type == PluginMessagePartType.tool,
       );
@@ -447,6 +494,66 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
+    test("a prompt-ordered lifecycle extension stays behind its accepted user message", () async {
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
+      final mapper = _PromptOrderedChildMapper(
+        launchDirectory: cwd,
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
+      );
+      final orderedPlugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
+        eventMapper: mapper,
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      await plugin.dispose();
+      plugin = orderedPlugin;
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
+
+      await connect();
+      final sessionId = await createSession(cwd, "s1");
+      emitted.clear();
+      final flush = fake.holdNextFlush();
+      await sendPrompt(sessionId, "start a child");
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": _PromptOrderedChildMapper.childMethod,
+        "params": {"sessionId": sessionId, "childSessionId": "child"},
+      });
+      await pump();
+      expect(emitted.whereType<BridgeSseSessionCreated>(), isEmpty);
+
+      flush.complete();
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSseSessionCreated>().isEmpty; index++) {
+        await pump();
+      }
+
+      final userIndex = emitted.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageUser,
+      );
+      final childIndex = emitted.indexWhere(
+        (event) => event is BridgeSseSessionCreated && event.info["id"] == "child",
+      );
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(childIndex, greaterThan(userIndex));
+      respondTo(prompt, {"stopReason": "end_turn"});
+    });
+
     test("a buffered sessionless permission keeps its writing-turn attribution", () async {
       await connect();
       final firstSessionId = await createSession(cwd, "s1");
@@ -488,6 +595,98 @@ void main() {
       );
       respondTo(firstPrompt, {"stopReason": "end_turn"});
       respondTo(secondPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("a nested permission uses its exact tool-call session instead of the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      plugin.handleAgentNotification(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": firstSessionId,
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "shared-shape",
+              "title": "Run command",
+              "kind": "execute",
+            },
+          },
+        ),
+      );
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9001,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "shared-shape", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; index++) {
+        await pump();
+      }
+
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
+      expect(permission.sessionID, firstSessionId);
+      await plugin.replyToPermission(
+        requestId: permission.requestID,
+        sessionId: firstSessionId,
+        reply: PluginPermissionReply.reject,
+      );
+      respondTo(activePrompt, {"stopReason": "end_turn"});
+    });
+
+    test("an ambiguous nested permission cannot fall back to the active turn", () async {
+      await connect();
+      final firstSessionId = await createSession(cwd, "s1");
+      final secondSessionId = await createSession(cwd, "s2");
+      await sendPrompt(secondSessionId, "keep active");
+      final activePrompt = await waitForFrame("session/prompt");
+      for (final sessionId in [firstSessionId, secondSessionId]) {
+        plugin.handleAgentNotification(
+          AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": sessionId,
+              "update": {
+                "sessionUpdate": "tool_call",
+                "toolCallId": "ambiguous",
+                "title": "Run command",
+                "kind": "execute",
+              },
+            },
+          ),
+        );
+      }
+      emitted.clear();
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9002,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "toolCall": {"toolCallId": "ambiguous", "title": "Run command", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      for (var index = 0; index < 20 && !fake.written.any((frame) => frame["id"] == 9002); index++) {
+        await pump();
+      }
+
+      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+      final response = fake.written.singleWhere((frame) => frame["id"] == 9002);
+      expect((response["result"] as Map)["outcome"], {"outcome": "cancelled"});
+      respondTo(activePrompt, {"stopReason": "end_turn"});
     });
 
     test("a queued prompt message uses its dispatch time", () async {
@@ -534,9 +733,12 @@ void main() {
       await pump();
 
       final secondMessage = emitted.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["promptId"] == secondPromptId,
+        (event) => switch (event.info) {
+          PluginMessageUser(promptId: final id) => id == secondPromptId,
+          _ => false,
+        },
       );
-      expect((secondMessage.info["time"] as Map)["created"], greaterThan(queuedAt));
+      expect(secondMessage.info.time?.created, greaterThan(queuedAt));
 
       expect(firstPromptId, isNot(secondPromptId));
       respondTo(second, {"stopReason": "end_turn"});
@@ -557,7 +759,12 @@ void main() {
 
       expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
@@ -588,7 +795,7 @@ void main() {
       final created = emitted.whereType<BridgeSseSessionCreated>().single;
       expect(created.info["id"], "s1");
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
+      expect(message.info, isA<PluginMessageUser>());
       final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.text, "visible prompt");
       expect(part.text, isNot(contains("SYSTEM CONTEXT")));
@@ -676,7 +883,7 @@ void main() {
       await pump();
 
       final message = emitted.whereType<BridgeSseMessageUpdated>().single;
-      expect(message.info["role"], "user");
+      expect(message.info, isA<PluginMessageUser>());
       final part = emitted.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.text, "/review user arguments");
       expect(part.text, isNot(contains("SYSTEM CONTEXT")));
@@ -789,7 +996,12 @@ void main() {
       );
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, secondPromptId);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == secondPromptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == secondPromptId,
+            _ => false,
+          },
+        ),
         isEmpty,
         reason: "an adapter-owned prompt must remain queued, not sent",
       );
@@ -804,9 +1016,14 @@ void main() {
       expect(
         emitted
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == secondPromptId)
-            .info["promptId"],
-        secondPromptId,
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == secondPromptId,
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>().having((info) => info.promptId, "promptId", secondPromptId),
       );
       expect(
         idleCount(),
@@ -847,7 +1064,12 @@ void main() {
       }
       expect(frames("session/prompt"), hasLength(1));
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == queuedPromptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == queuedPromptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
     });
@@ -1114,7 +1336,12 @@ void main() {
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where((event) => event.info["promptId"] == promptId),
+        emitted.whereType<BridgeSseMessageUpdated>().where(
+          (event) => switch (event.info) {
+            PluginMessageUser(promptId: final id) => id == promptId,
+            _ => false,
+          },
+        ),
         isEmpty,
       );
       expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));

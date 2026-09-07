@@ -2119,6 +2119,12 @@ abstract class AppLocalizations {
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
 
+  /// No description provided for @sessionDetailUnavailableCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command unavailable'**
+  String get sessionDetailUnavailableCommand;
+
   /// No description provided for @sessionDetailSendingMessage.
   ///
   /// In en, this message translates to:
@@ -2137,11 +2143,23 @@ abstract class AppLocalizations {
   /// **'Couldn’t apply updated prompt options. Your message remains queued.'**
   String get sessionDetailPromptOptionsRecoveryFailed;
 
+  /// No description provided for @sessionDetailCommandUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'That command is no longer available. Remove it from the queue to continue.'**
+  String get sessionDetailCommandUnavailable;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get sessionDetailCancelQueued;
+
+  /// No description provided for @sessionDetailRemoveQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get sessionDetailRemoveQueued;
 
   /// No description provided for @sessionDetailPickerAgent.
   ///
@@ -2455,24 +2473,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 background task} other{{count} background tasks}}'**
   String sessionListBackgroundTasks(int count);
 
-  /// No description provided for @sessionListStaleProjectTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Project directory not found'**
-  String get sessionListStaleProjectTitle;
-
-  /// No description provided for @sessionListStaleProjectMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.'**
-  String get sessionListStaleProjectMessage;
-
-  /// No description provided for @sessionListStaleProjectBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Go back'**
-  String get sessionListStaleProjectBack;
-
   /// No description provided for @voiceRecord.
   ///
   /// In en, this message translates to:
@@ -2550,12 +2550,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The saved recording is no longer available. Record again or type instead.'**
   String get voiceErrorSavedRecordingMissing;
-
-  /// No description provided for @voiceErrorNetwork.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not reach the server. Check your connection.'**
-  String get voiceErrorNetwork;
 
   /// No description provided for @voiceErrorNotAuthenticated.
   ///
@@ -3520,7 +3514,7 @@ abstract class AppLocalizations {
   /// Title of the scan row when some harnesses scanned successfully and others did not.
   ///
   /// In en, this message translates to:
-  /// **'Scan finished'**
+  /// **'Scanning finished'**
   String get catalogScanPartlyFailedTitle;
 
   /// Supporting line on a partly failed scan row. Both harnesses counts are at least one, so the total is always plural.
@@ -3538,7 +3532,7 @@ abstract class AppLocalizations {
   /// Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it.
   ///
   /// In en, this message translates to:
-  /// **'Check the bridge log for details'**
+  /// **'Check bridge logs'**
   String get catalogScanFailedDetail;
 
   /// Title of the scan row when the connected bridge is too old to scan harness catalogs on request.

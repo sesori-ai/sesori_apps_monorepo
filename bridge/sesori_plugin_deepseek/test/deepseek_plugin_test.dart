@@ -39,7 +39,7 @@ void main() {
           "authMethods": <Object?>[],
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",
@@ -122,6 +122,8 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
     childSessions: childSessionTracker,
     api: api,
     messageTimeParser: const DeepSeekMessageTimeParser(),
+    subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+    delegationTracker: DeepSeekDelegationTracker(),
   );
   return DeepSeekPlugin(
     launchSpec: const AcpLaunchSpec(
@@ -140,9 +142,11 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
       eventMapper: mapper,
       pluginId: DeepSeekIdentity.id,
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
     ),
-    deepSeekSessionService: const DeepSeekSessionService(
-      repository: DeepSeekSessionRepository(api: api),
+    deepSeekSessionService: DeepSeekSessionService(
+      repository: const DeepSeekSessionRepository(api: api),
+      childSessions: childSessionTracker,
     ),
     deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
       repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),

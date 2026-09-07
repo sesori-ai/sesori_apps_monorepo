@@ -37,7 +37,7 @@ abstract final class AcpMethods() {
 /// An auth method advertised by the agent in the `initialize` result.
 enum AcpAuthMethodType() {
   terminal,
-  other;
+  other,
 }
 
 class const AcpAuthMethod({

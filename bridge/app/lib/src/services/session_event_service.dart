@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/mappers/session_event_mapper.dart";
+import "../repositories/models/normalized_bridge_event.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
@@ -193,6 +194,10 @@ class SessionEventService({
     return output;
   }
 
+  /// The value delivered to consumers for an event that passed identity,
+  /// enrichment, publication and generation checks.
+  NormalizedBridgeEvent toNormalized({required BridgeSseEvent event}) => _eventMapper.normalize(event: event);
+
   Future<bool> canPublish({required BridgeSseEvent event}) async {
     if (event is! BridgeSseSessionCreated && event is! BridgeSseSessionUpdated) return true;
     final session = _eventMapper.sessionInfo(event: event);
@@ -380,7 +385,7 @@ class SessionEventService({
     // delivery: an unbound one is translated to null instead of parking or
     // dropping the event that merely mentions it.
     final optionalBackendSessionIds = _eventMapper.optionalBackendSessionIds(event: source.event);
-    final bindings = await _sessionRepository.getStoredSessionsByBackendIds(
+    final bindings = await _sessionRepository.getSessionIdsByBackendIds(
       pluginId: source.pluginId,
       backendSessionIds: {...backendSessionIds, ...optionalBackendSessionIds}.toList(growable: false),
     );
@@ -414,12 +419,7 @@ class SessionEventService({
       }
       return null;
     }
-    final translated = _eventMapper.map(
-      event: source.event,
-      sessionIdsByBackendId: {
-        for (final entry in bindings.entries) entry.key: entry.value.id,
-      },
-    );
+    final translated = _eventMapper.map(event: source.event, sessionIdsByBackendId: bindings);
     if (!isCurrentEvent(
       pluginId: source.pluginId,
       generation: source.generation,

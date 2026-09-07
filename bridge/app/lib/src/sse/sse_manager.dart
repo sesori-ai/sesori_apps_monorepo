@@ -190,7 +190,7 @@ class SSEManager({
         Log.v("[sse] retaining event ${event.runtimeType} for connID=$connID after relay turnover");
         return;
       }
-      Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID: $error");
+      Log.w("[sse] failed to send event ${event.runtimeType} to connID=$connID", error);
       unawaited(
         _failureReporter
             .recordFailure(
@@ -201,7 +201,9 @@ class SSEManager({
               reason: "Failed to send SSE event to phone",
               information: [event.runtimeType.toString(), "connID=$connID"],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse] failed to report send failure", reportError, reportStackTrace);
+            }),
       );
     };
   }

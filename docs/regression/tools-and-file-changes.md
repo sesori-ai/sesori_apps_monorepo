@@ -49,7 +49,15 @@ signal that a tool changed files.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
   identity, bounded presenter output, terminal result/error state, and diff
   content. Presenter failure degrades to a generic bounded tool card instead of
-  dropping the call or result.
+  dropping the call or result. With adapter 0.1.3 and protocol v2, correlated
+  sub-agent starts replace exact `subagent`/`subagent_fork` cards with one child-linked tile;
+  identifiable updates arriving before their call are deferred too. Start/end
+  events retain the direct parent's transcript and keep root activity busy.
+  Launch prompts remain authoritative without child prompt echoes; malformed
+  ends finalize known children as error. Startup failures retain one generic
+  terminal card. Replay projects typed delegation metadata into the same tile
+  identity and terminal policy, or an unlinked tile when no child was created;
+  unrelated tools retain the generic ACP projection. Initialization requires v2.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
@@ -146,6 +154,6 @@ one permission-gated mutation and one repeated terminal update.
   `bridge/app/test/bridge/sse/bridge_event_mapper_test.dart`
 - Claude sub-agents: `bridge/sesori_plugin_claude/lib/src/repositories/trackers/claude_tool_tracker.dart`,
   `claude_event_dispatcher.dart`, `claude_history_mapper.dart`, and
-  `test/claude_subtask_lifecycle_test.dart`
+  `bridge/sesori_plugin_claude/test/claude_subtask_lifecycle_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`

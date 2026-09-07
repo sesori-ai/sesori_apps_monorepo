@@ -276,14 +276,14 @@ void main() {
         .first;
 
     harness.plugins.single.emitEvent(
-      BridgeSseMessageUpdated(
-        info: const Message.user(
+      const BridgeSseMessageUpdated(
+        info: PluginMessage.user(
           promptId: null,
           id: "message",
           sessionID: "session",
           agent: null,
-          time: MessageTime(created: 1234, completed: null),
-        ).toJson(),
+          time: PluginMessageTime(created: 1234, completed: null),
+        ),
       ),
     );
 

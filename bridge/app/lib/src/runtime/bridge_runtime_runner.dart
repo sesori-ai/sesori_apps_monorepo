@@ -475,8 +475,8 @@ class const BridgeRuntimeRunner._() {
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();
-        } on Object catch (error) {
-          Log.w("Update reconciliation failed (non-fatal): $error");
+        } on Object catch (error, stackTrace) {
+          Log.w("Update reconciliation failed (non-fatal)", error, stackTrace);
         }
       }
 
@@ -683,8 +683,8 @@ class const BridgeRuntimeRunner._() {
         if (updatesEnabledForThisInstall) {
           try {
             await updateLifecycle.reconcile();
-          } on Object catch (error) {
-            Log.w("Update reconciliation after predecessor exit failed (non-fatal): $error");
+          } on Object catch (error, stackTrace) {
+            Log.w("Update reconciliation after predecessor exit failed (non-fatal)", error, stackTrace);
           }
         }
       }
@@ -709,6 +709,10 @@ class const BridgeRuntimeRunner._() {
         Log.i("Plugin start aborted as requested.");
         return 0;
       }
+      // After ownership is settled, so no other live bridge is using this
+      // machine's managed runtime directories when the obsolete sweep runs.
+      // Returns immediately; the downloads continue behind startup.
+      activePluginLifecycleService.upgradeManagedRuntimes();
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
@@ -1266,13 +1270,13 @@ class const BridgeRuntimeRunner._() {
         return inspected;
       }
       Log.w("Could not find own process (pid ${io.pid}) in the process table; using fallback identity");
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       if (!isWindows) {
         // A marker-less fallback would corrupt the startup lock on POSIX (see
         // method doc), so surface the failure instead of degrading.
         rethrow;
       }
-      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity: $error");
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity", error, stackTrace);
     }
     return _fallbackCurrentBridgeIdentity(
       currentUser: currentUser,

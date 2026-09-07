@@ -3,15 +3,16 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-4/12 merged; Step 5/12 open and ready; Step 6.a verified and architecture-approved locally
-- **Base:** Step 5 head `6d8e062ef7` for local Step 6.a
+- **Status:** Steps 1-5/12 merged; Step 6.a verified and architecture-approved, preparing publication
+- **Base:** Step 5 merge `0e8f9e6fb9`; synced with current `origin/main`
 - **Current branch:** `antigravity-harness-step-6-isolated-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
-  [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4)
-- **Open PR:** [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
-- **Next action:** publish local Step 6.a after Step 5 merges; retain automatic monitoring
+  [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
+  [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
+- **Open PR:** none; preparing Step 6.a
+- **Next action:** publish Step 6.a and start its monitor, then begin 6.b locally
 
 ## Fixed PR Series
 
@@ -19,7 +20,7 @@
 - [x] Step 2/12 — `⚙️ [antigravity-harness] feat(antigravity): pin the official ACP runtime contract [step 2/12]`
 - [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [x] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
-- [ ] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
+- [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [ ] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [ ] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
@@ -87,6 +88,7 @@
 
 - [x] Complete the remote browser handoff, review, and verification.
 
+<<<<<<< HEAD
 ## Step 6.a Checklist
 
 - [x] Obtain approval for scoped stores, privacy prerequisites, and lettered Step 6 slices.
@@ -97,9 +99,11 @@
 - [x] Cover inheritance, atomic child updates, path restrictions, byte preservation, privacy, and cleanup.
 - [x] Run focused validation and update regression invariants without claiming active Antigravity support.
 - [x] Independent architecture implementation review approved; no issues found.
-- [ ] Publish only after Step 5 merges.
+- [x] Step 5 merged; sync Step 6.a with main before publication.
 - Step 6.b/c profile/browser suppression/personal OAuth remain unimplemented; package remains unregistered.
 
+=======
+>>>>>>> origin/main
 ## Architecture Reviews
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
@@ -237,6 +241,9 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   leaving 504 lines below the 1,500-line cap.
 - 2026-09-04 — Step 5 final code cap: `git diff --numstat 93c8982601eb 1b2283a4903b` totals
   1155 + 334 = 1489; this tracker-only reconciliation leaves the published PR at 1489 changed lines.
+<<<<<<< HEAD
 
 - 2026-09-04 — Step 6.a architecture review approved the full tracked/untracked diff against `6d8e062ef7`.
   Reviewed implementation: 722 additions + 65 deletions = 787 changed lines; review-status bookkeeping adds one line.
+=======
+>>>>>>> origin/main

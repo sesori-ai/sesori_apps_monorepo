@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../models/codex_session_record.dart";
 import "../models/codex_thread_record.dart";
+import "codex_sub_agent_name_mapper.dart";
 
 /// Pure Layer-2 projections among normalized Codex records and bridge session
 /// contracts and lifecycle events.
@@ -20,6 +21,7 @@ class const CodexSessionMapper() {
     modelProvider: record.modelProvider,
     parentId: record.parentId,
     agentNickname: _usefulText(record.agentNickname),
+    agentPath: _usefulText(record.agentPath),
   );
 
   String? _usefulText(String? value) {
@@ -40,7 +42,13 @@ class const CodexSessionMapper() {
       projectID: directory,
       directory: directory,
       parentID: parentSessionId,
-      title: record.name,
+      title: parentSessionId == null
+          ? record.name
+          : const CodexSubAgentNameMapper().map(
+              name: record.name,
+              nickname: record.agentNickname,
+              agentPath: record.agentPath,
+            ),
       time: created == null || updated == null
           ? null
           : PluginSessionTime(
@@ -63,6 +71,6 @@ class const CodexSessionMapper() {
         parentSessionId: child.parentId,
       ).toJson(),
     ),
-    BridgeSseSessionStatus(sessionID: child.id, status: status.toJson()),
+    BridgeSseSessionStatus(sessionID: child.id, status: status),
   ];
 }

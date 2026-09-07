@@ -75,9 +75,19 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     return decoded.map(Session.fromJson).toList();
   }
 
+  /// Longer than the default read timeout because this is the one endpoint that
+  /// blocks on MCP server initialization. Measured between one and thirty
+  /// seconds on the first call per server process, and milliseconds after it, so
+  /// the default would turn a slow-but-healthy first discovery into a failure
+  /// that silently retains the previous catalog. Kept below the client's own
+  /// options deadline so the bridge is the side that gives up first and can
+  /// answer with what it has.
+  static const _commandListTimeout = Duration(seconds: 90);
+
   Future<List<Command>> listCommands({required String? directory}) async {
     final response = await _client.get(
       path: "/command",
+      timeout: _commandListTimeout,
       headers: {
         _directoryOpenCodeHeader: ?directory,
       },

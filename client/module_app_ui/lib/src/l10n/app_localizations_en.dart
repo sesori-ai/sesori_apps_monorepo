@@ -1128,6 +1128,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailQueuedCommand => 'Queued command';
 
   @override
+  String get sessionDetailUnavailableCommand => 'Command unavailable';
+
+  @override
   String get sessionDetailSendingMessage => 'Sending';
 
   @override
@@ -1138,7 +1141,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t apply updated prompt options. Your message remains queued.';
 
   @override
+  String get sessionDetailCommandUnavailable =>
+      'That command is no longer available. Remove it from the queue to continue.';
+
+  @override
   String get sessionDetailCancelQueued => 'Cancel';
+
+  @override
+  String get sessionDetailRemoveQueued => 'Remove';
 
   @override
   String get sessionDetailPickerAgent => 'Agent';
@@ -1325,16 +1335,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionListStaleProjectTitle => 'Project directory not found';
-
-  @override
-  String get sessionListStaleProjectMessage =>
-      'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.';
-
-  @override
-  String get sessionListStaleProjectBack => 'Go back';
-
-  @override
   String get voiceRecord => 'Record voice';
 
   @override
@@ -1373,9 +1373,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceErrorSavedRecordingMissing =>
       'The saved recording is no longer available. Record again or type instead.';
-
-  @override
-  String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';
 
   @override
   String get voiceErrorNotAuthenticated => 'Sign in to use voice input';
@@ -1945,7 +1942,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get catalogScanPartlyFailedTitle => 'Scan finished';
+  String get catalogScanPartlyFailedTitle => 'Scanning finished';
 
   @override
   String catalogScanPartlyFailedDetail(int failed, int total) {
@@ -1956,7 +1953,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanFailedTitle => 'Scan failed';
 
   @override
-  String get catalogScanFailedDetail => 'Check the bridge log for details';
+  String get catalogScanFailedDetail => 'Check bridge logs';
 
   @override
   String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';

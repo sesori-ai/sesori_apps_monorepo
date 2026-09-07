@@ -6,11 +6,20 @@ import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
+import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
+import "models/codex_thread_record.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
   final List<CodexRolloutLineDto> _lines = List.unmodifiable(lines);
+
+  bool get hasSubtasks => _lines.any(
+    (line) => switch (line) {
+      CodexRolloutResponseItemLineDto(payload: CodexRolloutFunctionCallDto(name: "spawn_agent")) => true,
+      _ => false,
+    },
+  );
 }
 
 /// Layer-2 mapping from typed rollout transcript DTOs to plugin messages.
@@ -22,6 +31,7 @@ class CodexMessageRepository({
   List<PluginMessageWithParts> readMessages({
     required String rolloutPath,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -32,6 +42,7 @@ class CodexMessageRepository({
         sessionId: sessionId,
       ),
       sessionId: sessionId,
+      children: children,
       replayToolDisposition: replayToolDisposition,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: config,
@@ -108,6 +119,7 @@ class CodexMessageRepository({
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
     required String sessionId,
+    required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
@@ -154,15 +166,24 @@ class CodexMessageRepository({
               time: _messageTimeFrom(timestamp),
             )
           : messages[existingIndex]!.info;
-      final message = _toolMessage(
-        messageId: tool.canonicalId,
-        sessionId: sessionId,
+      final message = PluginMessageWithParts(
         info: info,
-        tool: tool.tool,
-        title: tool.title,
-        status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
-        output: tool.output,
-        attachments: tool.attachments,
+        parts: [
+          const CodexToolPartMapper().map(
+            sessionId: sessionId,
+            children: children,
+            tool: CodexProjectedTool(
+              canonicalId: tool.canonicalId,
+              tool: tool.tool,
+              presentation: tool.presentation,
+              title: tool.title,
+              status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
+              output: tool.output,
+              time: tool.time,
+              attachments: tool.attachments,
+            ),
+          ),
+        ],
       );
       if (existingIndex == null) {
         toolMessageIndexById[tool.canonicalId] = messages.length;

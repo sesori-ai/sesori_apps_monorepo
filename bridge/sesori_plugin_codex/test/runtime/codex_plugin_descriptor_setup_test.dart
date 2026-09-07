@@ -3,10 +3,58 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("CodexPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    const descriptor = CodexPluginDescriptor(desktopAppCliCandidates: []);
+    const config = PluginConfig(values: {"port": null, "bin": "codex"});
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("codex-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const CodexRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without any managed runtime on disk", () {
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    });
+
+    test("declines when only the pinned version is installed", () {
+      installedVersion(const CodexRuntimeManifest().bundledVersion.raw);
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("0.140.0");
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("0.140.0");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("CodexPluginDescriptor.inspectSetup", () {
     const stateDirectory = "/state";
     const config = PluginConfig(values: {"port": null, "bin": "codex"});
@@ -98,9 +146,80 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
+    test("recognizes a superseded but still supported managed runtime", () async {
+      final stateDir = await Directory.systemTemp.createTemp("codex-setup");
+      addTearDown(() async {
+        if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+      });
+      const manifest = CodexRuntimeManifest();
+      final supersededVersion = SemanticRuntimeVersion.parse(value: "0.140.0");
+      Directory(p.join(stateDir.path, manifest.runtimeId, supersededVersion.raw)).createSync(recursive: true);
+      final supersededPath = manifest.managedBinaryPath(stateDirectory: stateDir.path, version: supersededVersion);
+      final processes = _ProbeProcessService(
+        spawnOutcomes: [
+          const ProcessException("codex", ["--version"], "missing", 2),
+          ProcessException(
+            manifest.managedBinaryPath(stateDirectory: stateDir.path, version: manifest.bundledVersion),
+            const ["--version"],
+            "missing",
+            2,
+          ),
+          _ProbeProcess(
+            pid: 5,
+            stdoutBytes: utf8.encode("codex 0.140.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 6,
+            stdoutBytes: utf8.encode("Logged in using ChatGPT\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDir.path,
+      );
+
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.140.0"));
+      expect(processes.spawnedExecutables.last, supersededPath);
+    });
+
+    test("ignores a managed runtime below the minimum supported version", () async {
+      final stateDir = await Directory.systemTemp.createTemp("codex-setup");
+      addTearDown(() async {
+        if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+      });
+      const manifest = CodexRuntimeManifest();
+      Directory(p.join(stateDir.path, manifest.runtimeId, "0.138.0")).createSync(recursive: true);
+      final processes = _ProbeProcessService(
+        spawnError: const ProcessException("codex", ["--version"], "missing", 2),
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDir.path,
+      );
+
+      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(
+        processes.spawnedExecutables,
+        isNot(contains(contains("0.138.0"))),
+        reason: "an obsolete managed version is never a selection candidate",
+      );
+    });
+
     test("recognizes and authenticates a previously installed managed runtime", () async {
       const manifest = CodexRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           const ProcessException("codex", ["--version"], "missing", 2),
@@ -165,7 +284,10 @@ void main() {
 
     test("reports an indeterminate desktop-app fallback probe", () async {
       const manifest = CodexRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
       final processes = _ProbeProcessService(
         spawnOutcomes: [
@@ -195,7 +317,10 @@ void main() {
 
     test("keeps an indeterminate PATH probe when desktop fallbacks are absent", () async {
       const manifest = CodexRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
       final processes = _ProbeProcessService(
         spawnOutcomes: [
@@ -224,7 +349,10 @@ void main() {
 
     test("skips an outdated desktop-app CLI in favor of the managed runtime", () async {
       const manifest = CodexRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
       final processes = _ProbeProcessService(
         spawnOutcomes: [

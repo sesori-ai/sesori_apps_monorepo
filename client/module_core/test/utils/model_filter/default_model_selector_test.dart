@@ -14,6 +14,7 @@ ProviderModel _model({
     providerID: "test-provider",
     name: name ?? id,
     variants: const [],
+    defaultVariant: null,
     family: family,
     isAvailable: isAvailable,
     releaseDate: releaseDate,

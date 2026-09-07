@@ -60,6 +60,16 @@ defaults and queued client sends coherent.
   client user-message id in either case. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
+- Codex spawn calls render as one inline subtask card in the parent chat as
+  well as a child in the tasks widget, on phone and desktop. Cards open the
+  correct child transcript and survive history reload. A linked card follows
+  the child's session status; completing the spawn call or the parent turn
+  must not stop its spinner while the child runs. Readable child nicknames and
+  titles are preserved; raw path fallbacks such as
+  `/root/architecture_review_1271` display as `Architecture review · 1271`.
+  Matching uses the raw task path under the direct parent, not the formatted
+  label. An interrupted launch that never creates a child retains its own
+  terminal tool status.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;
@@ -144,7 +154,10 @@ defaults and queued client sends coherent.
   resident busy until the native RPC finishes. A rejected native compaction clears
   its running card. Commands reject while that session is busy, and a successful
   ordinary command with no agent run crosses `get_state`
-  before returning the lane idle.
+  before returning the lane idle. A command absent from Pi's current project
+  catalog is a stale-options rejection, allowing clients to refresh and show it
+  as unavailable rather than mistaking the deterministic refusal for a
+  transient queued send.
   Abort rejects queued work and replaces the process so hidden steering or
   follow-up input cannot leak into the next turn. Its control acknowledgement
   has a short bound: if Pi waits for queued continuation idleness instead of
@@ -155,15 +168,21 @@ defaults and queued client sends coherent.
   before admission and are never fetched, stringified, or silently omitted.
 - Pi discovers models, thinking levels, and extension, prompt-template, prompt,
   and skill commands through bounded approved no-session probes in normalized
-  project directories. Because Pi omits built-in TUI commands from `get_commands`,
-  the plugin appends one `compact` command and dispatches it through Pi's native
-  `compact` RPC with optional user instructions rather than sending `/compact` as
-  a prompt. If an upstream command already owns that name, it remains an ordinary
-  slash command and the native action is not synthesized. Private instructions
-  remain confined to the RPC while the synthetic user marker uses only the
-  user-visible command text. Reuse is project-local, refresh always probes, concurrent
-  requests for one project coalesce, and a failed refresh never replaces the
-  last coherent snapshot. Dialogs raised during probes are cancelled and never
+  project directories. Command discovery precedes per-model thinking hydration,
+  so a later timeout retains the commands already observed in the partial catalog.
+  Pi's bundled `llama` extension advertises itself over RPC but refuses non-TUI
+  execution, so the plugin omits commands from that bundled source through an
+  explicit exclusion set. Exclusions apply to numbered invocation aliases too;
+  user extensions and prompts named `llama` remain available. Because Pi omits
+  its other built-in TUI commands from `get_commands`, the plugin appends one
+  `compact` command and dispatches it through Pi's native `compact` RPC with optional user instructions
+  rather than sending `/compact` as a prompt. If an upstream command already owns
+  that name, it remains an ordinary slash command and the native action is not
+  synthesized. Private instructions remain confined to the RPC while the synthetic
+  user marker uses only the user-visible command text. Reuse is project-local and
+  independent of per-session process residency, refresh always probes, concurrent
+  requests for one project coalesce, and a failed refresh never replaces the last
+  coherent snapshot. Dialogs raised during probes are cancelled and never
   enter session UI state. Empty Pi sessions remain lazy until their first prompt
   or command. Creation is published before any buffered turn output. Imported
   parent forks preserve exact lineage. Deleting a root fences descendant work
@@ -227,7 +246,9 @@ defaults and queued client sends coherent.
   and form requests carry explicit session IDs.
 - DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
   completion, and bounded warning errors through standard ACP plus its narrow
-  status extension. Retry and compaction-start notifications are validated but
+  status and sub-agent extensions. Lifecycle frames arriving while the accepted
+  prompt is still writing stay buffered behind its user-message publication.
+  Retry and compaction-start notifications are validated but
   intentionally emit no shared event because DeepSeek does not supply the timing
   required by the shared retry state and the active turn is already busy.
 - Normalized user-message events feed the durable user-side activity marker used
@@ -248,7 +269,15 @@ defaults and queued client sends coherent.
   transcript model before falling back to agent or catalog defaults. The
   transcript model remains authoritative when a retained provider cache does
   not list it, so a terminal-imported session cannot silently resume on a
-  different provider.
+  different provider. The selection already on screen is retained the same way,
+  but retention is only ever a fallback: an agent the user picks, or a
+  remembered default the bridge reports, replaces the model whenever the catalog
+  still offers what it names, and an options refresh takes no retention at all
+  because adopting the catalog it just fetched is why it ran.
+  Everything the catalog is asked to supply must be something it still
+  advertises as available: persisted defaults, an agent's declared model, and a
+  queued prompt's model are each validated before being adopted, so an agent
+  naming a model this catalog does not carry does not put it in the composer.
 - The bridge owns accepted-but-not-yet-visible prompts. An entry appears in the
   session snapshot and full-list `session.queued-prompts` events, survives
   leaving the screen, locking the phone, and reconnecting, and is visible to
@@ -267,16 +296,24 @@ defaults and queued client sends coherent.
   survive a transient disconnection while the session-detail cubit is alive,
   retain the agent, model, and variant selected at submission, and drain with
   the same prompt id so retries stay idempotent.
-- When a plugin rejects a send before acceptance because its agent, model, or
-  variant is no longer offered, the bridge deletes that options-cache row and
-  returns the typed `staleSessionOptions` rejection. OpenCode keeps the requested
-  selection on its synchronous message reservation; when that endpoint collapses
-  a rejection into a generic 500, the plugin checks fresh project options and
-  classifies the failure as stale only when the requested selection is absent or unavailable.
-  The client force-refreshes the options, replaces only unsupported queued
-  selections without changing FIFO order or prompt ids, warns the user, and
-  retries once. A failed refresh or second stale rejection leaves the prompt
-  visible and queued instead of disappearing or entering a retry loop.
+- When a plugin rejects a send before acceptance because its agent, model,
+  variant, or command is no longer offered, the bridge deletes that
+  options-cache row and returns the typed `staleSessionOptions` rejection.
+  OpenCode keeps the requested selection on its synchronous message reservation;
+  when that endpoint collapses a rejection into a generic 500, the plugin checks
+  fresh project options and classifies the failure as stale only when the
+  requested selection is absent or unavailable. The client force-refreshes the
+  options, replaces only unsupported queued selections without changing FIFO
+  order or prompt ids, warns the user, and retries once. If a refreshed catalog
+  no longer includes a rejected command, that command remains in its FIFO
+  position with a visible unavailable state and Remove action; it is not retried
+  and later prompts do not overtake it. This decision uses the applied catalog
+  even when a background options update overtakes the forced refresh. Pi only
+  classifies a missing command as stale after complete catalog discovery; an
+  incomplete catalog returns a transient failure and keeps the submission queued.
+  A failed refresh or second stale
+  rejection leaves the prompt visible and queued instead of disappearing or
+  entering a retry loop.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
@@ -349,7 +386,7 @@ defaults and queued client sends coherent.
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
 | L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Automated Codex coverage holds root idle through a running child, releases it once, rolls child pending input into the root summary, and reconciles an already-idle child abort. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
-| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; and a stale selection refreshes, warns, and retries once without losing the queued prompt. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
+| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; a stale selection refreshes, warns, and retries once without losing the queued prompt; and a removed command becomes visibly unavailable and removable without being retried or overtaken. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
@@ -412,7 +449,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   unrelated options discovery before answering, remains silent, drops the
   staged prompt, changes FIFO order or prompt identity, refreshes and retries
   without a bound, or leaves a corrected selection on a variant the picker does
-  not display.
+  not display. A command absent from the refreshed catalog still reads as
+  queued, retries automatically, disappears with its authored arguments, or
+  allows a later prompt to overtake it. Failed or partial Pi catalog discovery
+  presents an unconfirmed command as permanently unavailable.
 - Copied chat text runs headings, paragraphs, list bullets, table cells, or
   separate message parts together, or inserts empty lines based on their visual
   spacing instead of one structural line break. Desktop Enter inserts a newline,
@@ -437,6 +477,10 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shows a transient idle between the task notification and its wake-up turn; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
+- A Codex spawn is absent from the parent chat, appears twice as both a tool
+  and a subtask, loses its child link after reload, or stops spinning just
+  because the spawn call returned. Machine task paths appear unformatted, or
+  formatting changes which child a card opens.
 - A Codex root reports idle while a child is starting or still runs, never
   releases its deferred idle after the child settles, emits completion more
   than once, omits a busy child id, omits an awaiting-input root after reconnect,
@@ -525,8 +569,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   `shared/sesori_shared/lib/src/models/sesori/sesori_sse_event.dart`;
   `shared/sesori_shared/lib/src/models/sesori/abort_session_request.dart`
 - Claude: `bridge/sesori_plugin_claude/lib/src/services/claude_session_service.dart`
-  (running tasks, scoped abort) and `test/claude_session_service_test.dart`;
-  `client/app/lib/features/session_detail/widgets/session_abort_scope_dialog.dart`
+  (running tasks, scoped abort) and
+  `bridge/sesori_plugin_claude/test/claude_session_service_test.dart`;
+  `client/module_app_ui/lib/src/features/session_detail/widgets/session_abort_scope_dialog.dart`
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - DeepSeek: `bridge/sesori_plugin_deepseek/` and the shared ACP plugin implementation
 - Copilot: `bridge/sesori_plugin_copilot/` and the shared ACP plugin implementation

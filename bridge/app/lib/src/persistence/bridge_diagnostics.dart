@@ -16,7 +16,7 @@ class BridgeDiagnostics({required final bool _isSupervised}) {
       final (hasFileSystemAccess, hasGitAvailable) = await (checkFilesystemAccess(), checkGitAvailable()).wait;
       return hasFileSystemAccess && hasGitAvailable;
     } on Object catch (error, stackTrace) {
-      Log.w("Unexpected error during diagnostics: $error\n$stackTrace");
+      Log.w("Unexpected error during diagnostics", error, stackTrace);
       return false;
     }
   }

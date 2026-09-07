@@ -322,18 +322,30 @@ class CodexPlugin._({
       return;
     }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
-    if (_subAgentItemParser.parse(notification: notification) case CodexSubAgentActivity(
+    final subAgentItem = _subAgentItemParser.parse(notification: notification);
+    if (subAgentItem case CodexSubAgentActivity(
       lifecycle: CodexCorrelatableItemLifecycle.started,
       kind: CodexSubAgentActivityKind.started,
       threadId: final parentId,
       :final agentThreadId,
       :final agentPath,
     )) {
-      await _announceSubAgentThread(
+      final announced = await _announceSubAgentThread(
         parentId: parentId,
         childId: agentThreadId,
         agentPath: agentPath,
       );
+      if (announced) {
+        _rolloutTailer.drain(sessionId: parentId);
+        final tool = _toolLifecycleTracker.observeSubAgentStarted(event: subAgentItem);
+        _eventMapper
+            .mapProjectedTool(
+              threadId: parentId,
+              tool: tool,
+              children: _sessionService.knownChildThreads(sessionId: parentId),
+            )
+            .forEach(_eventBuffer.add);
+      }
     }
     final command = _commandExecutionParser.parse(
       notification: notification,
@@ -367,6 +379,7 @@ class CodexPlugin._({
             .mapProjectedTool(
               threadId: threadId,
               tool: tool,
+              children: _sessionService.knownChildThreads(sessionId: threadId),
             )
             .forEach(_eventBuffer.add);
       }
@@ -406,6 +419,7 @@ class CodexPlugin._({
         : _eventMapper.mapProjectedTool(
             threadId: mappedThreadId!,
             tool: projectedTool,
+            children: _sessionService.knownChildThreads(sessionId: mappedThreadId),
           );
     _sessionService
         .coordinateSessionEvents(
@@ -424,12 +438,12 @@ class CodexPlugin._({
   /// Dispatches the typed activity fact to Layer 3 and buffers the ordered
   /// child-session events it returns. Generic mapper context remains shared
   /// with every live thread so later child events keep their model and project.
-  Future<void> _announceSubAgentThread({
+  Future<bool> _announceSubAgentThread({
     required String parentId,
     required String childId,
     required String? agentPath,
   }) async {
-    if (_deletedThreadIds.contains(parentId) || _deletedThreadIds.contains(childId)) return;
+    if (_deletedThreadIds.contains(parentId) || _deletedThreadIds.contains(childId)) return false;
     // The child's `thread/status/changed` normally precedes the activity item;
     // preserve it when present and otherwise announce the child as idle.
     final status = _sessionStatuses[childId] ?? const PluginSessionStatus.idle();
@@ -440,7 +454,7 @@ class CodexPlugin._({
       agentPath: agentPath,
       status: status,
     );
-    if (announcement == null) return;
+    if (announcement == null) return false;
     final child = announcement.child;
     _sessionStatuses[childId] = announcement.status;
     _eventMapper.setThreadTime(child);
@@ -450,6 +464,7 @@ class CodexPlugin._({
     if (directory != null) _recordThreadDirectory(childId, directory);
     announcement.events.forEach(_eventBuffer.add);
     _syncWorkState();
+    return true;
   }
 
   CodexImageGenerationItemDto? _parseImageGeneration({
@@ -478,6 +493,7 @@ class CodexPlugin._({
           .mapProjectedTool(
             threadId: append.sessionId,
             tool: tool,
+            children: _sessionService.knownChildThreads(sessionId: append.sessionId),
           )
           .forEach(_eventBuffer.add);
     }
@@ -1046,7 +1062,13 @@ class CodexPlugin._({
       );
     }
     for (final tool in _toolLifecycleTracker.observeTerminalNotification(notification: terminal)) {
-      _eventMapper.mapProjectedTool(threadId: sessionId, tool: tool).forEach(_eventBuffer.add);
+      _eventMapper
+          .mapProjectedTool(
+            threadId: sessionId,
+            tool: tool,
+            children: _sessionService.knownChildThreads(sessionId: sessionId),
+          )
+          .forEach(_eventBuffer.add);
     }
   }
 

@@ -230,7 +230,13 @@ void main() {
   group("ClaudeEventDispatcher subtasks", () {
     late ClaudeEventDispatcher dispatcher;
 
-    setUp(() => dispatcher = ClaudeEventDispatcher(content: const ClaudeContentMapper(), tools: ClaudeToolTracker()));
+    setUp(
+      () => dispatcher = ClaudeEventDispatcher(
+        content: const ClaudeContentMapper(),
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      ),
+    );
 
     test("emits one subtask part through launch, turn end, and notification", () {
       final launch = _map(dispatcher, _agentAssistantFrame());
@@ -314,6 +320,7 @@ void main() {
           _notificationRecord(text: _notificationText),
         ],
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages, hasLength(1));
@@ -331,12 +338,14 @@ void main() {
         agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
       final live = mapper.map(
         sessionId: _session,
         agentId: null,
         records: [_agentRecord(), _launchResultRecord()],
         residentTaskToolUseIds: const {_toolUseId},
+        catalogModelId: null,
       );
 
       expect((dead.single.parts.single as PluginMessagePartSubtask).taskState?.status, PluginToolStatus.cancelled);
@@ -353,6 +362,7 @@ void main() {
           _notificationRecord(text: _notificationText),
         ],
         residentTaskToolUseIds: const {_toolUseId},
+        catalogModelId: null,
       );
 
       final part = messages.single.parts.single as PluginMessagePartSubtask;
@@ -376,6 +386,7 @@ void main() {
           _notificationRecord(text: "<task-notification>malformed"),
         ],
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages, hasLength(1));

@@ -93,6 +93,33 @@ void main() {
       expect(service.successfulBackendSessions, ["current-session"]);
     });
 
+    test("a command catalog change refreshes the plugin's cached projects", () async {
+      runtime.emit(event: const BridgeSseCommandCatalogUpdated(), generation: 7);
+      await _flushEvents();
+
+      expect(service.cachedProjectCalls, [(pluginId: "plugin", generation: 7)]);
+      expect(service.backendCalls, isEmpty);
+    });
+
+    test("a stale command catalog change refreshes nothing", () async {
+      runtime.emit(event: const BridgeSseCommandCatalogUpdated(), generation: 6);
+      await _flushEvents();
+
+      expect(service.cachedProjectCalls, isEmpty);
+    });
+
+    test("contains a failing command catalog refresh and keeps listening", () async {
+      service.failingCachedProjectPlugins.add("plugin");
+
+      runtime.emit(event: const BridgeSseCommandCatalogUpdated(), generation: 7);
+      await _flushEvents();
+      service.failingCachedProjectPlugins.clear();
+      runtime.emit(event: const BridgeSseCommandCatalogUpdated(), generation: 7);
+      await _flushEvents();
+
+      expect(service.cachedProjectCalls, hasLength(2));
+    });
+
     test("pre-binding options changes no-op without preventing a later refresh", () async {
       runtime.emit(event: const BridgeSseSessionOptionsChanged(sessionID: "new-session"), generation: 7);
       await _flushEvents();
@@ -167,6 +194,20 @@ class _FakeSessionOptionsService() implements SessionOptionsService {
   final List<({String pluginId, String backendSessionId, int generation})> backendCalls = [];
   final List<String> successfulCreationProjects = [];
   final List<String> successfulBackendSessions = [];
+  final List<({String pluginId, int generation})> cachedProjectCalls = [];
+  final Set<String> failingCachedProjectPlugins = {};
+
+  @override
+  Stream<SessionOptionsCacheUpdate> get cacheUpdates => const Stream<SessionOptionsCacheUpdate>.empty();
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> refreshActiveOnlyForCachedProjects({required String pluginId, required int generation}) async {
+    cachedProjectCalls.add((pluginId: pluginId, generation: generation));
+    if (failingCachedProjectPlugins.contains(pluginId)) throw StateError("cached project refresh failed");
+  }
 
   @override
   Future<SessionOptionsOutcome> loadDynamic({required String pluginId, required String projectId}) async {

@@ -4,47 +4,54 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "runtime_manifest.dart";
+import "runtime_version.dart";
 
-/// Reports whether a managed runtime directory holds a version other than the
-/// one currently pinned.
+/// Reports which managed runtime versions are present on disk.
 ///
 /// Managed runtimes are laid out as `<stateDirectory>/<runtimeId>/<version>/`,
 /// so a bridge update that pins a newer version simply stops finding the old
-/// one: setup reports the runtime as missing even though a previous version is
-/// still on disk. Descriptors use this to tell the two cases apart — nothing
-/// installed at all versus a superseded install — so the user is told the
-/// runtime needs updating rather than being told to install it by hand.
+/// one at the pinned path. Selection uses this to fall back to an older but
+/// still supported version, and descriptors use it to tell "nothing installed"
+/// apart from "superseded install" for wording and for the startup upgrade.
 ///
 /// Read-only: it never deletes or repairs anything. Sweeping superseded
 /// versions remains [ManagedRuntimeCleaner]'s job during an install.
 class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) {
-  /// Whether a managed version directory other than the pinned
-  /// [RuntimeManifest.bundledVersion] exists under [stateDirectory].
+  /// Managed versions installed under [stateDirectory], newest first.
   ///
-  /// Only the directory name is inspected; the binary inside is not probed,
-  /// because this decides wording, not whether the runtime can run.
-  bool hasSupersededVersion({required String stateDirectory}) {
+  /// Only directory names are inspected; no binary is probed. Names that do not
+  /// parse as this runtime's version (installer staging, stray directories) are
+  /// ignored, and an unreadable managed directory yields an empty list.
+  List<RuntimeVersion> installedVersions({required String stateDirectory}) {
     final managedDir = Directory(p.join(stateDirectory, _manifest.runtimeId));
-    if (!managedDir.existsSync()) return false;
+    if (!managedDir.existsSync()) return const [];
 
-    final pinned = _manifest.bundledVersion.raw;
+    final List<FileSystemEntity> entries;
     try {
-      return managedDir.listSync(followLinks: false).any(
-        (entity) {
-          if (entity is! Directory) return false;
-          final name = p.basename(entity.path);
-          return name != pinned && _manifest.parseVersion(value: name) != null;
-        },
-      );
+      entries = managedDir.listSync(followLinks: false);
     } on Object catch (error, stackTrace) {
-      // Wording-only input: an unreadable directory falls back to the generic
-      // hint rather than failing setup inspection.
+      // Advisory input: an unreadable directory reads as "nothing managed here"
+      // rather than failing setup inspection or an install.
       Log.w(
         "[${_manifest.runtimeId}] could not inspect managed runtime dir '${managedDir.path}'",
         error,
         stackTrace,
       );
-      return false;
+      return const [];
     }
+
+    final versions = [
+      for (final entity in entries)
+        if (entity is Directory) ?_manifest.parseInstalledVersion(value: p.basename(entity.path)),
+    ];
+    versions.sort((a, b) => b.compareTo(a));
+    return List<RuntimeVersion>.unmodifiable(versions);
+  }
+
+  /// Whether a managed version directory other than the pinned
+  /// [RuntimeManifest.bundledVersion] exists under [stateDirectory].
+  bool hasSupersededVersion({required String stateDirectory}) {
+    final pinned = _manifest.bundledVersion.raw;
+    return installedVersions(stateDirectory: stateDirectory).any((version) => version.raw != pinned);
   }
 }

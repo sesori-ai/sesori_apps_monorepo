@@ -57,9 +57,9 @@ void main() {
     expect(event.data, isNot(isA<SesoriSessionEvent>()));
   });
 
-  test("commandCatalogUpdated is a global plugin event", () {
+  test("sessionOptionsUpdated is a global plugin event", () {
     final event = SseEvent(
-      data: const SesoriSseEvent.commandCatalogUpdated(pluginId: "cursor"),
+      data: const SesoriSseEvent.sessionOptionsUpdated(pluginId: "cursor", projectId: null),
     );
 
     expect(event.sessionId, isNull);

@@ -2548,7 +2548,6 @@ mixin $SessionOptionsCacheTableTableToColumns
   String? get capturedProjectPath;
   int get revision;
   int get capturedAt;
-  PluginSessionOptionsCompleteness get completeness;
   String get agentsJson;
   String get providersJson;
   String get commandsJson;
@@ -2570,13 +2569,6 @@ mixin $SessionOptionsCacheTableTableToColumns
     }
     map['revision'] = Variable<int>(revision);
     map['captured_at'] = Variable<int>(capturedAt);
-    {
-      map['completeness'] = Variable<String>(
-        $SessionOptionsCacheTableTable.$convertercompleteness.toSql(
-          completeness,
-        ),
-      );
-    }
     map['agents_json'] = Variable<String>(agentsJson);
     map['providers_json'] = Variable<String>(providersJson);
     map['commands_json'] = Variable<String>(commandsJson);
@@ -2674,21 +2666,6 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  @override
-  late final GeneratedColumnWithTypeConverter<
-    PluginSessionOptionsCompleteness,
-    String
-  >
-  completeness =
-      GeneratedColumn<String>(
-        'completeness',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<PluginSessionOptionsCompleteness>(
-        $SessionOptionsCacheTableTable.$convertercompleteness,
-      );
   static const VerificationMeta _agentsJsonMeta = const VerificationMeta(
     'agentsJson',
   );
@@ -2731,7 +2708,6 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
     capturedProjectPath,
     revision,
     capturedAt,
-    completeness,
     agentsJson,
     providersJson,
     commandsJson,
@@ -2867,13 +2843,6 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
         DriftSqlType.int,
         data['${effectivePrefix}captured_at'],
       )!,
-      completeness: $SessionOptionsCacheTableTable.$convertercompleteness
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}completeness'],
-            )!,
-          ),
       agentsJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}agents_json'],
@@ -2898,11 +2867,6 @@ class $SessionOptionsCacheTableTable extends SessionOptionsCacheTable
   $converterscope = const EnumNameConverter<PluginSessionOptionsScope>(
     PluginSessionOptionsScope.values,
   );
-  static JsonTypeConverter2<PluginSessionOptionsCompleteness, String, String>
-  $convertercompleteness =
-      const EnumNameConverter<PluginSessionOptionsCompleteness>(
-        PluginSessionOptionsCompleteness.values,
-      );
   @override
   bool get withoutRowId => true;
 }
@@ -2924,8 +2888,6 @@ class SessionOptionsCacheTableData extends DataClass
   @override
   final int capturedAt;
   @override
-  final PluginSessionOptionsCompleteness completeness;
-  @override
   final String agentsJson;
   @override
   final String providersJson;
@@ -2939,7 +2901,6 @@ class SessionOptionsCacheTableData extends DataClass
     this.capturedProjectPath,
     required this.revision,
     required this.capturedAt,
-    required this.completeness,
     required this.agentsJson,
     required this.providersJson,
     required this.commandsJson,
@@ -2957,7 +2918,6 @@ class SessionOptionsCacheTableData extends DataClass
           : Value(capturedProjectPath),
       revision: Value(revision),
       capturedAt: Value(capturedAt),
-      completeness: Value(completeness),
       agentsJson: Value(agentsJson),
       providersJson: Value(providersJson),
       commandsJson: Value(commandsJson),
@@ -2981,8 +2941,6 @@ class SessionOptionsCacheTableData extends DataClass
       ),
       revision: serializer.fromJson<int>(json['revision']),
       capturedAt: serializer.fromJson<int>(json['capturedAt']),
-      completeness: $SessionOptionsCacheTableTable.$convertercompleteness
-          .fromJson(serializer.fromJson<String>(json['completeness'])),
       agentsJson: serializer.fromJson<String>(json['agentsJson']),
       providersJson: serializer.fromJson<String>(json['providersJson']),
       commandsJson: serializer.fromJson<String>(json['commandsJson']),
@@ -3001,11 +2959,6 @@ class SessionOptionsCacheTableData extends DataClass
       'capturedProjectPath': serializer.toJson<String?>(capturedProjectPath),
       'revision': serializer.toJson<int>(revision),
       'capturedAt': serializer.toJson<int>(capturedAt),
-      'completeness': serializer.toJson<String>(
-        $SessionOptionsCacheTableTable.$convertercompleteness.toJson(
-          completeness,
-        ),
-      ),
       'agentsJson': serializer.toJson<String>(agentsJson),
       'providersJson': serializer.toJson<String>(providersJson),
       'commandsJson': serializer.toJson<String>(commandsJson),
@@ -3020,7 +2973,6 @@ class SessionOptionsCacheTableData extends DataClass
     Value<String?> capturedProjectPath = const Value.absent(),
     int? revision,
     int? capturedAt,
-    PluginSessionOptionsCompleteness? completeness,
     String? agentsJson,
     String? providersJson,
     String? commandsJson,
@@ -3034,7 +2986,6 @@ class SessionOptionsCacheTableData extends DataClass
         : this.capturedProjectPath,
     revision: revision ?? this.revision,
     capturedAt: capturedAt ?? this.capturedAt,
-    completeness: completeness ?? this.completeness,
     agentsJson: agentsJson ?? this.agentsJson,
     providersJson: providersJson ?? this.providersJson,
     commandsJson: commandsJson ?? this.commandsJson,
@@ -3054,9 +3005,6 @@ class SessionOptionsCacheTableData extends DataClass
       capturedAt: data.capturedAt.present
           ? data.capturedAt.value
           : this.capturedAt,
-      completeness: data.completeness.present
-          ? data.completeness.value
-          : this.completeness,
       agentsJson: data.agentsJson.present
           ? data.agentsJson.value
           : this.agentsJson,
@@ -3079,7 +3027,6 @@ class SessionOptionsCacheTableData extends DataClass
           ..write('capturedProjectPath: $capturedProjectPath, ')
           ..write('revision: $revision, ')
           ..write('capturedAt: $capturedAt, ')
-          ..write('completeness: $completeness, ')
           ..write('agentsJson: $agentsJson, ')
           ..write('providersJson: $providersJson, ')
           ..write('commandsJson: $commandsJson')
@@ -3096,7 +3043,6 @@ class SessionOptionsCacheTableData extends DataClass
     capturedProjectPath,
     revision,
     capturedAt,
-    completeness,
     agentsJson,
     providersJson,
     commandsJson,
@@ -3112,7 +3058,6 @@ class SessionOptionsCacheTableData extends DataClass
           other.capturedProjectPath == this.capturedProjectPath &&
           other.revision == this.revision &&
           other.capturedAt == this.capturedAt &&
-          other.completeness == this.completeness &&
           other.agentsJson == this.agentsJson &&
           other.providersJson == this.providersJson &&
           other.commandsJson == this.commandsJson);
@@ -3127,7 +3072,6 @@ class SessionOptionsCacheTableCompanion
   final Value<String?> capturedProjectPath;
   final Value<int> revision;
   final Value<int> capturedAt;
-  final Value<PluginSessionOptionsCompleteness> completeness;
   final Value<String> agentsJson;
   final Value<String> providersJson;
   final Value<String> commandsJson;
@@ -3139,7 +3083,6 @@ class SessionOptionsCacheTableCompanion
     this.capturedProjectPath = const Value.absent(),
     this.revision = const Value.absent(),
     this.capturedAt = const Value.absent(),
-    this.completeness = const Value.absent(),
     this.agentsJson = const Value.absent(),
     this.providersJson = const Value.absent(),
     this.commandsJson = const Value.absent(),
@@ -3152,7 +3095,6 @@ class SessionOptionsCacheTableCompanion
     this.capturedProjectPath = const Value.absent(),
     required int revision,
     required int capturedAt,
-    required PluginSessionOptionsCompleteness completeness,
     required String agentsJson,
     required String providersJson,
     required String commandsJson,
@@ -3161,7 +3103,6 @@ class SessionOptionsCacheTableCompanion
        ownerId = Value(ownerId),
        revision = Value(revision),
        capturedAt = Value(capturedAt),
-       completeness = Value(completeness),
        agentsJson = Value(agentsJson),
        providersJson = Value(providersJson),
        commandsJson = Value(commandsJson);
@@ -3173,7 +3114,6 @@ class SessionOptionsCacheTableCompanion
     Expression<String>? capturedProjectPath,
     Expression<int>? revision,
     Expression<int>? capturedAt,
-    Expression<String>? completeness,
     Expression<String>? agentsJson,
     Expression<String>? providersJson,
     Expression<String>? commandsJson,
@@ -3187,7 +3127,6 @@ class SessionOptionsCacheTableCompanion
         'captured_project_path': capturedProjectPath,
       if (revision != null) 'revision': revision,
       if (capturedAt != null) 'captured_at': capturedAt,
-      if (completeness != null) 'completeness': completeness,
       if (agentsJson != null) 'agents_json': agentsJson,
       if (providersJson != null) 'providers_json': providersJson,
       if (commandsJson != null) 'commands_json': commandsJson,
@@ -3202,7 +3141,6 @@ class SessionOptionsCacheTableCompanion
     Value<String?>? capturedProjectPath,
     Value<int>? revision,
     Value<int>? capturedAt,
-    Value<PluginSessionOptionsCompleteness>? completeness,
     Value<String>? agentsJson,
     Value<String>? providersJson,
     Value<String>? commandsJson,
@@ -3215,7 +3153,6 @@ class SessionOptionsCacheTableCompanion
       capturedProjectPath: capturedProjectPath ?? this.capturedProjectPath,
       revision: revision ?? this.revision,
       capturedAt: capturedAt ?? this.capturedAt,
-      completeness: completeness ?? this.completeness,
       agentsJson: agentsJson ?? this.agentsJson,
       providersJson: providersJson ?? this.providersJson,
       commandsJson: commandsJson ?? this.commandsJson,
@@ -3250,13 +3187,6 @@ class SessionOptionsCacheTableCompanion
     if (capturedAt.present) {
       map['captured_at'] = Variable<int>(capturedAt.value);
     }
-    if (completeness.present) {
-      map['completeness'] = Variable<String>(
-        $SessionOptionsCacheTableTable.$convertercompleteness.toSql(
-          completeness.value,
-        ),
-      );
-    }
     if (agentsJson.present) {
       map['agents_json'] = Variable<String>(agentsJson.value);
     }
@@ -3279,7 +3209,6 @@ class SessionOptionsCacheTableCompanion
           ..write('capturedProjectPath: $capturedProjectPath, ')
           ..write('revision: $revision, ')
           ..write('capturedAt: $capturedAt, ')
-          ..write('completeness: $completeness, ')
           ..write('agentsJson: $agentsJson, ')
           ..write('providersJson: $providersJson, ')
           ..write('commandsJson: $commandsJson')
@@ -5840,7 +5769,6 @@ typedef $$SessionOptionsCacheTableTableCreateCompanionBuilder =
       Value<String?> capturedProjectPath,
       required int revision,
       required int capturedAt,
-      required PluginSessionOptionsCompleteness completeness,
       required String agentsJson,
       required String providersJson,
       required String commandsJson,
@@ -5854,7 +5782,6 @@ typedef $$SessionOptionsCacheTableTableUpdateCompanionBuilder =
       Value<String?> capturedProjectPath,
       Value<int> revision,
       Value<int> capturedAt,
-      Value<PluginSessionOptionsCompleteness> completeness,
       Value<String> agentsJson,
       Value<String> providersJson,
       Value<String> commandsJson,
@@ -5907,16 +5834,6 @@ class $$SessionOptionsCacheTableTableFilterComposer
   ColumnFilters<int> get capturedAt => $composableBuilder(
     column: $table.capturedAt,
     builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<
-    PluginSessionOptionsCompleteness,
-    PluginSessionOptionsCompleteness,
-    String
-  >
-  get completeness => $composableBuilder(
-    column: $table.completeness,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnFilters<String> get agentsJson => $composableBuilder(
@@ -5979,11 +5896,6 @@ class $$SessionOptionsCacheTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get completeness => $composableBuilder(
-    column: $table.completeness,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get agentsJson => $composableBuilder(
     column: $table.agentsJson,
     builder: (column) => ColumnOrderings(column),
@@ -6032,12 +5944,6 @@ class $$SessionOptionsCacheTableTableAnnotationComposer
 
   GeneratedColumn<int> get capturedAt => $composableBuilder(
     column: $table.capturedAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<PluginSessionOptionsCompleteness, String>
-  get completeness => $composableBuilder(
-    column: $table.completeness,
     builder: (column) => column,
   );
 
@@ -6110,8 +6016,6 @@ class $$SessionOptionsCacheTableTableTableManager
                 Value<String?> capturedProjectPath = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<int> capturedAt = const Value.absent(),
-                Value<PluginSessionOptionsCompleteness> completeness =
-                    const Value.absent(),
                 Value<String> agentsJson = const Value.absent(),
                 Value<String> providersJson = const Value.absent(),
                 Value<String> commandsJson = const Value.absent(),
@@ -6123,7 +6027,6 @@ class $$SessionOptionsCacheTableTableTableManager
                 capturedProjectPath: capturedProjectPath,
                 revision: revision,
                 capturedAt: capturedAt,
-                completeness: completeness,
                 agentsJson: agentsJson,
                 providersJson: providersJson,
                 commandsJson: commandsJson,
@@ -6137,7 +6040,6 @@ class $$SessionOptionsCacheTableTableTableManager
                 Value<String?> capturedProjectPath = const Value.absent(),
                 required int revision,
                 required int capturedAt,
-                required PluginSessionOptionsCompleteness completeness,
                 required String agentsJson,
                 required String providersJson,
                 required String commandsJson,
@@ -6149,7 +6051,6 @@ class $$SessionOptionsCacheTableTableTableManager
                 capturedProjectPath: capturedProjectPath,
                 revision: revision,
                 capturedAt: capturedAt,
-                completeness: completeness,
                 agentsJson: agentsJson,
                 providersJson: providersJson,
                 commandsJson: commandsJson,

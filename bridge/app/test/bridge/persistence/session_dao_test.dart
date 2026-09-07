@@ -157,6 +157,44 @@ void main() {
       );
     });
 
+    test("getSessionIdsByBackendIds projects requested bindings of one plugin only", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      Future<void> insert({required String pluginId, required String sessionId, required String backendSessionId}) =>
+          dao.insertSession(
+            pluginId: pluginId,
+            preservePullRequestScope: false,
+            sessionId: sessionId,
+            backendSessionId: backendSessionId,
+            projectId: "/repo",
+            isDedicated: false,
+            createdAt: 100,
+            worktreePath: null,
+            branchName: null,
+            baseBranch: null,
+            baseCommit: null,
+            lastAgent: null,
+            lastAgentModel: null,
+          );
+      // Two plugins may reuse the same backend id; only the requested plugin's
+      // binding may answer.
+      await insert(pluginId: "opencode", sessionId: "stable-a", backendSessionId: "backend-shared");
+      await insert(pluginId: "codex", sessionId: "stable-b", backendSessionId: "backend-shared");
+      await insert(pluginId: "opencode", sessionId: "stable-c", backendSessionId: "backend-other");
+
+      expect(
+        await dao.getSessionIdsByBackendIds(
+          pluginId: "opencode",
+          backendSessionIds: ["backend-shared", "backend-missing"],
+        ),
+        {"backend-shared": "stable-a"},
+      );
+      expect(
+        await dao.getSessionIdsByBackendIds(pluginId: "codex", backendSessionIds: ["backend-shared"]),
+        {"backend-shared": "stable-b"},
+      );
+      expect(await dao.getSessionIdsByBackendIds(pluginId: "opencode", backendSessionIds: const []), isEmpty);
+    });
+
     test("archive clears prompt defaults while observed upsert preserves other bridge metadata", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(

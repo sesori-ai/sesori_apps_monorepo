@@ -19,8 +19,7 @@ AcpChildSpawn _spawn({
 PluginMessagePartSubtask _subtaskPart(BridgeSseEvent event) =>
     (event as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
 
-shared.SessionStatus _status(BridgeSseEvent event) =>
-    shared.SessionStatus.fromJson((event as BridgeSseSessionStatus).status);
+PluginSessionStatus _status(BridgeSseEvent event) => (event as BridgeSseSessionStatus).status;
 
 void main() {
   group("AcpChildSessionTracker", () {
@@ -34,8 +33,8 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/repo",
-      );
-      expect(result.rootSessionId, "root");
+      )!;
+      expect(result.renderSessionId, "root");
       expect(result.messageId, "root-subagent-child");
       expect(result.opensMessage, isFalse, reason: "no prompt yet: session events only");
       expect(result.events, hasLength(2));
@@ -44,7 +43,7 @@ void main() {
       expect(created.parentID, "root");
       expect(created.directory, "/repo");
       expect(created.title, "Thing");
-      expect(_status(result.events[1]), const shared.SessionStatus.busy());
+      expect(_status(result.events[1]), const PluginSessionStatus.busy());
       expect(tracker.isChild(sessionId: "child"), isTrue);
       expect(tracker.childStatuses, {"child": const PluginSessionStatus.busy()});
       expect(tracker.busyChildIds(sessionId: "root"), {"child"});
@@ -72,10 +71,11 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child", prompt: "p", isBackground: true),
         directory: "/r",
-      );
+      )!;
       expect(result.opensMessage, isTrue);
       expect(result.events, hasLength(3));
       expect(_subtaskPart(result.events[2]).prompt, "p");
+      expect(tracker.appendPrompt(childSessionId: "child", delta: "p"), isNull);
       expect(tracker.runningChildren(sessionId: "root").single.isBackground, isTrue);
     });
 
@@ -98,7 +98,7 @@ void main() {
       expect(part.taskState?.status, PluginToolStatus.completed);
       expect(part.taskState?.output, hasLength(maxToolOutputLength));
       expect(part.taskState?.error, isNull);
-      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(_status(events[1]), const PluginSessionStatus.idle());
       expect(tracker.childStatuses, {"child": const PluginSessionStatus.idle()});
       expect(tracker.busyChildIds(sessionId: "root"), isEmpty);
 
@@ -221,7 +221,7 @@ void main() {
         error: null,
       );
       expect(events, hasLength(1));
-      expect(_status(events.single), const shared.SessionStatus.idle());
+      expect(_status(events.single), const PluginSessionStatus.idle());
     });
 
     test("cancelled and failed finishes keep only the failure text", () {
@@ -251,7 +251,7 @@ void main() {
       expect(failed.taskState?.output, isNull);
     });
 
-    test("a nested spawn under a child is flattened to the root", () {
+    test("a nested spawn retains its direct parent while activity rolls up to the root", () {
       tracker.spawn(
         sessionId: "root",
         spawn: _spawn(childId: "child"),
@@ -259,14 +259,83 @@ void main() {
       );
       final nested = tracker.spawn(
         sessionId: "child",
-        spawn: _spawn(childId: "grandchild"),
+        spawn: _spawn(childId: "grandchild", prompt: "nested"),
         directory: "/r",
-      );
-      expect(nested.rootSessionId, "root");
-      expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "root");
+      )!;
+      expect(nested.renderSessionId, "child");
+      expect(shared.Session.fromJson((nested.events[0] as BridgeSseSessionCreated).info).parentID, "child");
+      final tile = _subtaskPart(nested.events.last);
+      expect(tile.id, "child-subagent-grandchild-subtask");
+      expect(tile.messageID, "child-subagent-grandchild");
+      expect(tile.sessionID, "child");
+      expect(tracker.childSessions(sessionId: "root", directory: "/r").map((session) => session.id), ["child"]);
+      expect(tracker.childSessions(sessionId: "child", directory: "/r").map((session) => session.id), [
+        "grandchild",
+      ]);
       expect(tracker.busyChildIds(sessionId: "root"), {"child", "grandchild"});
+      expect(tracker.parentOf(sessionId: "grandchild"), "child");
       expect(tracker.rootOf(sessionId: "grandchild"), "root");
       expect(tracker.rootOf(sessionId: "root"), "root");
+    });
+
+    test("forgetting a child removes its full descendant subtree", () {
+      tracker
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "child",
+          spawn: _spawn(childId: "grandchild"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "grandchild",
+          spawn: _spawn(childId: "great-grandchild"),
+          directory: "/r",
+        )
+        ..spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "sibling"),
+          directory: "/r",
+        );
+
+      expect(tracker.childSessionIds(sessionId: "child"), ["grandchild", "great-grandchild"]);
+      tracker.forgetSession(sessionId: "child");
+
+      expect(tracker.childStatuses.keys, ["sibling"]);
+      expect(tracker.childSessions(sessionId: "root", directory: "/r").map((session) => session.id), ["sibling"]);
+      expect(tracker.busyChildIds(sessionId: "root"), {"sibling"});
+      expect(tracker.isChild(sessionId: "grandchild"), isFalse);
+      expect(tracker.isChild(sessionId: "great-grandchild"), isFalse);
+      expect(
+        tracker.spawn(
+          sessionId: "child",
+          spawn: _spawn(childId: "late-grandchild"),
+          directory: "/r",
+        ),
+        isNull,
+      );
+      expect(
+        tracker.spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        ),
+        isNull,
+      );
+
+      tracker.clear();
+      expect(
+        tracker.spawn(
+          sessionId: "root",
+          spawn: _spawn(childId: "child"),
+          directory: "/r",
+        ),
+        isNotNull,
+        reason: "a new process has drained the deleted process's late frames",
+      );
     });
 
     test("a repeated spawn for a known child is a no-op", () {
@@ -279,7 +348,7 @@ void main() {
         sessionId: "root",
         spawn: _spawn(childId: "child"),
         directory: "/r",
-      );
+      )!;
       expect(again.events, isEmpty);
       expect(again.opensMessage, isFalse);
       expect(tracker.childStatuses.keys, ["child"]);
@@ -353,7 +422,7 @@ void main() {
       final events = tracker.cancelAll();
       await pumpEventQueue();
       expect(_subtaskPart(events[0]).taskState?.status, PluginToolStatus.cancelled);
-      expect(_status(events[1]), const shared.SessionStatus.idle());
+      expect(_status(events[1]), const PluginSessionStatus.idle());
       expect(events, hasLength(2), reason: "the finished sibling is untouched");
       expect(tracker.hasBusyChildren, isFalse);
       expect(changes, 1);

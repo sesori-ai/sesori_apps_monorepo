@@ -16,8 +16,9 @@ import "runtime_manifest.dart";
 ///
 /// Precedence is a sufficiently recent PATH runtime, then the first
 /// sufficiently recent fallback executable candidate (e.g. a CLI bundled by a
-/// backend's desktop app, enumerated by the owning plugin), then the pinned
-/// managed runtime when that exact version is already present and runnable.
+/// backend's desktop app, enumerated by the owning plugin), then the newest
+/// installed managed runtime that is still at or above the minimum, preferring
+/// the pinned version.
 class ManagedRuntimeProvisionService({
   required final RuntimeManifest _manifest,
   required final ManagedRuntimeSelectionService _selectionService,
@@ -27,21 +28,22 @@ class ManagedRuntimeProvisionService({
   /// harmlessly.
   required final List<String> _fallbackExecutableCandidates,
 }) {
-  Stream<RuntimeProvisionProgress> provision({required PluginHost host, required String? explicitExecutablePath}) async* {
+  Stream<RuntimeProvisionProgress> provision({
+    required PluginHost host,
+    required String? explicitExecutablePath,
+  }) async* {
     if (host.startAborted.isAborted) throw const PluginStartAbortedException();
     yield const ProvisionResolving();
 
     final id = _manifest.runtimeId;
     final name = _manifest.displayName;
     final minimum = _manifest.minPathVersion;
-    final bundled = _manifest.bundledVersion;
     final selection = await _selectionService.select(
       explicitExecutablePath: explicitExecutablePath,
       fallbackExecutableCandidates: _fallbackExecutableCandidates,
       environment: host.environment,
       stateDirectory: host.stateDirectory,
       abortSignal: host.startAborted,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
     );
     if (selection case ManagedRuntimeSelected(
       :final binaryPath,
@@ -52,7 +54,7 @@ class ManagedRuntimeProvisionService({
         yield ProvisionNotice(
           message:
               "Installed $name ${rejectedPathVersion.toString()} is older than the minimum supported ${minimum.toString()}; "
-              "using the existing managed $name ${bundled.toString()} instead.",
+              "using the existing managed $name ${version.toString()} instead.",
         );
       }
       Log.i("[$id] using ${source.name} $name ${version.toString()}");
@@ -65,5 +67,4 @@ class ManagedRuntimeProvisionService({
           "No usable existing $name runtime was found. Install $name locally and retry: ${_manifest.installDocsUrl}",
     );
   }
-
 }

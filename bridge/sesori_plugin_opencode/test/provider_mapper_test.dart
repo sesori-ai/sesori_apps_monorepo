@@ -24,6 +24,61 @@ void main() {
       expect(mapped.providers.single.defaultModelID, isNull);
     });
 
+    test("lists models newest release first, undated last, ties by name", () {
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "undated-b": _modelJson(
+            id: "openai/undated-b",
+            name: "B undated",
+            variants: const <String, dynamic>{},
+            family: "f",
+            status: "active",
+          ),
+          "old": _modelJson(
+            id: "openai/old",
+            name: "Old",
+            variants: const <String, dynamic>{},
+            family: "f",
+            status: "active",
+            releaseDate: "2024-01-01",
+          ),
+          "undated-a": _modelJson(
+            id: "openai/undated-a",
+            name: "A undated",
+            variants: const <String, dynamic>{},
+            family: "f",
+            status: "active",
+          ),
+          "new-z": _modelJson(
+            id: "openai/new-z",
+            name: "Z new",
+            variants: const <String, dynamic>{},
+            family: "f",
+            status: "active",
+            releaseDate: "2026-01-01",
+          ),
+          "new-a": _modelJson(
+            id: "openai/new-a",
+            name: "A new",
+            variants: const <String, dynamic>{},
+            family: "f",
+            status: "active",
+            releaseDate: "2026-01-01",
+          ),
+        }),
+      );
+
+      final mapped = mapProviderResponse(response: response);
+
+      expect(mapped.providers.single.models.map((model) => model.id), [
+        "openai/new-a",
+        "openai/new-z",
+        "openai/old",
+        "openai/undated-a",
+        "openai/undated-b",
+      ]);
+    });
+
     test("preserves synthetic model IDs and treats alpha/beta statuses as available", () {
       final response = ConfigProvidersResponse.fromJson(
         _providersJson(<String, dynamic>{
