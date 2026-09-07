@@ -6,7 +6,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "models/antigravity_initialize_dto.dart";
 
 /// Layer-1 ACP process boundary used by unauthenticated runtime probes.
-class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
+class AntigravityAcpApi({
+  required final AcpProcessFactory _processFactory,
+  required final AcpOutputInterceptor _stderrInterceptor,
+}) {
   Future<AntigravityInitializeDto> initializeOnly({
     required AcpLaunchSpec launchSpec,
     required Duration timeout,
@@ -18,6 +21,7 @@ class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
       launchSpec: launchSpec,
       processFactory: _processFactory,
       logTag: "antigravity-probe",
+      stderrInterceptor: _stderrInterceptor,
     );
     try {
       await _awaitPhase(

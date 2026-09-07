@@ -336,6 +336,8 @@ owned-process exit; and restart.
 
 ## Sources
 
+- [Internal Antigravity isolated-profile contract](antigravity-isolated-profiles.md): unregistered profile
+  preparation, neutral browser-noop mode, and selective OAuth stderr handling (not active harness support).
 - Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,
   `bridge_host_process_service_test.dart`, `host_process_acp_factory_test.dart`,
   `acp_output_interceptor_test.dart`, and `acp_stdio_client_test.dart` cover atomic

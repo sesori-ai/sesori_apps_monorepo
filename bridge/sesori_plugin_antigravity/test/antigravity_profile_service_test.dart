@@ -1,0 +1,248 @@
+import "dart:io";
+
+import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:test/test.dart";
+
+class _SettingsStore({required final List<String> events}) implements HostJsonStore {
+  String? contents;
+  bool failWrite = false;
+
+  @override
+  Future<void> write({required String name, required String contents}) async {
+    expect(name, "settings.json");
+    events.add("settings");
+    if (failWrite) throw const FileSystemException("synthetic write interruption");
+    this.contents = contents;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _Commands({required final List<String> events}) implements CommandExecutor {
+  CommandResult preflight = const CommandResult(exitCode: 0, stdout: "", stderr: "");
+  bool failPermissions = false;
+  bool timeoutPreflight = false;
+  final List<({String executable, List<String> arguments, Map<String, String>? environment})> calls = [];
+
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async {
+    calls.add((executable: executable, arguments: arguments, environment: environment));
+    if (executable == "/bin/chmod") {
+      events.add("chmod");
+      expect(arguments.first, "700");
+      expect(Directory(arguments.last).existsSync(), isTrue);
+      if (failPermissions) return const CommandResult(exitCode: 1, stdout: "", stderr: "synthetic permission failure");
+      if (!Platform.isWindows) {
+        final result = await Process.run(executable, arguments);
+        expect(result.exitCode, 0);
+      }
+      return const CommandResult(exitCode: 0, stdout: "", stderr: "");
+    }
+    events.add("preflight");
+    expect(timeout, const Duration(seconds: 5));
+    expect(arguments.last, AntigravityProfileService.browserPreflightUrl);
+    if (timeoutPreflight) throw const ProcessException("synthetic", [], "timed out");
+    return preflight;
+  }
+}
+
+void main() {
+  late Directory temp;
+  late List<String> events;
+  late _SettingsStore store;
+  late _Commands commands;
+  late String home;
+  const mac = PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64);
+  const windows = PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64);
+
+  AntigravityProfileService service({
+    required PlatformTarget target,
+    required String executable,
+    required List<String> prefix,
+  }) => AntigravityProfileService(
+    repository: AntigravityProfileRepository(
+      storage: AntigravityProfileStorage(geminiHome: home, settingsStore: store, commands: commands, target: target),
+    ),
+    target: target,
+    browserExecutable: executable,
+    browserPrefixArguments: prefix,
+  );
+
+  setUp(() {
+    temp = Directory.systemTemp.createTempSync("antigravity-profile-test-");
+    home = p.join(temp.path, "profile");
+    events = [];
+    store = _SettingsStore(events: events);
+    commands = _Commands(events: events);
+  });
+  tearDown(() => temp.deleteSync(recursive: true));
+
+  test("inspection is inert and only token presence is an auth hint", () {
+    final profile = service(target: mac, executable: "/bridge", prefix: []);
+    expect(profile.inspectAuthentication(), AntigravityAuthenticationHint.authenticationRequired);
+    expect(temp.listSync(), isEmpty);
+    final token = File(p.join(home, "antigravity-acp", "acp_token.json"));
+    token.parent.createSync(recursive: true);
+    token.writeAsStringSync("deliberately not token JSON");
+    expect(profile.inspectAuthentication(), AntigravityAuthenticationHint.tokenPresent);
+    expect(events, isEmpty);
+    expect(store.contents, isNull);
+  });
+
+  test("preflight then 700 directories then typed atomic-store settings", () async {
+    final prepared = await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {});
+    expect(events, ["preflight", "chmod", "chmod", "settings"]);
+    expect(store.contents, '{"auth":{"type":"oauth-personal"}}\n');
+    expect(prepared.geminiHome, home);
+    expect(prepared.environment["GEMINI_HOME"], home);
+    expect(prepared.environment["AGY_ACP_FORCE_FILE_STORAGE"], "1");
+    expect(prepared.environment["BROWSER"], "'/bridge' '--internal-browser-noop' '%s'");
+    if (!Platform.isWindows) {
+      for (final directory in [home, p.join(home, "antigravity-acp")]) {
+        expect(FileStat.statSync(directory).mode & 0x1ff, 0x1c0);
+      }
+    }
+    expect(() => prepared.environment["BROWSER"] = "ambient", throwsUnsupportedError);
+  });
+
+  test("hardens existing directories and rewrites non-personal settings", () async {
+    Directory(p.join(home, "antigravity-acp")).createSync(recursive: true);
+    store.contents = "synthetic stale settings";
+    await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {});
+    expect(events, ["preflight", "chmod", "chmod", "settings"]);
+    expect(store.contents, contains("oauth-personal"));
+  });
+
+  test("strips credential/profile/browser aliases without mutating host environment", () async {
+    final ambient = <String, String>{
+      for (final key in [
+        "google_api_key",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "GoOgLe_Cloud_PROJECT",
+        "GEMINI_HOME",
+        "GEMINI_API_KEY",
+        "AGY_ACP_ENABLE_OAUTH",
+        "AGY_ACP_FORCE_FILE_STORAGE",
+        "GCLOUD_PROJECT",
+        "CLOUDSDK_CONFIG",
+        "ANTIGRAVITY_HARNESS_PATH",
+        "BROWSER",
+        "PYTHONPATH",
+        "PYTHONSTARTUP",
+        "ELECTRON_RUN_AS_NODE",
+        "GCP_PROJECT",
+      ])
+        key: "ambient-secret",
+      "PATH": "/usr/bin:/bin",
+      "HOME": "/synthetic/home",
+      "HTTPS_PROXY": "https://proxy.invalid",
+    };
+    final original = Map<String, String>.of(ambient);
+    final prepared = await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: ambient);
+    expect(ambient, original);
+    expect(prepared.environment.values, isNot(contains("ambient-secret")));
+    expect(prepared.environment["PATH"], ambient["PATH"]);
+    expect(prepared.environment["HOME"], ambient["HOME"]);
+    expect(prepared.environment["HTTPS_PROXY"], ambient["HTTPS_PROXY"]);
+    expect(prepared.environment["PYTHONUNBUFFERED"], "1");
+    expect(commands.calls.first.environment, prepared.environment);
+  });
+
+  test("source invocation and apostrophes are shlex quoted, with exact preflight arguments", () async {
+    final prepared = await service(
+      target: mac,
+      executable: "/a b/dart",
+      prefix: ["--packages=/a b/package_config.json", "/a'b/bridge.dart"],
+    ).prepare(hostEnvironment: {});
+    expect(
+      prepared.environment["BROWSER"],
+      "'/a b/dart' '--packages=/a b/package_config.json' '/a'\"'\"'b/bridge.dart' '--internal-browser-noop' '%s'",
+    );
+    expect(commands.calls.first.arguments, [
+      "--packages=/a b/package_config.json",
+      "/a'b/bridge.dart",
+      BrowserNoop.argument,
+      AntigravityProfileService.browserPreflightUrl,
+    ]);
+  });
+
+  test("Windows keeps exact backslash invocation and relies on profile ACL without chmod", () async {
+    final prepared = await service(
+      target: windows,
+      executable: r"C:\Program Files\bridge.exe",
+      prefix: [],
+    ).prepare(hostEnvironment: {});
+    expect(events, ["preflight", "settings"]);
+    expect(prepared.environment["BROWSER"], r"'C:\Program Files\bridge.exe' '--internal-browser-noop' '%s'");
+  });
+
+  test("unsupported invocation blocks before processes or profile writes", () async {
+    for (final executable in ["", "/a:b/bridge", "/a\n/bridge", "/a\u0000/bridge", "/a%s/bridge"]) {
+      await expectLater(
+        service(target: mac, executable: executable, prefix: []).prepare(hostEnvironment: {}),
+        throwsA(isA<AntigravityProfileException>()),
+      );
+    }
+    await expectLater(
+      service(target: windows, executable: "C:/a;b/bridge.exe", prefix: []).prepare(hostEnvironment: {}),
+      throwsA(isA<AntigravityProfileException>()),
+    );
+    expect(temp.listSync(), isEmpty);
+    expect(events, isEmpty);
+  });
+
+  test("exit failure or any output blocks preparation", () async {
+    for (final result in [
+      const CommandResult(exitCode: 1, stdout: "", stderr: ""),
+      const CommandResult(exitCode: 0, stdout: "unexpected", stderr: ""),
+      const CommandResult(exitCode: 0, stdout: "", stderr: "unexpected"),
+    ]) {
+      commands.preflight = result;
+      await expectLater(
+        service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+        throwsA(isA<AntigravityProfileException>()),
+      );
+    }
+    expect(events, everyElement("preflight"));
+    expect(temp.listSync(), isEmpty);
+  });
+
+  test("process failures retain original cause and never prepare", () async {
+    commands.timeoutPreflight = true;
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      throwsA(isA<AntigravityProfileException>().having((error) => error.cause, "cause", isA<ProcessException>())),
+    );
+    expect(temp.listSync(), isEmpty);
+  });
+
+  test("permission failure blocks settings and retains local operation context", () async {
+    commands.failPermissions = true;
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      throwsA(isA<AntigravityProfileException>().having((error) => error.cause.toString(), "cause", contains(home))),
+    );
+    expect(events, ["preflight", "chmod"]);
+    expect(store.contents, isNull);
+  });
+
+  test("interrupted atomic settings write surfaces and keeps previous contents", () async {
+    store.contents = "previous";
+    store.failWrite = true;
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      throwsA(isA<AntigravityProfileException>().having((error) => error.cause, "cause", isA<FileSystemException>())),
+    );
+    expect(store.contents, "previous");
+  });
+}
