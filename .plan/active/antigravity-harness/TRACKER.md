@@ -310,8 +310,8 @@
   Counts use suite/test IDs and successful `testDone` entries with source lines, not compact reporter filenames.
 - [x] Owning Antigravity analysis and the complete package test command pass. Test totals are not inferred from compact
   reporter filenames. Indexed regression documentation records behavior, failure signals and remaining L5 gates.
-- Pre-review cap against exact base `c13843000d1532debef0efca5192aaf50fc761c3`: 997 additions + 38 deletions =
-  1,035 changed lines across 21 files.
+- Pre-review cap against exact base `c13843000d1532debef0efca5192aaf50fc761c3`: 1,039 additions + 38 deletions =
+  1,077 changed lines across 22 files.
 - First complete architecture review remains pending. Prior incomplete-input blocked results `de058330` and `1c53fd03`
   are not review attempts; the Step 8.c attempt count remains zero until complete immutable artifacts are reviewed.
 
