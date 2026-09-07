@@ -171,6 +171,8 @@
 - [x] Focused validation: 10 catalog/options tests and 11 ACP config/API tests pass; both owning analyses are clean.
 - [x] Independent architecture review approved all 19 files at immutable checkpoint `0e002cdebe`.
 - [x] Step 6.d merged; synchronize before Step 7.a publication.
+- Post-sync validation: 10 options tests and 11 ACP tests pass; both owning-package analyses remain clean.
+- Post-sync code-head cap: `git diff --numstat 2f2f376836 778535c8f4` totals 848 + 19 = 867 changed lines.
 - Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
 
 ## Architecture Reviews
