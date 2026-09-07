@@ -13,9 +13,16 @@ class const AntigravityOutputComposer({
       "Authenticate Antigravity from a current Sesori mobile or desktop client, then retry.";
 
   AcpOutputInterceptors compose() => (
-    // ACP lines can contain four 20MiB image candidates and redundant raw copies.
-    // Authorization URLs themselves retain the mapper's much smaller 16KiB bound.
-    stdout: AcpOutputInterceptor(maxLineBytes: 256 * 1024 * 1024, consumeLine: _consumeStdout),
+    // Standard image JSON passes through after this small prefix, without a
+    // whole-line copy or an image-size restriction in the authorization gate.
+    stdout: AcpOutputInterceptor(
+      maxLineBytes: AntigravityAuthorizationMapper.prefix.length + 16384 + 2,
+      prefix: AcpOutputPrefix(
+        length: AntigravityAuthorizationMapper.prefix.length,
+        matches: authorizationMapper.matchesPrefix,
+      ),
+      consumeLine: _consumeStdout,
+    ),
     stderr: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
   );
 

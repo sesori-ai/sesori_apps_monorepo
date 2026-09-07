@@ -86,7 +86,7 @@ class AcpStdioClient({
         // A failed filter cannot safely deliver further output. Detach now so
         // future dispatch fails immediately, and use the existing teardown owner.
         Log.w("[$_logTag] output interception failed; disconnecting", error, stackTrace);
-        unawaited(_transport.reset(reason: error, gracefulTimeout: Duration.zero));
+        unawaited(_transport.reset(reason: error, stackTrace: stackTrace, gracefulTimeout: Duration.zero));
       }
       Error.throwWithStackTrace(error, stackTrace);
     });
@@ -222,7 +222,11 @@ class AcpStdioClient({
     if (_disposed) return;
     await _frames?.cancel();
     _frames = null;
-    await _transport.reset(reason: StateError("AcpStdioClient reset"), gracefulTimeout: gracefulTimeout);
+    await _transport.reset(
+      reason: StateError("AcpStdioClient reset"),
+      stackTrace: null,
+      gracefulTimeout: gracefulTimeout,
+    );
   }
 
   Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) async {

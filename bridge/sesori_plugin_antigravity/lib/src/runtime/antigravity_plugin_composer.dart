@@ -17,8 +17,8 @@ import "../trackers/antigravity_catalog_tracker.dart";
 import "antigravity_interaction_composer.dart";
 import "antigravity_output_composer.dart";
 
-/// Consumes a validated pair and prepared isolated profile. The descriptor owns
-/// preparation/probing and provides its host-backed process factory in Step8.c.
+/// Consumes a validated pair and prepared isolated profile. The caller owns
+/// preparation/probing and provides its host-backed process factory.
 class const AntigravityPluginComposer() {
   AntigravityPlugin compose({
     required AntigravityRuntimePair pair,

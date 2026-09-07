@@ -70,6 +70,25 @@ void main() {
     );
   });
 
+  test("unsupported provider, agent and variant selections fail without configuration writes", () {
+    for (final selection in [
+      (provider: "other", agent: null, variant: null),
+      (provider: null, agent: "other", variant: null),
+      (provider: null, agent: null, variant: const PluginSessionVariant(id: "other")),
+    ]) {
+      expect(
+        () => service.validateSelection(
+          operation: "session/prompt",
+          providerId: selection.provider,
+          agent: selection.agent,
+          variant: selection.variant,
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+    }
+    expect(repository.writes, isEmpty);
+  });
+
   test("fresh process exposes one primary agent and no fabricated model or discovery writes", () {
     final options = service.getSessionOptions();
     expect(options.completeness, PluginSessionOptionsCompleteness.partial);

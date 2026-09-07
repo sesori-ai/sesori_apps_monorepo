@@ -115,7 +115,7 @@ abstract class AcpPlugin({
 
   AcpStdioClient? _client;
   Future<bool>? _connectFuture;
-  PluginAuthenticationRequiredException? _authenticationFailure;
+  ({PluginAuthenticationRequiredException error, StackTrace stackTrace})? _authenticationFailure;
   StreamSubscription<AcpNotification>? _notificationSubscription;
   StreamSubscription<AcpServerRequest>? _serverRequestSubscription;
   AcpPendingRegistry<Object>? _approvalRegistry;
@@ -375,7 +375,7 @@ abstract class AcpPlugin({
 
   // --- Protected accessors for subclasses ---
 
-  String? get authenticationFailureActionHint => _authenticationFailure?.actionHint;
+  String? get authenticationFailureActionHint => _authenticationFailure?.error.actionHint;
 
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
@@ -592,11 +592,11 @@ abstract class AcpPlugin({
         _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);
         return true;
-      } catch (error) {
+      } catch (error, stackTrace) {
         await _commandListener?.dispose();
         _commandListener = null;
         if (error is PluginAuthenticationRequiredException) {
-          _authenticationFailure = error;
+          _authenticationFailure = (error: error, stackTrace: stackTrace);
           if (!_authenticationFailures.isClosed) _authenticationFailures.add(authenticationFailureActionHint);
         }
         _workState.set(PluginWorkState.unknown);
@@ -605,7 +605,7 @@ abstract class AcpPlugin({
           _client = null;
           _connectFuture = null;
         }
-        return await Future<bool>.error(error);
+        return await Future<bool>.error(error, stackTrace);
       }
     }();
     _connectFuture = future.catchError((Object _) => false);
@@ -639,7 +639,9 @@ abstract class AcpPlugin({
     final ok = await ensureConnected();
     final client = _client;
     if (!ok || client == null) {
-      if (_authenticationFailure case final failure?) throw failure;
+      if (_authenticationFailure case final failure?) {
+        Error.throwWithStackTrace(failure.error, failure.stackTrace);
+      }
       throw StateError("$id agent is not connected");
     }
     return client;

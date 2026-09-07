@@ -10,7 +10,7 @@ import "services/antigravity_session_metadata_service.dart";
 import "services/antigravity_session_options_service.dart";
 import "trackers/antigravity_catalog_tracker.dart";
 
-/// Unregistered persistent plugin. All processes, turns and pending input stay
+/// Persistent ACP plugin. All processes, turns and pending input stay
 /// owned by the existing ACP lifecycle; the composition root injects all peers.
 class AntigravityPlugin({
   required super.launchSpec,
