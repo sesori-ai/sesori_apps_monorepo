@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/catalog_scan_row_motion.dart";
 import "../../widgets/project_nav_subtitle.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
@@ -96,6 +97,7 @@ class const SessionListScaffold({
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SliverToBoxAdapter(
           child: CatalogScanRow(
+            motion: CatalogScanRowMotion.standard,
             scan: catalogScan,
             onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
             onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),

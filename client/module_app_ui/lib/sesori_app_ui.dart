@@ -78,6 +78,7 @@ export "src/support/support_links.dart";
 export "src/utils/copy_text_to_clipboard.dart";
 export "src/utils/syntax_highlight.dart";
 export "src/widgets/catalog_scan_row.dart";
+export "src/widgets/catalog_scan_row_motion.dart";
 export "src/widgets/code_block.dart";
 export "src/widgets/connection_banner.dart";
 export "src/widgets/markdown_styles.dart";
