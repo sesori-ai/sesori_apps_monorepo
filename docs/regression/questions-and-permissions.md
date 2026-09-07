@@ -70,8 +70,9 @@ reaches the backend so the turn continues.
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
-  detail. Abort, process exit, and disposal cancel pending requests and reject
-  late replies.
+  detail. Native input cancellation clears only earlier requests on the ordered
+  stream; later requests survive even when they reuse a question ID. Abort,
+  process exit, and disposal cancel pending requests and reject late replies.
 - Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay
@@ -168,7 +169,8 @@ repeat after process restart without enabling approval-bypass launch flags.
   prefill; replies with the wrong wire variant; survives timeout/process cleanup;
   or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
-  scope, accepts custom plan-review input, or survives abort/process cleanup.
+  scope, accepts custom plan-review input, survives abort/process cleanup, or
+  an ordered input cancellation clears a later reused-ID question.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
 - One failed backend resolution prevents another pending prompt from clearing,

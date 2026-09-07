@@ -20,6 +20,10 @@ class DeepSeekApprovalRegistry({
 
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
+    if (request.method == DeepSeekAcpApi.inputCancelMethod) {
+      _handleInputCancellation(request);
+      return true;
+    }
     if (request.method != DeepSeekAcpApi.askUserQuestionMethod) return false;
     try {
       final parsed = api.parseQuestionRequest(request.params);
@@ -46,6 +50,17 @@ class DeepSeekApprovalRegistry({
       respondError(request.id, -32602, "Invalid DeepSeek question request");
     }
     return true;
+  }
+
+  void _handleInputCancellation(AcpServerRequest request) {
+    try {
+      final parsed = api.parseInputCancelRequest(request.params);
+      cancelForSession(sessionId: parsed.sessionId);
+      respond(request.id, const DeepSeekInputCancelResponseDto().toJson());
+    } on Object catch (error, stackTrace) {
+      Log.w("[deepseek] invalid input cancellation request", error, stackTrace);
+      respondError(request.id, -32602, "Invalid DeepSeek input cancellation request");
+    }
   }
 
   static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, {required List<String> answers}) {

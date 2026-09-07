@@ -10,6 +10,8 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String sessionStatusMethod = "deepseek/session/status";
   static const String subagentMethod = "deepseek/subagent";
   static const String subagentInterruptMethod = "deepseek/subagent/interrupt";
+  static const String sessionStopMethod = "deepseek/session/stop";
+  static const String inputCancelMethod = "deepseek/input/cancel";
   static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
   static const int extensionProtocolVersion = 2;
 
@@ -208,6 +210,39 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   }
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSessionStopRequestDto parseSessionStopRequest(Map<String, dynamic> json) {
+    final request = DeepSeekSessionStopRequestDto.fromJson(json);
+    _validateSessionStopRequest(request: request);
+    return request;
+  }
+
+  void _validateSessionStopRequest({required DeepSeekSessionStopRequestDto request}) {
+    final valid = switch (request) {
+      DeepSeekSessionStopSessionRequestDto(:final sessionId) => _validScopedStopSessionId(sessionId),
+      DeepSeekSessionStopChildRequestDto(:final sessionId, :final childSessionId) =>
+        _validScopedStopSessionId(sessionId) && _validScopedStopSessionId(childSessionId),
+    };
+    if (!valid) throw const FormatException("Invalid DeepSeek session stop request");
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSessionStopResponseDto parseSessionStopResponse(Map<String, dynamic> json) =>
+      DeepSeekSessionStopResponseDto.fromJson(json);
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekInputCancelRequestDto parseInputCancelRequest(Map<String, dynamic> json) {
+    final request = DeepSeekInputCancelRequestDto.fromJson(json);
+    if (!_validScopedStopSessionId(request.sessionId)) {
+      throw const FormatException("Invalid DeepSeek input cancellation request");
+    }
+    return request;
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekInputCancelResponseDto parseInputCancelResponse(Map<String, dynamic> json) =>
+      DeepSeekInputCancelResponseDto.fromJson(json);
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSubagentReplayDto parseSubagentReplay(Map<String, dynamic> json) {
     final replay = DeepSeekSubagentReplayDto.fromJson(json);
     _validateSubagentReplay(replay);
@@ -263,6 +298,10 @@ class const DeepSeekAcpApi({required final String pluginId}) {
 
   static bool _validOptionalSubagentText(String? value, {required int maxScalars}) =>
       value == null || _validSubagentText(value, maxScalars: maxScalars);
+
+  static bool _validScopedStopSessionId(String value) =>
+      _validSubagentText(value, maxScalars: 256) &&
+      !value.codeUnits.any((unit) => unit <= 0x1F || unit >= 0x7F && unit <= 0x9F);
 
   static bool _validSubagentText(String value, {required int maxScalars}) {
     if (value.isEmpty || !value.contains(RegExp(r"\S"))) return false;
