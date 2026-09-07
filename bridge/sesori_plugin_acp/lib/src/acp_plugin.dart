@@ -1703,8 +1703,11 @@ abstract class AcpPlugin({
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
     final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
-    final mainRunning = (_turnStates[sessionId]?.pending ?? 0) > 0 || namedChild != null;
-    final mainOnlySupported = children.every((child) => child.isBackground);
+    final hasOwnPrompt = (_turnStates[sessionId]?.pending ?? 0) > 0;
+    final mainRunning = hasOwnPrompt || namedChild != null;
+    final mainOnlySupported =
+        (hasOwnPrompt || namedChild == null || namedChild.isBackground) &&
+        children.every((child) => child.isBackground);
     if (children.isNotEmpty &&
         (subAgents == PluginAbortSubAgentPolicy.confirm ||
             subAgents == PluginAbortSubAgentPolicy.keep && mainRunning && !mainOnlySupported)) {

@@ -716,5 +716,8 @@ an API-to-domain mapping bypass; `99949afd2` routes cancellation through the exi
 session repository/service, and the final architecture pass approved. DeepSeek
 analysis and 103 tests pass after that correction. Review follow-up permits additive
 interrupt response fields while retaining required/known-result checks; analysis
-and 104 tests pass. Final feature E2E remains pending; managed runtime upgrades
-remain separately owned.
+and 104 tests pass. Named foreground children now correctly reject main-only stop
+even when all descendants are background; background named-child keep remains
+supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
+The in-flight late-child stop window awaits a scope decision. Final feature E2E
+remains pending; managed runtime upgrades remain separately owned.

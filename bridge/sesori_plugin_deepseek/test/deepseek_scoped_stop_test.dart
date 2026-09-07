@@ -44,6 +44,34 @@ void main() {
       expect(harness.fake.written, hasLength(before));
     });
 
+    test("foreground named child cannot offer main-only stop even with background descendants", () async {
+      await harness.spawn(child: "foreground", parent: "root", background: false);
+      await harness.spawn(child: "background", parent: "foreground", background: true);
+      final before = harness.fake.written.length;
+      for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+        final result = await harness.plugin.abortSession(sessionId: "foreground", subAgents: policy);
+        expect(
+          result,
+          isA<PluginAbortRejectedSubAgentsRunning>()
+              .having((r) => r.runningSubAgentCount, "children", 1)
+              .having((r) => r.mainAgentRunning, "main", true)
+              .having((r) => r.mainAgentOnlySupported, "keep supported", false),
+        );
+        expect(harness.fake.written, hasLength(before));
+      }
+    });
+
+    test("background named child can be interrupted while retaining its background descendant", () async {
+      await harness.spawn(child: "parent", parent: "root", background: true);
+      await harness.spawn(child: "child", parent: "parent", background: true);
+      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.keep);
+      await harness.replyInterrupts(results: const {"parent": "interrupted"});
+      expect(await stopping, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", true));
+      expect(harness.cancels, isEmpty);
+      expect(harness.interrupts.single["params"], {"sessionId": "root", "childSessionId": "parent"});
+      expect(harness.plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"parent", "child"});
+    });
+
     test("keep cancels only main when every child is background", () async {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "child", parent: "root", background: true);
