@@ -59,6 +59,40 @@ void main() {
     expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.ready);
   });
 
+  test("browser terminal setup reinspection waits for operation stream cleanup", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {PluginControlCapability.authentication},
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {"one": PluginSetupAuthenticationRequired(actionHint: "Sign in.")},
+    );
+    final terminal = service.authenticationProgress.first;
+    final challenge = service.authenticate(pluginId: "one");
+    repository.authenticationEvents.add(
+      PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://auth.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:9876/"),
+      ),
+    );
+    await challenge;
+    repository.authenticationEvents.add(const PluginAuthenticationCompleted());
+    await Future<void>(() {});
+    expect(repository.inspectCalls, 0, reason: "terminal event alone must not race plugin cleanup");
+    await repository.authenticationEvents.close();
+    expect((await terminal).progress, const PluginAuthenticationProgress.completed());
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, 1);
+  });
+
   test("authentication continuation maps active-generation outcomes and terminal cleanup", () async {
     final repository =
         _CommandLifecycleRepository(
@@ -177,6 +211,7 @@ void main() {
     await service.cancelAuthentication(pluginId: "one");
 
     expect(repository.authenticationAborted, isTrue);
+    expect(repository.inspectCalls, 1, reason: "cancelled operations also refresh setup after settling");
     expect(progress.single.progress, const PluginAuthenticationProgress.cancelled());
     expect(service.managementSnapshot.plugins.single.authenticationState, PluginAuthenticationState.idle);
     await expectLater(

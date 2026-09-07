@@ -3,9 +3,9 @@
 ## Status and scope
 
 Internal, unregistered profile foundations. No user-visible Antigravity capability or database change yet.
-Composed personal OAuth operations, registration, and managed activation are separate delivery steps.
-[Personal-authentication boundaries](antigravity-personal-authentication.md) cover callback policy and the shared
-preparation/authentication budget; they do not yet supply a composed operation.
+Registration and managed activation remain separate delivery steps.
+[Personal authentication](antigravity-personal-authentication.md) covers the unregistered composed operation,
+callback policy and shared preparation/authentication budget.
 
 ## Required behavior
 

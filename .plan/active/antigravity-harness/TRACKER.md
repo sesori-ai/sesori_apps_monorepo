@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review
-- **Base:** synced with main `ce423c8ea7` after Step 6.b merge
-- **Current branch:** `antigravity-harness-step-6c-personal-authentication`
+- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review; Step 6.d implemented locally
+- **Base:** Step 6.c head `5f6443f4cb3134c59bc79507ccc9b87caa054b45`
+- **Current branch:** `antigravity-harness-step-6d-authentication-operation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -14,7 +14,7 @@
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
 - **Open PR:** [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
-- **Next action:** monitor Step 6.c through merge; begin Step 6.d locally
+- **Next action:** monitor Step 6.c through merge; review Step 6.d while retaining it locally
 
 ## Fixed PR Series
 
@@ -138,8 +138,22 @@
 - Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
 - Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
-  access in this slice. Step 6.d is not started while Step 6.b remains open.
+  access in the 6.c slice.
 
+
+## Step 6.d Checklist
+
+- [x] Compose isolated profile preparation, runtime selection/exact probing, and personal authentication through
+  existing services with one environment and monotonic budget. Keep provider URL policy inside the service.
+- [x] Add per-attempt single challenge/one-shot continuation, same-host completion, and awaited cancellation/cleanup.
+- [x] Add the unregistered composer with shared root scopes, isolated host commands/ACP and dedicated HTTP client.
+- [x] Preserve the existing bridge lifecycle service as terminal setup-reinspection owner; test closure ordering.
+- [x] Approved narrow boundary fixes await pending probe/auth spawn reaping and callback transport settlement after
+  forced closure, preserving the controlling failure. No new shared transport machinery or descriptor registration.
+- [x] Verify all 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and the changed
+  bridge test's analysis. Canonical-path fixture correction was verified before the final complete package run.
+- [ ] Independent architecture implementation review and parent-owned publication after Step 6.c merges.
+- No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
 
 ## Architecture Reviews
 

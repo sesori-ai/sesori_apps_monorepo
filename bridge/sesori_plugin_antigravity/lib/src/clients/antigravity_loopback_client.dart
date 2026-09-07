@@ -23,14 +23,22 @@ class AntigravityLoopbackClient({required final HttpClient _client}) {
       return response.statusCode;
     }
 
+    final work = send();
+    final settled = work.then<AsyncError?>(
+      (_) => null,
+      onError: AsyncError.new,
+    );
     final int statusCode;
     try {
       statusCode = await Future.any<int>([
-        send(),
+        work,
         budget.abortSignal.whenAborted.then<int>((_) => throw const PluginStartAbortedException()),
       ]).timeout(budget.remaining);
     } finally {
       _client.close(force: true);
+      // Forced close settles the actual request. Its secondary failure must not
+      // replace the abort/timeout that initiated closure, or escape afterwards.
+      await settled;
     }
     budget.remaining;
     return statusCode;

@@ -37,6 +37,7 @@ class _Http() implements HttpClient {
   String Function(Uri)? findProxy;
   final request = _Request();
   final opened = Completer<void>();
+  final closeStarted = Completer<void>();
   Completer<void>? gate;
   Uri? uri;
   bool closed = false;
@@ -52,6 +53,7 @@ class _Http() implements HttpClient {
   void close({bool force = false}) {
     expect(force, isTrue);
     closed = true;
+    if (!closeStarted.isCompleted) closeStarted.complete();
   }
 
   @override
@@ -74,6 +76,28 @@ void main() {
     expect(http.closed, isTrue);
   });
 
+  test("real loopback request settles on cancellation after dispatch", () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final received = server.first;
+    final abort = StartAbortController();
+    final client = AntigravityLoopbackClient(client: HttpClient());
+    try {
+      final forwarding = client.forward(
+        callbackUri: Uri.parse("http://127.0.0.1:${server.port}/?code=synthetic&state=synthetic"),
+        budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 2), abortSignal: abort.signal),
+      );
+      final assertion = expectLater(forwarding, throwsA(isA<PluginStartAbortedException>()));
+      await received;
+      // The server deliberately never responds. Forced client closure must
+      // settle the already-dispatched request, not just abandon its future.
+      abort.abort();
+      await assertion;
+    } finally {
+      client.dispose();
+      await server.close(force: true);
+    }
+  });
+
   test("timeout or abort closes stalled connection and rejects late request before send", () async {
     for (final aborting in [false, true]) {
       final abort = StartAbortController();
@@ -86,16 +110,18 @@ void main() {
           abortSignal: abort.signal,
         ),
       );
+      var settled = false;
       final assertion = expectLater(
         forwarding,
         throwsA(aborting ? isA<PluginStartAbortedException>() : isA<TimeoutException>()),
-      );
+      ).then((_) => settled = true);
       await http.opened.future;
       if (aborting) abort.abort();
-      await assertion;
+      await http.closeStarted.future;
+      expect(settled, isFalse);
       expect(http.closed, isTrue);
       http.gate!.complete();
-      await Future<void>(() {});
+      await assertion;
       expect(http.request.sent, isFalse);
     }
   });
