@@ -91,6 +91,24 @@ void main() {
             .having((aborted) => aborted.handledSubAgentSessionIds, "handled ids", ["child"]),
       );
       expect(plugin.lastAbortSessionId, "backend-root");
+
+      plugin.abortResult = const PluginAbortAccepted(
+        workKept: false,
+        subAgentsHandled: true,
+        handledSubAgentSessionIds: ["backend-child"],
+      );
+      final fullyHandled = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+      );
+      expect(
+        fullyHandled,
+        isA<SessionAborted>().having(
+          (aborted) => aborted.handledSubAgentSessionIds,
+          "redundant handled ids",
+          isEmpty,
+        ),
+      );
     });
 
     test("resolves stable root families and rejects malformed ancestry", () async {

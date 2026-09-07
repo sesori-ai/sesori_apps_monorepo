@@ -791,7 +791,23 @@ Older empty responses still fanout fully. Shared analysis + 397 tests, plugin-
 interface/ACP/DeepSeek/Claude/Codex/OpenCode/Pi fatal-info analysis, ACP 325 tests,
 DeepSeek 119 tests, selected bridge 75 tests, and selected client 105 tests pass;
 LSP reports zero diagnostics across all 11 changed production files. Current PR
-size is +2,347/-237 = 2,584 lines (611 generated, 1,063 tests/fixtures, 456 docs/
-plans, and 454 production). The partial-handling contract cannot be split from its
+size at reviewed head `775aa393a217c8dbadf6e612216555320ca620fc` is
++2,347/-237 = 2,584 lines (611 generated, 1,063 tests/fixtures, 456 docs/plans,
+and 454 production). With merge base
+`b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff --numstat
+b43758e1b304d7f119787163875b78b38b1b25f1...775aa393a217c8dbadf6e612216555320ca620fc`
+reproduces the self-inclusive count, including this committed evidence. The
+325-line increase from 2,259 is 23 generated, 178 tests/fixtures, 34 docs/plans,
+and 90 production lines. The partial-handling contract cannot be split from its
 bridge-id mapping and client filter without reintroducing the reported escape or
-duplicate-stop race. Final DeepSeek E2E follows, then Codex.
+duplicate-stop race.
+
+A subsequent current-head review found restart and cross-harness coverage gaps.
+DeepSeek now leaves full coverage conservatively false and returns its exact known
+handled ids, preserving fanout to database-visible descendants after process-local
+ancestry is cleared. Client-less abort counts independent accepted work as retained;
+fully handled bridge results skip the unnecessary post-stop id lookup; OpenCode
+reports the exact children it already aborted. ACP 325, DeepSeek 120, OpenCode 432,
+and selected bridge 75 tests pass with affected fatal-info analysis clean; LSP
+reports zero diagnostics across the three changed production files. Final DeepSeek
+E2E follows, then Codex.

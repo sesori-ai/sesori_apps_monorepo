@@ -73,7 +73,8 @@ void main() {
         await stopping,
         isA<PluginAbortAccepted>()
             .having((accepted) => accepted.workKept, "work kept", false)
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true),
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty),
       );
     });
 
@@ -217,6 +218,26 @@ void main() {
       );
       await harness.end(child: "delegated", parent: "root");
       harness.reply(frame: independentPrompt, result: const {"stopReason": "end_turn"});
+    });
+
+    test("root stop preserves fanout when process-local ancestry was cleared", () async {
+      await harness.spawn(child: "persisted-child", parent: "root", background: true);
+      await harness.end(child: "persisted-child", parent: "root");
+      harness.plugin.childSessionTracker.clear();
+      await harness.prompt(sessionId: "persisted-child");
+      final childPrompt = await harness.waitFor(method: AcpMethods.sessionPrompt, count: 1);
+
+      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty),
+      );
+      harness.reply(frame: childPrompt, result: const {"stopReason": "end_turn"});
     });
 
     test("a queued prompt does not replace an ended child's retained parent authority", () async {

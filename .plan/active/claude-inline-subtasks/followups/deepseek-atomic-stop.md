@@ -121,8 +121,10 @@ does not replace an ended child's retained exact-parent authority. A terminal
 child with its own accepted bridge prompt is independently resident: an ancestor
 stop excludes that child branch from request-time cleanup, reports it as retained,
 and returns handled backend child ids. The bridge maps those ids to public session
-ids so the client fanouts only to independent work. Whole-plugin stop uses the same
-tree path and existing authoritative-idle budget.
+ids so the client fanouts only to independent work. Atomic responses conservatively
+leave full coverage false so persisted descendants whose process-local ancestry was
+cleared by an adapter restart also retain exact client fanout. Whole-plugin stop
+uses the same tree path and existing authoritative-idle budget.
 Replace only the opted-in stop snapshot fanout/coverage reconstruction. Keep
 snapshots required by confirm/keep; no compatibility shims for internal callers.
 
@@ -151,9 +153,16 @@ review then required native authority for accepted `confirm` and resident-versus
 queued prompt targeting; after that review round the PR was 2,259 lines: 588
 generated, 885 tests/fixtures, 422 docs/plans, and 364 production. The next
 current-head review required partial-handling ids so independently resumed children
-remain exact fanout targets without re-stopping covered delegated work. The final
-PR is 2,584 lines: 611 generated, 1,063 tests/fixtures, 456 docs/plans, and 454
-production. Splitting the response or partial-handling mapping from atomic STOP
+remain exact fanout targets without re-stopping covered delegated work. After that
+review round at head `775aa393a217c8dbadf6e612216555320ca620fc` the PR
+was 2,584 lines: 611 generated, 1,063 tests/fixtures, 456 docs/plans, and 454
+production. With merge base `b43758e1b304d7f119787163875b78b38b1b25f1`,
+`git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...775aa393a217c8dbadf6e612216555320ca620fc`
+reproduces this self-inclusive committed measurement. Its 325-line increase is 23
+generated, 178 tests/fixtures, 34 docs/plans, and 90 production lines. The
+following review required conservative coverage
+after tracker reset, client-less retained-work accuracy, post-stop lookup avoidance,
+and OpenCode handled ids. Splitting the response or partial-handling mapping from atomic STOP
 would leave the first PR vulnerable to re-stopping later work or missing independent
 work, while splitting the generated parser or admission-race fixes from their
 consumer would retain a duplicate schema or known escape path. The overrun is
@@ -166,7 +175,9 @@ Architecture review supported native authority, layering, atomic admission proof
 job filtering, and additive/native-first delivery. It rejected two unspecified
 boundaries: response cleanup ownership and execution-kind authority. The concrete
 choices above address those findings. Native implementation review approved adapter
-#17 with no findings. Consumer implementation architecture review remains required.
+#17 with no findings. Consumer architecture reviews approved the atomic policy,
+layering, additive response path, retained authority, and generated transport union.
+The final conservative-coverage follow-up requires one incremental review.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
@@ -180,9 +191,10 @@ old input -> control -> new input in one chunk, including reused question IDs,
 notification backlog and prompt-write buffering; response delivered before request
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
 queued prompt versus resident child authority; independently resumed child plus a
-covered delegated sibling and partial client fanout; keep behavior; foreground
-retention; RPC failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests and frozen
-corpora. Run owning analyzers/tests; CI owns the full matrix.
+covered delegated sibling and partial client fanout; cleared process-local ancestry;
+client-less retained work; fully handled bridge lookup avoidance; OpenCode exact
+handled ids; keep behavior; foreground retention; RPC failure; busy state after
+acceptance; whole-plugin stop. Verify new minimum/digests and frozen corpora. Run owning analyzers/tests; CI owns the full matrix.
 
 Authoritative native and consumer package coverage passes, so the temporary
 late-launch limitation is removed from capability/regression docs. Final

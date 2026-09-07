@@ -1003,10 +1003,12 @@ class SessionRepository({
           :final subAgentsHandled,
           :final handledSubAgentSessionIds,
         ):
-          final sessionIdsByBackendId = await getSessionIdsByBackendIds(
-            pluginId: binding.pluginId,
-            backendSessionIds: handledSubAgentSessionIds,
-          );
+          final sessionIdsByBackendId = subAgentsHandled
+              ? const <String, String>{}
+              : await getSessionIdsByBackendIds(
+                  pluginId: binding.pluginId,
+                  backendSessionIds: handledSubAgentSessionIds,
+                );
           return SessionAborted(
             workKept: workKept,
             subAgentsHandled: subAgentsHandled,

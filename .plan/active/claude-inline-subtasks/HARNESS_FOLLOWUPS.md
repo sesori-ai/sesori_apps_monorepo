@@ -130,8 +130,10 @@ confirmation, no child session or partial stop) and gets that subset.
      An independently resumed terminal child is outside its former ancestor's
      native subtree. Atomic results report retained work and the handled backend
      child ids; the bridge maps those to public ids so the client fanouts only to
-     independently resident children instead of repeating covered stops. No
-     response-time cleanup is allowed. Other ACP harnesses retain the default
+     independently resident or persisted-untracked children instead of repeating
+     covered stops. Full coverage remains conservatively false because a native
+     process restart clears the tracker ancestry. No response-time cleanup is
+     allowed. Other ACP harnesses retain the default
      snapshot fanout until their transport
      seam lands.
   5. A narrow backend-neutral replay replacement hook on

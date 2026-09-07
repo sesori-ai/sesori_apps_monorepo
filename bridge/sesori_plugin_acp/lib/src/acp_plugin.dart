@@ -1775,7 +1775,10 @@ abstract class AcpPlugin({
       final client = _client;
       if (client == null) {
         return PluginAbortAccepted(
-          workKept: children.isNotEmpty || namedChild != null && !hasResidentPrompt,
+          workKept:
+              children.isNotEmpty ||
+              independentDescendantSessionIds.isNotEmpty ||
+              namedChild != null && !hasResidentPrompt,
           subAgentsHandled: false,
           handledSubAgentSessionIds: const [],
         );
@@ -1790,7 +1793,10 @@ abstract class AcpPlugin({
       final result = await stopScopedTree(client: client, target: target);
       return PluginAbortAccepted(
         workKept: result.workKept || independentDescendantSessionIds.isNotEmpty,
-        subAgentsHandled: independentDescendantSessionIds.isEmpty,
+        // The process-local tracker cannot prove coverage for persisted
+        // descendants after a process restart. Return exact known coverage and
+        // let the client fanout to any visible descendant absent from this list.
+        subAgentsHandled: false,
         handledSubAgentSessionIds: List.unmodifiable(
           atomicChildren.map((child) => child.childSessionId),
         ),

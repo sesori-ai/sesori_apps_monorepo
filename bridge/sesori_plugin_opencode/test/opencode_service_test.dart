@@ -13,6 +13,32 @@ import "support/fake_open_code_api.dart";
 import "support/open_code_fixtures.dart";
 
 void main() {
+  group("OpenCodeService.abortSession", () {
+    test("reports exact child coverage for client fanout filtering", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"root": "/repo", "child": "/repo"},
+        activeChildren: const {"child"},
+      );
+      final service = OpenCodeService(repository, tracker);
+      addTearDown(service.dispose);
+
+      final result = await service.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+      );
+
+      expect(
+        result,
+        isA<PluginAbortAccepted>().having((accepted) => accepted.subAgentsHandled, "all handled", false).having(
+          (accepted) => accepted.handledSubAgentSessionIds,
+          "handled ids",
+          ["child"],
+        ),
+      );
+    });
+  });
+
   group("OpenCodeService.getProjects", () {
     test("returns projects and owns tracker alias bookkeeping", () async {
       final repository = FakeOpenCodeRepository(
@@ -2279,6 +2305,8 @@ class FakeActiveSessionTracker({
   final bool clearPendingQuestionChanged = false,
   final bool clearPendingPermissionFound = false,
   final bool clearPendingPermissionChanged = false,
+  final Set<String> activeChildren = const {},
+  final bool turnRunning = false,
 }) extends ActiveSessionTracker {
   int coldStartCalls = 0;
   int resetCalls = 0;
@@ -2351,6 +2379,12 @@ class FakeActiveSessionTracker({
   String? getSessionDirectory({required String sessionId}) {
     return _sessionDirectories[sessionId];
   }
+
+  @override
+  Set<String> activeChildSessionIds({required String rootId}) => activeChildren;
+
+  @override
+  bool isTurnRunning({required String sessionId}) => turnRunning;
 
   /// Maps a session id to the root it should display under. Unmapped ids
   /// resolve to themselves (best-effort, like the real tracker).

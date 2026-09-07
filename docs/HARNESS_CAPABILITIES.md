@@ -161,8 +161,11 @@ accepted stop uses native authority so delayed lifecycle delivery cannot hide wo
 targeting retains exact-parent authority and never widens to a parent or sibling.
 An independently resumed terminal child is outside its former ancestor's native
 subtree; partial-handling metadata prevents duplicate stops for covered delegated
-children while preserving exact client fanout to that resident child. Accepted
-cancellation does not fabricate lifecycle settlement; busy state remains
+children while preserving exact client fanout to that resident child. DeepSeek
+always leaves full-coverage false and returns only known handled ids because an
+adapter restart clears process-local ancestry while persisted client descendants
+remain visible. Accepted cancellation does not fabricate lifecycle settlement;
+busy state remains
 authoritative until child end frames arrive. Native ordered input cancellation
 removes only requests pending at that stream position, so later input survives.
 
