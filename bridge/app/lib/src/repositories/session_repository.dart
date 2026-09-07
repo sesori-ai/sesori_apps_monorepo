@@ -1022,10 +1022,8 @@ class SessionRepository({
                 handledSubAgentSessionIds: const [],
                 unhandledSubAgentSessionIds: const [],
               );
-            case PluginAbortSubAgentsPartiallyHandled(
-              :final handledSessionIds,
-              :final unhandledSessionIds,
-            ):
+            case PluginAbortSubAgentsPartiallyHandled(:final unhandledSessionIds):
+              final handledSessionIds = knownSubAgentSessionIds.difference(unhandledSessionIds.toSet());
               final sessionIdsByBackendId = await getSessionIdsByBackendIds(
                 pluginId: binding.pluginId,
                 backendSessionIds: {

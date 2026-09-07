@@ -285,9 +285,11 @@ void main() {
             .having(
               (accepted) => accepted.subAgentCoverage,
               "coverage",
-              isA<PluginAbortSubAgentsPartiallyHandled>()
-                  .having((coverage) => coverage.handledSessionIds, "handled ids", ["delegated"])
-                  .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["independent"]),
+              isA<PluginAbortSubAgentsPartiallyHandled>().having(
+                (coverage) => coverage.unhandledSessionIds,
+                "unhandled ids",
+                ["independent"],
+              ),
             ),
       );
       await harness.end(child: "delegated", parent: "root");
@@ -326,9 +328,11 @@ void main() {
         isA<PluginAbortAccepted>().having(
           (accepted) => accepted.subAgentCoverage,
           "coverage",
-          isA<PluginAbortSubAgentsPartiallyHandled>()
-              .having((coverage) => coverage.handledSessionIds, "handled ids", isEmpty)
-              .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["persisted-child"]),
+          isA<PluginAbortSubAgentsPartiallyHandled>().having(
+            (coverage) => coverage.unhandledSessionIds,
+            "unhandled ids",
+            ["persisted-child"],
+          ),
         ),
       );
       harness.reply(frame: childPrompt, result: const {"stopReason": "end_turn"});
@@ -354,9 +358,11 @@ void main() {
         isA<PluginAbortAccepted>().having(
           (accepted) => accepted.subAgentCoverage,
           "coverage",
-          isA<PluginAbortSubAgentsPartiallyHandled>()
-              .having((coverage) => coverage.handledSessionIds, "handled ids", ["parent"])
-              .having((coverage) => coverage.unhandledSessionIds, "unhandled ids", ["nested"]),
+          isA<PluginAbortSubAgentsPartiallyHandled>().having(
+            (coverage) => coverage.unhandledSessionIds,
+            "unhandled ids",
+            ["nested"],
+          ),
         ),
       );
       await harness.end(child: "parent", parent: "root");

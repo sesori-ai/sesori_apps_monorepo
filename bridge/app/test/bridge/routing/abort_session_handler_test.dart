@@ -47,7 +47,6 @@ void main() {
       plugin.abortResult = const PluginAbortAccepted(
         workKept: true,
         subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
-          handledSessionIds: ["handled-child"],
           unhandledSessionIds: ["remaining-grandchild"],
         ),
       );
@@ -62,7 +61,7 @@ void main() {
         equals(
           const SessionAbortResponse(
             subAgentsHandled: false,
-            handledSubAgentSessionIds: ["handled-child"],
+            handledSubAgentSessionIds: [],
             unhandledSubAgentSessionIds: ["remaining-grandchild"],
           ),
         ),

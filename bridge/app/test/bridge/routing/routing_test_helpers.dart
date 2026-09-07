@@ -1114,10 +1114,10 @@ class FakeSessionRepository({
           handledSubAgentSessionIds: const [],
           unhandledSubAgentSessionIds: const [],
         ),
-        PluginAbortSubAgentsPartiallyHandled(:final handledSessionIds, :final unhandledSessionIds) => SessionAborted(
+        PluginAbortSubAgentsPartiallyHandled(:final unhandledSessionIds) => SessionAborted(
           workKept: workKept,
           subAgentsHandled: false,
-          handledSubAgentSessionIds: handledSessionIds,
+          handledSubAgentSessionIds: const [],
           unhandledSubAgentSessionIds: unhandledSessionIds,
         ),
       },

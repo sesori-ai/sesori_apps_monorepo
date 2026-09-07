@@ -130,8 +130,9 @@ confirmation, no child session or partial stop) and gets that subset.
      An independently resumed terminal child is outside its former ancestor's
      native subtree. The bridge passes its persisted descendant backend-id
      snapshot into the plugin. A sealed full/partial/legacy result makes coverage
-     combinations valid by construction; partial results carry exact handled and
-     unhandled ids for bridge public-session mapping. The surface-neutral client
+     combinations valid by construction; partial results carry only exact
+     unhandled ids, and the bridge derives the disjoint handled set from its
+     request snapshot before public-session mapping. The surface-neutral client
      abort service exact-fanouts nested independent work even across a screen reload,
      while full native coverage suppresses duplicate stops for child announcements
      arriving during STOP. No response-time cleanup is allowed. Other ACP harnesses retain the default

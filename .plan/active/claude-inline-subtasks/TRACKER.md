@@ -853,8 +853,12 @@ abort policy remained in the Cubit, and the internal Boolean/two-list result all
 contradictory coverage. `SessionAbortService` now owns root/descendant coordination
 and processes exact remaining ids without reading screen state; it reads direct
 child statuses only for legacy fallback. Plugin coverage is a sealed full, partial,
-or legacy variant, with lists only on partial. Shared wire defaults remain additive
+or legacy variant; partial carries only exact unhandled ids, while the bridge derives
+the disjoint handled set from its request snapshot. Shared wire defaults remain additive
 at the repository boundary. ACP 325, DeepSeek 122, OpenCode 432, selected bridge
 75, and selected client/service 108 tests pass; affected fatal-info analysis is
 clean and LSP reports zero diagnostics across ten changed production files.
-Incremental architecture review remains required.
+Incremental architecture review of `1a0b6a9e7a..af533ee7df` approved with no
+findings. The follow-up narrows partial coverage to exact unhandled ids only; the
+repository derives the disjoint handled set from its request snapshot, enforcing
+the review-requested invariant without changing the approved layer boundaries.

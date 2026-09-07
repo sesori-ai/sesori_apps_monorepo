@@ -19,9 +19,11 @@ sealed class const PluginAbortSubAgentCoverage();
 /// Native/plugin authority covered every descendant in the request scope.
 final class const PluginAbortSubAgentsHandled() extends PluginAbortSubAgentCoverage;
 
-/// Some known descendants remain outside plugin/native stop authority.
+/// Exact known descendants remain outside plugin/native stop authority.
+///
+/// The repository derives handled ids from its request-time catalog snapshot,
+/// so handled and unhandled sets cannot overlap inside the plugin result.
 final class const PluginAbortSubAgentsPartiallyHandled({
-  required final List<String> handledSessionIds,
   required final List<String> unhandledSessionIds,
 }) extends PluginAbortSubAgentCoverage;
 

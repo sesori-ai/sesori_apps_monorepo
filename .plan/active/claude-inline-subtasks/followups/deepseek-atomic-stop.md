@@ -122,8 +122,9 @@ child with its own accepted bridge prompt is independently resident: an ancestor
 stop excludes that child branch from request-time cleanup and reports it as
 retained. The bridge passes every persisted descendant backend id into the plugin,
 including nested descendants and ids absent after tracker reset. The atomic result
-returns a sealed full/partial/legacy coverage variant; partial carries exact handled
-and unhandled ids for public-id mapping. The surface-neutral client abort service
+returns a sealed full/partial/legacy coverage variant; partial carries only exact
+unhandled ids, and the bridge derives the disjoint handled set from its request
+snapshot before public-id mapping. The surface-neutral client abort service
 fanouts directly to known independent work regardless of screen loading state,
 while full native coverage suppresses second stops for children whose lifecycle
 announcement lands during STOP.
@@ -199,9 +200,10 @@ boundaries: response cleanup ownership and execution-kind authority. The concret
 choices above address those findings. Native implementation review approved adapter
 #17 with no findings. Consumer architecture reviews approved the atomic policy,
 layering, additive response path, retained authority, and generated transport union.
-The conservative-coverage incremental review approved with no findings. The final
-catalog-snapshot and exact-unhandled-response incremental review also approved with
-no findings.
+The conservative-coverage and catalog-snapshot/exact-unhandled incremental reviews
+approved with no findings. The final service/sealed-coverage incremental review also
+approved; the immediate follow-up narrows partial coverage to unhandled ids only so
+the repository derives a disjoint handled set without changing those boundaries.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;

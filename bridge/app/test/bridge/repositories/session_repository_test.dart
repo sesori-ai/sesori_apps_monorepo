@@ -81,7 +81,6 @@ void main() {
       plugin.abortResult = const PluginAbortAccepted(
         workKept: true,
         subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
-          handledSessionIds: ["backend-child"],
           unhandledSessionIds: ["backend-grandchild", "unbound-child"],
         ),
       );

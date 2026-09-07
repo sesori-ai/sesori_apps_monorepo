@@ -1785,10 +1785,11 @@ abstract class AcpPlugin({
               children.isNotEmpty ||
               independentDescendantSessionIds.isNotEmpty ||
               namedChild != null && !hasResidentPrompt,
-          subAgentCoverage: PluginAbortSubAgentsPartiallyHandled(
-            handledSessionIds: const [],
-            unhandledSessionIds: List.unmodifiable(activeSubAgentSessionIds),
-          ),
+          subAgentCoverage: activeSubAgentSessionIds.isEmpty
+              ? const PluginAbortSubAgentsLegacyFanout()
+              : PluginAbortSubAgentsPartiallyHandled(
+                  unhandledSessionIds: List.unmodifiable(activeSubAgentSessionIds),
+                ),
         );
       }
       final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
@@ -1807,10 +1808,6 @@ abstract class AcpPlugin({
         subAgentCoverage: independentDescendantSessionIds.isEmpty
             ? const PluginAbortSubAgentsHandled()
             : PluginAbortSubAgentsPartiallyHandled(
-                handledSessionIds: List.unmodifiable({
-                  ...knownSubAgentSessionIds.difference(independentDescendantSessionIds),
-                  ...atomicChildren.map((child) => child.childSessionId),
-                }),
                 unhandledSessionIds: List.unmodifiable(independentDescendantSessionIds),
               ),
       );
