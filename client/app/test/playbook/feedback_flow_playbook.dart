@@ -233,7 +233,9 @@ class _PreviewLauncherState()
                     Text("Feedback preview", style: prego.textTheme.textXl.medium),
                     const SizedBox(height: 8),
                     Text(
-                      "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
+                      FeedbackMotionScope.maybeOf(context: context) != null
+                          ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
+                          : "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
                       style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                     ),
                     const SizedBox(height: 24),
