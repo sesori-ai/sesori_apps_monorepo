@@ -235,7 +235,7 @@ void main() {
       final hookPlugin = _PromptHookPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
@@ -507,7 +507,7 @@ void main() {
       final orderedPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"], includeParentEnvironment: true),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: mapper,
@@ -696,7 +696,7 @@ void main() {
       final timestampingPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: _TimestampingEventMapper(
@@ -1243,7 +1243,7 @@ void main() {
       final gated = _GatedSelectionPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(

@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Step 1 merged, Step 2 in progress
+- **Status:** active; Steps 1–5 merged, Step 6.a in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Delivery:** twelve ordered PRs with fixed titles below
+- **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c PRs as approved by the user
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -588,9 +588,11 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - Add the browser challenge/redirect wire DTO and route; repository-owned DTO mapping; pure-Dart service validation;
      cubit flow; presentation-only shared settings UI; unknown fallback; cancellation; mobile/desktop tests; and the
      browser-flow regression contract. No plugin emits it yet.
-6. `🚧 [antigravity-harness] feat(antigravity): add isolated profile authentication [step 6/12]`
-   - Add layered profile Storage/Repository/Service ownership, auth stdout filtering, ACP/HTTP lower boundaries,
-     Google/loopback validation, personal OAuth operation, callback forwarding, cancellation, and deterministic tests.
+6. Isolated personal authentication, split without renumbering later steps (user-approved):
+   - `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
+   - The slices below preserve layered ownership, personal OAuth, callback safety, cancellation, and deterministic tests.
 7. `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
    - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
      persistent-approval filtering, bounded tool normalization, and live/replay hooks with direct collaborator tests.
@@ -613,9 +615,9 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
 
 Each PR targets at most 1,500 changed lines including tests and generated output. The original Step 2 exceeded the cap,
 so its ACP boundary/release pin remains Step 2 and local runtime resolution moves to Step 3; the two small final docs
-steps were combined to preserve the twelve-PR total. Step 5 may approach the cap because its wire variant must compile
-through shared DTO generation and exhaustive client presentation consumers. If it exceeds the measured budget, split
-transport/service from UI and update the fixed plan total before opening that PR.
+steps were combined to preserve twelve top-level steps. The user subsequently approved splitting Step 6 into lettered
+substeps while retaining the existing numbering. Each lettered substep independently obeys the 1,500-line cap, including
+its tests, generated output, and plan changes; estimates are not measured acceptance evidence.
 
 Every PR that makes behavior reachable updates its relevant `docs/regression/` feature contract in the same change.
 Internal/unregistered Steps 2-4 and 6-8 do not claim unavailable product support; if they materially change an existing
@@ -701,6 +703,43 @@ documented invariant, they update that document immediately. Step 11 is final re
   unknown/older-peer behavior, failure signals, both client shells, and the current-client requirement.
 
 ### Step 6/12: Isolated personal authentication
+
+#### Approved partition and new safety seams
+
+- **6.a — shared prerequisites only (estimate 850–1,200 lines):** add required `includeParentEnvironment` through
+  launch specs, host-process interfaces, native implementations, and every caller/fake. Existing callers choose `true`.
+  When `false`, the host ACP factory must neither merge ambient host environment nor request OS parent inheritance.
+  Add `HostJsonStore.child(required name)` for one validated directory segment; file operations remain bare-name-only.
+  `BridgeHostJsonStore` delegates child scope to its file API. Repeated child scope selection shares existing per-file
+  update coordination for the same directory; never create independent locks for identical files. Scope selection
+  itself performs no filesystem I/O. Authentication and live composition derive scopes from the same injected root.
+  Add bounded per-process stdout/stderr raw-line interception before decoding/logging, with passthrough for existing
+  harnesses. Consumed lines never reach logs; oversize failures do not echo payloads. Test chunk boundaries, stream-end
+  partial lines, passthrough, consumed output, bounds, process environment inheritance, atomic child-store writes,
+  scoped-name validation, and same-directory update exclusion. Update affected regression invariant documentation.
+  No Antigravity registration, authentication, profile mutation, database, or user-visible feature in this slice.
+- **6.b — isolated profile (estimate 1,000–1,400 lines):** compose Profile Storage/Repository/Service and typed settings;
+  use the injected child scope for `<GEMINI_HOME>/antigravity-acp/settings.json`, inspect only `acp_token.json` presence,
+  harden profile directories, and filter environment. Add verified browser suppression compatible with the actual
+  native/Dart runtime; do not assume Node `-e` exists. Implement plugin-owned selective stderr handling for OAuth
+  payloads before logging, preserving useful non-sensitive diagnostics. Prove native helper behavior before accepting
+  the suppression design; do not execute OAuth to discover it. Include mode, atomicity, environment, and failure tests.
+- **6.c — authentication (estimate 1,100–1,500 lines):** implement the ACP authentication lifecycle, Layer-2 URL mapper,
+  injected no-redirect HTTP client, repository normalization, service-owned exact Google/callback/state/code policy,
+  and composed operation with shared deadline, cancellation, exit cleanup, same-host completion, remote continuation,
+  and terminal setup reinspection. All remain unregistered until Step 9.
+- **Evidence and privacy:** pinned `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`,
+  `antigravityAuthSupport.ts`, corroborates nested settings/token paths (249–253, 318), browser suppression (217–294),
+  authorization grammar (354–388), and sensitive stderr (458). These safeguards address ordinary login: otherwise
+  ambient credentials/browser handling or logged OAuth secrets defeat the isolated remote flow. Never log either URL.
+- **Complexity budget:** new mutable state is limited to bounded process-line buffers and the existing store-lock
+  ownership extended to child scopes; no global registry, new persistent coordination, or additional lifecycle manager.
+  Profile settings are the only planned new persisted configuration; Google owns its tokens. Reuse ACP/operation
+  cancellation and deadline owners. Keep provider decisions out of shared transport. No unrelated cleanup or wire shim.
+- Architecture plan review must cover these new shared boundaries before 6.a implementation. Keep only one series PR
+  open and at most its immediate successor local: 6.a waits for Step 5 merge, 6.b for 6.a, and 6.c for 6.b.
+
+#### Authentication contracts across 6.a–6.c
 
 - Add typed `{auth: {type: oauth-personal}}` settings. `AntigravityProfileStorage` uses the injected scoped
   `HostJsonStore` for atomic settings reads/writes and a `CommandExecutor` backed by the provided host process service

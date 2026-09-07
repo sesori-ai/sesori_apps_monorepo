@@ -45,6 +45,7 @@ class CodexStdioAppServerClient({
     if (_disposed) throw StateError("CodexStdioAppServerClient is disposed");
     final token = _transport.beginAttach();
     final process = await _processes.spawn(
+      includeParentEnvironment: true,
       executable: _executable,
       arguments: const ["app-server", "--listen", "stdio://"],
       environment: _environment,

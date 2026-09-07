@@ -328,6 +328,7 @@ class _ProcessService({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List.of(arguments));

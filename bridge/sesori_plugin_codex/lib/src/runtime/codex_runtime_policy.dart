@@ -97,6 +97,7 @@ Future<SpawnedProcess> spawnCodexProcess({
   required int port,
 }) async {
   final process = await host.processes.spawn(
+    includeParentEnvironment: true,
     executable: executablePath,
     arguments: codexAppServerArgs(port: port),
     environment: host.environment,

@@ -8,6 +8,12 @@ class BridgeHostJsonStore({
   required final RuntimeFileApi _fileApi,
 }) implements HostJsonStore {
   @override
+  HostJsonStore scope({required String directoryName}) {
+    _validateName(directoryName);
+    return BridgeHostJsonStore(fileApi: _fileApi.scope(directoryName: directoryName));
+  }
+
+  @override
   Future<String?> read({required String name}) {
     _validateName(name);
     return _fileApi.readFile(name: name);
@@ -47,8 +53,8 @@ class BridgeHostJsonStore({
     if (name.isEmpty || name == "." || name == "..") {
       throw ArgumentError.value(name, "name", "must be a plain file name");
     }
-    if (name.contains("/") || name.contains(r"\")) {
-      throw ArgumentError.value(name, "name", "must not contain path separators");
+    if (name.contains("/") || name.contains(r"\") || name.contains(":") || name.contains("\u0000")) {
+      throw ArgumentError.value(name, "name", "must not contain path separators, drive prefixes, or NUL");
     }
     if (name.startsWith("bridge-startup")) {
       throw ArgumentError.value(name, "name", "the 'bridge-startup.*' prefix is reserved for the bridge");

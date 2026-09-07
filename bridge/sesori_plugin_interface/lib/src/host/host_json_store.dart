@@ -12,6 +12,13 @@ import "dart:async";
 /// frozen on-disk contract (byte-stable files read by older bridge versions)
 /// need full control over the serialized bytes.
 abstract class HostJsonStore() {
+  /// Selects one child directory without creating or reading files.
+  ///
+  /// [directoryName] must be one plain segment, with the same restrictions as
+  /// file names. Repeated selection from the same root shares the atomic update
+  /// lock owner; authentication and live hosting must derive from that root.
+  HostJsonStore scope({required String directoryName});
+
   /// Reads the contents of [name], or `null` when the file does not exist.
   Future<String?> read({required String name});
 

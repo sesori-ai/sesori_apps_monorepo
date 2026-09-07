@@ -34,6 +34,7 @@ class HostProcessCommandExecutor({
     Duration? timeout,
   }) async {
     final SpawnedProcess process = await _processes.spawn(
+      includeParentEnvironment: true,
       executable: executable,
       arguments: arguments,
       environment: environment,

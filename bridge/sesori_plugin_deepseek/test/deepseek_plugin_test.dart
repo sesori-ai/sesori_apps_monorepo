@@ -126,7 +126,13 @@ DeepSeekPlugin _buildPlugin(FakeAcpProcess fake) {
     delegationTracker: DeepSeekDelegationTracker(),
   );
   return DeepSeekPlugin(
-    launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
+    launchSpec: const AcpLaunchSpec(
+      includeParentEnvironment: true,
+      command: "deepseek",
+      args: [],
+      cwd: "/repo",
+      environment: {},
+    ),
     launchDirectory: "/repo",
     childSessionTracker: childSessionTracker,
     mapper: mapper,

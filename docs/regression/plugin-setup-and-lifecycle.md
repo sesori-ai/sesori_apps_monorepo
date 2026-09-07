@@ -12,6 +12,20 @@ idle suspension, the management snapshot, and lifecycle commands.
   nothing, and all registered harnesses appear in the snapshots. Setup inspection never
   installs, logs in, or starts a backend, reporting a bounded state and action hint
   without secrets or raw output.
+- Host process spawning explicitly selects environment inheritance. Existing registered
+  harnesses retain inherited environment behavior; an isolated launch must not receive
+  parent variables again through either the OS spawn or ACP host adapter.
+- Plugin JSON child scopes select one directory segment without filesystem I/O, retain
+  bare-file/reserved-name restrictions, and share the root's per-directory atomic-update
+  lock owner across authentication and live hosting. An interrupted update leaves the
+  last completed settings write readable.
+- ACP output interception, when configured, bounds each raw partial line before decoding
+  or logging. Consumed stdout/stderr never reaches logs; other bytes and useful diagnostics
+  remain intact, including fragmented UTF-8, CRLF and EOF partial lines. Failures never echo
+  payload text, and idle-stream interception must not delay cancellation or process cleanup.
+  A failed interceptor detaches and tears down its process generation, including failures before
+  any request; later requests fail immediately until a fresh connection is established.
+  Without interception the existing ACP transport behavior is unchanged.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
   never downloads or mutates files, and failure there is non-fatal. The persisted disable
   list is the only durable eligibility policy, with setup deciding blocked versus routable.
@@ -236,6 +250,9 @@ owned-process exit; and restart.
 
 ## Failure Signals
 
+- An isolated child receiving ambient variables, an inert JSON child selection creating
+  directories, repeated child scopes losing concurrent updates, consumed ACP output appearing
+  in diagnostics, or interception preventing idle-process shutdown.
 - Setup inspection installing, logging in, starting a backend, or leaking secrets or raw
   output; resolution mutating runtime files; a disabled harness probed or started.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
@@ -321,6 +338,10 @@ owned-process exit; and restart.
 
 ## Sources
 
+- Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,
+  `bridge_host_process_service_test.dart`, `host_process_acp_factory_test.dart`,
+  `acp_output_interceptor_test.dart`, and `acp_stdio_client_test.dart` cover atomic
+  scopes, explicit inheritance, byte preservation, pre-log consumption, and cleanup.
 - `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered production plugin
   descriptors; plugin routing handlers
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,

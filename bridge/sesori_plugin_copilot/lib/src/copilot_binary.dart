@@ -18,6 +18,7 @@ abstract final class CopilotBinary() {
     required Map<String, String> environment,
   }) {
     return AcpLaunchSpec(
+      includeParentEnvironment: true,
       command: binary,
       // A bridge-owned process must not replace the runtime selected and
       // version-gated by its descriptor while that process is starting.

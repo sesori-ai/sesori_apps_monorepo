@@ -20,7 +20,7 @@ class _PolicyPlugin({
     : super(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: "/repo",
       );
 
