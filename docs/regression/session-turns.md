@@ -124,6 +124,9 @@ defaults and queued client sends coherent.
   Neither accepted nor unknown-child interrupt responses fabricate terminal
   tiles/idle state. Whole-plugin interruption waits for authoritative lifecycle;
   transport failure preserves its original error and logs parent/child context.
+  Stop currently targets children known at request time: a child announced while
+  cancellation is in flight can continue running, remains visible as busy, and
+  can be stopped again. Closing that late-launch window is a required follow-up.
   Other ACP harnesses retain their existing policy until they opt in.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the

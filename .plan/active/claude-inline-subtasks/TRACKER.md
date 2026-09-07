@@ -719,5 +719,13 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
-The in-flight late-child stop window awaits a scope decision. Final feature E2E
-remains pending; managed runtime upgrades remain separately owned.
+The user chose a separate successor for the in-flight late-child stop window.
+PR #1346 is scoped-stop step 1/2 with the request-time snapshot limitation documented.
+- [ ] After #1346 merges, deliver scoped-stop step 2/2: close late root/nested child
+  launches with bounded lifecycle ownership, then remove the documented limitation.
+  Establish and review the concrete design before implementation; do not start the
+  successor before human merge. Final DeepSeek E2E follows, then Codex.
+Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
+setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
+DeepSeek analysis + 106 tests pass after the merge.
+Managed runtime upgrades remain separately owned.

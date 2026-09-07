@@ -144,7 +144,9 @@ requires all running children to be background. Foreground children stop through
 parent cancellation; background children use direct-parent-authorized interrupt.
 Directly stopping a non-cancellable child leaves it running rather than widening
 to its parent/siblings. Busy state follows lifecycle, not interrupt acceptance.
-Final feature E2E coverage remains pending.
+Stop currently uses the request-time child snapshot; late-announced children can
+remain running. Closing that window is a required successor to #1346, before
+final DeepSeek feature E2E coverage.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as
