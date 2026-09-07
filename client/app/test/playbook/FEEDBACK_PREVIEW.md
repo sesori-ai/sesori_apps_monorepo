@@ -18,6 +18,12 @@ Updated star component, including captured frames during the selected-star bounc
 | --- | --- | --- |
 | ![Light rating sheet](feedback_preview/rating-light.png) | ![Three selected stars](feedback_preview/rating-selected-dark.png) | ![Two selected stars](feedback_preview/rating-selected-light.png) |
 
+Feedback input corrected to [Figma `5035:11030`](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=5035-11030):
+
+| Voice first | Transcribed · dark | Transcribed · light |
+| --- | --- | --- |
+| ![Voice-first input](feedback_preview/input-voice-first-dark.png) | ![Transcript with one Send action](feedback_preview/input-transcribed-dark.png) | ![Light transcript with one Send action](feedback_preview/input-transcribed-light.png) |
+
 ## Run locally
 
 Use the Flutter version pinned in the repository's `.tool-versions` (currently
@@ -188,6 +194,10 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   typing with the software keyboard, focus ring and keyboard avoidance,
   simulated recording/transcription, private success toast, category-preserving
   submission failure and retry, and Apple's actual native rating prompt.
+- Input correction verified in a separate iPhone 17 Pro simulator: voice-first
+  entry, recording/transcribing, dark/light transcript with one Send action,
+  tap-to-edit with the software keyboard and focus ring, actual text edits,
+  and transcript-only submission through the replacement Send action.
 - Star, issue, and composer actions expose single labeled accessibility
   controls. Full VoiceOver navigation remains a team review item.
 
