@@ -547,16 +547,18 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
 | monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | PR #1346: typed interrupt and shared opt-in policy; request-time child snapshot with documented late-launch limitation |
-| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required successor after #1346 merges; close the late-launch stop window before final DeepSeek E2E |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/3]` | #1346 merged at `2cc1485d7c`; request-time snapshot limitation documented |
+| adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Native atomic stop and ordered input cancellation; prerequisite release before consumer pin |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 3/3]` | Consume native authority and verified runtime; required before final DeepSeek E2E |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
 ### Scoped-stop successor (user-approved split)
 
-The user chose a separate successor to #1346 for the late-launch stop race.
-This two-PR scoped-stop subseries does not replace the existing final regression
-reconciliation, E2E matrix, or retirement gates. Finish it before DeepSeek E2E,
-then continue Codex.
+The user chose a separate successor to #1346, then approved native adapter and
+release expansion after investigation found that child Activation end is not
+interrupted-turn settlement. The scoped-stop subseries now has three steps; it
+does not replace final regression reconciliation, E2E, or retirement gates.
+Finish it before DeepSeek E2E, then continue Codex.
 
 Evidence is a reachable I/O interleaving, not yet a live reproduction: native
 `#notifySubagent` queues lifecycle output, while `#interruptSubagent` acknowledges
@@ -564,15 +566,15 @@ before cancellation settles. A child launched between the bridge snapshot and
 backend cancellation can survive, remain visibly busy, and continue work. A second
 snapshot alone cannot cover announcements still queued behind the response.
 
-Step 2 must first establish a concrete, architecture-reviewed lifecycle design.
-Reuse existing prompt settlement and child-tracker facts; justify each new mutable
-piece, with no new persistence or speculative protocol fields. Target a few hundred
-changed lines including tests, remaining under the ~1,500-line soft cap. Cover late
-root and nested launches, named-child scope, non-cancellable work, failure/teardown,
-and new user turns not inheriting old stop intent. Do not broaden cancellation to
-parents or siblings or fabricate terminal state. Remove the temporary limitation
-from `docs/regression/session-turns.md` once that behavior is verified; keep final
-phone/desktop E2E outstanding until its existing matrix passes.
+The concrete design and review corrections are in
+[`followups/deepseek-atomic-stop.md`](followups/deepseek-atomic-stop.md).
+Use synchronous native subtree cancellation and existing admission AbortSignals,
+not a bridge stop fence. Preserve zero long-lived coordination state, exact native
+execution-kind provenance, and ordered per-interaction cancellation. Native tests
+must prove atomicity before release; the bridge then consumes that authority and
+verified artifacts. Each PR targets the ~1,500-line soft cap. Remove the temporary
+limitation from feature docs only after authoritative native and consumer coverage;
+final phone/desktop E2E remains separate.
 
 ### Consumer replacement series
 

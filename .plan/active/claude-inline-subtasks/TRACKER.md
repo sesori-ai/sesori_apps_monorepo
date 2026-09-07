@@ -9,11 +9,10 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** finish review of DeepSeek scoped-stop step 1/2 (#1346), then
-  after human merge deliver required step 2/2 for in-flight child launches.
-  Complete DeepSeek E2E only after both steps, then continue Codex. All five
-  replacement consumer slices merged; remaining harness and retirement gates stay
-  required.
+- **Next action:** #1346 merged. Deliver the user-approved native atomic-stop
+  prerequisite/release (step 2/3), then bridge consumption and pin (step 3/3).
+  Complete DeepSeek E2E afterward, then continue Codex. All five replacement
+  consumer slices merged; remaining harness and retirement gates stay required.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -177,8 +176,9 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [x] | DeepSeek | Consumer replacement steps 1–5 | #1298, #1301, #1304, #1306, #1317 merged; oversized #1293 replaced |
 | [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346): review pending; request-time snapshot limitation documented |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required after #1346 merges and before DeepSeek E2E; concrete lifecycle design/review and implementation pending |
+| [x] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/3]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346) merged at `2cc1485d7c`; request-time snapshot limitation documented |
+| [ ] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Native implementation in progress; release precedes the consumer minimum/pin |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 3/3]` | Native authority consumer, verified pin and coverage; required before DeepSeek E2E |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -722,12 +722,16 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
-The user chose a separate successor for the in-flight late-child stop window.
-PR #1346 is scoped-stop step 1/2 with the request-time snapshot limitation documented.
-- [ ] After #1346 merges, deliver scoped-stop step 2/2: close late root/nested child
-  launches with bounded lifecycle ownership, then remove the documented limitation.
-  Establish and review the concrete design before implementation; do not start the
-  successor before human merge. Final DeepSeek E2E follows, then Codex.
+The user chose a separate successor, then approved an adapter/release expansion
+when investigation showed activation end cannot identify interrupted-turn settlement.
+#1346 merged at `2cc1485d7c` and is now step 1/3. Step 2/3 adds native atomic stop;
+step 3/3 consumes it. See `followups/deepseek-atomic-stop.md` for the concrete design.
+Architecture plan review accepted native ownership and layering but required exact
+old/new work separation and native execution-kind authority. Those findings were
+applied using pre-dispatch-only queue cleanup, ordered input-cancel server requests,
+and own-suffix projection provenance; the revision has not been re-reviewed.
+No long-lived stop coordination state is planned. Native implementation review and
+authoritative tests remain pending. Final DeepSeek E2E follows, then Codex.
 Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
 setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
 DeepSeek analysis + 106 tests pass after the merge.
