@@ -466,9 +466,12 @@ void main() {
     await h.plugin.resetConnectionAfterExit();
     expect(await h.plugin.getPendingQuestions(sessionId: first.id), isEmpty);
     expect((await h.plugin.getProviders(projectId: "/launch")).providers, isEmpty);
-    expect(await h.plugin.ensureConnected(), isTrue);
-    await h.send(session: first.id);
+    await h.send(session: first.id, model: (providerID: "antigravity", modelID: "other"));
     await replacement.frame(method: "session/prompt");
+    final resumed = replacement.stdin.frames.where((f) => f["method"] == "session/resume").single;
+    expect((resumed["params"] as Map)["sessionId"], first.id);
+    final selection = replacement.stdin.frames.where((f) => f["method"] == "session/set_config_option").single;
+    expect((selection["params"] as Map)["value"], "other");
     final after = replacement.stdin.frames.length;
     await h.send(session: second.id);
     await replacement.frame(method: "session/prompt", after: after);

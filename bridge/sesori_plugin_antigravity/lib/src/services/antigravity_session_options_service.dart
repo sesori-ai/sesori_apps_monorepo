@@ -115,7 +115,10 @@ class AntigravitySessionOptionsService({
         message: "Antigravity supports its primary agent and advertised models only",
       );
     }
-    if (modelId != null) _validateModel(operation: operation, modelId: modelId);
+    // After reset, residency must restore the catalog before dispatch validates it.
+    if (modelId != null && _catalogTracker.snapshot != null) {
+      _validateModel(operation: operation, modelId: modelId);
+    }
   }
 
   /// Await before dispatching a prompt. A null model preserves the account/session default.

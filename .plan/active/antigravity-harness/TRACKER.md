@@ -265,20 +265,27 @@
   views, typed initialization mapping, original reset/error source stacks, and no new cleanup owner.
 - [x] Fake composed lifecycle, long history/two sessions, active cancel/delete/questions, crash/reset/reconnect,
   interruption, late spawn, privacy and image-bearing JSON evidence; indexed regression documentation.
-- [x] Final source-named evidence: 11 `antigravity_plugin` + 13 `antigravity_session_options_service` (24 changed),
-  plus 10 unchanged `antigravity_output_composer` tests = 34 distinct Antigravity; ACP/transport remain 35 + 14.
-  Review fixes reran the 24 changed cases and both owning analyzers; no generation/dependency changes.
+- [x] Fresh JSON-reporter evidence: 11 `antigravity_plugin` + 13 `antigravity_session_options_service` +
+  2 `antigravity_output_composer` = 26 Antigravity tests. The plugin's nine declarations instantiate eleven tests
+  through two two-value parameterizations. The prior output-composer count of ten was incorrect; combined coverage
+  with the previously passing 35 ACP + 14 transport cases is 75, not 83.
+  Reproduce with `dart test --reporter=json` on those three `test/*_test.dart` files in the Antigravity package.
+  All 26 pass, including explicit-model recovery after reset; owning analysis is clean.
 - Full local net cap against `14169bd6e3`: 1,284 additions + 81 deletions = 1,365 lines across 23 files,
-  including tests/docs/planning. Parent must remeasure after main synchronization/publication edits.
+  including tests/docs/planning at that initial immutable checkpoint.
 - [x] First actual architecture review approved all 23 files at `4394b735a6` against `14169bd6e3` (1,365 lines),
   reviewer `b65aeff7`, no findings. Earlier incomplete-input reviews are not counted.
 - [x] Synced with main `6959375add`; only documentation conflicted. Source/tests are unchanged from the reviewed
   checkpoint, so unchanged passing suites were not rerun.
 - [x] Parent published Step 8.b as PR #1360 and started its monitor; only Step 8.c may proceed locally.
-- Review fixes validate model IDs before prompt/command queue admission and recover metadata once per cold live
-  connection rather than ordinary enumeration. Message model/provider stamping moved to 8.c to preserve the full
-  1,500-line cap; it remains required before activation. Corrected publication scope is 1,442 lines before final
-  checkpoint metadata.
+- Review fixes validate model IDs before admission when a catalog is known; after reset, residency restores the
+  catalog before strict dispatch validation. Metadata recovery runs once per cold live connection, not enumeration.
+  Message model/provider stamping remains required in 8.c before activation, preserving the full 1,500-line cap.
+- Corrected immutable measurement: base `6959375addc700c00b0206204bbfc00ea6b3ca88` → head
+  `ad011a4f2d05c82162b328c1c45fd82e5f6582d3`: 1,350 additions + 92 deletions = 1,442 lines across 23 files.
+  This includes the tracker and every file as of that head. The 77-line increase over 1,365 is three publication-doc
+  lines plus 74 review-fix lines; main synchronization itself changed no count. `66d8186601` adds two approval lines
+  (1,444 total). Later changes have separately measured PR-body totals; these immutable measurements are not rewritten.
 - [x] Second/final architecture review approved all 23 files at `ad011a4f2d` against `6959375add` (1,442 lines),
   reviewer `58f4d8a5`, no findings. All seven delivered GitHub threads have prefixed disposition replies.
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
