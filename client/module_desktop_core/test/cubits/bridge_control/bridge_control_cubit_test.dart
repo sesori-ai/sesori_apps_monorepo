@@ -91,6 +91,21 @@ void main() {
       expect(cubit.state.statusLabel, "Bridge: Connected");
     });
 
+    test("a temporary desktop token failure shows an authentication wait", () async {
+      await cubit.initialize();
+      statusTracker.markHelperConnected();
+      processService.emit(state: const BridgeProcessRunning(pid: 123), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.waitingForAuthentication,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for desktop authentication (retrying every minute)");
+    });
+
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
       await cubit.initialize();
 

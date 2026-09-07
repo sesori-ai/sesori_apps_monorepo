@@ -15,7 +15,7 @@ class BridgeStartupRetryService() {
   static const retryInterval = Duration(minutes: 1);
 
   final BehaviorSubject<ControlStartupState> _state = BehaviorSubject.seeded(ControlStartupState.starting);
-  final StartAbortController _abort = StartAbortController();
+  final StreamController<void> _cancellation = StreamController<void>.broadcast(sync: true);
 
   ValueStream<ControlStartupState> get states => _state.stream;
 
@@ -26,23 +26,34 @@ class BridgeStartupRetryService() {
         final result = await operation();
         // Return acquired resources to their caller even during cancellation:
         // the session owns closing a relay connection that just completed.
-        if (!_abort.isAborted) _state.add(ControlStartupState.starting);
+        if (!_cancellation.isClosed) _state.add(ControlStartupState.starting);
         return result;
       } on Object catch (error, stackTrace) {
         _checkCancelled();
         if (!_isRetryable(error: error)) rethrow;
-        _state.add(ControlStartupState.waitingForServer);
+        final waitingForToken = error is ControlTokenRetryLaterException;
+        _state.add(
+          waitingForToken ? ControlStartupState.waitingForAuthentication : ControlStartupState.waitingForServer,
+        );
         Console.warning(
-          "Could not reach the Sesori server during startup. Your internet connection may be unavailable. "
-          "The bridge is waiting and will retry in 1 minute.",
+          waitingForToken
+              ? "Waiting for the desktop app to supply an access token. The bridge will retry in 1 minute."
+              : "Could not reach the Sesori server during startup. Your internet connection may be unavailable. "
+                    "The bridge is waiting and will retry in 1 minute.",
         );
         Log.w("Startup server request failed; retrying in 1 minute", error, stackTrace);
         final elapsed = Completer<void>();
-        final timer = Timer(retryInterval, elapsed.complete);
+        void wake() {
+          if (!elapsed.isCompleted) elapsed.complete();
+        }
+
+        final cancellation = _cancellation.stream.listen(null, onDone: wake);
+        final timer = Timer(retryInterval, wake);
         try {
-          await Future.any<void>([elapsed.future, _abort.signal.whenAborted]);
+          await elapsed.future;
         } finally {
           timer.cancel();
+          unawaited(cancellation.cancel());
         }
       }
     }
@@ -50,7 +61,7 @@ class BridgeStartupRetryService() {
 
   void markReady() => _state.add(ControlStartupState.ready);
 
-  void cancel() => _abort.abort();
+  void cancel() => unawaited(_cancellation.close());
 
   Future<void> dispose() async {
     cancel();
@@ -58,18 +69,17 @@ class BridgeStartupRetryService() {
   }
 
   void _checkCancelled() {
-    if (_abort.isAborted) throw const PluginStartAbortedException();
+    if (_cancellation.isClosed) throw const PluginStartAbortedException();
   }
 
   bool _isRetryable({required Object error}) => switch (error) {
-    http.ClientException() ||
-    SocketException() ||
-    WebSocketException() ||
-    TimeoutException() ||
-    ControlTokenRetryLaterException() => true,
+    http.ClientException() || SocketException() || TimeoutException() || ControlTokenRetryLaterException() => true,
     WebSocketChannelException(:final inner) when inner is Exception => _isRetryable(error: inner),
     AuthApiException(:final statusCode) ||
-    BridgeRegistrationException(:final statusCode) => statusCode == 408 || statusCode == 429 || statusCode >= 500,
+    BridgeRegistrationException(:final statusCode) ||
+    WebSocketException(
+      httpStatusCode: final statusCode?,
+    ) => statusCode == 408 || statusCode == 429 || statusCode >= 500,
     _ => false,
   };
 }

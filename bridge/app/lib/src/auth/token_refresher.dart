@@ -15,4 +15,7 @@ class const ControlTokenUnavailableException(final String reason) implements Exc
 class const ControlTokenRetryLaterException({required final Object? innerError})
     extends ControlTokenUnavailableException {
   this : super("The desktop app cannot currently supply an access token; retry later.");
+
+  @override
+  String toString() => "ControlTokenRetryLaterException: $reason${innerError == null ? "" : " ($innerError)"}";
 }

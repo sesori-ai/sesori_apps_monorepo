@@ -17,6 +17,7 @@ void main() {
   test("defaults to the offline baseline before any helper connects", () {
     expect(tracker.status, BridgeControlStatus.offline);
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.statusStream.value, BridgeControlStatus.offline);
   });
 
@@ -53,6 +54,7 @@ void main() {
     tracker.markHelperDisconnected();
 
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
     expect(tracker.status.plugin, ControlPluginHealthState.unknown);
     expect(tracker.status.activeSessionCount, 0);
@@ -88,6 +90,7 @@ void main() {
     );
 
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
     expect(tracker.status.activeSessionCount, 0);
   });

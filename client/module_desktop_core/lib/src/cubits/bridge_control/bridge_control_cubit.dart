@@ -468,10 +468,14 @@ class BridgeControlCubit._create({
       return "Bridge: Connecting";
     }
     switch (status.startup) {
+      case ControlStartupState.unknown:
+        return "Bridge: Status unknown";
       case ControlStartupState.starting:
         return "Bridge: Starting";
       case ControlStartupState.waitingForServer:
         return "Bridge: Starting — waiting for server (retrying every minute)";
+      case ControlStartupState.waitingForAuthentication:
+        return "Bridge: Starting — waiting for desktop authentication (retrying every minute)";
       case ControlStartupState.ready:
         break;
     }

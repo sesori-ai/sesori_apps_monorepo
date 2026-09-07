@@ -789,6 +789,10 @@ class const BridgeRuntimeRunner._() {
         Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
       }
 
+      // A signal received during diagnostics had no session to cancel yet.
+      // Honor the latched request before constructing the runtime.
+      if (startAbortController.isAborted) throw const PluginStartAbortedException();
+
       final database = AppDatabase.create(
         dataDirectory: options.dataDirectory,
       );

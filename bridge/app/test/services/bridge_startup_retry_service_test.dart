@@ -77,7 +77,7 @@ void main() {
     TimeoutException("deadline"),
     http.RequestAbortedException(Uri.parse("https://auth.test")),
     WebSocketChannelException.from(const SocketException("offline")),
-    WebSocketChannelException.from(const WebSocketException("Service unavailable")),
+    WebSocketChannelException.from(const WebSocketException("Service unavailable", 503)),
     const ControlTokenRetryLaterException(innerError: null),
     AuthApiException(method: "GET", uri: Uri.parse("https://auth.test"), statusCode: 503, body: ""),
     BridgeRegistrationException(statusCode: 429, body: ""),
@@ -92,7 +92,12 @@ void main() {
           },
         );
         time.flushMicrotasks();
-        expect(service.states.value, ControlStartupState.waitingForServer);
+        expect(
+          service.states.value,
+          error is ControlTokenRetryLaterException
+              ? ControlStartupState.waitingForAuthentication
+              : ControlStartupState.waitingForServer,
+        );
         time.elapse(const Duration(minutes: 1));
         expect(attempts, 2);
         unawaited(service.dispose());
@@ -104,6 +109,9 @@ void main() {
   for (final error in <Object>[
     StateError("configuration"),
     const FormatException("malformed response"),
+    const WebSocketException("Not found", 404),
+    const WebSocketException("Invalid upgrade"),
+    const HandshakeException("Certificate verification failed"),
     const FileSystemException("permission denied"),
     const ControlTokenUnavailableException("signed out"),
     AuthApiException(method: "GET", uri: Uri.parse("https://auth.test"), statusCode: 401, body: ""),

@@ -26,7 +26,7 @@ sealed class BridgeControlStatus with _$BridgeControlStatus {
 
   /// Baseline before any helper has connected: bridge off, nothing known.
   static const BridgeControlStatus offline = BridgeControlStatus(
-    startup: ControlStartupState.ready,
+    startup: ControlStartupState.unknown,
     helperOnline: false,
     relay: ControlRelayConnectionState.disconnected,
     plugin: ControlPluginHealthState.unknown,

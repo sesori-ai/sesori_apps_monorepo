@@ -72,8 +72,10 @@ Map<String, dynamic> _$ControlStatusToJson(ControlStatus instance) =>
     };
 
 const _$ControlStartupStateEnumMap = {
+  ControlStartupState.unknown: 'unknown',
   ControlStartupState.starting: 'starting',
   ControlStartupState.waitingForServer: 'waiting_for_server',
+  ControlStartupState.waitingForAuthentication: 'waiting_for_authentication',
   ControlStartupState.ready: 'ready',
 };
 

@@ -100,6 +100,17 @@ void main() {
       });
     });
 
+    for (final startup in ControlStartupState.values) {
+      test("status round-trips startup state $startup", () {
+        final original = ControlMessage.status(
+          startup: startup,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        );
+        expect(ControlMessage.fromJson(original.toJson()), original);
+      });
+    }
+
     test("status round-trips the takenOver relay state", () {
       const original = ControlMessage.status(
         startup: ControlStartupState.ready,

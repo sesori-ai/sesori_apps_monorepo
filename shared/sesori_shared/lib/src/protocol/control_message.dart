@@ -123,8 +123,11 @@ enum ControlPromptKind() {
 
 /// Startup readiness is separate from the helper process and relay socket.
 enum ControlStartupState() {
+  unknown,
   starting,
   @JsonValue("waiting_for_server")
   waitingForServer,
+  @JsonValue("waiting_for_authentication")
+  waitingForAuthentication,
   ready,
 }
