@@ -752,5 +752,20 @@ to reuse its inherited seam and initialize version mapping/policy to move throug
 the existing repository/service. `859b99071` applies both; the final architecture
 pass approved with no findings. Merged actual `origin/main` in `4eaf8ede58` and
 updated the affected async reply assertion. Post-merge ACP analysis + 325 tests,
-DeepSeek analysis + 114 tests, and Grok analysis + 85 tests pass. Final DeepSeek
-E2E follows, then Codex.
+DeepSeek analysis + 114 tests, and Grok analysis + 85 tests pass.
+
+PR #1356 feedback added three correctness boundaries before human review: an
+additive `subAgentsHandled` abort response (defaulting false for older empty bridge
+responses) stops current clients from repeating plugin-owned descendant fanout;
+retained parent identity keeps an ended ancestor's exact-child native authority;
+and a generated Freezed union replaces handwritten stop-target dispatch. It also
+reports retained tracker work when no native client exists and reconciles the
+0.1.4/docs/budget record. The architecture follow-up approved all three boundaries
+with no findings. Shared 397 tests, ACP 325, DeepSeek 116,
+selected bridge 74, and selected client 104 tests pass; LSP reports zero diagnostics
+across the ten changed production files. Merged actual `origin/main` at
+`b43758e1b3` in `d3da50bdf7` without conflicts or overlapping affected files. The
+final PR is +1,936/-224 = 2,160 lines: 588 generated, 834 tests/fixtures, 380 docs/
+plans, and 358 production. This exceeds the soft cap because splitting either the
+fanout response from STOP or the generated parser from its consumer would leave an
+unsafe or duplicate-schema intermediate. Final DeepSeek E2E follows, then Codex.

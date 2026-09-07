@@ -134,11 +134,15 @@ sessions/children/jobs/projections, bridge turn state and approval registry. Tar
 lists and failures are request-local; the input abort callback is interaction-local
 and removed on settlement. No stop maps, epochs, timers, registries or admission
 cutoffs. The native step landed at 840 changed lines after review fixes. The bridge
-estimate was 250–600 lines, but the complete consumer lands at 1,369: 791 lines are
-tests and frozen fixtures/codegen, while production, runtime pinning, and required
-capability/regression/plan reconciliation remain one coherent atomic contract. No
-independently useful split would be runnable before the 0.1.4 minimum and request
-handling landed together. Both steps remain below the ~1,500 soft cap.
+estimate was 250–600 lines; the initially reviewed consumer landed at 1,369 under
+the ~1,500 soft cap. Mandatory PR findings then required a generated Freezed union
+and an additive compatibility response through bridge and client to prevent a
+second descendant fanout. The final 2,160-line PR comprises 588 generated lines,
+834 test/fixture lines, 380 docs/plan lines, and 358 production lines. Splitting the
+response from atomic STOP would leave the first PR vulnerable to re-stopping later
+work, while splitting the generated parser from its consumer would retain duplicate
+wire schemas. The overrun is therefore accepted as one coherent, independently safe
+contract; the original reviewed measurement remains recorded rather than rewritten.
 
 ## Verification and review record
 
