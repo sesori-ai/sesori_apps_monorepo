@@ -1724,10 +1724,10 @@ abstract class AcpPlugin({
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
     final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
-    final hasOwnPrompt = (_turnStates[sessionId]?.pending ?? 0) > 0;
-    final mainRunning = hasOwnPrompt || namedChild != null;
+    final hasResidentPrompt = _inFlightTurnSessions.contains(sessionId);
+    final mainRunning = hasResidentPrompt || namedChild != null;
     final mainOnlySupported =
-        (hasOwnPrompt || namedChild == null || namedChild.isBackground) &&
+        (hasResidentPrompt || namedChild == null || namedChild.isBackground) &&
         children.every((child) => child.isBackground);
     if (children.isNotEmpty &&
         (subAgents == PluginAbortSubAgentPolicy.confirm ||
@@ -1741,19 +1741,19 @@ abstract class AcpPlugin({
     if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
     }
-    if (subAgents == PluginAbortSubAgentPolicy.stop && supportsAtomicScopedStop) {
+    if (subAgents != PluginAbortSubAgentPolicy.keep && supportsAtomicScopedStop) {
       for (final targetSessionId in {sessionId, ...children.map((child) => child.childSessionId)}) {
         _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
       }
       final client = _client;
       if (client == null) {
         return PluginAbortAccepted(
-          workKept: children.isNotEmpty || namedChild != null && !hasOwnPrompt,
+          workKept: children.isNotEmpty || namedChild != null && !hasResidentPrompt,
           subAgentsHandled: false,
         );
       }
       final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
-      final target = hasOwnPrompt || parentSessionId == null
+      final target = hasResidentPrompt || parentSessionId == null
           ? AcpScopedStopSessionTarget(sessionId: sessionId)
           : AcpScopedStopChildTarget(
               parentSessionId: parentSessionId,

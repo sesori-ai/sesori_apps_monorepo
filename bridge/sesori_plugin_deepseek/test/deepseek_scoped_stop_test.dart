@@ -59,6 +59,24 @@ void main() {
       expect(harness.plugin.childSessionTracker.hasActiveWorkForRoot(sessionId: "root"), isTrue);
     });
 
+    test("confirm uses native authority when no announced child requires a dialog", () async {
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+      );
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      expect(stop["params"], {"kind": "session", "sessionId": "root"});
+      expect(harness.cancels, isEmpty);
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.workKept, "work kept", false)
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true),
+      );
+    });
+
     test("keep rejects mixed foreground work without side effects", () async {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "foreground", parent: "root", background: false);
@@ -172,6 +190,39 @@ void main() {
       expect(await stopping, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", false));
       expect(harness.cancels, isEmpty);
       expect(harness.interrupts, isEmpty);
+    });
+
+    test("a queued prompt does not replace an ended child's retained parent authority", () async {
+      await harness.spawn(child: "parent", parent: "root", background: true);
+      await harness.spawn(child: "descendant", parent: "parent", background: true);
+      await harness.end(child: "parent", parent: "root");
+      await harness.plugin.sendPrompt(
+        sessionId: "parent",
+        promptId: "queued",
+        parts: const [PluginPromptPart.text(text: "Later work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loading = await harness.waitFor(method: AcpMethods.sessionLoad, count: 1);
+
+      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      expect(stop["params"], {"kind": "child", "sessionId": "root", "childSessionId": "parent"});
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(await stopping, isA<PluginAbortAccepted>());
+      await harness.end(child: "descendant", parent: "parent");
+      harness.reply(frame: loading, result: const {});
+      if (harness.plugin.currentWorkState != PluginWorkState.idle) {
+        await harness.plugin.workState.firstWhere((state) => state == PluginWorkState.idle);
+      }
+      expect(
+        harness.fake.written.where(
+          (frame) => frame["method"] == AcpMethods.sessionPrompt && (frame["params"] as Map)["sessionId"] == "parent",
+        ),
+        isEmpty,
+      );
     });
 
     test("a finished child opened for a new user turn uses a resident-session target", () async {

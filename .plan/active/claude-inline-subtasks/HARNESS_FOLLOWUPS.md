@@ -101,8 +101,9 @@ confirmation, no child session or partial stop) and gets that subset.
      outcome because its standard and extension frames do. Neither path matches
      by description or arrival order, so concurrent spawns stay deterministic.
   3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
-     running children is side-effect free and rejects with their count,
-     `mainAgentRunning` from pending prompts or an active named child, and `mainAgentOnlySupported` true only
+     tracker-visible running children is side-effect free and rejects with their
+     count, `mainAgentRunning` from a dispatched resident prompt or an active
+     named child, and `mainAgentOnlySupported` true only
      when every running child is background. For `keep`, when only children are
      running the plugin sends no cancellation and returns
      `PluginAbortAccepted(workKept: true)` for the retained children. When the
@@ -121,8 +122,13 @@ confirmation, no child session or partial stop) and gets that subset.
      `stopScopedTree` hooks match current composition (the per-harness APIs are
      standalone). DeepSeek alone opts into the atomic hook: ACP performs
      request-time queue/write cleanup, then passes an immutable session or exact
-     child target through one native request. No response-time cleanup is allowed.
-     Other ACP harnesses retain the default snapshot fanout until their transport
+     child target through one native request. An accepted `confirm` with no
+     tracker-visible children uses the same native authority so a child admitted
+     ahead of its delayed lifecycle frame cannot escape; visible children still
+     reject before any side effect. A queued but undispatched prompt is cleared
+     before dispatch and does not replace retained exact-parent child authority.
+     No response-time cleanup is allowed. Other ACP harnesses retain the default
+     snapshot fanout until their transport
      seam lands.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into

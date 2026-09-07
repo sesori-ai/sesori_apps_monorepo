@@ -114,18 +114,23 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
-- DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
-  `keep`. A running main turn can be kept separate only when all running children
-  are background; unsupported `keep` rejects before cancelling prompts or input.
-  Full `stop` clears only prompts already queued at request time, then dispatches
+- DeepSeek 0.1.4 supports side-effect-free `confirm` rejection for
+  tracker-visible children and child-only `keep`. When no child is visible, an
+  accepted `confirm` uses native atomic authority so a child ahead of its delayed
+  lifecycle frame cannot escape. A running main turn can be kept separate only
+  when all running children are background; unsupported `keep` rejects before
+  cancelling prompts or input. Full `stop` clears only prompts already queued at
+  request time, then dispatches
   exactly one native atomic subtree request without a preceding standard cancel.
   Its successful response tells current clients that the plugin handled the
   requested descendants, preventing legacy per-child fanout from re-stopping
   sessions after the atomic request returns; an older bridge's empty success
   response defaults to fanout. Native authority covers children admitted before
-  or during stop even when the bridge has not received their lifecycle frames. A named child request carries
-  its exact direct parent and never widens to a parent or sibling; genuinely
-  non-cancellable work is reported as retained. Stop responses never perform a
+  or during stop even when the bridge has not received their lifecycle frames.
+  A named child request carries its exact direct parent and never widens to a
+  parent or sibling; a queued, undispatched prompt is cleared locally and does
+  not replace that retained child authority. Genuinely non-cancellable work is
+  reported as retained. Stop responses never perform a
   later queue sweep, so prompts accepted after dispatch survive. Input cleanup is
   a separate ordered adapter request: permissions/questions pending at that stream
   position are cancelled, while later input survives even when an ID is reused.

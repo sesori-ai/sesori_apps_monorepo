@@ -155,7 +155,9 @@ Replay retains direct-parent tile identities and ordered ordinary-content runs
 without changing live child state. Scoped stop is implemented: main-only stop
 requires all running children to be background. Full stop dispatches one native
 atomic subtree request, which covers children admitted before or during the stop
-without relying on the bridge's request-time lifecycle snapshot. Direct child
+without relying on the bridge's request-time lifecycle snapshot. `confirm` still
+rejects tracker-visible children before side effects; when none are visible, its
+accepted stop uses native authority so delayed lifecycle delivery cannot hide work. Direct child
 targeting retains exact-parent authority and never widens to a parent or sibling.
 Accepted cancellation does not fabricate lifecycle settlement; busy state remains
 authoritative until child end frames arrive. Native ordered input cancellation

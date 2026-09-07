@@ -765,7 +765,19 @@ with no findings. Shared 397 tests, ACP 325, DeepSeek 116,
 selected bridge 74, and selected client 104 tests pass; LSP reports zero diagnostics
 across the ten changed production files. Merged actual `origin/main` at
 `b43758e1b3` in `d3da50bdf7` without conflicts or overlapping affected files. The
-final PR is +1,936/-224 = 2,160 lines: 588 generated, 834 tests/fixtures, 380 docs/
-plans, and 358 production. This exceeds the soft cap because splitting either the
+PR after that review round was +1,936/-224 = 2,160 lines: 588 generated,
+834 tests/fixtures, 380 docs/plans, and 358 production. This exceeds the soft cap because splitting either the
 fanout response from STOP or the generated parser from its consumer would leave an
-unsafe or duplicate-schema intermediate. Final DeepSeek E2E follows, then Codex.
+unsafe or duplicate-schema intermediate.
+
+Current-head Codex review then found two remaining admission races. An accepted
+`confirm` with no tracker-visible child now uses native atomic authority instead
+of standard `session/cancel`, while visible children still reject before side
+effects. Atomic target selection now distinguishes a dispatched resident prompt
+from queued pre-dispatch work, so cancelling the latter cannot replace an ended
+child's retained exact-parent authority. ACP analysis + 325 tests and DeepSeek
+analysis + 118 tests pass, including both focused regressions. Capability,
+regression, and durable design docs record the final semantics. Current PR size
+is +2,028/-231 = 2,259 lines (588 generated, 885 tests/fixtures, 422 docs/plans,
+and 364 production); mandatory correctness feedback remains inseparable from the
+atomic stop contract. Final DeepSeek E2E follows, then Codex.
