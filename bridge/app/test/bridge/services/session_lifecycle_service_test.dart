@@ -467,7 +467,7 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => storedSession;
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -478,6 +478,15 @@ class _FakeSessionRepository() implements SessionRepository {
         message: "session $sessionId was not found",
       );
     }
+    return session;
+  }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final session = await requireStoredSession(sessionId: sessionId, operation: operation);
     await ensurePluginRoutable(pluginId: session.pluginId, operation: operation);
     return session;
   }

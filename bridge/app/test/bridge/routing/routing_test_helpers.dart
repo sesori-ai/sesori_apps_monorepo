@@ -530,6 +530,17 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async => null;
 
   @override
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
+  }
+
+  @override
   Future<StoredSession> requireRoutableStoredSession({
     required String sessionId,
     required SessionOperation operation,
@@ -987,7 +998,7 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -998,6 +1009,15 @@ class FakeSessionRepository({
         message: "session $sessionId was not found",
       );
     }
+    return stored;
+  }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final stored = await requireStoredSession(sessionId: sessionId, operation: operation);
     await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }
