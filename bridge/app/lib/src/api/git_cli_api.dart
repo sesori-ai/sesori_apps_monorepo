@@ -198,22 +198,7 @@ class GitCliApi({
     if (!await _isInsideGitWorkTreeForRemote(projectPath: projectPath)) {
       return null;
     }
-    const remoteArguments = ["remote"];
-    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
-    if (remotesResult.exitCode != 0) {
-      throw ProcessException(
-        "git",
-        remoteArguments,
-        remotesResult.stderr.toString(),
-        remotesResult.exitCode,
-      );
-    }
-    final remotes = remotesResult.stdout
-        .toString()
-        .split("\n")
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
+    final remotes = await _listRemotes(projectPath: projectPath);
     if (remotes.isEmpty) {
       return null;
     }
@@ -230,6 +215,20 @@ class GitCliApi({
     }
     final url = urlResult.stdout.toString().trim();
     return url.isEmpty ? null : url;
+  }
+
+  Future<List<String>> _listRemotes({required String projectPath}) async {
+    const arguments = ["remote"];
+    final result = await runGit(projectPath: projectPath, arguments: arguments);
+    if (result.exitCode != 0) {
+      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
+    }
+    return result.stdout
+        .toString()
+        .split("\n")
+        .map((remote) => remote.trim())
+        .where((remote) => remote.isNotEmpty)
+        .toList();
   }
 
   Future<bool> _isInsideGitWorkTreeForRemote({required String projectPath}) async {
@@ -280,16 +279,7 @@ class GitCliApi({
     required String projectPath,
     required String branchName,
   }) async {
-    const remoteArguments = ["remote"];
-    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
-    if (remotesResult.exitCode != 0) {
-      throw ProcessException("git", remoteArguments, remotesResult.stderr.toString(), remotesResult.exitCode);
-    }
-    final remoteNames = remotesResult.stdout
-        .toString()
-        .split("\n")
-        .map((remote) => remote.trim())
-        .where((remote) => remote.isNotEmpty);
+    final remoteNames = await _listRemotes(projectPath: projectPath);
     final matchingRefs = {for (final remote in remoteNames) "refs/remotes/$remote/$branchName"};
     if (matchingRefs.isEmpty) return false;
 
@@ -351,13 +341,8 @@ class GitCliApi({
     if (branchName.contains("*")) {
       throw ArgumentError.value(branchName, "branchName", "must name one exact branch");
     }
-    const remoteArguments = ["remote"];
-    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
-    if (remotesResult.exitCode != 0) {
-      throw ProcessException("git", remoteArguments, remotesResult.stderr.toString(), remotesResult.exitCode);
-    }
-    final hasOrigin = remotesResult.stdout.toString().split("\n").any((remote) => remote.trim() == "origin");
-    if (!hasOrigin) return;
+    final remotes = await _listRemotes(projectPath: projectPath);
+    if (!remotes.contains("origin")) return;
 
     final arguments = [
       "fetch",
