@@ -12,9 +12,14 @@ class AntigravitySessionOptionsService({
   required final AcpSessionConfigRepository _configRepository,
 }) {
   /// Called only with real new/load/resume or configuration responses, never a scratch session.
-  void capture({required AcpNewSessionResult result}) {
+  void capture({required AcpNewSessionResult result, required AntigravityCatalogSource source}) {
+    final catalog = _validatedCatalog(result: result);
+    if (catalog != null) _store(catalog: catalog, source: source);
+  }
+
+  AntigravityModelCatalog? _validatedCatalog({required AcpNewSessionResult result}) {
     final catalog = _protocolMapper.mapModelCatalog(result: result);
-    if (catalog == null) return;
+    if (catalog == null) return null;
     final ids = <String>{};
     for (final model in catalog.models) {
       if (model.id.trim().isEmpty || model.name.trim().isEmpty || !ids.add(model.id)) {
@@ -24,7 +29,17 @@ class AntigravitySessionOptionsService({
     if (ids.isEmpty || !ids.contains(catalog.currentModelId)) {
       throw const FormatException("Antigravity model catalog has no selectable current model");
     }
-    _catalogTracker.storeValidated(catalog: catalog);
+    return catalog;
+  }
+
+  void _store({required AntigravityModelCatalog catalog, required AntigravityCatalogSource source}) {
+    final defaultId = source == AntigravityCatalogSource.newSession
+        ? catalog.currentModelId
+        : _catalogTracker.newSessionDefaultModelId;
+    _catalogTracker.storeValidated(
+      catalog: catalog,
+      newSessionDefaultModelId: catalog.models.any((model) => model.id == defaultId) ? defaultId : null,
+    );
   }
 
   PluginSessionOptions getSessionOptions() {
@@ -58,7 +73,7 @@ class AntigravitySessionOptionsService({
                         releaseDate: null,
                       ),
                   ],
-                  defaultModelID: catalog.currentModelId,
+                  defaultModelID: _catalogTracker.newSessionDefaultModelId,
                 ),
               ],
       ),
@@ -75,14 +90,25 @@ class AntigravitySessionOptionsService({
       final catalog = _catalogTracker.snapshot;
       if (catalog == null || !catalog.models.any((model) => model.id == modelId)) {
         final diagnosticId = modelId.length <= 120 ? modelId : "${modelId.substring(0, 120)}…";
-        throw ArgumentError("Antigravity model '$diagnosticId' is not in the current account catalog");
+        throw PluginStaleOptionsException(
+          "session/prompt",
+          message: "Antigravity model '$diagnosticId' is not in the current account catalog",
+        );
       }
       final result = await _configRepository.setConfigOption(
         sessionId: sessionId,
         configId: catalog.configId,
         value: modelId,
       );
-      if (result != null) capture(result: result);
+      if (result != null) {
+        final updated = _validatedCatalog(result: result);
+        if (updated != null) {
+          if (updated.currentModelId != modelId) {
+            throw StateError("Antigravity did not apply the requested model selection");
+          }
+          _store(catalog: updated, source: AntigravityCatalogSource.existingSession);
+        }
+      }
     }
     await _configRepository.setMode(sessionId: sessionId, modeId: AntigravitySessionMode.defaultMode.id);
   }

@@ -16,13 +16,18 @@ session lifecycle hooks; registration remains Step 9. No OAuth or persistent dis
 - The options service validates the mapped candidate before replacing the process-scoped last-good tracker. Empty
   catalogs, empty/blank IDs or labels, duplicate IDs, unsupported selector types, duplicate model selectors, missing
   current models and malformed entries fail without replacing the previous snapshot. A response without a model
-  selector is not a new snapshot. A new process starts partial rather than persisting an obsolete account catalog.
+  selector is not a new snapshot. Clearing the tracker on connection reset removes both catalog and known default,
+  returning to partial options. Step 8 wires that clear operation into the owning plugin's reset hook.
 - Expose every valid advertised model, without guessed families/variants. Duplicate labels are allowed because model
-  selection uses exact opaque IDs rather than display labels. The current advertised model is the provider default.
+  selection uses exact opaque IDs rather than display labels. Only a `newSession` capture establishes the new-session
+  default; load/resume/configuration captures use `existingSession` and cannot redefine it. If no new-session default
+  is known or it is no longer in the catalog, advertise no default rather than a session's current choice.
 - Before prompt dispatch, validate any explicit model against the current catalog, await exact standard
-  `session/set_config_option` selection, capture a returned catalog if supplied, then await `session/set_mode` with
+  `session/set_config_option` selection, verify a returned catalog's current model equals the requested ID before
+  accepting it, then await `session/set_mode` with
   `default`. No explicit model means no model write. Mode is still applied every time, including before first capture.
-- Unknown/stale/blank IDs fail before any configuration writes. A model-write, returned-catalog, or mode-write failure
+- Unknown/stale/blank IDs raise `PluginStaleOptionsException` before any configuration writes, using the bridge's
+  refresh-and-retry path. A model-write, mismatched/invalid returned-catalog, or mode-write failure
   propagates and prevents later prompt dispatch. This is ordered execution, not rollback of an accepted model write.
   Invalid-ID diagnostics are bounded while retaining a useful ID prefix.
 - Shared ACP mode writes use typed serialized `sessionId`/`modeId` parameters through API and repository. Existing

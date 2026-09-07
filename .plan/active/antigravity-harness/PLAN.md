@@ -830,12 +830,15 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   IDs/names/current value. `AntigravitySessionOptionsService` validates the mapped catalog before replacing the
   tracker's last-good snapshot; neither the plugin hook nor tracker reads raw ACP maps. Before new/load/resume returns
   the first catalog, expose partial options with one primary agent and no models; the first new session uses the account
-  default. Do not create a scratch Google session. After capture, expose every valid advertised model.
+  default. Do not create a scratch Google session. After capture, expose every valid advertised model. Capture origin
+  distinguishes `newSession` from `existingSession`: only the former establishes the new-session default; load/resume
+  and configuration responses retain it only while still advertised. An unknown default remains null.
 - Extend Layer-1 `AcpAgentApi` and Layer-2 `AcpSessionConfigRepository` with standard `session/set_mode`. Add
   `AntigravitySessionOptionsService(required protocolMapper, required catalogTracker, required configRepository)`;
   it captures only mapped catalogs, validates the model, performs exact selection, then sends `default` as one
-  operation. Test it directly with fakes in this step; defer plugin/descriptor wiring to Step 8. Any write failure
-  prevents later dispatch.
+  operation. Verify a returned catalog applied the requested model before accepting it or sending mode. Reject missing
+  explicit models with `PluginStaleOptionsException` for refresh-and-retry. Test directly with fakes in this step;
+  defer plugin/descriptor wiring to Step 8. Any write failure prevents later dispatch.
 #### Step 7.b: Questions and permission replies
 
 - Map raw permission requests into typed options before policy. A connection-scoped
@@ -866,6 +869,8 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   shared protected bulk-registration seam; ordinary reads remain DB-only and scans run only for import/cold recovery.
 - In the descriptor composition root, build process-lifetime trackers, mappers, metadata repository/service, process
   factory, and other peers. The options composer combines a live `AcpSessionConfigRepository`, mapper, and tracker.
+  Activation supplies the correct capture origin, and `onConnectionReset` clears the catalog/default together before
+  a replacement process is advertised. These hooks are wired in this step, not the unregistered 7.a foundations.
   A separate interaction composer wraps the live ACP client in `AntigravityInteractionRepository`, passes it plus the
   mapper to `AntigravityInteractionService`, and builds the approval registry from that service. The plugin invokes
   composers but constructs no peers.

@@ -83,6 +83,7 @@ void main() {
 
   test("flat and grouped account models retain exact IDs, labels, order and current default", () {
     service.capture(
+      source: AntigravityCatalogSource.newSession,
       result: _result(
         configs: [
           {"id": "unrelated", "type": "future-option"},
@@ -113,31 +114,87 @@ void main() {
     expect(repository.writes, isEmpty);
   });
 
-  test("real new/load/resume captures replace the catalog without persisting discovery state", () {
-    for (final id in ["new-default", "loaded-default", "resumed-default"]) {
-      service.capture(result: _catalog(id: id));
-      expect(service.getSessionOptions().providers.providers.single.defaultModelID, id);
-    }
-    final restarted = AntigravitySessionOptionsService(
-      protocolMapper: const AntigravityProtocolMapper(),
-      catalogTracker: AntigravityCatalogTracker(),
-      configRepository: repository,
+  test("session selections cannot redefine the new-session default", () async {
+    AcpNewSessionResult models({required String current}) => _result(
+      configs: [
+        _selector(
+          current: current,
+          options: [
+            {"value": "account-default", "name": "Default"},
+            {"value": "session-model", "name": "Selected"},
+          ],
+        ),
+      ],
     );
-    expect(restarted.getSessionOptions().providers.providers, isEmpty);
-    expect(restarted.getSessionOptions().completeness, PluginSessionOptionsCompleteness.partial);
+    service.capture(
+      source: AntigravityCatalogSource.existingSession,
+      result: models(current: "session-model"),
+    );
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, isNull);
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: models(current: "account-default"),
+    );
+    service.capture(
+      source: AntigravityCatalogSource.existingSession,
+      result: models(current: "session-model"),
+    );
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, "account-default");
+    repository.response = models(current: "session-model");
+    await service.applyForPrompt(sessionId: "existing", modelId: "session-model");
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, "account-default");
+    expect(tracker.snapshot!.currentModelId, "session-model");
+    service.capture(
+      source: AntigravityCatalogSource.existingSession,
+      result: _catalog(id: "replacement"),
+    );
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, isNull);
+  });
+
+  test("connection reset clears catalog and default before accepting new process options", () async {
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "old"),
+    );
+    tracker.clear();
+    expect(service.getSessionOptions().providers.providers, isEmpty);
+    expect(service.getSessionOptions().completeness, PluginSessionOptionsCompleteness.partial);
+    expect(tracker.newSessionDefaultModelId, isNull);
+    await expectLater(
+      service.applyForPrompt(sessionId: "s", modelId: "old"),
+      throwsA(isA<PluginStaleOptionsException>()),
+    );
+    expect(repository.writes, isEmpty);
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "fresh"),
+    );
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, "fresh");
   });
 
   test("missing selector is partial initially and does not erase an existing snapshot", () {
-    service.capture(result: _result(configs: []));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _result(configs: []),
+    );
     expect(tracker.snapshot, isNull);
-    service.capture(result: _catalog(id: "good"));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "good"),
+    );
     final previous = tracker.snapshot;
-    service.capture(result: _result(configs: []));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _result(configs: []),
+    );
     expect(tracker.snapshot, same(previous));
   });
 
   test("malformed, empty, duplicate and unsupported candidates never replace the last-good catalog", () {
-    service.capture(result: _catalog(id: "good"));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "good"),
+    );
     final previous = tracker.snapshot;
     for (final invalid in [
       [_selector(current: "good", options: [])],
@@ -192,7 +249,10 @@ void main() {
       [_selector(current: "good", options: []), _selector(current: "other", options: [])],
     ]) {
       expect(
-        () => service.capture(result: _result(configs: invalid)),
+        () => service.capture(
+          source: AntigravityCatalogSource.newSession,
+          result: _result(configs: invalid),
+        ),
         throwsA(anyOf(isA<FormatException>(), isA<TypeError>())),
       );
       expect(tracker.snapshot, same(previous));
@@ -206,22 +266,43 @@ void main() {
   });
 
   test("unknown, stale, blank and pre-catalog model choices fail before any writes", () async {
-    await expectLater(service.applyForPrompt(sessionId: "s", modelId: "old"), throwsArgumentError);
-    service.capture(result: _catalog(id: "old"));
-    service.capture(result: _catalog(id: "new"));
+    await expectLater(
+      service.applyForPrompt(sessionId: "s", modelId: "old"),
+      throwsA(isA<PluginStaleOptionsException>()),
+    );
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "old"),
+    );
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "new"),
+    );
     for (final id in ["old", "unknown", "", "new "]) {
-      await expectLater(service.applyForPrompt(sessionId: "s", modelId: id), throwsArgumentError);
+      await expectLater(
+        service.applyForPrompt(sessionId: "s", modelId: id),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
     }
     expect(repository.writes, isEmpty);
     final longId = "x" * 1000;
     await expectLater(
       service.applyForPrompt(sessionId: "s", modelId: longId),
-      throwsA(isA<ArgumentError>().having((error) => error.toString(), "bounded diagnostic", isNot(contains(longId)))),
+      throwsA(
+        isA<PluginStaleOptionsException>().having(
+          (error) => error.toString(),
+          "bounded diagnostic",
+          isNot(contains(longId)),
+        ),
+      ),
     );
   });
 
   test("exact model selection completes before default mode and captures returned catalog", () async {
-    service.capture(result: _catalog(id: " chosen "));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: " chosen "),
+    );
     repository.modelGate = Completer<void>();
     repository.response = _catalog(id: " chosen ");
     final apply = service.applyForPrompt(sessionId: "session-2", modelId: " chosen ");
@@ -232,8 +313,27 @@ void main() {
     expect(tracker.snapshot!.currentModelId, " chosen ");
   });
 
+  test("a different returned model fails before mode or prompt dispatch and retains last-good state", () async {
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "requested"),
+    );
+    final previous = tracker.snapshot;
+    repository.response = _catalog(id: "different");
+    var prompted = false;
+    final dispatch = service.applyForPrompt(sessionId: "s", modelId: "requested").then((_) => prompted = true);
+    await expectLater(dispatch, throwsStateError);
+    expect(prompted, isFalse);
+    expect(repository.writes.single.config, "model");
+    expect(tracker.snapshot, same(previous));
+    expect(tracker.newSessionDefaultModelId, "requested");
+  });
+
   test("model or mode failure propagates and prevents the caller's later prompt dispatch", () async {
-    service.capture(result: _catalog(id: "good"));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "good"),
+    );
     final failure = StateError("synthetic config failure");
     repository.modelFailure = failure;
     await expectLater(service.applyForPrompt(sessionId: "s", modelId: "good"), throwsA(same(failure)));
@@ -248,7 +348,10 @@ void main() {
   });
 
   test("malformed configuration response cannot replace the last-good catalog or continue to mode", () async {
-    service.capture(result: _catalog(id: "good"));
+    service.capture(
+      source: AntigravityCatalogSource.newSession,
+      result: _catalog(id: "good"),
+    );
     final previous = tracker.snapshot;
     repository.response = _result(
       configs: [_selector(current: "good", options: [])],
