@@ -62,7 +62,7 @@ class const AntigravityProtocolMapper() {
                 native: stdout,
                 standard: output?.stderr ?? "",
                 duplicates: false,
-                limit: toolTextLimit,
+                limit: maxToolOutputLength,
               ));
     final exitOnlyUpdate =
         update.sessionUpdate == AntigravityUpdateKind.toolCallUpdate &&
