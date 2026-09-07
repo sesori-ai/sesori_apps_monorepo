@@ -287,23 +287,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           onLogoutCompleted: _goDesktopHome,
         ),
       ),
-      GoRoute(
-        path: AppRouteDef.settingsHarnesses.path,
-        builder: (BuildContext context, GoRouterState state) {
-          final route = switch (AppRoute.fromDef(
-            def: AppRouteDef.settingsHarnesses,
-            pathParams: state.pathParameters,
-            queryParams: state.uri.queryParameters,
-          )) {
-            final AppRouteSettingsHarnesses route => route,
-            final route => throw StateError("Route ${route.def.name} is not a harness-settings route"),
-          };
-          return DesktopHarnessesSettingsScreen(
-            presentation: route.presentation,
-            onClose: () => _popRoute(context: context),
-          );
-        },
-      ),
+      buildDesktopHarnessSettingsRoute(),
     ],
   ),
 ];
@@ -430,4 +414,104 @@ void _popRoute({required BuildContext context}) {
     return;
   }
   _goDesktopHome();
+}
+
+/// Harness-only navigator and provider shared by overview and URL detail pages.
+@visibleForTesting
+ShellRoute buildDesktopHarnessSettingsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  late final ShellRoute flow;
+  void close({required BuildContext context}) {
+    // ignore: no_slop_linter/avoid_raw_go_router, shell-owned stack boundary
+    final router = GoRouter.of(context);
+    final settingsKeys = <LocalKey>{};
+    void collect({required List<RouteMatchBase> matches}) {
+      for (final match in matches) {
+        if (match is ShellRouteMatch) {
+          if (match.route == flow) settingsKeys.add(match.pageKey);
+          collect(matches: match.matches);
+        } else if (match.matchedLocation == AppRouteDef.settings.path ||
+            match.matchedLocation.startsWith("${AppRouteDef.settings.path}/")) {
+          settingsKeys.add(match.pageKey);
+        }
+      }
+    }
+
+    collect(matches: router.routerDelegate.currentConfiguration.matches);
+    var needsHome = false;
+    // The context of the nested Navigator belongs to the outer navigator.
+    // Popping its shell page removes the entire flow, including owned sheets.
+    final outerNavigator =
+        navigatorKey.currentContext?.findAncestorStateOfType<NavigatorState>() ??
+        (throw StateError("Harness flow is not mounted"));
+    outerNavigator.popUntil((route) {
+      final page = route.settings;
+      if (page is! Page) return false;
+      if (!settingsKeys.contains(page.key)) return true;
+      if (route.isFirst) {
+        needsHome = true;
+        return true;
+      }
+      return false;
+    });
+    if (needsHome) {
+      // ignore: no_slop_linter/avoid_raw_go_router, direct links have no signed-in opener
+      router.go(const AppRoute.projects().buildPath());
+    }
+  }
+
+  void back({required BuildContext context}) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
+      GoRouter.of(context).go(const AppRoute.settings().buildPath());
+    }
+  }
+
+  return flow = ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) {
+      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
+      final content = DesktopHarnessesSettingsScreen(child: child);
+      return presentation == HarnessSettingsPresentation.modal
+          ? MaterialPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
+          : MaterialPage<void>(key: state.pageKey, child: content);
+    },
+    routes: [
+      GoRoute(
+        path: AppRouteDef.settingsHarnesses.path,
+        builder: (context, state) {
+          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
+              .presentation;
+          return HarnessesSettingsView(
+            presentation: presentation,
+            connectionBanner: null,
+            onClose: () => close(context: context),
+            onBack: () => back(context: context),
+            onOpenHarness: ({required pluginId}) {
+              // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
+              GoRouter.of(
+                context,
+              ).push<void>(AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation).buildPath());
+            },
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$pluginIdPathParam",
+            builder: (context, state) => HarnessSettingsDetailView(
+              pluginId: AppRouteSettingsHarnessDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              ).pluginId,
+              connectionBanner: null,
+              onBack: () => context.pop(),
+              onClose: () => close(context: context),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
 }

@@ -90,28 +90,35 @@ const _conflict = PluginLifecycleConflict(
   current: _managed,
 );
 
-Widget _app() {
+Widget _app({String initialLocation = "/settings/harnesses"}) {
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
-        path: "/",
-        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
-          value: StubConnectionOverlayCubit(),
-          child: const HarnessesSettingsScreen(presentation: HarnessSettingsPresentation.modal),
-        ),
-      ),
-      GoRoute(
         path: "/projects",
-        builder: (context, state) => const Scaffold(body: Text("projects-route")),
+        builder: (_, _) => const Scaffold(body: Text("projects-route")),
+      ),
+      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey).map(
+        (route) => route is GoRoute && route.path == AppRouteDef.settings.path
+            ? GoRoute(
+                path: route.path,
+                routes: route.routes,
+                builder: (_, _) => const Scaffold(body: Text("settings-ancestor")),
+              )
+            : route,
       ),
     ],
   );
-
-  return MaterialApp.router(
-    routerConfig: router,
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+  return BlocProvider<ConnectionOverlayCubit>.value(
+    value: StubConnectionOverlayCubit(),
+    child: MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 
@@ -120,17 +127,21 @@ Widget _app() {
 /// close button's pop branch, which `_app` (mounted at the router root) cannot.
 Widget _appPushedFromOpener({
   HarnessSettingsPresentation presentation = HarnessSettingsPresentation.modal,
+  String openerPath = "/opener",
+  bool throughSettings = false,
 }) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: "/opener",
+    initialLocation: openerPath,
     routes: [
       GoRoute(
-        path: "/opener",
+        path: openerPath,
         builder: (context, state) => Scaffold(
           body: TextButton(
-            onPressed: () => context.pushRoute(AppRoute.settingsHarnesses(presentation: presentation)),
+            onPressed: () => context.pushRoute(
+              throughSettings ? const AppRoute.settings() : AppRoute.settingsHarnesses(presentation: presentation),
+            ),
             child: const Text("open-harnesses"),
           ),
         ),
@@ -139,7 +150,20 @@ Widget _appPushedFromOpener({
         path: "/projects",
         builder: (context, state) => const Scaffold(body: Text("projects-route")),
       ),
-      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey),
+      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey).map(
+        (route) => throughSettings && route is GoRoute && route.path == AppRouteDef.settings.path
+            ? GoRoute(
+                path: route.path,
+                routes: route.routes,
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => context.pushRoute(AppRoute.settingsHarnesses(presentation: presentation)),
+                    child: const Text("settings-open-harnesses"),
+                  ),
+                ),
+              )
+            : route,
+      ),
     ],
   );
 
@@ -161,6 +185,10 @@ void _useTallSurface(WidgetTester tester) {
 }
 
 Future<void> _openRow(WidgetTester tester, String key) async {
+  if (find.byKey(Key(key)).evaluate().isEmpty && !key.contains("default_timeout")) {
+    final pluginId = key.substring(key.lastIndexOf("_") + 1);
+    await _showDetail(tester, pluginId);
+  }
   final row = find.byKey(Key(key));
   await tester.ensureVisible(row);
   await tester.pumpAndSettle();
@@ -168,10 +196,19 @@ Future<void> _openRow(WidgetTester tester, String key) async {
   await tester.pumpAndSettle();
 }
 
-Finder _switchFor(String pluginId) => find.descendant(
-  of: find.byKey(Key("harness_management_enabled_$pluginId")),
-  matching: find.byType(PregoSwitch),
-);
+Finder _switchFor(String pluginId) => find.byKey(Key("harness_management_enabled_$pluginId"));
+
+Future<void> _showDetail(WidgetTester tester, String pluginId) async {
+  if (find.byType(HarnessSettingsDetailView).evaluate().isNotEmpty) {
+    if (tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView)).pluginId == pluginId) return;
+    GoRouter.of(tester.element(find.byType(HarnessSettingsDetailView))).pop();
+    await tester.pumpAndSettle();
+  }
+  final row = find.byKey(Key("harnesses_card_$pluginId"));
+  await tester.ensureVisible(row);
+  await tester.tap(find.descendant(of: row, matching: find.byType(Text)).first);
+  await tester.pumpAndSettle();
+}
 
 Finder _timeoutField() => find.descendant(
   of: find.byKey(const Key("harness_management_timeout_input")),
@@ -189,7 +226,7 @@ int? _timeoutMinutes(PluginManagementIdleTimeoutInput input) => switch (input) {
 void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
-  late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
+  late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late _MockUrlLauncher urlLauncher;
@@ -212,11 +249,11 @@ void main() {
     urlLauncher = _MockUrlLauncher();
     rescan = FakeCatalogRescanService();
     snapshots = BehaviorSubject();
-    installProgress = BehaviorSubject.seeded(const {});
+    installStates = BehaviorSubject.seeded(const {});
     authenticationChallenges = BehaviorSubject.seeded(const {});
     authenticationTerminal = StreamController.broadcast(sync: true);
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
-    when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
+    when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
@@ -298,7 +335,7 @@ void main() {
   tearDown(() async {
     await GetIt.instance.reset();
     await snapshots.close();
-    await installProgress.close();
+    await installStates.close();
     await authenticationChallenges.close();
     await authenticationTerminal.close();
   });
@@ -334,6 +371,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _showDetail(tester, "codex");
     expect(find.byKey(const Key("harness_authentication_codex")), findsOneWidget);
     expect(find.text("Log in"), findsOneWidget);
     expect(find.text("0.42.0"), findsOneWidget);
@@ -373,14 +411,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pump();
 
+    await _showDetail(tester, "claude");
     expect(
       tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_claude"))).onTap,
       isNull,
     );
     verifyNever(() => service.startAuthentication(pluginId: "claude"));
+    await _showDetail(tester, "codex");
 
     authenticationChallenges.add({
       "codex": PluginAuthenticationDeviceCodeChallenge(
@@ -419,6 +461,8 @@ void main() {
     });
     await tester.pumpAndSettle();
 
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
     expect(find.text("ABCD-EFGH"), findsOneWidget);
@@ -433,11 +477,13 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
+    await _showDetail(tester, "claude");
     expect(
       tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_claude"))).onTap,
       isNull,
     );
 
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
     expect(find.text("ABCD-EFGH"), findsOneWidget);
@@ -466,6 +512,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
@@ -493,6 +541,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
@@ -512,9 +562,14 @@ void main() {
     verify(
       () => urlLauncher.launch(Uri.parse("https://accounts.example/authorize"), mode: UrlLaunchMode.externalApp),
     ).called(1);
-    final captured = verify(
-      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: captureAny(named: "intent")),
-    ).captured.single as PluginAuthenticationPastedContinuationIntent;
+    final captured =
+        verify(
+              () => service.submitAuthenticationRedirect(
+                pluginId: "codex",
+                intent: captureAny(named: "intent"),
+              ),
+            ).captured.single
+            as PluginAuthenticationPastedContinuationIntent;
     expect(captured.rawInput, "http://127.0.0.1/callback?code=opaque");
   });
 
@@ -534,6 +589,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
@@ -564,6 +621,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
@@ -595,6 +654,8 @@ void main() {
         userCode: "ABCD-EFGH",
       ),
     });
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     authenticationTerminal.add((
       pluginId: "codex",
@@ -627,6 +688,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
@@ -658,6 +721,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Log in to harness"), findsNothing);
 
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
     expect(find.text("ABCD-EFGH"), findsOneWidget);
@@ -684,6 +748,8 @@ void main() {
       ),
     });
     await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key("harness_authentication_cancel")));
@@ -722,12 +788,13 @@ void main() {
 
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
+    await _showDetail(tester, "future-harness");
 
-    expect(find.text("Runtime missing"), findsOneWidget);
+    expect(find.text("Not installed"), findsOneWidget);
     expect(find.text("Install the harness runtime."), findsOneWidget);
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
     expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).value, isTrue);
-    expect(find.byKey(const Key("harness_management_refresh_future-harness")), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_refresh_future-harness")), findsNothing);
     expect(find.byKey(const Key("harness_management_restart_future-harness")), findsNothing);
     expect(find.byKey(const Key("harness_management_timeout_future-harness")), findsNothing);
     expect(find.byKey(const Key("harness_management_default_timeout")), findsNothing);
@@ -766,7 +833,7 @@ void main() {
 
     final installRow = find.byKey(const Key("harness_management_install_future-harness"));
     expect(installRow, findsOneWidget);
-    expect(find.text("Download this harness for Sesori only. Your system stays untouched."), findsOneWidget);
+    expect(find.byType(HarnessSettingsDetailView), findsNothing);
 
     await _openRow(tester, "harness_management_install_future-harness");
     verify(
@@ -776,26 +843,32 @@ void main() {
       ),
     ).called(1);
 
+    await _showDetail(tester, "future-harness");
+
     // The service marks the install in flight from the tap; the streamed
     // phases are what the user sees. Two pumps: one delivers the stream event
     // to the cubit, the next rebuilds with it. The progress row animates
     // continuously, so never settle here.
-    installProgress.add(const {
-      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+    installStates.add(const {
+      "future-harness": PluginInstallState.inProgress(
+        progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+      ),
     });
     await tester.pump();
     await tester.pump();
     expect(find.text("Downloading… 42%"), findsOneWidget);
 
-    installProgress.add(const {
-      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+    installStates.add(const {
+      "future-harness": PluginInstallState.inProgress(
+        progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      ),
     });
     await tester.pump();
     await tester.pump();
     expect(find.text("Extracting…"), findsOneWidget);
 
     // A second tap while installing must not send another command.
-    await tester.tap(find.byKey(const Key("harness_management_install_future-harness")));
+    expect(find.byKey(const Key("harness_management_install_future-harness")), findsNothing);
     await tester.pump();
     verifyNever(
       () => service.command(
@@ -805,8 +878,10 @@ void main() {
     );
 
     // A phase only a newer bridge names still reads as work in progress.
-    installProgress.add(const {
-      "future-harness": PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+    installStates.add(const {
+      "future-harness": PluginInstallState.inProgress(
+        progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+      ),
     });
     await tester.pump();
     await tester.pump();
@@ -858,8 +933,9 @@ void main() {
 
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
+    await _showDetail(tester, "future-harness");
 
-    expect(find.text("Ready"), findsOneWidget);
+    expect(find.text("Disabled"), findsOneWidget);
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
     expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).value, isFalse);
     expect(find.byKey(const Key("harness_management_refresh_future-harness")), findsOneWidget);
@@ -882,32 +958,22 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("setup-ready enabled renders known facts, controls, logos, and default badge", (tester) async {
+  testWidgets("overview opens known detail facts without a default badge", (tester) async {
     _useTallSurface(tester);
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
-
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
-
-    final scaffold = tester.widget<PregoGlassScaffold>(find.byType(PregoGlassScaffold));
-    expect(scaffold.title, "Harnesses");
-    expect(scaffold.titleMode, PregoTopNavigationTitleMode.inline);
-    expect(find.byKey(const Key("harnesses_manage")), findsNothing);
-    expect(find.byKey(const Key("harnesses_card_opencode")), findsOneWidget);
-    expect(find.byKey(const Key("harnesses_card_future-harness")), findsOneWidget);
-    expect(find.byKey(const Key("harness_management_card_future-harness")), findsOneWidget);
     expect(findBrandLogo("opencode"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.plug), findsOneWidget);
-    expect(find.text("Default"), findsOneWidget);
-    expect(find.text("Run login if requests fail."), findsOneWidget);
+    expect(find.text("Default"), findsNothing);
+    expect(find.text("9.8.7"), findsNothing);
+    expect(find.byKey(const Key("harness_management_default_timeout")), findsOneWidget);
+    await _showDetail(tester, "future-harness");
     expect(find.text("Version"), findsOneWidget);
     expect(find.text("9.8.7"), findsOneWidget);
-    expect(find.text("Active"), findsNWidgets(2));
-    expect(find.text("Idle"), findsNWidgets(2));
-    expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsOneWidget);
+    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Idle"), findsOneWidget);
     expect(find.byKey(const Key("harness_management_restart_future-harness")), findsOneWidget);
     expect(find.byKey(const Key("harness_management_timeout_future-harness")), findsOneWidget);
-    expect(find.byKey(const Key("harness_management_default_timeout")), findsOneWidget);
     expect(find.text("20 min"), findsOneWidget);
   });
 
@@ -922,6 +988,7 @@ void main() {
 
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
+    await _showDetail(tester, "opencode");
 
     expect(find.byKey(const Key("harness_management_external_opencode")), findsOneWidget);
     expect(find.text("Managed outside Sesori"), findsOneWidget);
@@ -930,7 +997,7 @@ void main() {
     expect(find.byKey(const Key("harness_management_restart_opencode")), findsNothing);
     expect(find.byKey(const Key("harness_management_timeout_opencode")), findsNothing);
     expect(find.byKey(const Key("harness_management_default_timeout")), findsNothing);
-    expect(find.text("Active"), findsOneWidget);
+    expect(find.text("Running"), findsOneWidget);
     expect(find.text("Idle"), findsOneWidget);
     expect(find.text("Version"), findsNothing);
 
@@ -974,8 +1041,9 @@ void main() {
 
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
+    await _showDetail(tester, "future-harness");
 
-    expect(find.text("Unknown"), findsNothing);
+    expect(find.text("Unknown"), findsOneWidget);
     expect(find.text("Runtime"), findsNothing);
     expect(find.text("Work"), findsNothing);
     expect(find.byKey(const Key("harness_management_enabled_future-harness")), findsNothing);
@@ -995,7 +1063,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("Active"), findsOneWidget);
+    expect(find.text("Running"), findsOneWidget);
     expect(find.text("Work"), findsNothing);
     expect(find.text("Unknown"), findsNothing);
   });
@@ -1043,6 +1111,7 @@ void main() {
     expect(find.byKey(const Key("harnesses_refresh_error")), findsNothing);
     expect(find.text("OpenCode"), findsOneWidget);
 
+    await _showDetail(tester, "opencode");
     await tester.tap(find.byKey(const Key("harness_management_refresh_opencode")));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("harness_management_action_error")), findsOneWidget);
@@ -1051,7 +1120,7 @@ void main() {
     await tester.tap(find.byTooltip("Dismiss action error"));
     await tester.pump();
     expect(find.byKey(const Key("harness_management_action_error")), findsNothing);
-    expect(find.text("OpenCode"), findsOneWidget);
+    expect(find.text("OpenCode"), findsNWidgets(2));
   });
 
   testWidgets("safe setup refresh and restart actions dispatch once", (tester) async {
@@ -1060,6 +1129,7 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
+    await _showDetail(tester, "opencode");
     await tester.tap(find.byKey(const Key("harness_management_refresh_opencode")));
     await tester.pump();
     verify(
@@ -1091,9 +1161,11 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
+    await _showDetail(tester, "opencode");
     await tester.tap(find.byKey(const Key("harness_management_refresh_opencode")));
     await tester.pump();
 
+    await _showDetail(tester, "future-harness");
     final restart = find.byKey(const Key("harness_management_restart_future-harness"));
     expect(tester.widget<PregoGroupedRow>(restart).onTap, isNull);
     expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).onChanged, isNull);
@@ -1176,8 +1248,7 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    expect(find.text("No timeout"), findsNWidgets(2));
-    expect(find.text("This harness stays running"), findsOneWidget);
+    expect(find.text("No timeout"), findsOneWidget);
     expect(find.text("0 min"), findsNothing);
 
     await _openRow(tester, "harness_management_default_timeout");
@@ -1239,7 +1310,10 @@ void main() {
       ),
     ).called(1);
 
-    await _openRow(tester, "harness_management_clear_timeout_future-harness");
+    await _openRow(tester, "harness_management_timeout_future-harness");
+    await tester.tap(find.byKey(const Key("harness_management_timeout_use_default")));
+    await tester.tap(find.byKey(const Key("harness_management_timeout_save")));
+    await tester.pumpAndSettle();
     verify(
       () => service.updateIdleTimeout(
         request: const PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "future-harness"),
@@ -1310,6 +1384,48 @@ void main() {
     await tester.tap(find.byKey(const Key("harness_management_timeout_cancel")));
     await tester.pumpAndSettle();
     expect(find.byType(PregoBottomSheet), findsNothing);
+  });
+
+  testWidgets("safe restart opens named confirmation before one explicit force restart", (tester) async {
+    when(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+      ),
+    ).thenAnswer((_) async => const PluginManagementMutationResult.conflict(conflict: _conflict));
+    when(
+      () => service.assessForce(
+        conflict: any(named: "conflict"),
+        action: any(named: "action"),
+      ),
+    ).thenReturn(
+      const PluginManagementForceAssessment.requiresConfirmation(
+        request: PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
+      ),
+    );
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await _openRow(tester, "harness_management_restart_future-harness");
+    expect(find.text("Restart Future Harness?"), findsOneWidget);
+    expect(find.text("Force restart"), findsOneWidget);
+    verifyNever(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
+      ),
+    );
+    final confirm = find.byKey(const Key("harness_management_force_confirm"));
+    final cancel = find.byKey(const Key("harness_management_force_cancel"));
+    expect(tester.getTopLeft(confirm).dy, lessThan(tester.getTopLeft(cancel).dy));
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    verify(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
+      ),
+    ).called(1);
   });
 
   testWidgets("force cancel and close send zero force requests, then confirm sends exactly one", (tester) async {
@@ -1417,8 +1533,10 @@ void main() {
 
     // Dispatched on release, and the release must not be a fling: the control
     // waits for the overscroll to spring back to the extent it holds itself.
-    final gesture = await tester.startGesture(tester.getCenter(find.byType(CustomScrollView)));
-    await gesture.moveBy(const Offset(0, 500));
+    final gesture = await tester.startGesture(const Offset(200, 200));
+    await gesture.moveBy(const Offset(0, 30));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 300));
     await tester.pump();
     await gesture.moveBy(Offset.zero);
     await tester.pump(const Duration(milliseconds: 200));
@@ -1456,6 +1574,119 @@ void main() {
     expect(find.text("projects-route"), findsNothing);
   });
 
+  for (final openerPath in ["/projects", "/projects/p/sessions/s", "/projects/p/sessions/new"]) {
+    testWidgets("X closes the contiguous settings suffix above $openerPath", (tester) async {
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await tester.pumpWidget(
+        _appPushedFromOpener(
+          openerPath: openerPath,
+          throughSettings: true,
+          presentation: HarnessSettingsPresentation.pushed,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final opener = tester.element(find.text("open-harnesses"));
+      await tester.tap(find.text("open-harnesses"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("settings-open-harnesses"));
+      await tester.pumpAndSettle();
+      await _showDetail(tester, "future-harness");
+      await tester.tap(find.bySemanticsLabel("Close settings"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.text("open-harnesses")), same(opener));
+      expect(find.text("settings-open-harnesses"), findsNothing);
+      expect(find.byType(HarnessesSettingsView), findsNothing);
+    });
+  }
+
+  testWidgets("closing the flow also removes its authentication sheet without cancelling the operation", (
+    tester,
+  ) async {
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpWidget(_appPushedFromOpener());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    detail.onClose();
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.text("open-harnesses"), findsOneWidget);
+    verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
+  });
+
+  testWidgets("direct detail constructs overview ancestry and X removes synthesized Settings", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_app(initialLocation: "/settings/harnesses/future-harness"));
+    await tester.pumpAndSettle();
+    expect(find.byType(HarnessSettingsDetailView), findsOneWidget);
+    expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.pumpAndSettle();
+    expect(find.byType(HarnessesSettingsView), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Close settings"));
+    await tester.pumpAndSettle();
+    expect(find.text("projects-route"), findsOneWidget);
+  });
+
+  testWidgets("production harness shell retains one cubit across detail Back and closes to the opener", (tester) async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await tester.pumpWidget(_appPushedFromOpener());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("open-harnesses"));
+    await tester.pumpAndSettle();
+    final overview = tester.element(find.byType(HarnessesSettingsView));
+    final cubit = overview.read<PluginManagementCubit>();
+    unawaited(
+      GoRouter.of(overview).push<void>(
+        const AppRoute.settingsHarnessDetail(
+          pluginId: "future-harness",
+          presentation: HarnessSettingsPresentation.modal,
+        ).buildPath(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
+    expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
+    expect(find.byType(HarnessSettingsFlowView), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.pumpAndSettle();
+    expect(find.byType(HarnessSettingsDetailView), findsNothing);
+    expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
+    unawaited(
+      GoRouter.of(overview).push<void>(
+        const AppRoute.settingsHarnessDetail(
+          pluginId: "future-harness",
+          presentation: HarnessSettingsPresentation.modal,
+        ).buildPath(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel("Close settings"));
+    await tester.pumpAndSettle();
+    expect(find.text("open-harnesses"), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(HarnessesSettingsScreen, skipOffstage: false), findsNothing);
+    expect(snapshots.hasListener, isFalse);
+    expect(authenticationTerminal.hasListener, isFalse);
+  });
+
   testWidgets("raised as a modal, the bar closes with the X and shows no back button", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_appPushedFromOpener());
@@ -1468,7 +1699,7 @@ void main() {
     expect(find.bySemanticsLabel("Back"), findsNothing);
   });
 
-  testWidgets("pushed onto the settings stack, the bar goes back and shows no close button", (tester) async {
+  testWidgets("pushed onto the settings stack, the bar offers Back and close", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_appPushedFromOpener(presentation: HarnessSettingsPresentation.pushed));
     await tester.pumpAndSettle();
@@ -1477,7 +1708,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
-    expect(find.bySemanticsLabel("Close settings"), findsNothing);
+    expect(find.bySemanticsLabel("Close settings"), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel("Back"));
     await tester.pumpAndSettle();
@@ -1497,6 +1728,7 @@ void main() {
       await tester.pumpWidget(_app());
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await tester.pumpAndSettle();
+      await _showDetail(tester, "future-harness");
     }
 
     // The keyboard-and-pointer twin of the lists' deep pull. A screen reader
@@ -1531,8 +1763,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.tap(row);
-      await tester.pump();
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNull);
 
       expect(rescan.startedPluginIds, isEmpty);
       expect(
@@ -1551,6 +1782,7 @@ void main() {
 
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(scanRowText("future-harness", loc.harnessManagementScanNotReady), findsOneWidget);
+      await _showDetail(tester, "opencode");
       expect(
         scanRowText("opencode", loc.harnessManagementScanDescription),
         findsOneWidget,

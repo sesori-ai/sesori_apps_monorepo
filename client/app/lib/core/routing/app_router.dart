@@ -102,7 +102,8 @@ extension on AppRoute {
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
-      AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
+      AppRouteSettingsHarnesses() ||
+      AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -372,38 +373,7 @@ List<RouteBase> _buildAppRoutes({
           path: _settingsNotificationsRouteSegment,
           builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
         ),
-        GoRoute(
-          path: _settingsHarnessesRouteSegment,
-          // Harness settings are reached from two places, and the route says
-          // which one. From the settings list they are the next page of that
-          // stack, so they push in like every other settings page. From the
-          // new-session harness menu they are a detour from an unrelated
-          // screen, so they rise as a modal and close back onto it.
-          //
-          // The modal is a CupertinoPage for the same reason settings itself
-          // uses one: only the Cupertino route honours `fullscreenDialog` on
-          // Android too. Choosing per presentation requires a pageBuilder, so
-          // the pushed branch spells out the MaterialPage that go_router would
-          // otherwise supply, keeping the platform's push transition.
-          pageBuilder: (context, state) {
-            final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
-            final child = route.screen;
-            return switch (route.presentation) {
-              HarnessSettingsPresentation.modal => CupertinoPage<void>(
-                key: state.pageKey,
-                fullscreenDialog: true,
-                child: child,
-              ),
-              HarnessSettingsPresentation.pushed => MaterialPage<void>(
-                key: state.pageKey,
-                name: state.name ?? state.path,
-                arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
-                restorationId: state.pageKey.value,
-                child: child,
-              ),
-            };
-          },
-        ),
+        buildHarnessSettingsRoute(),
         GoRoute(
           path: _settingsProfileRouteSegment,
           builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
@@ -462,3 +432,103 @@ final appRouter = GoRouter(
   },
   routes: buildAppRoutes(),
 );
+
+/// Harness-only navigator and provider shared by overview and URL detail pages.
+@visibleForTesting
+ShellRoute buildHarnessSettingsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  late final ShellRoute flow;
+  void close({required BuildContext context}) {
+    // ignore: no_slop_linter/avoid_raw_go_router, shell-owned stack boundary
+    final router = GoRouter.of(context);
+    final settingsKeys = <LocalKey>{};
+    void collect({required List<RouteMatchBase> matches}) {
+      for (final match in matches) {
+        if (match is ShellRouteMatch) {
+          if (match.route == flow) settingsKeys.add(match.pageKey);
+          collect(matches: match.matches);
+        } else if (match.matchedLocation == AppRouteDef.settings.path ||
+            match.matchedLocation.startsWith("${AppRouteDef.settings.path}/")) {
+          settingsKeys.add(match.pageKey);
+        }
+      }
+    }
+
+    collect(matches: router.routerDelegate.currentConfiguration.matches);
+    var needsHome = false;
+    // The context of the nested Navigator belongs to the outer navigator.
+    // Popping its shell page removes the entire flow, including owned sheets.
+    final outerNavigator =
+        navigatorKey.currentContext?.findAncestorStateOfType<NavigatorState>() ??
+        (throw StateError("Harness flow is not mounted"));
+    outerNavigator.popUntil((route) {
+      final page = route.settings;
+      if (page is! Page) return false;
+      if (!settingsKeys.contains(page.key)) return true;
+      if (route.isFirst) {
+        needsHome = true;
+        return true;
+      }
+      return false;
+    });
+    if (needsHome) {
+      // ignore: no_slop_linter/avoid_raw_go_router, direct links have no signed-in opener
+      router.go(const AppRoute.projects().buildPath());
+    }
+  }
+
+  void back({required BuildContext context}) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
+      GoRouter.of(context).go(const AppRoute.settings().buildPath());
+    }
+  }
+
+  return flow = ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) {
+      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
+      final content = HarnessesSettingsScreen(child: child);
+      return presentation == HarnessSettingsPresentation.modal
+          ? CupertinoPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
+          : MaterialPage<void>(key: state.pageKey, child: content);
+    },
+    routes: [
+      GoRoute(
+        path: _settingsHarnessesRouteSegment,
+        builder: (context, state) {
+          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
+              .presentation;
+          return HarnessesSettingsView(
+            presentation: presentation,
+            connectionBanner: ConnectionBanner.maybeFor(context),
+            onClose: () => close(context: context),
+            onBack: () => back(context: context),
+            onOpenHarness: ({required pluginId}) {
+              // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
+              GoRouter.of(
+                context,
+              ).push<void>(AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation).buildPath());
+            },
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$pluginIdPathParam",
+            builder: (context, state) => HarnessSettingsDetailView(
+              pluginId: AppRouteSettingsHarnessDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              ).pluginId,
+              connectionBanner: ConnectionBanner.maybeFor(context),
+              onBack: () => context.pop(),
+              onClose: () => close(context: context),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}

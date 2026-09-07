@@ -310,6 +310,17 @@ void main() {
       expect(sent, ["project-1", "project-2"]);
     });
 
+    test("harness detail covers project viewing without destroying the underlying claim", () async {
+      readyList("project-1");
+      await drain();
+      routeSource.routes.add(AppRouteDef.settingsHarnessDetail);
+      await drain();
+      expect(sent.last, isNull);
+      routeSource.routes.add(AppRouteDef.sessions);
+      await drain();
+      expect(sent.last, "project-1");
+    });
+
     test("disposal rejects new claims while subscription cancellation is pending", () async {
       await service.onDispose();
       await lifecycleSource.states.close();

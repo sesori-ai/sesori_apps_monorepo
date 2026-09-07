@@ -221,11 +221,11 @@
     }
   },
   "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
-  "harnessManagementDefaultsSection": "Bridge Default",
+  "harnessManagementDefaultsSection": "Global harness settings",
   "harnessManagementDefaultTimeout": "Default idle timeout",
-  "harnessManagementDefaultTimeoutDescription": "Apply this timeout to every harness that supports idle-timeout control.",
+  "harnessManagementDefaultTimeoutDescription": "Apply to all harnesses and replace individual overrides.",
   "harnessManagementEnabled": "Enabled",
-  "harnessManagementRefreshSetup": "Refresh setup",
+  "harnessManagementRefreshSetup": "Check setup",
   "harnessManagementInstall": "Install runtime",
   "harnessManagementInstallDescription": "Download this harness for Sesori only. Your system stays untouched.",
   "harnessManagementInstallDownloading": "Downloading…",
@@ -241,7 +241,7 @@
   "harnessManagementInstallExtracting": "Extracting…",
   "harnessManagementInstallFinishing": "Finishing up…",
   "harnessManagementInstallInProgress": "Installing…",
-  "harnessManagementRestart": "Restart",
+  "harnessManagementRestart": "Restart harness",
   "harnessManagementIdleTimeout": "Idle timeout",
   "harnessManagementClearOverride": "Use bridge default",
   "harnessManagementExternalTitle": "Managed outside Sesori",
@@ -1265,7 +1265,7 @@
   "@harnessManagementScan": {
     "description": "Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull."
   },
-  "harnessManagementScanDescription": "Import projects and sessions this harness has on disk",
+  "harnessManagementScanDescription": "Find sessions created or moved outside Sesori and reload their latest messages.",
   "@harnessManagementScanDescription": {
     "description": "Supporting line under the per-harness scan action, saying what scanning does."
   },
@@ -1284,5 +1284,36 @@
   "catalogScanDismiss": "Dismiss",
   "@catalogScanDismiss": {
     "description": "Action on a finished scan row that clears it once the user has read the result."
-  }
+  },
+  "harnessManagementRefreshSetupDescription": "Recheck installation, sign-in and runtime status.",
+  "harnessManagementRestartDescription": "Restart {name}. Active sessions need your confirmation.",
+  "@harnessManagementRestartDescription": {"placeholders": {"name": {"type": "String"}}},
+  "harnessManagementIdleTimeoutDescription": "Stop this harness after the selected time without an active session.",
+  "harnessesNeedsAttention": "Needs attention",
+  "harnessesNotInstalled": "Not installed",
+  "harnessesStatusSetupSection": "Status & setup",
+  "harnessesActionsSection": "Actions",
+  "harnessesAutomationSection": "Automation",
+  "harnessesStatusLabel": "Status",
+  "harnessesVersionLabel": "Version",
+  "harnessesActivityLabel": "Activity",
+  "harnessesInstallingStatus": "Installing",
+  "harnessesInstallTitle": "Install {name}",
+  "@harnessesInstallTitle": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesInstallingTitle": "Installing {name}",
+  "@harnessesInstallingTitle": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesInstallDescription": "Install this harness on your connected computer to use it in Sesori.",
+  "harnessesStartInstallation": "Start installation",
+  "harnessesRestartInstallation": "Restart installation",
+  "harnessesInstallationFailed": "Installation failed",
+  "harnessesInstallationFailedDescription": "Start the installation again when you’re ready.",
+  "harnessesEnabledLabel": "{name} enabled",
+  "@harnessesEnabledLabel": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesForceRestartTitle": "Restart {name}?",
+  "@harnessesForceRestartTitle": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesForceRestartDescription": "{name} may be active in a session. Force restarting can interrupt active work.",
+  "@harnessesForceRestartDescription": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesForceRestartAction": "Force restart",
+  "harnessesStatusIdle": "Idle",
+  "harnessesStatusRunning": "Running"
 }

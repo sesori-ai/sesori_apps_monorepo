@@ -3,6 +3,7 @@ import "dart:async";
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:package_info_plus/package_info_plus.dart";
@@ -10,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
+import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 import "package:sesori_desktop/features/settings/desktop_profile_screen.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_screen.dart";
@@ -104,7 +106,7 @@ void main() {
   late _MockDesktopAttentionService desktopAttentionService;
   late BehaviorSubject<ProductAnalyticsState> analyticsStates;
   late BehaviorSubject<PluginManagementLoadResult> pluginSnapshots;
-  late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
+  late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<CatalogRescanState> catalogScanStates;
@@ -163,7 +165,7 @@ void main() {
       ),
     );
     pluginSnapshots = BehaviorSubject<PluginManagementLoadResult>();
-    installProgress = BehaviorSubject<Map<String, PluginInstallProgress>>.seeded(const {});
+    installStates = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
     authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
     authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
     catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
@@ -178,7 +180,7 @@ void main() {
     await connectionStatuses.close();
     await analyticsStates.close();
     await pluginSnapshots.close();
-    await installProgress.close();
+    await installStates.close();
     await authenticationChallenges.close();
     await authenticationTerminal.close();
     await catalogScanStates.close();
@@ -285,13 +287,12 @@ void main() {
     expect(completed, 1);
   });
 
-  testWidgets("desktop harness composition renders a supported bridge snapshot", (tester) async {
-    useTallSurface(tester: tester);
+  void registerHarnessServices() {
     final service = _MockPluginManagementService();
     final catalogRescanService = _MockCatalogRescanService();
     final urlLauncher = _MockUrlLauncher();
     when(() => service.snapshots).thenAnswer((_) => pluginSnapshots.stream);
-    when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
+    when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(service.onDispose).thenAnswer((_) async {});
@@ -300,12 +301,117 @@ void main() {
     getIt.registerSingleton<PluginManagementService>(service);
     getIt.registerSingleton<CatalogRescanService>(catalogRescanService);
     getIt.registerSingleton<UrlLauncher>(urlLauncher);
+  }
+
+  for (final throughSettings in [false, true]) {
+    testWidgets("desktop harness detail retains its flow and X preserves opener (settings: $throughSettings)", (
+      tester,
+    ) async {
+      registerHarnessServices();
+      final product = buildDesktopRoutes().single as ShellRoute;
+      final harnessRoute = product.routes.whereType<ShellRoute>().singleWhere(
+        (shell) => (shell.routes.first as GoRoute).path == AppRouteDef.settingsHarnesses.path,
+      );
+      final presentation = throughSettings ? HarnessSettingsPresentation.pushed : HarnessSettingsPresentation.modal;
+      final router = GoRouter(
+        initialLocation: "/opener",
+        routes: [
+          ShellRoute(
+            builder: (_, _, child) => child,
+            routes: [
+              GoRoute(
+                path: "/opener",
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => context.push<void>(
+                      throughSettings
+                          ? const AppRoute.settings().buildPath()
+                          : AppRoute.settingsHarnesses(presentation: presentation).buildPath(),
+                    ),
+                    child: const Text("open"),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: AppRouteDef.settings.path,
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () =>
+                        context.push<void>(AppRoute.settingsHarnesses(presentation: presentation).buildPath()),
+                    child: const Text("harnesses"),
+                  ),
+                ),
+              ),
+              GoRoute(
+                path: AppRouteDef.projects.path,
+                builder: (_, _) => const Scaffold(body: Text("home")),
+              ),
+              harnessRoute,
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+      pluginSnapshots.add(const PluginManagementLoadResult.supported(response: _pluginResponse, refreshError: null));
+      await tester.pumpAndSettle();
+      final opener = tester.element(find.text("open"));
+      await tester.tap(find.text("open"));
+      await tester.pumpAndSettle();
+      if (throughSettings) {
+        await tester.tap(find.text("harnesses"));
+        await tester.pumpAndSettle();
+      }
+      final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
+      await tester.tap(find.text("OpenCode"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
+      expect(find.byType(HarnessSettingsFlowView), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel("Back"));
+      await tester.pumpAndSettle();
+      expect(find.byType(HarnessesSettingsView), findsOneWidget);
+      await tester.tap(find.text("OpenCode"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel("Close settings"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.text("open")), same(opener));
+      expect(pluginSnapshots.hasListener, isFalse);
+      expect(find.text("home"), findsNothing);
+      router.go(
+        const AppRoute.settingsHarnessDetail(
+          pluginId: "opencode",
+          presentation: HarnessSettingsPresentation.modal,
+        ).buildPath(),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel("Close settings"));
+      await tester.pumpAndSettle();
+      expect(find.text("home"), findsOneWidget);
+    });
+  }
+
+  testWidgets("desktop harness composition renders a supported bridge snapshot", (tester) async {
+    useTallSurface(tester: tester);
+    registerHarnessServices();
 
     await tester.pumpWidget(
       app(
         child: const DesktopHarnessesSettingsScreen(
-          presentation: HarnessSettingsPresentation.pushed,
-          onClose: _noOp,
+          child: HarnessesSettingsView(
+            presentation: HarnessSettingsPresentation.pushed,
+            connectionBanner: null,
+            onClose: _noOp,
+            onBack: _noOp,
+            onOpenHarness: _noOpenHarness,
+          ),
         ),
       ),
     );
@@ -314,8 +420,10 @@ void main() {
 
     expect(find.text("Harnesses"), findsOneWidget);
     expect(find.text("OpenCode"), findsOneWidget);
-    expect(find.text("Managed outside Sesori"), findsOneWidget);
+    expect(find.text("Running"), findsOneWidget);
   });
 }
 
 void _noOp() {}
+
+void _noOpenHarness({required String pluginId}) {}

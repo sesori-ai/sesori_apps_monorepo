@@ -3,6 +3,7 @@ const redirectUri = "$bundleId://auth/callback";
 const projectNameQueryParam = "name";
 const projectIdPathParam = "projectId";
 const sessionIdPathParam = "sessionId";
+const pluginIdPathParam = "pluginId";
 const harnessSettingsPresentationQueryParam = "presentation";
 
 /// How the harness settings page was raised, which decides both its page
@@ -42,12 +43,12 @@ enum AppRouteDef(final String path) {
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
   settingsHarnesses("/settings/harnesses"),
+  settingsHarnessDetail("/settings/harnesses/:$pluginIdPathParam"),
   settingsProfile("/settings/profile"),
   sessions("/projects/:$projectIdPathParam/sessions"),
   newSession("/projects/:$projectIdPathParam/sessions/new"),
   sessionDetail("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam"),
   sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
-  ;
 }
 
 /// Type-safe route definitions for navigation.
@@ -83,6 +84,8 @@ sealed class const AppRoute() {
   const factory settingsHarnesses({
     required HarnessSettingsPresentation presentation,
   }) = AppRouteSettingsHarnesses;
+  const factory settingsHarnessDetail({required String pluginId, required HarnessSettingsPresentation presentation}) =
+      AppRouteSettingsHarnessDetail;
   const factory settingsProfile() = AppRouteSettingsProfile;
   const factory sessions({
     required String projectId,
@@ -121,6 +124,10 @@ sealed class const AppRoute() {
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
+      AppRouteDef.settingsHarnessDetail => AppRouteSettingsHarnessDetail.fromParams(
+        pathParams: pathParams,
+        queryParams: queryParams,
+      ),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
       AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
@@ -201,6 +208,28 @@ class const AppRouteSettingsHarnesses({required final HarnessSettingsPresentatio
       queryParameters: {_presentationQueryParam: presentation.name},
     );
   }
+}
+
+class const AppRouteSettingsHarnessDetail({
+  required final String pluginId,
+  required final HarnessSettingsPresentation presentation,
+}) extends AppRoute {
+  factory fromParams({required Map<String, String> pathParams, required Map<String, String> queryParams}) =>
+      AppRouteSettingsHarnessDetail(
+        pluginId: pathParams[pluginIdPathParam] ?? (throw ArgumentError("Missing harness identity")),
+        presentation:
+            HarnessSettingsPresentation.tryParse(queryParams[harnessSettingsPresentationQueryParam]) ??
+            HarnessSettingsPresentation.modal,
+      );
+
+  @override
+  AppRouteDef get def => AppRouteDef.settingsHarnessDetail;
+
+  @override
+  String buildPath() => _appendQuery(
+    path: "/settings/harnesses/${Uri.encodeComponent(pluginId)}",
+    queryParameters: {harnessSettingsPresentationQueryParam: presentation.name},
+  );
 }
 
 class const AppRouteSettingsProfile() extends AppRoute {

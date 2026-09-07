@@ -34,6 +34,21 @@ The upgrade only replaces a runtime Sesori already manages. A machine with no
 managed version directory keeps the explicit Install action; it never downloads
 a runtime the user has not asked for.
 
+### Harness settings contract limitations (verified 2026-09-07)
+
+These gaps apply to every registered harness through the current management wire seam
+(`shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and install-progress SSE).
+They do not claim that a harness's native CLI could never implement an equivalent feature.
+
+| Capability through the current management seam | Status |
+|---|---|
+| Client-controlled automatic-update preference | 🚫 Not supported: no preference or command; existing bridge-start managed upgrades are unchanged. |
+| Pause/stop/cancel a managed installation | 🚫 Not supported: no command or stopped outcome; these UI controls remain hidden. |
+| Distinct update-required setup status | 🚫 Not supported: unavailable is broader and cannot truthfully be relabelled update-required. |
+| Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
+| Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
+| Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
+
 ## Option pickers
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

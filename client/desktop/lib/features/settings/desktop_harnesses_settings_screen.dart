@@ -5,25 +5,15 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 
-/// Desktop-shell composition for shared harness management.
-class const DesktopHarnessesSettingsScreen({
-  super.key,
-  required final HarnessSettingsPresentation presentation,
-  required final VoidCallback onClose,
-}) extends StatelessWidget {
+/// The desktop harness-flow lifetime, above its nested navigator.
+class const DesktopHarnessesSettingsScreen({super.key, required final Widget child}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => PluginManagementCubit(
-        service: getIt<PluginManagementService>(),
-        urlLauncher: getIt<UrlLauncher>(),
-        catalogRescanService: getIt<CatalogRescanService>(),
-      ),
-      child: HarnessesSettingsView(
-        presentation: presentation,
-        connectionBanner: null,
-        onModalClose: onClose,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => PluginManagementCubit(
+      service: getIt<PluginManagementService>(),
+      urlLauncher: getIt<UrlLauncher>(),
+      catalogRescanService: getIt<CatalogRescanService>(),
+    ),
+    child: HarnessSettingsFlowView(child: child),
+  );
 }
