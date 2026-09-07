@@ -52,9 +52,44 @@ class const AntigravityProtocolMapper() {
           output?.snakeWorkingDir,
     );
     final exitCode = output?.exitCode ?? output?.snakeExitCode;
+    final stdout = output?.stdout ?? output?.formattedOutput;
     final nativeOutput =
-        output?.combinedOutput ?? output?.snakeCombinedOutput ?? output?.stdout ?? output?.formattedOutput;
-    final display = _displayOutput(nativeOutput: nativeOutput, exitCode: exitCode, content: raw["content"]);
+        output?.combinedOutput ??
+        output?.snakeCombinedOutput ??
+        (stdout == null && output?.stderr == null
+            ? null
+            : _combinedOutput(
+                native: stdout,
+                standard: output?.stderr ?? "",
+                duplicates: false,
+                limit: toolTextLimit,
+              ));
+    final exitOnlyUpdate =
+        update.sessionUpdate == AntigravityUpdateKind.toolCallUpdate &&
+        nativeOutput == null &&
+        raw["content"] == null &&
+        exitCode != null;
+    // An exit-only delta must not replace the tracker-owned previous output.
+    // Annotate exits alongside supplied output; do not add another output cache.
+    final display = _displayOutput(
+      nativeOutput: nativeOutput,
+      exitCode: exitOnlyUpdate ? null : exitCode,
+      content: raw["content"],
+    );
+    var normalizedOutput = _mergeFields(
+      raw: update.rawOutput,
+      fields: AntigravityNormalizedToolFieldsDto(
+        command: null,
+        cwd: null,
+        stdout: display.text,
+        exitCode: exitOnlyUpdate ? null : exitCode,
+        imagePath: _label(text: output?.imagePath),
+      ),
+    );
+    if (exitOnlyUpdate && normalizedOutput is Map<String, Object?>) {
+      normalizedOutput.remove("exitCode");
+      if (normalizedOutput.isEmpty) normalizedOutput = null;
+    }
     final normalized = AntigravityNormalizedUpdateDto(
       title: command ?? _label(text: update.title),
       kind: command != null && update.kind == null ? AntigravityNormalizedToolKind.execute : null,
@@ -68,16 +103,7 @@ class const AntigravityProtocolMapper() {
           imagePath: null,
         ),
       ),
-      rawOutput: _mergeFields(
-        raw: update.rawOutput,
-        fields: AntigravityNormalizedToolFieldsDto(
-          command: null,
-          cwd: null,
-          stdout: display.text,
-          exitCode: exitCode,
-          imagePath: _label(text: output?.imagePath),
-        ),
-      ),
+      rawOutput: normalizedOutput,
       content: display.content,
       metadata: _AntigravityPayloadBudget().sanitize(value: update.metadata, depth: 0),
     );
@@ -105,6 +131,11 @@ class const AntigravityProtocolMapper() {
     final sanitized = _AntigravityPayloadBudget().sanitize(value: raw, depth: 0);
     final canonical = fields.toJson();
     if (canonical.isEmpty) return sanitized;
+    if (fields.stdout != null && sanitized is Map<String, Object?>) {
+      // These streams/aliases have been incorporated into canonical display text.
+      sanitized.remove("formatted_output");
+      sanitized.remove("stderr");
+    }
     return {if (sanitized is Map<String, Object?>) ...sanitized, ...canonical};
   }
 

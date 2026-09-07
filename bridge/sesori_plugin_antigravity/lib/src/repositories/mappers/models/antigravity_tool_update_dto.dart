@@ -48,6 +48,7 @@ sealed class AntigravityNativeToolFieldsDto with _$AntigravityNativeToolFieldsDt
     @JsonKey(name: "working_dir") required String? snakeWorkingDir,
     required String? workingDir,
     required String? stdout,
+    required String? stderr,
     required String? combinedOutput,
     @JsonKey(name: "combined_output") required String? snakeCombinedOutput,
     @JsonKey(name: "formatted_output") required String? formattedOutput,

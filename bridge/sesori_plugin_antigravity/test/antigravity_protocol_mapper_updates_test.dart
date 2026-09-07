@@ -277,6 +277,61 @@ void main() {
     expect(retainedText, lessThanOrEqualTo(64000));
   });
 
+  test("image and raw-only projections retain stderr without duplicating it", () {
+    for (final withImage in [false, true]) {
+      for (final stdout in [null, "stdout"]) {
+        final state = _parity(
+          params: _envelope(
+            update: {
+              "status": "completed",
+              "rawOutput": {"stdout": ?stdout, "stderr": "stderr", "exit_code": 3},
+              if (withImage)
+                "content": [
+                  {"type": "image", "mimeType": "image/png", "data": "AA=="},
+                ],
+            },
+          ),
+        );
+        expect(state.output, "${stdout == null ? '' : 'stdout\n'}stderr\n[Process exit code: 3]");
+        expect(state.attachments, hasLength(withImage ? 1 : 0));
+      }
+    }
+  });
+
+  test("exit-only terminal updates retain earlier output in live and replay state", () {
+    for (final key in ["exit_code", "exitCode"]) {
+      for (final code in [0, 7]) {
+        final mapper = _mapper();
+        final replay = _collector(mapper: mapper);
+        final initial = _envelope(
+          update: {
+            "status": "in_progress",
+            "rawOutput": {"stdout": "earlier output"},
+          },
+        );
+        mapper.map(AcpNotification(method: AcpMethods.sessionUpdate, params: initial)).toList();
+        replay.consume(initial);
+        final terminal = _envelope(
+          update: {
+            "sessionUpdate": "tool_call_update",
+            "status": "completed",
+            "rawOutput": {key: code},
+          },
+        );
+        final live = mapper
+            .map(AcpNotification(method: AcpMethods.sessionUpdate, params: terminal))
+            .whereType<BridgeSseMessagePartUpdated>()
+            .single
+            .part
+            .state;
+        replay.consume(terminal);
+        expect(live.output, "earlier output");
+        expect(live.status, PluginToolStatus.completed);
+        expect(replay.build().single.parts.single.state, live);
+      }
+    }
+  });
+
   test("formatted-only native output reaches canonical stdout and live/replay display", () {
     final params = _envelope(
       update: {
@@ -286,6 +341,7 @@ void main() {
     );
     final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
     expect((normalized["rawOutput"] as Map)["stdout"], "formatted");
+    expect((normalized["rawOutput"] as Map).containsKey("formatted_output"), isFalse);
     expect(_parity(params: params).output, "formatted");
   });
 
