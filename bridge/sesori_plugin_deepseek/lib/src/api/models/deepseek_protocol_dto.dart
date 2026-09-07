@@ -29,6 +29,33 @@ enum DeepSeekSubagentStopReason() {
   unknown,
 }
 
+enum DeepSeekSubagentInterruptResult() {
+  interrupted,
+  @JsonValue("not_cancellable")
+  notCancellable,
+  @JsonValue("unknown_child")
+  unknownChild,
+  unknown,
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekSubagentInterruptRequestDto({
+  required final String sessionId,
+  required final String childSessionId,
+}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentInterruptRequestDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptRequestDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekSubagentInterruptResponseDto({
+  @JsonKey(unknownEnumValue: DeepSeekSubagentInterruptResult.unknown)
+  required final DeepSeekSubagentInterruptResult result,
+}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentInterruptResponseDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptResponseDtoToJson(this);
+}
+
 @JsonSerializable()
 class const DeepSeekInitializeMetadataDto({
   @JsonKey(fromJson: _integer) required final int extensionProtocolVersion,

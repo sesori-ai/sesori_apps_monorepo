@@ -15,6 +15,7 @@ final class const AcpChildSpawn({
 
 /// One child that has not finished, as the plugin's stop policy sees it.
 final class const AcpRunningChild({
+  required final String parentSessionId,
   required final String childSessionId,
   required final bool isBackground,
 });
@@ -322,11 +323,21 @@ final class AcpChildSessionTracker() {
     for (final child in runningChildren(sessionId: sessionId)) child.childSessionId,
   };
 
-  /// The children of [sessionId] still running, with their launch mode.
+  AcpRunningChild? runningChild({required String sessionId}) {
+    final child = _byChild[sessionId];
+    return child == null || child.status.isTerminal
+        ? null
+        : AcpRunningChild(
+            parentSessionId: child.parentSessionId,
+            childSessionId: child.childSessionId,
+            isBackground: child.isBackground,
+          );
+  }
+
+  /// Running descendants, with the direct parent needed for scoped cancellation.
   List<AcpRunningChild> runningChildren({required String sessionId}) => [
-    for (final child in _byRoot[sessionId] ?? const <_Child>[])
-      if (!child.status.isTerminal)
-        AcpRunningChild(childSessionId: child.childSessionId, isBackground: child.isBackground),
+    for (final child in _byRoot[sessionId] ?? _descendantsOf(sessionId: sessionId))
+      ?runningChild(sessionId: child.childSessionId),
   ];
 
   /// Drops every record of a deleted root or child subtree. Emits nothing:
