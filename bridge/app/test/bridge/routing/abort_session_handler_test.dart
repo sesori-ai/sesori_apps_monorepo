@@ -44,14 +44,26 @@ void main() {
     });
 
     test("returns whether the plugin handled descendant stops", () async {
-      plugin.abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+      plugin.abortResult = const PluginAbortAccepted(
+        workKept: true,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: ["handled-child"],
+      );
 
       final response = await handler.handle(
         makeRequest("POST", "/session/abort"),
         body: const AbortSessionRequest(sessionId: "s1"),
       );
 
-      expect(response, equals(const SessionAbortResponse(subAgentsHandled: true)));
+      expect(
+        response,
+        equals(
+          const SessionAbortResponse(
+            subAgentsHandled: false,
+            handledSubAgentSessionIds: ["handled-child"],
+          ),
+        ),
+      );
     });
   });
 }

@@ -1720,7 +1720,11 @@ abstract class AcpPlugin({
   }) async {
     if (!supportsScopedStop) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
-      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+      return const PluginAbortAccepted(
+        workKept: false,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: [],
+      );
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
     final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
@@ -1739,10 +1743,33 @@ abstract class AcpPlugin({
       );
     }
     if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
-      return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
+      return const PluginAbortAccepted(
+        workKept: true,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: [],
+      );
     }
     if (subAgents != PluginAbortSubAgentPolicy.keep && supportsAtomicScopedStop) {
-      for (final targetSessionId in {sessionId, ...children.map((child) => child.childSessionId)}) {
+      final independentDescendantSessionIds = {
+        for (final descendantSessionId in childSessionTracker.childSessionIds(sessionId: sessionId))
+          if (childSessionTracker.runningChild(sessionId: descendantSessionId) == null &&
+              (_turnStates[descendantSessionId]?.pending ?? 0) > 0)
+            descendantSessionId,
+      };
+      bool belongsToIndependentScope({required String childSessionId}) {
+        String? currentSessionId = childSessionId;
+        while (currentSessionId != null && currentSessionId != sessionId) {
+          if (independentDescendantSessionIds.contains(currentSessionId)) return true;
+          currentSessionId = childSessionTracker.parentOf(sessionId: currentSessionId);
+        }
+        return false;
+      }
+
+      final atomicChildren = [
+        for (final child in children)
+          if (!belongsToIndependentScope(childSessionId: child.childSessionId)) child,
+      ];
+      for (final targetSessionId in {sessionId, ...atomicChildren.map((child) => child.childSessionId)}) {
         _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
       }
       final client = _client;
@@ -1750,6 +1777,7 @@ abstract class AcpPlugin({
         return PluginAbortAccepted(
           workKept: children.isNotEmpty || namedChild != null && !hasResidentPrompt,
           subAgentsHandled: false,
+          handledSubAgentSessionIds: const [],
         );
       }
       final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
@@ -1760,7 +1788,13 @@ abstract class AcpPlugin({
               childSessionId: sessionId,
             );
       final result = await stopScopedTree(client: client, target: target);
-      return PluginAbortAccepted(workKept: result.workKept, subAgentsHandled: true);
+      return PluginAbortAccepted(
+        workKept: result.workKept || independentDescendantSessionIds.isNotEmpty,
+        subAgentsHandled: independentDescendantSessionIds.isEmpty,
+        handledSubAgentSessionIds: List.unmodifiable(
+          atomicChildren.map((child) => child.childSessionId),
+        ),
+      );
     }
     final mainResult = await _cancelScopedSession(
       sessionId: sessionId,
@@ -1770,6 +1804,7 @@ abstract class AcpPlugin({
       return PluginAbortAccepted(
         workKept: children.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
         subAgentsHandled: false,
+        handledSubAgentSessionIds: const [],
       );
     }
     final results = await Future.wait([
@@ -1800,6 +1835,7 @@ abstract class AcpPlugin({
           mainResult == AcpChildCancelResult.notCancellable ||
           children.any((child) => !cancelled.contains(child.childSessionId) && !coveredByParent(child: child)),
       subAgentsHandled: true,
+      handledSubAgentSessionIds: List.unmodifiable(children.map((child) => child.childSessionId)),
     );
   }
 

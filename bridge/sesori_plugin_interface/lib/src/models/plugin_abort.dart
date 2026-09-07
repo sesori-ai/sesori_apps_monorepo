@@ -17,10 +17,13 @@ sealed class const PluginAbortResult();
 /// sub-agents) was deliberately left alive, so the caller knows the session
 /// will still finish something later. [subAgentsHandled] is true when the
 /// plugin already applied the requested descendant policy and the client must
-/// not issue a second per-child fanout.
+/// not issue a second per-child fanout. When only part of that policy was
+/// handled, [handledSubAgentSessionIds] identifies the backend sessions the
+/// caller must exclude from its remaining fanout.
 final class const PluginAbortAccepted({
   required final bool workKept,
   required final bool subAgentsHandled,
+  required final List<String> handledSubAgentSessionIds,
 }) extends PluginAbortResult;
 
 /// A `confirm` stop refused because sub-agents are running.

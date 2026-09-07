@@ -127,7 +127,11 @@ confirmation, no child session or partial stop) and gets that subset.
      ahead of its delayed lifecycle frame cannot escape; visible children still
      reject before any side effect. A queued but undispatched prompt is cleared
      before dispatch and does not replace retained exact-parent child authority.
-     No response-time cleanup is allowed. Other ACP harnesses retain the default
+     An independently resumed terminal child is outside its former ancestor's
+     native subtree. Atomic results report retained work and the handled backend
+     child ids; the bridge maps those to public ids so the client fanouts only to
+     independently resident children instead of repeating covered stops. No
+     response-time cleanup is allowed. Other ACP harnesses retain the default
      snapshot fanout until their transport
      seam lands.
   5. A narrow backend-neutral replay replacement hook on

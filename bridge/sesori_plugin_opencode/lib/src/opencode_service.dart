@@ -253,7 +253,7 @@ class OpenCodeService(
             mainAgentOnlySupported: false,
           );
         case PluginAbortSubAgentPolicy.keep:
-          return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
+          return const PluginAbortAccepted(workKept: true, subAgentsHandled: false, handledSubAgentSessionIds: []);
         case PluginAbortSubAgentPolicy.stop:
           break;
       }
@@ -263,7 +263,7 @@ class OpenCodeService(
       abortRoot(sessionId: sessionId),
       for (final child in children) abortRoot(sessionId: child),
     ]);
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
   }
 
   /// Aborts exactly [sessionId] without touching its children.

@@ -33,11 +33,19 @@ const _$SessionAbortSubAgentPolicyEnumMap = {
 _SessionAbortResponse _$SessionAbortResponseFromJson(Map json) =>
     _SessionAbortResponse(
       subAgentsHandled: json['subAgentsHandled'] as bool? ?? false,
+      handledSubAgentSessionIds:
+          (json['handledSubAgentSessionIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
     );
 
 Map<String, dynamic> _$SessionAbortResponseToJson(
   _SessionAbortResponse instance,
-) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
+) => <String, dynamic>{
+  'subAgentsHandled': instance.subAgentsHandled,
+  'handledSubAgentSessionIds': instance.handledSubAgentSessionIds,
+};
 
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(

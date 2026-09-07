@@ -992,15 +992,31 @@ class SessionRepository({
   }) => _useSessionPlugin(
     sessionId: sessionId,
     operation: SessionOperation.abortSession,
-    body: (plugin, binding) async => switch (await plugin.abortSession(
-      sessionId: binding.backendSessionId,
-      subAgents: subAgents.toPlugin(),
-    )) {
-      PluginAbortAccepted(:final workKept, :final subAgentsHandled) => SessionAborted(
-        workKept: workKept,
-        subAgentsHandled: subAgentsHandled,
-      ),
-      final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+    body: (plugin, binding) async {
+      final result = await plugin.abortSession(
+        sessionId: binding.backendSessionId,
+        subAgents: subAgents.toPlugin(),
+      );
+      switch (result) {
+        case PluginAbortAccepted(
+          :final workKept,
+          :final subAgentsHandled,
+          :final handledSubAgentSessionIds,
+        ):
+          final sessionIdsByBackendId = await getSessionIdsByBackendIds(
+            pluginId: binding.pluginId,
+            backendSessionIds: handledSubAgentSessionIds,
+          );
+          return SessionAborted(
+            workKept: workKept,
+            subAgentsHandled: subAgentsHandled,
+            handledSubAgentSessionIds: [
+              for (final backendSessionId in handledSubAgentSessionIds) ?sessionIdsByBackendId[backendSessionId],
+            ],
+          );
+        case final PluginAbortRejectedSubAgentsRunning rejected:
+          return SessionAbortRejected(rejection: rejected.toShared());
+      }
     },
   );
 

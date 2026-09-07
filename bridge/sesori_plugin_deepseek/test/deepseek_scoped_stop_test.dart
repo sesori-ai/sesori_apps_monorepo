@@ -192,6 +192,33 @@ void main() {
       expect(harness.interrupts, isEmpty);
     });
 
+    test("root stop leaves independently resumed children for exact client fanout", () async {
+      await harness.spawn(child: "independent", parent: "root", background: true);
+      await harness.end(child: "independent", parent: "root");
+      await harness.prompt(sessionId: "independent");
+      final independentPrompt = await harness.waitFor(method: AcpMethods.sessionPrompt, count: 1);
+      await harness.spawn(child: "delegated", parent: "root", background: true);
+
+      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      expect(stop["params"], {"kind": "session", "sessionId": "root"});
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.workKept, "work kept", true)
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
+            .having(
+              (accepted) => accepted.handledSubAgentSessionIds,
+              "handled ids",
+              ["delegated"],
+            ),
+      );
+      await harness.end(child: "delegated", parent: "root");
+      harness.reply(frame: independentPrompt, result: const {"stopReason": "end_turn"});
+    });
+
     test("a queued prompt does not replace an ended child's retained parent authority", () async {
       await harness.spawn(child: "parent", parent: "root", background: true);
       await harness.spawn(child: "descendant", parent: "parent", background: true);

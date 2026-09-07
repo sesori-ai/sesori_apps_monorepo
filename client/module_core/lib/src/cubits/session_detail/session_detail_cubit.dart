@@ -2298,13 +2298,17 @@ class SessionDetailCubit(
   /// it is in flight (the bridge clears its own queue). A `confirm` probe may
   /// be refused, so it clears the queue only once the bridge accepted it.
   /// Under `stop`, busy child sessions are aborted too unless the root response
-  /// says the plugin already applied the requested descendant policy.
+  /// says the plugin applied all descendant policy; any partially handled child
+  /// ids are excluded from the remaining fanout.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      final subAgentsHandled = switch (root) {
-        SuccessResponse(:final data) => data.subAgentsHandled,
+      final (:subAgentsHandled, :handledSubAgentSessionIds) = switch (root) {
+        SuccessResponse(:final data) => (
+          subAgentsHandled: data.subAgentsHandled,
+          handledSubAgentSessionIds: data.handledSubAgentSessionIds.toSet(),
+        ),
         ErrorResponse(:final error) => throw error,
       };
       _clearLocalPromptQueue();
@@ -2315,7 +2319,8 @@ class SessionDetailCubit(
       if (!subAgentsHandled && subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
         final results = await Future.wait([
           for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
-            if (status is SessionStatusBusy || status is SessionStatusRetry)
+            if ((status is SessionStatusBusy || status is SessionStatusRetry) &&
+                !handledSubAgentSessionIds.contains(childId))
               _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
         ]);
         for (final result in results) {

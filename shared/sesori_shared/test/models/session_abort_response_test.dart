@@ -3,11 +3,17 @@ import "package:test/test.dart";
 
 void main() {
   test("older empty abort success defaults to legacy descendant fanout", () {
-    expect(SessionAbortResponse.fromJson(const {}).subAgentsHandled, isFalse);
+    final response = SessionAbortResponse.fromJson(const {});
+
+    expect(response.subAgentsHandled, isFalse);
+    expect(response.handledSubAgentSessionIds, isEmpty);
   });
 
   test("round-trips plugin-owned descendant handling", () {
-    const response = SessionAbortResponse(subAgentsHandled: true);
+    const response = SessionAbortResponse(
+      subAgentsHandled: false,
+      handledSubAgentSessionIds: ["handled-child"],
+    );
 
     expect(SessionAbortResponse.fromJson(response.toJson()), response);
   });

@@ -28,7 +28,10 @@ class AbortSessionHandler({
         status: 409,
         body: rejection.toJson(),
       ),
-      SessionAborted(:final subAgentsHandled) => SessionAbortResponse(subAgentsHandled: subAgentsHandled),
+      SessionAborted(:final subAgentsHandled, :final handledSubAgentSessionIds) => SessionAbortResponse(
+        subAgentsHandled: subAgentsHandled,
+        handledSubAgentSessionIds: handledSubAgentSessionIds,
+      ),
     };
   }
 }

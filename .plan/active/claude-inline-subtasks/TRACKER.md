@@ -780,4 +780,18 @@ analysis + 118 tests pass, including both focused regressions. Capability,
 regression, and durable design docs record the final semantics. Current PR size
 is +2,028/-231 = 2,259 lines (588 generated, 885 tests/fixtures, 422 docs/plans,
 and 364 production); mandatory correctness feedback remains inseparable from the
-atomic stop contract. Final DeepSeek E2E follows, then Codex.
+atomic stop contract.
+
+The next current-head Codex pass found independently resumed terminal children
+outside an ancestor's native subtree. Atomic results now mark such work retained,
+exclude its branch from root request-time cleanup, and return the covered backend
+child ids. The bridge maps those ids to public sessions; current clients skip only
+covered delegated children and retain exact fanout to independently resident work.
+Older empty responses still fanout fully. Shared analysis + 397 tests, plugin-
+interface/ACP/DeepSeek/Claude/Codex/OpenCode/Pi fatal-info analysis, ACP 325 tests,
+DeepSeek 119 tests, selected bridge 75 tests, and selected client 105 tests pass;
+LSP reports zero diagnostics across all 11 changed production files. Current PR
+size is +2,347/-237 = 2,584 lines (611 generated, 1,063 tests/fixtures, 456 docs/
+plans, and 454 production). The partial-handling contract cannot be split from its
+bridge-id mapping and client filter without reintroducing the reported escape or
+duplicate-stop race. Final DeepSeek E2E follows, then Codex.

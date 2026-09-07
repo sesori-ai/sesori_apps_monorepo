@@ -955,7 +955,7 @@ class CodexPlugin._({
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     await _abortSession(sessionId: sessionId);
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
   }
 
   Future<void> _abortSession({required String sessionId}) async {

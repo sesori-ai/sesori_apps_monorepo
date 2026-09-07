@@ -159,7 +159,10 @@ without relying on the bridge's request-time lifecycle snapshot. `confirm` still
 rejects tracker-visible children before side effects; when none are visible, its
 accepted stop uses native authority so delayed lifecycle delivery cannot hide work. Direct child
 targeting retains exact-parent authority and never widens to a parent or sibling.
-Accepted cancellation does not fabricate lifecycle settlement; busy state remains
+An independently resumed terminal child is outside its former ancestor's native
+subtree; partial-handling metadata prevents duplicate stops for covered delegated
+children while preserving exact client fanout to that resident child. Accepted
+cancellation does not fabricate lifecycle settlement; busy state remains
 authoritative until child end frames arrive. Native ordered input cancellation
 removes only requests pending at that stream position, so later input survives.
 

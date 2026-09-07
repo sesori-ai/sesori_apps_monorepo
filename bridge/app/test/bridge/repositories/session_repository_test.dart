@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -29,6 +30,67 @@ void main() {
 
     setUp(() {
       plugin = _FakeBridgePlugin();
+    });
+
+    test("maps handled backend child ids to public abort-response ids", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const projectId = "abort-project";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await db.sessionDao.insertSession(
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        projectId: projectId,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+        preservePullRequestScope: false,
+      );
+      await db.sessionDao.insertObservedChild(
+        sessionId: "child",
+        backendSessionId: "backend-child",
+        projectId: projectId,
+        parentSessionId: "root",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        pluginId: plugin.id,
+      );
+      plugin.abortResult = const PluginAbortAccepted(
+        workKept: true,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: ["backend-child", "unbound-child"],
+      );
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final result = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+      );
+
+      expect(
+        result,
+        isA<SessionAborted>()
+            .having((aborted) => aborted.workKept, "work kept", true)
+            .having((aborted) => aborted.subAgentsHandled, "sub-agents handled", false)
+            .having((aborted) => aborted.handledSubAgentSessionIds, "handled ids", ["child"]),
+      );
+      expect(plugin.lastAbortSessionId, "backend-root");
     });
 
     test("resolves stable root families and rejects malformed ancestry", () async {
@@ -2597,6 +2659,11 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
   List<PluginMessageWithParts> messagesResult = const [];
   Map<String, PluginSessionStatus> sessionStatusesResult = const {};
+  PluginAbortResult abortResult = const PluginAbortAccepted(
+    workKept: false,
+    subAgentsHandled: false,
+    handledSubAgentSessionIds: [],
+  );
   PluginSession createSessionResult = const PluginSession(
     id: "created-session",
     projectID: "/repo",
@@ -2741,7 +2808,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    return abortResult;
   }
 
   @override

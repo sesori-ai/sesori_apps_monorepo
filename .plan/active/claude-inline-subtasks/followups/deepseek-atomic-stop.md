@@ -117,8 +117,12 @@ Tracker-visible `confirm` rejection and every unsupported `keep` remain
 side-effect free. An accepted `confirm` with no visible children uses native atomic
 authority to cover admissions ahead of delayed lifecycle frames; `keep` retains its
 existing transport. A queued, undispatched prompt is cleared before dispatch and
-does not replace an ended child's retained exact-parent authority. Whole-plugin
-stop uses the same tree path and existing authoritative-idle budget.
+does not replace an ended child's retained exact-parent authority. A terminal
+child with its own accepted bridge prompt is independently resident: an ancestor
+stop excludes that child branch from request-time cleanup, reports it as retained,
+and returns handled backend child ids. The bridge maps those ids to public session
+ids so the client fanouts only to independent work. Whole-plugin stop uses the same
+tree path and existing authoritative-idle budget.
 Replace only the opted-in stop snapshot fanout/coverage reconstruction. Keep
 snapshots required by confirm/keep; no compatibility shims for internal callers.
 
@@ -144,13 +148,17 @@ and an additive compatibility response through bridge and client to prevent a
 second descendant fanout. After that review round the PR was 2,160 lines: 588
 generated, 834 tests/fixtures, 380 docs/plans, and 358 production. Current-head
 review then required native authority for accepted `confirm` and resident-versus-
-queued prompt targeting; the final PR is 2,259 lines: 588 generated, 885 tests/
-fixtures, 422 docs/plans, and 364 production. Splitting the response from atomic
-STOP would leave the first PR vulnerable to re-stopping later work, while splitting
-the generated parser or admission-race fixes from their consumer would retain a
-duplicate schema or known escape path. The overrun is therefore accepted as one
-coherent, independently safe contract; both reviewed measurements remain recorded
-rather than rewritten.
+queued prompt targeting; after that review round the PR was 2,259 lines: 588
+generated, 885 tests/fixtures, 422 docs/plans, and 364 production. The next
+current-head review required partial-handling ids so independently resumed children
+remain exact fanout targets without re-stopping covered delegated work. The final
+PR is 2,584 lines: 611 generated, 1,063 tests/fixtures, 456 docs/plans, and 454
+production. Splitting the response or partial-handling mapping from atomic STOP
+would leave the first PR vulnerable to re-stopping later work or missing independent
+work, while splitting the generated parser or admission-race fixes from their
+consumer would retain a duplicate schema or known escape path. The overrun is
+therefore accepted as one coherent, independently safe contract; every reviewed
+measurement remains recorded rather than rewritten.
 
 ## Verification and review record
 
@@ -171,8 +179,9 @@ known old queued turns dropped before dispatch and later queued turns preserved;
 old input -> control -> new input in one chunk, including reused question IDs,
 notification backlog and prompt-write buffering; response delivered before request
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
-queued prompt versus resident child authority; keep behavior; foreground retention;
-RPC failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests and frozen
+queued prompt versus resident child authority; independently resumed child plus a
+covered delegated sibling and partial client fanout; keep behavior; foreground
+retention; RPC failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests and frozen
 corpora. Run owning analyzers/tests; CI owns the full matrix.
 
 Authoritative native and consumer package coverage passes, so the temporary

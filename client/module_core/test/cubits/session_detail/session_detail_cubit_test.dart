@@ -772,6 +772,67 @@ void main() {
       await cubit.close();
     });
 
+    test("abort fans out only to independently running descendants", () async {
+      const delegatedChildId = "delegated-child";
+      const independentChildId = "independent-child";
+      when(
+        () => mockSessionService.getChildren(sessionId: sessionId),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              testSession(id: delegatedChildId, parentID: sessionId),
+              testSession(id: independentChildId, parentID: sessionId),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.getSessionStatuses(),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionStatusResponse(
+            statuses: {
+              delegatedChildId: SessionStatus.busy(),
+              independentChildId: SessionStatus.busy(),
+            },
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionAbortResponse(
+            subAgentsHandled: false,
+            handledSubAgentSessionIds: [delegatedChildId],
+          ),
+        ),
+      );
+      final cubit = buildCubit();
+      await _awaitLoaded(cubit);
+
+      final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+      expect(outcome, isA<SessionAbortAccepted>());
+      verifyNever(
+        () => mockSessionService.abortSession(
+          sessionId: delegatedChildId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      );
+      verify(
+        () => mockSessionService.abortSession(
+          sessionId: independentChildId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).called(1);
+      await cubit.close();
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {

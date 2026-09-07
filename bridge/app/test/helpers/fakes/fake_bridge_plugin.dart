@@ -28,7 +28,11 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
-  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+  PluginAbortResult abortResult = const PluginAbortAccepted(
+    workKept: false,
+    subAgentsHandled: false,
+    handledSubAgentSessionIds: [],
+  );
   PluginSession? renameSessionResult;
   PluginProject? renameProjectResult;
   List<PluginSession> childSessionsResult = [];
