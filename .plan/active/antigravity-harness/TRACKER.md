@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d architecture-approved, preparing publication
+- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review
 - **Base:** synced with main `f1403fbb35` after Step 6.c merge
 - **Current branch:** `antigravity-harness-step-6d-authentication-operation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -14,8 +14,8 @@
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
-- **Open PR:** none; preparing Step 6.d
-- **Next action:** publish Step 6.d and start its monitor; begin Step 7 locally
+- **Open PR:** [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
+- **Next action:** monitor Step 6.d through merge; begin Step 7 locally
 
 ## Fixed PR Series
 
