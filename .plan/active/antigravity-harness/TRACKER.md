@@ -88,7 +88,6 @@
 
 - [x] Complete the remote browser handoff, review, and verification.
 
-<<<<<<< HEAD
 ## Step 6.a Checklist
 
 - [x] Obtain approval for scoped stores, privacy prerequisites, and lettered Step 6 slices.
@@ -102,8 +101,6 @@
 - [x] Step 5 merged; sync Step 6.a with main before publication.
 - Step 6.b/c profile/browser suppression/personal OAuth remain unimplemented; package remains unregistered.
 
-=======
->>>>>>> origin/main
 ## Architecture Reviews
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
@@ -241,9 +238,11 @@ applicable catalog entry from L1 through L5 across its required plugin/platform 
   leaving 504 lines below the 1,500-line cap.
 - 2026-09-04 — Step 5 final code cap: `git diff --numstat 93c8982601eb 1b2283a4903b` totals
   1155 + 334 = 1489; this tracker-only reconciliation leaves the published PR at 1489 changed lines.
-<<<<<<< HEAD
 
 - 2026-09-04 — Step 6.a architecture review approved the full tracked/untracked diff against `6d8e062ef7`.
   Reviewed implementation: 722 additions + 65 deletions = 787 changed lines; review-status bookkeeping adds one line.
-=======
->>>>>>> origin/main
+- 2026-09-05 — Step 5 merged as `0e8f9e6fb9`; Step 6.a synced to main `c8150a8025c2`.
+  Post-sync validation: ACP 65, host stores/processes 29, Antigravity 30, foundation 1, interface 15 tests pass.
+  All five owning packages analyze cleanly. One newly merged ACP launch fixture received the required flag.
+  Pre-publication code-head cap: `git diff --numstat c8150a8025c2 ffced6ea6a65` totals 734 + 69 = 803;
+  final publication measurement includes subsequent tracker reconciliation.
