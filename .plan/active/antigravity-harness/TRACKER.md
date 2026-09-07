@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 merged; Step 7.a open for review; Step 7.b implemented locally
-- **Base:** Step 7.a reviewed-fix head `54f0dbf51d7a0c3c76d74ae7b700fcab9ea76198`
+- **Status:** Steps 1-6 and 7.a merged; Step 7.b reviewed and synchronized for publication
+- **Base:** synced with main `daa782057c` after Step 7.a merge
 - **Current branch:** `antigravity-harness-step-7b-questions-and-permissions`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -14,9 +14,10 @@
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
-  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
-- **Open PR:** [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
-- **Next action:** parent monitors Step 7.a; independently review Step 7.b and keep it local until predecessor merge
+  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
+  [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
+- **Open PR:** Step 7.b publication prepared
+- **Next action:** publish and monitor Step 7.b; begin only Step 7.c locally
 
 ## Fixed PR Series
 
@@ -29,7 +30,7 @@
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
-- [ ] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+- [x] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
 - [ ] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
 - [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
@@ -190,7 +191,9 @@
   only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
 - [x] First actual independent implementation review approved all 17 changed files at `97eda29b57`, with no findings.
 - Reviewed immutable scope: `54f0dbf51d` → `97eda29b57`; 1,146 additions + 9 deletions = 1,155 changed lines.
-- Publication remains local until predecessor PR #1353 merges; parent owns synchronization and publication.
+- [x] Predecessor #1353 merged; synchronized with main `daa782057c`. Conflict resolution retained the reviewed 7.b
+  additions. Antigravity/ACP/interface production and tests plus the lockfile are unchanged from the reviewed inputs;
+  no unchanged passing suite was rerun. Parent owns publication.
 - The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
   return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
   credential/OAuth/history access or active capability claim is included here.
