@@ -4,7 +4,7 @@
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
 - **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review; Step 7.a implemented locally
-- **Base:** Step 6.d review-fix head `4816d967ab1b2d0df41d2495bdec1e49ada75caa`
+- **Base:** Step 6.d documentation-fix head `213b4664a6`, merged locally into Step 7.a
 - **Current branch:** `antigravity-harness-step-7a-model-options`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
