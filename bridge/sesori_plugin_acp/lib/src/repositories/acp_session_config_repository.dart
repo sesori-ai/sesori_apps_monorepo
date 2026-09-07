@@ -5,6 +5,12 @@ import "../api/acp_agent_api.dart";
 /// repository harness option services consume for `session/set_config_option`
 /// (the wire shape itself lives in [AcpAgentApi]).
 class AcpSessionConfigRepository({required final AcpAgentApi _api}) {
+  Future<void> setMode({required String sessionId, required String modeId}) => _api.setMode(
+    sessionId: sessionId,
+    modeId: modeId,
+    timeout: AcpAgentApi.defaultRequestTimeout,
+  );
+
   /// Returns the agent's updated config state, or null when it answered
   /// without one.
   Future<AcpNewSessionResult?> setConfigOption({

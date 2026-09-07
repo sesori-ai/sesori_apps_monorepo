@@ -195,6 +195,16 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     return raw is Map ? AcpNewSessionResult.fromJson(raw.cast<String, dynamic>()) : null;
   }
 
+  Future<void> setMode({
+    required String sessionId,
+    required String modeId,
+    required Duration timeout,
+  }) => client.request(
+    method: AcpMethods.sessionSetMode,
+    params: AcpSetModeParams(sessionId: sessionId, modeId: modeId).toJson(),
+    timeout: timeout,
+  );
+
   Future<void> closeSession({
     required String sessionId,
     required Duration timeout,
