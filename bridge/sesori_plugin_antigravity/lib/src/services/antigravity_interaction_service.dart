@@ -76,7 +76,10 @@ class AntigravityInteractionService({
     return AntigravityPermission(
       requestId: requestId,
       sessionId: input.sessionId,
-      tool: input.toolCall.toolCallId,
+      tool: switch (input.toolCall.kind) {
+        null || AntigravityPermissionToolKind.unknown => "tool",
+        final kind => kind.name,
+      },
       description: input.toolCall.title,
       allowOptionId: allows.single.optionId,
       rejectOptionId: rejects.singleOrNull?.optionId,
@@ -123,8 +126,13 @@ class AntigravityInteractionService({
   // ignore: no_slop_linter/prefer_specific_type, retain opaque ACP request identity and original decoding failure
   void _rejectMalformed({required Object requestId, required Object error, required StackTrace stackTrace}) {
     Log.w(
-      "[antigravity] refusing malformed or unsupported permission choices",
-      AntigravityInteractionException(message: "Request cannot be presented safely", cause: error),
+      "[antigravity] refusing malformed or unsupported permission choices for request ${requestId.toString()}",
+      error is AntigravityInteractionException
+          ? error
+          : AntigravityInteractionException(
+              message: error is FormatException ? error.message : "Request cannot be presented safely",
+              cause: error,
+            ),
       stackTrace,
     );
     _repository.cancel(requestId: requestId);
