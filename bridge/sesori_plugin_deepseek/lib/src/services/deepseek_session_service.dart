@@ -7,6 +7,12 @@ class const DeepSeekSessionService({
   required final DeepSeekSessionRepository repository,
   required final AcpChildSessionTracker childSessions,
 }) {
+  Future<AcpChildCancelResult> cancelChild({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) => repository.cancelChild(client: client, sessionId: sessionId, childSessionId: childSessionId);
+
   List<PluginSession> getChildSessions({
     required String sessionId,
     required String directory,
