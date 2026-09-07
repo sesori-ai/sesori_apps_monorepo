@@ -6,7 +6,10 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-enum _OptionDiscoveryRequest() { agents, providers }
+enum _OptionDiscoveryRequest() {
+  agents,
+  providers,
+}
 
 /// Waits until [count] events of type [T] have been delivered, or fails.
 ///
@@ -350,9 +353,9 @@ void main() {
 
       final stamped = events.whereType<BridgeSseMessageUpdated>().toList();
       expect(stamped, hasLength(3));
-      expect(stamped[0].info["promptId"], equals("prm_1"));
-      expect(stamped[1].info["promptId"], equals("prm_1"));
-      expect(stamped[2].info.containsKey("promptId"), isFalse);
+      expect((stamped[0].info as PluginMessageUser).promptId, equals("prm_1"));
+      expect((stamped[1].info as PluginMessageUser).promptId, equals("prm_1"));
+      expect((stamped[2].info as PluginMessageUser).promptId, isNull);
     });
 
     test("sendPrompt marks an accepted turn busy before SSE arrives", () async {
@@ -501,7 +504,7 @@ void main() {
     for (final testCase in staleSelectionCases) {
       test("classifies a removed ${testCase.name} after a generic reservation failure", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         addTearDown(plugin.dispose);
         await server.waitForSseConnection();
         server
@@ -659,7 +662,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 2);
 
       expect(
-        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info["promptId"]),
+        events.whereType<BridgeSseMessageUpdated>().map((event) => (event.info as PluginMessageUser).promptId),
         equals(["prompt-1", "prompt-1"]),
       );
       server.holdCommand!.complete();
@@ -710,7 +713,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final echoed = events.whereType<BridgeSseMessageUpdated>().single;
-      expect(echoed.info.containsKey("promptId"), isFalse);
+      expect((echoed.info as PluginMessageUser).promptId, isNull);
     });
 
     test("bare compact reuses a correlated server message and native compaction part", () async {
@@ -782,7 +785,7 @@ void main() {
       await _awaitEvents<BridgeSseMessageUpdated>(events, count: 1);
 
       final compactEcho = events.whereType<BridgeSseMessageUpdated>().single;
-      expect(compactEcho.info["promptId"], equals("prompt-compact"));
+      expect((compactEcho.info as PluginMessageUser).promptId, equals("prompt-compact"));
     });
 
     test("compact guidance is persisted before reserving the marker", () async {
@@ -1089,7 +1092,7 @@ void main() {
         }
         if (event is BridgeSseSessionStatus &&
             event.sessionID == "s-root" &&
-            event.status["type"] == "idle" &&
+            event.status is PluginSessionStatusIdle &&
             !idleEvent.isCompleted) {
           idleEvent.complete();
         }
@@ -1288,7 +1291,7 @@ void main() {
     group("renameSession", () {
       test("sends PATCH with title body and returns updated session", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1303,7 +1306,7 @@ void main() {
     group("archiveSession", () {
       test("sends PATCH with time.archived body", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 
@@ -1321,7 +1324,7 @@ void main() {
     group("renameProject", () {
       test("resolves worktree to project UUID then sends PATCH with name", () async {
         final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
-      await plugin.initialize();
+        await plugin.initialize();
         await server.waitForSseConnection();
         server.requestLog.clear();
 

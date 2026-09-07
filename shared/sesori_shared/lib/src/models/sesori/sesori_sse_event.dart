@@ -77,11 +77,17 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required PluginAuthenticationProgress progress,
   }) = SesoriPluginAuthenticationProgress;
 
-  /// Invalidates the process-wide slash-command catalog for one plugin.
-  @FreezedUnionValue("command.catalog.updated")
-  const factory commandCatalogUpdated({
+  /// The bridge committed a new session-options snapshot (agents, models,
+  /// variants, slash commands) for one plugin, so any screen showing those
+  /// options can re-read the cache without discovering again.
+  ///
+  /// [projectId] is null for a plugin-scoped catalog, which applies to every
+  /// project; a project-scoped catalog names the project it was captured for.
+  @FreezedUnionValue("session.options_updated")
+  const factory sessionOptionsUpdated({
     required String pluginId,
-  }) = SesoriCommandCatalogUpdated;
+    required String? projectId,
+  }) = SesoriSessionOptionsUpdated;
 
   // ---------------------------------------------------------------------------
   // Session — all implement SesoriSessionEvent
@@ -198,27 +204,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String messageID,
     required String partID,
   }) = SesoriMessagePartRemoved;
-
-  // ---------------------------------------------------------------------------
-  // PTY
-  // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("pty.created")
-  const factory ptyCreated() = SesoriPtyCreated;
-
-  @FreezedUnionValue("pty.updated")
-  const factory ptyUpdated() = SesoriPtyUpdated;
-
-  @FreezedUnionValue("pty.exited")
-  const factory ptyExited({
-    required String? id,
-    required int? exitCode,
-  }) = SesoriPtyExited;
-
-  @FreezedUnionValue("pty.deleted")
-  const factory ptyDeleted({
-    String? id,
-  }) = SesoriPtyDeleted;
 
   // ---------------------------------------------------------------------------
   // Permission
@@ -356,62 +341,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     String? file,
   }) = SesoriFileEdited;
 
-  @FreezedUnionValue("file.watcher.updated")
-  const factory fileWatcherUpdated({
-    required String? file,
-    required String? event,
-  }) = SesoriFileWatcherUpdated;
-
-  // ---------------------------------------------------------------------------
-  // LSP
-  // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("lsp.updated")
-  const factory lspUpdated() = SesoriLspUpdated;
-
-  @FreezedUnionValue("lsp.client.diagnostics")
-  const factory lspClientDiagnostics({
-    required String? serverID,
-    required String? path,
-  }) = SesoriLspClientDiagnostics;
-
-  // ---------------------------------------------------------------------------
-  // MCP
-  // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("mcp.tools.changed")
-  const factory mcpToolsChanged() = SesoriMcpToolsChanged;
-
-  @FreezedUnionValue("mcp.browser.open.failed")
-  const factory mcpBrowserOpenFailed() = SesoriMcpBrowserOpenFailed;
-
   // ---------------------------------------------------------------------------
   // Installation
   // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("installation.updated")
-  const factory installationUpdated({
-    String? version,
-  }) = SesoriInstallationUpdated;
 
   @FreezedUnionValue("installation.update-available")
   const factory installationUpdateAvailable({
     String? version,
   }) = SesoriInstallationUpdateAvailable;
-
-  // ---------------------------------------------------------------------------
-  // Workspace
-  // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("workspace.ready")
-  const factory workspaceReady({
-    String? name,
-  }) = SesoriWorkspaceReady;
-
-  @FreezedUnionValue("workspace.failed")
-  const factory workspaceFailed({
-    String? message,
-  }) = SesoriWorkspaceFailed;
 
   // ---------------------------------------------------------------------------
   // TUI
@@ -426,16 +363,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String? message,
     required String? variant,
   }) = SesoriTuiToastShow;
-
-  // ---------------------------------------------------------------------------
-  // Worktree
-  // ---------------------------------------------------------------------------
-
-  @FreezedUnionValue("worktree.ready")
-  const factory worktreeReady() = SesoriWorktreeReady;
-
-  @FreezedUnionValue("worktree.failed")
-  const factory worktreeFailed() = SesoriWorktreeFailed;
 
   factory fromJson(Map<String, dynamic> json) => _$SesoriSseEventFromJson(json);
 }

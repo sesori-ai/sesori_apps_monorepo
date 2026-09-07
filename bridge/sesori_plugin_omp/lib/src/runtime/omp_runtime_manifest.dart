@@ -83,6 +83,12 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
     return SemanticRuntimeVersion.tryParse(value: value.substring(4));
   }
 
+  /// `omp --version` prints `omp/<semver>` and the prefix is required so an
+  /// unrelated semver token in that output is not mistaken for the runtime
+  /// version. Version directories carry the bare semver, so they parse here.
+  @override
+  RuntimeVersion? parseInstalledVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
+
   @override
   RuntimeAsset? assetFor({required PlatformTarget target}) {
     if (target.os == PlatformOs.linux) return null;

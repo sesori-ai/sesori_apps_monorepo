@@ -562,6 +562,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
             providerID: "openai",
             name: "GPT-4.1",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

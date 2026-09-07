@@ -61,7 +61,8 @@ the prompt and a reused one when testing suppression.
 - Splash doing network work, or routing a valid session to sign-in.
 - A recoverable interruption surfacing as terminal, or a real failure as silent.
 - Tokens surviving logout, an in-flight login/refresh/restore re-saving tokens or
-  emitting authenticated after logout, a rejected refresh leaving credentials
+  emitting authenticated after logout, a malformed or non-2xx login response
+  persisting tokens, a rejected refresh leaving credentials
   restorable after relaunch, a transport failure clearing a usable session, or
   macOS OAuth completion failing with a missing Keychain entitlement (`-34018`).
 - A delayed persisted registered-bridge read restoring the previous account's

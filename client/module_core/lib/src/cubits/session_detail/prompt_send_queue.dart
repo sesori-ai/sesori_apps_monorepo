@@ -31,7 +31,7 @@ class PromptSendQueue() {
 
   /// Moves the first pending submission into the active slot.
   QueuedSessionSubmission? beginSend() {
-    if (_active != null || _items.isEmpty) return null;
+    if (_active != null || _items.isEmpty || _items.first is UnavailableQueuedCommandSubmission) return null;
     return _active = _items.removeFirst();
   }
 
@@ -98,6 +98,31 @@ class PromptSendQueue() {
     _items
       ..clear()
       ..addAll(replacements);
+  }
+
+  /// Marks one pending command as unavailable while retaining its authored
+  /// text and FIFO position for explicit user removal.
+  void markCommandUnavailable({required String promptId}) {
+    replacePending(
+      update: (submission) => switch (submission) {
+        QueuedCommandSubmission(
+          promptId: final submissionPromptId,
+          :final text,
+          :final command,
+          :final agent,
+          :final agentModel,
+        )
+            when submissionPromptId == promptId =>
+          QueuedSessionSubmission.unavailableCommand(
+            promptId: submissionPromptId,
+            text: text,
+            command: command,
+            agent: agent,
+            agentModel: agentModel,
+          ),
+        QueuedTextSubmission() || QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => submission,
+      },
+    );
   }
 
   /// Remove a submission by index (user cancellation).

@@ -1,5 +1,6 @@
 import "dart:io" show Platform;
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
@@ -33,58 +34,57 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
   /// The exact codex version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
-  /// Pinned per-platform assets for [bundledVersion]. codex ships `.tar.gz` on
-  /// darwin/linux and an `.exe.zip` on windows; the binary inside each archive is
-  /// named with the full target triple (e.g. `codex-aarch64-apple-darwin`), so
-  /// [ArchiveRuntimeAsset.archiveBinaryName] carries that member name and the installer
-  /// normalizes it to the canonical [binaryFileName] (`codex` / `codex.exe`).
+  /// Pinned per-platform assets for [bundledVersion]. Codex's canonical package
+  /// archives contain the CLI, `codex-code-mode-host`, and runtime resources.
+  /// The complete package tree must remain intact because the CLI resolves its
+  /// helper and resources relative to `bin/codex` (`bin/codex.exe` on Windows).
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "codex-aarch64-apple-darwin.tar.gz",
+        assetName: "codex-package-aarch64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "758916aa38efa7ad076a050830fcbef1a7ed6f41efae9c1cceaeef63e428fc2b",
-        archiveBinaryName: "codex-aarch64-apple-darwin",
-        layout: RuntimeArchiveLayout.singleBinary,
+        sha256: "bfae69c7bb7a3fbe68161f2ca9328839c7e6eea053a8871186eb6edbb1346870",
+        archiveBinaryName: "bin/codex",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "codex-x86_64-apple-darwin.tar.gz",
+        assetName: "codex-package-x86_64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "54591772f242271f802f17b4dda6cecab29229ba71593e962e208549e0da1a3a",
-        archiveBinaryName: "codex-x86_64-apple-darwin",
-        layout: RuntimeArchiveLayout.singleBinary,
+        sha256: "9ac9245ea244629a9ba4db3315f0cdaebb05182b790ee34271a5060875d836e1",
+        archiveBinaryName: "bin/codex",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
     PlatformOs.linux: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "codex-aarch64-unknown-linux-musl.tar.gz",
+        assetName: "codex-package-aarch64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "410c6ae0c763eb39c6da17665e63f9aa4a98e6ee663d81f8e8b779c97cb175ac",
-        archiveBinaryName: "codex-aarch64-unknown-linux-musl",
-        layout: RuntimeArchiveLayout.singleBinary,
+        sha256: "580db3c7411f5852b550876f185c30b61b674e01b948fd5030f2cd7a30db110a",
+        archiveBinaryName: "bin/codex",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "codex-x86_64-unknown-linux-musl.tar.gz",
+        assetName: "codex-package-x86_64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "1a36f762f6b3bef533bb86345ad9517661c2d84d53996a250cf2ca89d2cfee5a",
-        archiveBinaryName: "codex-x86_64-unknown-linux-musl",
-        layout: RuntimeArchiveLayout.singleBinary,
+        sha256: "8c790500af2ba6e74ce4948fe26c651ac1f77f6dbb005b47c8d26ff711146262",
+        archiveBinaryName: "bin/codex",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
     PlatformOs.windows: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "codex-aarch64-pc-windows-msvc.exe.zip",
-        format: ArchiveFormat.zip,
-        sha256: "73a2b150965d63ddc71f7d0b5a3845a5d5925757af6495110a32dea40d6e18c3",
-        archiveBinaryName: "codex-aarch64-pc-windows-msvc.exe",
-        layout: RuntimeArchiveLayout.singleBinary,
+        assetName: "codex-package-aarch64-pc-windows-msvc.tar.gz",
+        format: ArchiveFormat.tarGz,
+        sha256: "0258ac84ebf8fdc6d8e1f4b0541d55a703f3d8996debca157a013cf753134c54",
+        archiveBinaryName: "bin/codex.exe",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "codex-x86_64-pc-windows-msvc.exe.zip",
-        format: ArchiveFormat.zip,
-        sha256: "a3f053e70bd5073d04d08ee3a2605b4015c74b0a51f3ff5a2fb67852ee37e3b0",
-        archiveBinaryName: "codex-x86_64-pc-windows-msvc.exe",
-        layout: RuntimeArchiveLayout.singleBinary,
+        assetName: "codex-package-x86_64-pc-windows-msvc.tar.gz",
+        format: ArchiveFormat.tarGz,
+        sha256: "cc09f725b8ed133b76a2882fda750b3f1672b10701e8172c9680b5ab79b861ff",
+        archiveBinaryName: "bin/codex.exe",
+        layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
   };
@@ -102,7 +102,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
   String get pathExecutableName => "codex";
 
   @override
-  String get binaryFileName => Platform.isWindows ? "codex.exe" : "codex";
+  String get binaryFileName => p.join("bin", Platform.isWindows ? "codex.exe" : "codex");
 
   @override
   RuntimeVersion get minPathVersion => _minPathVersion;

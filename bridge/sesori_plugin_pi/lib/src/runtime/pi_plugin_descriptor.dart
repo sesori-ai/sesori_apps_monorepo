@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/pi_process_factory.dart";
+import "../api/pi_rpc_client.dart";
 import "../pi_identity.dart";
 import "../pi_plugin_impl.dart";
 import "pi_bridge_plugin.dart";
@@ -133,17 +134,24 @@ final class const PiPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: PiRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     if (_explicitBin(host.config) != null) return;
     const manifest = PiRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(host: host, explicitExecutablePath: null);
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(host: host, explicitExecutablePath: null);
   }
 
   @override
@@ -153,32 +161,29 @@ final class const PiPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = PiRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
     );
     final httpClient = http.Client();
     try {
-      final service = ManagedRuntimeInstallService(
+      final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: _versionValidator(processes: processes),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -194,18 +199,26 @@ final class const PiPluginDescriptor({
   }) async {
     const manifest = PiRuntimeManifest();
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: _versionValidator(processes: processes),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
-    if (selection is ManagedRuntimeSelected) return const PluginSetupReady();
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
+    if (selection case ManagedRuntimeSelected(:final binaryPath, :final version)) {
+      return await _inspectAuthentication(
+        binaryPath: binaryPath,
+        processes: processes,
+        environment: environment,
+        runtimeVersion: version.raw,
+      );
+    }
     final notSelected = selection as ManagedRuntimeNotSelected;
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
@@ -221,8 +234,7 @@ final class const PiPluginDescriptor({
       };
     }
     final automatic = notSelected as ManagedRuntimeAutomaticNotSelected;
-    if (_isUnknownRejection(automatic.primaryRejection) ||
-        _isUnknownRejection(automatic.managedRejection)) {
+    if (_isUnknownRejection(automatic.primaryRejection) || _isUnknownRejection(automatic.managedRejection)) {
       return const PluginSetupUnknown(
         actionHint: "Pi setup could not be determined. Verify the local CLI and retry.",
       );
@@ -234,6 +246,55 @@ final class const PiPluginDescriptor({
     );
   }
 
+  /// Asks Pi which models it can actually use.
+  ///
+  /// Pi accepts credentials from its auth file, from inline provider entries in
+  /// its models file, and from the environment, so only Pi itself can answer
+  /// whether any provider is usable. Listing models neither starts a backend
+  /// nor initiates authentication, and an empty listing carries the same
+  /// diagnostic the session path already recognizes.
+  Future<PluginSetupStatus> _inspectAuthentication({
+    required String binaryPath,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String runtimeVersion,
+  }) async {
+    PluginSetupStatus undetermined() => PluginSetupUnknown.versioned(
+      actionHint: "Pi could not list its available models. Verify the local CLI and retry.",
+      runtimeVersion: runtimeVersion,
+    );
+
+    final CommandResult result;
+    try {
+      result = await HostProcessCommandExecutor(
+        includeParentEnvironment: true,
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: 64 * 1024,
+      ).run(binaryPath, const ["--list-models"], environment: environment, timeout: _versionProbeTimeout);
+    } on Object catch (error, stackTrace) {
+      Log.w("[${PiPluginIdentity.id}] model listing probe failed for '$binaryPath --list-models'", error, stackTrace);
+      return undetermined();
+    }
+    // The diagnostic stays authoritative ahead of the exit code, so a release
+    // that reports having no models through a failing exit is still read as
+    // logged out rather than as a broken probe.
+    final listedNoModels =
+        result.stdout.contains(PiRpcClient.noModelsDiagnosticPrefix) ||
+        result.stderr.contains(PiRpcClient.noModelsDiagnosticPrefix);
+    if (listedNoModels) {
+      return PluginSetupAuthenticationRequired.versioned(
+        actionHint: "Run `pi` on this machine and use /login to add a provider, then retry setup detection.",
+        runtimeVersion: runtimeVersion,
+      );
+    }
+    if (result.exitCode != 0) {
+      Log.d("[${PiPluginIdentity.id}] model listing probe '$binaryPath --list-models' exited ${result.exitCode}");
+      return undetermined();
+    }
+    return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
+  }
+
   bool _isUnknownRejection(ManagedRuntimeRejection rejection) {
     return switch (rejection) {
       ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected() => false,
@@ -243,6 +304,7 @@ final class const PiPluginDescriptor({
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
@@ -258,6 +320,7 @@ final class const PiPluginDescriptor({
     final binaryPath = _explicitBin(host.config) ?? host.provisionedRuntimePath ?? manifest.pathExecutableName;
     final processFactory = HostPiProcessFactory(processes: host.processes);
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,

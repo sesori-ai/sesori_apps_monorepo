@@ -41,6 +41,7 @@ GrokSubagentFinished _$GrokSubagentFinishedFromJson(Map json) =>
       ),
       output: json['output'] as String?,
       error: json['error'] as String?,
+      willWake: json['will_wake'] as bool?,
       $type: json['sessionUpdate'] as String?,
     );
 
@@ -50,6 +51,11 @@ const _$GrokSubagentStatusEnumMap = {
   GrokSubagentStatus.cancelled: 'cancelled',
   GrokSubagentStatus.unknown: 'unknown',
 };
+
+GrokTurnCompleted _$GrokTurnCompletedFromJson(Map json) => GrokTurnCompleted(
+  promptId: json['prompt_id'] as String?,
+  $type: json['sessionUpdate'] as String?,
+);
 
 GrokSubagentUpdateUnknown _$GrokSubagentUpdateUnknownFromJson(Map json) =>
     GrokSubagentUpdateUnknown($type: json['sessionUpdate'] as String?);

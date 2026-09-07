@@ -34,6 +34,7 @@ void main() {
 
     Future<SpawnedProcess> spawnAgent({bool isWindows = false, String executable = '/usr/local/bin/agent'}) {
       return service(isWindows: isWindows).spawn(
+        includeParentEnvironment: true,
         executable: executable,
         arguments: const ['--stdio'],
         environment: const {'AGENT_MODE': 'acp'},
@@ -52,6 +53,21 @@ void main() {
       expect(starter.environment, equals(<String, String>{'AGENT_MODE': 'acp'}));
       expect(starter.workingDirectory, '/tmp/workdir');
       expect(starter.runInShell, isFalse);
+      expect(starter.includeParentEnvironment, isTrue);
+    });
+
+    test('spawn forwards explicit environment isolation to the OS starter', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      await service().spawn(
+        executable: '/runtime/agent',
+        arguments: const [],
+        environment: const {'PATH': '/runtime'},
+        workingDirectory: null,
+        runInShell: false,
+        includeParentEnvironment: false,
+      );
+      expect(starter.includeParentEnvironment, isFalse);
+      expect(starter.environment, {'PATH': '/runtime'});
     });
 
     test('spawn upgrades the identity from post-spawn inspection when the command line matches', () async {
@@ -277,6 +293,7 @@ void main() {
         );
 
         final spawned = await realService.spawn(
+          includeParentEnvironment: true,
           executable: '/bin/cat',
           arguments: const [],
           environment: null,
@@ -335,6 +352,7 @@ class _RecordingStarter() {
   Map<String, String>? environment;
   String? workingDirectory;
   bool? runInShell;
+  bool? includeParentEnvironment;
 
   Future<Process> call(
     String executable,
@@ -342,12 +360,14 @@ class _RecordingStarter() {
     Map<String, String>? environment,
     String? workingDirectory,
     bool runInShell = false,
+    required bool includeParentEnvironment,
   }) async {
     this.executable = executable;
     this.arguments = arguments;
     this.environment = environment;
     this.workingDirectory = workingDirectory;
     this.runInShell = runInShell;
+    this.includeParentEnvironment = includeParentEnvironment;
     final process = this.process;
     if (process == null) {
       throw StateError('No fake process configured');

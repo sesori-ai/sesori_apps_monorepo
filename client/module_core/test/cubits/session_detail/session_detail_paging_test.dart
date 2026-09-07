@@ -237,6 +237,7 @@ SessionDetailSnapshot _snapshot({
   required List<MessageWithParts> messages,
   required int? olderMessagesCursor,
 }) => SessionDetailSnapshot(
+  areOptionsStale: false,
   bridgeQueuedPrompts: const [],
   projectId: "project-1",
   pluginId: "plugin-1",

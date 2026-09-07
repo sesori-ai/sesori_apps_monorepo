@@ -173,6 +173,15 @@
   "settingsYoloUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsYoloUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsYoloRetry": "Retry YOLO setting",
+  "settingsPluginWarmupTitle": "Warm harness on session open",
+  "settingsPluginWarmupDescription": "Starts the session's harness when you open it to reduce delays on your first action.",
+  "settingsPluginWarmupLoading": "Loading the bridge setting…",
+  "settingsPluginWarmupDisconnected": "Connect to a bridge to configure this setting.",
+  "settingsPluginWarmupUnsupported": "Update the connected bridge to configure this setting.",
+  "settingsPluginWarmupLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
+  "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
+  "settingsPluginWarmupUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
+  "settingsPluginWarmupRetry": "Retry harness warm-up setting",
   "settingsPullRequestRefreshTitle": "Pull request refresh",
   "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
   "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
@@ -270,6 +279,8 @@
   "harnessAuthenticationSheetTitle": "Log in to harness",
   "harnessAuthenticationSecurityDescription": "Only continue if you started this login. Sesori will open the harness provider's secure website; verify the address before entering the code.",
   "harnessAuthenticationSecuritySemantics": "Security notice. Only continue if you started this login. Verify the website address before entering the code.",
+  "harnessAuthenticationBrowserInstructions": "Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.",
+  "harnessAuthenticationRedirectLabel": "Redirect URL",
   "harnessAuthenticationCodeLabel": "One-time code",
   "harnessAuthenticationCopyCode": "Copy one-time code",
   "harnessAuthenticationCodeCopied": "Code copied",
@@ -282,10 +293,12 @@
   "harnessAuthenticationDismissError": "Dismiss login error",
   "harnessAuthenticationNotFound": "The harness is no longer registered on this bridge.",
   "harnessAuthenticationUnsupported": "Update the connected bridge to log in from this device.",
+  "harnessAuthenticationUpdateRequired": "Update Sesori to continue this harness login.",
   "harnessAuthenticationConflict": "The harness is busy with another management action. Refresh before trying again.",
   "harnessAuthenticationUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
-  "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Copy the code and try again.",
+  "harnessAuthenticationInvalidRedirect": "Paste the full redirect URL from the local callback page.",
+  "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Try again.",
   "harnessAuthenticationRequestFailed": "Check your connection and try again.",
   "harnessesRegisteredSection": "Registered Harnesses",
   "harnessesEmptyTitle": "No harnesses registered",
@@ -657,10 +670,13 @@
   "sessionDetailSubtaskUnnamed": "Background task",
   "sessionDetailQueuedMessage": "Queued",
   "sessionDetailQueuedCommand": "Queued command",
+  "sessionDetailUnavailableCommand": "Command unavailable",
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
+  "sessionDetailCommandUnavailable": "That command is no longer available. Remove it from the queue to continue.",
   "sessionDetailCancelQueued": "Cancel",
+  "sessionDetailRemoveQueued": "Remove",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerVariant": "Variant",
   "sessionDetailSelectModel": "Select Model",
@@ -761,9 +777,6 @@
       }
     }
   },
-  "sessionListStaleProjectTitle": "Project directory not found",
-  "sessionListStaleProjectMessage": "The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.",
-  "sessionListStaleProjectBack": "Go back",
   "voiceRecord": "Record voice",
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
@@ -789,7 +802,6 @@
   "voiceErrorRecording": "Recording failed. Please try again.",
   "voiceErrorTranscription": "Transcription failed. Record again or type instead.",
   "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
-  "voiceErrorNetwork": "Could not reach the server. Check your connection.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
   "addProject": "Add Project",
@@ -866,8 +878,6 @@
   "renameSessionHint": "Session title",
   "renameProjectHint": "Project name",
   "renameSave": "Save",
-  "renameSessionSuccess": "Session renamed",
-  "renameProjectSuccess": "Project renamed",
   "renameSessionFailed": "Failed to rename session",
   "renameProjectFailed": "Failed to rename project",
   "newSessionDedicatedWorkspace": "Dedicated workspace",
@@ -1185,7 +1195,7 @@
       }
     }
   },
-  "catalogScanPartlyFailedTitle": "Scan finished",
+  "catalogScanPartlyFailedTitle": "Scanning finished",
   "@catalogScanPartlyFailedTitle": {
     "description": "Title of the scan row when some harnesses scanned successfully and others did not."
   },
@@ -1205,7 +1215,7 @@
   "@catalogScanFailedTitle": {
     "description": "Title of the scan row when no harness could be scanned."
   },
-  "catalogScanFailedDetail": "Check the bridge log for details",
+  "catalogScanFailedDetail": "Check bridge logs",
   "@catalogScanFailedDetail": {
     "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
   },

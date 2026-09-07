@@ -11,6 +11,7 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'id': instance.id,
       'name': instance.name,
       'variants': instance.variants,
+      'defaultVariant': ?instance.defaultVariant,
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
       'releaseDate': ?instance.releaseDate?.toIso8601String(),

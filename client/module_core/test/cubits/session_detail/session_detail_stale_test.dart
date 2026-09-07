@@ -106,6 +106,30 @@ void main() {
       _stubLoadApis(mockSessionService, sessionId: sessionId);
     });
 
+    /// Builds the cubit under test with the collaborators every case shares.
+    ///
+    /// [eventRefreshMinInterval] defaults to the production cooldown; cases that
+    /// exercise coalescing pass the short test cooldown instead.
+    SessionDetailCubit buildCubit({
+      LifecycleSource? lifecycleSource,
+      Duration eventRefreshMinInterval = const Duration(seconds: 5),
+    }) => SessionDetailCubit(
+      mockConnectionService,
+      loadService: loadService,
+      promptDispatcher: promptDispatcher,
+      permissionRepository: mockPermissionRepository,
+      sessionViewingService: stubbedSessionViewingService(),
+      projectViewingService: stubbedProjectViewingService(),
+      lifecycleSource: lifecycleSource ?? FakeLifecycleSource(),
+      composerDraftRepository: inMemoryComposerDraftRepository(),
+      productAnalyticsService: stubbedProductAnalyticsService(),
+      sessionId: sessionId,
+      projectId: "project-1",
+      notificationCanceller: mockNotificationCanceller,
+      failureReporter: MockFailureReporter(),
+      eventRefreshMinInterval: eventRefreshMinInterval,
+    );
+
     tearDown(() async {
       await sessionEvents.close();
       await globalEvents.close();
@@ -115,21 +139,7 @@ void main() {
     test(
       "deferred refresh: stale while disconnected waits for ConnectionConnected before refreshing",
       () async {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-        );
+        final cubit = buildCubit();
         addTearDown(cubit.close);
 
         await _awaitLoaded(cubit);
@@ -199,21 +209,7 @@ void main() {
     );
 
     test("deferred refresh: stale when connected triggers immediate refresh", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -275,21 +271,7 @@ void main() {
     });
 
     test("selectAgent preserves the model when the agent has no model preference", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -302,21 +284,7 @@ void main() {
     });
 
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -358,6 +326,7 @@ void main() {
                     providerID: "anthropic",
                     name: "Claude 3.5 Sonnet",
                     variants: [],
+                    defaultVariant: null,
                     family: null,
                     releaseDate: null,
                   ),
@@ -394,21 +363,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -478,21 +433,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -523,21 +464,7 @@ void main() {
     });
 
     test("delta race: streaming deltas arriving during refresh are preserved", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -611,21 +538,7 @@ void main() {
     });
 
     test("option failure retains the prior snapshot while waiting for retry", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -671,21 +584,7 @@ void main() {
         ),
       ).thenAnswer((_) => messagesCompleter.future);
 
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
 
       mockConnectionService.emitDataMayBeStale();
       await pumpEventQueue();
@@ -736,21 +635,7 @@ void main() {
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitFailed(cubit);
@@ -775,21 +660,7 @@ void main() {
         setLogLevel(LogLevel.debug);
         addTearDown(() => setLogLevel(previousLogLevel));
         final cubit = runZoned(
-          () => SessionDetailCubit(
-            mockConnectionService,
-            loadService: loadService,
-            promptDispatcher: promptDispatcher,
-            permissionRepository: mockPermissionRepository,
-            sessionViewingService: stubbedSessionViewingService(),
-            projectViewingService: stubbedProjectViewingService(),
-            lifecycleSource: FakeLifecycleSource(),
-            composerDraftRepository: inMemoryComposerDraftRepository(),
-            productAnalyticsService: stubbedProductAnalyticsService(),
-            sessionId: sessionId,
-            projectId: "project-1",
-            notificationCanceller: mockNotificationCanceller,
-            failureReporter: MockFailureReporter(),
-          ),
+          buildCubit,
           zoneSpecification: ZoneSpecification(
             print: (self, parent, zone, line) => logs.add(line),
           ),
@@ -842,22 +713,7 @@ void main() {
 
     test("a failed leading stale refresh retries until a snapshot succeeds", () {
       fakeAsync((FakeAsync async) {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -909,22 +765,7 @@ void main() {
 
     test("an option load failure preserves catalogs and retries until options load", () {
       fakeAsync((FakeAsync async) {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         final before = cubit.state as SessionDetailLoaded;
@@ -966,22 +807,7 @@ void main() {
       late final SessionDetailCubit cubit;
       late final StreamSubscription<SessionDetailState> sub;
       fakeAsync((FakeAsync async) {
-        cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1042,21 +868,7 @@ void main() {
     });
 
     test("concurrent stale signals are coalesced (single API call)", () async {
-      final cubit = SessionDetailCubit(
-        mockConnectionService,
-        loadService: loadService,
-        promptDispatcher: promptDispatcher,
-        permissionRepository: mockPermissionRepository,
-        sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
-        lifecycleSource: FakeLifecycleSource(),
-        composerDraftRepository: inMemoryComposerDraftRepository(),
-        productAnalyticsService: stubbedProductAnalyticsService(),
-        sessionId: sessionId,
-        projectId: "project-1",
-        notificationCanceller: mockNotificationCanceller,
-        failureReporter: MockFailureReporter(),
-      );
+      final cubit = buildCubit();
       addTearDown(cubit.close);
 
       await _awaitLoaded(cubit);
@@ -1147,22 +959,7 @@ void main() {
 
     test("staleness bursts inside the cooldown collapse into one immediate and one trailing refresh", () {
       fakeAsync((FakeAsync async) {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1217,22 +1014,7 @@ void main() {
 
     test("a queued signal survives a refresh that outlives the cooldown window", () {
       fakeAsync((FakeAsync async) {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1314,22 +1096,7 @@ void main() {
 
     test("the trailing refresh runs as soon as a slow refresh completes, not a window later", () {
       fakeAsync((FakeAsync async) {
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: FakeLifecycleSource(),
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1408,22 +1175,7 @@ void main() {
     test("the queue is held while hidden and consumed by the resume refresh", () {
       fakeAsync((FakeAsync async) {
         final lifecycle = FakeLifecycleSource();
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: lifecycle,
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1488,22 +1240,7 @@ void main() {
     test("a failed resume refresh preserves hidden staleness until a snapshot succeeds", () {
       fakeAsync((FakeAsync async) {
         final lifecycle = FakeLifecycleSource();
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: lifecycle,
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1561,22 +1298,7 @@ void main() {
     test("a signal queued behind an in-flight refresh survives a pause/resume cycle", () {
       fakeAsync((FakeAsync async) {
         final lifecycle = FakeLifecycleSource();
-        final cubit = SessionDetailCubit(
-          mockConnectionService,
-          loadService: loadService,
-          promptDispatcher: promptDispatcher,
-          permissionRepository: mockPermissionRepository,
-          sessionViewingService: stubbedSessionViewingService(),
-          projectViewingService: stubbedProjectViewingService(),
-          lifecycleSource: lifecycle,
-          composerDraftRepository: inMemoryComposerDraftRepository(),
-          productAnalyticsService: stubbedProductAnalyticsService(),
-          sessionId: sessionId,
-          projectId: "project-1",
-          notificationCanceller: mockNotificationCanceller,
-          failureReporter: MockFailureReporter(),
-          eventRefreshMinInterval: _cooldown,
-        );
+        final cubit = buildCubit(lifecycleSource: lifecycle, eventRefreshMinInterval: _cooldown);
 
         _settleLoaded(async: async, cubit: cubit);
         reset(mockSessionService);
@@ -1758,6 +1480,7 @@ ProviderListResponse _providers() {
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

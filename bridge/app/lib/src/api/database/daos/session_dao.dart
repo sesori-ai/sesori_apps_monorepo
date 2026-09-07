@@ -293,6 +293,28 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return {for (final row in rows) row.backendSessionId: row};
   }
 
+  /// Stable ids for [backendSessionIds] of one plugin, keyed by backend id; a
+  /// backend id with no row is absent. Projects to the two id columns because
+  /// event translation and subtask remapping never read the rest of the row.
+  Future<Map<String, String>> getSessionIdsByBackendIds({
+    required String pluginId,
+    required List<String> backendSessionIds,
+  }) async {
+    if (backendSessionIds.isEmpty) return const {};
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.backendSessionId, sessionTable.sessionId])
+      ..where(sessionTable.pluginId.equals(pluginId) & sessionTable.backendSessionId.isIn(backendSessionIds));
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        if ((row.read(sessionTable.backendSessionId), row.read(sessionTable.sessionId)) case (
+          final backendSessionId?,
+          final sessionId?,
+        ))
+          backendSessionId: sessionId,
+    };
+  }
+
   Future<Map<String, SessionDto>> getSessionsForPlugin({required String pluginId}) async {
     final rows = await (select(sessionTable)..where((table) => table.pluginId.equals(pluginId))).get();
     return {for (final row in rows) row.backendSessionId: row};
@@ -353,6 +375,13 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
       pluginId: pluginId,
       backendSessionIds: [for (final session in sessions) session.backendSessionId],
     );
+  }
+
+  Future<void> advanceUpdatedAt({required String sessionId, required int updatedAt}) async {
+    await (update(sessionTable)..where(
+          (table) => table.sessionId.equals(sessionId) & table.updatedAt.isSmallerThanValue(updatedAt),
+        ))
+        .write(SessionTableCompanion(updatedAt: Value(updatedAt)));
   }
 
   Future<bool> updateObservedSessionProjection({

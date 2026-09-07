@@ -63,7 +63,7 @@ class DeviceTypeDetector({
       final model = (result.stdout as String).trim().toLowerCase();
       return model.contains("macbook");
     } on Object catch (error) {
-      Log.w("[device-type] failed to detect macOS laptop: $error");
+      Log.w("[device-type] failed to detect macOS laptop", error);
       return false;
     }
   }
@@ -87,7 +87,7 @@ class DeviceTypeDetector({
       final count = int.tryParse((result.stdout as String).trim()) ?? 0;
       return count > 0;
     } on Object catch (error) {
-      Log.w("[device-type] failed to detect Windows laptop: $error");
+      Log.w("[device-type] failed to detect Windows laptop", error);
       return false;
     }
   }
@@ -103,7 +103,7 @@ class DeviceTypeDetector({
         (e) => e.path.split("/").last.startsWith("BAT"),
       );
     } on Object catch (error) {
-      Log.w("[device-type] failed to detect Linux laptop: $error");
+      Log.w("[device-type] failed to detect Linux laptop", error);
       return false;
     }
   }

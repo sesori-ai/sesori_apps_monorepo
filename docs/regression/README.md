@@ -147,6 +147,8 @@ failed, or unexecuted required coverage keeps the plan active.
 
 - [Account and onboarding](account-and-onboarding.md)
 - [Analytics](analytics.md)
+- [Antigravity isolated profiles](antigravity-isolated-profiles.md)
+- [Antigravity personal authentication](antigravity-personal-authentication.md)
 - [Attachments and images](attachments-and-images.md)
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
@@ -160,8 +162,8 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Plugin runtime installation](plugin-runtime-installation.md)
 - [Plugin setup and lifecycle](plugin-setup-and-lifecycle.md)
 - [Popup alerts](popup-alerts.md)
-- [Provider route conformance](provider-route-conformance.md)
 - [Projects and sessions](projects-and-sessions.md)
+- [Provider route conformance](provider-route-conformance.md)
 - [Pull request monitoring](pull-request-monitoring.md)
 - [Questions and permissions](questions-and-permissions.md)
 - [Session archiving and deletion](session-archiving-and-deletion.md)

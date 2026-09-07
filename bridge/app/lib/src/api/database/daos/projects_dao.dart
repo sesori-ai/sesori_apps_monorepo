@@ -12,6 +12,23 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     return await select(projectsTable).get();
   }
 
+  /// Creation and last-activity timestamps for [projectIds], keyed by id; an
+  /// id with no row is absent. The query selects only the three columns the
+  /// activity reconciliation reads instead of loading every project row.
+  Future<Map<String, ({int createdAt, int updatedAt})>> getActivityTimestamps({required Set<String> projectIds}) async {
+    if (projectIds.isEmpty) return const {};
+    final query = selectOnly(projectsTable)
+      ..addColumns([projectsTable.projectId, projectsTable.createdAt, projectsTable.updatedAt])
+      ..where(projectsTable.projectId.isIn(projectIds));
+    final rows = await query.get();
+    return {
+      for (final row in rows)
+        if ((row.read(projectsTable.projectId), row.read(projectsTable.createdAt), row.read(projectsTable.updatedAt))
+            case (final projectId?, final createdAt?, final updatedAt?))
+          projectId: (createdAt: createdAt, updatedAt: updatedAt),
+    };
+  }
+
   /// Upserts the supplied rows without applying merge or import policy.
   Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
     if (rows.isEmpty) return;

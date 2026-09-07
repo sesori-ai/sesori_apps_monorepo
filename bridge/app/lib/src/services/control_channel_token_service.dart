@@ -87,7 +87,8 @@ class ControlChannelTokenService({
   /// for the correlated reply, forwarding [forceRefresh] so the GUI can mint a
   /// fresh token instead of returning a cached one. Throws
   /// [ControlTokenUnavailableException] when the GUI replies with no token
-  /// (signed out / mid-login) or does not reply within the request timeout.
+  /// (signed out / mid-login). Temporary failures, including a request timeout,
+  /// use its [ControlTokenRetryLaterException] subtype so startup can retry.
   /// Does not log on failure — the caller surfaces it once.
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
@@ -110,13 +111,8 @@ class ControlChannelTokenService({
     try {
       try {
         _client.send(jsonEncode(ControlMessage.tokenRequest(id: id, forceRefresh: forceRefresh).toJson()));
-      } on ControlChannelNotConnectedException {
-        // The loopback channel is down (GUI outage / mid-reconnect). Surface the
-        // documented typed failure so refresh callers (e.g. relay re-auth) handle
-        // a GUI-unavailable pull uniformly instead of a raw transport error.
-        throw const ControlTokenUnavailableException(
-          "The desktop app control channel is not connected.",
-        );
+      } on ControlChannelNotConnectedException catch (error) {
+        throw ControlTokenRetryLaterException(innerError: error);
       }
       final accessToken = await completer.future.timeout(_requestTimeout);
       if (accessToken == null) {
@@ -135,10 +131,10 @@ class ControlChannelTokenService({
       // caller still receives this pull's own token below regardless.
       _applyWrite(seq, () => _cacheToken(accessToken));
       return accessToken;
-    } on TimeoutException {
-      throw const ControlTokenUnavailableException(
-        "Timed out waiting for the desktop app to supply an access token.",
-      );
+    } on TimeoutException catch (error) {
+      // An offline desktop refresh may outlast this local request deadline.
+      // A missing reply is not evidence that the account has signed out.
+      throw ControlTokenRetryLaterException(innerError: error);
     } finally {
       _pending.remove(id);
     }
@@ -177,6 +173,11 @@ class ControlChannelTokenService({
     if (completer != null && !completer.isCompleted) {
       completer.complete(accessToken);
     }
+  }
+
+  void handleTokenRetryLater({required String id}) {
+    final completer = _pending.remove(id);
+    completer?.completeError(const ControlTokenRetryLaterException(innerError: null));
   }
 
   /// Runs [write] only if [seq] is newer than the write currently reflected in

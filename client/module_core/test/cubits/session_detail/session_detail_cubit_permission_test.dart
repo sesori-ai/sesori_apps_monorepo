@@ -903,6 +903,7 @@ ProviderListResponse _providers() {
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

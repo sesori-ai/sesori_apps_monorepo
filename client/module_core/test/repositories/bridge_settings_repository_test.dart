@@ -21,6 +21,7 @@ void main() {
     const response = BridgeSettingsResponse(
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       yolo: YoloSettingsResponse(enabled: true),
+      warmUpPluginsOnSessionOpen: true,
     );
     when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.success(response));
 
@@ -61,7 +62,7 @@ void main() {
     expect(await repository.load(), isA<BridgeSettingsLoadUnsupported>());
   });
 
-  test("maps both setting mutation responses", () async {
+  test("maps every setting mutation response", () async {
     when(
       () => api.update(update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45)),
     ).thenAnswer(
@@ -72,12 +73,21 @@ void main() {
     when(() => api.update(update: const BridgeSettingUpdate.yolo(enabled: true))).thenAnswer(
       (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.yolo(enabled: true)),
     );
+    when(
+      () => api.update(update: const BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false)),
+    ).thenAnswer(
+      (_) async => const BridgeSettingUpdateApiCommitted(
+        update: BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false),
+      ),
+    );
 
     final pullRequest = await repository.updatePullRequestRefresh(intervalSeconds: 45);
     final yolo = await repository.updateYolo(enabled: true);
+    final warmup = await repository.updatePluginWarmup(enabled: false);
 
     expect((pullRequest as PullRequestRefreshSettingsMutationCommitted).response.intervalSeconds, 46);
     expect((yolo as YoloSettingsMutationCommitted).response.enabled, isTrue);
+    expect((warmup as PluginWarmupSettingsMutationCommitted).enabled, isFalse);
   });
 
   test("maps PR bounds rejections and uncertain transport outcomes", () async {

@@ -8,6 +8,58 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("DeepSeekPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("deepseek-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory("${stateDir.path}/${const DeepSeekRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const DeepSeekRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("0.1.2");
+
+      expect(
+        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary}),
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("0.1.2");
+
+      expect(
+        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   const config = PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary});
 
   test("descriptor declares managed installation when no explicit path is configured", () {
@@ -104,7 +156,7 @@ void main() {
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.0.9 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -141,12 +193,12 @@ void main() {
     );
   });
 
-  test("ensureRuntime falls back from an outdated PATH adapter to the exact managed release", () async {
+  test("ensureRuntime replaces a protocol-v1 PATH adapter with the exact managed release", () async {
     final processes = _ProcessService(
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.0.9 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -276,6 +328,7 @@ class _ProcessService({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List.of(arguments));
@@ -367,7 +420,7 @@ class _AcpProcess({@override required final int pid, required final bool omitIni
         if (!omitInitializeMetadata)
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",

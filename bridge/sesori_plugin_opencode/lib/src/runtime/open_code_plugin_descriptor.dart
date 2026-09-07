@@ -269,42 +269,47 @@ class const OpenCodePluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: OpenCodeRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> installRuntime({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
     final httpClient = http.Client();
     try {
-      final installService = ManagedRuntimeInstallService(
+      final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installService.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -325,6 +330,7 @@ class const OpenCodePluginDescriptor({
     final explicitBin = _explicitBin(config);
     const manifest = OpenCodeRuntimeManifest();
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -340,21 +346,22 @@ class const OpenCodePluginDescriptor({
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
 
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: manifest,
-      versionValidator: RuntimeVersionValidator(
-        commandExecutor: executor,
-        manifest: manifest,
-        probeTimeout: _versionProbeTimeout,
-      ),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: manifest,
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: executor,
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+          ),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
     if (selection case ManagedRuntimeSelected(:final version)) {
       return PluginSetupReady.versioned(runtimeVersion: version.raw);
     }
@@ -417,19 +424,17 @@ class const OpenCodePluginDescriptor({
   }) {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
-    return ManagedRuntimeProvisionService(
+    return const ManagedRuntimeComposition().createProvisioner(
       manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
+      versionValidator: RuntimeVersionValidator(
+        commandExecutor: commandExecutor,
         manifest: manifest,
-        versionValidator: RuntimeVersionValidator(
-          commandExecutor: commandExecutor,
-          manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
-        ),
+        probeTimeout: _versionProbeTimeout,
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],
@@ -649,6 +654,7 @@ class const OpenCodePluginDescriptor({
       displayName: "OpenCode",
       logContext: "opencode",
       interruptOwnedOnly: true,
+      onStartWarmUp: api.warmUpCommandCatalog,
     );
 
     if (handle == null) {
@@ -661,7 +667,7 @@ class const OpenCodePluginDescriptor({
       reporter.markDegradedNow();
       unawaited(
         api.initialize().catchError((Object error, StackTrace stackTrace) {
-          Log.w("[opencode] background cold-start did not complete cleanly: $error");
+          Log.w("[opencode] background cold-start did not complete cleanly", error, stackTrace);
         }),
       );
     } else {
@@ -674,38 +680,10 @@ class const OpenCodePluginDescriptor({
       // health probe but stalls a REST call must not hang start() under the
       // bridge's cross-instance startup mutex. Past the budget the cold-start
       // keeps running in the background and the plugin starts degraded.
-      final coldStart = api.initialize();
-      var budgetExceeded = false;
-      // The sink keeps a post-budget failure from surfacing as an unhandled
-      // async error once the await below has moved on; the awaited path
-      // observes (and logs) every pre-budget failure itself.
-      unawaited(
-        coldStart.catchError((Object error, StackTrace stackTrace) {
-          if (budgetExceeded) {
-            Log.w("[opencode] cold-start failed after the start budget: $error");
-          }
-        }),
-      );
-      try {
-        await coldStart.timeout(
-          _coldStartBudget,
-          onTimeout: () {
-            budgetExceeded = true;
-            Log.w(
-              "[opencode] cold-start did not finish within ${_coldStartBudget.inSeconds}s — "
-              "starting degraded while it keeps running in the background",
-            );
-          },
-        );
-        if (budgetExceeded) {
-          reporter.markDegradedNow();
-        } else {
-          reporter.markConnected();
-        }
-      } on Object catch (error) {
-        Log.w("[opencode] cold-start did not complete cleanly: $error");
-        reporter.markDegradedNow();
-      }
+      await ManagedRuntimeColdStartService(
+        budget: _coldStartBudget,
+        logTag: "opencode",
+      ).run(coldStart: api.initialize(), reporter: reporter);
     }
 
     // The cold-start is a phase boundary like any other: an abort observed here
@@ -715,8 +693,8 @@ class const OpenCodePluginDescriptor({
     if (host.startAborted.isAborted) {
       try {
         await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[opencode] rollback after aborted start failed: $error");
+      } on Object catch (error, stackTrace) {
+        Log.e("[opencode] rollback after aborted start failed", error, stackTrace);
       }
       throw const PluginStartAbortedException();
     }

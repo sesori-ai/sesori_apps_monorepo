@@ -24,6 +24,7 @@ import "../../services/project_list_service.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
+import "../shared/optimistic_rename_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -35,7 +36,11 @@ const refreshThrottleDuration = Duration(seconds: 30);
 @visibleForTesting
 const initialProjectLoadConnectionWaitTimeout = Duration(seconds: 15);
 
-enum _ProjectFetchOutcome() { applied, failed, superseded }
+enum _ProjectFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
 
 class ProjectListCubit(
   final ProjectRepository _projectRepository,
@@ -51,6 +56,11 @@ class ProjectListCubit(
   required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<ProjectListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+
+  /// Keeps pre-rename list responses from repainting an old name while the
+  /// mutation is still pending.
+  final Map<String, OptimisticRenameTracker> _renameStateByProjectId = {};
+  int _nextRenameToken = 0;
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const ProjectListState.loading()) {
@@ -570,7 +580,7 @@ class ProjectListCubit(
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
   }) {
     final ordered = _projectListService.orderProjects(
-      projects: projects,
+      projects: _withOptimisticProjectNames(projects: projects),
       activityByProjectId: activityByProjectId,
       listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
     );
@@ -580,6 +590,13 @@ class ProjectListCubit(
         unseenByProjectId: _unseenByProjectId(ordered),
       ),
     );
+  }
+
+  Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
+    return projects.map((project) {
+      final renameState = _renameStateByProjectId[project.id];
+      return renameState == null ? project : project.copyWith(name: renameState.visibleValue);
+    });
   }
 
   /// Creates a new project named [name] below [parentPath].
@@ -636,18 +653,104 @@ class ProjectListCubit(
     return _projectRepository.parentHostPath(path: path);
   }
 
-  /// Renames the project with [projectId] to [name].
-  /// Returns `true` on success (and refreshes the project list), `false` on error.
+  /// Renames a project optimistically. Returns `false` after restoring the
+  /// prior name when the bridge rejects the rename.
   Future<bool> renameProject({required String projectId, required String name}) async {
-    final response = await _projectRepository.renameProject(projectId: projectId, name: name);
-    if (isClosed) return false;
+    final currentState = state;
+    if (currentState is! ProjectListLoaded) return false;
+
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    if (index < 0) return false;
+
+    final token = ++_nextRenameToken;
+    final renameState = _renameStateByProjectId.putIfAbsent(
+      projectId,
+      () => OptimisticRenameTracker(confirmedValue: currentState.projects[index].name),
+    );
+    renameState.begin(token: token, value: name);
+    final projects = [...currentState.projects];
+    projects[index] = projects[index].copyWith(name: name);
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
+
+    final ApiResponse<Project> response;
+    try {
+      response = await _projectRepository.renameProject(projectId: projectId, name: name);
+    } on Object {
+      _completeProjectRename(
+        projectId: projectId,
+        token: token,
+        name: name,
+        succeeded: false,
+      );
+      return false;
+    }
+
     switch (response) {
       case SuccessResponse():
-        await refreshProjects();
+        _completeProjectRename(
+          projectId: projectId,
+          token: token,
+          name: name,
+          succeeded: true,
+        );
+        if (!isClosed) {
+          unawaited(
+            _refreshProjects(
+              force: true,
+              catalogRefresh: false,
+            ),
+          );
+        }
         return true;
       case ErrorResponse():
+        _completeProjectRename(
+          projectId: projectId,
+          token: token,
+          name: name,
+          succeeded: false,
+        );
         return false;
     }
+  }
+
+  void _completeProjectRename({
+    required String projectId,
+    required int token,
+    required String name,
+    required bool succeeded,
+  }) {
+    final renameState = _renameStateByProjectId[projectId];
+    if (renameState == null) return;
+    renameState.complete(token: token, value: name, succeeded: succeeded);
+    if (!renameState.isSettled) {
+      final currentState = state;
+      if (!isClosed && currentState is ProjectListLoaded) {
+        _emitOrdered(
+          loaded: currentState,
+          projects: currentState.projects,
+          activityByProjectId: _sseEventTracker.currentSessionActivity,
+        );
+      }
+      return;
+    }
+
+    _renameStateByProjectId.remove(projectId);
+    final currentState = state;
+    if (isClosed || currentState is! ProjectListLoaded) return;
+    final index = currentState.projects.indexWhere((project) => project.id == projectId);
+    final projects = [...currentState.projects];
+    if (index >= 0) {
+      projects[index] = projects[index].copyWith(name: renameState.confirmedValue);
+    }
+    _emitOrdered(
+      loaded: currentState,
+      projects: projects,
+      activityByProjectId: _sseEventTracker.currentSessionActivity,
+    );
   }
 
   /// Discovers an existing project at [path].
@@ -758,7 +861,7 @@ class ProjectListCubit(
               )
               .projects;
           final sortedProjects = _projectListService.orderProjects(
-            projects: mergedProjects,
+            projects: _withOptimisticProjectNames(projects: mergedProjects),
             activityByProjectId: _sseEventTracker.currentSessionActivity,
             listStateByProjectId: _sessionUnseenTracker.currentSessionUnseen,
           );

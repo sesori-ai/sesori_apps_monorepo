@@ -84,7 +84,10 @@ void main() {
 
     test("recognizes a previously installed managed runtime when PATH is missing", () async {
       const manifest = OpenCodeRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(stateDirectory: stateDirectory);
+      final managedBinaryPath = manifest.managedBinaryPath(
+        stateDirectory: stateDirectory,
+        version: manifest.bundledVersion,
+      );
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           const ProcessException("opencode", ["--version"], "missing", 2),
@@ -306,6 +309,7 @@ class _ProbeProcessService({final Object? spawnError, final _ProbeProcess? proce
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List<String>.from(arguments));

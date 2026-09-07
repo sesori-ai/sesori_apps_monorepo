@@ -56,6 +56,134 @@ void main() {
       await database.close();
     });
 
+    test("settled turns publish durable recency before idle and older backend updates cannot undo it", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      await database.sessionDao.setUserMessageAt(sessionId: "stable-root", userMessageAt: 20);
+      const completedAt = 20 + 30 * 60 * 1000;
+
+      // Both normal completion and Stop end in this backend-neutral event,
+      // even for plugins that never publish a timestamp-bearing session update.
+      final output = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: completedAt,
+          event: const BridgeSseSessionIdle(sessionID: "backend-root"),
+        ),
+      );
+
+      expect(output, hasLength(2));
+      final updated = output.first as BridgeSseSessionUpdated;
+      final session = Session.fromJson(updated.info);
+      expect(session.id, "stable-root");
+      expect(session.pluginId, plugin.id);
+      expect(session.time?.created, 1);
+      expect(session.time?.updated, completedAt);
+      expect(session.lastUserActivityAt, 20);
+      expect(updated.titleChanged, isFalse);
+      expect((output.last as BridgeSseSessionIdle).sessionID, "stable-root");
+      expect((await repository.getCatalogSession(sessionId: "stable-root"))?.time?.updated, completedAt);
+      final row = await database.sessionDao.getSession(sessionId: "stable-root");
+      expect(row?.lastActivityAt, isNull, reason: "recency must not change unseen bookkeeping");
+
+      final laterUpdate = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: completedAt + 1,
+          event: BridgeSseSessionUpdated(
+            info: _sessionInfo(
+              sessionId: "backend-root",
+              parentId: null,
+              projectId: "project",
+              directory: "/project",
+            ),
+            titleChanged: true,
+          ),
+        ),
+      );
+      final renamed = Session.fromJson((laterUpdate.single as BridgeSseSessionUpdated).info);
+      expect(renamed.title, "title-backend-root");
+      expect(renamed.time?.updated, completedAt);
+      expect((await repository.getCatalogSession(sessionId: "stable-root"))?.time?.updated, completedAt);
+    });
+
+    test("still publishes idle when completion recency cannot be persisted", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      sessionDao.failNextCompletionUpdate = true;
+      final output = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: const BridgeSseSessionIdle(sessionID: "backend-root"),
+        ),
+      );
+      expect((output.single as BridgeSseSessionIdle).sessionID, "stable-root");
+      expect((await repository.getCatalogSession(sessionId: "stable-root"))?.time?.updated, 1);
+    });
+
+    test("retired-generation and unknown-session idle events cannot update recency", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      pluginRuntime.currentGeneration = 2;
+      for (final source in [
+        (generation: 1, backendId: "backend-root"),
+        (generation: 2, backendId: "unknown-root"),
+      ]) {
+        expect(
+          await service.normalize(
+            allowDuringStop: false,
+            source: (
+              pluginId: plugin.id,
+              generation: source.generation,
+              projectionUpdatedAt: 100,
+              event: BridgeSseSessionIdle(sessionID: source.backendId),
+            ),
+          ),
+          isEmpty,
+        );
+      }
+      expect((await repository.getCatalogSession(sessionId: "stable-root"))?.time?.updated, 1);
+    });
+
+    test("an idle status snapshot does not fabricate turn completion activity", () async {
+      await _insertRoot(
+        database: database,
+        pluginId: plugin.id,
+        sessionId: "stable-root",
+        backendSessionId: "backend-root",
+      );
+      final output = await service.normalize(
+        allowDuringStop: false,
+        source: (
+          pluginId: plugin.id,
+          generation: 1,
+          projectionUpdatedAt: 100,
+          event: const BridgeSseSessionStatus(sessionID: "backend-root", status: PluginSessionStatus.idle()),
+        ),
+      );
+      expect(output.single, isA<BridgeSseSessionStatus>());
+      expect((await repository.getCatalogSession(sessionId: "stable-root"))?.time?.updated, 1);
+    });
+
     test("drops unknown roots without discovering projects and preserves backend-deleted history", () async {
       final unknown = await service.normalize(
         allowDuringStop: false,
@@ -682,14 +810,14 @@ void main() {
           directory: "/repo",
         ),
       );
-      final message = BridgeSseMessageUpdated(
-        info: const Message.user(
+      const message = BridgeSseMessageUpdated(
+        info: PluginMessage.user(
           promptId: null,
           id: "backend-message",
           sessionID: "backend-root",
           agent: null,
           time: null,
-        ).toJson(),
+        ),
       );
       const part = BridgeSseMessagePartUpdated(
         part: PluginMessagePart.text(
@@ -699,9 +827,9 @@ void main() {
           text: "visible prompt",
         ),
       );
-      final status = BridgeSseSessionStatus(
+      const status = BridgeSseSessionStatus(
         sessionID: "backend-root",
-        status: const SessionStatus.busy().toJson(),
+        status: PluginSessionStatus.busy(),
       );
 
       for (final (index, event) in [created, message, part, status].indexed) {
@@ -739,7 +867,7 @@ void main() {
       expect(output, hasLength(5));
       expect(output.map((item) => item.generation), everyElement(1));
       expect(Session.fromJson((output[0].event as BridgeSseSessionCreated).info).id, "stable-root");
-      expect(Message.fromJson((output[1].event as BridgeSseMessageUpdated).info).sessionID, "stable-root");
+      expect((output[1].event as BridgeSseMessageUpdated).info.sessionID, "stable-root");
       expect((output[2].event as BridgeSseMessagePartUpdated).part.sessionID, "stable-root");
       expect((output[3].event as BridgeSseSessionStatus).sessionID, "stable-root");
       expect(output[4].event, isA<BridgeSseProjectUpdated>());
@@ -1307,6 +1435,16 @@ class _TransactionGatedSessionDao(super.attachedDatabase) extends SessionDao {
   Completer<void>? _transactionEntered;
   Completer<void>? _releaseTransaction;
   bool _failPromptDefaultsUpdate = false;
+  bool failNextCompletionUpdate = false;
+
+  @override
+  Future<void> advanceUpdatedAt({required String sessionId, required int updatedAt}) {
+    if (failNextCompletionUpdate) {
+      failNextCompletionUpdate = false;
+      return Future<void>.error(StateError("completion write failed"));
+    }
+    return super.advanceUpdatedAt(sessionId: sessionId, updatedAt: updatedAt);
+  }
 
   Future<void> get projectionTransactionEntered => _transactionEntered!.future;
 

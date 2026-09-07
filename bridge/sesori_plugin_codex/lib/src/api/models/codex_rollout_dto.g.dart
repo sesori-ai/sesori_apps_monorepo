@@ -324,4 +324,7 @@ _CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
       filePath: json['file_path'],
       query: json['query'],
       cellId: json['cell_id'],
+      taskName: _stringOrNull(json['task_name']),
+      message: _stringOrNull(json['message']),
+      agentType: _stringOrNull(json['agent_type']),
     );

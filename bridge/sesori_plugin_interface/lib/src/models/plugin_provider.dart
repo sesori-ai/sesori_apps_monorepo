@@ -18,7 +18,13 @@ sealed class PluginModel with _$PluginModel {
   const factory({
     required String id,
     required String name,
+
+    /// Effort/thinking variants in the order pickers list them.
     required List<String> variants,
+
+    /// The variant a session runs at when none was chosen. Null means the
+    /// first of [variants], or nothing when the model offers none.
+    String? defaultVariant,
     String? family,
     @Default(true) bool isAvailable,
     DateTime? releaseDate,

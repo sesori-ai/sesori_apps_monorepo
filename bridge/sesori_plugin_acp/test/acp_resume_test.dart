@@ -109,9 +109,9 @@ void main() {
 
       // The suppressed replay produced no message events on the live stream.
       expect(emitted.whereType<BridgeSseMessagePartDelta>(), isEmpty);
-      // Command metadata is current even during a history replay, so clients
-      // receive a plugin-wide catalog invalidation and re-fetch it.
-      expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
+      // Command metadata is current even during a history replay, and the
+      // originating session is what resolves which catalog the bridge refreshes.
+      expect(emitted.whereType<BridgeSseCommandCatalogUpdated>(), isEmpty);
       expect(
         emitted.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "old-session",

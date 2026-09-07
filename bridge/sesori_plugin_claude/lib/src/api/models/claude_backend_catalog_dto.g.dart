@@ -6,11 +6,10 @@ part of 'claude_backend_catalog_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_ClaudeBackendCatalogDto _$ClaudeBackendCatalogDtoFromJson(Map json) =>
-    _ClaudeBackendCatalogDto(
-      commands: _commandsOrEmpty(json['commands']),
-      models: _modelsOrEmpty(json['models']),
-    );
+_ClaudeBackendCatalogDto _$ClaudeBackendCatalogDtoFromJson(Map json) => _ClaudeBackendCatalogDto(
+  commands: _commandsOrEmpty(json['commands']),
+  models: _modelsOrEmpty(json['models']),
+);
 
 _ClaudeCommandDto _$ClaudeCommandDtoFromJson(Map json) => _ClaudeCommandDto(
   name: _stringOrNull(json['name']),

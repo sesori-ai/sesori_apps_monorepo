@@ -24,6 +24,10 @@ ControlMessage _$ControlMessageFromJson(
           return ControlTokenResponse.fromJson(
             json
           );
+                case 'token_retry_later':
+          return ControlTokenRetryLater.fromJson(
+            json
+          );
                 case 'status':
           return ControlStatus.fromJson(
             json
@@ -246,10 +250,84 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
+class ControlTokenRetryLater implements ControlMessage {
+  const ControlTokenRetryLater({required this.id,  String? $type}): $type = $type ?? 'token_retry_later';
+  factory ControlTokenRetryLater.fromJson(Map<String, dynamic> json) => _$ControlTokenRetryLaterFromJson(json);
+
+ final  String id;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of ControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ControlTokenRetryLaterCopyWith<ControlTokenRetryLater> get copyWith => _$ControlTokenRetryLaterCopyWithImpl<ControlTokenRetryLater>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ControlTokenRetryLaterToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlTokenRetryLater&&(identical(other.id, id) || other.id == id));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id);
+
+@override
+String toString() {
+  return 'ControlMessage.tokenRetryLater(id: $id)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ControlTokenRetryLaterCopyWith<$Res> implements $ControlMessageCopyWith<$Res> {
+  factory $ControlTokenRetryLaterCopyWith(ControlTokenRetryLater value, $Res Function(ControlTokenRetryLater) _then) = _$ControlTokenRetryLaterCopyWithImpl;
+@useResult
+$Res call({
+ String id
+});
+
+
+
+
+}
+/// @nodoc
+class _$ControlTokenRetryLaterCopyWithImpl<$Res>
+    implements $ControlTokenRetryLaterCopyWith<$Res> {
+  _$ControlTokenRetryLaterCopyWithImpl(this._self, this._then);
+
+  final ControlTokenRetryLater _self;
+  final $Res Function(ControlTokenRetryLater) _then;
+
+/// Create a copy of ControlMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
+  return _then(ControlTokenRetryLater(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
 class ControlStatus implements ControlMessage {
-  const ControlStatus({@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required this.plugin, this.activeSessionCount = 0,  String? $type}): $type = $type ?? 'status';
+  const ControlStatus({required this.startup, @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required this.relay, @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required this.plugin, this.activeSessionCount = 0,  String? $type}): $type = $type ?? 'status';
   factory ControlStatus.fromJson(Map<String, dynamic> json) => _$ControlStatusFromJson(json);
 
+ final  ControlStartupState startup;
 @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) final  ControlRelayConnectionState relay;
 @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) final  ControlPluginHealthState plugin;
 @JsonKey() final  int activeSessionCount;
@@ -271,16 +349,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ControlStatus&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,relay,plugin,activeSessionCount);
+int get hashCode => Object.hash(runtimeType,startup,relay,plugin,activeSessionCount);
 
 @override
 String toString() {
-  return 'ControlMessage.status(relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount)';
+  return 'ControlMessage.status(startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount)';
 }
 
 
@@ -291,7 +369,7 @@ abstract mixin class $ControlStatusCopyWith<$Res> implements $ControlMessageCopy
   factory $ControlStatusCopyWith(ControlStatus value, $Res Function(ControlStatus) _then) = _$ControlStatusCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) ControlRelayConnectionState relay,@JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) ControlPluginHealthState plugin, int activeSessionCount
+ ControlStartupState startup,@JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) ControlRelayConnectionState relay,@JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) ControlPluginHealthState plugin, int activeSessionCount
 });
 
 
@@ -308,9 +386,10 @@ class _$ControlStatusCopyWithImpl<$Res>
 
 /// Create a copy of ControlMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? relay = null,Object? plugin = null,Object? activeSessionCount = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? startup = null,Object? relay = null,Object? plugin = null,Object? activeSessionCount = null,}) {
   return _then(ControlStatus(
-relay: null == relay ? _self.relay : relay // ignore: cast_nullable_to_non_nullable
+startup: null == startup ? _self.startup : startup // ignore: cast_nullable_to_non_nullable
+as ControlStartupState,relay: null == relay ? _self.relay : relay // ignore: cast_nullable_to_non_nullable
 as ControlRelayConnectionState,plugin: null == plugin ? _self.plugin : plugin // ignore: cast_nullable_to_non_nullable
 as ControlPluginHealthState,activeSessionCount: null == activeSessionCount ? _self.activeSessionCount : activeSessionCount // ignore: cast_nullable_to_non_nullable
 as int,

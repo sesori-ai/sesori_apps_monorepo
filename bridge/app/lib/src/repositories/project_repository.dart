@@ -238,15 +238,11 @@ class ProjectRepository({
   }
 
   Future<Map<String, ProjectTime>> getActivities({required Set<String> projectIds}) async {
-    final projects = await _projectsDao.getAllProjects();
+    final timestamps = await _projectsDao.getActivityTimestamps(projectIds: projectIds);
     return {
-      for (final project in projects)
-        if (projectIds.contains(project.projectId)) project.projectId: _mapActivity(project)!,
+      for (final entry in timestamps.entries)
+        entry.key: ProjectTime(created: entry.value.createdAt, updated: entry.value.updatedAt),
     };
-  }
-
-  Future<ProjectTime?> getActivity({required String projectId}) async {
-    return _mapActivity(await _projectsDao.getProject(projectId: projectId));
   }
 
   Future<void> writeActivity({required String projectId, required ProjectTime activity}) =>

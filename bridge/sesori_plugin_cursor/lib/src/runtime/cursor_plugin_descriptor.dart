@@ -3,14 +3,7 @@ import "dart:io" as io;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show
-        ArchiveExtractor,
-        BinaryDownloadClient,
-        ChecksumValidator,
-        CommandResult,
-        HostProcessCommandExecutor,
-        PlatformTarget,
-        stripAnsi;
+    show BinaryDownloadClient, CommandResult, HostProcessCommandExecutor, PlatformTarget, stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -174,18 +167,23 @@ class const CursorPluginDescriptor({
 
   ManagedRuntimeProvisionService _buildDefaultProvisionService({required PluginHost host}) {
     const manifest = CursorRuntimeManifest();
-    return ManagedRuntimeProvisionService(
+    return const ManagedRuntimeComposition().createProvisioner(
       manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidatorFor(
-          processes: host.processes,
-          maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-        ),
+      versionValidator: _versionValidatorFor(
+        processes: host.processes,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
       ),
       // Cursor has no desktop-app-bundled CLI to fall back to.
       fallbackExecutableCandidates: const [],
     );
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: CursorRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
   }
 
   @override
@@ -195,35 +193,32 @@ class const CursorPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = CursorRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
     final httpClient = http.Client();
     try {
-      final installService = ManagedRuntimeInstallService(
+      final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: _versionValidatorFor(
           processes: processes,
           maxCapturedOutputCharactersPerStream: null,
         ),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installService.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -238,6 +233,7 @@ class const CursorPluginDescriptor({
   }) {
     return RuntimeVersionValidator(
       commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
         processes: processes,
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
@@ -255,20 +251,21 @@ class const CursorPluginDescriptor({
     required String stateDirectory,
   }) async {
     final explicitBin = _explicitBin(config);
-    final selection = await ManagedRuntimeSelectionService(
-      manifest: const CursorRuntimeManifest(),
-      versionValidator: _versionValidatorFor(
-        processes: processes,
-        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-      ),
-    ).select(
-      explicitExecutablePath: explicitBin,
-      fallbackExecutableCandidates: const [],
-      environment: environment,
-      stateDirectory: stateDirectory,
-      abortSignal: StartAbortSignal.never,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.minimum,
-    );
+    final selection =
+        await ManagedRuntimeSelectionService(
+          manifest: const CursorRuntimeManifest(),
+          versionValidator: _versionValidatorFor(
+            processes: processes,
+            maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          ),
+          inventory: const ManagedRuntimeInventory(manifest: CursorRuntimeManifest()),
+        ).select(
+          explicitExecutablePath: explicitBin,
+          fallbackExecutableCandidates: const [],
+          environment: environment,
+          stateDirectory: stateDirectory,
+          abortSignal: StartAbortSignal.never,
+        );
 
     /// What to tell the user when nothing usable was found and Sesori can
     /// install the runtime itself.
@@ -296,8 +293,8 @@ class const CursorPluginDescriptor({
           ),
         };
       }
-      if (selection.primaryRejection case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) ||
-          ManagedRuntimeVersionRejected()) {
+      if (selection.primaryRejection
+          case ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) || ManagedRuntimeVersionRejected()) {
         return PluginSetupRuntimeMissing(actionHint: missingRuntimeHint());
       }
       return const PluginSetupUnknown(
@@ -313,6 +310,7 @@ class const CursorPluginDescriptor({
       return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
     }
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

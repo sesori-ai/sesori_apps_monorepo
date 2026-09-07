@@ -28,8 +28,8 @@ class const ModelPickerSection({
   required final String providerID,
   required final String providerName,
 
-  /// Available models sorted by release date (newest first, undated last),
-  /// ties broken by name.
+  /// Available models in the order the plugin declared them: each plugin
+  /// ranks its own catalog (strength, release date, or backend order).
   required final List<ModelPickerModelEntry> models,
 });
 
@@ -38,8 +38,8 @@ class const ModelPickerSection({
 ///
 /// This is a pure transformation extracted from the picker widget so it can
 /// run inside a background isolate: large catalogs (hundreds to thousands of
-/// models) made the synchronous in-build sorting/grouping block the sheet's
-/// opening animation.
+/// models) made the synchronous in-build grouping block the sheet's opening
+/// animation.
 ///
 /// For each family of available models a single representative is visible by
 /// default; the user reveals the rest by typing in the search field. The
@@ -65,17 +65,7 @@ class const ModelPickerSectionBuilder() {
 
     final sections = <ModelPickerSection>[];
     for (final provider in sortedProviders) {
-      final models = provider.models.values.where((m) => m.isAvailable).toList()
-        ..sort((a, b) {
-          final aDate = a.releaseDate;
-          final bDate = b.releaseDate;
-          if (aDate != bDate) {
-            if (bDate == null) return -1;
-            if (aDate == null) return 1;
-            return bDate.compareTo(aDate);
-          }
-          return a.name.compareTo(b.name);
-        });
+      final models = provider.models.values.where((m) => m.isAvailable).toList();
       if (models.isEmpty) continue;
 
       final visibleIds = _defaultVisibleIds(

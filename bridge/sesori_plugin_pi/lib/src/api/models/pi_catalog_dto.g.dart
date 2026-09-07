@@ -28,6 +28,7 @@ _PiCatalogCommandDto _$PiCatalogCommandDtoFromJson(Map json) =>
       name: _stringOrNull(json['name']),
       description: _stringOrNull(json['description']),
       source: _commandSource(json['source']),
+      sourcePath: _commandSourcePath(json['sourceInfo']),
     );
 
 _PiCommandsDto _$PiCommandsDtoFromJson(Map json) =>

@@ -497,16 +497,27 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<String?> getSessionTitle({required String sessionId}) async => null;
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
+
+  @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
 
   @override
   Future<StoredSession?> updateObservedSessionProjection({
@@ -525,6 +536,17 @@ class _NoopSessionRepository() implements SessionRepository {
     required StoredSession parent,
     required int projectionUpdatedAt,
   }) async => null;
+
+  @override
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
+  }
 
   @override
   Future<StoredSession> requireRoutableStoredSession({
@@ -550,22 +572,6 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<void> archiveStoredSession({
     required String sessionId,
     required int archivedAt,
-  }) async {}
-
-  @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
   }) async {}
 
   @override
@@ -964,16 +970,30 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<String?> getSessionTitle({required String sessionId}) async {
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    return row?.title ?? row?.catalogTitle;
+  }
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
+
+  @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
 
   @override
   Future<StoredSession?> updateObservedSessionProjection({
@@ -994,7 +1014,7 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -1005,6 +1025,15 @@ class FakeSessionRepository({
         message: "session $sessionId was not found",
       );
     }
+    return stored;
+  }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final stored = await requireStoredSession(sessionId: sessionId, operation: operation);
     await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }
@@ -1046,37 +1075,6 @@ class FakeSessionRepository({
     required String sessionId,
     required int archivedAt,
   }) async {}
-
-  @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) {
-    return _sessionDao.insertSession(
-      sessionId: sessionId,
-      backendSessionId: backendSessionId,
-      projectId: projectId,
-      isDedicated: isDedicated,
-      createdAt: createdAt,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-      lastAgent: agent,
-      lastAgentModel: agentModel,
-      pluginId: pluginId,
-    );
-  }
 
   @override
   Future<void> updatePromptDefaults({

@@ -4,7 +4,9 @@ import "dart:io";
 import "package:codex_plugin/codex_plugin.dart";
 import "package:codex_plugin/src/repositories/codex_catalog_repository.dart";
 import "package:codex_plugin/src/repositories/codex_message_repository.dart";
+import "package:codex_plugin/src/repositories/codex_sub_agent_tracker.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_session_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/services/codex_session_service.dart";
 import "package:path/path.dart" as p;
@@ -55,6 +57,8 @@ void main() {
           ),
           metadataRepository: metadata,
           toolOutcomeRepository: createMemoryCodexToolOutcomeRepository(),
+          subAgentTracker: CodexSubAgentTracker(),
+          sessionMapper: const CodexSessionMapper(),
           launchDirectory: launchProject.path,
         ),
       );

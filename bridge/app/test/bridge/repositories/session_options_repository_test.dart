@@ -186,7 +186,6 @@ void main() {
         key: key,
         revision: 1,
         capturedAt: capturedAt,
-        completeness: PluginSessionOptionsCompleteness.complete,
         response: _response(marker: "cached"),
       );
 
@@ -212,7 +211,6 @@ void main() {
       expect(decoded!.key, key);
       expect(decoded.revision, 1);
       expect(decoded.capturedAt, capturedAt);
-      expect(decoded.completeness, PluginSessionOptionsCompleteness.complete);
       expect(decoded.response, SessionOptionsResponse.fromJson(candidate.response.toJson()));
     });
 
@@ -222,7 +220,6 @@ void main() {
         key: key,
         revision: 1,
         capturedAt: DateTime.utc(2026, 7, 30),
-        completeness: PluginSessionOptionsCompleteness.partial,
         response: _response(marker: "plugin"),
       );
 
@@ -249,7 +246,6 @@ void main() {
           capturedProjectPath: null,
           revision: 1,
           capturedAt: 1,
-          completeness: PluginSessionOptionsCompleteness.complete,
           agentsJson: "not-json",
           providersJson: jsonEncode(const ProviderListResponse(items: [], connectedOnly: true).toJson()),
           commandsJson: jsonEncode(const CommandListResponse(items: []).toJson()),
@@ -275,47 +271,12 @@ void main() {
       );
     });
 
-    test("read wraps an unknown persisted completeness value", () async {
-      await cacheDao.compareAndSet(
-        row: SessionOptionsCacheTableData(
-          pluginId: "plugin-1",
-          scope: PluginSessionOptionsScope.plugin,
-          ownerId: "plugin-1",
-          projectId: null,
-          capturedProjectPath: null,
-          revision: 1,
-          capturedAt: 1,
-          completeness: PluginSessionOptionsCompleteness.complete,
-          agentsJson: jsonEncode(const Agents(agents: []).toJson()),
-          providersJson: jsonEncode(const ProviderListResponse(items: [], connectedOnly: true).toJson()),
-          commandsJson: jsonEncode(const CommandListResponse(items: []).toJson()),
-        ),
-        expectedRevision: null,
-      );
-      await database.customStatement(
-        "UPDATE session_options_cache_table SET completeness = 'unknown' "
-        "WHERE plugin_id = 'plugin-1' AND scope = 'plugin' AND owner_id = 'plugin-1'",
-      );
-
-      await expectLater(
-        repository.read(key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1")),
-        throwsA(
-          isA<SessionOptionsCacheDecodingException>().having(
-            (error) => error.cause,
-            "cause",
-            isA<ArgumentError>(),
-          ),
-        ),
-      );
-    });
-
     test("generation fencing rejects the CAS before the DAO can write", () async {
       runtime.generationCurrent = false;
       final candidate = SessionOptionsCacheEntry(
         key: const SessionOptionsCacheKey.plugin(pluginId: "plugin-1"),
         revision: 1,
         capturedAt: DateTime.utc(2026, 7, 30),
-        completeness: PluginSessionOptionsCompleteness.complete,
         response: _response(marker: "stale"),
       );
 
@@ -415,6 +376,7 @@ SessionOptionsResponse _response({required String marker}) {
               providerID: "provider-1",
               name: "Model $marker",
               variants: const ["high"],
+              defaultVariant: null,
               family: "family-$marker",
               releaseDate: DateTime.utc(2026, 1, 2),
             ),

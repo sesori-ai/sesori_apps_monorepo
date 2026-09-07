@@ -22,83 +22,19 @@ Press `Ctrl+C` to stop. This shuts down the bridge, independently drains plugin
 sessions/imports/listeners, and triggers ordered shutdown for every returned
 plugin instance and any backend process it started.
 
-No Dart SDK? You can bootstrap the managed install with npm:
+No Dart SDK? Bootstrap the managed install instead — see
+[../INSTALL.md](../INSTALL.md).
 
-```bash
-npx @sesori/bridge
+## Install, update and uninstall
 
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
-sesori-bridge
-```
+[../INSTALL.md](../INSTALL.md) is the single source for the shell installers, the
+`npx @sesori/bridge` bootstrap, managed install locations, update behavior and
+the update track, and the uninstall steps.
 
-`npx @sesori/bridge` only installs or refreshes the managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. It prefers the published platform payload when npm provides it, and otherwise falls back to the exact tagged GitHub Release asset for the wrapper version. `sesori-bridge` is the long-lived command you keep running after that bootstrap step. Shell installers are still supported if you prefer them. `npm uninstall @sesori/bridge` does not remove the managed install, so delete that Sesori directory manually if you want a full uninstall.
-
-## Install
-
-Choose one supported packaged install path:
-
-### npm bootstrap
-
-```bash
-npx @sesori/bridge
-
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
-sesori-bridge
-```
-
-Use `npx @sesori/bridge` when you want npm to bootstrap or refresh the managed runtime, then keep running `sesori-bridge` from your PATH. The bootstrap path installs the same managed runtime that the GitHub release assets and shell installers publish, but it does not launch the service for you. On macOS/Linux, a symlink is created at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately.
-
-### Shell installer
-
-macOS / Linux:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
-
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly.
-sesori-bridge --version
-```
-
-Windows:
-
-```powershell
-irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
-
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run the managed binary directly.
-sesori-bridge --version
-```
-
-Both paths install the same managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows.
-
-## Update
-
-- Managed installs check for updates at startup.
-- Managed installs poll again every 4 hours while the bridge keeps running.
-- Auto-update is skipped in CI.
-- Auto-update is skipped when `SESORI_NO_UPDATE=1` is set.
-- If you want to refresh immediately, rerun either the shell installer or `npx @sesori/bridge`.
-- The **update track** selects which releases the auto-updater follows. `stable` (the default) follows stable `vX.Y.Z` releases; `internal` additionally follows the `vX.Y.Z-internal.N` pre-releases. Set it with `sesori-bridge config track internal` and restart the bridge to apply. The shell/npm installers always install the latest stable release regardless of track.
-
-Direct execution from npm-owned package payloads inside `node_modules` is unsupported. The supported steady-state command is always the managed `sesori-bridge` launcher.
-
-## Uninstall
-
-Delete the managed install directory to fully remove the packaged bridge runtime:
-
-- macOS / Linux: `rm -rf ~/.local/share/sesori`
-- Windows: `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\sesori"`
-
-Also remove the symlink on macOS/Linux:
-
-```bash
-rm -f ~/.local/bin/sesori-bridge
-```
-
-If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
+Two rules matter when reading the rest of this document: the supported
+steady-state command is always the managed `sesori-bridge` launcher, and direct
+execution of package binaries from npm-owned `node_modules` locations is
+unsupported.
 
 ## How It Works
 
@@ -155,6 +91,7 @@ In addition to flags, the bridge supports subcommands:
 | `help` | Show the help message (also available via `--help` or `-h`) |
 | `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
 | `config yolo [on\|off]` | Show or set automatic permission approval. With no argument, prints the current mode. |
+| `config warmup [on\|off]` | Show or set plugin warm-up when a session screen opens. With no argument, prints the current mode. |
 | `config plugins` | List known plugin eligibility and preserved unknown disabled IDs. |
 | `config plugins enable <id>` | Remove a known plugin from the denylist. Restart the bridge to apply. |
 | `config plugins disable <id>` | Add a known plugin to the denylist. Restart the bridge to apply. |
@@ -167,7 +104,8 @@ In addition to flags, the bridge supports subcommands:
 {
   "sleepPrevention": "always",
   "yolo": false,
-  "releaseTrack": "stable"
+  "releaseTrack": "stable",
+  "warmUpPluginsOnSessionOpen": true
 }
 ```
 
@@ -175,6 +113,13 @@ Setting `"yolo": true` makes the bridge approve every permission request
 without sending the request to connected clients. The bridge prints a warning
 at startup whenever this mode is active. Use `sesori-bridge config yolo on` or
 `sesori-bridge config yolo off` to change it without editing the file directly.
+
+`"warmUpPluginsOnSessionOpen"` defaults to `true`. When enabled, opening a
+session screen asks the bridge to start that session's plugin in the background,
+so the first later operation is less likely to pay the cold-start delay. Use
+`sesori-bridge config warmup on` or `sesori-bridge config warmup off` to change
+it from the CLI; restart a running bridge after a CLI change. Changes made
+through app settings take effect immediately on the connected bridge.
 
 To disable a plugin or configure lifecycle timeouts, add a `plugins` object:
 

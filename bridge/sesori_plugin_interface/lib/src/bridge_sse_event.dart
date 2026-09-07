@@ -2,6 +2,7 @@ import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_queued_prompt.dart";
+import "models/plugin_session_status.dart";
 
 sealed class const BridgeSseEvent();
 
@@ -52,10 +53,7 @@ class const BridgeSseSessionError({required final String? sessionID}) extends Br
 
 class const BridgeSseSessionCompacted({required final String sessionID}) extends BridgeSseEvent;
 
-/// [status] uses the shared session-status JSON shape with a `type` discriminator.
-/// `PluginSessionStatus.toJson()` produces that shape for plugin-owned status.
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
-class const BridgeSseSessionStatus({required final String sessionID, required final Map<String, dynamic> status})
+class const BridgeSseSessionStatus({required final String sessionID, required final PluginSessionStatus status})
     extends BridgeSseEvent;
 
 class const BridgeSseSessionIdle({required final String sessionID}) extends BridgeSseEvent;
@@ -78,8 +76,7 @@ class const BridgeSseQueuedPromptsUpdated({
   required final List<PluginQueuedPrompt> prompts,
 }) extends BridgeSseEvent;
 
-// ignore: no_slop_linter/prefer_specific_type, SSE payload values are heterogeneous
-class const BridgeSseMessageUpdated({required final Map<String, dynamic> info}) extends BridgeSseEvent;
+class const BridgeSseMessageUpdated({required final PluginMessage info}) extends BridgeSseEvent;
 
 class const BridgeSseMessageRemoved({required final String sessionID, required final String messageID})
     extends BridgeSseEvent;
@@ -99,14 +96,6 @@ class const BridgeSseMessagePartRemoved({
   required final String messageID,
   required final String partID,
 }) extends BridgeSseEvent;
-
-class const BridgeSsePtyCreated() extends BridgeSseEvent;
-
-class const BridgeSsePtyUpdated() extends BridgeSseEvent;
-
-class const BridgeSsePtyExited({final String? id, final int? exitCode}) extends BridgeSseEvent;
-
-class const BridgeSsePtyDeleted({final String? id}) extends BridgeSseEvent;
 
 class const BridgeSsePermissionAsked({
   required final String requestID,
@@ -165,23 +154,9 @@ class const BridgeSseVcsBranchUpdated() extends BridgeSseEvent;
 
 class const BridgeSseFileEdited({final String? file}) extends BridgeSseEvent;
 
-class const BridgeSseFileWatcherUpdated({final String? file, final String? event}) extends BridgeSseEvent;
-
-class const BridgeSseLspUpdated() extends BridgeSseEvent;
-
-class const BridgeSseLspClientDiagnostics({final String? serverID, final String? path}) extends BridgeSseEvent;
-
-class const BridgeSseMcpToolsChanged() extends BridgeSseEvent;
-
-class const BridgeSseMcpBrowserOpenFailed() extends BridgeSseEvent;
-
-class const BridgeSseInstallationUpdated({final String? version}) extends BridgeSseEvent;
-
+/// OpenCode reports a newer version of itself; the bridge pushes it as an
+/// immediate installation-update notification.
 class const BridgeSseInstallationUpdateAvailable({final String? version}) extends BridgeSseEvent;
-
-class const BridgeSseWorkspaceReady({final String? name}) extends BridgeSseEvent;
-
-class const BridgeSseWorkspaceFailed({final String? message}) extends BridgeSseEvent;
 
 /// Transient backend guidance. [sessionID] is the backend session identity
 /// before bridge-core remapping; null means genuinely global or unattributed.
@@ -191,7 +166,3 @@ class const BridgeSseTuiToastShow({
   required final String? message,
   required final String? variant,
 }) extends BridgeSseEvent;
-
-class const BridgeSseWorktreeReady() extends BridgeSseEvent;
-
-class const BridgeSseWorktreeFailed() extends BridgeSseEvent;

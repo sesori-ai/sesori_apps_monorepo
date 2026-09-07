@@ -170,6 +170,11 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   @protected
   Future<void> onShutdown({required Duration? budget}) async {}
 
+  /// No warm-up by default. Override in the mixed-in class for work that makes
+  /// later requests faster and that nothing waits on.
+  @override
+  Future<void> onStarted() async {}
+
   @protected
   Future<void> runShutdownCleanups({required Iterable<Future<void> Function()> cleanups}) async {
     Object? firstError;

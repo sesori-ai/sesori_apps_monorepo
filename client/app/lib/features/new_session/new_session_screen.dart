@@ -16,17 +16,7 @@ class const NewSessionScreen({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => NewSessionCubit(
-        connectionService: getIt<ConnectionService>(),
-        sessionRepository: getIt<SessionRepository>(),
-        newSessionPluginService: getIt<NewSessionPluginService>(),
-        newSessionOptionsService: getIt<NewSessionOptionsService>(),
-        projectRepository: getIt<ProjectRepository>(),
-        selectionTracker: getIt<NewSessionSelectionTracker>(),
-        composerDraftRepository: getIt<ComposerDraftRepository>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        projectId: projectId,
-      ),
+      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId),
       child: NewSessionView(
         projectId: projectId,
         onBack: context.pop,

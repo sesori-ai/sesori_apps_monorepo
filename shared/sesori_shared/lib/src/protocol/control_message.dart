@@ -30,13 +30,16 @@ sealed class ControlMessage with _$ControlMessage {
     required String? accessToken,
   }) = ControlTokenResponse;
 
-  /// helper → GUI (push): current relay/plugin health + active-session summary.
+  /// GUI → helper: the signed-in session temporarily cannot supply a token.
+  @FreezedUnionValue("token_retry_later")
+  const factory tokenRetryLater({required String id}) = ControlTokenRetryLater;
+
+  /// helper → GUI (push): startup, relay/plugin health and active sessions.
   @FreezedUnionValue("status")
   const factory status({
-    @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown)
-    required ControlRelayConnectionState relay,
-    @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown)
-    required ControlPluginHealthState plugin,
+    required ControlStartupState startup,
+    @JsonKey(unknownEnumValue: ControlRelayConnectionState.unknown) required ControlRelayConnectionState relay,
+    @JsonKey(unknownEnumValue: ControlPluginHealthState.unknown) required ControlPluginHealthState plugin,
     @Default(0) int activeSessionCount,
   }) = ControlStatus;
 
@@ -116,4 +119,15 @@ enum ControlPromptKind() {
   loginNeeded,
   @JsonValue("unknown")
   unknown,
+}
+
+/// Startup readiness is separate from the helper process and relay socket.
+enum ControlStartupState() {
+  unknown,
+  starting,
+  @JsonValue("waiting_for_server")
+  waitingForServer,
+  @JsonValue("waiting_for_authentication")
+  waitingForAuthentication,
+  ready,
 }

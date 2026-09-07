@@ -100,6 +100,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandStarted;
   Completer<void>? sendCommandCompleter;
+  Object? sendCommandError;
   Object? sendPromptError;
   int getProjectsCallCount = 0;
   int deleteWorkspaceCallCount = 0;
@@ -270,6 +271,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendCommandError case final error?) throw error;
     if (sendCommandStarted case final started? when !started.isCompleted) started.complete();
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;

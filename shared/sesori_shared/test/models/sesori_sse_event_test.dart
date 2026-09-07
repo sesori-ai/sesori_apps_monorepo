@@ -117,12 +117,23 @@ void main() {
     });
   });
 
-  test('command catalog update round-trips its plugin scope', () {
-    const event = SesoriSseEvent.commandCatalogUpdated(pluginId: 'cursor');
+  test('session options update round-trips a project-scoped catalog', () {
+    const event = SesoriSseEvent.sessionOptionsUpdated(pluginId: 'cursor', projectId: 'project-1');
 
     final json = event.toJson();
 
-    expect(json, {'type': 'command.catalog.updated', 'pluginId': 'cursor'});
+    expect(json, {'type': 'session.options_updated', 'pluginId': 'cursor', 'projectId': 'project-1'});
+    expect(SesoriSseEvent.fromJson(json), event);
+  });
+
+  test('session options update round-trips a plugin-scoped catalog', () {
+    const event = SesoriSseEvent.sessionOptionsUpdated(pluginId: 'cursor', projectId: null);
+
+    final json = event.toJson();
+
+    // A plugin-scoped catalog omits the project rather than sending null, and
+    // the omission must decode back to "applies to every project".
+    expect(json, {'type': 'session.options_updated', 'pluginId': 'cursor'});
     expect(SesoriSseEvent.fromJson(json), event);
   });
 

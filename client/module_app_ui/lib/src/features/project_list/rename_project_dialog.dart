@@ -31,7 +31,6 @@ class const RenameProjectDialog({
       initialValue: project.name ?? "",
       hintText: loc.renameProjectHint,
       saveLabel: loc.renameSave,
-      successMessage: loc.renameProjectSuccess,
       failureMessage: loc.renameProjectFailed,
       actionHeight: 48,
       onRename: (name) => cubit.renameProject(projectId: project.id, name: name),

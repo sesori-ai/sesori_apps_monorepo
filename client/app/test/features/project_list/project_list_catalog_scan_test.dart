@@ -193,7 +193,7 @@ void main() {
     final loc = await pumpLoadedList(tester);
 
     await emitScan(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
-    await tester.tap(find.text(loc.catalogScanCancel));
+    await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
 
     expect(rescanService.cancelCalls, 1);
   });

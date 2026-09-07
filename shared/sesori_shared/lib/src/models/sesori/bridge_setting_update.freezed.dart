@@ -24,6 +24,10 @@ BridgeSettingUpdate _$BridgeSettingUpdateFromJson(
           return YoloSettingUpdate.fromJson(
             json
           );
+                case 'warmUpPluginsOnSessionOpen':
+          return WarmUpPluginsOnSessionOpenSettingUpdate.fromJson(
+            json
+          );
         
           default:
             return UnknownBridgeSettingUpdate.fromJson(
@@ -133,6 +137,45 @@ int get hashCode => Object.hash(runtimeType,enabled);
 @override
 String toString() {
   return 'BridgeSettingUpdate.yolo(enabled: $enabled)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class WarmUpPluginsOnSessionOpenSettingUpdate implements BridgeSettingUpdate {
+  const WarmUpPluginsOnSessionOpenSettingUpdate({required this.enabled,  String? $type}): $type = $type ?? 'warmUpPluginsOnSessionOpen';
+  factory WarmUpPluginsOnSessionOpenSettingUpdate.fromJson(Map<String, dynamic> json) => _$WarmUpPluginsOnSessionOpenSettingUpdateFromJson(json);
+
+ final  bool enabled;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$WarmUpPluginsOnSessionOpenSettingUpdateToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is WarmUpPluginsOnSessionOpenSettingUpdate&&(identical(other.enabled, enabled) || other.enabled == enabled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,enabled);
+
+@override
+String toString() {
+  return 'BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: $enabled)';
 }
 
 

@@ -35,6 +35,7 @@ final class HostClaudeProcessFactory({
   Future<ClaudeProcessHandle> spawn(ClaudeLaunchSpec spec) async {
     try {
       final process = await _processes.spawn(
+        includeParentEnvironment: true,
         executable: spec.binaryPath,
         arguments: spec.arguments,
         environment: {..._environment, ...spec.environment},

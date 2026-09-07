@@ -4,6 +4,7 @@ const int defaultPluginIdleTimeoutMins = 45;
 const int defaultPullRequestRefreshIntervalSeconds = 30;
 const int minimumPullRequestRefreshIntervalSeconds = 15;
 const int maximumPullRequestRefreshIntervalSeconds = 3600;
+const bool defaultWarmUpPluginsOnSessionOpen = true;
 
 enum SleepPreventionMode() {
   off,
@@ -173,6 +174,8 @@ class const BridgeSettings({
   final ReleaseTrack releaseTrack = ReleaseTrack.stable,
     /// Polling cadence while at least one client views a project.
   final int pullRequestRefreshIntervalSeconds = defaultPullRequestRefreshIntervalSeconds,
+    /// Whether opening a session should start its plugin before the first operation needs it.
+  final bool warmUpPluginsOnSessionOpen = defaultWarmUpPluginsOnSessionOpen,
   }) {
   factory fromJson(Map<String, dynamic> json) {
     return BridgeSettings(
@@ -186,6 +189,10 @@ class const BridgeSettings({
         isPresent: json.containsKey('pullRequestRefreshIntervalSeconds'),
         rawValue: json['pullRequestRefreshIntervalSeconds'],
       ),
+      warmUpPluginsOnSessionOpen: _parseWarmUpPluginsOnSessionOpen(
+        isPresent: json.containsKey('warmUpPluginsOnSessionOpen'),
+        rawValue: json['warmUpPluginsOnSessionOpen'],
+      ),
     );
   }
 
@@ -198,6 +205,7 @@ class const BridgeSettings({
       'yolo': yolo,
       'releaseTrack': releaseTrack.wireValue,
       'pullRequestRefreshIntervalSeconds': pullRequestRefreshIntervalSeconds,
+      'warmUpPluginsOnSessionOpen': warmUpPluginsOnSessionOpen,
       if (!plugins.isEmpty) 'plugins': plugins.toJson(),
     };
   }
@@ -208,6 +216,7 @@ class const BridgeSettings({
     BridgePluginSettings? plugins,
     ReleaseTrack? releaseTrack,
     int? pullRequestRefreshIntervalSeconds,
+    bool? warmUpPluginsOnSessionOpen,
   }) {
     return BridgeSettings(
       sleepPrevention: sleepPrevention ?? this.sleepPrevention,
@@ -215,6 +224,7 @@ class const BridgeSettings({
       plugins: plugins ?? this.plugins,
       releaseTrack: releaseTrack ?? this.releaseTrack,
       pullRequestRefreshIntervalSeconds: pullRequestRefreshIntervalSeconds ?? this.pullRequestRefreshIntervalSeconds,
+      warmUpPluginsOnSessionOpen: warmUpPluginsOnSessionOpen ?? this.warmUpPluginsOnSessionOpen,
     );
   }
 
@@ -239,6 +249,12 @@ class const BridgeSettings({
     }
     return rawValue;
   }
+
+  static bool _parseWarmUpPluginsOnSessionOpen({required bool isPresent, required Object? rawValue}) {
+    if (!isPresent) return defaultWarmUpPluginsOnSessionOpen;
+    if (rawValue is! bool) throw const WarmUpPluginsOnSessionOpenFormatException();
+    return rawValue;
+  }
 }
 
 class const PluginSettingsFormatException(super.message) extends FormatException;
@@ -254,4 +270,9 @@ class const PullRequestRefreshIntervalFormatException() extends FormatException 
         '"pullRequestRefreshIntervalSeconds" must be an integer between '
         '$minimumPullRequestRefreshIntervalSeconds and $maximumPullRequestRefreshIntervalSeconds',
       );
+}
+
+class const WarmUpPluginsOnSessionOpenFormatException() extends FormatException {
+  this
+    : super('"warmUpPluginsOnSessionOpen" must be a boolean');
 }

@@ -320,6 +320,7 @@ final class _ProcessService(final List<Object> _outcomes) implements HostProcess
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     this.arguments.add(List.unmodifiable(arguments));
     environments.add(environment == null ? null : Map.unmodifiable(environment));

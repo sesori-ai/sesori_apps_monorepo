@@ -12,7 +12,8 @@ import "../acp_process_factory.dart";
 /// through the [PluginHost] seams (so the bridge owns identity capture and
 /// platform-aware signalling) rather than reaching around the host. This is
 /// the ACP equivalent of the default [defaultAcpProcessFactory]: it merges the
-/// host [environment] under the launch spec's own entries and hands back an
+/// host [environment] under the launch spec's own entries only when inheritance
+/// is enabled, and hands back an
 /// [AcpProcessHandle] backed by the spawned child.
 AcpProcessFactory hostProcessAcpFactory({
   required HostProcessService processes,
@@ -20,9 +21,10 @@ AcpProcessFactory hostProcessAcpFactory({
 }) {
   return (AcpLaunchSpec spec) async {
     final spawned = await processes.spawn(
+      includeParentEnvironment: spec.includeParentEnvironment,
       executable: spec.command,
       arguments: spec.args,
-      environment: {...environment, ...spec.environment},
+      environment: {if (spec.includeParentEnvironment) ...environment, ...spec.environment},
       workingDirectory: spec.cwd,
       // ACP shims on Windows (e.g. `cursor-agent.cmd`) only resolve through a
       // shell — mirror the default factory's platform handling.

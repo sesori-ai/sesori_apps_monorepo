@@ -100,19 +100,26 @@ final class const CopilotPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: CopilotRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     const manifest = CopilotRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(
-      host: host,
-      explicitExecutablePath: _explicitBin(config: host.config),
-    );
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(
+          host: host,
+          explicitExecutablePath: _explicitBin(config: host.config),
+        );
   }
 
   @override
@@ -122,36 +129,33 @@ final class const CopilotPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = CopilotRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
     final httpClient = http.Client();
     try {
-      final service = ManagedRuntimeInstallService(
+      final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -171,13 +175,13 @@ final class const CopilotPluginDescriptor({
         await ManagedRuntimeSelectionService(
           manifest: manifest,
           versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
         ).select(
           explicitExecutablePath: explicitBin,
           fallbackExecutableCandidates: const [],
           environment: environment,
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
-          managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
         );
     return switch (selection) {
       ManagedRuntimeSelected(:final version) => PluginSetupReady.versioned(runtimeVersion: version.raw),
@@ -232,6 +236,7 @@ final class const CopilotPluginDescriptor({
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => CopilotRuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

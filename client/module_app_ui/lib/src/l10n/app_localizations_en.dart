@@ -217,6 +217,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsYoloRetry => 'Retry YOLO setting';
 
   @override
+  String get settingsPluginWarmupTitle => 'Warm harness on session open';
+
+  @override
+  String get settingsPluginWarmupDescription =>
+      'Starts the session\'s harness when you open it to reduce delays on your first action.';
+
+  @override
+  String get settingsPluginWarmupLoading => 'Loading the bridge setting…';
+
+  @override
+  String get settingsPluginWarmupDisconnected => 'Connect to a bridge to configure this setting.';
+
+  @override
+  String get settingsPluginWarmupUnsupported => 'Update the connected bridge to configure this setting.';
+
+  @override
+  String get settingsPluginWarmupLoadFailed =>
+      'Couldn\'t load the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPluginWarmupUncertain => 'The update status is unknown. Refresh before trying again.';
+
+  @override
+  String get settingsPluginWarmupUpdateFailed =>
+      'Couldn\'t update the bridge setting. Check your connection and try again.';
+
+  @override
+  String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
+
+  @override
   String get settingsPullRequestRefreshTitle => 'Pull request refresh';
 
   @override
@@ -437,6 +467,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Security notice. Only continue if you started this login. Verify the website address before entering the code.';
 
   @override
+  String get harnessAuthenticationBrowserInstructions =>
+      'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.';
+
+  @override
+  String get harnessAuthenticationRedirectLabel => 'Redirect URL';
+
+  @override
   String get harnessAuthenticationCodeLabel => 'One-time code';
 
   @override
@@ -474,6 +511,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessAuthenticationUnsupported => 'Update the connected bridge to log in from this device.';
 
   @override
+  String get harnessAuthenticationUpdateRequired => 'Update Sesori to continue this harness login.';
+
+  @override
   String get harnessAuthenticationConflict =>
       'The harness is busy with another management action. Refresh before trying again.';
 
@@ -486,8 +526,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The bridge returned an invalid login website. Check the bridge logs for details.';
 
   @override
-  String get harnessAuthenticationBrowserFailed =>
-      'The secure website could not be opened. Copy the code and try again.';
+  String get harnessAuthenticationInvalidRedirect => 'Paste the full redirect URL from the local callback page.';
+
+  @override
+  String get harnessAuthenticationBrowserFailed => 'The secure website could not be opened. Try again.';
 
   @override
   String get harnessAuthenticationRequestFailed => 'Check your connection and try again.';
@@ -1086,6 +1128,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailQueuedCommand => 'Queued command';
 
   @override
+  String get sessionDetailUnavailableCommand => 'Command unavailable';
+
+  @override
   String get sessionDetailSendingMessage => 'Sending';
 
   @override
@@ -1096,7 +1141,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t apply updated prompt options. Your message remains queued.';
 
   @override
+  String get sessionDetailCommandUnavailable =>
+      'That command is no longer available. Remove it from the queue to continue.';
+
+  @override
   String get sessionDetailCancelQueued => 'Cancel';
+
+  @override
+  String get sessionDetailRemoveQueued => 'Remove';
 
   @override
   String get sessionDetailPickerAgent => 'Agent';
@@ -1283,16 +1335,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionListStaleProjectTitle => 'Project directory not found';
-
-  @override
-  String get sessionListStaleProjectMessage =>
-      'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.';
-
-  @override
-  String get sessionListStaleProjectBack => 'Go back';
-
-  @override
   String get voiceRecord => 'Record voice';
 
   @override
@@ -1331,9 +1373,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get voiceErrorSavedRecordingMissing =>
       'The saved recording is no longer available. Record again or type instead.';
-
-  @override
-  String get voiceErrorNetwork => 'Could not reach the server. Check your connection.';
 
   @override
   String get voiceErrorNotAuthenticated => 'Sign in to use voice input';
@@ -1485,12 +1524,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get renameSave => 'Save';
-
-  @override
-  String get renameSessionSuccess => 'Session renamed';
-
-  @override
-  String get renameProjectSuccess => 'Project renamed';
 
   @override
   String get renameSessionFailed => 'Failed to rename session';
@@ -1909,7 +1942,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get catalogScanPartlyFailedTitle => 'Scan finished';
+  String get catalogScanPartlyFailedTitle => 'Scanning finished';
 
   @override
   String catalogScanPartlyFailedDetail(int failed, int total) {
@@ -1920,7 +1953,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanFailedTitle => 'Scan failed';
 
   @override
-  String get catalogScanFailedDetail => 'Check the bridge log for details';
+  String get catalogScanFailedDetail => 'Check bridge logs';
 
   @override
   String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';

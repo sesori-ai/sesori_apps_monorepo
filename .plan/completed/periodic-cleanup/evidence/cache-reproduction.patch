@@ -1,0 +1,53 @@
+--- a/bridge/app/test/bridge/repositories/session_options_repository_test.dart
++++ b/bridge/app/test/bridge/repositories/session_options_repository_test.dart
+@@ -1,4 +1,7 @@
+ import "dart:convert";
++import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
++import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
++import "package:sesori_bridge/src/services/session_options_service.dart";
+
+ import "package:sesori_bridge/src/api/database/daos/session_options_cache_dao.dart";
+ import "package:sesori_bridge/src/api/database/database.dart";
+@@ -307,6 +310,42 @@
+           ),
+         ),
+       );
++    });
++
++    test("AUDIT: explicit discovery repairs an undecodable cache row", () async {
++      await cacheDao.compareAndSet(
++        row: SessionOptionsCacheTableData(
++          pluginId: "plugin-1",
++          scope: PluginSessionOptionsScope.plugin,
++          ownerId: "plugin-1",
++          projectId: null,
++          capturedProjectPath: null,
++          revision: 1,
++          capturedAt: 1,
++          completeness: PluginSessionOptionsCompleteness.complete,
++          agentsJson: jsonEncode(const Agents(agents: []).toJson()),
++          providersJson: jsonEncode(const ProviderListResponse(items: [], connectedOnly: true).toJson()),
++          commandsJson: jsonEncode(const CommandListResponse(items: []).toJson()),
++        ),
++        expectedRevision: null,
++      );
++      await database.customStatement(
++        "UPDATE session_options_cache_table SET completeness = 'unknown' "
++        "WHERE plugin_id = 'plugin-1' AND scope = 'plugin' AND owner_id = 'plugin-1'",
++      );
++
++      await _insertProject(database, projectId: "project-1", path: "/projects/current");
++      final service = SessionOptionsService(
++        repository: repository,
++        newSessionDefaultsRepository: NewSessionDefaultsRepository(dao: NewSessionDefaultsDao(database: database)),
++        pluginScopes: const {"plugin-1": PluginSessionOptionsScope.plugin},
++        clock: const ServerClock(),
++        retention: const Duration(days: 30),
++      );
++      addTearDown(service.dispose);
++      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
++      expect(plugin.callCount, 1);
++      expect(outcome, isA<SessionOptionsAvailable>());
+     });
+
+     test("generation fencing rejects the CAS before the DAO can write", () async {

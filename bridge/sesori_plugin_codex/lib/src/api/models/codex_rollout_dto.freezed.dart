@@ -3011,7 +3011,7 @@ as String?,
 /// @nodoc
 mixin _$CodexToolArgumentsDto {
 
- Object? get cmd; Object? get command; Object? get path;@JsonKey(name: "file_path") Object? get filePath; Object? get query;@JsonKey(name: "cell_id") Object? get cellId;
+ Object? get cmd; Object? get command; Object? get path;@JsonKey(name: "file_path") Object? get filePath; Object? get query;@JsonKey(name: "cell_id") Object? get cellId;@JsonKey(name: "task_name", fromJson: _stringOrNull) String? get taskName;@JsonKey(fromJson: _stringOrNull) String? get message;@JsonKey(name: "agent_type", fromJson: _stringOrNull) String? get agentType;
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3022,16 +3022,16 @@ $CodexToolArgumentsDtoCopyWith<CodexToolArgumentsDto> get copyWith => _$CodexToo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId)&&(identical(other.taskName, taskName) || other.taskName == taskName)&&(identical(other.message, message) || other.message == message)&&(identical(other.agentType, agentType) || other.agentType == agentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId),taskName,message,agentType);
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId)';
+  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId, taskName: $taskName, message: $message, agentType: $agentType)';
 }
 
 
@@ -3042,7 +3042,7 @@ abstract mixin class $CodexToolArgumentsDtoCopyWith<$Res>  {
   factory $CodexToolArgumentsDtoCopyWith(CodexToolArgumentsDto value, $Res Function(CodexToolArgumentsDto) _then) = _$CodexToolArgumentsDtoCopyWithImpl;
 @useResult
 $Res call({
- Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId
+ Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId,@JsonKey(name: "task_name", fromJson: _stringOrNull) String? taskName,@JsonKey(fromJson: _stringOrNull) String? message,@JsonKey(name: "agent_type", fromJson: _stringOrNull) String? agentType
 });
 
 
@@ -3059,9 +3059,12 @@ class _$CodexToolArgumentsDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,Object? taskName = freezed,Object? message = freezed,Object? agentType = freezed,}) {
   return _then(CodexToolArgumentsDto(
-cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,
+cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,taskName: freezed == taskName ? _self.taskName : taskName // ignore: cast_nullable_to_non_nullable
+as String?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String?,agentType: freezed == agentType ? _self.agentType : agentType // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -3073,7 +3076,7 @@ cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.comma
 @JsonSerializable(createToJson: false)
 
 class _CodexToolArgumentsDto implements CodexToolArgumentsDto {
-  const _CodexToolArgumentsDto({required this.cmd, required this.command, required this.path, @JsonKey(name: "file_path") required this.filePath, required this.query, @JsonKey(name: "cell_id") required this.cellId});
+  const _CodexToolArgumentsDto({required this.cmd, required this.command, required this.path, @JsonKey(name: "file_path") required this.filePath, required this.query, @JsonKey(name: "cell_id") required this.cellId, @JsonKey(name: "task_name", fromJson: _stringOrNull) required this.taskName, @JsonKey(fromJson: _stringOrNull) required this.message, @JsonKey(name: "agent_type", fromJson: _stringOrNull) required this.agentType});
   factory _CodexToolArgumentsDto.fromJson(Map<String, dynamic> json) => _$CodexToolArgumentsDtoFromJson(json);
 
 @override final  Object? cmd;
@@ -3082,6 +3085,9 @@ class _CodexToolArgumentsDto implements CodexToolArgumentsDto {
 @override@JsonKey(name: "file_path") final  Object? filePath;
 @override final  Object? query;
 @override@JsonKey(name: "cell_id") final  Object? cellId;
+@override@JsonKey(name: "task_name", fromJson: _stringOrNull) final  String? taskName;
+@override@JsonKey(fromJson: _stringOrNull) final  String? message;
+@override@JsonKey(name: "agent_type", fromJson: _stringOrNull) final  String? agentType;
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
@@ -3093,16 +3099,16 @@ _$CodexToolArgumentsDtoCopyWith<_CodexToolArgumentsDto> get copyWith => __$Codex
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId)&&(identical(other.taskName, taskName) || other.taskName == taskName)&&(identical(other.message, message) || other.message == message)&&(identical(other.agentType, agentType) || other.agentType == agentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId));
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId),taskName,message,agentType);
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId)';
+  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId, taskName: $taskName, message: $message, agentType: $agentType)';
 }
 
 
@@ -3113,7 +3119,7 @@ abstract mixin class _$CodexToolArgumentsDtoCopyWith<$Res> implements $CodexTool
   factory _$CodexToolArgumentsDtoCopyWith(_CodexToolArgumentsDto value, $Res Function(_CodexToolArgumentsDto) _then) = __$CodexToolArgumentsDtoCopyWithImpl;
 @override @useResult
 $Res call({
- Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId
+ Object? cmd, Object? command, Object? path,@JsonKey(name: "file_path") Object? filePath, Object? query,@JsonKey(name: "cell_id") Object? cellId,@JsonKey(name: "task_name", fromJson: _stringOrNull) String? taskName,@JsonKey(fromJson: _stringOrNull) String? message,@JsonKey(name: "agent_type", fromJson: _stringOrNull) String? agentType
 });
 
 
@@ -3130,9 +3136,12 @@ class __$CodexToolArgumentsDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexToolArgumentsDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? cmd = freezed,Object? command = freezed,Object? path = freezed,Object? filePath = freezed,Object? query = freezed,Object? cellId = freezed,Object? taskName = freezed,Object? message = freezed,Object? agentType = freezed,}) {
   return _then(_CodexToolArgumentsDto(
-cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,
+cmd: freezed == cmd ? _self.cmd : cmd ,command: freezed == command ? _self.command : command ,path: freezed == path ? _self.path : path ,filePath: freezed == filePath ? _self.filePath : filePath ,query: freezed == query ? _self.query : query ,cellId: freezed == cellId ? _self.cellId : cellId ,taskName: freezed == taskName ? _self.taskName : taskName // ignore: cast_nullable_to_non_nullable
+as String?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
+as String?,agentType: freezed == agentType ? _self.agentType : agentType // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

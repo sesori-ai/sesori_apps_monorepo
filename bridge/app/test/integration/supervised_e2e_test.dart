@@ -501,6 +501,7 @@ class _ControlHost({
           ),
         );
       case ControlTokenResponse() ||
+          ControlTokenRetryLater() ||
           ControlStatus() ||
           ControlPromptRequest() ||
           ControlPromptResponse() ||

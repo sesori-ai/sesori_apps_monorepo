@@ -61,6 +61,54 @@ void main() {
     expect(harness.processes.single.killed, isTrue);
   });
 
+  for (final bundledName in ["llama", "llama:2"]) {
+    test("excludes bundled $bundledName by origin and preserves user commands", () async {
+      final harness = _ProbeHarness(
+        stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+        models: [_model(provider: "openai", id: "gpt", reasoning: false)],
+        commands: [
+          {
+            "name": bundledName,
+            "description": "Manage llama.cpp router models",
+            "source": "extension",
+            "sourceInfo": {"path": "<inline:llama.cpp>"},
+          },
+          {
+            "name": "llama:1",
+            "source": "extension",
+            "sourceInfo": {"path": "/project/.pi/extensions/llama.ts"},
+          },
+          {
+            "name": "llama",
+            "source": "prompt",
+            "sourceInfo": {"path": "/project/.pi/prompts/llama.md"},
+          },
+          {"name": "review", "source": "prompt"},
+        ],
+      );
+
+      final options = await harness.probe();
+
+      expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+      expect(options.commands.map((command) => command.name), ["llama:1", "llama", "review"]);
+    });
+  }
+
+  test("preserves an extension named llama without an excluded origin", () async {
+    final harness = _ProbeHarness(
+      stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+      models: [_model(provider: "openai", id: "gpt", reasoning: false)],
+      commands: const [
+        {"name": "llama", "source": "extension"},
+      ],
+    );
+
+    final options = await harness.probe();
+
+    expect(options.completeness, PluginSessionOptionsCompleteness.complete);
+    expect(options.commands.single.name, "llama");
+  });
+
   test("cancels every probe dialog and ignores notifications", () async {
     final harness = _ProbeHarness(
       stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
@@ -115,10 +163,13 @@ void main() {
     expect(withoutCommands.commands, isEmpty);
   });
 
-  test("thinking timeout preserves discovered models when command budget is exhausted", () async {
+  test("thinking timeout preserves commands discovered earlier in the probe", () async {
     final harness = _ProbeHarness(
       stateModel: _model(provider: "groq", id: "reasoner", reasoning: true),
       models: [_model(provider: "groq", id: "reasoner", reasoning: true)],
+      commands: const [
+        {"name": "review", "description": "Review this project", "source": "prompt"},
+      ],
       ignoreThinking: true,
     );
 
@@ -126,7 +177,11 @@ void main() {
 
     expect(options.completeness, PluginSessionOptionsCompleteness.partial);
     expect(options.providers.providers.single.models.single.id, "reasoner");
-    expect(options.commands, isEmpty);
+    expect(options.commands.single.name, "review");
+    expect(
+      harness.processes.single.written.where((frame) => frame["id"] != null).map((frame) => frame["type"]),
+      ["get_state", "get_available_models", "get_commands", "set_model", "get_available_thinking_levels"],
+    );
   });
 
   test("no model, auth-shaped empty catalog, process exit, and timeout fail with diagnostics", () async {

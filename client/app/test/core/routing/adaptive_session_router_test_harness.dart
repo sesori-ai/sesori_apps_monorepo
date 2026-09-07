@@ -253,7 +253,6 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     getIt.registerSingleton<ConnectionService>(connectionService);
@@ -371,6 +370,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   );
 
   return SessionDetailSnapshot(
+    areOptionsStale: false,
     bridgeQueuedPrompts: const [],
     projectId: projectId,
     pluginId: "opencode",

@@ -5,9 +5,10 @@ import "../../models/grok_subagent_status.dart";
 part "grok_session_notification_dto.freezed.dart";
 part "grok_session_notification_dto.g.dart";
 
-/// Params of Grok Build's `_x.ai/session_notification`: the parent session and
-/// an internally tagged update. Only the sub-agent lifecycle variants are
-/// modeled; every other `sessionUpdate` parses as [GrokSubagentUpdateUnknown].
+/// Params shared by Grok Build's live `_x.ai/session_notification` and
+/// replay/autonomous `_x.ai/session/update` forms: the owning session and an
+/// internally tagged update. Only lifecycle and autonomous-settlement variants
+/// are modeled; every other `sessionUpdate` is [GrokSubagentUpdateUnknown].
 @Freezed(fromJson: true, toJson: false)
 sealed class GrokSessionNotificationDto with _$GrokSessionNotificationDto {
   const factory({
@@ -18,9 +19,10 @@ sealed class GrokSessionNotificationDto with _$GrokSessionNotificationDto {
   factory fromJson(Map<String, dynamic> json) => _$GrokSessionNotificationDtoFromJson(json);
 }
 
-/// The sub-agent lifecycle updates Grok Build wraps in a session notification.
-/// The envelope's `sessionId` is the parent; `subagentId` equals the child
-/// session id on 1.0.5 and is kept only because the cancel request names it.
+/// Grok's sub-agent lifecycle and autonomous parent-settlement updates. The
+/// envelope's `sessionId` owns the update; for sub-agent variants it is the
+/// parent, while `subagentId` equals the child session id on 1.0.5 and is kept
+/// because the cancel request names it.
 @Freezed(
   unionKey: "sessionUpdate",
   unionValueCase: FreezedUnionCase.snake,
@@ -49,7 +51,12 @@ sealed class GrokSubagentUpdate with _$GrokSubagentUpdate {
     @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required GrokSubagentStatus status,
     required String? output,
     required String? error,
+    @JsonKey(name: "will_wake") required bool? willWake,
   }) = GrokSubagentFinished;
+
+  const factory turnCompleted({
+    @JsonKey(name: "prompt_id") required String? promptId,
+  }) = GrokTurnCompleted;
 
   const factory unknown() = GrokSubagentUpdateUnknown;
 

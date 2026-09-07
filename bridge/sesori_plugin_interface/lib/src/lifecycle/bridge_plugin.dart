@@ -46,6 +46,14 @@ abstract class BridgePlugin() {
   /// Cheap, synchronous, side-effect-free diagnostics (endpoint, version).
   PluginDiagnostics describe();
 
+  /// Warm-up the runtime runs once this generation becomes routable, for work
+  /// that makes later requests faster but that nothing waits on.
+  ///
+  /// The runtime does not await it, never fails a start because of it, and
+  /// never retries it. Implementations must therefore treat their own failures
+  /// as unremarkable and stay safe against a concurrent [shutdown].
+  Future<void> onStarted() async {}
+
   /// Interrupts every active backend session and waits for it to quiesce.
   ///
   /// Called on two paths:

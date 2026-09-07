@@ -269,7 +269,7 @@ void main() {
       expect(errors.single.$2, -32601);
     });
 
-    test("registered questions reply via the builder and surface as pending", () {
+    test("registered questions reply via the builder and surface as pending", () async {
       final requestId = registry.addPendingQuestion(
         acpId: 5,
         sessionId: "s1",
@@ -288,7 +288,7 @@ void main() {
 
       expect(registry.pendingForSession(sessionId: "s1"), hasLength(1));
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: requestId,
           answers: [
             ["yes"],

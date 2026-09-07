@@ -375,7 +375,9 @@ void _openSettings({required BuildContext context, required String currentPath})
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
-  final routeState = GoRouterState.of(context);
+  // The list's context need not belong to the current detail route.
+  // ignore: no_slop_linter/avoid_raw_go_router, reads current route state inside the typed routing boundary
+  final routeState = GoRouter.of(context).state;
   if (routeState.pathParameters[sessionIdPathParam] != sessionId) {
     return;
   }

@@ -145,6 +145,10 @@ void main() {
       verificationUrl: "https://auth.example/device",
       userCode: "ABCD-EFGH",
     );
+    const browserChallenge = PluginAuthenticationChallengeResponse.browser(
+      authorizationUrl: "https://accounts.google.com/o/oauth2/auth",
+      expectedCallbackUrl: "http://127.0.0.1:43120/callback",
+    );
     const progress = <PluginAuthenticationProgress>[
       PluginAuthenticationProgress.completed(),
       PluginAuthenticationProgress.failed(message: "Sanitized failure"),
@@ -153,8 +157,12 @@ void main() {
     ];
 
     expect(
-      PluginAuthenticationChallengeResponse.fromJson(challenge.toJson()),
-      challenge,
+      PluginAuthenticationChallengeResponse.fromJson(challenge.toJson()).toJson(),
+      challenge.toJson(),
+    );
+    expect(
+      PluginAuthenticationChallengeResponse.fromJson(browserChallenge.toJson()).toJson(),
+      browserChallenge.toJson(),
     );
     for (final event in progress) {
       expect(PluginAuthenticationProgress.fromJson(event.toJson()), event);
@@ -181,22 +189,17 @@ void main() {
       }),
       throwsA(anything),
     );
-    for (final json in const [
-      <String, dynamic>{
+    expect(
+      () => PluginAuthenticationChallengeResponse.fromJson({
         "verificationUrl": "https://auth.example/device",
         "userCode": "ABCD-EFGH",
-      },
-      <String, dynamic>{
-        "type": "future",
-        "verificationUrl": "https://auth.example/device",
-        "userCode": "ABCD-EFGH",
-      },
-    ]) {
-      expect(
-        () => PluginAuthenticationChallengeResponse.fromJson(json),
-        throwsA(isA<FormatException>()),
-      );
-    }
+      }),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      PluginAuthenticationChallengeResponse.fromJson({"type": "future"}),
+      isA<PluginAuthenticationUnknownChallengeResponse>(),
+    );
     expect(
       () => PluginAuthenticationProgress.fromJson({"type": "failed"}),
       throwsA(anything),
@@ -221,6 +224,8 @@ void main() {
       PluginAuthenticationConflict.fromJson(json).reasons,
       [PluginAuthenticationConflictReason.unknown],
     );
+    const redirect = PluginAuthenticationRedirectRequest(redirectUrl: "http://127.0.0.1/callback?code=opaque");
+    expect(PluginAuthenticationRedirectRequest.fromJson(redirect.toJson()).toJson(), redirect.toJson());
   });
 
   test("management responses carry a snapshot token and bridge identity", () {

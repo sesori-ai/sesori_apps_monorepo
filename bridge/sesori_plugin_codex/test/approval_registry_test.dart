@@ -3,6 +3,9 @@
 import "dart:async";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:codex_plugin/src/api/models/codex_pending_input.dart";
+import "package:codex_plugin/src/api/parsers/codex_question_parser.dart";
+import "package:codex_plugin/src/repositories/mappers/codex_question_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -12,6 +15,7 @@ void main() {
     late List<BridgeSseEvent> emitted;
     late List<_RespondCall> respondCalls;
     late List<_RespondError> errorCalls;
+    late List<({String sessionId, String text})> asyncAnswers;
     late ApprovalRegistry registry;
 
     setUp(() {
@@ -19,12 +23,21 @@ void main() {
       emitted = [];
       respondCalls = [];
       errorCalls = [];
+      asyncAnswers = [];
       registry = ApprovalRegistry(
         emit: emitted.add,
+        questionParser: const CodexQuestionParser(),
+        questionMapper: const CodexQuestionMapper(),
         respond: (id, result) => respondCalls.add(_RespondCall(id, result)),
         respondError: (id, code, message) => errorCalls.add(_RespondError(id, code, message)),
+        sendAsyncAnswer: ({required sessionId, required text}) async =>
+            asyncAnswers.add((sessionId: sessionId, text: text)),
+        resolvePendingInputScope: ({required sessionId}) => (
+          displaySessionId: sessionId,
+          sourceSessionIds: [sessionId],
+        ),
       );
-      registry.attach(stream: requests.stream);
+      registry.attach(stream: requests.stream.map((request) => CodexPendingRequest(request: request)));
     });
 
     tearDown(() async {
@@ -328,6 +341,209 @@ void main() {
 
     // --- v2 elicitation + user input questions ---
 
+    test("structured input preserves every question, option and question-id reply", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 190,
+          method: "item/tool/requestUserInput",
+          params: {
+            "threadId": "t-3",
+            "questions": [
+              {
+                "id": "interface",
+                "header": "Interface",
+                "question": "Which Hermes interface?",
+                "isOther": true,
+                "options": [
+                  {"label": "Sesori", "description": "Use the ACP adapter"},
+                  {"label": "CLI", "description": "Use the terminal"},
+                ],
+              },
+              {"id": "details", "header": "Details", "question": "Any constraints?"},
+              {
+                "id": "scope",
+                "header": "Scope",
+                "question": "Choose a scope",
+                "options": [
+                  {"label": "Local", "description": "On this machine"},
+                ],
+              },
+            ],
+          },
+        ),
+      );
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.questions.map((q) => q.question), ["Which Hermes interface?", "Any constraints?", "Choose a scope"]);
+      expect(asked.questions.map((q) => q.header), ["Interface", "Details", "Scope"]);
+      expect(asked.questions.first.options.map((o) => o.label), ["Sesori", "CLI"]);
+      expect(asked.questions.first.options.first.description, "Use the ACP adapter");
+      expect(asked.questions.map((q) => q.custom), [true, true, false]);
+      expect(asked.questions.every((q) => !q.multiple), isTrue);
+      expect(registry.pendingForSession(sessionId: "t-3").single.questions, asked.questions);
+      expect(registry.pendingPermissionsForSession(sessionId: "t-3"), isEmpty);
+      expect(respondCalls, isEmpty);
+
+      await registry.replyQuestion(
+        requestId: asked.id,
+        answers: const [
+          ["CLI"],
+          ["Keep it local"],
+          [],
+        ],
+      );
+      expect(respondCalls.single.result, {
+        "answers": {
+          "interface": {
+            "answers": ["CLI"],
+          },
+          "details": {
+            "answers": ["Keep it local"],
+          },
+          "scope": {"answers": <String>[]},
+        },
+      });
+    });
+
+    test("secret input fails explicitly without presenting a plain-text question", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 191,
+          method: "item/tool/requestUserInput",
+          params: {
+            "threadId": "t-3",
+            "questions": [
+              {"id": "details", "header": "Details", "question": "Any constraints?"},
+              {"id": "token", "header": "Token", "question": "Enter token", "isSecret": true},
+            ],
+          },
+        ),
+      );
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(sessionId: "t-3"), isEmpty);
+      expect(respondCalls, isEmpty);
+      expect(errorCalls.single.id, 191);
+      expect(errorCalls.single.code, -32602);
+      expect(errorCalls.single.message, "Secret question input is not supported by Sesori.");
+    });
+
+    test("async assistant questions use the same pending surface and submit contextual answers", () async {
+      registry.handleRequest(
+        const CodexPendingNotification(
+          notification: CodexServerNotification(
+            method: "item/completed",
+            params: {
+              "threadId": "t-3",
+              "item": {
+                "type": "agentMessage",
+                "id": "call-question",
+                "delivery": "async",
+                "text": "Which Hermes interface?",
+                "questions": [
+                  {
+                    "title": "Which Hermes interface?",
+                    "options": ["Sesori", "CLI", "Desktop"],
+                  },
+                  {"title": "Any constraints?"},
+                ],
+              },
+            },
+          ),
+        ),
+      );
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.questions.map((q) => q.question), ["Which Hermes interface?", "Any constraints?"]);
+      expect(asked.questions.first.options.map((o) => o.label), ["Sesori", "CLI", "Desktop"]);
+      expect(asked.questions.every((q) => q.custom && !q.multiple), isTrue);
+      expect(registry.pendingForSession(sessionId: "t-3").single.questions, asked.questions);
+      expect(registry.pendingPermissionsForSession(sessionId: "t-3"), isEmpty);
+      expect(asyncAnswers, isEmpty);
+      expect(respondCalls, isEmpty);
+
+      await registry.replyQuestion(
+        requestId: asked.id,
+        answers: const [
+          ["CLI"],
+          ["Custom answer"],
+        ],
+      );
+      expect(asyncAnswers.single, (
+        sessionId: "t-3",
+        text: "User answers to your questions:\n\nQuestion: Which Hermes interface?\nAnswer: CLI\n\nQuestion: Any constraints?\nAnswer: Custom answer",
+      ));
+      expect(registry.pendingForSession(sessionId: "t-3"), isEmpty);
+      expect(emitted.last, isA<BridgeSseQuestionReplied>());
+      expect(respondCalls, isEmpty);
+      expect(errorCalls, isEmpty);
+    });
+
+    test("ordinary assistant text and unfinished async items do not create questions", () {
+      for (final method in ["item/started", "item/completed"]) {
+        registry.handleRequest(
+          CodexPendingNotification(
+            notification: CodexServerNotification(
+              method: method,
+              params: {
+                "threadId": "t-3",
+                "item": {"type": "agentMessage", "id": "ordinary", "text": "Hello"},
+              },
+            ),
+          ),
+        );
+      }
+      registry.handleRequest(
+        const CodexPendingNotification(
+          notification: CodexServerNotification(
+            method: "item/started",
+            params: {
+              "threadId": "t-3",
+              "item": {
+                "type": "agentMessage",
+                "id": "question",
+                "delivery": "async",
+                "questions": [
+                  {"title": "Which interface?"},
+                ],
+              },
+            },
+          ),
+        ),
+      );
+      expect(emitted, isEmpty);
+    });
+
+    test("async rejection informs the agent but session cleanup does not start work", () async {
+      void ask() => registry.handleRequest(
+        const CodexPendingNotification(
+          notification: CodexServerNotification(
+            method: "item/completed",
+            params: {
+              "threadId": "t-3",
+              "item": {
+                "type": "agentMessage",
+                "id": "question",
+                "delivery": "async",
+                "questions": [
+                  {"title": "Which interface?"},
+                ],
+              },
+            },
+          ),
+        ),
+      );
+      ask();
+      final id = registry.pendingForSession(sessionId: "t-3").single.id;
+      await registry.rejectQuestion(requestId: id);
+      expect(asyncAnswers.single.text, contains("Answer: Declined to answer."));
+      expect(emitted.last, isA<BridgeSseQuestionRejected>());
+      ask();
+      registry.cancelForSession(sessionId: "t-3");
+      expect(asyncAnswers, hasLength(1));
+      expect(registry.hasAnyPendingInput, isFalse);
+      expect(errorCalls, isEmpty);
+    });
+
     test(
       "empty MCP tool-call elicitation surfaces as an approvable permission",
       () async {
@@ -517,7 +733,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.replyQuestion(
+        final ok = await registry.replyQuestion(
           requestId: askedId,
           answers: const [
             ["Daniil"],
@@ -554,7 +770,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: askedId,
           answers: const [
             ["/tmp/out"],
@@ -585,7 +801,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.rejectQuestion(requestId: askedId);
+        final ok = await registry.rejectQuestion(requestId: askedId);
         expect(ok, isTrue);
         expect((respondCalls.single.result as Map)["action"], equals("decline"));
         expect(errorCalls, isEmpty);
@@ -610,7 +826,7 @@ void main() {
         await pump();
         final askedId = (emitted.single as BridgeSseQuestionAsked).id;
 
-        final ok = registry.rejectQuestion(requestId: askedId);
+        final ok = await registry.rejectQuestion(requestId: askedId);
         expect(ok, isTrue);
         expect(respondCalls, isEmpty);
         expect(errorCalls.single.id, equals(204));

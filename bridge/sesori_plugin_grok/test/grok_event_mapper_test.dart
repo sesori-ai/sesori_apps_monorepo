@@ -44,6 +44,8 @@ void main() {
       mapper.beginTurn(sessionId: _root, messageId: null);
     });
 
+    tearDown(() => tracker.dispose());
+
     test("the spawn_subagent tool call renders no card and its updates are dropped", () {
       expect(mapper.map(_fixture("subagent_tool_call.json")), isEmpty);
       expect(mapper.sessionIdForToolCallId(toolCallId: _toolCallId), _root, reason: "permission attribution");
@@ -70,13 +72,13 @@ void main() {
       expect(created.directory, "/project");
       expect(created.projectID, "/project");
       expect(created.title, "Synthetic child task");
-      expect(shared.SessionStatus.fromJson((spawned[1] as BridgeSseSessionStatus).status), const shared.SessionStatus.busy());
+      expect((spawned[1] as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
       expect(tracker.busyChildIds(sessionId: _root), {_child});
       expect(tracker.runningChildren(sessionId: _root).single.isBackground, isFalse);
 
       final prompted = mapper.map(_fixture("subagent_child_prompt.json"));
-      final envelope = shared.Message.fromJson(prompted.whereType<BridgeSseMessageUpdated>().single.info);
-      expect(envelope, isA<shared.MessageAssistant>());
+      final envelope = prompted.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(envelope, isA<PluginMessageAssistant>());
       expect(envelope.id, _tileMessageId);
       expect(envelope.sessionID, _root);
       final tile = _subtask(prompted.whereType<BridgeSseMessagePartUpdated>().single);
@@ -172,7 +174,7 @@ void main() {
       expect(mapper.map(_fixture("subagent_progress.json")), isEmpty);
     });
 
-    test("subagent_finished completed closes the tile with its output and idles the child", () {
+    test("a waking child finish holds the root until its autonomous turn completes", () {
       mapper
         ..map(_fixture("subagent_spawned.json"))
         ..map(_fixture("subagent_child_prompt.json"));
@@ -183,8 +185,13 @@ void main() {
       expect(tile.messageID, _tileMessageId);
       expect(tile.taskState?.status, PluginToolStatus.completed);
       expect(tile.taskState?.output, "synthetic final text");
-      expect(shared.SessionStatus.fromJson((events[1] as BridgeSseSessionStatus).status), const shared.SessionStatus.idle());
+      expect((events[1] as BridgeSseSessionStatus).status, const PluginSessionStatus.idle());
       expect(tracker.childStatuses, {_child: const PluginSessionStatus.idle()});
+      expect(tracker.hasRootHold(sessionId: _root), isTrue);
+
+      expect(mapper.map(_fixture("subagent_wake_turn_completed.json")), isEmpty);
+      expect(tracker.hasRootHold(sessionId: _root), isFalse);
+      expect(tracker.hasActiveWork, isFalse);
     });
 
     test("subagent_finished cancelled marks the tile cancelled", () {
@@ -196,6 +203,7 @@ void main() {
       expect(tile.taskState?.status, PluginToolStatus.cancelled);
       expect(tile.taskState?.error, isNull);
       expect(tile.taskState?.output, isNull);
+      expect(tracker.hasRootHold(sessionId: _root), isFalse);
     });
 
     test("the tracker survives the turn boundary", () {

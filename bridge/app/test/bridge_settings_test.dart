@@ -11,6 +11,7 @@ void main() {
       expect(settings.yolo, isFalse);
       expect(settings.releaseTrack, ReleaseTrack.stable);
       expect(settings.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+      expect(settings.warmUpPluginsOnSessionOpen, isTrue);
       expect(settings.plugins.disabledPluginIds, isEmpty);
       expect(settings.plugins.idleTimeoutMinsFor(pluginId: 'opencode'), 45);
       expect(settings.toJson(), {
@@ -18,6 +19,7 @@ void main() {
         'yolo': false,
         'releaseTrack': 'stable',
         'pullRequestRefreshIntervalSeconds': defaultPullRequestRefreshIntervalSeconds,
+        'warmUpPluginsOnSessionOpen': true,
       });
     });
 
@@ -27,12 +29,14 @@ void main() {
         'yolo': true,
         'releaseTrack': 'internal',
         'pullRequestRefreshIntervalSeconds': 45,
+        'warmUpPluginsOnSessionOpen': false,
       });
 
       expect(settings.sleepPrevention, SleepPreventionMode.off);
       expect(settings.yolo, isTrue);
       expect(settings.releaseTrack, ReleaseTrack.internal);
       expect(settings.pullRequestRefreshIntervalSeconds, 45);
+      expect(settings.warmUpPluginsOnSessionOpen, isFalse);
     });
 
     test('uses the default for a missing PR refresh interval', () {
@@ -78,6 +82,13 @@ void main() {
       expect(settings.sleepPrevention, SleepPreventionMode.always);
       expect(settings.yolo, isFalse);
       expect(settings.releaseTrack, ReleaseTrack.stable);
+    });
+
+    test('rejects a non-boolean session-open warm-up value', () {
+      expect(
+        () => BridgeSettings.fromJson({'warmUpPluginsOnSessionOpen': 'true'}),
+        throwsA(isA<WarmUpPluginsOnSessionOpenFormatException>()),
+      );
     });
 
     test('parses denylist and inherited numeric idle timeouts', () {
@@ -258,6 +269,7 @@ void main() {
       expect(updated.releaseTrack, ReleaseTrack.internal);
       expect(updated.yolo, isTrue);
       expect(updated.pullRequestRefreshIntervalSeconds, defaultPullRequestRefreshIntervalSeconds);
+      expect(updated.warmUpPluginsOnSessionOpen, isTrue);
     });
   });
 }

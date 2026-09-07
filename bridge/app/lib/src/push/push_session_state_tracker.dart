@@ -98,10 +98,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     ).any((sessionState) => sessionState.previouslyBusy);
   }
 
-  String? getSessionTitle(String sessionId) {
-    return _sessions[sessionId]?.title;
-  }
-
   String? getSessionProjectId({required String sessionId}) {
     return _sessions[sessionId]?.projectId;
   }
@@ -517,7 +513,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
     }
 
     sessionState.parentId = nextParentId;
-    sessionState.title = session.title;
     sessionState.projectId = session.projectID;
 
     if (nextParentId != null) {
@@ -530,7 +525,6 @@ class PushSessionStateTracker({required final DateTime Function() _now}) {
 final class _PushTrackedSessionState() {
   String? parentId;
   String? projectId;
-  String? title;
   SessionStatus? status;
   bool previouslyBusy = false;
   final Set<String> childIds = <String>{};

@@ -78,6 +78,16 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     return _decodeResponse(result: result, operation: "thread/resume");
   }
 
+  Future<CodexThreadEnvelopeDto> readThread({
+    required String threadId,
+  }) async {
+    final result = await _client.request(
+      method: "thread/read",
+      params: {"threadId": threadId, "includeTurns": false},
+    );
+    return _decodeResponse(result: result, operation: "thread/read");
+  }
+
   Future<CodexSkillsListResponseDto> listSkills({required String cwd}) async {
     final result = await _client.request(
       method: "skills/list",

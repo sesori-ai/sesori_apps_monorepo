@@ -27,7 +27,13 @@ sealed class ProviderModel with _$ProviderModel {
     required String id,
     required String providerID,
     required String name,
+
+    /// Effort/thinking variants in the order pickers list them.
     required List<String> variants,
+
+    /// The variant a session runs at when none was chosen. Null means the
+    /// first of [variants], or nothing when the model offers none.
+    required String? defaultVariant,
     required String? family,
     @Default(true) bool isAvailable,
     @dateConverter required DateTime? releaseDate,

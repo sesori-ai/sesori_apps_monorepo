@@ -25,6 +25,7 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
           descriptor: _TestDescriptor(id: pluginId),
           config: const PluginConfig(values: {}),
           stateDirectory: ".",
+          store: const _UnusedHostJsonStore(),
         ),
     ],
     generationFactory: const _UnusedGenerationFactory(),
@@ -336,6 +337,29 @@ class const _TestDescriptor({@override required final String id}) extends Bridge
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("unused");
 }
 
+class const _UnusedHostJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
+  @override
+  Future<void> delete({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> read({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String name, required String contents}) => throw UnsupportedError("unused");
+}
+
 class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
@@ -353,5 +377,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) => throw UnsupportedError("unused");
 }

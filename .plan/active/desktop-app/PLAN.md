@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `desktop-app`
-- **Status:** Active — step 18 complete (MT gate B accepted 2026-09-01)
+- **Status:** Active — step 20 complete; MT Gate C planned (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
@@ -629,8 +629,13 @@ notification replacement and cleanup. It deliberately adds no desktop push
 registration, migration/backfill, compatibility shim, global coordination
 registry, or background retry worker.
 
-> **MT gate C — cockpit parity + mobile regression (user-run, after step
-> 20).** Desktop: manage harnesses end-to-end (install + login a real one) ·
+All three replacement slices are merged: PRs #1267, #1269, and #1274. Step 20
+is complete. The user delegated MT Gate C execution to the agent on 2026-09-03;
+the concrete runbook is [`MT_GATE_C.md`](MT_GATE_C.md), and user acceptance
+still closes the checkpoint.
+
+> **MT gate C — cockpit parity + mobile regression (agent-run at the user's
+> request after step 20; user acceptance closes the gate).** Desktop: manage harnesses end-to-end (install + login a real one) ·
 > browse projects/sessions · full chat round-trip incl. a permission answer ·
 > diffs · new session (worktree) · bridge-off → Start-the-bridge recovers ·
 > internet-down shows truthful offline while supervision still works · window

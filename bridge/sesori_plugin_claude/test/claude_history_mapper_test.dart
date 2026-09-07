@@ -98,12 +98,22 @@ void main() {
         ],
       );
 
+      final records = await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId);
       final messages = mapper.map(
         sessionId: _sessionId,
         agentId: null,
-        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
+        records: records,
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
+      final catalogMapped = mapper.map(
+        sessionId: _sessionId,
+        agentId: null,
+        records: records,
+        residentTaskToolUseIds: const {},
+        catalogModelId: ({required apiModel}) => apiModel == "claude-test-model" ? "test" : null,
+      );
+      expect((catalogMapped[1].info as PluginMessageAssistant).modelID, "test");
 
       expect(messages, hasLength(2));
       final user = messages[0];
@@ -181,6 +191,7 @@ IMPORTANT: Do NOT create new worktrees.
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
@@ -206,6 +217,7 @@ IMPORTANT: Do NOT create new worktrees.
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect((messages.single.info as PluginMessageAssistant).variant, isNull);
@@ -247,6 +259,7 @@ IMPORTANT: Do NOT create new worktrees.
           agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
           residentTaskToolUseIds: const {},
+          catalogModelId: null,
         ),
         isEmpty,
       );
@@ -277,6 +290,7 @@ IMPORTANT: Do NOT create new worktrees.
           agentId: null,
           records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
           residentTaskToolUseIds: const {},
+          catalogModelId: null,
         ),
         isEmpty,
       );
@@ -323,6 +337,7 @@ IMPORTANT: Do NOT create new worktrees.
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       expect(messages, hasLength(2));
@@ -356,6 +371,7 @@ IMPORTANT: Do NOT create new worktrees.
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       final error = messages.single.info as PluginMessageError;
@@ -407,6 +423,7 @@ IMPORTANT: Do NOT create new worktrees.
         agentId: null,
         records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
         residentTaskToolUseIds: const {},
+        catalogModelId: null,
       );
 
       final part = messages.single.parts.single as PluginMessagePartSubtask;

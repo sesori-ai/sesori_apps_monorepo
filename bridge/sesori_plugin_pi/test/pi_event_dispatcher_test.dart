@@ -86,7 +86,7 @@ void main() {
           identities: PiMessageIdentityBuilder(pluginId: "pi", sessionId: sessionId),
         )
         .single;
-    expect((finalEvents.first as BridgeSseMessageUpdated).info, replay.info.toJson());
+    expect((finalEvents.first as BridgeSseMessageUpdated).info, replay.info);
     expect(finalEvents.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
@@ -274,11 +274,11 @@ void main() {
       }),
     );
 
-    expect((firstUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-1");
+    expect(((firstUser.first as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, "prompt-1");
     expect(firstUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "first");
     expect(beforeSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
     expect(afterSteer.whereType<BridgeSseMessagePartDelta>().single.messageID, "pi:session:assistant:100:1");
-    expect((steeringUser.first as BridgeSseMessageUpdated).info["promptId"], "prompt-2");
+    expect(((steeringUser.first as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, "prompt-2");
     expect(steeringUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "second");
   });
 
@@ -308,7 +308,7 @@ void main() {
         )
         .single;
 
-    expect((live.first as BridgeSseMessageUpdated).info, replay.info.toJson());
+    expect((live.first as BridgeSseMessageUpdated).info, replay.info);
     expect(live.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
@@ -348,7 +348,7 @@ void main() {
         )
         .single;
 
-    expect((live.first as BridgeSseMessageUpdated).info, replay.info.toJson());
+    expect((live.first as BridgeSseMessageUpdated).info, replay.info);
     expect(live.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part), replay.parts);
   });
 
@@ -609,9 +609,12 @@ void main() {
           )
           .single;
 
-      expect((live.single as BridgeSseMessageUpdated).info, replay.info.toJson());
+      expect((live.single as BridgeSseMessageUpdated).info, replay.info);
       if (reason == "error") {
-        expect((live.single as BridgeSseMessageUpdated).info["errorMessage"], "private provider detail");
+        expect(
+          ((live.single as BridgeSseMessageUpdated).info as PluginMessageError).errorMessage,
+          "private provider detail",
+        );
       }
     }
   });
@@ -695,7 +698,7 @@ void main() {
       }),
     );
 
-    expect(events.whereType<BridgeSseMessageUpdated>().single.info["id"] as String, contains(":bashExecution:5:1"));
+    expect(events.whereType<BridgeSseMessageUpdated>().single.info.id, contains(":bashExecution:5:1"));
     final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(part.tool, "bash");
     expect(part.state.title, "pwd");
@@ -733,7 +736,7 @@ void main() {
       }),
     );
 
-    expect(events.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:custom:6:2");
+    expect(events.whereType<BridgeSseMessageUpdated>().single.info.id, "pi:session:custom:6:2");
     expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, "Extension result");
   });
 
@@ -769,23 +772,21 @@ void main() {
     );
     final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"));
 
-    expect((retry.single as BridgeSseSessionStatus).status, {
-      "attempt": 2,
-      "message": "provider overloaded",
-      "next": 1500,
-      "type": "retry",
-    });
+    expect(
+      (retry.single as BridgeSseSessionStatus).status,
+      const PluginSessionStatus.retry(attempt: 2, message: "provider overloaded", next: 1500),
+    );
     expect(agentEnd, isEmpty);
-    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
-    expect((summarizationResumed.single as BridgeSseSessionStatus).status, {"type": "busy"});
-    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, {"type": "busy"});
+    expect((autoRetryResumed.single as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
+    expect((summarizationResumed.single as BridgeSseSessionStatus).status, const PluginSessionStatus.busy());
+    expect(compacting.whereType<BridgeSseSessionStatus>().single.status, const PluginSessionStatus.busy());
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
-    expect(runningMessage.info["id"], "pi:session:compaction:compaction:1");
+    expect(runningMessage.info.id, "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.state.status, PluginToolStatus.running);
     expect(runningPart.state.title, "Compacting context");
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
-    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], runningMessage.info["id"]);
+    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, runningMessage.info.id);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
@@ -828,8 +829,8 @@ void main() {
 
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(
-      compacted.whereType<BridgeSseMessageUpdated>().single.info["id"],
-      compacting.whereType<BridgeSseMessageUpdated>().single.info["id"],
+      compacted.whereType<BridgeSseMessageUpdated>().single.info.id,
+      compacting.whereType<BridgeSseMessageUpdated>().single.info.id,
     );
     expect(
       compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
@@ -842,7 +843,7 @@ void main() {
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
     );
-    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info.id;
 
     final failed = dispatcher.map(
       sessionId: sessionId,
@@ -860,7 +861,7 @@ void main() {
 
     expect(failed.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
     expect(failed.whereType<BridgeSseSessionError>(), hasLength(1));
-    expect(restarted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
+    expect(restarted.whereType<BridgeSseMessageUpdated>().single.info.id, messageId);
   });
 
   test("running compaction identity survives history hydration before completion", () {
@@ -868,7 +869,7 @@ void main() {
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
     );
-    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info["id"];
+    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info.id;
     identities.hydrate<void>(sessionId: sessionId, map: (_) {});
 
     final compacted = dispatcher.map(
@@ -880,8 +881,8 @@ void main() {
       event: _event("compaction_start", {"reason": "threshold"}),
     );
 
-    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info["id"], messageId);
-    expect(next.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:compaction:compaction:2");
+    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, messageId);
+    expect(next.whereType<BridgeSseMessageUpdated>().single.info.id, "pi:session:compaction:compaction:2");
   });
 
   test("interleaved sessions and unknown variants keep state isolated", () {
@@ -958,10 +959,10 @@ void main() {
       event: _event("compaction_end", {"aborted": false, "willRetry": false}),
     );
 
-    expect(finalized.whereType<BridgeSseMessageUpdated>().single.info["id"], "pi:session:assistant:10:2");
+    expect(finalized.whereType<BridgeSseMessageUpdated>().single.info.id, "pi:session:assistant:10:2");
     expect(finalized.whereType<BridgeSseMessagePartRemoved>().single.partID, "pi:session:assistant:10:2-block-1");
     expect(
-      compacted.whereType<BridgeSseMessageUpdated>().single.info["id"],
+      compacted.whereType<BridgeSseMessageUpdated>().single.info.id,
       "pi:session:compaction:compaction:2",
     );
   });

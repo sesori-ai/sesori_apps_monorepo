@@ -1,10 +1,8 @@
 import "package:material_ui/material_ui.dart";
 
-/// Semantic status colors shared across session and PR status indicators.
+/// Semantic status color shared across session and PR status indicators.
 ///
-/// GitHub-inspired palette chosen for strong light/dark contrast. Kept in a
-/// single location so the amber "attention needed" / green "active" /
-/// purple "merged" signals stay visually consistent across the app.
-const kStatusGreen = Color(0xFF3FB950);
+/// GitHub-inspired amber chosen for strong light/dark contrast. Kept in a
+/// single location so the "attention needed" signal stays visually consistent
+/// across the app.
 const kStatusAmber = Color(0xFFD29922);
-const kStatusPurple = Color(0xFFA371F7);

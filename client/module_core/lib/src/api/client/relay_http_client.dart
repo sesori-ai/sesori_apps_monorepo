@@ -44,6 +44,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Object? body,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
+    Duration timeout = _defaultRequestTimeout,
   }) => _request(
     method: HttpMethod.post,
     path: path,
@@ -51,7 +52,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     queryParameters: queryParameters,
     body: body,
     extraHeaders: headers,
-    timeout: _defaultRequestTimeout,
+    timeout: timeout,
     sensitiveResponse: false,
   );
 

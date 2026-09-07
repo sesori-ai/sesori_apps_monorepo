@@ -676,212 +676,6 @@ void main() {
       expect(result[1].projectID, "/derived/.worktrees/session");
     });
 
-    test("insertStoredSession ensures project and stores prompt defaults transactionally", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s-created",
-        backendSessionId: "backend-created",
-        pluginId: plugin.id,
-        projectId: "p-created",
-        isDedicated: true,
-        createdAt: 123,
-        worktreePath: "/tmp/wt",
-        branchName: "feature/defaults",
-        baseBranch: "main",
-        baseCommit: "abc123",
-        agent: "agent-1",
-        agentModel: const AgentModel(
-          providerID: "provider-1",
-          modelID: "model-1",
-          variant: "variant-1",
-        ),
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      final row = await db.sessionDao.getSession(sessionId: "s-created");
-
-      expect(projects.map((project) => project.projectId), equals(["p-created"]));
-      expect(row, isNotNull);
-      expect(row!.backendSessionId, equals("backend-created"));
-      expect(row.pluginId, equals(plugin.id));
-      expect(row.lastAgent, equals("agent-1"));
-      expect(row.lastAgentModel?.providerID, equals("provider-1"));
-      expect(row.lastAgentModel?.modelID, equals("model-1"));
-      expect(row.lastAgentModel?.variant, equals("variant-1"));
-      expect(row.worktreePath, equals("/tmp/wt"));
-    });
-
-    test("insertStoredSession drops the orphaned placeholder project row after re-attribution", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      // A live session.created raced ahead of the create flow: the placeholder
-      // keyed the session (and a project row) to the plugin-reported worktree
-      // cwd instead of the project the user opened.
-      const worktree = "/repo/.worktrees/s1";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [worktree]);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: worktree,
-            directory: worktree,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: true,
-        createdAt: 200,
-        worktreePath: worktree,
-        branchName: "s1",
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      // The session is re-attributed to the canonical project and the stale
-      // worktree project row is gone — it must not surface as an empty
-      // derived project card.
-      final row = await db.sessionDao.getSession(sessionId: "s1");
-      expect(row?.projectId, "/repo");
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId), equals(["/repo"]));
-    });
-
-    test("insertStoredSession keeps a project row that carries user-set state", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      // The placeholder happens to be keyed to a path the user renamed — a
-      // real project, not junk. It must survive the cleanup even once its
-      // last session is re-attributed away.
-      const touched = "/repo/renamed";
-      await db.projectsDao.setDisplayName(projectId: touched, displayName: "My Project", updatedAt: 100);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: touched,
-            directory: touched,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: false,
-        createdAt: 200,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", touched}));
-    });
-
-    test("insertStoredSession keeps a placeholder project row that other sessions still reference", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      const shared = "/repo/other";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [shared]);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: shared,
-            directory: shared,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-          (
-            sessionId: "s-other",
-            backendSessionId: "s-other",
-            projectId: shared,
-            directory: shared,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: false,
-        createdAt: 200,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", shared}));
-      expect((await db.sessionDao.getSession(sessionId: "s-other"))?.projectId, shared);
-    });
-
     test("updatePromptDefaults writes latest nullable prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -894,7 +688,8 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s-update",
         backendSessionId: "s-update",
         pluginId: plugin.id,
@@ -1353,7 +1148,8 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
-        await repository.insertStoredSession(
+        await insertTestSession(
+          db: db,
           sessionId: "stable-live",
           backendSessionId: "backend-live",
           pluginId: plugin.id,
@@ -1466,7 +1262,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "stable-s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -1532,7 +1329,8 @@ void main() {
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "wrong-plugin",
         backendSessionId: "backend-wrong-plugin",
         pluginId: "other-plugin",
@@ -1570,7 +1368,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "stable-s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -1622,7 +1421,8 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
-        await repository.insertStoredSession(
+        await insertTestSession(
+          db: db,
           sessionId: sessionId,
           backendSessionId: backendSessionId,
           pluginId: plugin.id,
@@ -2436,7 +2236,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -2645,7 +2446,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "sesori-id",
         backendSessionId: "backend-id",
         pluginId: plugin.id,

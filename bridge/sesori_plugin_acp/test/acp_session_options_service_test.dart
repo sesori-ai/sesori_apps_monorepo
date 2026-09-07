@@ -1,6 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 void main() {
@@ -21,12 +20,8 @@ void main() {
 
     final defaultEvents = mapper.map(_messageUpdate(sessionId: "other"));
     final overrideEvents = mapper.map(_messageUpdate(sessionId: "session"));
-    final defaultMessage = shared.Message.fromJson(
-      defaultEvents.whereType<BridgeSseMessageUpdated>().single.info,
-    ) as shared.MessageAssistant;
-    final overrideMessage = shared.Message.fromJson(
-      overrideEvents.whereType<BridgeSseMessageUpdated>().single.info,
-    ) as shared.MessageAssistant;
+    final defaultMessage = defaultEvents.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
+    final overrideMessage = overrideEvents.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
 
     expect((defaultMessage.modelID, defaultMessage.providerID), ("default-model", "provider"));
     expect((overrideMessage.modelID, overrideMessage.providerID), ("session-model", "session-provider"));

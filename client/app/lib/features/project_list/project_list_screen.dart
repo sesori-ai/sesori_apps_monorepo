@@ -30,21 +30,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => ProjectListCubit(
-            getIt<ProjectRepository>(),
-            getIt<ConnectionService>(),
-            getIt<SseEventTracker>(),
-            getIt<RouteSource>(),
-            projectListService: getIt<ProjectListService>(),
-            sessionUnseenTracker: getIt<SessionUnseenTracker>(),
-            registeredBridgesService: getIt<RegisteredBridgesService>(),
-            productAnalyticsService: getIt<ProductAnalyticsService>(),
-            loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
-              productAnalyticsService: getIt<ProductAnalyticsService>(),
-            ),
-            failureReporter: getIt<FailureReporter>(),
-            catalogRescanService: getIt<CatalogRescanService>(),
-          ),
+          create: (_) => createProjectListCubit(locator: getIt),
         ),
         BlocProvider(
           create: (_) => BridgeIdentityCubit(

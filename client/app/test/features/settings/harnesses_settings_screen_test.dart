@@ -199,6 +199,7 @@ void main() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 10));
     registerFallbackValue(const PluginManagementIdleTimeoutInput.noTimeout());
+    registerFallbackValue(const PluginAuthenticationContinuationIntent.pasted(rawInput: "redirect"));
     registerFallbackValue(_conflict);
     registerFallbackValue(PluginManagementForceAction.disable);
     registerFallbackValue(Uri.parse("https://example.com"));
@@ -232,13 +233,19 @@ void main() {
     when(
       () => service.startAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer(
-      (_) async => const PluginAuthenticationStartResult.challenge(
-        challenge: PluginAuthenticationChallengeResponse.deviceCode(
-          verificationUrl: "https://auth.example/device",
+      (_) async => PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
           userCode: "ABCD-EFGH",
         ),
       ),
     );
+    when(
+      () => service.submitAuthenticationRedirect(
+        pluginId: any(named: "pluginId"),
+        intent: any(named: "intent"),
+      ),
+    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
     when(
       () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
@@ -376,15 +383,15 @@ void main() {
     verifyNever(() => service.startAuthentication(pluginId: "claude"));
 
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
     });
     startResult.complete(
-      const PluginAuthenticationStartResult.challenge(
-        challenge: PluginAuthenticationChallengeResponse.deviceCode(
-          verificationUrl: "https://auth.example/device",
+      PluginAuthenticationStartResult.challenge(
+        challenge: PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
           userCode: "ABCD-EFGH",
         ),
       ),
@@ -405,7 +412,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -453,7 +460,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -470,11 +477,8 @@ void main() {
     expect(find.text("Code copied"), findsOneWidget);
   });
 
-  testWidgets("browser launch failure keeps the challenge and shows retry guidance", (tester) async {
+  testWidgets("browser authentication launches and submits a pasted redirect", (tester) async {
     _useTallSurface(tester);
-    when(
-      () => urlLauncher.launch(any(), mode: any(named: "mode")),
-    ).thenAnswer((_) async => false);
     await tester.pumpWidget(_app());
     snapshots.add(
       PluginManagementLoadResult.supported(
@@ -483,21 +487,35 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
-        verificationUri: Uri.parse("https://auth.example/device"),
-        userCode: "ABCD-EFGH",
+      "codex": PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
       ),
     });
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key("harness_authentication_open_browser")));
+    final redirectField = find.descendant(
+      of: find.byKey(const Key("harness_authentication_redirect_input")),
+      matching: find.byType(TextFormField),
+    );
+    expect(redirectField, findsOneWidget);
+    tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed!();
+    await tester.pump();
+    await tester.enterText(redirectField, "http://127.0.0.1/callback?code=opaque");
+    await tester.ensureVisible(find.byKey(const Key("harness_authentication_submit_redirect")));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_submit_redirect")));
+    await tester.pump();
 
-    expect(find.text("ABCD-EFGH"), findsOneWidget);
-    expect(find.text("The secure website could not be opened. Copy the code and try again."), findsOneWidget);
-    expect(find.byKey(const Key("harness_authentication_open_browser")), findsOneWidget);
+    verify(
+      () => urlLauncher.launch(Uri.parse("https://accounts.example/authorize"), mode: UrlLaunchMode.externalApp),
+    ).called(1);
+    final captured = verify(
+      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: captureAny(named: "intent")),
+    ).captured.single as PluginAuthenticationPastedContinuationIntent;
+    expect(captured.rawInput, "http://127.0.0.1/callback?code=opaque");
   });
 
   testWidgets("cancel waits and terminal completion closes the authentication sheet", (tester) async {
@@ -510,7 +528,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -540,7 +558,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -572,7 +590,7 @@ void main() {
     await tester.pumpAndSettle();
 
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -603,7 +621,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
@@ -660,7 +678,7 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationChallenge(
+      "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),

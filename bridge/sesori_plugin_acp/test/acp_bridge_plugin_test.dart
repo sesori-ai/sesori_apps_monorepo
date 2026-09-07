@@ -11,7 +11,11 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       plugin = composeTestAcpPlugin(
-        launchSpec: const AcpLaunchSpec(command: "/opt/agent", args: ["-e", "https://user:secret@host/api", "acp"]),
+        launchSpec: const AcpLaunchSpec(
+          includeParentEnvironment: true,
+          command: "/opt/agent",
+          args: ["-e", "https://user:secret@host/api", "acp"],
+        ),
         processFactory: (_) async => fake,
       );
     });

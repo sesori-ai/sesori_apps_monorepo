@@ -9,9 +9,11 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** deliver the harness follow-ups in `HARNESS_FOLLOWUPS.md`
-  (Codex, Grok Build, DeepSeek, Cursor) as parallel PR chains under this slug
-  without step counters; E2E testing happens after each merge
+- **Next action:** finish review of DeepSeek scoped-stop step 1/2 (#1346), then
+  after human merge deliver required step 2/2 for in-flight child launches.
+  Complete DeepSeek E2E only after both steps, then continue Codex. All five
+  replacement consumer slices merged; remaining harness and retirement gates stay
+  required.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -151,31 +153,33 @@
 
 ## Harness Follow-Ups
 
-Designs live in `HARNESS_FOLLOWUPS.md`. The four chains are independent and
-run in parallel; the Grok chain introduces the shared ACP seams that the
-DeepSeek and Cursor chains reuse, so the DeepSeek tile PR lands after the
-Grok lifecycle PRs and the Cursor PR after the Grok scoped-stop PR. Live
-probes are recorded here as bounded facts before each chain's first
-implementation PR. E2E testing is performed after each PR merges.
+Designs live in `HARNESS_FOLLOWUPS.md`. Deliver one PR at a time. The Grok
+chain introduces shared ACP seams reused by DeepSeek and Cursor; DeepSeek
+consumer slices follow the merged Grok lifecycle work, and Cursor follows
+Grok scoped stop. Live probes remain recorded as bounded facts, and existing
+post-merge E2E gates are unchanged.
 
 | Done | Harness | Description | State |
 |---|---|---|---|
-| [ ] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | Not started |
+| [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged |
 | [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
-| [ ] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) |
-| [ ] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] deepseek: inline subtask tiles and live child sessions` | Not started |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Not started |
-| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Not started |
+| [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
+| [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
+| [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
+| [x] | DeepSeek | Consumer replacement steps 1–5 | #1298, #1301, #1304, #1306, #1317 merged; oversized #1293 replaced |
+| [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346): review pending; request-time snapshot limitation documented |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required after #1346 merges and before DeepSeek E2E; concrete lifecycle design/review and implementation pending |
+| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
 
@@ -534,3 +538,197 @@ A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
 service-owned lifecycle flow and replay replacement, the proportional Grok
 denied-attempt replay limitation, and terminal DeepSeek settlement cleanup
 with no findings.
+
+A fourth follow-up `architecture-plan-review` on 2026-09-04 reconciled the
+DeepSeek design to the merged adapter contract and approved the sequence:
+prompt-contract correction, monorepo tiles/live children, release preparation,
+then scoped stop. The corrected design carries a bounded truthful prompt, has
+no settlement lifecycle or autonomous hold, and uses the enclosing standard
+update's tool-call id for replay correlation.
+
+The following DeepSeek review evidence describes the preserved full source at
+`948de715804c7120623f7ff379112f4d65c6adde`, not functionality already merged by
+an individual replacement slice.
+
+The DeepSeek tile implementation's `architecture-implementation-review`
+rejected one deferred scoped-stop addition: interrupt request/response DTOs and
+parsers had no production consumer in this change. They were removed and stay
+owned by the later scoped-stop PR; the complete protocol-v2 source fixture
+remains pinned as integrity evidence. An initial correctness review found
+Unicode-scalar validation and child project/parent attribution gaps; both were
+fixed with regressions, and its focused re-review passed with no findings.
+
+Fresh PR feedback then identified prompt echoes, nested parent/root accounting,
+cross-turn delegation correlation, dropped partial startup updates, and
+repeated history metadata decoding. The fixes retain direct parent and owning
+root separately and decode typed metadata once at the API boundary. A follow-up
+architecture implementation review required the new multi-turn correlation
+state to move from the event mapper into an injected
+`DeepSeekDelegationTracker`; the revised boundary was approved with no findings.
+
+A later review caught that rolling nested tile identities up to the root
+orphaned those tiles from both root and child message reads. Live and replay
+tiles now remain in the direct parent's transcript while activity alone rolls
+up to the root. The same review made parent deletion recursive, changed
+ambiguous cross-session tool-call correlation to fail closed, replaced the
+unbounded deferred notification list with one bounded merged snapshot, and
+moved optional replay-shape validation into the DTO factories shared by direct
+and history parsing.
+
+A subsequent Codex pass found that standard ACP permissions nest their tool-call ID,
+that a live child did not populate the plugin's separate directory cache, and
+that naively unioning deferred `content` with `rawOutput` lost chronological
+precedence. Server-request attribution now carries a typed ambiguous result all
+the way to cancellation, live descendant catalogs read the mapper's tracked
+root project, and the bounded snapshot makes the newest content representation
+authoritative.
+
+The next review found three additional ordering gaps—mixed replay parts,
+update-before-call delivery, and lifecycle frames racing the accepted user
+message—plus stale lifecycle resurrection after subtree deletion. Replay now
+splits into order-preserving runs with distinct deterministic message and part
+identities, identifiable reordered delegation updates enter the same bounded
+accumulator, lifecycle events share prompt-write
+ordering, and process-scoped tracker tombstones reject late session and child
+frames until connection reset.
+
+Archived full-source verification on 2026-09-04: protocol v2 vendoring and codegen
+completed; `dart analyze --fatal-infos` and 87 tests passed in
+`sesori_plugin_deepseek`; `dart analyze --fatal-infos` and 311 tests passed in
+`sesori_plugin_acp`; `dart analyze --fatal-infos` and 83 tests passed in
+`sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
+the DeepSeek runtime manifest remained unchanged.
+
+### PR #1293 replacement delivery
+
+User correction: the 5,431-line consumer PR exceeded the approximately
+1,500-line review target. Its branch and review fixes remain preserved; the
+five-slice breakdown is in `HARNESS_FOLLOWUPS.md`. No feature scope or release
+prerequisite is dropped, and no new architecture review is claimed for this
+packaging-only change.
+
+| Slice | Scope | State |
+|---|---|---|
+| 1/5 | Shared ACP live prerequisites | [PR #1298](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1298) merged at `59464ca14a` |
+| 2/5 | Verbatim protocol-v2 fixtures and integrity | [PR #1301](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1301) merged at `cde00fdf90` |
+| 3/5 | Typed protocol boundary and conformance | [PR #1304](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1304) merged at `747fbd3eb9` |
+| 4/5 | Live lifecycle, correlation, catalogs, runtime 0.1.3 | [PR #1306](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1306) merged at `400dcbe01a` |
+| 5/5 | Replay callback, history, remaining consumer docs | [PR #1317](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1317) merged at `4514b0b6d9` |
+
+Slice 1 verification: ACP analyze + 310 tests, unchanged DeepSeek analyze +
+42 tests, and Grok analyze + 83 tests passed. The replay callback and its
+consumer changes are deliberately absent until slice 5. `git diff --check`
+passed. At opening head `f098f78191b84790f23db081115874cb26ae0722`, the complete
+first-slice diff was **1,028 changed lines**, including plan bookkeeping and
+tests, below the 1,500-line soft cap. Reproduce that fixed measurement with:
+
+```bash
+git diff --numstat 4842614608fe05928690b9cfed4758f6e943de5a..f098f78191b84790f23db081115874cb26ae0722 |
+  awk '{ added += $1; removed += $2 } END { print added + removed }'
+```
+
+The first revision is the opening head's merge base with `main`. This is an
+opening measurement, not a self-updating claim about subsequent review fixes.
+
+User-directed quality review: the archived implementation is not frozen.
+Preserve intended behavior and valid fixes while making worthwhile local
+improvements within the line budget. A fresh audit found that descendant
+permissions survived subtree deletion. The existing cleanup loop now cancels
+those requests before forgetting their tracker records; the regression failed
+before the fix and passes afterward. ACP analysis and all 311 tests passed.
+An ancestry-traversal rewrite was declined because it would introduce an
+unnecessary parent-before-child ordering assumption.
+
+Slice 2 verification: both protocol integrity tests passed. The schema and
+valid/invalid fixtures match adapter commit `d7a48471b` byte-for-byte and all
+three manifest SHA-256 values were independently checked. Protocol-v1 files and
+the runtime manifest are untouched; no v2 consumer or interrupt implementation
+lands here. The 1,596-line fixture/test slice retains the documented soft-cap
+exception for an indivisible verbatim bundle; tracker bookkeeping is additional.
+
+Slice 3 verification: source-generated serializers, DeepSeek analysis, and all
+50 tests passed, including consumed v1/v2 conformance, Unicode bounds, malformed
+optional fields, and additive metadata retention. The terminal-summary shape
+check lives in its DTO factory, consistent with replay metadata; semantic checks
+remain in the API. Architecture implementation review approved with no findings.
+Initialization remains v1-only until slice 4 installs the live consumer. No
+fixture bytes, runtime pins, interrupt consumer, or live/replay projection changed.
+
+Slice 4 verification: architecture and focused correctness reviews found no
+issues. Duplicate call/update deferral is one branch; replay remains separate.
+User-directed sequencing change (2026-09-05): publish adapter 0.1.3 now and pin
+it in this PR instead of retaining v1 compatibility. The consumer now requires
+v2; analysis and 81 tests pass (the obsolete v1 live fallback test is removed).
+Both fixture versions remain untouched. Adapter #16 merged at `3976bcd1afbb5072bec3e87cb12e9f603282bcb6`;
+[v0.1.3](https://github.com/sesori-ai/sesori-deepseek-acp/releases/tag/v0.1.3)
+is published. [Release run 33960157438](https://github.com/sesori-ai/sesori-deepseek-acp/actions/runs/33960157438)
+passed conformance, all six native package builds/smokes, release-set verification,
+and publication. Every downloaded archive matches its published SHA-256, contains
+no links/traversal, and records source `3976bcd` plus consumer `69e9478d6` in build
+metadata. Target/minimum are now 0.1.3 with verified digests; descriptor tests prove
+0.1.2 explicit rejection and PATH replacement. Analysis and all 81 tests pass.
+No final feature E2E pass is claimed; replay and scoped-stop consumption remain pending.
+
+Slice 4's published pinning head `97adc68c8` measured **+1,446 / -100 = 1,546**
+lines, including tests/docs. The 46-line soft-budget overage accommodates the
+user-requested runtime publication/pinning in this PR instead of a later slice.
+Reproduce against its immutable merge base (later review bookkeeping is additional):
+
+```bash
+git diff --numstat 747fbd3eb9f20f07d0478dc8469dba7140103400 97adc68c8ba19d27085f4cc04b7129afa2d5668a |
+  awk '{ a += $1; d += $2 } END { print a, d, a + d }'
+```
+
+Slice 5 verification: ACP analysis and 312 tests, DeepSeek analysis and 88 tests,
+and unchanged Grok analysis and 83 tests pass. The required synchronous replay
+replacement callback lands with all callers; null preserves generic ACP tools.
+History uses chronological typed metadata without reading/mutating live child
+or delegation trackers. Run alignment preserves part order and direct-parent
+child identities; later ordinary runs receive unique message/part IDs, and empty
+source envelopes remain intact. Unlike the archive, terminal mapping stays
+non-nullable and running replay state is explicit at its call site. Tests cover
+multiple interleaved child tiles, reverse pagination, live/replay convergence,
+unbound startup failures, ordinary tool fallback, and replay-state isolation.
+Both protocol fixture versions and runtime 0.1.3 pins/checksums remain unchanged.
+Final feature E2E and scoped-stop consumption are still pending.
+
+User priority (2026-09-05): complete remaining DeepSeek follow-ups, then Codex.
+Automatic managed-runtime upgrades are owned by another session, not this series.
+Architecture implementation review approved with no findings. Implementation
+head `fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb` is **+541/-30 = 571 lines**, below
+the planned 800–1,100 range without omitting required callers or replay coverage.
+Reproduce with `git diff --numstat 8bdc2345e301e8bf7da906299df622bb9d650e19 fa4f7aaa8fa80eaf68df6b27f904d7672c1cb2fb`;
+PR-opening head `f6c319e5c` adds five review-bookkeeping lines: **+546/-30 = 576**.
+These are fixed historical measurements, not totals for subsequent revisions.
+
+DeepSeek scoped stop: the shared ACP policy is capability-gated (DeepSeek only
+for now), with typed direct-parent interrupt transport and authoritative lifecycle
+settlement. No wire `canCancel` field or per-harness policy copy was introduced.
+Foreground children covered by parent cancellation are not reported as kept merely
+because their end event is pending. A directly targeted non-cancellable child is
+retained without widening cancellation; unknown-child does not synthesize a finish.
+Opened children's new standard prompts use standard cancellation, including during
+whole-plugin interruption. Existing ACP/Grok behavior remains outside the opt-in.
+Validation: ACP analysis + 312 tests, DeepSeek analysis + 103 tests, and Grok
+analysis + 85 tests pass. Twelve scoped-stop tests cover confirmation, keep,
+nested ownership, parent-covered cancellation, reopened children, unknown-child,
+RPC failure context, and whole-plugin settlement. Interrupt DTO serializers were
+regenerated and v2 conformance consumes the frozen interrupt fixtures. Both fixture
+versions and published runtime 0.1.3 pins are untouched. Architecture review found
+an API-to-domain mapping bypass; `99949afd2` routes cancellation through the existing
+session repository/service, and the final architecture pass approved. DeepSeek
+analysis and 103 tests pass after that correction. Review follow-up permits additive
+interrupt response fields while retaining required/known-result checks; analysis
+and 104 tests pass. Named foreground children now correctly reject main-only stop
+even when all descendants are background; background named-child keep remains
+supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
+The user chose a separate successor for the in-flight late-child stop window.
+PR #1346 is scoped-stop step 1/2 with the request-time snapshot limitation documented.
+- [ ] After #1346 merges, deliver scoped-stop step 2/2: close late root/nested child
+  launches with bounded lifecycle ownership, then remove the documented limitation.
+  Establish and review the concrete design before implementation; do not start the
+  successor before human merge. Final DeepSeek E2E follows, then Codex.
+Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
+setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
+DeepSeek analysis + 106 tests pass after the merge.
+Managed runtime upgrades remain separately owned.

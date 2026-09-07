@@ -36,12 +36,14 @@ import "listeners/chat_history_listener.dart";
 import "listeners/current_project_glossary_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
+import "listeners/plugin_warmup_setting_listener.dart";
 import "listeners/session_binding_commit_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
 import "listeners/viewed_project_glossary_listener.dart";
 import "listeners/viewed_project_pr_refresh_listener.dart";
+import "listeners/viewed_session_plugin_warmup_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
 import "push/completion_push_listener.dart";
@@ -61,9 +63,11 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
+import "repositories/plugin_lifecycle_repository.dart";
 import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
@@ -139,6 +143,7 @@ import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "server/services/bridge_restart_service.dart";
 import "services/archived_session_validator.dart";
+import "services/bridge_startup_retry_service.dart";
 import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
@@ -147,6 +152,8 @@ import "services/deleted_session_storage_cleanup_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
+import "services/plugin_warmup_service.dart";
+import "services/plugin_warmup_settings_service.dart";
 import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_glossary_population_service.dart";
@@ -194,30 +201,31 @@ typedef OrchestratorComposition = ({
 /// Factory that creates [OrchestratorSession] instances with all runtime
 /// dependencies (room key, SSE manager) properly initialized.
 class Orchestrator({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final PluginLifecycleService _pluginLifecycleService,
-    required final PluginRuntime _pluginRuntime,
-    required final BridgeSettingsRepository _bridgeSettingsRepository,
-    required final ServerClock _clock,
-    required final AppDatabase _database,
-    required final ChatHistoryDatabase _chatHistoryDatabase,
-    required final AttachmentSpillStorage _attachmentSpillStorage,
-    required final ArchivedSessionStorage _archivedSessionStorage,
-    required final http.Client _httpClient,
-    required final ProcessRunner _processRunner,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final FailureReporter _failureReporter,
-    required final BridgeRestartService _restartService,
-    required final bool _filesystemAccessOk,
-    // Supervised mode only: owns the status-class pushes to the desktop GUI.
-    // Standalone has no control channel, so this is null there.
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
-
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final PluginLifecycleRepository _pluginLifecycleRepository,
+  required final PluginLifecycleService _pluginLifecycleService,
+  required final PluginRuntime _pluginRuntime,
+  required final BridgeSettingsRepository _bridgeSettingsRepository,
+  required final ServerClock _clock,
+  required final AppDatabase _database,
+  required final ChatHistoryDatabase _chatHistoryDatabase,
+  required final AttachmentSpillStorage _attachmentSpillStorage,
+  required final ArchivedSessionStorage _archivedSessionStorage,
+  required final http.Client _httpClient,
+  required final ProcessRunner _processRunner,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final FailureReporter _failureReporter,
+  required final BridgeRestartService _restartService,
+  required final bool _filesystemAccessOk,
+  // Supervised mode only: owns the status-class pushes to the desktop GUI.
+  // Standalone has no control channel, so this is null there.
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+  required final BridgeStartupRetryService _startupRetryService,
+}) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
     final pluginComposition = _pluginLifecycleService.compositionView;
@@ -267,6 +275,24 @@ class Orchestrator({
     );
     final sessionViewTracker = SessionViewTracker();
     final projectViewTracker = ProjectViewTracker();
+    final pluginWarmupSettingsService = PluginWarmupSettingsService(
+      bridgeSettingsRepository: _bridgeSettingsRepository,
+    );
+    final pluginWarmupService = PluginWarmupService(
+      sessionRepository: sessionRepository,
+      pluginLifecycleRepository: _pluginLifecycleRepository,
+      settingsService: pluginWarmupSettingsService,
+    );
+    final pluginWarmupSettingListener = PluginWarmupSettingListener(
+      tracker: sessionViewTracker,
+      warmupService: pluginWarmupService,
+      settingsService: pluginWarmupSettingsService,
+    );
+    final viewedSessionPluginWarmupListener = ViewedSessionPluginWarmupListener(
+      tracker: sessionViewTracker,
+      warmupService: pluginWarmupService,
+      settingsService: pluginWarmupSettingsService,
+    );
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: SessionUnseenRepository(
         sessionDao: _database.sessionDao,
@@ -318,6 +344,7 @@ class Orchestrator({
       completionNotifier: completionNotifier,
       contentBuilder: pushContentBuilder,
       dispatcher: pushDispatcher,
+      resolveSessionTitle: sessionRepository.getSessionTitle,
     );
     final maintenanceListener = MaintenancePushListener(
       tracker: pushTracker,
@@ -580,6 +607,7 @@ class Orchestrator({
         HealthCheckHandler(healthRepository: healthRepository),
         GetPluginManagementHandler(lifecycleService: _pluginLifecycleService),
         PostPluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
+        PostPluginAuthenticationRedirectHandler(lifecycleService: _pluginLifecycleService),
         DeletePluginAuthenticationHandler(lifecycleService: _pluginLifecycleService),
         PatchPluginIdleTimeoutHandler(lifecycleService: _pluginLifecycleService),
         GetBridgeSettingsHandler(settingsRepository: _bridgeSettingsRepository),
@@ -587,6 +615,7 @@ class Orchestrator({
         PatchBridgeSettingsHandler(
           pullRequestRefreshSettingsService: pullRequestRefreshSettingsService,
           yoloSettingsService: yoloSettingsService,
+          pluginWarmupSettingsService: pluginWarmupSettingsService,
         ),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
@@ -664,6 +693,7 @@ class Orchestrator({
       chatHistoryService: chatHistoryService,
       sessionOptionsCreationRefreshListener: sessionOptionsCreationRefreshListener,
       sessionOptionsChangedRefreshListener: sessionOptionsChangedRefreshListener,
+      sessionOptionsService: sessionOptionsService,
       sessionEventDispatcher: sessionEventDispatcher,
       pluginRuntime: _pluginRuntime,
       completionListener: completionListener,
@@ -678,6 +708,7 @@ class Orchestrator({
       mapper: BridgeEventMapper(failureReporter: _failureReporter),
       sessionPromptService: sessionPromptService,
       catalogImportProgress: catalogImportService.progress,
+      sessionOptionsCacheUpdates: sessionOptionsService.cacheUpdates,
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
@@ -687,6 +718,8 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       prSyncService: prSyncService,
       viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
+      pluginWarmupSettingListener: pluginWarmupSettingListener,
+      viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
       currentProjectGlossaryListener: currentProjectGlossaryListener,
       viewedProjectGlossaryListener: viewedProjectGlossaryListener,
       projectGlossaryPopulationService: projectGlossaryPopulationService,
@@ -705,6 +738,7 @@ class Orchestrator({
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
+      startupRetryService: _startupRetryService,
     );
     return (
       session: session,
@@ -748,66 +782,74 @@ bool _gitPathExists({required String gitPath}) {
   return FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound;
 }
 
-enum OrchestratorSessionStartResult() { ready, cancelled }
+enum OrchestratorSessionStartResult() {
+  ready,
+  cancelled,
+}
 
 /// A running bridge session with immutable runtime state.
 ///
 /// Created by [Orchestrator.create]. Call [start] once, capture
 /// [waitUntilStopped] immediately, and use [cancel] to shut down gracefully.
 class OrchestratorSession._({
-    required final BridgeConfig config,
-    required final RelayClient _client,
-    required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
-    required final PluginEventListener _pluginEventListener,
-    required final SessionBindingCommitListener _sessionBindingCommitListener,
-    required final SessionMutationListener _sessionMutationListener,
-    required final ChatHistoryListener _chatHistoryListener,
-    required final ChatHistoryActivityListener _chatHistoryActivityListener,
-    required final ChatHistoryService _chatHistoryService,
-    required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
-    required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
-    required final SessionEventDispatcher _sessionEventDispatcher,
-    required final PluginRuntime _pluginRuntime,
-    required final CompletionPushListener _completionListener,
-    required final MaintenancePushListener _maintenanceListener,
-    required final AccessTokenProvider _accessTokenProvider,
-    required final TokenRefresher _tokenRefresher,
-    required final BridgeRegistrationService _bridgeRegistrationService,
-    required final SessionEncryptor _sessionEncryptor,
-    required final KeyExchangeManager _keyExchangeManager,
-    required final SSEManager _sseManager,
-    required final RoutedRequestDispatcher _routedRequestDispatcher,
-    required final BridgeEventMapper _mapper,
-    required final SessionPromptService _sessionPromptService,
-    required Stream<CatalogImportProgress> catalogImportProgress,
-    required Stream<String> pluginManagementSnapshotTokens,
-    required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
-    required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
-    required final StreamController<int> _bytesSentController,
-    required final StreamController<SesoriSseEvent> _localWireEventsController,
-    required final FailureReporter _failureReporter,
-    required final SessionRepository _sessionRepository,
-    required final PrSyncService _prSyncService,
-    required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
-    required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
-    required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
-    required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
-    required final CurrentProjectService _currentProjectService,
-    required final SessionUnseenService _sessionUnseenService,
-    required final SessionViewTracker _sessionViewTracker,
-    required final ProjectViewTracker _projectViewTracker,
-    required final ProjectActivityService _projectActivityService,
-    required final PermissionAutoApprovalService _permissionAutoApprovalService,
-    required final YoloSettingsService _yoloSettingsService,
-    required final PendingInteractionService _pendingInteractionService,
-    required final SessionAbortService _sessionAbortService,
-    required final SessionOperationDispatcher _sessionOperationDispatcher,
-    required final SessionMutationDispatcher _sessionMutationDispatcher,
-    required final SessionCreationService _sessionCreationService,
-    required final BridgeRestartDispatcher _restartDispatcher,
-    required final ControlStatusNotifier? _statusNotifier,
-    required final ReconnectBackoffPolicy _reconnectBackoff,
-  }) {
+  required final BridgeConfig config,
+  required final RelayClient _client,
+  required final Stream<NormalizedSourcedBridgeEvent> _pluginEvents,
+  required final PluginEventListener _pluginEventListener,
+  required final SessionBindingCommitListener _sessionBindingCommitListener,
+  required final SessionMutationListener _sessionMutationListener,
+  required final ChatHistoryListener _chatHistoryListener,
+  required final ChatHistoryActivityListener _chatHistoryActivityListener,
+  required final ChatHistoryService _chatHistoryService,
+  required final SessionOptionsCreationRefreshListener _sessionOptionsCreationRefreshListener,
+  required final SessionOptionsChangedRefreshListener _sessionOptionsChangedRefreshListener,
+  required final SessionOptionsService _sessionOptionsService,
+  required final SessionEventDispatcher _sessionEventDispatcher,
+  required final PluginRuntime _pluginRuntime,
+  required final CompletionPushListener _completionListener,
+  required final MaintenancePushListener _maintenanceListener,
+  required final AccessTokenProvider _accessTokenProvider,
+  required final TokenRefresher _tokenRefresher,
+  required final BridgeRegistrationService _bridgeRegistrationService,
+  required final SessionEncryptor _sessionEncryptor,
+  required final KeyExchangeManager _keyExchangeManager,
+  required final SSEManager _sseManager,
+  required final RoutedRequestDispatcher _routedRequestDispatcher,
+  required final BridgeEventMapper _mapper,
+  required final SessionPromptService _sessionPromptService,
+  required Stream<CatalogImportProgress> catalogImportProgress,
+  required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
+  required Stream<String> pluginManagementSnapshotTokens,
+  required Stream<PluginInstallProgressUpdate> pluginInstallProgress,
+  required Stream<PluginAuthenticationProgressUpdate> pluginAuthenticationProgress,
+  required final StreamController<int> _bytesSentController,
+  required final StreamController<SesoriSseEvent> _localWireEventsController,
+  required final FailureReporter _failureReporter,
+  required final SessionRepository _sessionRepository,
+  required final PrSyncService _prSyncService,
+  required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
+  required final PluginWarmupSettingListener _pluginWarmupSettingListener,
+  required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
+  required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
+  required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
+  required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
+  required final CurrentProjectService _currentProjectService,
+  required final SessionUnseenService _sessionUnseenService,
+  required final SessionViewTracker _sessionViewTracker,
+  required final ProjectViewTracker _projectViewTracker,
+  required final ProjectActivityService _projectActivityService,
+  required final PermissionAutoApprovalService _permissionAutoApprovalService,
+  required final YoloSettingsService _yoloSettingsService,
+  required final PendingInteractionService _pendingInteractionService,
+  required final SessionAbortService _sessionAbortService,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final SessionCreationService _sessionCreationService,
+  required final BridgeRestartDispatcher _restartDispatcher,
+  required final ControlStatusNotifier? _statusNotifier,
+  required final ReconnectBackoffPolicy _reconnectBackoff,
+  required final BridgeStartupRetryService _startupRetryService,
+}) {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
   StreamSubscription<NormalizedSourcedBridgeEvent>? _normalizedEventSubscription;
@@ -850,6 +892,16 @@ class OrchestratorSession._({
     catalogImportProgress
         .listen((progress) {
           _enqueueWireEvent(SesoriSseEvent.catalogImportProgress(progress: progress));
+        })
+        .addTo(_subscriptions);
+    sessionOptionsCacheUpdates
+        .listen((update) {
+          _enqueueWireEvent(
+            SesoriSseEvent.sessionOptionsUpdated(
+              pluginId: update.pluginId,
+              projectId: update.projectId,
+            ),
+          );
         })
         .addTo(_subscriptions);
     pluginManagementSnapshotTokens
@@ -922,7 +974,7 @@ class OrchestratorSession._({
         unawaited(_processPluginEventInOrder(source));
       },
       onError: (Object e, StackTrace st) {
-        Log.w("plugin event stream error: $e");
+        Log.w("plugin event stream error", e, st);
         unawaited(
           _failureReporter.recordFailure(
             error: e,
@@ -945,6 +997,8 @@ class OrchestratorSession._({
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
     _viewedProjectPrRefreshListener.start();
+    _pluginWarmupSettingListener.start();
+    _viewedSessionPluginWarmupListener.start();
     _currentProjectGlossaryListener.start();
     _viewedProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
@@ -1010,12 +1064,12 @@ class OrchestratorSession._({
     final activePhoneIncarnations = <int, Object>{};
 
     Log.d("registering bridge with auth server...");
-    await _bridgeRegistrationService.ensureRegistered();
+    await _startupRetryService.run(operation: _bridgeRegistrationService.ensureRegistered);
     Log.d("bridge registered");
     if (_cancelled) return;
 
     Log.d("connecting to relay...");
-    final relayConnection = await _client.connect();
+    final relayConnection = await _startupRetryService.run(operation: _client.connect);
     _relayConnection = relayConnection;
     Log.d("relay connected");
     if (_cancelled) {
@@ -1165,14 +1219,21 @@ class OrchestratorSession._({
       attempt(_sessionOptionsCreationRefreshListener.dispose),
       attempt(_sessionOptionsChangedRefreshListener.dispose),
     ]);
+    // After its listeners, so no refresh they were still draining announces
+    // onto a closed stream.
+    await attempt(_sessionOptionsService.dispose);
     await attempt(_projectActivityService.dispose);
     Log.v("[shutdown] project activity service disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_completionListener.dispose);
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
-    await attempt(_viewedProjectPrRefreshListener.dispose);
+    await Future.wait([
+      attempt(_viewedProjectPrRefreshListener.dispose),
+      attempt(_pluginWarmupSettingListener.dispose),
+      attempt(_viewedSessionPluginWarmupListener.dispose),
+    ]);
     await attempt(_prSyncService.drain);
-    Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("[shutdown] maintenance + view listeners + pr-sync disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
     // api.dispose() call is gone since the descriptor flip.
@@ -1207,6 +1268,7 @@ class OrchestratorSession._({
       );
       final firstRead = iterator.moveNext();
       if (!readiness.isCompleted) {
+        _startupRetryService.markReady();
         readiness.complete(OrchestratorSessionStartResult.ready);
       }
 
@@ -1322,6 +1384,7 @@ class OrchestratorSession._({
   }
 
   void beginShutdown() {
+    _startupRetryService.cancel();
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();
@@ -1436,15 +1499,38 @@ class OrchestratorSession._({
   Future<void> _processPluginEvent(NormalizedSourcedBridgeEvent source) async {
     final pluginId = source.pluginId;
     final generation = source.generation;
-    final sourcedEvent = source.event;
     final allowDuringStop = source.allowDuringStop;
-    final terminalHandoff = sourcedEvent is BridgeSseTerminalHandoff;
-    final event = switch (sourcedEvent) {
-      BridgeSseTerminalHandoff(:final event) => event,
-      _ => sourcedEvent,
+    final (payload, terminalHandoff) = switch (source.event) {
+      NormalizedTerminalHandoff(:final payload) => (payload, true),
+      final NormalizedBridgePayload payload => (payload, false),
+    };
+    final eventType = switch (payload) {
+      NormalizedOtherEvent(:final event) => event.runtimeType,
+      NormalizedStatusEvent() || NormalizedMessageEvent() => payload.runtimeType,
     };
     try {
-      Log.v("[sse] plugin event arrived: ${event.runtimeType}");
+      Log.v("[sse] plugin event arrived: $eventType");
+      final BridgeSseEvent event;
+      switch (payload) {
+        case NormalizedStatusEvent(:final sessionId, :final status):
+          await _deliverNormalized(
+            event: _mapper.buildSessionStatusEvent(sessionId: sessionId, status: status),
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          );
+          return;
+        case NormalizedMessageEvent(:final message):
+          await _deliverNormalized(
+            event: _mapper.buildMessageUpdatedEvent(message: message),
+            pluginId: pluginId,
+            generation: generation,
+            allowDuringStop: allowDuringStop,
+          );
+          return;
+        case NormalizedOtherEvent(event: final other):
+          event = other;
+      }
 
       if (event is BridgeSsePermissionReplied) {
         final wasAutoApproved = _permissionAutoApprovalService.consumeReply(
@@ -1557,20 +1643,39 @@ class OrchestratorSession._({
         );
       }
     } catch (e, st) {
-      Log.e("[sse] error processing event ${event.runtimeType}: $e\n$st");
+      Log.e("[sse] error processing event $eventType", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
               error: e,
               stackTrace: st,
-              uniqueIdentifier: "sse_event_processing:${event.runtimeType}",
+              uniqueIdentifier: "sse_event_processing:$eventType",
               fatal: false,
               reason: "Failed to process SSE event",
-              information: [event.runtimeType.toString()],
+              information: [eventType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object reportError, StackTrace reportStackTrace) {
+              Log.w("[sse] failed to report processing failure", reportError, reportStackTrace);
+            }),
       );
     }
+  }
+
+  /// Delivers a public event built from an already-normalized shared value,
+  /// after the same current-source check the plugin-shaped path applies.
+  Future<void> _deliverNormalized({
+    required SesoriSseEvent event,
+    required String pluginId,
+    required int? generation,
+    required bool allowDuringStop,
+  }) async {
+    if (!_isCurrentSource(pluginId: pluginId, generation: generation, allowDuringStop: allowDuringStop)) return;
+    await _deliverSseEvent(
+      delivery: SseEventDelivery.uniform(event: event),
+      pluginId: pluginId,
+      generation: generation,
+      allowDuringStop: allowDuringStop,
+    );
   }
 
   /// Finalizes tool parts stranded by the ended turn and delivers each
@@ -1762,7 +1867,7 @@ class OrchestratorSession._({
         projects: await _sessionRepository.getProjectActivitySummaries(),
       );
     } catch (e, st) {
-      Log.e("[sse] error building projects summary: $e\n$st");
+      Log.e("[sse] error building projects summary", e, st);
       unawaited(
         _failureReporter
             .recordFailure(
@@ -1870,7 +1975,7 @@ class OrchestratorSession._({
     } on ControlTokenUnavailableException catch (e) {
       Log.w("No access token available for reconnect: $e");
       return false;
-    } catch (e) {
+    } catch (e, st) {
       // The refresh failed for some other reason. Only reconnect if a usable
       // cached token actually exists — reading it throws when the cache is empty
       // or sign-out-invalidated, in which case there is nothing safe to reconnect
@@ -1879,14 +1984,14 @@ class OrchestratorSession._({
       try {
         cachedToken = _accessTokenProvider.accessToken;
       } on Object {
-        Log.w("Token refresh failed and no cached token is available; deferring reconnect: $e");
+        Log.w("Token refresh failed and no cached token is available; deferring reconnect", e, st);
         return false;
       }
       if (cachedToken.isEmpty) {
-        Log.w("Token refresh failed and the cached token is empty; deferring reconnect: $e");
+        Log.w("Token refresh failed and the cached token is empty; deferring reconnect", e, st);
         return false;
       }
-      Log.w("Token refresh failed; reconnecting with the cached token: $e");
+      Log.w("Token refresh failed; reconnecting with the cached token", e, st);
       return true;
     }
   }
@@ -2037,8 +2142,8 @@ class OrchestratorSession._({
           try {
             encrypted = await _keyExchangeManager.handleKeyExchange(message: relayMessage);
             Log.d("key exchange OK, sending ready to connID=$connID");
-          } catch (e) {
-            Log.e("failed key exchange for connId $connID: $e");
+          } catch (e, st) {
+            Log.e("failed key exchange for connId $connID", e, st);
             break processMessage;
           }
 
@@ -2499,14 +2604,15 @@ class OrchestratorSession._({
 /// milliseconds-order waits instead of real minutes; production uses
 /// [ReconnectBackoffPolicy.standard].
 class const ReconnectBackoffPolicy({
-    /// Backoff for a plain network drop (network blip, relay restart).
+  /// Backoff for a plain network drop (network blip, relay restart).
   required final Duration ordinaryInitial,
-    required final Duration ordinaryMax,
-    /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
+  required final Duration ordinaryMax,
+
+  /// Backoff for a takeover drop, so two always-on bridges don't tight-loop
   /// kicking each other (ADR A22).
   required final Duration takeoverInitial,
-    required final Duration takeoverMax,
-  }) {
+  required final Duration takeoverMax,
+}) {
   static const ReconnectBackoffPolicy standard = ReconnectBackoffPolicy(
     ordinaryInitial: Duration(seconds: 1),
     ordinaryMax: Duration(seconds: 30),

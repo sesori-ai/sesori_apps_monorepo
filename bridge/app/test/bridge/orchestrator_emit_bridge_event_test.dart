@@ -11,6 +11,7 @@ import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -276,14 +277,14 @@ void main() {
         .first;
 
     harness.plugins.single.emitEvent(
-      BridgeSseMessageUpdated(
-        info: const Message.user(
+      const BridgeSseMessageUpdated(
+        info: PluginMessage.user(
           promptId: null,
           id: "message",
           sessionID: "session",
           agent: null,
-          time: MessageTime(created: 1234, completed: null),
-        ).toJson(),
+          time: PluginMessageTime(created: 1234, completed: null),
+        ),
       ),
     );
 
@@ -1100,6 +1101,7 @@ class const _OrchestratorHarness({
         accessTokenProvider: FakeAccessTokenProvider(),
         bridgeIdProvider: FakeBridgeIdProvider(),
       ),
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -1117,6 +1119,7 @@ class const _OrchestratorHarness({
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+      startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

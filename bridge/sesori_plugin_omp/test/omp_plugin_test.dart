@@ -289,9 +289,14 @@ void main() {
       expect(
         events
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == "prompt-2")
-            .info["role"],
-        "user",
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == "prompt-2",
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>(),
       );
       respond(replacement, {"stopReason": "end_turn"});
     });
@@ -420,7 +425,8 @@ void main() {
         PluginMessagePartType.text,
         PluginMessagePartType.file,
       ]);
-      final image = (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
+      final image =
+          (messages.last.parts.last as PluginMessagePartFile).attachment as PluginMessageAttachmentInlineImage;
       expect(image.base64, "AQ==");
       expect(image.filename, "history.webp");
       expect(image.toString(), isNot(contains("/private/")));

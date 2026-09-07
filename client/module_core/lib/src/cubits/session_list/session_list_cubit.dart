@@ -24,9 +24,14 @@ import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
+import "../shared/optimistic_rename_tracker.dart";
 import "session_list_state.dart";
 
-enum _SessionFetchOutcome() { applied, failed, superseded }
+enum _SessionFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
 
 class SessionListCubit({
   required final SessionRepository _sessionRepository,
@@ -110,7 +115,7 @@ class SessionListCubit({
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriCommandCatalogUpdated() ||
+            SesoriSessionOptionsUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
@@ -120,10 +125,6 @@ class SessionListCubit({
             SesoriMessagePartUpdated() ||
             SesoriMessagePartDelta() ||
             SesoriMessagePartRemoved() ||
-            SesoriPtyCreated() ||
-            SesoriPtyUpdated() ||
-            SesoriPtyExited() ||
-            SesoriPtyDeleted() ||
             SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriPermissionUpdated() ||
@@ -138,18 +139,8 @@ class SessionListCubit({
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||
             SesoriFileEdited() ||
-            SesoriFileWatcherUpdated() ||
-            SesoriLspUpdated() ||
-            SesoriLspClientDiagnostics() ||
-            SesoriMcpToolsChanged() ||
-            SesoriMcpBrowserOpenFailed() ||
-            SesoriInstallationUpdated() ||
             SesoriInstallationUpdateAvailable() ||
-            SesoriWorkspaceReady() ||
-            SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
-            SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
             // Unseen changes are consumed via the SessionUnseenTracker stream.
             SesoriSessionUnseenChanged():
           break;
@@ -411,19 +402,92 @@ class SessionListCubit({
     };
   }
 
-  /// Renames a session. Returns `true` on success so the screen can show
-  /// a confirmation message.
+  /// Renames a session optimistically. Returns `false` after restoring the
+  /// prior title when the bridge rejects the rename.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
-    if (isClosed) return false;
+    if (state is! SessionListLoaded) return false;
+
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index < 0) return false;
+
+    final token = ++_nextRenameToken;
+    final renameState = _renameStateBySessionId.putIfAbsent(
+      sessionId,
+      () => OptimisticRenameTracker(confirmedValue: _allSessions[index].title),
+    );
+    renameState.begin(token: token, value: title);
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: _allSessions[index].copyWith(title: title),
+    );
+    _emitFiltered();
+
+    final ApiResponse<Session> response;
+    try {
+      response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+    } on Object {
+      _completeSessionRename(
+        sessionId: sessionId,
+        token: token,
+        title: title,
+        succeeded: false,
+      );
+      return false;
+    }
 
     switch (response) {
       case SuccessResponse():
-        await refreshSessions();
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: true,
+        );
+        if (!isClosed) {
+          unawaited(
+            _refreshSessions(
+              force: true,
+              catalogRefresh: false,
+              waitForPrData: _activeRefreshWaitsForPrData,
+            ),
+          );
+        }
         return true;
       case ErrorResponse():
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: false,
+        );
         return false;
     }
+  }
+
+  void _completeSessionRename({
+    required String sessionId,
+    required int token,
+    required String title,
+    required bool succeeded,
+  }) {
+    final renameState = _renameStateBySessionId[sessionId];
+    if (renameState == null) return;
+    renameState.complete(token: token, value: title, succeeded: succeeded);
+    if (!renameState.isSettled) {
+      if (!isClosed && state is SessionListLoaded) _emitFiltered();
+      return;
+    }
+
+    _renameStateBySessionId.remove(sessionId);
+    if (isClosed || state is! SessionListLoaded) return;
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index >= 0) {
+      _allSessions = _sessionListService.upsertSession(
+        sessions: _allSessions,
+        session: _allSessions[index].copyWith(title: renameState.confirmedValue),
+      );
+    }
+    _emitFiltered();
   }
 
   /// Deletes a session permanently.
@@ -486,6 +550,11 @@ class SessionListCubit({
   /// Tracks the full unfiltered server response so toggling archived
   /// doesn't require a network round-trip.
   List<Session> _allSessions = [];
+
+  /// Keeps pre-rename list responses from repainting an old title while the
+  /// mutation is still pending.
+  final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
+  int _nextRenameToken = 0;
   bool _showArchived = false;
 
   void toggleArchived() {
@@ -495,7 +564,10 @@ class SessionListCubit({
 
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
-      sessions: _allSessions,
+      sessions: _allSessions.map((session) {
+        final renameState = _renameStateBySessionId[session.id];
+        return renameState == null ? session : session.copyWith(title: renameState.visibleValue);
+      }),
       showArchived: _showArchived,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:

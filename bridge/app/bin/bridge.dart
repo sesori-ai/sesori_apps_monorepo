@@ -424,6 +424,7 @@ class ConfigCommand() extends cli.Command<void> {
   this {
     addSubcommand(ConfigTrackCommand());
     addSubcommand(ConfigYoloCommand());
+    addSubcommand(ConfigWarmupCommand());
     addSubcommand(ConfigPluginsCommand());
     addSubcommand(ConfigEditCommand());
   }
@@ -607,6 +608,52 @@ class ConfigYoloCommand() extends cli.Command<void> {
   }
 }
 
+class ConfigWarmupCommand() extends cli.Command<void> {
+  @override
+  final name = 'warmup';
+
+  @override
+  final description = 'Show or set session-open plugin warm-up (on|off)';
+
+  @override
+  Future<void> run() async {
+    final results = argResults;
+    if (results == null) {
+      usageException('Unable to read command arguments.');
+    }
+    final rest = results.rest;
+    final repository = BridgeSettingsRepository(defaultEditorApi: null, api: BridgeSettingsApi());
+
+    if (rest.isEmpty) {
+      final settings = await repository.loadSettings();
+      stdout.writeln(
+        'Session-open plugin warm-up: ${settings.warmUpPluginsOnSessionOpen ? 'on' : 'off'}',
+      );
+      return;
+    }
+
+    if (rest.length > 1) {
+      usageException('Expected a single session-open warm-up mode: on or off.');
+    }
+
+    final enabled = _parseWarmupArgument(rest.single);
+    await repository.updateWarmUpPluginsOnSessionOpen(enabled: enabled);
+    stdout.writeln('Session-open plugin warm-up set to ${enabled ? 'on' : 'off'}.');
+    stdout.writeln('Restart sesori-bridge to apply.');
+  }
+
+  bool _parseWarmupArgument(String value) {
+    switch (value) {
+      case 'on':
+        return true;
+      case 'off':
+        return false;
+      default:
+        usageException('Session-open warm-up mode must be "on" or "off".');
+    }
+  }
+}
+
 class UpdateCommand() extends cli.Command<void> {
   @override
   final name = 'update';
@@ -764,6 +811,9 @@ class UpdateCommand() extends cli.Command<void> {
 }
 
 Future<void> main(List<String> args) async {
+  // A browser command must succeed silently, even after its parent cancels.
+  if (BrowserNoop.matches(arguments: args)) return;
+
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e('Unsupported platform ${Platform.operatingSystem}');
     exit(1);

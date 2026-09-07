@@ -14,6 +14,7 @@ import "../api/codex_tool_outcome_storage.dart";
 import "../api/parsers/codex_command_execution_parser.dart";
 import "../api/parsers/codex_file_change_parser.dart";
 import "../api/parsers/codex_image_bearing_item_parser.dart";
+import "../api/parsers/codex_sub_agent_item_parser.dart";
 import "../codex_config_reader.dart";
 import "../codex_event_mapper.dart";
 import "../codex_metadata_repository.dart";
@@ -22,10 +23,12 @@ import "../codex_stdio_app_server_client.dart";
 import "../repositories/codex_authentication_repository.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
+import "../repositories/codex_sub_agent_tracker.dart";
 import "../repositories/codex_tool_lifecycle_tracker.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_image_attachment_mapper.dart";
 import "../repositories/mappers/codex_rollout_tool_mapper.dart";
+import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/mappers/codex_user_content_mapper.dart";
 import "../services/codex_authentication_service.dart";
 import "../services/codex_rollout_tailer.dart";
@@ -85,6 +88,8 @@ CodexManagedApi _defaultBuildApi({
         configReader: configReader,
       ),
       toolOutcomeRepository: toolOutcomeRepository,
+      subAgentTracker: CodexSubAgentTracker(),
+      sessionMapper: const CodexSessionMapper(),
       launchDirectory: launchDirectory,
     ),
     eventMapper: CodexEventMapper(
@@ -108,6 +113,7 @@ CodexManagedApi _defaultBuildApi({
     commandExecutionParser: const CodexCommandExecutionParser(),
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
+    subAgentItemParser: const CodexSubAgentItemParser(),
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
@@ -217,6 +223,7 @@ class const CodexPluginDescriptor({
       manifest: manifest,
       versionValidator: RuntimeVersionValidator(
         commandExecutor: HostProcessCommandExecutor(
+          includeParentEnvironment: true,
           processes: processes,
           runInShell: io.Platform.isWindows,
           maxCapturedOutputCharactersPerStream: maxCapturedOutputCharactersPerStream,
@@ -224,13 +231,13 @@ class const CodexPluginDescriptor({
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
       ),
+      inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
       explicitExecutablePath: _explicitBin(config),
       fallbackExecutableCandidates: _desktopCandidates(environment: environment),
       environment: environment,
       stateDirectory: stateDirectory,
       abortSignal: abortSignal,
-      managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
     );
   }
 
@@ -259,42 +266,47 @@ class const CodexPluginDescriptor({
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: CodexRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> installRuntime({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = CodexRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
     final httpClient = http.Client();
     try {
-      final installService = ManagedRuntimeInstallService(
+      final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
         versionValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
         ),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installService.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -359,6 +371,7 @@ class const CodexPluginDescriptor({
     final executable = selectedRuntime.binaryPath;
     final runtimeVersion = selectedRuntime.version.raw;
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -413,26 +426,43 @@ class const CodexPluginDescriptor({
     }
 
     const manifest = CodexRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: RuntimeVersionValidator(
-          commandExecutor: HostProcessCommandExecutor(
-            processes: host.processes,
-            runInShell: io.Platform.isWindows,
-            maxCapturedOutputCharactersPerStream: null,
-          ),
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
           manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
-        ),
-      ),
-      fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
-    ).provision(host: host, explicitExecutablePath: null);
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: HostProcessCommandExecutor(
+              includeParentEnvironment: true,
+              processes: host.processes,
+              runInShell: io.Platform.isWindows,
+              maxCapturedOutputCharactersPerStream: null,
+            ),
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+          ),
+          fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
+        )
+        .provision(host: host, explicitExecutablePath: null);
   }
 
   @override
-  Stream<PluginAuthenticationEvent> authenticate({
+  PluginAuthenticationOperation authenticate({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required HostJsonStore store,
+    required StartAbortSignal aborted,
+  }) => PluginAuthenticationOperation.deviceCode(
+    events: _authenticate(
+      config: config,
+      processes: processes,
+      environment: environment,
+      stateDirectory: stateDirectory,
+      aborted: aborted,
+    ),
+  );
+
+  Stream<PluginAuthenticationDeviceCodeEvent> _authenticate({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
@@ -614,6 +644,8 @@ class const CodexPluginDescriptor({
       displayName: "Codex",
       logContext: "codex",
       interruptOwnedOnly: false,
+      // Codex has no first-call latency worth paying down before it is asked.
+      onStartWarmUp: null,
     );
 
     // Await cold-start (the WebSocket connect + `initialize` handshake). A
@@ -624,38 +656,10 @@ class const CodexPluginDescriptor({
     // readiness probe but stalls the handshake must not hang start() under the
     // bridge's cross-instance startup mutex. Past the budget the cold-start
     // keeps running in the background and the plugin starts degraded.
-    final coldStart = api.initialize();
-    var budgetExceeded = false;
-    // The sink keeps a post-budget failure from surfacing as an unhandled async
-    // error once the await below has moved on; the awaited path observes (and
-    // logs) every pre-budget failure itself.
-    unawaited(
-      coldStart.catchError((Object error, StackTrace stackTrace) {
-        if (budgetExceeded) {
-          Log.w("[codex] cold-start failed after the start budget: $error");
-        }
-      }),
-    );
-    try {
-      await coldStart.timeout(
-        _coldStartBudget,
-        onTimeout: () {
-          budgetExceeded = true;
-          Log.w(
-            "[codex] cold-start did not finish within ${_coldStartBudget.inSeconds}s — "
-            "starting degraded while it keeps running in the background",
-          );
-        },
-      );
-      if (budgetExceeded) {
-        reporter.markDegradedNow();
-      } else {
-        reporter.markConnected();
-      }
-    } on Object catch (error) {
-      Log.w("[codex] cold-start did not complete cleanly: $error");
-      reporter.markDegradedNow();
-    }
+    await ManagedRuntimeColdStartService(
+      budget: _coldStartBudget,
+      logTag: "codex",
+    ).run(coldStart: api.initialize(), reporter: reporter);
 
     // The cold-start is a phase boundary: an abort observed here must roll back
     // everything acquired so far (api transport, monitor, the owned child)
@@ -663,8 +667,8 @@ class const CodexPluginDescriptor({
     if (host.startAborted.isAborted) {
       try {
         await plugin.shutdown(budget: null);
-      } on Object catch (error) {
-        Log.e("[codex] rollback after aborted start failed: $error");
+      } on Object catch (error, stackTrace) {
+        Log.e("[codex] rollback after aborted start failed", error, stackTrace);
       }
       throw const PluginStartAbortedException();
     }

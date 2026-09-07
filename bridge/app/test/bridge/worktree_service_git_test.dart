@@ -343,6 +343,7 @@ void main() {
     });
 
     test("fetchOriginBranch refreshes only the selected origin branch", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "upstream\norigin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 0));
 
       await service.fetchOriginBranch(
@@ -350,9 +351,10 @@ void main() {
         branchName: "main",
       );
 
-      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations, hasLength(2));
+      expect(processRunner.invocations.first.arguments, ["remote"]);
       expect(
-        processRunner.invocations.single.arguments,
+        processRunner.invocations.last.arguments,
         equals([
           "fetch",
           "--no-write-fetch-head",
@@ -362,10 +364,10 @@ void main() {
           "+refs/heads/main:refs/remotes/origin/main",
         ]),
       );
-      expect(processRunner.invocations.single.workingDirectory, equals("/repo/project"));
-      expect(processRunner.invocations.single.timeout, const Duration(seconds: 30));
+      expect(processRunner.invocations.last.workingDirectory, equals("/repo/project"));
+      expect(processRunner.invocations.last.timeout, const Duration(seconds: 30));
       expect(
-        processRunner.invocations.single.environment,
+        processRunner.invocations.last.environment,
         const {"GIT_TERMINAL_PROMPT": "0"},
       );
     });
@@ -383,6 +385,7 @@ void main() {
     });
 
     test("fetchOriginBranch throws ProcessException when git fails", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "origin\n"));
       processRunner.enqueue(result: _processResult(exitCode: 1, stderr: "offline"));
 
       await expectLater(
@@ -396,6 +399,33 @@ void main() {
               .having((error) => error.message, "message", "offline"),
         ),
       );
+    });
+
+    for (final remotes in ["", "upstream\nmy-origin\n"]) {
+      test("fetchOriginBranch skips fetching without origin (remotes: $remotes)", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 0, stdout: remotes));
+
+        await service.fetchOriginBranch(projectPath: "/repo/project", branchName: "main");
+
+        expect(processRunner.invocations, hasLength(1));
+        expect(processRunner.invocations.single.arguments, ["remote"]);
+        expect(processRunner.invocations.single.workingDirectory, "/repo/project");
+      });
+    }
+
+    test("fetchOriginBranch preserves remote discovery failures", () async {
+      processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "cannot read config"));
+
+      await expectLater(
+        service.fetchOriginBranch(projectPath: "/repo/project", branchName: "main"),
+        throwsA(
+          isA<ProcessException>()
+              .having((error) => error.arguments, "arguments", ["remote"])
+              .having((error) => error.errorCode, "errorCode", 128)
+              .having((error) => error.message, "message", "cannot read config"),
+        ),
+      );
+      expect(processRunner.invocations, hasLength(1));
     });
 
     group("inspectWorktreeSafety", () {

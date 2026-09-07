@@ -26,7 +26,7 @@ void main() {
       plugin = _RegistryCapturingAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
@@ -478,9 +478,9 @@ void main() {
       await pump();
 
       final inlineError = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["role"] == "error",
+        (event) => event.info is PluginMessageError,
       );
-      expect(inlineError.info["errorMessage"], "Agent is already processing.");
+      expect((inlineError.info as PluginMessageError).errorMessage, "Agent is already processing.");
       expect(
         events.whereType<BridgeSseSessionError>(),
         isNotEmpty,

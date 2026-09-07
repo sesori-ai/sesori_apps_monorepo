@@ -16,7 +16,8 @@ const Duration _staleAfter = Duration(days: 1);
 
 sealed class const SessionOptionsOutcome();
 
-final class const SessionOptionsAvailable({required final SessionOptionsResponse response}) extends SessionOptionsOutcome;
+final class const SessionOptionsAvailable({required final SessionOptionsResponse response})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome;
 
@@ -27,36 +28,57 @@ sealed class const SessionOptionsRefreshFailure();
 final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
 
 final class const SessionOptionsCaughtRefreshFailure({
-    required final Object cause,
-    required final StackTrace causeStackTrace,
-  }) extends SessionOptionsRefreshFailure {
+  required final Object cause,
+  required final StackTrace causeStackTrace,
+}) extends SessionOptionsRefreshFailure {
   @override
   String toString() => "SessionOptionsCaughtRefreshFailure";
 }
 
-final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedRetained({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
-final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure}) extends SessionOptionsOutcome;
+final class const SessionOptionsRefreshFailedUnavailable({required final SessionOptionsRefreshFailure failure})
+    extends SessionOptionsOutcome;
 
 final class const SessionOptionsAutomaticNoOp() extends SessionOptionsOutcome;
 
+/// A committed snapshot, announced so screens already showing these options can
+/// re-read the cache instead of continuing to render what it replaced.
+/// [projectId] is null for a plugin-scoped catalog, which every project shares.
+final class const SessionOptionsCacheUpdate({
+  required final String pluginId,
+  required final String? projectId,
+});
+
 class SessionOptionsService({
-    required final SessionOptionsRepository _repository,
-    required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
-    required Map<String, PluginSessionOptionsScope> pluginScopes,
-    required final ServerClock _clock,
-    required final Duration _retention,
-  }) {
-  this{
+  required final SessionOptionsRepository _repository,
+  required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
+  required Map<String, PluginSessionOptionsScope> pluginScopes,
+  required final ServerClock _clock,
+  required final Duration _retention,
+}) {
+  this {
     if (_retention.isNegative) {
       throw ArgumentError.value(_retention, "retention", "must not be negative");
     }
   }
 
-  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(pluginScopes);
+  final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(
+    pluginScopes,
+  );
+  final StreamController<SessionOptionsCacheUpdate> _cacheUpdatesController =
+      StreamController<SessionOptionsCacheUpdate>.broadcast(sync: true);
   final Map<SessionOptionsCacheKey, _RefreshCoordinator> _refreshes = {};
   final KeyedParallelLock<SessionOptionsCacheKey> _invalidationLock = KeyedParallelLock<SessionOptionsCacheKey>();
   final Map<SessionOptionsCacheKey, int> _invalidationEpochs = {};
+
+  /// Committed snapshots, in commit order. A refresh that changed nothing the
+  /// cache did not already hold still announces: the commit is what proves the
+  /// snapshot current, and a consumer re-reading an unchanged cache is cheap.
+  Stream<SessionOptionsCacheUpdate> get cacheUpdates => _cacheUpdatesController.stream;
+
+  Future<void> dispose() => _cacheUpdatesController.close();
 
   Future<SessionOptionsOutcome> loadDynamic({
     required String pluginId,
@@ -225,7 +247,10 @@ class SessionOptionsService({
     if (resolved == null) return;
     final key = resolved.key;
     _invalidationEpochs[key] = _invalidationEpoch(key: key) + 1;
-    await _invalidationLock.use(key: key, operation: () => _repository.delete(key: key));
+    await _invalidationLock.use(
+      key: key,
+      operation: () => _repository.delete(key: key),
+    );
   }
 
   /// Holds a commit until every delete already issued for [key] has settled,
@@ -265,6 +290,26 @@ class SessionOptionsService({
         invalidationEpoch: invalidationEpoch,
       ),
     );
+  }
+
+  /// Brings every project-scoped snapshot this plugin holds up to date, for a
+  /// backend change that named no session — Codex reporting changed skills, for
+  /// one. Only cached, unexpired projects are refreshed: a project the user has
+  /// never opened options for has nothing to correct, and a snapshot already
+  /// past retention should expire rather than be renewed here, which also keeps
+  /// this bounded on an installation with a long project history.
+  Future<void> refreshActiveOnlyForCachedProjects({
+    required String pluginId,
+    required int generation,
+  }) async {
+    if (!_repository.isCurrentGeneration(pluginId: pluginId, generation: generation)) return;
+    final projectIds = await _repository.listCachedProjectIds(
+      pluginId: pluginId,
+      notBefore: _clock.now().toUtc().subtract(_retention),
+    );
+    for (final projectId in projectIds) {
+      await refreshActiveOnly(pluginId: pluginId, projectId: projectId, generation: generation);
+    }
   }
 
   Future<SessionOptionsOutcome> refreshActiveOnlyForBackendSession({
@@ -476,7 +521,6 @@ class SessionOptionsService({
       key: key,
       revision: expectedRevision == null ? 1 : expectedRevision + 1,
       capturedAt: capturedAt,
-      completeness: observation.completeness,
       response: observation.response,
     );
     try {
@@ -495,6 +539,7 @@ class SessionOptionsService({
         }
         return _CommitFailed(outcome: _invalidatedRefreshOutcome(automatic: automatic));
       }
+      if (committed) _announceCommit(key: key);
       return committed ? const _CommitSucceeded() : const _CommitConflict();
     } on Object catch (error, stackTrace) {
       if (!await _isCurrentInvalidationEpoch(key: key, expected: invalidationEpoch)) {
@@ -513,6 +558,19 @@ class SessionOptionsService({
         ),
       );
     }
+  }
+
+  void _announceCommit({required SessionOptionsCacheKey key}) {
+    if (_cacheUpdatesController.isClosed) return;
+    _cacheUpdatesController.add(
+      SessionOptionsCacheUpdate(
+        pluginId: key.pluginId,
+        projectId: switch (key) {
+          PluginSessionOptionsCacheKey() => null,
+          ProjectSessionOptionsCacheKey(:final projectId) => projectId,
+        },
+      ),
+    );
   }
 
   bool _canReplace({
@@ -622,19 +680,14 @@ class SessionOptionsService({
     try {
       entry = await _repository.read(key: key);
     } on SessionOptionsCacheDecodingException catch (error) {
-      final revision = error.revision;
-      if (revision == null) {
-        if (retryAfterDeleteConflict) {
-          return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
-        }
-        Log.w("Unable to recover undecodable session options cache for plugin ${key.pluginId}");
-        return null;
-      }
-      Log.w("Recovering from undecodable session options cache for plugin ${key.pluginId}");
+      Log.w(
+        "Recovering from undecodable session options cache for plugin ${key.pluginId} "
+        "(discarding revision ${error.revision})",
+      );
       if (!await _isCurrentCacheKey(key: key)) return null;
       final deleted = await _repository.deleteIfRevision(
         key: key,
-        expectedRevision: revision,
+        expectedRevision: error.revision,
       );
       if (!deleted && retryAfterDeleteConflict) {
         return await _readValidAttempt(key: key, retryAfterDeleteConflict: false);
@@ -754,19 +807,22 @@ class SessionOptionsService({
 }
 
 final class const _ResolvedSessionOptions({
-    required final SessionOptionsCacheKey key,
-    required final String projectId,
-    required final String projectPath,
-  });
+  required final SessionOptionsCacheKey key,
+  required final String projectId,
+  required final String projectPath,
+});
 
-enum _RefreshIntent() { reuse, forced }
+enum _RefreshIntent() {
+  reuse,
+  forced,
+}
 
 final class _RefreshCoordinator({
-    required var _RefreshIntent intent,
-    required var int? generation,
-    required var int invalidationEpoch,
-    required var Future<SessionOptionsOutcome> terminal,
-  });
+  required var _RefreshIntent intent,
+  required var int? generation,
+  required var int invalidationEpoch,
+  required var Future<SessionOptionsOutcome> terminal,
+});
 
 sealed class const _CommitAttempt();
 
