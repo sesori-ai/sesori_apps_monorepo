@@ -16,10 +16,6 @@ class AntigravityProfileService({
   static const _removedPrefixes = ["GOOGLE_", "GEMINI_", "GCLOUD_", "CLOUDSDK_", "AGY_", "ANTIGRAVITY_", "PYTHON"];
   static const _removedKeys = {"BROWSER", "ELECTRON_RUN_AS_NODE", "GCP_PROJECT", "GCP_LOCATION"};
 
-  AntigravityAuthenticationHint inspectAuthentication() => _repository.hasToken()
-      ? AntigravityAuthenticationHint.tokenPresent
-      : AntigravityAuthenticationHint.authenticationRequired;
-
   Future<AntigravityPreparedProfile> prepare({
     required Map<String, String> hostEnvironment,
     required AntigravityAuthenticationBudget budget,

@@ -1,0 +1,63 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
+import "../foundation/antigravity_release.dart";
+import "../models/antigravity_profile.dart";
+import "../models/antigravity_runtime_resolution.dart";
+import "antigravity_profile_inspection_service.dart";
+import "antigravity_runtime_service.dart";
+
+/// Combines inert runtime-pair and isolated-profile inspection.
+class AntigravitySetupService({
+  required final AntigravityRuntimeService _runtime,
+  required final AntigravityProfileInspectionService _profile,
+}) {
+  PluginSetupStatus inspect({
+    required String? explicitServerPath,
+    required String? managedServerPath,
+    required Map<String, String> environment,
+    required PlatformTarget target,
+    required String geminiHome,
+  }) {
+    final runtime = _runtime.inspect(
+      explicitServerPath: explicitServerPath,
+      managedServerPath: managedServerPath,
+      pathEnvironment: environment,
+      target: target,
+    );
+    switch (runtime) {
+      case AntigravityRuntimeCandidateFound():
+        return switch (_profile.inspect(geminiHome: geminiHome)) {
+          AntigravityAuthenticationHint.tokenPresent => const PluginSetupReady.versioned(
+            runtimeVersion: AntigravityRelease.agentVersion,
+          ),
+          AntigravityAuthenticationHint.authenticationRequired => const PluginSetupAuthenticationRequired.versioned(
+            actionHint:
+                "Authenticate Antigravity from a current Sesori mobile or desktop app. Older clients must update.",
+            runtimeVersion: AntigravityRelease.agentVersion,
+          ),
+        };
+      case AntigravityRuntimeCandidateMissing(:final source):
+        return PluginSetupRuntimeMissing(
+          actionHint: source == AntigravityRuntimeSource.explicit
+              ? "Fix the configured Antigravity runtime pair, then restart the bridge."
+              : "Provide the official Antigravity ACP runtime pair, then retry setup detection.",
+        );
+      case AntigravityRuntimeCandidateRejected(:final source):
+        return PluginSetupUnavailable(
+          actionHint: source == AntigravityRuntimeSource.explicit
+              ? "Fix the configured Antigravity runtime pair, then restart the bridge."
+              : "The discovered Antigravity runtime pair is invalid. Replace it with the official pair.",
+        );
+      case AntigravityRuntimeCandidateUnsupported():
+        return const PluginSetupUnavailable(
+          actionHint: "Google does not publish the Antigravity ACP runtime for this platform.",
+        );
+      case AntigravityRuntimeCandidateStorageFailed(:final cause, :final stackTrace):
+        Log.w("[antigravity] setup runtime inspection failed", cause, stackTrace);
+        return const PluginSetupUnknown(
+          actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+        );
+    }
+  }
+}
