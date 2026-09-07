@@ -547,17 +547,19 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
 | monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/3]` | #1346 merged at `2cc1485d7c`; request-time snapshot limitation documented |
-| adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Native atomic stop and ordered input cancellation; prerequisite release before consumer pin |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 3/3]` | Consume native authority and verified runtime; required before final DeepSeek E2E |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/4]` | #1346 merged at `2cc1485d7c`; request-time snapshot limitation documented |
+| adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/4]` | Adapter #17 merged at `5eecdf68a3`; native atomic stop and ordered input cancellation |
+| adapter | 🌱 | `[claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` | Release-config bookkeeping and human-reviewed publication prerequisite |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` | Consume native authority and verified runtime; required before final DeepSeek E2E |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
 ### Scoped-stop successor (user-approved split)
 
 The user chose a separate successor to #1346, then approved native adapter and
 release expansion after investigation found that child Activation end is not
-interrupted-turn settlement. The scoped-stop subseries now has three steps; it
-does not replace final regression reconciliation, E2E, or retirement gates.
+interrupted-turn settlement. Release preparation needs its own human-reviewed
+bookkeeping PR, so the scoped-stop subseries has four steps. It does not replace
+final regression reconciliation, E2E, or retirement gates.
 Finish it before DeepSeek E2E, then continue Codex.
 
 Evidence is a reachable I/O interleaving, not yet a live reproduction: native

@@ -8,9 +8,10 @@ Use native atomic cancellation, not a bridge stop fence. Original #1346 merged a
 this native boundary and its consumer land.
 
 Fixed scoped-stop subseries (existing final regression/E2E/retirement gates stay):
-1. `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/3]` — #1346, merged.
-2. `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` — native prerequisite and release.
-3. `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 3/3]` — bridge consumer and verified pin.
+1. `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/4]` — #1346, merged.
+2. `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/4]` — adapter #17, merged.
+3. `🌱 [claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` — release config and publication.
+4. `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` — bridge consumer and verified pin.
 
 Human merges each PR. Use the existing native checkout; never create a worktree.
 Finish DeepSeek E2E after these steps, then Codex. Automatic runtime upgrades are
@@ -120,7 +121,7 @@ snapshots required by confirm/keep; no compatibility shims for internal callers.
 Keep extension v2 and all existing native/bridge v1/v2 corpus bytes unchanged.
 Add separate `protocol/scoped-stop/v1/` schema/fixtures for the new endpoint and
 server request, then freeze matching consumer evidence with source manifests.
-Confirm the next available adapter patch (expected 0.1.4), keeping the harness pin.
+Publish adapter 0.1.4, confirmed absent before release prep; keep the harness pin.
 Publish and verify native artifacts before raising the bridge minimum/target and
 all six hashes. No temporary old-runtime fallback. Existing-consumer release
 conformance proves only retained v2 behavior, never the new endpoint. Check the

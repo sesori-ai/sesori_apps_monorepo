@@ -9,9 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** #1346 merged. Deliver the user-approved native atomic-stop
-  prerequisite/release (step 2/3), then bridge consumption and pin (step 3/3).
-  Complete DeepSeek E2E afterward, then continue Codex. All five replacement
+- **Next action:** native atomic-stop #17 merged. Deliver the reviewed 0.1.4
+  release preparation/publication (step 3/4), then bridge consumption and pin
+  (step 4/4). Complete DeepSeek E2E afterward, then continue Codex. All five replacement
   consumer slices merged; remaining harness and retirement gates stay required.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
@@ -176,9 +176,10 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [x] | DeepSeek | Consumer replacement steps 1–5 | #1298, #1301, #1304, #1306, #1317 merged; oversized #1293 replaced |
 | [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
-| [x] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/3]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346) merged at `2cc1485d7c`; request-time snapshot limitation documented |
-| [ ] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Native implementation in progress; release precedes the consumer minimum/pin |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 3/3]` | Native authority consumer, verified pin and coverage; required before DeepSeek E2E |
+| [x] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/4]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346) merged at `2cc1485d7c`; request-time snapshot limitation documented |
+| [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/4]` | [Adapter #17](https://github.com/sesori-ai/sesori-deepseek-acp/pull/17) merged at `5eecdf68a3`; 165 tests plus 4 release tests pass |
+| [ ] | DeepSeek (adapter) | `🌱 [claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` | Release config selects merged #1346; publication follows human merge |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` | Native authority consumer, verified pin and coverage; required before DeepSeek E2E |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -724,8 +725,9 @@ even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
 The user chose a separate successor, then approved an adapter/release expansion
 when investigation showed activation end cannot identify interrupted-turn settlement.
-#1346 merged at `2cc1485d7c` and is now step 1/3. Step 2/3 adds native atomic stop;
-step 3/3 consumes it. See `followups/deepseek-atomic-stop.md` for the concrete design.
+#1346 merged at `2cc1485d7c` (step 1/4), and native #17 merged at
+`5eecdf68a3` (step 2/4). A separate release-preparation PR is step 3/4; bridge
+consumption is step 4/4. See `followups/deepseek-atomic-stop.md` for the concrete design.
 Architecture plan review accepted native ownership and layering but required exact
 old/new work separation and native execution-kind authority. Those findings were
 applied using pre-dispatch-only queue cleanup, ordered input-cancel server requests,
